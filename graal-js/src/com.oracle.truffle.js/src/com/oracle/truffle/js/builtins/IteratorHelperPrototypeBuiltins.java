@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
@@ -65,6 +66,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -84,7 +86,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
 
     protected IteratorHelperPrototypeBuiltins() {
-        super(JSArray.ITERATOR_PROTOTYPE_NAME, IteratorHelperPrototypeBuiltins.HelperIteratorPrototype.class);
+        super(JSIterator.CLASS_NAME, IteratorHelperPrototypeBuiltins.HelperIteratorPrototype.class);
     }
 
     public enum HelperIteratorPrototype implements BuiltinEnum<IteratorHelperPrototypeBuiltins.HelperIteratorPrototype> {
@@ -200,7 +202,6 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public abstract static class IteratorHelperNextNode extends JSBuiltinNode {
-        @Child private PropertyGetNode getDoneNode;
         @Child private PropertyGetNode getNextImplNode;
         @Child private PropertyGetNode getGeneratorStateNode;
         @Child private PropertySetNode setGeneratorStateNode;
@@ -215,7 +216,6 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             getNextImplNode = PropertyGetNode.createGetHidden(NEXT_ID, context);
             hasNextImplNode = HasHiddenKeyCacheNode.create(NEXT_ID);
-            getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
             callNode = InternalCallNode.create();
         }
 
@@ -243,25 +243,12 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
 
-            Object result;
             try {
-                result = callNode.execute((CallTarget) getNextImplNode.getValue(thisObj), frame.getArguments());
+                return callNode.execute((CallTarget) getNextImplNode.getValue(thisObj), frame.getArguments());
             } catch (AbstractTruffleException ex) {
                 setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
                 throw ex;
             }
-
-            try {
-                if (getDoneNode.getValueBoolean(result)) {
-                    setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
-                } else {
-                    setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.SuspendedYield);
-                }
-            } catch (UnexpectedResultException e) {
-                throw Errors.shouldNotReachHere();
-            }
-
-            return result;
         }
 
         @Specialization(guards = "!hasImpl(thisObj)")

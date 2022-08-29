@@ -78,6 +78,17 @@ public class IteratorPrototypeBuiltinsTest {
     }
 
     @Test
+    public void testMapChainIdentity() {
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        try (Context context = builder.build()) {
+            Value result = context.eval(JavaScriptLanguage.ID, "[].values().map(x => x).map === Iterator.prototype.map");
+            Assert.assertTrue(result.isBoolean());
+            Assert.assertTrue(result.asBoolean());
+        }
+    }
+
+    @Test
     public void testMap() {
         Context.Builder builder = JSTest.newContextBuilder();
         builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
