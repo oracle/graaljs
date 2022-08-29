@@ -121,7 +121,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
             return toWebAssemblyValueNode.execute(result, resultTypes[0]);
         } else {
             if (!context.getContextOptions().isWasmMultiValue()) {
-                throw JSException.create(JSErrorType.RuntimeError, "Multiple wasm result values are not enabled");
+                throw JSException.create(JSErrorType.RuntimeError, "wasm multi-value is not enabled");
             }
             if (!(result instanceof JSDynamicObject)) {
                 throw CompilerDirectives.shouldNotReachHere();
@@ -134,14 +134,14 @@ public class WebAssemblyHostFunction implements TruffleObject {
                 next = JSRuntime.iteratorStep(iter);
                 if (next != Boolean.FALSE) {
                     if (i >= values.length) {
-                        throw JSException.create(JSErrorType.TypeError, "Invalid result array arity");
+                        throw JSException.create(JSErrorType.TypeError, "invalid result array arity");
                     }
                     values[i] = JSRuntime.iteratorValue((JSDynamicObject) next);
                     i++;
                 }
             }
             if (i != values.length) {
-                throw JSException.create(JSErrorType.TypeError, "Invalid result array arity");
+                throw JSException.create(JSErrorType.TypeError, "invalid result array arity");
             }
             for (int j = 0; j < values.length; j++) {
                 values[j] = toWebAssemblyValueNode.execute(values[j], resultTypes[j]);
