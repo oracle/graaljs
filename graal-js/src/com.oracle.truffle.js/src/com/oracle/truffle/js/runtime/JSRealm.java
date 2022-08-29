@@ -379,6 +379,7 @@ public class JSRealm {
     private final JSFunctionObject promiseConstructor;
     private final JSDynamicObject promisePrototype;
     private JSDynamicObject promiseAllFunctionObject;
+    private Object unhandledPromiseRejectionHandler;
 
     private final JSDynamicObject ordinaryHasInstanceFunction;
 
@@ -1594,6 +1595,10 @@ public class JSRealm {
         return promiseAllFunctionObject;
     }
 
+    public final Object getUnhandledPromiseRejectionHandler() {
+        return unhandledPromiseRejectionHandler;
+    }
+
     private static void putProtoAccessorProperty(final JSRealm realm) {
         JSContext context = realm.getContext();
         JSDynamicObject getProto = JSFunction.create(realm, context.protoGetterFunctionData);
@@ -1980,14 +1985,41 @@ public class JSRealm {
     private void putGraalObject() {
         JSObject graalObject = JSOrdinary.createInit(this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
-        int esVersion = getContext().getContextOptions().getEcmaScriptVersion();
+        JSContextOptions options = getContext().getContextOptions();
+        int esVersion = options.getEcmaScriptVersion();
         esVersion = (esVersion > JSConfig.ECMAScript6 ? esVersion + JSConfig.ECMAScriptVersionYearDelta : esVersion);
         JSObjectUtil.putDataProperty(context, graalObject, Strings.LANGUAGE, Strings.fromJavaString(JavaScriptLanguage.NAME), flags);
         assert GRAALVM_VERSION != null;
         JSObjectUtil.putDataProperty(context, graalObject, Strings.VERSION_GRAAL_VM, GRAALVM_VERSION, flags);
         JSObjectUtil.putDataProperty(context, graalObject, Strings.VERSION_ECMA_SCRIPT, esVersion, flags);
         JSObjectUtil.putDataProperty(context, graalObject, Strings.IS_GRAAL_RUNTIME, JSFunction.create(this, isGraalRuntimeFunction(context)), flags);
+        if (options.getUnhandledRejectionsMode() == JSContextOptions.UnhandledRejectionsTrackingMode.HANDLER) {
+            JSFunctionObject registerFunction = JSFunction.create(this, setUnhandledPromiseRejectionHandlerFunction(context));
+            JSObjectUtil.putDataProperty(context, graalObject, Strings.SET_UNHANDLED_PROMISE_REJECTION_HANDLER, registerFunction, flags);
+        }
         putGlobalProperty(Strings.GRAAL, graalObject);
+    }
+
+    private static JSFunctionData setUnhandledPromiseRejectionHandlerFunction(JSContext context) {
+        return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SetUnhandledPromiseRejectionHandler, (c) -> {
+            return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object[] args = frame.getArguments();
+                    Object handler = null;
+                    if (JSArguments.getUserArgumentCount(args) > 0) {
+                        Object arg = JSArguments.getUserArgument(args, 0);
+                        if (JSRuntime.isCallable(arg)) {
+                            handler = arg;
+                        } else if (!JSRuntime.isNullOrUndefined(arg)) {
+                            throw Errors.createTypeError("Value provided for the unhandled promise rejection handler is not callable");
+                        }
+                    }
+                    getRealm().unhandledPromiseRejectionHandler = handler;
+                    return Undefined.instance;
+                }
+            }.getCallTarget(), 0, Strings.SET_UNHANDLED_PROMISE_REJECTION_HANDLER);
+        });
     }
 
     private static JSFunctionData isGraalRuntimeFunction(JSContext context) {
