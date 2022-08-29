@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -220,6 +219,16 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             private final BranchProfile errorProfile = BranchProfile.create();
             protected final JSContext context;
 
+            protected static final class NextResult {
+                public final boolean done;
+                public final Object value;
+
+                public NextResult(boolean done, Object value) {
+                    this.done = done;
+                    this.value = value;
+                }
+            }
+
             public IteratorImplNode(JSContext context) {
                 this.context = context;
 
@@ -235,6 +244,18 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             protected abstract Object execute(VirtualFrame frame, Object thisObj);
+
+            protected NextResult getNext(VirtualFrame frame, Object thisObj) {
+                Object next = iteratorNextNode.execute(getArgs(thisObj).target);
+                if (!isObjectNode.executeBoolean(next)) {
+                    errorProfile.enter();
+                    throw Errors.createTypeErrorIterResultNotAnObject(next, this);
+                }
+                if (toBooleanNode.executeBoolean(getDoneNode.getValue(next))) {
+                    return new NextResult(true, Undefined.instance);
+                }
+                return new NextResult(false, iteratorValueNode.execute(next));
+            }
 
             protected Object getNextValue(VirtualFrame frame, Object thisObj) {
                 Object next = iteratorNextNode.execute(getArgs(thisObj).target);
@@ -420,25 +441,24 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             @Specialization
             public Object next(VirtualFrame frame, Object thisObj) {
-                return getNextValue(frame, thisObj);
-            }
-
-            @Override
-            protected Object withNextValue(VirtualFrame frame, Object thisObj, Object value) {
                 IteratorFilterArgs args = getArgs(thisObj);
+                while (true) {
+                    NextResult result = getNext(frame, thisObj);
+                    if (result.done) {
+                        return createResultDone(frame, thisObj);
+                    }
 
-                Object selected;
-                try {
-                    selected = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.filterer, value));
-                } catch (AbstractTruffleException e) {
-                    iteratorCloseNode.executeAbrupt(args.target.getIterator());
-                    throw e;
+                    Object selected;
+                    try {
+                        selected = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.filterer, result.value));
+                    } catch (AbstractTruffleException e) {
+                        iteratorCloseNode.executeAbrupt(args.target.getIterator());
+                        throw e;
+                    }
+                    if (toBooleanNode.executeBoolean(selected)) {
+                        return createResultContinue(frame, thisObj, result.value);
+                    }
                 }
-                if (toBooleanNode.executeBoolean(selected)) {
-                    return createResultContinue(frame, thisObj, value);
-                }
-
-                return getNextValue(frame, thisObj);
             }
         }
         @Override
@@ -653,29 +673,27 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             @Specialization
             public Object next(VirtualFrame frame, Object thisObj) {
-                return getNextValue(frame, thisObj);
-            }
-
-            @Override
-            protected Object withNextValue(VirtualFrame frame, Object thisObj, Object value) {
                 IteratorDropArgs args = getArgs(thisObj);
-                if (finiteProfile.profile(args.finite)) {
-                    long remaining;
-                    try {
-                        remaining = getLimitNode.getValueLong(thisObj);
-                    } catch (UnexpectedResultException e) {
-                        throw Errors.shouldNotReachHere();
-                    }
-
-                    if (remaining > 0) {
-                        setLimitNode.setValue(thisObj, remaining - 1);
-                        return getNextValue(frame, thisObj);
-                    }
-
-                    return createResultContinue(frame, thisObj, value);
-                } else {
-                    return super.getNextValue(frame, thisObj);
+                if (!finiteProfile.profile(args.finite)) {
+                    return getNextValue(frame, thisObj);
                 }
+
+                long remaining;
+                try {
+                    remaining = getLimitNode.getValueLong(thisObj);
+                } catch (UnexpectedResultException e) {
+                    throw Errors.shouldNotReachHere();
+                }
+
+                for (long i = 0; i < remaining; i++) {
+                    NextResult next = getNext(frame, thisObj);
+                    if (next.done) {
+                        return createResultDone(frame, thisObj);
+                    }
+                }
+                setLimitNode.setValue(thisObj, 0L);
+
+                return getNextValue(frame, thisObj);
             }
         }
 
