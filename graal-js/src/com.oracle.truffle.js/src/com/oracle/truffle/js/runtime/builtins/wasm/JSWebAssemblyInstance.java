@@ -222,6 +222,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+            @Child InteropLibrary readArrayElementLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             @CompilationFinal(dimensions = 1) TruffleString[] argTypesArray = paramTypes;
 
             @Override
@@ -268,7 +269,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     } else {
                         Object[] values = new Object[returnLength];
                         for (int i = 0; i < returnLength; i++) {
-                            values[i] = toJSValueNode.execute(exportFunctionLib.readArrayElement(wasmResult, i));
+                            values[i] = toJSValueNode.execute(readArrayElementLib.readArrayElement(wasmResult, i));
                         }
                         return JSArray.createConstantObjectArray(context, realm, values);
                     }
