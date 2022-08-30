@@ -417,7 +417,7 @@ public final class JSContextOptions {
 
     public static final String FUNCTION_CONSTRUCTOR_CACHE_SIZE_NAME = JS_OPTION_PREFIX + "function-constructor-cache-size";
     @Option(name = FUNCTION_CONSTRUCTOR_CACHE_SIZE_NAME, category = OptionCategory.EXPERT, usageSyntax = "<int>", help = "Maximum size of the parsing cache used by the Function constructor to avoid re-parsing known sources.") //
-    public static final OptionKey<Integer> FUNCTION_CONSTRUCTOR_CACHE_SIZE = new OptionKey<>(32);
+    public static final OptionKey<Integer> FUNCTION_CONSTRUCTOR_CACHE_SIZE = new OptionKey<>(256);
     @CompilationFinal private int functionConstructorCacheSize;
 
     public static final String REGEX_CACHE_SIZE_NAME = JS_OPTION_PREFIX + "regex-cache-size";
