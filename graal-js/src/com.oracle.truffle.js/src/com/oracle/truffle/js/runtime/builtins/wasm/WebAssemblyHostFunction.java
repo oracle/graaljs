@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * WebAssembly host function (imported JS function).
@@ -97,12 +98,13 @@ public class WebAssemblyHostFunction implements TruffleObject {
                     @Cached ToJSValueNode toJSValueNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Cached BranchProfile errorBranch,
+                    @Cached BranchProfile growProfile,
                     @CachedLibrary("this") InteropLibrary self) {
-        if (!JavaScriptLanguage.get(self).getJSContext().getContextOptions().isWasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
+        JSContext context = JavaScriptLanguage.get(self).getJSContext();
+        if (!context.getContextOptions().isWasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
             errorBranch.enter();
             throw Errors.createTypeError("wasm function signature contains illegal type");
         }
-
         Object[] jsArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
             jsArgs[i] = toJSValueNode.execute(args[i]);
@@ -115,32 +117,32 @@ public class WebAssemblyHostFunction implements TruffleObject {
         } else if (resultTypes.length == 1) {
             return toWebAssemblyValueNode.execute(result, resultTypes[0]);
         } else {
+            result = JSRuntime.toObject(context, result);
             if (!(result instanceof JSDynamicObject)) {
-                throw Errors.shouldNotReachHere();
+                errorBranch.enter();
+                throw Errors.createTypeError("foreign objects not supported");
             }
+            // Reimplemented representation of GetIteratorNode#iterableToList. Workaround for:
+            // TODO: GR-40731 (Add uncached versions of Iterator related JS Nodes)
+            SimpleArrayList<Object> values = new SimpleArrayList<>();
             IteratorRecord iter = JSRuntime.getIterator((JSDynamicObject) result);
-            Object[] values = new Object[resultTypes.length];
-            int i = 0;
-            Object next = Boolean.TRUE;
-            while (next != Boolean.FALSE) {
-                next = JSRuntime.iteratorStep(iter);
-                if (next != Boolean.FALSE) {
-                    if (i >= values.length) {
-                        errorBranch.enter();
-                        throw Errors.createTypeError("invalid result array arity");
-                    }
-                    values[i] = JSRuntime.iteratorValue((JSDynamicObject) next);
-                    i++;
+            while (true) {
+                Object next = JSRuntime.iteratorStep(iter);
+                if (next == Boolean.FALSE) {
+                    break;
                 }
+                Object nextValue = JSRuntime.iteratorValue((JSDynamicObject) next);
+                values.add(nextValue, growProfile);
             }
-            if (i != values.length) {
+            if (resultTypes.length != values.size()) {
                 errorBranch.enter();
                 throw Errors.createTypeError("invalid result array arity");
             }
-            for (int j = 0; j < values.length; j++) {
-                values[j] = toWebAssemblyValueNode.execute(values[j], resultTypes[j]);
+            Object[] wasmValues = new Object[values.size()];
+            for (int i = 0; i < values.size(); i++) {
+                wasmValues[i] = toWebAssemblyValueNode.execute(values.get(i), resultTypes[i]);
             }
-            return InteropArray.create(values);
+            return InteropArray.create(wasmValues);
         }
     }
 }
