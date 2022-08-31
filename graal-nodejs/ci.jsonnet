@@ -60,7 +60,7 @@ local ci = import '../ci.jsonnet';
     run+: [
       ['python', self.graalvmtests + '/test.py', '-g', ['mx', '--quiet', 'graalvm-home'], '--print-revisions', '--keep-on-error', 'test/graal/aux-engine-cache'],
     ],
-    timelimit: '30:00',
+    timelimit: '1:00:00',
   },
 
   local testNode(suite, part='-r0,1', max_heap='8G') = {

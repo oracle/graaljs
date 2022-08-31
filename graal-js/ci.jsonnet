@@ -100,7 +100,7 @@ local ci = import '../ci.jsonnet';
       ['mx', 'build'],
       ['python', '../../graalvm-tests/test.py', '-g', ['mx', '--quiet', 'graalvm-home'], '--print-revisions', '--keep-on-error', 'test/aux-engine-cache'],
     ],
-    timelimit: '30:00',
+    timelimit: '1:00:00',
   },
 
   builds: [
