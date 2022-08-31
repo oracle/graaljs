@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -81,6 +82,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -180,15 +182,15 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     private abstract static class IteratorBaseNode<T extends IteratorArgs> extends JSBuiltinNode {
-
         @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
         @Child private PropertySetNode setArgsNode;
         @Child private PropertySetNode setNextNode;
         @Child private PropertySetNode setGeneratorStateNode;
-        @Child private IteratorRootNode implNode;
 
+        private final JSFunctionData implFn;
         private final JSDynamicObject prototype;
+
 
 
         IteratorBaseNode(JSContext context, JSBuiltin builtin, JSContext.BuiltinFunctionKey key) {
@@ -199,7 +201,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             setArgsNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
             setNextNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.NEXT_ID, context);
             setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
-            implNode = new IteratorRootNode(getImplementation(context));
+            implFn = JSFunctionData.create(context, new IteratorRootNode(getImplementation(context)).getCallTarget(), 0, Strings.EMPTY);
             prototype = createIteratorHelperPrototype();
         }
 
@@ -296,10 +298,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             public JSContext getContext() {
                 return context;
             }
+
+            public abstract IteratorImplNode<T> copyUninitialized();
         }
 
         private static class IteratorRootNode extends JavaScriptRootNode {
-            @Child IteratorImplNode<?> implNode;
+            @Child private IteratorImplNode<?> implNode;
 
             IteratorRootNode(IteratorImplNode<?> implNode) {
                 this.implNode = implNode;
@@ -309,22 +313,40 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             public Object execute(VirtualFrame frame) {
                 return implNode.execute(frame, JSFrameUtil.getThisObj(frame));
             }
+
+            public static IteratorRootNode create(IteratorImplNode<?> implNode) {
+                return new IteratorRootNode(implNode);
+            }
+
+            @Override
+            public boolean isCloningAllowed() {
+                return true;
+            }
+
+            @Override
+            protected boolean isCloneUninitializedSupported() {
+                return true;
+            }
+
+            @Override
+            protected RootNode cloneUninitialized() {
+                return create(implNode.copyUninitialized());
+            }
         }
 
         protected IteratorRecord getIteratorDirect(Object thisObj) {
             return getIteratorDirectNode.execute(thisObj);
         }
 
-        protected JSDynamicObject createIterator(T args) {
+        protected JSDynamicObject createIterator(Object thisObj, T args) {
             JSDynamicObject iterator = createObjectNode.execute(this.prototype);
             setArgsNode.setValue(iterator, args);
-            setNextNode.setValue(iterator, implNode.getCallTarget());
+            setNextNode.setValue(iterator, JSFunction.create(getRealm(), implFn));
             setGeneratorStateNode.setValue(iterator, JSFunction.GeneratorState.SuspendedStart);
             return iterator;
         }
 
         protected abstract IteratorImplNode<T> getImplementation(JSContext context);
-
 
         private JSDynamicObject createIteratorHelperPrototype() {
             //return getRealm().getIteratorHelperPrototype();
@@ -355,7 +377,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isCallable(mapper)")
         public JSDynamicObject map(Object thisObj, Object mapper) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            return createIterator(new IteratorMapArgs(iterated, mapper));
+            return createIterator(thisObj, new IteratorMapArgs(iterated, mapper));
         }
 
         @Specialization(guards = "!isCallable(mapper)")
@@ -392,10 +414,19 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
                 return createResultContinue(frame, thisObj, mapped);
             }
+
+            @Override
+            public IteratorImplNode<IteratorMapArgs> copyUninitialized() {
+                return create(context);
+            }
+
+            public static IteratorMapNextNode create(JSContext context) {
+                return IteratorPrototypeBuiltinsFactory.IteratorMapNodeGen.IteratorMapNextNodeGen.create(context);
+            }
         }
         @Override
         protected IteratorImplNode<IteratorMapArgs> getImplementation(JSContext context) {
-            return IteratorPrototypeBuiltinsFactory.IteratorMapNodeGen.IteratorMapNextNodeGen.create(context);
+            return IteratorMapNextNode.create(context);
         }
     }
 
@@ -416,7 +447,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isCallable(filterer)")
         public JSDynamicObject filter(Object thisObj, Object filterer) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            return createIterator(new IteratorFilterArgs(iterated, filterer));
+            return createIterator(thisObj, new IteratorFilterArgs(iterated, filterer));
         }
 
         @Specialization(guards = "!isCallable(filterer)")
@@ -460,10 +491,19 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     }
                 }
             }
+
+            @Override
+            public IteratorImplNode<IteratorFilterArgs> copyUninitialized() {
+                return create(context);
+            }
+
+            public static IteratorFilterNextNode create(JSContext context) {
+                return IteratorPrototypeBuiltinsFactory.IteratorFilterNodeGen.IteratorFilterNextNodeGen.create(context);
+            }
         }
         @Override
         protected IteratorImplNode<IteratorFilterArgs> getImplementation(JSContext context) {
-            return IteratorPrototypeBuiltinsFactory.IteratorFilterNodeGen.IteratorFilterNextNodeGen.create(context);
+            return IteratorFilterNextNode.create(context);
         }
     }
 
@@ -481,7 +521,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization
         public JSDynamicObject indexed(Object thisObj) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            JSDynamicObject result = createIterator(new IteratorArgs(iterated));
+            JSDynamicObject result = createIterator(thisObj, new IteratorArgs(iterated));
             setIndexNode.setValue(result, 0L);
             return result;
         }
@@ -516,10 +556,19 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
                 return createResultContinue(frame, thisObj, pair);
             }
+
+            @Override
+            public IteratorImplNode<IteratorArgs> copyUninitialized() {
+                return create(context);
+            }
+
+            public static IteratorIndexedNextNode create(JSContext context) {
+                return IteratorPrototypeBuiltinsFactory.IteratorIndexedNodeGen.IteratorIndexedNextNodeGen.create(context);
+            }
         }
         @Override
         protected IteratorBaseNode.IteratorImplNode<IteratorArgs> getImplementation(JSContext context) {
-            return IteratorPrototypeBuiltinsFactory.IteratorIndexedNodeGen.IteratorIndexedNextNodeGen.create(context);
+            return IteratorIndexedNextNode.create(context);
         }
     }
 
@@ -561,7 +610,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
-            JSDynamicObject result = createIterator(new IteratorTakeArgs(iterated, !Double.isInfinite(integerLimit.doubleValue())));
+            JSDynamicObject result = createIterator(thisObj, new IteratorTakeArgs(iterated, !Double.isInfinite(integerLimit.doubleValue())));
             setLimitNode.setValue(result, Double.isInfinite(integerLimit.doubleValue()) ? Long.MAX_VALUE : integerLimit.longValue());
             return result;
         }
@@ -607,10 +656,19 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
                 return getNextValue(frame, thisObj);
             }
+
+            @Override
+            public IteratorImplNode<IteratorTakeArgs> copyUninitialized() {
+                return create(context);
+            }
+
+            public static IteratorTakeNextNode create(JSContext context) {
+                return IteratorPrototypeBuiltinsFactory.IteratorTakeNodeGen.IteratorTakeNextNodeGen.create(context);
+            }
         }
         @Override
         protected IteratorBaseNode.IteratorImplNode<IteratorTakeArgs> getImplementation(JSContext context) {
-            return IteratorPrototypeBuiltinsFactory.IteratorTakeNodeGen.IteratorTakeNextNodeGen.create(context);
+            return IteratorTakeNextNode.create(context);
         }
     }
 
@@ -652,7 +710,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
-            JSDynamicObject result = createIterator(new IteratorDropArgs(iterated, !Double.isInfinite(integerLimit.doubleValue())));
+            JSDynamicObject result = createIterator(thisObj, new IteratorDropArgs(iterated, !Double.isInfinite(integerLimit.doubleValue())));
             setLimitNode.setValue(result, Double.isInfinite(integerLimit.doubleValue()) ? Long.MAX_VALUE : integerLimit.longValue());
             return result;
         }
@@ -695,11 +753,20 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
                 return getNextValue(frame, thisObj);
             }
+
+            @Override
+            public IteratorImplNode<IteratorDropArgs> copyUninitialized() {
+                return create(context);
+            }
+
+            public static IteratorDropNextNode create(JSContext context) {
+                return IteratorPrototypeBuiltinsFactory.IteratorDropNodeGen.IteratorDropNextNodeGen.create(context);
+            }
         }
 
         @Override
         protected IteratorBaseNode.IteratorImplNode<IteratorDropArgs> getImplementation(JSContext context) {
-            return IteratorPrototypeBuiltinsFactory.IteratorDropNodeGen.IteratorDropNextNodeGen.create(context);
+            return IteratorDropNextNode.create(context);
         }
     }
 
@@ -724,7 +791,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isCallable(mapper)")
         public JSDynamicObject flatMap(Object thisObj, Object mapper) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            JSDynamicObject result = createIterator(new IteratorFlatMapArgs(iterated, mapper));
+            JSDynamicObject result = createIterator(thisObj, new IteratorFlatMapArgs(iterated, mapper));
             setAliveNode.setValueBoolean(result, false);
             return result;
         }
@@ -814,10 +881,20 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     }
                 }
             }
+
+            @Override
+            public IteratorImplNode<IteratorFlatMapArgs> copyUninitialized() {
+                return create(context);
+            }
+
+            public static IteratorFlatMapNextNode create(JSContext context) {
+                return IteratorPrototypeBuiltinsFactory.IteratorFlatMapNodeGen.IteratorFlatMapNextNodeGen.create(context);
+            }
         }
+
         @Override
         protected IteratorBaseNode.IteratorImplNode<IteratorFlatMapArgs> getImplementation(JSContext context) {
-            return IteratorPrototypeBuiltinsFactory.IteratorFlatMapNodeGen.IteratorFlatMapNextNodeGen.create(context);
+            return IteratorFlatMapNextNode.create(context);
         }
     }
 
