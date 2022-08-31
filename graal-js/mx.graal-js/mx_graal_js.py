@@ -90,7 +90,7 @@ def _graal_js_gate_runner(args, tasks):
         'lazytranslation': ['-Dpolyglot.js.lazy-translation=true', 'gate'],
         'zonerulesbasedtimezones': ['-Dpolyglot.js.zone-rules-based-time-zones=true', 'gate'],
         'shareengine': ['gate', 'shareengine'],
-        'latestversion': ['gate', 'minesversion=2022'],
+        'latestversion': ['gate', 'minesversion=staging'],
         'instrument': ['gate', 'instrument', 'timeoutoverall=1800']
     }
 
