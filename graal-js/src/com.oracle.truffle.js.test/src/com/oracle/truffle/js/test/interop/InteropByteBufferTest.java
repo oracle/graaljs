@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import java.nio.ByteOrder;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
@@ -333,7 +334,7 @@ public class InteropByteBufferTest {
         HostAccess hostAccess = HostAccess.newBuilder().allowBufferAccess(true).build();
         try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             int maxByteLength = JSContextOptions.MAX_TYPED_ARRAY_LENGTH.getDefaultValue();
-            ByteBuffer buffer = ByteBuffer.allocate(maxByteLength);
+            ByteBuffer buffer = allocate(maxByteLength);
             context.getBindings(ID).putMember("buffer", buffer);
 
             Value byteLength = context.eval(ID, "new Uint8Array(buffer).byteLength");
@@ -341,17 +342,27 @@ public class InteropByteBufferTest {
 
             if (maxByteLength % 8 != 0) {
                 maxByteLength -= (maxByteLength % 8);
-                buffer = ByteBuffer.allocate(maxByteLength);
+                buffer = allocate(maxByteLength);
                 context.getBindings(ID).putMember("buffer", buffer);
             }
             byteLength = context.eval(ID, "new Float64Array(buffer).byteLength");
             assertEquals(maxByteLength, byteLength.asInt());
 
             int maxByteLengthPlusOne = JSContextOptions.MAX_TYPED_ARRAY_LENGTH.getDefaultValue() + 1;
-            buffer = ByteBuffer.allocate(maxByteLengthPlusOne);
+            buffer = allocate(maxByteLengthPlusOne);
             context.getBindings(ID).putMember("buffer", buffer);
             Value rangeErrorThrown = context.eval(ID, "try { new Uint8Array(buffer); false; } catch (e) { e instanceof RangeError; }");
             assertTrue(rangeErrorThrown.asBoolean());
+        }
+    }
+
+    private static ByteBuffer allocate(int capacity) {
+        try {
+            return ByteBuffer.allocate(capacity);
+        } catch (OutOfMemoryError oom) {
+            System.err.println("Warning: Unable to allocate ByteBuffer with capacity: " + capacity);
+            Assume.assumeNoException(oom);
+            return null;
         }
     }
 
