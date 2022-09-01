@@ -91,7 +91,6 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-eh",
                     "--experimental-wasm-gc",
                     "--experimental-wasm-memory64",
-                    "--experimental-wasm-mv",
                     "--experimental-wasm-reftypes",
                     "--experimental-wasm-return-call",
                     "--experimental-wasm-simd",

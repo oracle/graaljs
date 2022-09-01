@@ -2041,7 +2041,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1084151.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-08-10"
   }, {
@@ -2066,7 +2066,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-11206.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-08-10"
   }, {
@@ -2079,7 +2079,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1137582.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1146861.js",
@@ -2140,13 +2140,13 @@
     "filePath" : "mjsunit/regress/wasm/regress-1217064.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-12270.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-08-10"
   }, {
@@ -3833,7 +3833,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "fails with Argument type is i64"
+    "comment" : "Requires WebAssembly reference types"
   }, {
     "filePath" : "mjsunit/wasm/globals-import-export-identity.js",
     "status" : "SKIP",
@@ -4111,7 +4111,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "GraalWASM error messages do not match V8 error messages"
   }, {
     "filePath" : "mjsunit/wasm/multiple-code-spaces.js",
     "status" : "SKIP",

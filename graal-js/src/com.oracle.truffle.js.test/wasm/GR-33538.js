@@ -1,0 +1,60 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+ */
+
+/**
+ * Multi-value
+ *
+ * @option webassembly
+ */
+
+load('../js/assert.js');
+
+// (module
+//   (type (func (result i32)))
+//   (type (func (result i32 i32)))
+//   (import "m" "f" (func (type 1)))
+//   (func (export "x") (type 0)
+//      call 0
+//      i32.add
+//   )
+// )
+var bytes = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00,
+    0x01, 0x0A, 0x02, 0x60, 0x00, 0x01, 0x7F, 0x60, 0x00, 0x02, 0x7F, 0x7F,
+    0x02, 0x07, 0x01, 0x01, 0x6D, 0x01, 0x66, 0x00, 0x01,
+    0x03, 0x02, 0x01, 0x00,
+    0x07, 0x05, 0x01, 0x01, 0x78, 0x00, 0x01,
+    0x0A, 0x07, 0x01, 0x05, 0x00, 0x10, 0x00, 0x6A, 0x0B];
+var module = new WebAssembly.Module(new Uint8Array(bytes));
+var instance = new WebAssembly.Instance(module, {
+    "m": {
+        "f": () => {
+            return [1,2];
+        }
+    }
+});
+var x = instance.exports.x;
+var res = x();
+assertSame(3, res);
+
+// (module
+// (type (func (result i32 i32)))
+// (func (export "x") (type 0)
+//     i32.const 1
+//     i32.const 2
+// )
+bytes = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00,
+    0x01, 0x06, 0x01, 0x60, 0x00, 0x02, 0x7F, 0x7F,
+    0x03, 0x02, 0x01, 0x00,
+    0x07, 0x05, 0x01, 0x01, 0x78, 0x00, 0x00,
+    0x0A, 0x08, 0x01, 0x06, 0x00, 0x41, 0x01, 0x41, 0x02, 0x0B];
+module = new WebAssembly.Module(new Uint8Array(bytes));
+var instance = new WebAssembly.Instance(module);
+var x = instance.exports.x;
+var res = x();
+assertSame(2, res.length);
+assertSame(1, res[0]);
+assertSame(2, res[1]);

@@ -65,6 +65,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -208,11 +209,12 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         int idxClose = Strings.indexOf(typeInfo, ')');
         TruffleString name = Strings.substring(context, typeInfo, 0, idxOpen);
         TruffleString argTypes = Strings.lazySubstring(typeInfo, idxOpen + 1, idxClose - (idxOpen + 1));
-        TruffleString returnType = Strings.lazySubstring(typeInfo, idxClose + 1);
+        TruffleString returnTypes = Strings.lazySubstring(typeInfo, idxClose + 1);
         TruffleString[] paramTypes = !Strings.isEmpty(argTypes) ? Strings.split(context, argTypes, Strings.SPACE) : new TruffleString[0];
+        TruffleString[] resultTypes = !Strings.isEmpty(returnTypes) ? Strings.split(context, returnTypes, Strings.SPACE) : new TruffleString[0];
         int argCount = paramTypes.length;
-        boolean returnTypeIsEmpty = returnType.isEmpty();
-        boolean returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
+        int returnLength = resultTypes.length;
+        boolean anyReturnTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxClose + 1) >= 0;
         boolean anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
 
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
@@ -220,11 +222,12 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+            @Child InteropLibrary readArrayElementLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             @CompilationFinal(dimensions = 1) TruffleString[] argTypesArray = paramTypes;
 
             @Override
             public Object execute(VirtualFrame frame) {
-                if (!context.getContextOptions().isWasmBigInt() && (returnTypeIsI64 || anyArgTypeIsI64)) {
+                if (!context.getContextOptions().isWasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
                     errorBranch.enter();
                     throw Errors.createTypeError("wasm function signature contains illegal type");
                 }
@@ -259,10 +262,16 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         }
                     }
 
-                    if (returnTypeIsEmpty) {
+                    if (returnLength == 0) {
                         return Undefined.instance;
-                    } else {
+                    } else if (returnLength == 1) {
                         return toJSValueNode.execute(wasmResult);
+                    } else {
+                        Object[] values = new Object[returnLength];
+                        for (int i = 0; i < returnLength; i++) {
+                            values[i] = toJSValueNode.execute(readArrayElementLib.readArrayElement(wasmResult, i));
+                        }
+                        return JSArray.createConstantObjectArray(context, realm, values);
                     }
                 } catch (InteropException ex) {
                     throw Errors.shouldNotReachHere(ex);
