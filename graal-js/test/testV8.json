@@ -1010,37 +1010,9 @@
     "filePath" : "mjsunit/lookup-behind-property.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/maglev/add-number.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/maglev/add-smi.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/maglev/lazy-deopt-with-onstack-activation.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/maglev/lazy-deopt-without-onstack-activation.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/maglev/load-named.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/maglev/spill-double.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
     "filePath" : "mjsunit/maglev/string-compare.js",
     "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/maglev/super-ic.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "Uses %ConstructThinString"
   }, {
     "filePath" : "mjsunit/messages.js",
     "status" : "FAIL"
