@@ -217,7 +217,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     }
 
     private static String[] timeZoneNameOptions(JSContext context) {
-        if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2022) {
             return new String[]{IntlUtil.SHORT, IntlUtil.LONG, IntlUtil.SHORT_OFFSET, IntlUtil.LONG_OFFSET, IntlUtil.SHORT_GENERIC, IntlUtil.LONG_GENERIC};
         } else {
             return new String[]{IntlUtil.SHORT, IntlUtil.LONG};
