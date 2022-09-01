@@ -94,10 +94,6 @@ public abstract class GetIteratorNode extends JavaScriptNode {
         return GetAsyncIteratorNodeGen.create(context, iteratedObject);
     }
 
-    protected JSContext getContext() {
-        return context;
-    }
-
     @Specialization
     protected IteratorRecord doGetIterator(Object iteratedObject,
                     @Cached("create()") IsCallableNode isCallableNode,
@@ -119,7 +115,9 @@ public abstract class GetIteratorNode extends JavaScriptNode {
                     JavaScriptBaseNode origin) {
         Object iterator = methodCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
         if (isObjectNode.executeBoolean(iterator)) {
-            return IteratorRecord.create((JSDynamicObject) iterator, getNextMethodNode.getValue(iterator), false);
+            JSDynamicObject jsIterator = (JSDynamicObject) iterator;
+            Object nextMethod = getNextMethodNode.getValue(jsIterator);
+            return IteratorRecord.create(jsIterator, nextMethod, false);
         } else {
             throw Errors.createTypeErrorNotAnObject(iterator, origin);
         }
@@ -132,7 +130,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return GetIteratorNodeGen.create(getContext(), cloneUninitialized(objectNode, materializedTags));
+        return GetIteratorNodeGen.create(context, cloneUninitialized(objectNode, materializedTags));
     }
 
     protected GetMethodNode getIteratorMethodNode() {

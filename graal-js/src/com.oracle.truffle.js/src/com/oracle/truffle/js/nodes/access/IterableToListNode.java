@@ -40,62 +40,52 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.nodes.DenyReplace;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
- * ES6 7.4.3 IteratorComplete(iterResult).
+ * Implements the part of {@code IterableToList(items, [method])} after {@code GetIterator}.
+ *
+ * Combine with {@link GetIteratorBaseNode} to get the full operation.
  */
-public abstract class IteratorCompleteNode extends JavaScriptBaseNode {
+@GenerateUncached
+@ImportStatic(JSInteropUtil.class)
+public abstract class IterableToListNode extends JavaScriptBaseNode {
 
-    protected IteratorCompleteNode() {
+    protected IterableToListNode() {
     }
 
-    public abstract boolean execute(Object iterResult);
+    public abstract SimpleArrayList<Object> execute(IteratorRecord iterator);
 
-    public static IteratorCompleteNode create(JSContext context) {
-        return new Cached(context);
+    public static IterableToListNode create() {
+        return IterableToListNodeGen.create();
     }
 
-    public static IteratorCompleteNode getUncached() {
-        return Uncached.INSTANCE;
+    public static IterableToListNode getUncached() {
+        return IterableToListNodeGen.getUncached();
     }
 
-    static final class Cached extends IteratorCompleteNode {
-        @Child private PropertyGetNode getDoneNode;
-        @Child private JSToBooleanNode toBooleanNode;
-
-        Cached(JSContext context) {
-            this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
-            this.toBooleanNode = JSToBooleanNode.create();
+    @Specialization
+    protected static SimpleArrayList<Object> iterableToList(IteratorRecord iterator,
+                    @Cached("create(getLanguage().getJSContext())") IteratorStepNode iteratorStepNode,
+                    @Cached IteratorValueNode getIteratorValueNode,
+                    @Cached BranchProfile growProfile) {
+        SimpleArrayList<Object> values = new SimpleArrayList<>();
+        while (true) {
+            Object next = iteratorStepNode.execute(iterator);
+            if (next == Boolean.FALSE) {
+                break;
+            }
+            Object nextValue = getIteratorValueNode.execute(next);
+            values.add(nextValue, growProfile);
         }
-
-        @Override
-        public boolean execute(Object iterResult) {
-            return toBooleanNode.executeBoolean(getDoneNode.getValue(iterResult));
-        }
-    }
-
-    @DenyReplace
-    static final class Uncached extends IteratorCompleteNode {
-        static final Uncached INSTANCE = new Uncached();
-
-        private Uncached() {
-        }
-
-        @Override
-        public boolean execute(Object iterResult) {
-            return JSRuntime.toBoolean(JSInteropUtil.get(iterResult, Strings.DONE));
-        }
-
-        @Override
-        public boolean isAdoptable() {
-            return false;
-        }
+        return values;
     }
 }

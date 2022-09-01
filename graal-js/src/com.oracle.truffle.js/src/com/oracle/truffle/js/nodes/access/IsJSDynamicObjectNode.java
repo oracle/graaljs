@@ -40,62 +40,45 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.nodes.DenyReplace;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 
 /**
- * ES6 7.4.3 IteratorComplete(iterResult).
+ * Checks whether the argument is a JS object, null, or undefined.
  */
-public abstract class IteratorCompleteNode extends JavaScriptBaseNode {
+@GenerateUncached
+@ImportStatic({CompilerDirectives.class})
+public abstract class IsJSDynamicObjectNode extends JavaScriptBaseNode {
 
-    protected IteratorCompleteNode() {
+    protected IsJSDynamicObjectNode() {
     }
 
-    public abstract boolean execute(Object iterResult);
+    public abstract boolean executeBoolean(Object obj);
 
-    public static IteratorCompleteNode create(JSContext context) {
-        return new Cached(context);
+    @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
+    protected static boolean isObjectCached(@SuppressWarnings("unused") Object object,
+                    @Cached("getClassIfJSDynamicObject(object)") @SuppressWarnings("unused") Class<?> cachedClass,
+                    @Cached("isJSDynamicObject(object)") boolean cachedResult) {
+        return cachedResult;
     }
 
-    public static IteratorCompleteNode getUncached() {
-        return Uncached.INSTANCE;
+    @Specialization(replaces = {"isObjectCached"})
+    protected boolean isObject(Object object,
+                    @Cached ConditionProfile resultProfile) {
+        return resultProfile.profile(JSGuards.isJSDynamicObject(object));
     }
 
-    static final class Cached extends IteratorCompleteNode {
-        @Child private PropertyGetNode getDoneNode;
-        @Child private JSToBooleanNode toBooleanNode;
-
-        Cached(JSContext context) {
-            this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
-            this.toBooleanNode = JSToBooleanNode.create();
-        }
-
-        @Override
-        public boolean execute(Object iterResult) {
-            return toBooleanNode.executeBoolean(getDoneNode.getValue(iterResult));
-        }
+    public static IsJSDynamicObjectNode create() {
+        return IsJSDynamicObjectNodeGen.create();
     }
 
-    @DenyReplace
-    static final class Uncached extends IteratorCompleteNode {
-        static final Uncached INSTANCE = new Uncached();
-
-        private Uncached() {
-        }
-
-        @Override
-        public boolean execute(Object iterResult) {
-            return JSRuntime.toBoolean(JSInteropUtil.get(iterResult, Strings.DONE));
-        }
-
-        @Override
-        public boolean isAdoptable() {
-            return false;
-        }
+    public static IsJSDynamicObjectNode getUncached() {
+        return IsJSDynamicObjectNodeGen.getUncached();
     }
 }

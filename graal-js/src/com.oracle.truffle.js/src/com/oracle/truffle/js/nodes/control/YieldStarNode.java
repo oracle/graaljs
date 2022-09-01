@@ -80,7 +80,7 @@ public class YieldStarNode extends AbstractYieldNode implements ResumableNode.Wi
         this.getIteratorNode = GetIteratorNode.create(context);
         this.iteratorNextNode = IteratorNextNode.create();
         this.iteratorCompleteNode = IteratorCompleteNode.create(context);
-        this.iteratorValueNode = IteratorValueNode.create(context, null);
+        this.iteratorValueNode = IteratorValueNode.create(context);
         this.getThrowMethodNode = GetMethodNode.create(context, Strings.THROW);
         this.getReturnMethodNode = GetMethodNode.create(context, Strings.RETURN);
         this.callThrowNode = JSFunctionCallNode.createCall();

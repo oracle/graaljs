@@ -44,13 +44,16 @@ import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -58,31 +61,40 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * ES6 7.4.4 IteratorValue(iterResult).
  */
+@GenerateUncached
 @ImportStatic({JSConfig.class})
-public abstract class IteratorValueNode extends JavaScriptNode {
-    @Child @Executed protected JavaScriptNode iterResultNode;
-    @Child private PropertyGetNode getValueNode;
+public abstract class IteratorValueNode extends JavaScriptBaseNode {
 
-    protected IteratorValueNode(JSContext context, JavaScriptNode iterResultNode) {
-        this.iterResultNode = iterResultNode;
-        this.getValueNode = PropertyGetNode.create(Strings.VALUE, false, context);
+    protected IteratorValueNode() {
     }
+
+    public abstract Object execute(Object iterResult);
 
     public static IteratorValueNode create(JSContext context) {
-        return create(context, null);
+        return create();
     }
 
-    public static IteratorValueNode create(JSContext context, JavaScriptNode iterResult) {
-        return IteratorValueNodeGen.create(context, iterResult);
+    public static IteratorValueNode create() {
+        return IteratorValueNodeGen.create();
+    }
+
+    public static IteratorValueNode getUncached() {
+        return IteratorValueNodeGen.getUncached();
+    }
+
+    public static JavaScriptNode create(JSContext context, JavaScriptNode iterResult) {
+        return new Unary(iterResult);
     }
 
     @Specialization
-    protected Object doIteratorNext(JSDynamicObject iterResult) {
-        return getValueNode.getValue(iterResult);
+    protected Object doIteratorNext(JSDynamicObject iterResult,
+                    @Cached(value = "createGetValueNode()", uncached = "uncachedGetValueNode()") PropertyGetNode getValueNode) {
+        return getValueNode != null ? getValueNode.getValue(iterResult) : JSObject.get(iterResult, Strings.VALUE);
     }
 
     @Specialization(guards = "isForeignObject(obj)", limit = "InteropLibraryLimit")
@@ -96,10 +108,31 @@ public abstract class IteratorValueNode extends JavaScriptNode {
         }
     }
 
-    public abstract Object execute(Object iterResult);
+    public static final class Unary extends JavaScriptNode {
+        @Child @Executed protected JavaScriptNode iterResultNode;
+        @Child protected IteratorValueNode iteratorValueNode;
 
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return IteratorValueNodeGen.create(getValueNode.getContext(), cloneUninitialized(iterResultNode, materializedTags));
+        protected Unary(JavaScriptNode iterResult) {
+            this.iterResultNode = iterResult;
+            this.iteratorValueNode = IteratorValueNode.create();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return iteratorValueNode.execute(iterResultNode.execute(frame));
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new Unary(cloneUninitialized(iterResultNode, materializedTags));
+        }
+    }
+
+    PropertyGetNode createGetValueNode() {
+        return PropertyGetNode.create(Strings.VALUE, getLanguage().getJSContext());
+    }
+
+    static PropertyGetNode uncachedGetValueNode() {
+        return null;
     }
 }
