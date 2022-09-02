@@ -1188,7 +1188,7 @@ public final class JSRuntime {
         InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(truffleObject);
         assert objInterop.hasMembers(truffleObject);
         if (allowSideEffects && objInterop.isMemberInvocable(truffleObject, Strings.TO_STRING_JLS)) {
-            return Strings.fromJavaString(objInterop.invokeMember(truffleObject, Strings.TO_STRING_JLS).toString());
+            return toString(objInterop.invokeMember(truffleObject, Strings.TO_STRING_JLS));
         }
         Object keys = objInterop.getMembers(truffleObject);
         InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keys);
