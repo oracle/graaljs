@@ -463,17 +463,19 @@ public final class JSFunction extends JSNonProxy {
 
     public static Object getClassPrototype(JSDynamicObject thisObj) {
         Object classPrototype = getClassPrototypeField(thisObj);
-        if (classPrototype == CLASS_PROTOTYPE_PLACEHOLDER) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, classPrototype == CLASS_PROTOTYPE_PLACEHOLDER)) {
             initializeClassPrototype(thisObj);
+            classPrototype = getClassPrototypeField(thisObj);
         }
-        return getClassPrototypeField(thisObj);
+        return classPrototype;
     }
 
     private static void initializeClassPrototype(JSDynamicObject thisObj) {
+        assert !isClassPrototypeInitialized(thisObj);
         setClassPrototypeField(thisObj, createPrototype(thisObj));
     }
 
+    @TruffleBoundary
     private static JSDynamicObject createPrototype(JSDynamicObject constructor) {
         JSFunctionData functionData = getFunctionData(constructor);
         JSRealm realm = getRealm(constructor);
