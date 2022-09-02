@@ -47,6 +47,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -711,13 +712,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 throw Errors.createRangeError("NAN not allowed (TODO: error message)", this);
             }
 
-            Number integerLimit = toIntegerOrInfinityNode.executeNumber(limit);
-            if (integerLimit.doubleValue() < 0) {
+            double integerLimit = toIntegerOrInfinityNode.executeNumber(limit).doubleValue();
+            if (integerLimit < 0) {
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
             JSFunctionObject functionObject = awaitNode.createFunction(new AsyncIteratorTakeArgs(record, integerLimit));
-            setRemainingNode.setValue(functionObject, integerLimit);
+            setRemainingNode.setValueDouble(functionObject, integerLimit);
             return createAsyncIteratorHelperNode.execute(record, functionObject);
         }
 
@@ -751,7 +752,12 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Override
             public Object execute(VirtualFrame frame) {
                 JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                double remaining = ((Number) getRemainingNode.getValue(functionObject)).doubleValue();
+                double remaining;
+                try {
+                    remaining = getRemainingNode.getValueDouble(functionObject);
+                } catch (UnexpectedResultException e) {
+                    throw Errors.shouldNotReachHere();
+                }
                 if (remaining == 0) {
                     return createIterResultObjectNode.execute(frame, Undefined.instance, true);
                 }
@@ -833,13 +839,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 throw Errors.createRangeError("NAN not allowed (TODO: error message)", this);
             }
 
-            Number integerLimit = toIntegerOrInfinityNode.executeNumber(limit);
-            if (integerLimit.doubleValue() < 0) {
+            double integerLimit = toIntegerOrInfinityNode.executeNumber(limit).doubleValue();
+            if (integerLimit < 0) {
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
             JSFunctionObject func = awaitNode.createFunction(new AsyncIteratorAwaitNode.AsyncIteratorArgs(record));
-            setRemainingNode.setValue(func, integerLimit);
+            setRemainingNode.setValueDouble(func, integerLimit);
             return createAsyncIteratorHelperNode.execute(record, func);
         }
 
@@ -875,7 +881,12 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 Object value = iteratorNextNode.execute(getArgs(frame).iterated);
 
                 JSFunctionObject functionsObject = JSFrameUtil.getFunctionObject(frame);
-                double remaining = ((Number) getRemainingNode.getValue(functionsObject)).doubleValue();
+                double remaining;
+                try {
+                    remaining = getRemainingNode.getValueDouble(functionsObject);
+                } catch (UnexpectedResultException e) {
+                    throw Errors.shouldNotReachHere();
+                }
                 if (remaining > 0) {
                     setRemainingNode.setValue(functionsObject, 0);
                     return awaitLoopNode.execute(frame, value, new AsyncIteratorDropArgs(getArgs(frame).iterated, remaining));
