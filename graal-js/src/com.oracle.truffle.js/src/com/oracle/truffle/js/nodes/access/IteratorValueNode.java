@@ -97,9 +97,9 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
                     @CachedLibrary("obj") InteropLibrary interop,
                     @Cached ImportValueNode importValueNode) {
         try {
-            return importValueNode.executeWithTarget(interop.readMember(obj, Strings.toJavaString(Strings.VALUE)));
+            return importValueNode.executeWithTarget(interop.readMember(obj, Strings.VALUE_JLS));
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, Strings.toJavaString(Strings.VALUE), this);
+            throw Errors.createTypeErrorInteropException(obj, e, Strings.VALUE_JLS, this);
         }
     }
 
