@@ -2352,14 +2352,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructError(JSDynamicObject newTarget, Object errorsObj, Object messageObj, Object options,
-                        @Cached("create()") JSToStringNode toStringNode,
+                        @Cached JSToStringNode toStringNode,
                         @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                         @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
-                        @Cached("create()") IsJSObjectNode isObjectNode,
-                        @Cached("create(getContext())") IteratorStepNode iteratorStepNode,
-                        @Cached("create(getContext())") IteratorValueNode getIteratorValueNode,
+                        @Cached IsJSObjectNode isObjectNode,
+                        @Cached IteratorStepNode iteratorStepNode,
+                        @Cached IteratorValueNode getIteratorValueNode,
                         @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode,
-                        @Cached("create()") BranchProfile growProfile) {
+                        @Cached BranchProfile growProfile) {
             JSContext context = getContext();
             JSRealm realm = getRealm();
             JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
@@ -2656,7 +2656,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Object getIteratorValue(JSDynamicObject iteratorResult) {
             if (getIteratorValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorValueNode = insert(IteratorValueNode.create(getContext()));
+                getIteratorValueNode = insert(IteratorValueNode.create());
             }
             return getIteratorValueNode.execute(iteratorResult);
         }
@@ -2664,7 +2664,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Object iteratorStep(IteratorRecord iterator) {
             if (iteratorStepNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorStepNode = insert(IteratorStepNode.create(getContext()));
+                iteratorStepNode = insert(IteratorStepNode.create());
             }
             return iteratorStepNode.execute(iterator);
         }

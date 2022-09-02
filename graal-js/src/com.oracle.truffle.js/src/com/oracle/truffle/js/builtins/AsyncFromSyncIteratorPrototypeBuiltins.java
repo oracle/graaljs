@@ -57,7 +57,6 @@ import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
-import com.oracle.truffle.js.nodes.access.IteratorValueNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
@@ -154,7 +153,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             this.executePromiseMethodNode = JSFunctionCallNode.createCall();
             this.iteratorNextNode = IteratorNextNode.create();
             this.iteratorCompleteNode = IteratorCompleteNode.create(context);
-            this.iteratorValueNode = IteratorValueNodeGen.create(context);
+            this.iteratorValueNode = IteratorValueNode.create();
             this.getSyncIteratorRecordNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, context);
             this.setDoneNode = PropertySetNode.createSetHidden(DONE, context);
             this.performPromiseThenNode = PerformPromiseThenNode.create(context);

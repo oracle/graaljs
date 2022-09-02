@@ -318,7 +318,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected Object getIteratorValue(JSDynamicObject iteratorResult) {
             if (getIteratorValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorValueNode = insert(IteratorValueNode.create(getContext()));
+                getIteratorValueNode = insert(IteratorValueNode.create());
             }
             return getIteratorValueNode.execute(iteratorResult);
         }
@@ -326,7 +326,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected Object iteratorStep(IteratorRecord iterator) {
             if (iteratorStepNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorStepNode = insert(IteratorStepNode.create(getContext()));
+                iteratorStepNode = insert(IteratorStepNode.create());
             }
             return iteratorStepNode.execute(iterator);
         }

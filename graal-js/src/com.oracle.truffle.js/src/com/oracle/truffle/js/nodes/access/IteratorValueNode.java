@@ -58,7 +58,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -75,10 +74,6 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object iterResult);
 
-    public static IteratorValueNode create(JSContext context) {
-        return create();
-    }
-
     public static IteratorValueNode create() {
         return IteratorValueNodeGen.create();
     }
@@ -87,7 +82,7 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
         return IteratorValueNodeGen.getUncached();
     }
 
-    public static JavaScriptNode create(JSContext context, JavaScriptNode iterResult) {
+    public static JavaScriptNode create(JavaScriptNode iterResult) {
         return new Unary(iterResult);
     }
 

@@ -317,8 +317,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected JSSetNewOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             getIteratorNode = GetIteratorNode.create(context);
-            iteratorStepNode = IteratorStepNode.create(context);
-            iteratorValueNode = IteratorValueNode.create(context);
+            iteratorStepNode = IteratorStepNode.create();
+            iteratorValueNode = IteratorValueNode.create();
             iteratorCloseNode = IteratorCloseNode.create(context);
         }
 

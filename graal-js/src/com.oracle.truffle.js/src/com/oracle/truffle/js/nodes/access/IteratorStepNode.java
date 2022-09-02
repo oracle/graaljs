@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
@@ -70,7 +69,7 @@ public abstract class IteratorStepNode extends JavaScriptBaseNode {
         return result;
     }
 
-    public static IteratorStepNode create(JSContext context) {
+    public static IteratorStepNode create() {
         return IteratorStepNodeGen.create();
     }
 

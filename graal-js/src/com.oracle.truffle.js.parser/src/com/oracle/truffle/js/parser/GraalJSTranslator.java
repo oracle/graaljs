@@ -2138,7 +2138,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             VarRef nextValueVar = environment.createTempVar();
             VarRef iteratorVar2 = environment.findTempVar(iteratorVar.getFrameSlot());
             JavaScriptNode nextResult = nextResultVar2.createReadNode();
-            JavaScriptNode nextValue = factory.createIteratorValue(context, nextResult);
+            JavaScriptNode nextValue = factory.createIteratorValue(nextResult);
             JavaScriptNode writeNextValue = nextValueVar.createWriteNode(nextValue);
             JavaScriptNode writeNext = tagStatement(desugarForHeadAssignment(forNode, nextValueVar.createReadNode()), forNode);
             JavaScriptNode body = transform(forNode.getBody());
@@ -2195,7 +2195,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             VarRef nextValueVar = environment.createTempVar();
             VarRef iteratorVar2 = environment.findTempVar(iteratorVar.getFrameSlot());
             JavaScriptNode nextResult = nextResultVar2.createReadNode();
-            JavaScriptNode nextValue = factory.createIteratorValue(context, nextResult);
+            JavaScriptNode nextValue = factory.createIteratorValue(nextResult);
             JavaScriptNode writeNextValue = nextValueVar.createWriteNode(nextValue);
             JavaScriptNode writeNext = tagStatement(desugarForHeadAssignment(forNode, nextValueVar.createReadNode()), forNode);
             JavaScriptNode body = transform(forNode.getBody());

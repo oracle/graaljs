@@ -1048,8 +1048,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         public ObjectFromEntriesNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getIteratorNode = GetIteratorNode.create(context);
-            this.iteratorStepNode = IteratorStepNode.create(context);
-            this.iteratorValueNode = IteratorValueNode.create(context);
+            this.iteratorStepNode = IteratorStepNode.create();
+            this.iteratorValueNode = IteratorValueNode.create();
             this.readElementNode = ReadElementNode.create(context);
         }
 

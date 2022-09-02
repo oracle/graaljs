@@ -325,13 +325,13 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached("createBinaryProfile()") ConditionProfile isIterableProfile,
                     @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
                     @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
-                    @Cached("create()") IsJSObjectNode isObjectNode,
-                    @Cached("create(getContext())") IteratorStepNode iteratorStepNode,
-                    @Cached("create(getContext())") IteratorValueNode getIteratorValueNode,
+                    @Cached IsJSObjectNode isObjectNode,
+                    @Cached IteratorStepNode iteratorStepNode,
+                    @Cached IteratorValueNode getIteratorValueNode,
                     @Cached("createGetLength()") JSGetLengthNode getLengthNode,
                     @Cached("create(getContext())") ReadElementNode readNode,
                     @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode,
-                    @Cached("create()") BranchProfile growProfile) {
+                    @Cached BranchProfile growProfile) {
         assert JSRuntime.isObject(object) && !JSArrayBufferView.isJSArrayBufferView(object) && !JSAbstractBuffer.isJSAbstractBuffer(object);
 
         JSDynamicObject proto = getPrototypeFromConstructorView(newTarget);

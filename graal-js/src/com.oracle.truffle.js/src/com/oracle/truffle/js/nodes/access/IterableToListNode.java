@@ -74,7 +74,7 @@ public abstract class IterableToListNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static SimpleArrayList<Object> iterableToList(IteratorRecord iterator,
-                    @Cached("create(getLanguage().getJSContext())") IteratorStepNode iteratorStepNode,
+                    @Cached IteratorStepNode iteratorStepNode,
                     @Cached IteratorValueNode getIteratorValueNode,
                     @Cached BranchProfile growProfile) {
         SimpleArrayList<Object> values = new SimpleArrayList<>();

@@ -94,8 +94,8 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isUndefined(iterable)", "!isString(iterable)"})
     protected static List<String> toArray(Object iterable,
                     @Cached("create(context)") GetIteratorNode getIteratorNode,
-                    @Cached("create(context)") IteratorStepNode iteratorStepNode,
-                    @Cached("create(context)") IteratorValueNode iteratorValueNode,
+                    @Cached IteratorStepNode iteratorStepNode,
+                    @Cached IteratorValueNode iteratorValueNode,
                     @Cached("create(context)") IteratorCloseNode iteratorCloseNode) {
 
         IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
