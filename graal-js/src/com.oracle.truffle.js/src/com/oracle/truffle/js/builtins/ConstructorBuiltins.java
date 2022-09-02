@@ -145,6 +145,7 @@ import com.oracle.truffle.js.nodes.access.InstallErrorCauseNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IsRegExpNode;
+import com.oracle.truffle.js.nodes.access.IterableToListNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -2356,10 +2357,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                         @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
                         @Cached IsJSObjectNode isObjectNode,
-                        @Cached IteratorStepNode iteratorStepNode,
-                        @Cached IteratorValueNode getIteratorValueNode,
-                        @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode,
-                        @Cached BranchProfile growProfile) {
+                        @Cached IterableToListNode iterableToListNode,
+                        @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode) {
             JSContext context = getContext();
             JSRealm realm = getRealm();
             JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
@@ -2378,8 +2377,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
 
             Object usingIterator = getIteratorMethodNode.executeWithTarget(errorsObj);
-            SimpleArrayList<Object> errors = GetIteratorNode.iterableToList(errorsObj, usingIterator,
-                            iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, getNextMethodNode, this, growProfile);
+            SimpleArrayList<Object> errors = iterableToListNode.execute(GetIteratorNode.getIterator(errorsObj, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, this));
             JSDynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors.toArray());
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();

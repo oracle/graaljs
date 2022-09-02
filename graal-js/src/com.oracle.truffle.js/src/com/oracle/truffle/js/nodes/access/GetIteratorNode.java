@@ -62,7 +62,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * GetIterator(obj, hint = sync).
@@ -139,20 +138,5 @@ public abstract class GetIteratorNode extends JavaScriptNode {
             getIteratorMethodNode = insert(GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR));
         }
         return getIteratorMethodNode;
-    }
-
-    public static SimpleArrayList<Object> iterableToList(Object object, Object usingIterator, JSFunctionCallNode iteratorCallNode, IsJSObjectNode isObjectNode,
-                    IteratorStepNode iteratorStepNode, IteratorValueNode getIteratorValueNode, PropertyGetNode getNextMethodNode, JavaScriptBaseNode origin, BranchProfile growProfile) {
-        SimpleArrayList<Object> values = new SimpleArrayList<>();
-        IteratorRecord iterator = GetIteratorNode.getIterator(object, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, origin);
-        while (true) {
-            Object next = iteratorStepNode.execute(iterator);
-            if (next == Boolean.FALSE) {
-                break;
-            }
-            Object nextValue = getIteratorValueNode.execute(next);
-            values.add(nextValue, growProfile);
-        }
-        return values;
     }
 }
