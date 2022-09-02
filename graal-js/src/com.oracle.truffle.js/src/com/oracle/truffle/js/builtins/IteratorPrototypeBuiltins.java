@@ -351,7 +351,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         private JSDynamicObject createIteratorHelperPrototype() {
             //return getRealm().getIteratorHelperPrototype();
 
-            //TODO: Remove this when issue is resolved: https://github.com/oracle/graaljs/issues/634
+            //TODO: Remove this when issue is resolved: https://github.com/oracle/graaljs/issues/636
             JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(getRealm(), getRealm().getIteratorPrototype());
             JSObjectUtil.putFunctionsFromContainer(getRealm(), prototype, new IteratorPrototypeBuiltins());
             JSObjectUtil.putFunctionsFromContainer(getRealm(), prototype, new IteratorHelperPrototypeBuiltins());
