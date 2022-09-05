@@ -623,6 +623,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         map.put(NumberFormat.Field.EXPONENT_SIGN, "exponentMinusSign");
         map.put(NumberFormat.Field.EXPONENT, "exponentInteger");
         map.put(NumberFormat.Field.COMPACT, "compact");
+        map.put(NumberFormat.Field.APPROXIMATELY_SIGN, "approximatelySign");
         return map;
     }
 
