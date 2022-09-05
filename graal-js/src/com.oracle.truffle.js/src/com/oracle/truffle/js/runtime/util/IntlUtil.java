@@ -148,7 +148,9 @@ public final class IntlUtil {
     public static final String HOUR_CYCLES = "hourCycles";
     public static final String HOUR12 = "hour12";
     public static final String INDEX = "index";
+    public static final String INFINITY = "infinity";
     public static final String INPUT = "input";
+    public static final String INTEGER = "integer";
     public static final String IS_WORD_LIKE = "isWordLike";
     public static final String IGNORE_PUNCTUATION = "ignorePunctuation";
     public static final String LANGUAGE = "language";
@@ -172,10 +174,12 @@ public final class IntlUtil {
     public static final String MINIMUM_FRACTION_DIGITS = "minimumFractionDigits";
     public static final String MINIMUM_INTEGER_DIGITS = "minimumIntegerDigits";
     public static final String MINIMUM_SIGNIFICANT_DIGITS = "minimumSignificantDigits";
+    public static final String MINUS_SIGN = "minusSign";
     public static final String MINUTE = "minute";
     public static final String MONTH = "month";
     public static final String MORE_PRECISION = "morePrecision";
     public static final String NAME = "name";
+    public static final String NAN = "nan";
     public static final String NARROW = "narrow";
     public static final String NARROW_SYMBOL = "narrowSymbol";
     public static final String NEGATIVE = "negative";
@@ -192,6 +196,7 @@ public final class IntlUtil {
     public static final String ORDINAL = "ordinal";
     public static final String PERCENT = "percent";
     public static final String PLURAL_CATEGORIES = "pluralCategories";
+    public static final String PLUS_SIGN = "plusSign";
     public static final String QUARTER = "quarter";
     public static final String REGION = "region";
     public static final String ROUNDING_INCREMENT = "roundingIncrement";

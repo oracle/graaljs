@@ -530,20 +530,30 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         int endRangeStart = 0;
         int endRangeLimit = 0;
         int lastLimit = 0;
+        // 123,456,789 comes as the first separator, the second separator and integer =>
+        // we use the separators to distinguish the groups of integers from literals
+        boolean seenGroupingSeparator = false;
 
         ConstrainedFieldPosition cfPos = new ConstrainedFieldPosition();
         while (formattedRange.nextPosition(cfPos)) {
             int start = cfPos.getStart();
             int limit = cfPos.getLimit();
+            Format.Field field = cfPos.getField();
 
             if (lastLimit < start) { // Literal
                 String literal = formattedString.substring(lastLimit, start);
                 String source = IntlUtil.sourceString(lastLimit, start, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
-                parts.add(IntlUtil.makePart(context, realm, IntlUtil.LITERAL, literal, null, source));
+                String type;
+                if (field == NumberFormat.Field.GROUPING_SEPARATOR) {
+                    type = IntlUtil.INTEGER;
+                    seenGroupingSeparator = true;
+                } else {
+                    type = IntlUtil.LITERAL;
+                }
+                parts.add(IntlUtil.makePart(context, realm, type, literal, null, source));
                 lastLimit = start;
             }
 
-            Format.Field field = cfPos.getField();
             if (field instanceof NumberRangeFormatter.SpanField) {
                 Object fieldValue = cfPos.getFieldValue();
                 if (fieldValue.equals(0)) {
@@ -557,18 +567,26 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                 }
             } else if (field instanceof NumberFormat.Field) {
                 String type;
-                String value = formattedString.substring(start, limit);
+                int effectiveStart;
+                if (field == NumberFormat.Field.INTEGER && seenGroupingSeparator) {
+                    effectiveStart = lastLimit;
+                    seenGroupingSeparator = false;
+                } else {
+                    assert !seenGroupingSeparator || field == NumberFormat.Field.GROUPING_SEPARATOR;
+                    effectiveStart = start;
+                }
+                String value = formattedString.substring(effectiveStart, limit);
                 String source = IntlUtil.sourceString(start, limit, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
                 if (field == NumberFormat.Field.SIGN) {
-                    type = isPlusSign(value) ? "plusSign" : "minusSign";
+                    type = isPlusSign(value) ? IntlUtil.PLUS_SIGN : IntlUtil.MINUS_SIGN;
                 } else if (field == NumberFormat.Field.INTEGER) {
                     Object val = IntlUtil.END_RANGE.equals(source) ? y : y;
                     if (JSRuntime.isNaN(val)) {
-                        type = "nan";
+                        type = IntlUtil.NAN;
                     } else if (val instanceof Double && Double.isInfinite((Double) val)) {
-                        type = "infinity";
+                        type = IntlUtil.INFINITY;
                     } else {
-                        type = "integer";
+                        type = IntlUtil.INTEGER;
                     }
                 } else {
                     type = fieldToType((NumberFormat.Field) field);
@@ -605,6 +623,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         map.put(NumberFormat.Field.EXPONENT_SIGN, "exponentMinusSign");
         map.put(NumberFormat.Field.EXPONENT, "exponentInteger");
         map.put(NumberFormat.Field.COMPACT, "compact");
+        map.put(NumberFormat.Field.APPROXIMATELY_SIGN, "approximatelySign");
         return map;
     }
 
