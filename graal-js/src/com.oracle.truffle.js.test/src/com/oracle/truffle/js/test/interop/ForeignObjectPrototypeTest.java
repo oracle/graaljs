@@ -46,14 +46,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
@@ -117,6 +120,18 @@ public class ForeignObjectPrototypeTest {
             assertEquals(Arrays.asList(0, 8, 1, 5), result.as(List.class));
             result = context.eval(ID, "m => m.apply(null, [0, 8, 1, 5])").execute(method);
             assertEquals(Arrays.asList(0, 8, 1, 5), result.as(List.class));
+        }
+    }
+
+    @Test
+    public void testJavaTimeInstant() {
+        try (Context context = JSTest.newContextBuilder(ID).option(FOREIGN_OBJECT_PROTOTYPE_NAME, "true").allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true).build()) {
+            java.time.Instant inst = Instant.ofEpochMilli(100_000_000);
+            Value method = context.eval(ID, "( (inst) => { return inst; } );");
+            assertTrue(method.canExecute());
+            Value result = method.execute(inst);
+            assertTrue(result.isInstant());
+            assertTrue(result.asInstant().equals(inst));
         }
     }
 

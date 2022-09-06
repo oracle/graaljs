@@ -59,6 +59,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -101,6 +102,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
@@ -232,6 +234,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         return null;
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalCalendarGetterNode extends JSBuiltinNode {
 
         public final TemporalCalendarPrototype property;
@@ -241,6 +244,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             this.property = property;
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Specialization(guards = "isJSTemporalCalendar(thisObj)")
         protected Object durationGetter(Object thisObj,
                         @Cached JSToStringNode toStringNode) {

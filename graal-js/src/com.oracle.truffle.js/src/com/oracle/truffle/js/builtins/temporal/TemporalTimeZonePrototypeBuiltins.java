@@ -49,7 +49,11 @@ import java.util.OptionalLong;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
@@ -71,6 +75,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalInstantNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -78,6 +83,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -158,6 +164,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         return null;
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalTimeZoneGetterNode extends JSBuiltinNode {
 
         public final TemporalTimeZonePrototype property;
@@ -167,6 +174,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             this.property = property;
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Specialization(guards = "isJSTemporalTimeZone(thisObj)")
         protected TruffleString timeZoneGetter(Object thisObj,
                         @Cached JSToStringNode toStringNode) {
@@ -183,8 +191,21 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected static int error(@SuppressWarnings("unused") Object thisObj) {
             throw TemporalErrors.createTypeErrorTemporalTimeZoneExpected();
         }
+
+        @CompilerDirectives.TruffleBoundary
+        public static JSTemporalTimeZoneObject javaTimeZoneToTimeZone(Object thisObj, InteropLibrary interop, JSContext ctx) {
+            try {
+                java.time.ZoneId zone = interop.asTimeZone(thisObj);
+                TruffleString identifier = TruffleString.fromJavaStringUncached(zone.getId(), TruffleString.Encoding.UTF_32); // TODO
+
+                return JSTemporalTimeZone.create(ctx, null, identifier);
+            } catch (UnsupportedMessageException e) {
+                return null;
+            }
+        }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalTimeZoneToString extends JSTemporalBuiltinOperation {
 
         protected JSTemporalTimeZoneToString(JSContext context, JSBuiltin builtin) {
@@ -197,6 +218,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalTimeZoneToJSON extends JSTemporalBuiltinOperation {
 
         protected JSTemporalTimeZoneToJSON(JSContext context, JSBuiltin builtin) {
@@ -205,12 +227,14 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected TruffleString toJSON(Object thisObj,
-                        @Cached("create()") JSToStringNode toString) {
-            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
+                        @Cached("create()") JSToStringNode toString,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj, interop, getContext());
             return toString.executeString(timeZone);
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalTimeZoneValueOf extends JSTemporalBuiltinOperation {
 
         protected JSTemporalTimeZoneValueOf(JSContext context, JSBuiltin builtin) {
@@ -223,6 +247,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalTimeZoneGetOffsetNanosecondsFor extends JSTemporalBuiltinOperation {
 
         protected JSTemporalTimeZoneGetOffsetNanosecondsFor(JSContext context, JSBuiltin builtin) {
@@ -231,8 +256,9 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected double getOffsetNanosecondsFor(Object thisObj, Object instantParam,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
-            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj, interop, getContext());
             JSTemporalInstantObject instant = toTemporalInstantNode.execute(instantParam);
             if (timeZone.getNanoseconds() != null) {
                 return timeZone.getNanoseconds().doubleValue();
@@ -241,6 +267,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalTimeZoneGetOffsetStringFor extends JSTemporalBuiltinOperation {
 
         protected JSTemporalTimeZoneGetOffsetStringFor(JSContext context, JSBuiltin builtin) {
@@ -249,13 +276,15 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected TruffleString getOffsetStringFor(Object thisObj, Object instantParam,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
-            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj, interop, getContext());
             JSDynamicObject instant = toTemporalInstantNode.execute(instantParam);
             return TemporalUtil.builtinTimeZoneGetOffsetStringFor(timeZone, instant);
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalTimeZoneGetPlainDateTimeFor extends JSTemporalBuiltinOperation {
 
         protected JSTemporalTimeZoneGetPlainDateTimeFor(JSContext context, JSBuiltin builtin) {
@@ -265,14 +294,16 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected JSDynamicObject getPlainDateTimeFor(Object thisObj, Object instantParam, Object calendarLike,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
-            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj, interop, getContext());
             JSDynamicObject instant = toTemporalInstantNode.execute(instantParam);
             JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
             return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), timeZone, instant, calendar);
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalTimeZoneGetInstantFor extends JSTemporalBuiltinOperation {
 
         protected JSTemporalTimeZoneGetInstantFor(JSContext context, JSBuiltin builtin) {
@@ -282,8 +313,9 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected JSDynamicObject getInstantFor(Object thisObj, Object dateTimeParam, Object optionsParam,
                         @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime,
-                        @Cached TruffleString.EqualNode equalNode) {
-            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
+                        @Cached TruffleString.EqualNode equalNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj, interop, getContext());
             JSTemporalPlainDateTimeObject dateTime = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(dateTimeParam, Undefined.instance);
             JSDynamicObject options = getOptionsObject(optionsParam);
             Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode(), equalNode);
@@ -291,6 +323,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalTimeZoneGetPossibleInstantsFor extends JSTemporalBuiltinOperation {
 
         protected JSTemporalTimeZoneGetPossibleInstantsFor(JSContext context, JSBuiltin builtin) {
@@ -300,8 +333,9 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @TruffleBoundary
         @Specialization
         protected JSDynamicObject getPossibleInstantsFor(Object thisObj, Object dateTimeParam,
-                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
-            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
+                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj, interop, getContext());
             JSTemporalPlainDateTimeObject dateTime = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(dateTimeParam, Undefined.instance);
             JSRealm realm = getRealm();
             if (timeZone.getNanoseconds() != null) {
@@ -323,6 +357,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalTimeZoneGetNextOrPreviousTransition extends JSTemporalBuiltinOperation {
 
         private final boolean isNext;
@@ -334,8 +369,9 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSDynamicObject getTransition(Object thisObj, Object startingPointParam,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
-            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
+                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj, interop, getContext());
             JSTemporalInstantObject startingPoint = toTemporalInstantNode.execute(startingPointParam);
             if (timeZone.getNanoseconds() != null) {
                 return Null.instance;

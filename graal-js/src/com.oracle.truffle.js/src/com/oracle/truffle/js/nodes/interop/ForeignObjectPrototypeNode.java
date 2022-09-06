@@ -61,14 +61,22 @@ public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
 
     @Specialization(limit = "InteropLibraryLimit")
     public JSDynamicObject doTruffleObject(Object truffleObject,
-                    @CachedLibrary("truffleObject") InteropLibrary interop) {
+                                           @CachedLibrary("truffleObject") InteropLibrary interop) {
         JSRealm realm = getRealm();
         if (interop.hasArrayElements(truffleObject)) {
             return realm.getArrayPrototype();
+        } else if (interop.isInstant(truffleObject)) {
+            return realm.getTemporalInstantPrototype();
+        } else if (interop.isDuration(truffleObject)) {
+            return realm.getTemporalDurationPrototype();
+        } else if (interop.isDate(truffleObject)) {
+            return realm.getTemporalPlainDatePrototype();
+        } else if (interop.isTime(truffleObject)) {
+            return realm.getTemporalPlainTimePrototype();
+        } else if (interop.isTimeZone(truffleObject)) {
+            return realm.getTemporalTimeZonePrototype();
         } else if (interop.isExecutable(truffleObject) || interop.isInstantiable(truffleObject)) {
             return realm.getFunctionPrototype();
-        } else if (interop.isInstant(truffleObject)) {
-            return realm.getDatePrototype();
         } else if (interop.hasHashEntries(truffleObject)) {
             return realm.getMapPrototype();
         } else if (interop.hasIterator(truffleObject)) {

@@ -56,7 +56,12 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
@@ -87,6 +92,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
@@ -95,6 +101,7 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
@@ -207,6 +214,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         return null;
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeGetterNode extends JSBuiltinNode {
 
         public final TemporalPlainTimePrototype property;
@@ -216,6 +224,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             this.property = property;
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Specialization(guards = "isJSTemporalTime(thisObj)")
         protected Object timeGetter(Object thisObj) {
             TemporalTime temporalTime = (TemporalTime) thisObj;
@@ -243,9 +252,27 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected static int error(@SuppressWarnings("unused") Object thisObj) {
             throw TemporalErrors.createTypeErrorTemporalDateTimeExpected();
         }
+
+        @CompilerDirectives.TruffleBoundary
+        public static JSTemporalPlainTimeObject javaPlainTimeToPlainTime(Object thisObj, InteropLibrary interop, JSContext context, BranchProfile errorBranch) {
+            try {
+                java.time.LocalTime time = interop.asTime(thisObj);
+                int hours = time.getHour();
+                int minutes = time.getMinute();
+                int seconds = time.getSecond();
+                int milliseconds = (int) Math.floor(time.getNano() / 1_000_000) % 1_000;
+                int microseconds = (int) Math.floor(time.getNano() / 1_000) % 1_000;
+                int nanoseconds = time.getNano() % 1_000;
+
+                return JSTemporalPlainTime.create(context, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, errorBranch);
+            } catch (UnsupportedMessageException e) {
+                return null;
+            }
+        }
     }
 
     // 4.3.10
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeAdd extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeAdd(JSContext context, JSBuiltin builtin) {
@@ -254,8 +281,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         public JSDynamicObject add(Object thisObj, Object temporalDurationLike,
-                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
-            TemporalTime temporalTime = requireTemporalTime(thisObj);
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime temporalTime = requireTemporalTime(thisObj, interop, getContext());
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
             TemporalUtil.rejectDurationSign(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
@@ -277,6 +305,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.11
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeSubtract extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeSubtract(JSContext context, JSBuiltin builtin) {
@@ -285,8 +314,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike,
-                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
-            TemporalTime temporalTime = requireTemporalTime(thisObj);
+                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime temporalTime = requireTemporalTime(thisObj, interop, getContext());
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
             TemporalUtil.rejectDurationSign(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
@@ -307,6 +337,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.12
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeWith extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeWith(JSContext context, JSBuiltin builtin) {
@@ -316,8 +347,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected JSDynamicObject with(Object thisObj, Object temporalTimeLike, Object options,
                         @Cached("create()") JSToIntegerThrowOnInfinityNode toIntThrows,
-                        @Cached("create()") JSToIntegerAsIntNode toInt) {
-            TemporalTime temporalTime = requireTemporalTime(thisObj);
+                        @Cached("create()") JSToIntegerAsIntNode toInt,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime temporalTime = requireTemporalTime(thisObj, interop, getContext());
             if (!isObject(temporalTimeLike)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("Temporal.Time like object expected.");
@@ -387,6 +419,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.13
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeUntil extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeUntil(JSContext context, JSBuiltin builtin) {
@@ -398,9 +431,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
-                        @Cached TruffleString.EqualNode equalNode, @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
-            TemporalTime temporalTime = requireTemporalTime(thisObj);
-            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime temporalTime = requireTemporalTime(thisObj, interop, getContext());
+            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(convertJavaToJavascriptPlainTime(otherObj, interop, getContext()), null);
             JSDynamicObject options = getOptionsObject(optionsParam);
             Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode);
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode);
@@ -424,6 +459,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.14
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeSince extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeSince(JSContext context, JSBuiltin builtin) {
@@ -436,9 +472,10 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
                         @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
-            TemporalTime temporalTime = requireTemporalTime(thisObj);
-            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
+                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime temporalTime = requireTemporalTime(thisObj, interop, getContext());
+            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(convertJavaToJavascriptPlainTime(otherObj, interop, getContext()), null);
             JSDynamicObject options = getOptionsObject(optionsParam);
             Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode);
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode);
@@ -464,6 +501,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeRound extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeRound(JSContext context, JSBuiltin builtin) {
@@ -473,8 +511,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected JSDynamicObject round(Object thisObj, Object roundToParam,
                         @Cached("create()") JSToNumberNode toNumber,
-                        @Cached TruffleString.EqualNode equalNode) {
-            TemporalTime temporalTime = requireTemporalTime(thisObj);
+                        @Cached TruffleString.EqualNode equalNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime temporalTime = requireTemporalTime(thisObj, interop, getContext());
             if (roundToParam == Undefined.instance) {
                 errorBranch.enter();
                 throw TemporalErrors.createTypeErrorOptionsUndefined();
@@ -512,6 +551,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.16
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeEquals extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeEquals(JSContext context, JSBuiltin builtin) {
@@ -526,9 +566,10 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization(guards = "!isJSTemporalTime(other)")
         protected boolean equalsGeneric(Object thisObj, Object other,
-                        @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime) {
-            TemporalTime temporalTime = requireTemporalTime(thisObj);
-            TemporalTime otherTime = (TemporalTime) toTemporalTime.executeDynamicObject(other, null);
+                        @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime temporalTime = requireTemporalTime(thisObj, interop, getContext());
+            TemporalTime otherTime = (TemporalTime) toTemporalTime.executeDynamicObject(convertJavaToJavascriptPlainTime(other, interop, getContext()), null);
             return equalsIntl(temporalTime, otherTime);
         }
 
@@ -556,6 +597,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.17
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeToPlainDateTime extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeToPlainDateTime(JSContext context, JSBuiltin builtin) {
@@ -564,8 +606,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         public JSDynamicObject toPlainDateTime(Object thisObj, Object temporalDateObj,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
-            TemporalTime time = requireTemporalTime(thisObj);
+                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime time = requireTemporalTime(thisObj, interop, getContext());
             JSDynamicObject temporalDate = toTemporalDate.executeDynamicObject(temporalDateObj, Undefined.instance);
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) temporalDate;
 
@@ -576,6 +619,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.18
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeToZonedDateTime extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeToZonedDateTime(JSContext context, JSBuiltin builtin) {
@@ -585,8 +629,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         public JSDynamicObject toZonedDateTime(Object thisObj, Object itemParam,
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
-                        @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
-            TemporalTime time = requireTemporalTime(thisObj);
+                        @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime time = requireTemporalTime(thisObj, interop, getContext());
             if (!JSRuntime.isObject(itemParam)) {
                 throw Errors.createTypeErrorNotAnObject(itemParam);
             }
@@ -614,6 +659,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.19
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeGetISOFields extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeGetISOFields(JSContext context, JSBuiltin builtin) {
@@ -621,8 +667,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected Object getISOFields(Object thisObj) {
-            TemporalTime time = requireTemporalTime(thisObj);
+        protected Object getISOFields(Object thisObj,
+                                      @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime time = requireTemporalTime(thisObj, interop, getContext());
             JSObject fields = JSOrdinary.create(getContext(), getRealm());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.CALENDAR, time.getCalendar());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.ISO_HOUR, time.getHour());
@@ -636,6 +683,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.20
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeToString extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeToString(JSContext context, JSBuiltin builtin) {
@@ -645,8 +693,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected TruffleString toString(Object thisObj, Object optionsParam,
                         @Cached JSToStringNode toStringNode,
-                        @Cached TruffleString.EqualNode equalNode) {
-            TemporalTime time = requireTemporalTime(thisObj);
+                        @Cached TruffleString.EqualNode equalNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime time = requireTemporalTime(thisObj, interop, getContext());
             JSDynamicObject options = getOptionsObject(optionsParam);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode(), equalNode);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode);
@@ -663,6 +712,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
     // 4.3.21
     // 4.3.22
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeToLocaleString extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeToLocaleString(JSContext context, JSBuiltin builtin) {
@@ -670,8 +720,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public TruffleString toLocaleString(Object thisObj) {
-            TemporalTime time = requireTemporalTime(thisObj);
+        public TruffleString toLocaleString(Object thisObj,
+                                            @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime time = requireTemporalTime(thisObj, interop, getContext());
             return JSTemporalPlainTime.temporalTimeToString(
                             time.getHour(), time.getMinute(), time.getSecond(),
                             time.getMillisecond(), time.getMicrosecond(), time.getNanosecond(),
@@ -680,6 +731,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.23
+    @ImportStatic({JSConfig.class})
     public abstract static class JSTemporalPlainTimeValueOf extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeValueOf(JSContext context, JSBuiltin builtin) {
