@@ -697,10 +697,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/es6/typedarray-detached.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
     "filePath" : "mjsunit/es6/typedarray-map.js",
     "status" : "FAIL"
   }, {
@@ -731,10 +727,6 @@
     "filePath" : "mjsunit/expose-cputracemark.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/external-array.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/extinction/array.js",
     "status" : "FAIL",
@@ -882,10 +874,6 @@
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/harmony/sharedarraybuffer.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
   }, {
     "filePath" : "mjsunit/harmony/typedarray-to-reversed.js",
     "status" : "FAIL",
