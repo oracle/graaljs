@@ -182,17 +182,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 } else if (Strings.equals(Strings.GLOBAL, externtype)) {
                     TruffleString type = asTString(exportInterop.readMember(exportInfo, "type"));
                     int sepIndex = Strings.indexOf(type, ' ');
-                    final TruffleString valueType;
-                    final boolean mutable;
-                    // Check to support API change
-                    if (sepIndex < 0) {
-                        valueType = type;
-                        // Actual mutability will be checked later in webassembly
-                        mutable = true;
-                    } else {
-                        valueType = Strings.substring(context, type, 0, sepIndex);
-                        mutable = Strings.regionEquals(type, sepIndex + 1, Strings.constant("mut"), 0, 3);
-                    }
+                    final TruffleString valueType = Strings.substring(context, type, 0, sepIndex);
+                    final boolean mutable = Strings.regionEquals(type, sepIndex + 1, Strings.constant("mut"), 0, 3);
                     value = JSWebAssemblyGlobal.create(context, realm, externval, valueType, mutable);
                 } else if (Strings.MEMORY.equals(externtype)) {
                     value = JSWebAssemblyMemory.create(context, realm, externval);
