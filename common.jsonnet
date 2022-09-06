@@ -22,6 +22,13 @@ local common_json = (import "common.json");
     },
   },
 
+  jdk19: {
+    jdk:: 'jdk19',
+    downloads+: {
+      JAVA_HOME: common_json.jdks["labsjdk-ce-19"],
+    },
+  },
+
   deploy:      {targets+: ['deploy']},
   gate:        {targets+: ['gate']},
   postMerge:   {targets+: ['post-merge']},
