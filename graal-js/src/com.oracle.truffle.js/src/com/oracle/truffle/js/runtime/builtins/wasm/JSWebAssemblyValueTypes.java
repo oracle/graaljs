@@ -42,7 +42,10 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyUndefined;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
  * Represents the value types used in WebAssembly and provides some methods to check their string
@@ -53,6 +56,8 @@ public final class JSWebAssemblyValueTypes {
     public static final TruffleString I64 = Strings.I_64;
     public static final TruffleString F32 = Strings.F_32;
     public static final TruffleString F64 = Strings.F_64;
+    public static final TruffleString ANYFUNC = Strings.ANYFUNC;
+    public static final TruffleString EXTERNREF = Strings.EXTERNREF;
 
     public static boolean isI32(TruffleString type) {
         return Strings.equals(I32, type);
@@ -70,7 +75,37 @@ public final class JSWebAssemblyValueTypes {
         return Strings.equals(F64, type);
     }
 
+    public static boolean isAnyfunc(TruffleString type) {
+        return Strings.equals(ANYFUNC, type);
+    }
+
+    public static boolean isExtenref(TruffleString type) {
+        return Strings.equals(EXTERNREF, type);
+    }
+
     public static boolean isValueType(TruffleString type) {
-        return isI32(type) || isI64(type) || isF32(type) || isF64(type);
+        return isI32(type) || isI64(type) || isF32(type) || isF64(type) || isAnyfunc(type) || isExtenref(type);
+    }
+
+    public static boolean isReferenceType(TruffleString type) {
+        return isAnyfunc(type) || isExtenref(type);
+    }
+
+    public static Object getDefaultValue(TruffleString type) {
+        if (isI32(type)) {
+            return 0;
+        } else if (isI64(type)) {
+            return 0L;
+        } else if (isF32(type)) {
+            return 0f;
+        } else if (isF64(type)) {
+            return 0d;
+        } else if (isAnyfunc(type)) {
+            return Null.instance;
+        } else if (isExtenref(type)) {
+            return WebAssemblyUndefined.instance;
+        } else {
+            throw Errors.shouldNotReachHere();
+        }
     }
 }

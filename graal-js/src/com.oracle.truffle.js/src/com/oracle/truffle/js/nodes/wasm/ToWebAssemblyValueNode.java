@@ -41,19 +41,28 @@
 package com.oracle.truffle.js.nodes.wasm;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyUndefined;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Implementation of ToWebAssemblyValue() operation. See
- * https://www.w3.org/TR/wasm-js-api/#towebassemblyvalue
+ * <a href="https://www.w3.org/TR/wasm-js-api/#towebassemblyvalue">Wasm JS-API Spec</a>
  */
 public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
+
+    private final BranchProfile errorBranch = BranchProfile.create();
     @Child JSToInt32Node toInt32Node;
     @Child JSToNumberNode toNumberNode;
     @Child JSToBigIntNode toBigIntNode;
@@ -77,22 +86,34 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
     @Specialization
     protected Object convert(Object value, TruffleString type) {
         assert getLanguage().getJSContext().getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
-        if (JSWebAssemblyValueTypes.isI64(type)) {
-            // i64.const ToBigInt64(value)
-            return toBigIntNode.executeBigInteger(value).longValue();
-        }
         if (JSWebAssemblyValueTypes.isI32(type)) {
             return toInt32Node.executeInt(value);
-        } else {
+        } else if (JSWebAssemblyValueTypes.isI64(type)) {
+            return toBigIntNode.executeBigInteger(value).longValue();
+        } else if (JSWebAssemblyValueTypes.isF32(type)) {
             Number numberValue = toNumberNode.executeNumber(value);
             double doubleValue = JSRuntime.toDouble(numberValue);
-            if (JSWebAssemblyValueTypes.isF32(type)) {
-                return (float) doubleValue;
-            } else {
-                assert JSWebAssemblyValueTypes.isF64(type);
-                return doubleValue;
+            return (float) doubleValue;
+        } else if (JSWebAssemblyValueTypes.isF64(type)) {
+            Number numberValue = toNumberNode.executeNumber(value);
+            return JSRuntime.toDouble(numberValue);
+        } else if (JSWebAssemblyValueTypes.isReferenceType(type)) {
+            if (value == Null.instance) {
+                return value;
+            } else if (JSWebAssemblyValueTypes.isAnyfunc(type)) {
+                if (JSWebAssembly.isExportedFunction(value)) {
+                    return JSWebAssembly.getExportedFunction((JSDynamicObject) value);
+                }
+                errorBranch.enter();
+                throw Errors.createTypeError("value is not an exported function");
+            } else if (JSWebAssemblyValueTypes.isExtenref(type)) {
+                if (value == Undefined.instance) {
+                    return WebAssemblyUndefined.instance;
+                }
+                return value;
             }
         }
+        throw Errors.shouldNotReachHere();
     }
 
     static class Uncached extends ToWebAssemblyValueNode {
@@ -104,20 +125,31 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
         @Override
         public Object execute(Object value, TruffleString type) {
             assert getLanguage().getJSContext().getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
-            if (JSWebAssemblyValueTypes.isI64(type)) {
-                return JSRuntime.toBigInt(value).longValue();
-            }
             if (JSWebAssemblyValueTypes.isI32(type)) {
                 return JSRuntime.toInt32(value);
-            } else {
+            } else if (JSWebAssemblyValueTypes.isI64(type)) {
+                return JSRuntime.toBigInt(value).longValue();
+            } else if (JSWebAssemblyValueTypes.isF32(type)) {
                 double doubleValue = JSRuntime.toDouble(value);
-                if (JSWebAssemblyValueTypes.isF32(type)) {
-                    return (float) doubleValue;
-                } else {
-                    assert JSWebAssemblyValueTypes.isF64(type);
-                    return doubleValue;
+                return (float) doubleValue;
+            } else if (JSWebAssemblyValueTypes.isF64(type)) {
+                return JSRuntime.toDouble(value);
+            } else if (JSWebAssemblyValueTypes.isReferenceType(type)) {
+                if (value == Null.instance) {
+                    return value;
+                } else if (JSWebAssemblyValueTypes.isAnyfunc(type)) {
+                    if (JSWebAssembly.isExportedFunction(value)) {
+                        return JSWebAssembly.getExportedFunction((JSDynamicObject) value);
+                    }
+                    throw Errors.createTypeError("value is not an exported function");
+                } else if (JSWebAssemblyValueTypes.isExtenref(type)) {
+                    if (value == Undefined.instance) {
+                        return WebAssemblyUndefined.instance;
+                    }
+                    return value;
                 }
             }
+            throw Errors.shouldNotReachHere();
         }
 
     }

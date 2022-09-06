@@ -434,12 +434,14 @@ public class JSRealm {
     private TruffleString staticRegexResultOriginalInputString;
 
     /** WebAssembly support. */
+    private final Object wasmTableType;
     private final Object wasmTableAlloc;
     private final Object wasmTableGrow;
     private final Object wasmTableRead;
     private final Object wasmTableWrite;
     private final Object wasmTableLength;
     private final Object wasmFuncType;
+    private final Object wasmIsFunc;
     private final Object wasmMemAlloc;
     private final Object wasmMemGrow;
     private final Object wasmMemAsByteBuffer;
@@ -879,12 +881,14 @@ public class JSRealm {
 
             try {
                 InteropLibrary wasmInterop = InteropLibrary.getUncached(wasmObject);
+                wasmTableType = wasmInterop.readMember(wasmObject, "table_type");
                 wasmTableAlloc = wasmInterop.readMember(wasmObject, "table_alloc");
                 wasmTableGrow = wasmInterop.readMember(wasmObject, "table_grow");
                 wasmTableRead = wasmInterop.readMember(wasmObject, "table_read");
                 wasmTableWrite = wasmInterop.readMember(wasmObject, "table_write");
                 wasmTableLength = wasmInterop.readMember(wasmObject, "table_size");
                 wasmFuncType = wasmInterop.readMember(wasmObject, "func_type");
+                wasmIsFunc = wasmInterop.readMember(wasmObject, "is_func");
                 wasmMemAlloc = wasmInterop.readMember(wasmObject, "mem_alloc");
                 wasmMemGrow = wasmInterop.readMember(wasmObject, "mem_grow");
                 wasmGlobalAlloc = wasmInterop.readMember(wasmObject, "global_alloc");
@@ -924,12 +928,14 @@ public class JSRealm {
 
             this.webAssemblyMemoryGrowCallback = new JSWebAssemblyMemoryGrowCallback(this, wasmMemSetGrowCallback);
         } else {
+            this.wasmTableType = null;
             this.wasmTableAlloc = null;
             this.wasmTableGrow = null;
             this.wasmTableRead = null;
             this.wasmTableWrite = null;
             this.wasmTableLength = null;
             this.wasmFuncType = null;
+            this.wasmIsFunc = null;
             this.wasmMemAlloc = null;
             this.wasmMemGrow = null;
             this.wasmMemAsByteBuffer = null;
@@ -2962,6 +2968,10 @@ public class JSRealm {
         return wasmCustomSections;
     }
 
+    public Object getWASMTableType() {
+        return wasmTableType;
+    }
+
     public Object getWASMTableAlloc() {
         return wasmTableAlloc;
     }
@@ -2984,6 +2994,10 @@ public class JSRealm {
 
     public Object getWASMFuncType() {
         return wasmFuncType;
+    }
+
+    public Object getWASMIsFunc() {
+        return wasmIsFunc;
     }
 
     public Object getWASMMemAlloc() {

@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -342,7 +343,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         Object webAssemblyValue = ToWebAssemblyValueNode.getUncached().execute(value, valueType);
                         try {
                             Object createGlobal = realm.getWASMGlobalAlloc();
-                            wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, valueType, false, webAssemblyValue);
+                            Object globalType = InteropArray.create(new Object[]{valueType, false});
+                            wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, globalType, webAssemblyValue);
                         } catch (InteropException ex) {
                             throw Errors.shouldNotReachHere(ex);
                         }

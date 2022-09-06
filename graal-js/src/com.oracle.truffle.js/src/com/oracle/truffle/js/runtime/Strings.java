@@ -235,6 +235,7 @@ public final class Strings {
     public static final TruffleString AT = constant("at");
     public static final TruffleString COPY_WITHIN = constant("copyWithin");
     public static final TruffleString EVAL_FILE = constant("evalFile");
+    public static final TruffleString EXTERNREF = constant("externref");
     public static final TruffleString FILL = constant("fill");
     public static final TruffleString FIND = constant("find");
     public static final TruffleString FIND_INDEX = constant("findIndex");
