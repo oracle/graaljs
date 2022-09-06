@@ -196,7 +196,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         public static JSTemporalTimeZoneObject javaTimeZoneToTimeZone(Object thisObj, InteropLibrary interop, JSContext ctx) {
             try {
                 java.time.ZoneId zone = interop.asTimeZone(thisObj);
-                TruffleString identifier = TruffleString.fromJavaStringUncached(zone.getId(), TruffleString.Encoding.UTF_32); // TODO
+                TruffleString identifier = TruffleString.fromJavaStringUncached(zone.getId(), TruffleString.Encoding.UTF_32);
 
                 return JSTemporalTimeZone.create(ctx, null, identifier);
             } catch (UnsupportedMessageException e) {
