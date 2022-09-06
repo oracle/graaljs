@@ -179,7 +179,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                         JSWebAssemblyGlobalObject global = (JSWebAssemblyGlobalObject) thiz;
                         if(!global.isMutable()) {
                             errorBranch.enter();
-                            throw Errors.createTypeError("set WebAssembly.Global.value: Global is constant");
+                            throw Errors.createTypeError("set WebAssembly.Global.value: Can't set the value of an immutable global");
                         }
                         Object wasmGlobal = global.getWASMGlobal();
                         try {
