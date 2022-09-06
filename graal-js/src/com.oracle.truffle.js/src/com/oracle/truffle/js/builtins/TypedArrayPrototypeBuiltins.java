@@ -421,9 +421,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         private void setOther(JSDynamicObject thisObj, Object array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert !JSArray.isJSFastArray(array);
-            if (getContext().isOptionV8CompatibilityMode() && JSRuntime.isNumber(array)) {
-                throw Errors.createTypeError("invalid_argument");
-            }
             Object src = toObject(array);
             long srcLength = objectGetLength(src);
             TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));
