@@ -121,6 +121,7 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
         return null;
     }
 
+    @ImportStatic({JSWrapForAsyncIterator.class})
     public abstract static class WrapForAsyncIteratorNextNode extends JSBuiltinNode {
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private IteratorNextNode iteratorNextNode;
@@ -155,7 +156,7 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
             }
         }
 
-        @Specialization
+        @Specialization(guards = "!isWrapForAsyncIterator(thisObj)")
         protected JSDynamicObject incompatible(Object thisObj) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
             callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), Errors.createTypeErrorIncompatibleReceiver(thisObj)));
