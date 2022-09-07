@@ -44,6 +44,8 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyModuleFunctionBuiltinsFactory.WebAssemblyModuleCustomSectionsNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyModuleFunctionBuiltinsFactory.WebAssemblyModuleExportsNodeGen;
@@ -55,6 +57,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -150,8 +153,8 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
             JSObject export = JSOrdinary.create(getContext(), getRealm());
             InteropLibrary interop = InteropLibrary.getUncached(wasmExport);
             for (String key : new String[]{"name", "kind"}) {
-                Object value = interop.readMember(wasmExport, key);
-                JSObject.set(export, key, value);
+                TruffleString value = asTString(interop.readMember(wasmExport, key));
+                JSObject.set(export, Strings.fromJavaString(key), value);
             }
             return export;
         }
@@ -197,8 +200,8 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
             JSObject export = JSOrdinary.create(getContext(), getRealm());
             InteropLibrary interop = InteropLibrary.getUncached(wasmImport);
             for (String key : new String[]{"module", "name", "kind"}) {
-                Object value = interop.readMember(wasmImport, key);
-                JSObject.set(export, key, value);
+                TruffleString value = asTString(interop.readMember(wasmImport, key));
+                JSObject.set(export, Strings.fromJavaString(key), value);
             }
             return export;
         }
@@ -260,4 +263,10 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
 
     }
 
+    private static TruffleString asTString(Object string) throws UnsupportedMessageException {
+        if (string instanceof String) {
+            return Strings.fromJavaString((String) string);
+        }
+        return InteropLibrary.getUncached(string).asTruffleString(string);
+    }
 }

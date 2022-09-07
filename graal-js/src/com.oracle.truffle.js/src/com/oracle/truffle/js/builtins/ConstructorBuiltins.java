@@ -3239,7 +3239,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
-            return swapPrototype(JSWebAssemblyGlobal.create(getContext(), realm, wasmGlobal, valueType), newTarget);
+            return swapPrototype(JSWebAssemblyGlobal.create(getContext(), realm, wasmGlobal, valueType, mutable), newTarget);
         }
 
         @Override
