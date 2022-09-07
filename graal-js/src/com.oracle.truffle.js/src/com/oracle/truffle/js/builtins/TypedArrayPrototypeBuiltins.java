@@ -412,8 +412,14 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             long sourceLen = sourceArray.length(array);
             rangeCheck(0, sourceLen, offset, targetArray.length(thisObj));
 
+            boolean isBigInt = JSArrayBufferView.isBigIntArrayBufferView(thisObj);
             for (int i = 0, j = offset; i < sourceLen; i++, j++) {
-                targetArray.setElement(thisObj, j, sourceArray.getElement(array, i), false);
+                Object value = sourceArray.getElement(array, i);
+                // IntegerIndexedElementSet
+                Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
+                if (!JSArrayBufferView.hasDetachedBuffer(thisObj, getContext())) {
+                    targetArray.setElement(thisObj, j, numValue, false);
+                }
                 TruffleSafepoint.poll(this);
             }
         }
