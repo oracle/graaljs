@@ -56,28 +56,29 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * Contains builtins for {@linkplain JSArray} function (constructor).
+ * Contains builtins for {@linkplain com.oracle.truffle.js.runtime.builtins.JSIterator} function (constructor).
  */
-public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<IteratorFunctionBuiltins.ArrayFunction> {
+public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<IteratorFunctionBuiltins.IteratorFunction> {
 
     public static final JSBuiltinsContainer BUILTINS = new IteratorFunctionBuiltins();
 
     IteratorFunctionBuiltins() {
-        super(JSArray.CLASS_NAME, ArrayFunction.class);
+        super(JSIterator.CLASS_NAME, IteratorFunction.class);
     }
 
-    public enum ArrayFunction implements BuiltinEnum<ArrayFunction> {
+    public enum IteratorFunction implements BuiltinEnum<IteratorFunction> {
         from(1);
 
         private final int length;
 
-        ArrayFunction(int length) {
+        IteratorFunction(int length) {
             this.length = length;
         }
 
@@ -96,7 +97,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ArrayFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, IteratorFunction builtinEnum) {
         switch (builtinEnum) {
             case from:
                 return JSIteratorFromNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
