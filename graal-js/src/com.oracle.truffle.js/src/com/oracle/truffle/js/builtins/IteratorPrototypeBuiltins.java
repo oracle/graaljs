@@ -349,14 +349,14 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected abstract IteratorImplNode<T> getImplementation(JSContext context);
 
         private JSDynamicObject createIteratorHelperPrototype() {
-            //return getRealm().getIteratorHelperPrototype();
+            return getRealm().getIteratorHelperPrototype();
 
-            //TODO: Remove this when issue is resolved: https://github.com/oracle/graaljs/issues/636
-            JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(getRealm(), getRealm().getIteratorPrototype());
-            JSObjectUtil.putFunctionsFromContainer(getRealm(), prototype, new IteratorPrototypeBuiltins());
-            JSObjectUtil.putFunctionsFromContainer(getRealm(), prototype, new IteratorHelperPrototypeBuiltins());
-            JSObjectUtil.putToStringTag(prototype, IteratorHelperPrototypeBuiltins.TO_STRING_TAG);
-            return prototype;
+            //TODO: This would be a workaround for some performance issues but causes some unintended side-effects: https://github.com/oracle/graaljs/issues/636
+            //JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(getRealm(), getRealm().getIteratorPrototype());
+            //JSObjectUtil.putFunctionsFromContainer(getRealm(), prototype, new IteratorPrototypeBuiltins());
+            //JSObjectUtil.putFunctionsFromContainer(getRealm(), prototype, new IteratorHelperPrototypeBuiltins());
+            //JSObjectUtil.putToStringTag(prototype, IteratorHelperPrototypeBuiltins.TO_STRING_TAG);
+            //return prototype;
         }
     }
 
