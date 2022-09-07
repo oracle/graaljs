@@ -26,10 +26,12 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     timelimit: '30:00',
   },
 
-  builds: graalJs.builds + graalNodeJs.builds + [
+  buildsAll: graalJs.builds + graalNodeJs.builds + [
     common.jdk11 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'js-deploybinary-ol65-amd64'},
     common.jdk11 + deployBinary + common.deploy + common.postMerge + common.darwin + {name: 'js-deploybinary-darwin-amd64', timelimit: '45:00'},
   ],
+
+  builds: [b for b in self.buildsAll if !std.member(b.targets, "gate") || !std.foldl(function(r, c) r || std.startsWith(c, "darwin"), b.capabilities, false)],
 
   // Set this flag to false to switch off the use of artifacts (pipelined builds).
   useArtifacts:: useOverlay,
