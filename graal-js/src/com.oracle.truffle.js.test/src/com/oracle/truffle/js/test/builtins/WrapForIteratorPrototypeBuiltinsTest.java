@@ -76,7 +76,7 @@ public class WrapForIteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.from({next: () => ({value: typeof this, done: true})}).next.call([].values())");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
         }
     }
@@ -99,14 +99,14 @@ public class WrapForIteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.from({next: () => ({value: typeof this, done: true}), return: () => 1}).return()");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             try {
                 context.eval(JavaScriptLanguage.ID, "Iterator.from({next: () => ({value: typeof this, done: true}), return: () => ({done: true})}).return.call([].values())");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
         }
     }

@@ -60,7 +60,7 @@ public class AsyncIteratorFunctionBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "new AsyncIterator()");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             Value result = context.eval(JavaScriptLanguage.ID, "new (class x extends AsyncIterator{})()");

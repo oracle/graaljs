@@ -59,7 +59,7 @@ public class IteratorFunctionBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "new Iterator()");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             Value result = context.eval(JavaScriptLanguage.ID, "new (class x extends Iterator{})()");

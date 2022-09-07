@@ -105,13 +105,13 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.map.call({}, x => x)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
             try {
                 context.eval(JavaScriptLanguage.ID, "[].values().map(1)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.map.call({next: () => ({value: 1, done: true})}, x => x).next()");
@@ -148,13 +148,13 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.filter.call({}, x => x)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
             try {
                 context.eval(JavaScriptLanguage.ID, "[].values().filter(1)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.filter.call({next: () => ({value: 1, done: true})}, () => true).next()");
@@ -191,7 +191,7 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.take.call({}, 2)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
             try {
                 context.eval(JavaScriptLanguage.ID, "[].values().take(NaN)");
@@ -245,7 +245,7 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.drop.call({}, 2)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
             try {
                 context.eval(JavaScriptLanguage.ID, "[].values().drop(NaN)");
@@ -305,7 +305,7 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.drop.indexed({})");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.indexed.call({next: () => ({value: 1, done: true})}, 1).next()");
@@ -335,13 +335,13 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.flatMap.call({}, x => x)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
             try {
                 context.eval(JavaScriptLanguage.ID, "[].values().flatMap(1)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.flatMap.call({next: () => ({value: 1, done: true})}, x => x).next()");
@@ -374,19 +374,19 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.reduce.call({}, x => x, 0)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
             try {
                 context.eval(JavaScriptLanguage.ID, "[1].values().reduce(1, 0)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
             try {
                 context.eval(JavaScriptLanguage.ID, "[].values().reduce(x => x)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.reduce.call({next: () => ({value: 1, done: true})}, x => x, 0)");
@@ -419,7 +419,7 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.toArray.call({})");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.toArray.call({next: () => ({value: 1, done: true})})");
@@ -451,13 +451,13 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.forEach.call({}, x => x)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
             try {
                 context.eval(JavaScriptLanguage.ID, "[1].values().forEach(1)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.forEach.call({next: () => ({value: 1, done: true})}, x => {throw new Error('test')})");
@@ -492,13 +492,13 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.some.call({}, x => x)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
             try {
                 context.eval(JavaScriptLanguage.ID, "[1].values().some(1)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.some.call({next: () => ({value: 1, done: true})}, x => {throw new Error('test')})");
@@ -534,13 +534,13 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.every.call({}, x => x)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
             try {
                 context.eval(JavaScriptLanguage.ID, "[1].values().every(1)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.every.call({next: () => ({value: 1, done: true})}, x => {throw new Error('test')})");
@@ -575,13 +575,13 @@ public class IteratorPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.find.call({}, x => x)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
             try {
                 context.eval(JavaScriptLanguage.ID, "[1].values().find(1)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.find.call({next: () => ({value: 1, done: true})}, x => {throw new Error('test')})");

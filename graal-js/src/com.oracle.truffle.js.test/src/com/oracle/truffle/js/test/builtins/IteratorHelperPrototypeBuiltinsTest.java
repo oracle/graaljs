@@ -79,7 +79,7 @@ public class IteratorHelperPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "[1].values().drop(0).next.call([2].values())");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
         }
     }
@@ -108,7 +108,7 @@ public class IteratorHelperPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "[1].values().drop(0).return.call([2].values())");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
         }
     }
@@ -122,7 +122,7 @@ public class IteratorHelperPrototypeBuiltinsTest {
                 context.eval(JavaScriptLanguage.ID, "var obj = Iterator.from({next(){return obj.next()}}).map(v => v); obj.next()");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
-                Assert.assertEquals("TypeError: ", e.getMessage().substring(0, "TypeError: ".length()));
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
             Value result = context.eval(JavaScriptLanguage.ID, "Iterator.from({next(){return obj.next()}}).map(v => v).return()");
