@@ -577,6 +577,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
         @Child private PropertySetNode setLimitNode;
 
+        private BranchProfile errorProfile = BranchProfile.create();
+
         protected IteratorTakeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, JSContext.BuiltinFunctionKey.IteratorTake);
 
@@ -600,11 +602,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (Double.isNaN(numLimit.doubleValue())) {
+                errorProfile.enter();
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             Number integerLimit = toIntegerOrInfinityNode.executeNumber(limit);
             if (integerLimit.doubleValue() < 0) {
+                errorProfile.enter();
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
@@ -677,6 +681,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
         @Child private PropertySetNode setLimitNode;
 
+        private final BranchProfile errorProfile = BranchProfile.create();
+
         protected IteratorDropNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, JSContext.BuiltinFunctionKey.IteratorDrop);
 
@@ -700,11 +706,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (Double.isNaN(numLimit.doubleValue())) {
+                errorProfile.enter();
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             Number integerLimit = toIntegerOrInfinityNode.executeNumber(limit);
             if (integerLimit.doubleValue() < 0) {
+                errorProfile.enter();
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
