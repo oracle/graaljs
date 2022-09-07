@@ -131,7 +131,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         protected JSDynamicObject doArrayIterator(VirtualFrame frame, JSDynamicObject iterator) {
             Object array = getIteratedObjectNode.getValue(iterator);
             if (array == Undefined.instance) {
-                this.useAfterCloseBranch.enter();
+                useAfterCloseBranch.enter();
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
