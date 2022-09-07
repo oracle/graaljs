@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorCloseNode;
@@ -154,6 +156,8 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private PropertyGetNode getTargetNode;
         @Child private HasHiddenKeyCacheNode hasTargetNode;
 
+        private final BranchProfile errorProfile = BranchProfile.create();
+
         public GetTargetNode(JSContext context) {
             getTargetNode = PropertyGetNode.createGetHidden(TARGET_ID, context);
             hasTargetNode = HasHiddenKeyCacheNode.create(TARGET_ID);
@@ -164,6 +168,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Specialization
         protected IteratorRecord get(JSDynamicObject generator) {
             if (!hasTargetNode.executeHasHiddenKey(generator)) {
+                errorProfile.enter();
                 throw Errors.createTypeErrorIncompatibleReceiver(generator);
             }
 
@@ -206,8 +211,8 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private JSFunctionCallNode callNode;
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private HasHiddenKeyCacheNode hasInnerNode;
-        @Child private PropertyGetNode getInnerNode;
-        @Child private IteratorCloseNode iteratorCloseNode;
+        @Child private PropertyGetNode getInnerNode = null;
+        @Child private IteratorCloseNode iteratorCloseNode = null;
 
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -216,30 +221,42 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             callNode = JSFunctionCallNode.createCall();
             asyncIteratorClose = AsyncIteratorCloseNode.create(context);
-            iteratorCloseNode = IteratorCloseNode.create(context);
             hasInnerNode = HasHiddenKeyCacheNode.create(AsyncIteratorPrototypeBuiltins.AsyncIteratorFlatMapNode.CURRENT_ID);
-            getInnerNode = PropertyGetNode.create(AsyncIteratorPrototypeBuiltins.AsyncIteratorFlatMapNode.CURRENT_ID, context);
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
         public Object close(JSObject thisObj) {
             if (hasInnerNode.executeHasHiddenKey(thisObj)) {
                 try {
-                    iteratorCloseNode.executeAbrupt(((IteratorRecord) getInnerNode.getValue(thisObj)).getIterator());
+                    getIteratorCloseNode().executeAbrupt(((IteratorRecord) getGetInnerNode().getValue(thisObj)).getIterator());
                 } catch (AbstractTruffleException ex) {
                     //We don't care
                 }
             }
             try {
                 IteratorRecord iterated = getTargetNode.execute(thisObj);
-
-
                 return asyncIteratorClose.execute(iterated.getIterator());
             } catch (AbstractTruffleException ex) {
                 PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
                 callNode.executeCall(JSArguments.createOneArg(Undefined.instance, capabilityRecord.getReject(), Errors.createTypeErrorIncompatibleReceiver(thisObj)));
                 return capabilityRecord.getPromise();
             }
+        }
+
+        private IteratorCloseNode getIteratorCloseNode() {
+            if (iteratorCloseNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                iteratorCloseNode = IteratorCloseNode.create(getContext());
+            }
+            return iteratorCloseNode;
+        }
+
+        private PropertyGetNode getGetInnerNode() {
+            if (getInnerNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getInnerNode = PropertyGetNode.create(AsyncIteratorPrototypeBuiltins.AsyncIteratorFlatMapNode.CURRENT_ID, getContext());
+            }
+            return getInnerNode;
         }
     }
 
