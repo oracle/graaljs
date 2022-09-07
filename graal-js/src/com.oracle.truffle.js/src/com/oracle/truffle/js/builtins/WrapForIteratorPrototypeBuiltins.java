@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.EnumSet;
 
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -55,24 +56,25 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForIteratorObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WrapForIteratorPrototypeBuiltins.WrapForWrapForIterator> {
+public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WrapForIteratorPrototypeBuiltins.WrapForIterator> {
     public static final JSBuiltinsContainer BUILTINS = new WrapForIteratorPrototypeBuiltins();
 
     protected WrapForIteratorPrototypeBuiltins() {
-        super(JSIterator.CLASS_NAME, WrapForWrapForIterator.class);
+        super(JSIterator.CLASS_NAME, WrapForIterator.class);
     }
 
-    public enum WrapForWrapForIterator implements BuiltinEnum<WrapForWrapForIterator> {
+    public enum WrapForIterator implements BuiltinEnum<WrapForIterator> {
         next(1),
         return_(1);
 
         private final int length;
 
-        WrapForWrapForIterator(int length) {
+        WrapForIterator(int length) {
             this.length = length;
         }
 
@@ -91,7 +93,7 @@ public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, WrapForWrapForIterator builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, WrapForIterator builtinEnum) {
         switch (builtinEnum) {
             case next:
                 return WrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
@@ -103,6 +105,7 @@ public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         return null;
     }
 
+    @ImportStatic({JSWrapForIterator.class})
     public abstract static class WrapForIteratorNextNode extends JSBuiltinNode {
         @Child private JSFunctionCallNode callNode;
 
@@ -117,12 +120,13 @@ public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             return callNode.executeCall(JSArguments.createZeroArg(thisObj.getIterated().getIterator(), thisObj.getIterated().getNextMethod()));
         }
 
-        @Specialization
+        @Specialization(guards = "isWrapForIterator(thisObj)")
         protected JSDynamicObject incompatible(Object thisObj) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
     }
 
+    @ImportStatic({JSWrapForIterator.class})
     public abstract static class WrapForIteratorReturnNode extends JSBuiltinNode {
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
@@ -140,7 +144,7 @@ public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 
-        @Specialization
+        @Specialization(guards = "isWrapForIterator(thisObj)")
         protected JSDynamicObject incompatible(Object thisObj) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }

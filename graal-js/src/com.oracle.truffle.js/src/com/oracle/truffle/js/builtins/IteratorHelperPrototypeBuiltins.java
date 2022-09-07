@@ -49,6 +49,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
@@ -158,19 +159,17 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 
-        @Specialization(guards = {"hasImpl(thisObj)", "hasInner(thisObj)"})
+        @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == SuspendedYield", "hasInner(thisObj)"})
         public Object closeInner(VirtualFrame frame, Object thisObj,
                                  @Cached("createGetHidden(FLATMAP_ALIVE_ID, getContext())") PropertyGetNode isAliveNode,
                                  @Cached("createGetHidden(FLATMAP_INNER_ID, getContext())") PropertyGetNode getInnerNode,
-                                 @Cached("create()") BranchProfile aliveProfile) {
+                                 @Cached("createBinaryProfile()") ConditionProfile aliveProfile) {
             setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
 
             try {
-                if (isAliveNode.getValueBoolean(thisObj)) {
+                if (aliveProfile.profile(isAliveNode.getValueBoolean(thisObj))) {
                     IteratorRecord iterated = (IteratorRecord) getInnerNode.getValue(thisObj);
                     iteratorCloseNode.executeAbrupt(iterated.getIterator());
-                } else {
-                    aliveProfile.enter();
                 }
             } catch (UnexpectedResultException ex) {
                 throw Errors.shouldNotReachHere(ex);
@@ -178,7 +177,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return close(frame, thisObj);
         }
 
-        @Specialization(guards = {"hasImpl(thisObj)", "!hasInner(thisObj)"})
+        @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == SuspendedYield", "!hasInner(thisObj)"})
         public Object close(VirtualFrame frame, Object thisObj) {
             setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
 

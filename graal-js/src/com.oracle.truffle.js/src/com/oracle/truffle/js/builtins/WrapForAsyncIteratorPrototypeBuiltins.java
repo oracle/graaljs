@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.EnumSet;
 
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -69,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIteratorObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -161,6 +163,7 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
         }
     }
 
+    @ImportStatic({JSWrapForAsyncIterator.class})
     public abstract static class WrapForAsyncIteratorReturnNode extends JSBuiltinNode {
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private JSFunctionCallNode callNode;
@@ -201,7 +204,7 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
             }
         }
 
-        @Specialization
+        @Specialization(guards = "!isWrapForAsyncIterator(thisObj)")
         protected JSDynamicObject incompatible(Object thisObj) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(getRealm().getPromiseConstructor());
             callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), Errors.createTypeErrorIncompatibleReceiver(thisObj)));
