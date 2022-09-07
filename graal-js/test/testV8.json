@@ -709,7 +709,8 @@
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/es6/typedarray.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Uses assertTrue(.. && !v8HasHoleyElements(...))"
   }, {
     "filePath" : "mjsunit/es6/unicode-regexp-ignore-case-noi18n.js",
     "status" : "FAIL",
