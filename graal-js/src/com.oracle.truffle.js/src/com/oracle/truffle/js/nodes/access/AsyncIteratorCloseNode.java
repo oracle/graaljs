@@ -130,7 +130,6 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
     }
 
     private JSDynamicObject toPromise(Object promiseOrValue) {
-        JSDynamicObject promise;
         if (!JSPromise.isJSPromise(promiseOrValue) || getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) != getRealm().getPromiseConstructor()) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
             callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), promiseOrValue));
