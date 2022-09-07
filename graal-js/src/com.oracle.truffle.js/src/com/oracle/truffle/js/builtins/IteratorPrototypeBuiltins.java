@@ -600,7 +600,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (Double.isNaN(numLimit.doubleValue())) {
-                throw Errors.createRangeError("NAN not allowed (TODO: error message)", this);
+                throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             Number integerLimit = toIntegerOrInfinityNode.executeNumber(limit);
@@ -700,7 +700,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (Double.isNaN(numLimit.doubleValue())) {
-                throw Errors.createRangeError("NAN not allowed (TODO: error message)", this);
+                throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             Number integerLimit = toIntegerOrInfinityNode.executeNumber(limit);

@@ -2838,7 +2838,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!isValidTarget(isNewTargetCase, newTarget)"})
         protected JSDynamicObject constructIteratorTypeError(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
-            throw Errors.createTypeError("iterator is abstract (TODO: Better error)");
+            throw Errors.createTypeError("Cannot construct a new Iterator as it is an abstract class.");
         }
 
         @Override
@@ -2863,7 +2863,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!isValidTarget(isNewTargetCase, newTarget)"})
         protected JSDynamicObject constructIteratorTypeError(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
-            throw Errors.createTypeError("iterator is abstract (TODO: Better error)");
+            throw Errors.createTypeError("Cannot construct a new AsyncIterator as it is an abstract class.");
         }
 
         @Override

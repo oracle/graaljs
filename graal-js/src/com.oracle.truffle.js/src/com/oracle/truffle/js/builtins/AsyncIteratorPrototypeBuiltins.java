@@ -692,6 +692,8 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
         @Child private PropertySetNode setRemainingNode;
 
+        private final BranchProfile errorBranch = BranchProfile.create();
+
         public AsyncIteratorTakeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
@@ -709,11 +711,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (Double.isNaN(numLimit.doubleValue())) {
-                throw Errors.createRangeError("NAN not allowed (TODO: error message)", this);
+                errorBranch.enter();
+                throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             double integerLimit = toIntegerOrInfinityNode.executeNumber(limit).doubleValue();
             if (integerLimit < 0) {
+                errorBranch.enter();
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
@@ -836,7 +840,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (Double.isNaN(numLimit.doubleValue())) {
-                throw Errors.createRangeError("NAN not allowed (TODO: error message)", this);
+                throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             double integerLimit = toIntegerOrInfinityNode.executeNumber(limit).doubleValue();
