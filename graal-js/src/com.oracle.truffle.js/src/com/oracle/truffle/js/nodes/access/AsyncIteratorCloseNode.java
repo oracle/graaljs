@@ -163,18 +163,20 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
     public static class AsyncIteratorCloseRootNode extends JavaScriptRootNode implements AsyncHandlerRootNode {
         @Child protected JavaScriptNode valueNode;
 
-        @Child protected JSFunctionCallNode callNode;
         @Child private PropertyGetNode getCompletionNode;
         @Child private IsJSObjectNode isObjectNode;
 
         private final boolean isAbrupt;
 
         AsyncIteratorCloseRootNode(JSContext context, boolean isAbrupt) {
-            valueNode = AccessIndexedArgumentNode.create(0);
-            callNode = JSFunctionCallNode.createCall();
-            isObjectNode = IsJSObjectNode.create();
-            getCompletionNode = PropertyGetNode.createGetHidden(COMPLETION_ID, context);
             this.isAbrupt = isAbrupt;
+
+            if (isAbrupt) {
+                getCompletionNode = PropertyGetNode.createGetHidden(COMPLETION_ID, context);
+            } else {
+                valueNode = AccessIndexedArgumentNode.create(0);
+                isObjectNode = IsJSObjectNode.create();
+            }
         }
 
         @Override
