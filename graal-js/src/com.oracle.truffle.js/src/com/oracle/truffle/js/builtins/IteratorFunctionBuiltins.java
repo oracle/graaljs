@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
@@ -110,6 +111,8 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
 
+        private ConditionProfile usingIteratorProfile = ConditionProfile.createBinaryProfile();
+
         public JSIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR);
@@ -124,7 +127,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             IteratorRecord iteratorRecord = null;
 
             Object usingIterator = getIteratorMethodNode.executeWithTarget(arg);
-            if (usingIterator != Undefined.instance) {
+            if (usingIteratorProfile.profile(usingIterator != Undefined.instance)) {
                 iteratorRecord = getIteratorNode.execute(arg);
                 boolean hasInstance = ordinaryHasInstanceNode.executeBoolean(iteratorRecord.getIterator(), getRealm().getIteratorConstructor());
                 if (hasInstance) {

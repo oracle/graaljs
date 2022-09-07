@@ -44,6 +44,8 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -109,6 +111,8 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
         @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
         @Child private GetIteratorDirectNode getIteratorDirectNode;
 
+        private final ConditionProfile usingIteratorProfile = ConditionProfile.createBinaryProfile();
+
         public JSAsyncIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getAsyncIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ASYNC_ITERATOR);
@@ -120,7 +124,7 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
             IteratorRecord iteratorRecord = null;
 
             Object usingIterator = getAsyncIteratorMethodNode.executeWithTarget(arg);
-            if (usingIterator != Undefined.instance || getIteratorMethodNode.executeWithTarget(arg) != Undefined.instance) {
+            if (usingIteratorProfile.profile(usingIterator != Undefined.instance || getIteratorMethodNode.executeWithTarget(arg) != Undefined.instance)) {
                 if (getIteratorNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getIteratorNode = insert(GetIteratorNode.createAsync(getContext(), null));
