@@ -120,7 +120,7 @@ public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             return callNode.executeCall(JSArguments.createZeroArg(thisObj.getIterated().getIterator(), thisObj.getIterated().getNextMethod()));
         }
 
-        @Specialization(guards = "isWrapForIterator(thisObj)")
+        @Specialization(guards = "!isWrapForIterator(thisObj)")
         protected JSDynamicObject incompatible(Object thisObj) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
@@ -144,7 +144,7 @@ public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 
-        @Specialization(guards = "isWrapForIterator(thisObj)")
+        @Specialization(guards = "!isWrapForIterator(thisObj)")
         protected JSDynamicObject incompatible(Object thisObj) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
