@@ -90,7 +90,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * Contains builtins for {@linkplain JSArray}.prototype.
+ * Contains builtins for {@linkplain JSIterator}.prototype.
  */
 public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<IteratorPrototypeBuiltins.IteratorPrototype> {
 
