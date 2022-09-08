@@ -72,3 +72,4 @@ bytes = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00,
 module = new WebAssembly.Module(new Uint8Array(bytes));
 var customSections = WebAssembly.Module.customSections(module, "t");
 assertSame(1, customSections.length);
+
