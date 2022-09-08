@@ -1080,8 +1080,8 @@ public class NodeFactory {
         return IteratorCompleteUnaryNode.create(context, iterResult);
     }
 
-    public JavaScriptNode createIteratorGetNextValue(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode, boolean setDoneOnError) {
-        return IteratorGetNextValueNode.create(context, iterator, doneNode, setDoneOnError);
+    public JavaScriptNode createIteratorGetNextValue(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode, boolean setDoneOnError, boolean readValue) {
+        return IteratorGetNextValueNode.create(context, iterator, doneNode, setDoneOnError, readValue);
     }
 
     public JavaScriptNode createIteratorSetDone(JavaScriptNode iterator, JavaScriptNode isDone) {

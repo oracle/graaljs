@@ -3050,7 +3050,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             } else {
                 lhsExpr = element;
             }
-            JavaScriptNode iteratorGetNextValueNode = factory.createIteratorGetNextValue(context, iteratorTempVar.createReadNode(), factory.createConstantUndefined(), true);
+            JavaScriptNode iteratorGetNextValueNode = factory.createIteratorGetNextValue(context, iteratorTempVar.createReadNode(), factory.createConstantUndefined(), true, element != null);
             JavaScriptNode iteratorIsDoneNode = factory.createIteratorIsDone(iteratorTempVar.createReadNode());
             JavaScriptNode rhsNode = factory.createIf(iteratorIsDoneNode, factory.createConstantUndefined(), iteratorGetNextValueNode);
             if (init != null) {

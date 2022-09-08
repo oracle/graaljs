@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Combines IteratorStep and IteratorValue in one node.
@@ -87,8 +88,9 @@ public abstract class IteratorGetNextValueNode extends JavaScriptNode {
     @Child private JavaScriptNode doneResultNode;
     @Child private JSToBooleanNode toBooleanNode;
     private final boolean setDone;
+    private final boolean readValue;
 
-    protected IteratorGetNextValueNode(JSContext context, JavaScriptNode iteratorNode, JavaScriptNode doneNode, boolean setDone) {
+    protected IteratorGetNextValueNode(JSContext context, JavaScriptNode iteratorNode, JavaScriptNode doneNode, boolean setDone, boolean readValue) {
         this.iteratorNode = iteratorNode;
         this.getValueNode = PropertyGetNode.create(Strings.VALUE, false, context);
         this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
@@ -97,10 +99,15 @@ public abstract class IteratorGetNextValueNode extends JavaScriptNode {
         this.toBooleanNode = JSToBooleanNode.create();
         this.doneResultNode = doneNode;
         this.setDone = setDone;
+        this.readValue = readValue;
     }
 
     public static IteratorGetNextValueNode create(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode, boolean setDone) {
-        return IteratorGetNextValueNodeGen.create(context, iterator, doneNode, setDone);
+        return create(context, iterator, doneNode, setDone, true);
+    }
+
+    public static IteratorGetNextValueNode create(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode, boolean setDone, boolean readValue) {
+        return IteratorGetNextValueNodeGen.create(context, iterator, doneNode, setDone, readValue);
     }
 
     private Object iteratorNext(IteratorRecord iteratorRecord) {
@@ -119,7 +126,7 @@ public abstract class IteratorGetNextValueNode extends JavaScriptNode {
             Object result = iteratorNext(iteratorRecord);
             boolean done = toBooleanNode.executeBoolean(getDoneNode.getValue(result));
             if (!done) {
-                return getValueNode.getValue(result);
+                return readValue ? getValueNode.getValue(result) : Undefined.instance;
             } else {
                 if (setDone) {
                     iteratorRecord.setDone(true);
@@ -138,6 +145,6 @@ public abstract class IteratorGetNextValueNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(getValueNode.getContext(), cloneUninitialized(iteratorNode, materializedTags), cloneUninitialized(doneResultNode, materializedTags), setDone);
+        return create(getValueNode.getContext(), cloneUninitialized(iteratorNode, materializedTags), cloneUninitialized(doneResultNode, materializedTags), setDone, readValue);
     }
 }
