@@ -74,6 +74,8 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBooleanNode
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallCollatorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallFetchResponseNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallFetchRequestNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallFetchHeadersNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberNodeGen;
@@ -82,6 +84,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallStringNodeG
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTypedArrayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAggregateErrorNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFetchErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBigIntNodeGen;
@@ -90,6 +93,8 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructCollat
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDataViewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFetchResponseNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFetchRequestNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFetchHeadersNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDisplayNamesNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructErrorNodeGen;
@@ -131,6 +136,8 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAss
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAssemblyTableNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
+import com.oracle.truffle.js.builtins.helper.FetchHeaders;
+import com.oracle.truffle.js.builtins.helper.FetchRequest;
 import com.oracle.truffle.js.builtins.helper.FetchResponse;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -219,6 +226,8 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
+import com.oracle.truffle.js.runtime.builtins.JSFetchHeaders;
+import com.oracle.truffle.js.runtime.builtins.JSFetchRequest;
 import com.oracle.truffle.js.runtime.builtins.JSFetchResponse;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -307,7 +316,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Error(1),
         RangeError(1),
         TypeError(1),
-        FetchError(1),
+        FetchError(3),
         ReferenceError(1),
         SyntaxError(1),
         EvalError(1),
@@ -355,6 +364,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         // Fetch
         Response(2),
+        Request(2),
+        Headers(1),
 
         // Temporal
         PlainTime(0),
@@ -458,9 +469,19 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             case Response:
                 return construct ? (newTarget
-                        ? ConstructFetchResponseNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
-                        : ConstructFetchResponseNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context)))
+                        ? ConstructFetchResponseNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                        : ConstructFetchResponseNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
                         : CallFetchResponseNodeGen.create(context, builtin, args().createArgumentNodes(context));
+            case Request:
+                return construct ? (newTarget
+                        ? ConstructFetchRequestNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                        : ConstructFetchRequestNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                        : CallFetchRequestNodeGen.create(context, builtin, args().createArgumentNodes(context));
+            case Headers:
+                return construct ? (newTarget
+                        ? ConstructFetchHeadersNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
+                        : ConstructFetchHeadersNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
+                        : CallFetchHeadersNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
 
             case Collator:
                 return construct ? (newTarget
@@ -536,7 +557,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case Error:
             case RangeError:
             case TypeError:
-            case FetchError:
             case ReferenceError:
             case SyntaxError:
             case EvalError:
@@ -553,6 +573,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     return ConstructAggregateErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(3).createArgumentNodes(context));
                 }
                 return ConstructAggregateErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(3).createArgumentNodes(context));
+            case FetchError:
+                if (newTarget) {
+                    return ConstructFetchErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context));
+                }
+                return ConstructFetchErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
 
             case TypedArray:
                 return CallTypedArrayNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
@@ -1114,10 +1139,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        @TruffleBoundary
         protected Object callFetchResponse() {
-            JSRealm realm = getRealm();
-            return JSDate.toString(realm.currentTimeMillis(), realm);
+            throw Errors.createTypeError("Class constructor Response cannot be invoked without 'new'");
         }
     }
 
@@ -1126,14 +1149,106 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
+        /**
+         * The fetch response class constructor: https://fetch.spec.whatwg.org/#dom-response.
+         * @param body A response body
+         * @param init A optional ResponseInit object https://fetch.spec.whatwg.org/#responseinit
+         * @return A {@linkplain JSFetchResponse} object
+         */
         @Specialization
-        protected JSDynamicObject constructFetchResponse(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
-            return swapPrototype(JSFetchResponse.create(getContext(), getRealm(), new FetchResponse()), newTarget);
+        protected JSDynamicObject constructFetchResponse(JSDynamicObject newTarget, Object body, Object init) {
+            JSObject parsedOptions;
+            if (init == Null.instance || init == Undefined.instance) {
+                parsedOptions = JSOrdinary.create(getContext(), getRealm());
+            } else {
+                parsedOptions = (JSObject) init;
+            }
+            return swapPrototype(JSFetchResponse.create(getContext(), getRealm(), new FetchResponse(body, parsedOptions)), newTarget);
         }
 
         @Override
         protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getDatePrototype();
+            return realm.getFetchResponsePrototype();
+        }
+    }
+
+    public abstract static class CallFetchRequestNode extends JSBuiltinNode {
+        public CallFetchRequestNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object callFetchRequest() {
+            throw Errors.createTypeError("Class constructor Request cannot be invoked without 'new'");
+        }
+    }
+
+    public abstract static class ConstructFetchRequestNode extends ConstructWithNewTargetNode {
+        public ConstructFetchRequestNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        /**
+         * The fetch request class constructor: https://fetch.spec.whatwg.org/#dom-request.
+         * @param input A string or {@linkplain JSFetchRequest} object
+         * @param options A optional RequestInit object https://fetch.spec.whatwg.org/#requestinit
+         * @return A {@linkplain JSFetchRequest} object
+         */
+        @Specialization
+        protected JSDynamicObject constructFetchRequest(JSDynamicObject newTarget, Object input, Object options, @Cached("create()") JSToStringNode toString) {
+            JSObject parsedOptions;
+            if (options == Null.instance || options == Undefined.instance) {
+                parsedOptions = JSOrdinary.create(getContext(), getRealm());
+            } else {
+                parsedOptions = (JSObject) options;
+            }
+
+            // Par. 5.4, constructor step 6
+            // requests can wrap requests
+            if (JSFetchRequest.isJSFetchRequest(input) && input != Null.instance && input != Undefined.instance) {
+                FetchRequest request = JSFetchRequest.getInternalData((JSObject) input);
+                request.applyRequestInit(parsedOptions);
+                return swapPrototype(JSFetchRequest.create(getContext(), getRealm(), request), newTarget);
+            }
+
+            TruffleString url = toString.executeString(input);
+            return swapPrototype(JSFetchRequest.create(getContext(), getRealm(), new FetchRequest(url, parsedOptions)), newTarget);
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getFetchRequestPrototype();
+        }
+    }
+
+    public abstract static class CallFetchHeadersNode extends JSBuiltinNode {
+        public CallFetchHeadersNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object callFetchHeaders() {
+            throw Errors.createTypeError("Class constructor Headers cannot be invoked without 'new'");
+        }
+    }
+
+    public abstract static class ConstructFetchHeadersNode extends ConstructWithNewTargetNode {
+        public ConstructFetchHeadersNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        /**
+         * The fetch Headers class constructor https://fetch.spec.whatwg.org/#dom-headers.
+         */
+        @Specialization
+        protected JSDynamicObject constructFetchHeaders(JSDynamicObject newTarget, Object init) {
+            FetchHeaders headers = new FetchHeaders(init);
+            return swapPrototype(JSFetchHeaders.create(getContext(), getRealm(), headers), newTarget);
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getFetchHeadersPrototype();
         }
     }
 
@@ -2453,6 +2568,57 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 installErrorCauseNode = insert(new InstallErrorCauseNode(getContext()));
             }
             installErrorCauseNode.executeVoid(errorObj, options);
+        }
+    }
+
+    public abstract static class ConstructFetchErrorNode extends ConstructWithNewTargetNode {
+        @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
+        @Child private InitErrorObjectNode initErrorObjectNode;
+        @Child private DynamicObjectLibrary setMessage;
+
+        public ConstructFetchErrorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+            this.stackTraceLimitNode = ErrorStackTraceLimitNode.create();
+            this.initErrorObjectNode = InitErrorObjectNode.create(context);
+            this.setMessage = JSObjectUtil.createDispatched(JSError.ERRORS_TYPE);
+        }
+
+        @Specialization
+        protected JSDynamicObject constructError(JSDynamicObject newTarget, TruffleString message, TruffleString type, Object sysErr) {
+            return constructErrorImpl(newTarget, message, type, sysErr);
+        }
+
+        @Specialization(guards = "!isString(message)")
+        protected JSDynamicObject constructError(JSDynamicObject newTarget, Object message, TruffleString type, Object sysErr,
+                                                 @Cached("create()") JSToStringNode toStringNode) {
+            return constructErrorImpl(newTarget, message == Undefined.instance ? null : toStringNode.executeString(message), type, sysErr);
+        }
+
+        private JSDynamicObject constructErrorImpl(JSDynamicObject newTarget, TruffleString messageOpt, TruffleString type, Object sysErr) {
+            JSRealm realm = getRealm();
+            JSErrorObject errorObj = JSError.createErrorObject(getContext(), realm, JSErrorType.FetchError);
+            swapPrototype(errorObj, newTarget);
+
+            setMessage.putWithFlags(errorObj, JSError.ERRORS_TYPE, type, JSError.MESSAGE_ATTRIBUTES);
+
+            int stackTraceLimit = stackTraceLimitNode.executeInt();
+            JSDynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.FetchError);
+
+            // We skip until newTarget (if any) so as to also skip user-defined Error constructors.
+            JSDynamicObject skipUntil = newTarget == Undefined.instance ? errorFunction : newTarget;
+
+            GraalJSException exception = JSException.createCapture(JSErrorType.FetchError, Strings.toJavaString(messageOpt), errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
+            return initErrorObjectNode.execute(errorObj, exception, messageOpt, null, sysErr);
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getErrorPrototype(JSErrorType.FetchError);
+        }
+
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
         }
     }
 

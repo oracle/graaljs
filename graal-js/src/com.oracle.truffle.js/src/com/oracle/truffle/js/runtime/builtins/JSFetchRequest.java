@@ -45,10 +45,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.FetchResponseFunctionBuiltins;
-import com.oracle.truffle.js.builtins.FetchResponsePrototypeBuiltins;
+import com.oracle.truffle.js.builtins.FetchRequestPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.helper.FetchHeaders;
-import com.oracle.truffle.js.builtins.helper.FetchResponse;
+import com.oracle.truffle.js.builtins.helper.FetchRequest;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -61,29 +60,28 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * https://fetch.spec.whatwg.org/#response-class.
+ * https://fetch.spec.whatwg.org/#request-class.
  */
-public final class JSFetchResponse extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
-    public static final JSFetchResponse INSTANCE = new JSFetchResponse();
-    public static final TruffleString CLASS_NAME = Strings.constant("Response");
-    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Response.prototype");
+public final class JSFetchRequest extends JSNonProxy implements JSConstructorFactory.Default.Default, PrototypeSupplier {
+    public static final JSFetchRequest INSTANCE = new JSFetchRequest();
+    public static final TruffleString CLASS_NAME = Strings.constant("Request");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Request.prototype");
 
     // getter names
-    private static final TruffleString TYPE = Strings.constant("type");
+    private static final TruffleString METHOD = Strings.constant("method");
     private static final TruffleString URL = Strings.constant("url");
-    private static final TruffleString REDIRECTED = Strings.constant("redirected");
-    private static final TruffleString STATUS = Strings.constant("status");
-    private static final TruffleString STATUS_TEXT = Strings.constant("statusText");
-    private static final TruffleString OK = Strings.constant("ok");
+    private static final TruffleString REFERRER = Strings.constant("referrer");
+    private static final TruffleString REFERRER_POLICY = Strings.constant("referrerPolicy");
+    private static final TruffleString REDIRECT = Strings.constant("redirect");
     private static final TruffleString HEADERS = Strings.constant("headers");
     // body getter names
     private static final TruffleString BODY = Strings.constant("body");
     private static final TruffleString BODY_USED = Strings.constant("bodyUsed");
 
-    private JSFetchResponse() { }
+    private JSFetchRequest() { }
 
-    public static boolean isJSFetchResponse(Object obj) {
-        return obj instanceof JSFetchResponseObject;
+    public static boolean isJSFetchRequest(Object obj) {
+        return obj instanceof JSFetchRequestObject;
     }
 
     @Override
@@ -101,37 +99,46 @@ public final class JSFetchResponse extends JSNonProxy implements JSConstructorFa
         return getClassName(object);
     }
 
-    private static FetchResponse getInternalData(JSDynamicObject obj) {
-        assert isJSFetchResponse(obj);
-        return ((JSFetchResponseObject) obj).getResponseMap();
+    public static FetchRequest getInternalData(JSDynamicObject obj) {
+        assert isJSFetchRequest(obj);
+        return ((JSFetchRequestObject) obj).getRequestMap();
     }
 
-    private static TruffleString getType(JSDynamicObject obj) {
-        String type = getInternalData(obj).getType().toString();
-        type = type.replace("_", "");
-        return TruffleString.fromJavaStringUncached(type, TruffleString.Encoding.UTF_8);
+    private static TruffleString getMethod(JSDynamicObject obj) {
+        String method = getInternalData(obj).getMethod();
+        return TruffleString.fromJavaStringUncached(method, TruffleString.Encoding.UTF_8);
     }
 
     private static TruffleString getUrl(JSDynamicObject obj) {
-        String url = getInternalData(obj).getUrl() == null ? "" : getInternalData(obj).getUrl().toString();
+        String url = getInternalData(obj).getUrl().toString();
         return TruffleString.fromJavaStringUncached(url, TruffleString.Encoding.UTF_8);
     }
 
-    private static boolean getRedirected(JSDynamicObject obj) {
-        return getInternalData(obj).getRedirected();
+    // https://fetch.spec.whatwg.org/#dom-request-referrer
+    private static Object getReferrer(JSDynamicObject obj) {
+        String referrer = getInternalData(obj).getReferrer();
+
+        if (referrer == null) {
+            return Undefined.instance;
+        }
+        if (referrer.equals("no-referrer")) {
+            return TruffleString.fromJavaStringUncached("", TruffleString.Encoding.UTF_8);
+        }
+        if (referrer.equals("client")) {
+            return TruffleString.fromJavaStringUncached("about:client", TruffleString.Encoding.UTF_8);
+        }
+
+        return TruffleString.fromJavaStringUncached(referrer, TruffleString.Encoding.UTF_8);
     }
 
-    private static int getStatus(JSDynamicObject obj) {  // su
-        return getInternalData(obj).getStatus();
+    private static TruffleString getReferrerPolicy(JSDynamicObject obj) {
+        String referrerPolicy = getInternalData(obj).getReferrerPolicy();
+        return TruffleString.fromJavaStringUncached(referrerPolicy, TruffleString.Encoding.UTF_8);
     }
 
-    private static TruffleString getStatusText(JSDynamicObject obj) {
-        String statusText = getInternalData(obj).getStatusText();
-        return TruffleString.fromJavaStringUncached(statusText, TruffleString.Encoding.UTF_8);
-    }
-
-    private static boolean getOk(JSDynamicObject obj) {
-        return getInternalData(obj).getOk();
+    private static TruffleString getRedirectMode(JSDynamicObject obj) {
+        String redirect = getInternalData(obj).getRedirectMode();
+        return TruffleString.fromJavaStringUncached(redirect, TruffleString.Encoding.UTF_8);
     }
 
     private static FetchHeaders getHeaders(JSDynamicObject obj) {
@@ -158,33 +165,31 @@ public final class JSFetchResponse extends JSNonProxy implements JSConstructorFa
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
-                    if (JSFetchResponse.isJSFetchResponse(obj)) {
+                    if (JSFetchRequest.isJSFetchRequest(obj)) {
                         switch (key) {
-                            case FetchResponseGetUrl:
-                                return JSFetchResponse.getUrl((JSFetchResponseObject) obj);
-                            case FetchResponseGetRedirected:
-                                return JSFetchResponse.getRedirected((JSFetchResponseObject) obj);
-                            case FetchResponseGetType:
-                                return JSFetchResponse.getType((JSFetchResponseObject) obj);
-                            case FetchResponseGetStatus:
-                                return JSFetchResponse.getStatus((JSFetchResponseObject) obj);
-                            case FetchResponseGetStatusText:
-                                return JSFetchResponse.getStatusText((JSFetchResponseObject) obj);
-                            case FetchResponseGetOk:
-                                return JSFetchResponse.getOk((JSFetchResponseObject) obj);
-                            case FetchResponseGetHeaders:
-                                FetchHeaders headers = getHeaders((JSFetchResponseObject) obj);
+                            case FetchRequestGetUrl:
+                                return JSFetchRequest.getUrl((JSFetchRequestObject) obj);
+                            case FetchRequestGetMethod:
+                                return JSFetchRequest.getMethod((JSFetchRequestObject) obj);
+                            case FetchRequestGetReferrer:
+                                return JSFetchRequest.getReferrer((JSFetchRequestObject) obj);
+                            case FetchRequestGetReferrerPolicy:
+                                return JSFetchRequest.getReferrerPolicy((JSFetchRequestObject) obj);
+                            case FetchRequestGetRedirect:
+                                return JSFetchRequest.getRedirectMode((JSFetchRequestObject) obj);
+                            case FetchRequestGetHeaders:
+                                FetchHeaders headers = getHeaders((JSFetchRequestObject) obj);
                                 return JSFetchHeaders.create(realm.getContext(), realm, headers);
-                            case FetchResponseGetBody:
-                                return JSFetchResponse.getBody((JSFetchResponseObject) obj);
-                            case FetchResponseGetBodyUsed:
-                                return JSFetchResponse.getBodyUsed((JSFetchResponseObject) obj);
+                            case FetchRequestGetBody:
+                                return JSFetchRequest.getBody((JSFetchRequestObject) obj);
+                            case FetchRequestGetBodyUsed:
+                                return JSFetchRequest.getBodyUsed((JSFetchRequestObject) obj);
                             default:
-                                throw new IllegalArgumentException("FetchResponse getter function key expected");
+                                throw new IllegalArgumentException("FetchRequest getter function key expected");
                         }
                     } else {
                         errorBranch.enter();
-                        throw Errors.createTypeError("Response expected");
+                        throw Errors.createTypeError("Request expected");
                     }
                 }
             }.getCallTarget();
@@ -200,17 +205,16 @@ public final class JSFetchResponse extends JSNonProxy implements JSConstructorFa
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
 
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, TYPE, createGetterFunction(realm, TYPE, JSContext.BuiltinFunctionKey.FetchResponseGetType), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, URL, createGetterFunction(realm, URL, JSContext.BuiltinFunctionKey.FetchResponseGetUrl), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, REDIRECTED, createGetterFunction(realm, REDIRECTED, JSContext.BuiltinFunctionKey.FetchResponseGetRedirected), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, STATUS, createGetterFunction(realm, STATUS, JSContext.BuiltinFunctionKey.FetchResponseGetStatus), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, STATUS_TEXT, createGetterFunction(realm, STATUS_TEXT, JSContext.BuiltinFunctionKey.FetchResponseGetStatusText), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, OK, createGetterFunction(realm, OK, JSContext.BuiltinFunctionKey.FetchResponseGetOk), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, HEADERS, createGetterFunction(realm, HEADERS, JSContext.BuiltinFunctionKey.FetchResponseGetHeaders), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, BODY, createGetterFunction(realm, BODY, JSContext.BuiltinFunctionKey.FetchResponseGetBody), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, BODY_USED, createGetterFunction(realm, BODY_USED, JSContext.BuiltinFunctionKey.FetchResponseGetBodyUsed), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, URL, createGetterFunction(realm, URL, JSContext.BuiltinFunctionKey.FetchRequestGetUrl), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, METHOD, createGetterFunction(realm, METHOD, JSContext.BuiltinFunctionKey.FetchRequestGetMethod), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, REDIRECT, createGetterFunction(realm, REDIRECT, JSContext.BuiltinFunctionKey.FetchRequestGetRedirect), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, REFERRER, createGetterFunction(realm, REFERRER, JSContext.BuiltinFunctionKey.FetchRequestGetReferrer), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, REFERRER_POLICY, createGetterFunction(realm, REFERRER_POLICY, JSContext.BuiltinFunctionKey.FetchRequestGetReferrerPolicy), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, HEADERS, createGetterFunction(realm, HEADERS, JSContext.BuiltinFunctionKey.FetchRequestGetHeaders), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, BODY, createGetterFunction(realm, BODY, JSContext.BuiltinFunctionKey.FetchRequestGetBody), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, BODY_USED, createGetterFunction(realm, BODY_USED, JSContext.BuiltinFunctionKey.FetchRequestGetBodyUsed), Undefined.instance);
 
-        JSObjectUtil.putFunctionsFromContainer(realm, prototype, FetchResponsePrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, FetchRequestPrototypeBuiltins.BUILTINS);
 
         return prototype;
     }
@@ -222,16 +226,16 @@ public final class JSFetchResponse extends JSNonProxy implements JSConstructorFa
 
     @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getFetchResponsePrototype();
+        return realm.getFetchRequestPrototype();
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm, FetchResponseFunctionBuiltins.BUILTINS);
+        return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static JSFetchResponseObject create(JSContext context, JSRealm realm, FetchResponse response) {
-        JSObjectFactory factory = context.getFetchResponseFactory();
-        JSFetchResponseObject obj = JSFetchResponseObject.create(factory.getShape(realm), response);
+    public static JSFetchRequestObject create(JSContext context, JSRealm realm, FetchRequest request) {
+        JSObjectFactory factory = context.getFetchRequestFactory();
+        JSFetchRequestObject obj = JSFetchRequestObject.create(factory.getShape(realm), request);
         factory.initProto(obj, realm);
         return context.trackAllocation(obj);
     }

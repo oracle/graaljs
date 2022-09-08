@@ -58,6 +58,8 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 
+import java.io.IOException;
+
 /**
  * Utility class to to create all kinds of ECMAScript-defined Error Objects.
  */
@@ -120,9 +122,17 @@ public final class Errors {
         return JSException.create(JSErrorType.URIError, message);
     }
 
+
     @TruffleBoundary
-    public static JSException createFetchError(String message) {
-        return JSException.create(JSErrorType.FetchError, message);
+    public static JSException createFetchError(String message, String type, Node originatingNode) {
+        JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
+        JSRealm realm = JSRealm.get(originatingNode);
+        JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.FetchError);
+        JSError.setMessage(errorObj, TruffleString.fromJavaStringUncached(message, TruffleString.Encoding.UTF_8));
+        JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_TYPE, TruffleString.fromJavaStringUncached(type, TruffleString.Encoding.UTF_8), JSError.ERRORS_ATTRIBUTES);
+        JSException exception = JSException.create(JSErrorType.FetchError, message, errorObj, realm);
+        JSError.setException(realm, errorObj, exception, false);
+        return exception;
     }
 
     @TruffleBoundary

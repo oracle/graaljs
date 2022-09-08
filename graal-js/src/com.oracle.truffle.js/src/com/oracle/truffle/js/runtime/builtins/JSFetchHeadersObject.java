@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,65 +38,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.helper.FetchHeaders;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public enum JSErrorType implements PrototypeSupplier {
-    Error,
+@ExportLibrary(InteropLibrary.class)
+public final class JSFetchHeadersObject extends JSNonProxyObject {
+    private FetchHeaders value;
 
-    /**
-     * Currently not in use, only there for compatibility with previous versions of the
-     * specification ECMA262[15.11.6.1].
-     */
-    EvalError,
+    protected JSFetchHeadersObject(Shape shape, FetchHeaders value) {
+        super(shape);
+        this.value = value;
+    }
 
-    /**
-     * Indicates a numeric value has exceeded the allowable range ECMA262[15.11.6.2].
-     */
-    RangeError,
+    public FetchHeaders getHeadersMap() {
+        return value;
+    }
 
-    /**
-     * Indicate that an invalid reference value has been detected ECMA262[15.11.6.3].
-     */
-    ReferenceError,
+    public void setHeadersMap(FetchHeaders value) {
+        this.value = value;
+    }
 
-    /**
-     * Indicates that a parsing error has occurred ECMA262[15.11.6.4].
-     */
-    SyntaxError,
-
-    /**
-     * Indicates the actual type of an operand is different than the expected type
-     * ECMA262[15.11.6.5].
-     */
-    TypeError,
-
-    /**
-     * Indicates that one of the global URI handling functions was used in a way that is
-     * incompatible with its definition ECMA262[15.11.6.6].
-     */
-    URIError,
-
-    AggregateError,
-
-    // Fetch
-    FetchError,
-
-    // WebAssembly
-    CompileError,
-    LinkError,
-    RuntimeError;
+    public static JSFetchHeadersObject create(Shape shape, FetchHeaders value) {
+        return new JSFetchHeadersObject(shape, value);
+    }
 
     @Override
-    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getErrorPrototype(this);
+    public TruffleString getClassName() {
+        return JSFetchHeaders.CLASS_NAME;
     }
 
-    public static JSErrorType[] errorTypes() {
-        return VALUES;
+    @Override
+    public TruffleString getBuiltinToStringTag() {
+        return getClassName();
     }
-
-    private static final JSErrorType[] VALUES = JSErrorType.values();
 }

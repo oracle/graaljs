@@ -265,6 +265,7 @@ suite = {
       ],
       "requires" : [
         "java.desktop",
+        "jdk.httpserver",
         "jdk.unsupported",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],

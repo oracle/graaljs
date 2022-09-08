@@ -93,6 +93,8 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSFetchHeaders;
+import com.oracle.truffle.js.runtime.builtins.JSFetchRequest;
 import com.oracle.truffle.js.runtime.builtins.JSFetchResponse;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
@@ -318,6 +320,24 @@ public class JSContext {
         RegExp$7,
         RegExp$8,
         RegExp$9,
+        FetchResponseGetType,
+        FetchResponseGetUrl,
+        FetchResponseGetRedirected,
+        FetchResponseGetStatus,
+        FetchResponseGetStatusText,
+        FetchResponseGetOk,
+        FetchResponseGetHeaders,
+        FetchResponseGetBody,
+        FetchResponseGetBodyUsed,
+        FetchRequestGetMethod,
+        FetchRequestGetUrl,
+        FetchRequestGetReferrer,
+        FetchRequestGetReferrerPolicy,
+        FetchRequestGetRedirect,
+        FetchRequestGetHeaders,
+        FetchRequestGetSignal,
+        FetchRequestGetBody,
+        FetchRequestGetBodyUsed,
         SymbolGetDescription,
         MapGetSize,
         SetGetSize,
@@ -447,6 +467,8 @@ public class JSContext {
     private final JSObjectFactory regExpFactory;
     private final JSObjectFactory dateFactory;
     private final JSObjectFactory fetchResponseFactory;
+    private final JSObjectFactory fetchRequestFactory;
+    private final JSObjectFactory fetchHeadersFactory;
     private final JSObjectFactory nonStrictArgumentsFactory;
     private final JSObjectFactory strictArgumentsFactory;
     private final JSObjectFactory callSiteFactory;
@@ -622,6 +644,8 @@ public class JSContext {
         this.regExpFactory = builder.create(JSRegExp.INSTANCE);
         this.dateFactory = builder.create(JSDate.INSTANCE);
         this.fetchResponseFactory = builder.create(JSFetchResponse.INSTANCE);
+        this.fetchRequestFactory = builder.create(JSFetchRequest.INSTANCE);
+        this.fetchHeadersFactory = builder.create(JSFetchHeaders.INSTANCE);
 
         this.symbolFactory = builder.create(JSSymbol.INSTANCE);
         this.mapFactory = builder.create(JSMap.INSTANCE);
@@ -980,6 +1004,14 @@ public class JSContext {
 
     public final JSObjectFactory getFetchResponseFactory() {
         return fetchResponseFactory;
+    }
+
+    public final JSObjectFactory getFetchRequestFactory() {
+        return fetchRequestFactory;
+    }
+
+    public final JSObjectFactory getFetchHeadersFactory() {
+        return fetchHeadersFactory;
     }
 
     public final JSObjectFactory getEnumerateIteratorFactory() {

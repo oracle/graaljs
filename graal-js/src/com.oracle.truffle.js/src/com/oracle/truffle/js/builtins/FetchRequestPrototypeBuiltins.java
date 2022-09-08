@@ -46,13 +46,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.FetchResponsePrototypeBuiltinsFactory.JSFetchResponseCloneNodeGen;
-import com.oracle.truffle.js.builtins.FetchResponsePrototypeBuiltinsFactory.JSFetchResponseBodyBlobNodeGen;
-import com.oracle.truffle.js.builtins.FetchResponsePrototypeBuiltinsFactory.JSFetchResponseBodyFormDataNodeGen;
-import com.oracle.truffle.js.builtins.FetchResponsePrototypeBuiltinsFactory.JSFetchResponseBodyJsonNodeGen;
-import com.oracle.truffle.js.builtins.FetchResponsePrototypeBuiltinsFactory.JSFetchResponseBodyTextNodeGen;
-import com.oracle.truffle.js.builtins.FetchResponsePrototypeBuiltinsFactory.JSFetchResponseBodyArrayBufferNodeGen;
-import com.oracle.truffle.js.builtins.helper.FetchResponse;
+import com.oracle.truffle.js.builtins.helper.FetchRequest;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -65,24 +59,29 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
-import com.oracle.truffle.js.runtime.builtins.JSFetchResponse;
-import com.oracle.truffle.js.runtime.builtins.JSFetchResponseObject;
+import com.oracle.truffle.js.runtime.builtins.JSFetchRequest;
+import com.oracle.truffle.js.runtime.builtins.JSFetchRequestObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.builtins.FetchRequestPrototypeBuiltinsFactory.JSFetchRequestCloneNodeGen;
+import com.oracle.truffle.js.builtins.FetchRequestPrototypeBuiltinsFactory.JSFetchRequestBodyArrayBufferNodeGen;
+import com.oracle.truffle.js.builtins.FetchRequestPrototypeBuiltinsFactory.JSFetchRequestBodyBlobNodeGen;
+import com.oracle.truffle.js.builtins.FetchRequestPrototypeBuiltinsFactory.JSFetchRequestBodyFormDataNodeGen;
+import com.oracle.truffle.js.builtins.FetchRequestPrototypeBuiltinsFactory.JSFetchRequestBodyJsonNodeGen;
+import com.oracle.truffle.js.builtins.FetchRequestPrototypeBuiltinsFactory.JSFetchRequestBodyTextNodeGen;
 
 /**
- * Contains builtins for {@linkplain JSFetchResponse}.prototype.
+ * Contains builtins for {@linkplain JSFetchRequest}.prototype.
  */
-public final class FetchResponsePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<FetchResponsePrototypeBuiltins.FetchResponsePrototype> {
+public final class FetchRequestPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<FetchRequestPrototypeBuiltins.FetchRequestPrototype> {
+    public static final JSBuiltinsContainer BUILTINS = new FetchRequestPrototypeBuiltins();
 
-    public static final JSBuiltinsContainer BUILTINS = new FetchResponsePrototypeBuiltins();
-
-    protected FetchResponsePrototypeBuiltins() {
-        super(JSFetchResponse.PROTOTYPE_NAME, FetchResponsePrototype.class);
+    protected FetchRequestPrototypeBuiltins() {
+        super(JSFetchRequest.PROTOTYPE_NAME, FetchRequestPrototypeBuiltins.FetchRequestPrototype.class);
     }
 
-    public enum FetchResponsePrototype implements BuiltinEnum<FetchResponsePrototype> {
+    public enum FetchRequestPrototype implements BuiltinEnum<FetchRequestPrototypeBuiltins.FetchRequestPrototype> {
         clone(0),
         // body
         arrayBuffer(0),
@@ -93,7 +92,7 @@ public final class FetchResponsePrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         private final int length;
 
-        FetchResponsePrototype(int length) {
+        FetchRequestPrototype(int length) {
             this.length = length;
         }
 
@@ -104,32 +103,32 @@ public final class FetchResponsePrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, FetchResponsePrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, FetchRequestPrototypeBuiltins.FetchRequestPrototype builtinEnum) {
         switch (builtinEnum) {
             case clone:
-                return JSFetchResponseCloneNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSFetchRequestCloneNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case arrayBuffer:
-                return JSFetchResponseBodyArrayBufferNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSFetchRequestBodyArrayBufferNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case blob:
-                return JSFetchResponseBodyBlobNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSFetchRequestBodyBlobNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case formData:
-                return JSFetchResponseBodyFormDataNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSFetchRequestBodyFormDataNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case json:
-                return JSFetchResponseBodyJsonNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSFetchRequestBodyJsonNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case text:
-                return JSFetchResponseBodyTextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSFetchRequestBodyTextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
 
-    public abstract static class JSFetchResponseOperation extends JSBuiltinNode {
+    public abstract static class JSFetchRequestOperation extends JSBuiltinNode {
         @Child NewPromiseCapabilityNode newPromiseCapability;
         @Child JSFunctionCallNode promiseResolutionCallNode;
         @Child TryCatchNode.GetErrorObjectNode getErrorObjectNode;
         private final BranchProfile errorBranch = BranchProfile.create();
-        private final ConditionProfile isResponse = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isRequest = ConditionProfile.createBinaryProfile();
 
-        public JSFetchResponseOperation(JSContext context, JSBuiltin builtin) {
+        public JSFetchRequestOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
             this.promiseResolutionCallNode = JSFunctionCallNode.createCall();
@@ -151,86 +150,86 @@ public final class FetchResponsePrototypeBuiltins extends JSBuiltinsContainer.Sw
             return promiseCapability.getPromise();
         }
 
-        protected final JSFetchResponseObject asFetchResponse(Object object) {
-            if (isResponse.profile(JSFetchResponse.isJSFetchResponse(object))) {
-                return (JSFetchResponseObject) object;
+        protected final JSFetchRequestObject asFetchRequest(Object object) {
+            if (isRequest.profile(JSFetchRequest.isJSFetchRequest(object))) {
+                return (JSFetchRequestObject) object;
             } else {
-                throw Errors.createTypeError("Not a Response");
+                throw Errors.createTypeError("Not a Request");
             }
         }
     }
 
-    public abstract static class JSFetchResponseCloneNode extends JSFetchResponseOperation {
-        public JSFetchResponseCloneNode(JSContext context, JSBuiltin builtin) {
+    public abstract static class JSFetchRequestCloneNode extends FetchRequestPrototypeBuiltins.JSFetchRequestOperation {
+        public JSFetchRequestCloneNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSFetchResponseObject doOperation(Object thisResponse) {
-            FetchResponse response = asFetchResponse(thisResponse).getResponseMap();
-            FetchResponse cloned =  response.copy();
-            return JSFetchResponse.create(getContext(), getRealm(), cloned);
+        protected JSFetchRequestObject doOperation(Object thisRequest) {
+            FetchRequest request = asFetchRequest(thisRequest).getRequestMap();
+            FetchRequest cloned = request.copy();
+            return JSFetchRequest.create(getContext(), getRealm(), cloned);
         }
     }
 
-    public abstract static class JSFetchResponseBodyArrayBufferNode extends JSFetchResponseOperation {
-        public JSFetchResponseBodyArrayBufferNode(JSContext context, JSBuiltin builtin) {
+    public abstract static class JSFetchRequestBodyArrayBufferNode extends FetchRequestPrototypeBuiltins.JSFetchRequestOperation {
+        public JSFetchRequestBodyArrayBufferNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object doOperation(Object thisResponse) {
-            FetchResponse response = asFetchResponse(thisResponse).getResponseMap();
-            String body = response.consumeBody();
+        protected JSDynamicObject doOperation(Object thisRequest) {
+            FetchRequest request = asFetchRequest(thisRequest).getRequestMap();
+            String body = request.consumeBody();
             JSArrayBufferObject arrayBuffer = JSArrayBuffer.createArrayBuffer(getContext(), getRealm(), body.getBytes());
             return toPromise(arrayBuffer);
         }
     }
 
-    public abstract static class JSFetchResponseBodyBlobNode extends JSFetchResponseOperation {
-        public JSFetchResponseBodyBlobNode(JSContext context, JSBuiltin builtin) {
+    public abstract static class JSFetchRequestBodyBlobNode extends FetchRequestPrototypeBuiltins.JSFetchRequestOperation {
+        public JSFetchRequestBodyBlobNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object doOperation(@SuppressWarnings("unused") Object thisResponse) {
-            throw Errors.notImplemented("JSFetchResponseBodyBlobNode");
+        protected JSDynamicObject doOperation(@SuppressWarnings("unused") Object thisRequest) {
+            throw Errors.notImplemented("JSFetchRequestBodyBlobNode");
         }
     }
 
-    public abstract static class JSFetchResponseBodyFormDataNode extends JSFetchResponseOperation {
-        public JSFetchResponseBodyFormDataNode(JSContext context, JSBuiltin builtin) {
+    public abstract static class JSFetchRequestBodyFormDataNode extends FetchRequestPrototypeBuiltins.JSFetchRequestOperation {
+        public JSFetchRequestBodyFormDataNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object doOperation(@SuppressWarnings("unused") Object thisResponse) {
-            throw Errors.notImplemented("JSFetchResponseBodyFormDataNode");
+        protected JSDynamicObject doOperation(@SuppressWarnings("unused") Object thisRequest) {
+            throw Errors.notImplemented("JSFetchRequestBodyFormDataNode");
         }
     }
 
-    public abstract static class JSFetchResponseBodyJsonNode extends JSFetchResponseOperation {
-        public JSFetchResponseBodyJsonNode(JSContext context, JSBuiltin builtin) {
+    public abstract static class JSFetchRequestBodyJsonNode extends FetchRequestPrototypeBuiltins.JSFetchRequestOperation {
+        public JSFetchRequestBodyJsonNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSDynamicObject doOperation(Object thisResponse) {
-            FetchResponse response = asFetchResponse(thisResponse).getResponseMap();
+        protected JSDynamicObject doOperation(Object thisRequest) {
+            FetchRequest request = asFetchRequest(thisRequest).getRequestMap();
             TruffleJSONParser parser = new TruffleJSONParser(getContext());
-            return toPromise(parser.parse(TruffleString.fromJavaStringUncached(response.consumeBody(), TruffleString.Encoding.UTF_8), getRealm()));
+            return toPromise(parser.parse(TruffleString.fromJavaStringUncached(request.consumeBody(), TruffleString.Encoding.UTF_8), getRealm()));
         }
     }
 
-    public abstract static class JSFetchResponseBodyTextNode extends JSFetchResponseOperation {
-        public JSFetchResponseBodyTextNode(JSContext context, JSBuiltin builtin) {
+    public abstract static class JSFetchRequestBodyTextNode extends FetchRequestPrototypeBuiltins.JSFetchRequestOperation {
+        public JSFetchRequestBodyTextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSDynamicObject doOperation(Object thisResponse) {
-            FetchResponse response = asFetchResponse(thisResponse).getResponseMap();
-            String body = response.consumeBody();
+        protected JSDynamicObject doOperation(Object thisRequest) {
+            FetchRequest request = asFetchRequest(thisRequest).getRequestMap();
+            String body = request.consumeBody();
             return toPromise(TruffleString.fromJavaStringUncached(body == null ? "" : body, TruffleString.Encoding.UTF_8));
         }
     }

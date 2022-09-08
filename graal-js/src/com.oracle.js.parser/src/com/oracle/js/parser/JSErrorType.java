@@ -52,6 +52,7 @@ public enum JSErrorType {
     SyntaxError,
     TypeError,
     URIError,
+    FetchError,
     // since ES2021
     AggregateError
 }
