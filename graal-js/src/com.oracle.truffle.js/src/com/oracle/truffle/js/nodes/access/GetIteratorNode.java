@@ -81,10 +81,6 @@ public abstract class GetIteratorNode extends JavaScriptNode {
         this.getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
     }
 
-    public static GetIteratorNode create(JSContext context) {
-        return create(context, null);
-    }
-
     public static GetIteratorNode create(JSContext context, JavaScriptNode iteratedObject) {
         return GetIteratorNodeGen.create(context, iteratedObject);
     }

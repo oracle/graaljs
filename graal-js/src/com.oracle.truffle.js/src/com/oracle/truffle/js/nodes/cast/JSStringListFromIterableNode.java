@@ -48,7 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -93,7 +93,7 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isUndefined(iterable)", "!isString(iterable)"})
     protected static List<String> toArray(Object iterable,
-                    @Cached("create(context)") GetIteratorNode getIteratorNode,
+                    @Cached GetIteratorBaseNode getIteratorNode,
                     @Cached IteratorStepNode iteratorStepNode,
                     @Cached IteratorValueNode iteratorValueNode,
                     @Cached("create(context)") IteratorCloseNode iteratorCloseNode) {

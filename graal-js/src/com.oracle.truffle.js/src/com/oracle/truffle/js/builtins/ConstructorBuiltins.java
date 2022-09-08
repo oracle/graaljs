@@ -137,6 +137,7 @@ import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
@@ -2628,7 +2629,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private GetIteratorNode getIteratorNode;
+        @Child private GetIteratorBaseNode getIteratorNode;
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
         @Child private JSFunctionCallNode callAdderNode;
@@ -2646,7 +2647,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected IteratorRecord getIterator(Object iterator) {
             if (getIteratorNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorNode = insert(GetIteratorNode.create(getContext()));
+                getIteratorNode = insert(GetIteratorBaseNode.create());
             }
             return getIteratorNode.execute(iterator);
         }

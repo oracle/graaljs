@@ -62,7 +62,7 @@ import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetUnionNode
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -302,7 +302,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
      */
     protected abstract static class JSSetNewOperation extends JSSetOperation {
 
-        @Child protected GetIteratorNode getIteratorNode;
+        @Child protected GetIteratorBaseNode getIteratorNode;
         @Child protected IteratorStepNode iteratorStepNode;
         @Child protected IteratorValueNode iteratorValueNode;
         @Child protected IteratorCloseNode iteratorCloseNode;
@@ -316,7 +316,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         protected JSSetNewOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            getIteratorNode = GetIteratorNode.create(context);
+            getIteratorNode = GetIteratorBaseNode.create();
             iteratorStepNode = IteratorStepNode.create();
             iteratorValueNode = IteratorValueNode.create();
             iteratorCloseNode = IteratorCloseNode.create(context);
