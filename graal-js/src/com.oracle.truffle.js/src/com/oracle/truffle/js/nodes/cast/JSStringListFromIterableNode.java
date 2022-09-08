@@ -47,6 +47,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
@@ -79,10 +80,10 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
         return JSStringListFromIterableNodeGen.create(context);
     }
 
-    @Specialization(guards = {"isString(s)"})
+    @Specialization
     @TruffleBoundary
-    protected static List<String> stringToList(Object s) {
-        int[] codePoints = Strings.toJavaString(JSRuntime.toStringIsString(s)).codePoints().toArray();
+    protected static List<String> stringToList(TruffleString s) {
+        int[] codePoints = Strings.toJavaString(s).codePoints().toArray();
         int length = codePoints.length;
         List<String> result = new ArrayList<>(length);
         for (int i = 0; i < length; i++) {
@@ -113,7 +114,7 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
                     iteratorCloseNode.executeAbrupt(iteratorRecord.getIterator());
                     throw Errors.createTypeError("nonString value encountered!");
                 }
-                Boundaries.listAdd(list, Strings.toJavaString(JSRuntime.toString(nextValue)));
+                Boundaries.listAdd(list, Strings.toJavaString(JSRuntime.toStringIsString(nextValue)));
             }
         }
         return list;

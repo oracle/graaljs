@@ -2853,8 +2853,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.setNextIndexNode = PropertySetNode.createSetHidden(JSString.STRING_ITERATOR_NEXT_INDEX_ID, context);
         }
 
-        @Specialization(guards = "isString(thisObj)")
-        protected JSDynamicObject doString(Object thisObj) {
+        @Specialization
+        protected JSDynamicObject doString(TruffleString thisObj) {
             JSDynamicObject iterator = createObjectNode.execute(getRealm().getStringIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, thisObj);
             setNextIndexNode.setValueInt(iterator, 0);
