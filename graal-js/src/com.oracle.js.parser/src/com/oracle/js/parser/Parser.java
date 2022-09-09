@@ -5927,8 +5927,12 @@ public class Parser extends AbstractParser {
             }
             return new UnaryNode(unaryToken, expr);
         }
-        appendStatement(new ExpressionStatement(unaryLine, unaryToken, finish, expr));
-        return LiteralNode.newInstance(unaryToken, finish, true);
+        // Nothing to delete; the result is always true, but we have to preserve any side effects.
+        if (expr instanceof LiteralNode.PrimitiveLiteralNode<?>) {
+            return LiteralNode.newInstance(unaryToken, finish, true);
+        } else {
+            return new UnaryNode(unaryToken, expr);
+        }
     }
 
     private Expression verifyIncDecExpression(final long unaryToken, final TokenType opType, final Expression lhs, final boolean isPostfix) {
