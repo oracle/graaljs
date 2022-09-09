@@ -5848,7 +5848,6 @@ public class Parser extends AbstractParser {
      * @return Expression node.
      */
     private Expression unaryExpression(boolean yield, boolean await, CoverExpressionError coverExpression) {
-        final int unaryLine = line;
         final long unaryToken = token;
 
         switch (type) {
@@ -5860,7 +5859,7 @@ public class Parser extends AbstractParser {
                     throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
                 }
 
-                return verifyDeleteExpression(unaryLine, unaryToken, expr);
+                return verifyDeleteExpression(unaryToken, expr);
             }
             case VOID:
             case TYPEOF:
@@ -5913,7 +5912,7 @@ public class Parser extends AbstractParser {
         return expression;
     }
 
-    private Expression verifyDeleteExpression(final int unaryLine, final long unaryToken, final Expression expr) {
+    private Expression verifyDeleteExpression(final long unaryToken, final Expression expr) {
         if (expr instanceof BaseNode || expr instanceof IdentNode) {
             if (isStrictMode) {
                 if (expr instanceof IdentNode) {
