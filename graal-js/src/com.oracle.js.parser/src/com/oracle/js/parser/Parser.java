@@ -117,7 +117,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import com.oracle.js.parser.ir.ClassElement;
 import org.graalvm.collections.Pair;
 
 import com.oracle.js.parser.ir.AccessNode;
@@ -129,6 +128,7 @@ import com.oracle.js.parser.ir.BreakNode;
 import com.oracle.js.parser.ir.CallNode;
 import com.oracle.js.parser.ir.CaseNode;
 import com.oracle.js.parser.ir.CatchNode;
+import com.oracle.js.parser.ir.ClassElement;
 import com.oracle.js.parser.ir.ClassNode;
 import com.oracle.js.parser.ir.ContinueNode;
 import com.oracle.js.parser.ir.DebuggerNode;
