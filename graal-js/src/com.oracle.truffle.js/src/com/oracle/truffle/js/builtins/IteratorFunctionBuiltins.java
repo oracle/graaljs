@@ -100,7 +100,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
 
-        private ConditionProfile usingIteratorProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile usingIteratorProfile = ConditionProfile.createBinaryProfile();
 
         public JSIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
