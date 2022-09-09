@@ -49,6 +49,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
+import com.oracle.truffle.js.nodes.access.IterableToListNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
@@ -59,7 +61,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
@@ -98,7 +99,8 @@ public class WebAssemblyHostFunction implements TruffleObject {
                     @Cached ToJSValueNode toJSValueNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Cached BranchProfile errorBranch,
-                    @Cached BranchProfile growProfile,
+                    @Cached GetIteratorBaseNode getIteratorNode,
+                    @Cached IterableToListNode iterableToListNode,
                     @CachedLibrary("this") InteropLibrary self) {
         JSContext context = JavaScriptLanguage.get(self).getJSContext();
         if (!context.getContextOptions().isWasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
@@ -117,23 +119,9 @@ public class WebAssemblyHostFunction implements TruffleObject {
         } else if (resultTypes.length == 1) {
             return toWebAssemblyValueNode.execute(result, resultTypes[0]);
         } else {
-            result = JSRuntime.toObject(context, result);
-            if (!(result instanceof JSDynamicObject)) {
-                errorBranch.enter();
-                throw Errors.createTypeError("foreign objects not supported");
-            }
-            // Reimplemented representation of GetIteratorNode#iterableToList. Workaround for:
-            // TODO: GR-40731 (Add uncached versions of Iterator related JS Nodes)
-            SimpleArrayList<Object> values = new SimpleArrayList<>();
-            IteratorRecord iter = JSRuntime.getIterator((JSDynamicObject) result);
-            while (true) {
-                Object next = JSRuntime.iteratorStep(iter);
-                if (next == Boolean.FALSE) {
-                    break;
-                }
-                Object nextValue = JSRuntime.iteratorValue((JSDynamicObject) next);
-                values.add(nextValue, growProfile);
-            }
+            IteratorRecord iterator = getIteratorNode.execute(result);
+            SimpleArrayList<Object> values = iterableToListNode.execute(iterator);
+
             if (resultTypes.length != values.size()) {
                 errorBranch.enter();
                 throw Errors.createTypeError("invalid result array arity");

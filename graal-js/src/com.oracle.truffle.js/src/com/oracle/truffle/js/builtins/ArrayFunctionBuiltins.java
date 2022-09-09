@@ -243,7 +243,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         protected Object getIteratorValue(JSDynamicObject iteratorResult) {
             if (getIteratorValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorValueNode = insert(IteratorValueNode.create(getContext()));
+                getIteratorValueNode = insert(IteratorValueNode.create());
             }
             return getIteratorValueNode.execute(iteratorResult);
         }
@@ -251,7 +251,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         protected Object iteratorStep(IteratorRecord iteratorRecord) {
             if (iteratorStepNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorStepNode = insert(IteratorStepNode.create(getContext()));
+                iteratorStepNode = insert(IteratorStepNode.create());
             }
             return iteratorStepNode.execute(iteratorRecord);
         }

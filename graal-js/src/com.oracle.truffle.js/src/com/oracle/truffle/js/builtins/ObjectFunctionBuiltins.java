@@ -91,7 +91,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.FromPropertyDescriptorNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -1036,7 +1036,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class ObjectFromEntriesNode extends ObjectOperation {
         @Child private RequireObjectCoercibleNode requireObjectCoercibleNode = RequireObjectCoercibleNode.create();
-        @Child private GetIteratorNode getIteratorNode;
+        @Child private GetIteratorBaseNode getIteratorNode;
         @Child private IteratorStepNode iteratorStepNode;
         @Child private IteratorValueNode iteratorValueNode;
         @Child private IsObjectNode isObjectNode = IsObjectNode.create();
@@ -1047,9 +1047,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public ObjectFromEntriesNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getIteratorNode = GetIteratorNode.create(context);
-            this.iteratorStepNode = IteratorStepNode.create(context);
-            this.iteratorValueNode = IteratorValueNode.create(context);
+            this.getIteratorNode = GetIteratorBaseNode.create();
+            this.iteratorStepNode = IteratorStepNode.create();
+            this.iteratorValueNode = IteratorValueNode.create();
             this.readElementNode = ReadElementNode.create(context);
         }
 

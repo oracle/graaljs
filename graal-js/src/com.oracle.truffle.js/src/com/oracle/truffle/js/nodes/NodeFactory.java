@@ -1097,8 +1097,8 @@ public class NodeFactory {
         return AsyncIteratorNextNode.create(context, stateSlot.getIndex(), createReadNode, asyncContextNode, asyncResultNode);
     }
 
-    public JavaScriptNode createIteratorValue(JSContext context, JavaScriptNode iterator) {
-        return IteratorValueNode.create(context, iterator);
+    public JavaScriptNode createIteratorValue(JavaScriptNode iterator) {
+        return IteratorValueNode.create(iterator);
     }
 
     public JavaScriptNode createAsyncIteratorCloseWrapper(JSContext context, JSFrameSlot stateSlot, JavaScriptNode loopNode, JavaScriptNode iterator,

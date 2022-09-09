@@ -55,8 +55,8 @@ public abstract class PerformPromiseCombinatorNode extends JavaScriptBaseNode {
 
     protected PerformPromiseCombinatorNode(JSContext context) {
         this.context = context;
-        this.iteratorStep = IteratorStepNode.create(context);
-        this.iteratorValue = IteratorValueNode.create(context);
+        this.iteratorStep = IteratorStepNode.create();
+        this.iteratorValue = IteratorValueNode.create();
     }
 
     public abstract JSDynamicObject execute(IteratorRecord iteratorRecord, JSDynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve);

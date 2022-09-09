@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,32 +40,40 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
- * ES6 7.4.5 IteratorStep(iterator).
+ * IteratorStep(iterator). Returns the next iterator result or false if done.
  */
-public class IteratorStepNode extends JavaScriptBaseNode {
-    @Child private IteratorNextNode iteratorNextNode;
-    @Child private IteratorCompleteNode iteratorCompleteNode;
+@GenerateUncached
+public abstract class IteratorStepNode extends JavaScriptBaseNode {
 
-    protected IteratorStepNode(JSContext context) {
-        this.iteratorNextNode = IteratorNextNode.create();
-        this.iteratorCompleteNode = IteratorCompleteNode.create(context);
+    protected IteratorStepNode() {
     }
 
-    public static IteratorStepNode create(JSContext context) {
-        return new IteratorStepNode(context);
-    }
+    public abstract Object execute(IteratorRecord iteratorRecord);
 
-    public Object execute(IteratorRecord iteratorRecord) {
+    @Specialization
+    protected static Object step(IteratorRecord iteratorRecord,
+                    @Cached IteratorNextNode iteratorNextNode,
+                    @Cached("create(getLanguage().getJSContext())") IteratorCompleteNode iteratorCompleteNode) {
         Object result = iteratorNextNode.execute(iteratorRecord);
         Object done = iteratorCompleteNode.execute(result);
         if (done == Boolean.TRUE) {
             return false;
         }
         return result;
+    }
+
+    public static IteratorStepNode create() {
+        return IteratorStepNodeGen.create();
+    }
+
+    public static IteratorStepNode getUncached() {
+        return IteratorStepNodeGen.getUncached();
     }
 }

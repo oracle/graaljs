@@ -536,7 +536,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Child private IsArrayNode isArrayNode;
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private ArrayWriteElementCacheNode arrayWriteElementNode;
-        @Child private IsJSObjectNode isObjectNode;
+        @Child private IsJSDynamicObjectNode isObjectNode;
         private final ConditionProfile intOrStringIndexProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile arrayProfile = ConditionProfile.createBinaryProfile();
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
@@ -545,7 +545,7 @@ public class WriteElementNode extends JSTargetableNode {
         JSObjectWriteElementTypeCacheNode(WriteElementTypeCacheNode next) {
             super(next);
             this.isArrayNode = IsArrayNode.createIsFastOrTypedArray();
-            this.isObjectNode = IsJSObjectNode.createIncludeNullUndefined();
+            this.isObjectNode = IsJSDynamicObjectNode.create();
         }
 
         @Override

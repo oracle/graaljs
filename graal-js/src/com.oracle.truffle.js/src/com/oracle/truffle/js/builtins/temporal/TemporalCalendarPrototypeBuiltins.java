@@ -86,7 +86,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -295,7 +295,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class JSTemporalCalendarFields extends JSTemporalBuiltinOperation {
         @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private GetIteratorNode getIteratorNode;
+        @Child private GetIteratorBaseNode getIteratorNode;
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
 
@@ -310,7 +310,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected IteratorRecord getIterator(Object iterator) {
             if (getIteratorNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorNode = insert(GetIteratorNode.create(getContext()));
+                getIteratorNode = insert(GetIteratorBaseNode.create());
             }
             return getIteratorNode.execute(iterator);
         }
@@ -318,7 +318,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected Object getIteratorValue(JSDynamicObject iteratorResult) {
             if (getIteratorValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorValueNode = insert(IteratorValueNode.create(getContext()));
+                getIteratorValueNode = insert(IteratorValueNode.create());
             }
             return getIteratorValueNode.execute(iteratorResult);
         }
@@ -326,7 +326,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected Object iteratorStep(IteratorRecord iterator) {
             if (iteratorStepNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorStepNode = insert(IteratorStepNode.create(getContext()));
+                iteratorStepNode = insert(IteratorStepNode.create());
             }
             return iteratorStepNode.execute(iterator);
         }

@@ -270,14 +270,13 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isString(value)", "!isCallable(replacer)", "!isArray(replacer)"})
+        @Specialization(guards = {"!isCallable(replacer)", "!isArray(replacer)"})
         // GR-24628: JSON.stringify is frequently called with (just) a String argument
-        protected Object stringifyAStringNoReplacer(Object value, Object replacer, Object spaceParam,
+        protected Object stringifyAStringNoReplacer(TruffleString str, Object replacer, Object spaceParam,
                         @Cached("createStringBuilderProfile()") StringBuilderProfile stringBuilderProfile,
                         @Cached TruffleStringBuilder.AppendCharUTF16Node appendRawValueNode,
                         @Cached TruffleStringBuilder.AppendStringNode appendStringNode,
                         @Cached TruffleStringBuilder.ToStringNode builderToStringNode) {
-            TruffleString str = JSRuntime.toStringIsString(value);
             TruffleStringBuilder builder = Strings.builderCreate(Strings.length(str) + 8);
             JSONStringifyStringNode.jsonQuote(stringBuilderProfile, builder, str, appendRawValueNode, appendStringNode);
             return StringBuilderProfile.toString(builderToStringNode, builder);

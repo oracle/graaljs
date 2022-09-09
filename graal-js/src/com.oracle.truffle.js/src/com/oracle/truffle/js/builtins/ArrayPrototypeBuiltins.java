@@ -1332,11 +1332,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private Object toStringForeign(Object arrayObj) {
             InteropLibrary interop = getInterop();
-            if (shouldTryOwnJoin(arrayObj) && interop.isMemberInvocable(arrayObj, Strings.toJavaString(Strings.JOIN))) {
+            if (shouldTryOwnJoin(arrayObj) && interop.isMemberInvocable(arrayObj, Strings.JOIN_JLS)) {
                 Object result;
                 try {
                     try {
-                        result = interop.invokeMember(arrayObj, Strings.toJavaString(Strings.JOIN));
+                        result = interop.invokeMember(arrayObj, Strings.JOIN_JLS);
                     } catch (AbstractTruffleException e) {
                         if (InteropLibrary.getUncached(e).getExceptionType(e) == ExceptionType.RUNTIME_ERROR) {
                             result = null;

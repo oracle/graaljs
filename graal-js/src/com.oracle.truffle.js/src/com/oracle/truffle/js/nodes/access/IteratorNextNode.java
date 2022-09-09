@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -51,21 +52,18 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 /**
  * ES6 7.4.2 IteratorNext(iterator, value).
  */
-public class IteratorNextNode extends JavaScriptBaseNode {
+public abstract class IteratorNextNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode methodCallNode;
     @Child private IsObjectNode isObjectNode;
-    private final BranchProfile errorBranch = BranchProfile.create();
+    private final BranchProfile errorBranch;
 
-    protected IteratorNextNode() {
-        this.methodCallNode = JSFunctionCallNode.createCall();
-        this.isObjectNode = IsObjectNode.create();
+    protected IteratorNextNode(JSFunctionCallNode methodCallNode, IsObjectNode isObjectNode, BranchProfile errorBranch) {
+        this.methodCallNode = methodCallNode;
+        this.isObjectNode = isObjectNode;
+        this.errorBranch = errorBranch;
     }
 
-    public static IteratorNextNode create() {
-        return new IteratorNextNode();
-    }
-
-    public Object execute(IteratorRecord iteratorRecord, Object value) {
+    public final Object execute(IteratorRecord iteratorRecord, Object value) {
         Object nextMethod = iteratorRecord.getNextMethod();
         JSDynamicObject iterator = iteratorRecord.getIterator();
         Object result = methodCallNode.executeCall(JSArguments.createOneArg(iterator, nextMethod, value));
@@ -76,7 +74,7 @@ public class IteratorNextNode extends JavaScriptBaseNode {
         return result;
     }
 
-    public Object execute(IteratorRecord iteratorRecord) {
+    public final Object execute(IteratorRecord iteratorRecord) {
         Object nextMethod = iteratorRecord.getNextMethod();
         JSDynamicObject iterator = iteratorRecord.getIterator();
         Object result = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, nextMethod));
@@ -87,4 +85,31 @@ public class IteratorNextNode extends JavaScriptBaseNode {
         return result;
     }
 
+    public static IteratorNextNode create() {
+        return new Cached();
+    }
+
+    public static IteratorNextNode getUncached() {
+        return Uncached.INSTANCE;
+    }
+
+    static final class Cached extends IteratorNextNode {
+        Cached() {
+            super(JSFunctionCallNode.createCall(), IsObjectNode.create(), BranchProfile.create());
+        }
+    }
+
+    @DenyReplace
+    static final class Uncached extends IteratorNextNode {
+        static final Uncached INSTANCE = new Uncached();
+
+        private Uncached() {
+            super(JSFunctionCallNode.getUncachedCall(), IsObjectNode.getUncached(), BranchProfile.getUncached());
+        }
+
+        @Override
+        public boolean isAdoptable() {
+            return false;
+        }
+    }
 }

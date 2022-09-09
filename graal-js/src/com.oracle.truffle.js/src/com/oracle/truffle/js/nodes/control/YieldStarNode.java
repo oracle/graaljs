@@ -46,7 +46,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
@@ -64,7 +64,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class YieldStarNode extends AbstractYieldNode implements ResumableNode.WithObjectState {
-    @Child private GetIteratorNode getIteratorNode;
+    @Child private GetIteratorBaseNode getIteratorNode;
     @Child private IteratorNextNode iteratorNextNode;
     @Child private IteratorCompleteNode iteratorCompleteNode;
     @Child private IteratorValueNode iteratorValueNode;
@@ -77,10 +77,10 @@ public class YieldStarNode extends AbstractYieldNode implements ResumableNode.Wi
 
     protected YieldStarNode(JSContext context, int stateSlot, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, YieldResultNode yieldResultNode) {
         super(context, stateSlot, expression, yieldValue, returnNode, yieldResultNode);
-        this.getIteratorNode = GetIteratorNode.create(context);
+        this.getIteratorNode = GetIteratorBaseNode.create();
         this.iteratorNextNode = IteratorNextNode.create();
         this.iteratorCompleteNode = IteratorCompleteNode.create(context);
-        this.iteratorValueNode = IteratorValueNode.create(context, null);
+        this.iteratorValueNode = IteratorValueNode.create();
         this.getThrowMethodNode = GetMethodNode.create(context, Strings.THROW);
         this.getReturnMethodNode = GetMethodNode.create(context, Strings.RETURN);
         this.callThrowNode = JSFunctionCallNode.createCall();

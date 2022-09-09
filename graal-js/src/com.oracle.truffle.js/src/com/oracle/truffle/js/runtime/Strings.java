@@ -55,6 +55,7 @@ public final class Strings {
 
     public static final TruffleString EMPTY_STRING = TruffleString.Encoding.UTF_16.getEmpty();
     public static final TruffleString LINE_SEPARATOR = constant("\n");
+    public static final String LINE_SEPARATOR_JLS = toJavaString(LINE_SEPARATOR);
 
     /* Numeric */
     public static final TruffleString ZERO = constant("0");
@@ -187,6 +188,7 @@ public final class Strings {
     public static final TruffleString HAS = constant("has");
     public static final TruffleString INSTANCE = constant("instance");
     public static final TruffleString JOIN = constant("join");
+    public static final String JOIN_JLS = toJavaString(JOIN);
     public static final TruffleString JSON = constant("json");
     public static final TruffleString KEY = constant("key");
     public static final TruffleString KEYS = constant("keys");
@@ -224,6 +226,7 @@ public final class Strings {
     public static final TruffleString UPPER = constant("upper");
     public static final TruffleString URL = constant("url");
     public static final TruffleString VALUE = constant("value");
+    public static final String VALUE_JLS = toJavaString(VALUE);
     public static final TruffleString VALUES = constant("values");
     public static final TruffleString WITH = constant("with");
 
@@ -249,9 +252,11 @@ public final class Strings {
     public static final TruffleString TO_ISO_STRING = constant("toISOString");
     public static final TruffleString TO_LOCALE_STRING = constant("toLocaleString");
     public static final TruffleString TO_STRING = constant("toString");
+    public static final String TO_STRING_JLS = toJavaString(TO_STRING);
     public static final TruffleString TO_UTC_STRING = constant("toUTCString");
     public static final TruffleString TO_GMT_STRING = constant("toGMTString");
     public static final TruffleString VALUE_OF = constant("valueOf");
+    public static final String VALUE_OF_JLS = toJavaString(VALUE_OF);
     public static final TruffleString IMPORT_SCRIPT_ENGINE_GLOBAL_BINDINGS = constant("importScriptEngineGlobalBindings");
     public static final TruffleString HAS_INSTANCE = constant("hasInstance");
     public static final TruffleString IS_CONCAT_SPREADABLE = constant("isConcatSpreadable");
