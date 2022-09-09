@@ -167,8 +167,8 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected static class AsyncIteratorAwaitNode<T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> extends JavaScriptBaseNode {
-        public static final HiddenKey THIS_ID = new HiddenKey("this");
-        private static final HiddenKey ARGS_ID = new HiddenKey("args");
+        public static final HiddenKey THIS_ID = new HiddenKey("awaitThis");
+        private static final HiddenKey ARGS_ID = new HiddenKey("awaitArgs");
 
         public abstract static class AsyncIteratorRootNode<T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> extends JavaScriptRootNode implements AsyncHandlerRootNode {
             @Child protected JavaScriptNode valueNode;
