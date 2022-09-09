@@ -528,7 +528,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean temporal;
 
     public static final String ITERATOR_HELPERS_NAME = JS_OPTION_PREFIX + "iterator-helpers";
-    @Option(name = ITERATOR_HELPERS_NAME, category = OptionCategory.EXPERT, help = "Enable JavaScript Temporal API.") //
+    @Option(name = ITERATOR_HELPERS_NAME, category = OptionCategory.EXPERT, help = "Enable JavaScript Iterator Helpers API.") //
     public static final OptionKey<Boolean> ITERATOR_HELPERS = new OptionKey<>(false);
     @CompilationFinal private boolean iteratorHelpers;
 
