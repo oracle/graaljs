@@ -82,14 +82,6 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
         public int getLength() {
             return length;
         }
-
-        @Override
-        public int getECMAScriptVersion() {
-            if (EnumSet.of(from).contains(this)) {
-                return JSConfig.StagingECMAScriptVersion;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
-        }
     }
 
     @Override

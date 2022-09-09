@@ -54,7 +54,7 @@ public class AsyncIteratorFunctionBuiltinsTest {
     @Test
     public void testConstructor() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             try {
                 context.eval(JavaScriptLanguage.ID, "new AsyncIterator()");
@@ -74,7 +74,7 @@ public class AsyncIteratorFunctionBuiltinsTest {
     @Test
     public void testFrom() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({[Symbol.asyncIterator]: async () => ({next: () => ({done: true})})})");
             Assert.assertTrue(result.hasMembers());

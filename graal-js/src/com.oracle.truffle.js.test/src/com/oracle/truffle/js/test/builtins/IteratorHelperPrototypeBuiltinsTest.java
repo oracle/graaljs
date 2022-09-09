@@ -53,7 +53,7 @@ public class IteratorHelperPrototypeBuiltinsTest {
     @Test
     public void testPrototype() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Object.getPrototypeOf(Object.getPrototypeOf([].values().drop(0))) === Iterator.prototype");
             Assert.assertTrue(result.asBoolean());
@@ -66,7 +66,7 @@ public class IteratorHelperPrototypeBuiltinsTest {
     @Test
     public void testNext() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1].values().drop(0).next()");
             Assert.assertTrue(result.hasMembers());
@@ -87,7 +87,7 @@ public class IteratorHelperPrototypeBuiltinsTest {
     @Test
     public void testReturn() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "function* test() {yield 1; yield 2;}; var x = test(); var y = x.drop(0); y.next(); y.return(); x.next()");
             Assert.assertTrue(result.hasMembers());
@@ -116,7 +116,7 @@ public class IteratorHelperPrototypeBuiltinsTest {
     @Test
     public void testGeneratorStates() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             try {
                 context.eval(JavaScriptLanguage.ID, "var obj = Iterator.from({next(){return obj.next()}}).map(v => v); obj.next()");

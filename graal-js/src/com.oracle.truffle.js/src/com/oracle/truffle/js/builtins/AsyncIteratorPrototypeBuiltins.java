@@ -133,11 +133,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public int getLength() {
             return length;
         }
-
-        @Override
-        public int getECMAScriptVersion() {
-            return BuiltinEnum.super.getECMAScriptVersion();
-        }
     }
 
     @Override

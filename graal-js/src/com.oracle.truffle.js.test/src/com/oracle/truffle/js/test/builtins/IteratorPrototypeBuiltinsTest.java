@@ -56,7 +56,7 @@ public class IteratorPrototypeBuiltinsTest {
     public void testObject() {
         String src = "var parent = Object.getPrototypeOf(Iterator.prototype) === Object.prototype; var proto = typeof Iterator.prototype";
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, src);
             var parent = context.getBindings(JavaScriptLanguage.ID).getMember("parent");
@@ -71,7 +71,7 @@ public class IteratorPrototypeBuiltinsTest {
     public void testConstructor() {
         String src = "Iterator.prototype.constructor === Iterator";
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Assert.assertTrue(context.eval(JavaScriptLanguage.ID, src).asBoolean());
         }
@@ -80,7 +80,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testMapChainIdentity() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[].values().map(x => x).map === Iterator.prototype.map");
             Assert.assertTrue(result.isBoolean());
@@ -91,7 +91,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testMap() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3].values().map(x => 2*x).toArray()");
             Assert.assertTrue(result.hasMembers());
@@ -135,7 +135,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testFilter() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3, 4].values().filter(x => x%2===0).toArray()");
             Assert.assertTrue(result.hasMembers());
@@ -178,7 +178,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testTake() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3, 4].values().take(2).toArray()");
             Assert.assertTrue(result.hasMembers());
@@ -232,7 +232,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testDrop() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3, 4].values().drop(2).toArray()");
             Assert.assertTrue(result.hasMembers());
@@ -286,7 +286,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testIndexed() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2].values().indexed().toArray()");
             Assert.assertTrue(result.hasMembers());
@@ -320,7 +320,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testFlatMap() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2].values().flatMap(x => [0, x]).toArray()");
             Assert.assertTrue(result.hasMembers());
@@ -365,7 +365,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testReduce() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2].values().reduce((a, b) => a + b, 1)");
             Assert.assertEquals(4, result.asInt());
@@ -406,7 +406,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testToArray() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2].values().toArray()");
             Assert.assertTrue(result.hasMembers());
@@ -431,7 +431,7 @@ public class IteratorPrototypeBuiltinsTest {
     public void testToAsync() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "[1, 2].values().toAsync().next().then(x => console.log(x.done, x.value))");
@@ -442,7 +442,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testForEach() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "var sum = 1; [1, 2].values().forEach(x => sum+=x); sum");
             Assert.assertEquals(4, result.asInt());
@@ -477,7 +477,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testSome() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3].values().some(x => x > 2)");
             Assert.assertTrue(result.isBoolean());
@@ -519,7 +519,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testEvery() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3].values().every(x => x < 4)");
             Assert.assertTrue(result.isBoolean());
@@ -561,7 +561,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testFind() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3].values().find(x => x > 3)");
             Assert.assertTrue(result.isNull());
@@ -601,7 +601,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testToString() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype[Symbol.toStringTag]");
             Assert.assertEquals("Iterator", result.asString());
@@ -612,7 +612,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testCombined() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[4,5,6,7].values().indexed().flatMap(x => x).filter(x=>x>1).map(x => x*2).drop(3).take(1).reduce((a, b) => a + b, -1)");
             Assert.assertEquals(11, result.asInt());

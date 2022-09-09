@@ -53,7 +53,7 @@ public class WrapForIteratorPrototypeBuiltinsTest {
     @Test
     public void testPrototype() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Object.getPrototypeOf(Object.getPrototypeOf(Iterator.from({next: () => ({done: true})}))) === Iterator.prototype");
             Assert.assertTrue(result.asBoolean());
@@ -63,7 +63,7 @@ public class WrapForIteratorPrototypeBuiltinsTest {
     @Test
     public void testNext() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Iterator.from({next: () => ({value: typeof this, done: true})}).next()");
             Assert.assertTrue(result.hasMembers());
@@ -84,7 +84,7 @@ public class WrapForIteratorPrototypeBuiltinsTest {
     @Test
     public void testReturn() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Iterator.from({next: () => ({value: typeof this, done: false}), return: () => ({done: true})}).return()");
             Assert.assertTrue(result.hasMembers());

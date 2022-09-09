@@ -85,14 +85,6 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         public int getLength() {
             return length;
         }
-
-        @Override
-        public int getECMAScriptVersion() {
-            if (EnumSet.of(from).contains(this)) {
-                return JSConfig.StagingECMAScriptVersion;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
-        }
     }
 
     @Override

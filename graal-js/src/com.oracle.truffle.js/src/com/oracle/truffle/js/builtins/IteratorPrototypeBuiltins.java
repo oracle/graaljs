@@ -131,11 +131,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public int getLength() {
             return length;
         }
-
-        @Override
-        public int getECMAScriptVersion() {
-            return BuiltinEnum.super.getECMAScriptVersion();
-        }
     }
 
     @Override

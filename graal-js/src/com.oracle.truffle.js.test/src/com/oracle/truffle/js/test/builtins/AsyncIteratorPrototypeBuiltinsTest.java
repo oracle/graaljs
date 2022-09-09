@@ -56,7 +56,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testObject() {
         String src = "var parent = Object.getPrototypeOf(AsyncIterator.prototype) === Object.prototype; var proto = typeof AsyncIterator.prototype";
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, src);
             var parent = context.getBindings(JavaScriptLanguage.ID).getMember("parent");
@@ -71,7 +71,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testConstructor() {
         String src = "AsyncIterator.prototype.constructor === AsyncIterator";
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Assert.assertTrue(context.eval(JavaScriptLanguage.ID, src).asBoolean());
         }
@@ -81,7 +81,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testMap() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2, 3]).map(x => 2*x).toArray().then(x => console.log(x))");
@@ -116,7 +116,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testFilter() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2, 3, 4]).filter(x => x%2===0).toArray().then(x => console.log(x))");
@@ -151,7 +151,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testTake() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2, 3, 4]).take(2).toArray().then(x => console.log(x))");
@@ -197,7 +197,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testDrop() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2, 3, 4]).drop(2).toArray().then(x => console.log(x))");
@@ -243,7 +243,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testIndexed() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2]).indexed().toArray().then(x => {for (const y of x) console.log(y)})");
@@ -266,7 +266,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testFlatMap() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2]).flatMap(x => [0, x]).toArray().then(x => console.log(x))");
@@ -301,7 +301,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testReduce() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2]).reduce((a, b) => a + b, 1).then(x => console.log(x))");
@@ -338,7 +338,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testToArray() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2]).toArray().then(x => console.log(x))");
@@ -361,7 +361,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testForEach() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2]).forEach(x => console.log(x)).then(() => console.log())");
@@ -394,7 +394,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testSome() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2, 3]).some(x => x > 2).then(x => console.log(x))");
@@ -432,7 +432,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testEvery() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2, 3]).every(x => x < 4).then(x => console.log(x))");
@@ -470,7 +470,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testFind() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2, 3]).find(x => x > 3).then(x => console.log(x))");
@@ -507,7 +507,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     @Test
     public void testToString() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype[Symbol.toStringTag]");
             Assert.assertEquals("Async Iterator", result.asString());
@@ -519,7 +519,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     public void testCombined() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([4,5,6,7]).indexed().flatMap(x => x).filter(x=>x>1).map(x => x*2).drop(3).take(1).reduce((a, b) => a + b, -1).then(x => console.log(x))");

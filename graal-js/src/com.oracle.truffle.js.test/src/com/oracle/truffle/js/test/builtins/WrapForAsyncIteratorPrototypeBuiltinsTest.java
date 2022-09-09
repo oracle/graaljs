@@ -54,7 +54,7 @@ public class WrapForAsyncIteratorPrototypeBuiltinsTest {
     @Test
     public void testPrototype() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Object.getPrototypeOf(Object.getPrototypeOf(AsyncIterator.from({next: async () => ({done: true})}))) === AsyncIterator.prototype");
             Assert.assertTrue(result.asBoolean());
@@ -65,7 +65,7 @@ public class WrapForAsyncIteratorPrototypeBuiltinsTest {
     public void testNext() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: () => ({value: typeof this, done: true})}).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
@@ -89,7 +89,7 @@ public class WrapForAsyncIteratorPrototypeBuiltinsTest {
     public void testReturn() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: () => ({value: typeof this, done: false}), return: () => ({done: true})}).return().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");

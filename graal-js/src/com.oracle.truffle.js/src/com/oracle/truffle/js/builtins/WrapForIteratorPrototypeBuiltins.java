@@ -82,14 +82,6 @@ public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         public int getLength() {
             return length;
         }
-
-        @Override
-        public int getECMAScriptVersion() {
-            if (EnumSet.of(next, return_).contains(this)) {
-                return JSConfig.StagingECMAScriptVersion;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
-        }
     }
 
     @Override

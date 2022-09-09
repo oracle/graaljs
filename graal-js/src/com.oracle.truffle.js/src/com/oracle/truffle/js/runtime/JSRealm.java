@@ -707,8 +707,7 @@ public class JSRealm {
             this.bigIntPrototype = null;
         }
 
-        boolean isStaging = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion;
-        if (isStaging) {
+        if (context.getContextOptions().isIteratorHelpers()) {
             ctor = JSIterator.createConstructor(this);
             this.iteratorConstructor = ctor.getFunctionObject();
             this.iteratorPrototype = ctor.getPrototype();
@@ -1852,7 +1851,7 @@ public class JSRealm {
             putGlobalProperty(JSPromise.CLASS_NAME, getPromiseConstructor());
             this.promiseAllFunctionObject = (JSDynamicObject) JSObject.get(getPromiseConstructor(), Strings.ALL);
         }
-        if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
+        if (context.getContextOptions().isIteratorHelpers()) {
             putGlobalProperty(JSIterator.CLASS_NAME, getIteratorConstructor());
             putGlobalProperty(JSAsyncIterator.CLASS_NAME, getAsyncIteratorConstructor());
         }
