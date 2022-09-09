@@ -42,17 +42,14 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -63,65 +60,28 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 public abstract class IteratorToArrayNode extends JavaScriptNode {
     private final JSContext context;
     @Child @Executed JavaScriptNode iteratorNode;
-    @Child private IteratorNextNode nextNode;
-    @Child private PropertyGetNode getDoneNode;
-    @Child private IsJSObjectNode isObjectNode;
-    @Child private JSToBooleanNode toBooleanNode;
-    @Child private IteratorValueNode valueNode;
+    @Child private IteratorGetNextValueNode iteratorStepNode;
 
-    @CompilerDirectives.CompilationFinal private int capacity = 0;
-    @CompilerDirectives.CompilationFinal private boolean first = true;
-
-    private final BranchProfile firstGrowProfile = BranchProfile.create();
-    private final BranchProfile growProfile = BranchProfile.create();
-    private final BranchProfile errorProfile = BranchProfile.create();
-
-    protected IteratorToArrayNode(JSContext context, JavaScriptNode iteratorNode, IteratorValueNode valueNode) {
+    protected IteratorToArrayNode(JSContext context, JavaScriptNode iteratorNode, IteratorGetNextValueNode iteratorStepNode) {
         this.context = context;
         this.iteratorNode = iteratorNode;
-        this.valueNode = valueNode;
-
-        nextNode = IteratorNextNode.create();
-        getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
-        isObjectNode = IsJSObjectNode.create();
-        toBooleanNode = JSToBooleanNode.create();
+        this.iteratorStepNode = iteratorStepNode;
     }
 
     public static IteratorToArrayNode create(JSContext context, JavaScriptNode iterator) {
-        IteratorValueNode valueNode = IteratorValueNode.create(context);
-        return IteratorToArrayNodeGen.create(context, iterator, valueNode);
+        IteratorGetNextValueNode iteratorStep = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
+        return IteratorToArrayNodeGen.create(context, iterator, iteratorStep);
     }
 
     @Specialization(guards = "!iteratorRecord.isDone()")
-    protected Object doIterator(IteratorRecord iteratorRecord) {
-        SimpleArrayList<Object> items = new SimpleArrayList<>(capacity);
-
-        while (true) {
-            Object next = nextNode.execute(iteratorRecord);
-            if (!isObjectNode.executeBoolean(next)) {
-                errorProfile.enter();
-                throw Errors.createTypeErrorIterResultNotAnObject(next, this);
-            }
-            if (toBooleanNode.executeBoolean(getDoneNode.getValue(next))) {
-                break;
-            }
-
-            items.add(valueNode.execute(next), first ? firstGrowProfile : growProfile);
+    protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord,
+                                @Cached BranchProfile growProfile) {
+        SimpleArrayList<Object> elements = new SimpleArrayList<>();
+        Object value;
+        while ((value = iteratorStepNode.execute(frame, iteratorRecord)) != null) {
+            elements.add(value, growProfile);
         }
-
-        if (CompilerDirectives.inInterpreter()) {
-            if (first) {
-                capacity = items.size();
-                first = false;
-            } else if (capacity != items.size()) {
-                //Capacity is changing even though we are still in interpreter. Assume fluctuating capacity values.
-                capacity = 0;
-            }
-        }
-
-        iteratorRecord.setDone(true);
-
-        return JSArray.createZeroBasedObjectArray(context, getRealm(), items.toArray());
+        return JSArray.createZeroBasedObjectArray(context, getRealm(), elements.toArray());
     }
 
     @Specialization(guards = "iteratorRecord.isDone()")
@@ -133,6 +93,6 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return IteratorToArrayNodeGen.create(context, cloneUninitialized(iteratorNode, materializedTags), cloneUninitialized(valueNode, materializedTags));
+        return IteratorToArrayNodeGen.create(context, cloneUninitialized(iteratorNode, materializedTags), cloneUninitialized(iteratorStepNode, materializedTags));
     }
 }
