@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.nonConfigurableMessage;
+import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.nonWritableMessage;
+import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.notExtensibleMessage;
+import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.reject;
+
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -260,15 +265,27 @@ public final class JSDictionary extends JSNonProxy {
     @Override
     public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key);
-        if (!hasOwnProperty(thisObj, key) && JSObject.isExtensible(thisObj)) {
-            getHashMap(thisObj).put(key, makeFullyPopulatedPropertyDescriptor(desc));
-            return true;
+        PropertyDescriptor current = getHashMap(thisObj).get(key);
+        if (current == null) {
+            current = super.getOwnProperty(thisObj, key);
+            boolean extensible = JSObject.isExtensible(thisObj);
+            if (current == null) {
+                if (!extensible) {
+                    return reject(doThrow, notExtensibleMessage(key, doThrow));
+                }
+                validateAndPutDesc(thisObj, key, makeFullyPopulatedPropertyDescriptor(desc));
+                return true;
+            } else {
+                return DefinePropertyUtil.validateAndApplyPropertyDescriptor(thisObj, key, extensible, desc, current, doThrow);
+            }
+        } else {
+            return validateAndApplyPropertyDescriptorExisting(thisObj, key, desc, current, doThrow);
         }
+    }
 
-        // defineProperty is currently not supported on dictionary objects,
-        // so we need to convert back to a normal shape-based object.
-        makeOrdinaryObject(thisObj, "defineOwnProperty");
-        return super.defineOwnProperty(thisObj, key, desc, doThrow);
+    private static PropertyDescriptor validateAndPutDesc(JSDynamicObject thisObj, Object key, PropertyDescriptor newDesc) {
+        assert newDesc.isFullyPopulatedPropertyDescriptor();
+        return getHashMap(thisObj).put(key, newDesc);
     }
 
     /**
@@ -293,6 +310,76 @@ public final class JSDictionary extends JSNonProxy {
         } else {
             assert desc.isGenericDescriptor();
             return PropertyDescriptor.createData(Undefined.instance, desc.getEnumerable(), desc.getWritable(), desc.getConfigurable());
+        }
+    }
+
+    private static boolean validateAndApplyPropertyDescriptorExisting(JSDynamicObject thisObj, Object key, PropertyDescriptor descriptor, PropertyDescriptor currentDesc, boolean doThrow) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert currentDesc.isFullyPopulatedPropertyDescriptor();
+        if (descriptor.hasNoFields()) {
+            return true;
+        }
+
+        if (!currentDesc.getConfigurable()) {
+            if ((descriptor.hasConfigurable() && descriptor.getConfigurable()) ||
+                            (descriptor.hasEnumerable() && (descriptor.getEnumerable() != currentDesc.getEnumerable()))) {
+                return reject(doThrow, nonConfigurableMessage(key, doThrow));
+            }
+            if (!descriptor.isGenericDescriptor() && descriptor.isAccessorDescriptor() != currentDesc.isAccessorDescriptor()) {
+                return reject(doThrow, nonConfigurableMessage(key, doThrow));
+            }
+            if (currentDesc.isAccessorDescriptor()) {
+                if ((descriptor.hasGet() && !JSRuntime.isSameValue(descriptor.getGet(), currentDesc.getGet())) ||
+                                (descriptor.hasSet() && !JSRuntime.isSameValue(descriptor.getSet(), currentDesc.getSet()))) {
+                    return reject(doThrow, nonConfigurableMessage(key, doThrow));
+                }
+            } else {
+                assert currentDesc.isDataDescriptor();
+                if (!currentDesc.getWritable()) {
+                    if (descriptor.hasWritable() && descriptor.getWritable()) {
+                        return reject(doThrow, nonConfigurableMessage(key, doThrow));
+                    }
+                    if (descriptor.hasValue() && !JSRuntime.isSameValue(descriptor.getValue(), currentDesc.getValue())) {
+                        return reject(doThrow, nonWritableMessage(key, doThrow));
+                    }
+                }
+            }
+        }
+
+        if (currentDesc.isDataDescriptor() && descriptor.isAccessorDescriptor()) {
+            PropertyDescriptor newDesc = PropertyDescriptor.createAccessor(descriptor.getGet(), descriptor.getSet(),
+                            descriptor.getIfHasEnumerable(currentDesc.getEnumerable()),
+                            descriptor.getIfHasConfigurable(currentDesc.getConfigurable()));
+            validateAndPutDesc(thisObj, key, newDesc);
+            return true;
+        } else if (currentDesc.isAccessorDescriptor() && descriptor.isDataDescriptor()) {
+            Object value = descriptor.hasValue() ? descriptor.getValue() : Undefined.instance;
+            PropertyDescriptor newDesc = PropertyDescriptor.createData(value,
+                            descriptor.getIfHasEnumerable(currentDesc.getEnumerable()),
+                            descriptor.getIfHasConfigurable(currentDesc.getConfigurable()),
+                            descriptor.getWritable());
+            validateAndPutDesc(thisObj, key, newDesc);
+            return true;
+        } else {
+            if (descriptor.hasConfigurable()) {
+                currentDesc.setConfigurable(descriptor.getConfigurable());
+            }
+            if (descriptor.hasEnumerable()) {
+                currentDesc.setEnumerable(descriptor.getEnumerable());
+            }
+            if (descriptor.hasWritable()) {
+                currentDesc.setWritable(descriptor.getWritable());
+            }
+            if (descriptor.hasValue()) {
+                currentDesc.setValue(descriptor.getValue());
+            }
+            if (descriptor.hasGet()) {
+                currentDesc.setGet(descriptor.getGet());
+            }
+            if (descriptor.hasSet()) {
+                currentDesc.setSet(descriptor.getSet());
+            }
+            return true;
         }
     }
 

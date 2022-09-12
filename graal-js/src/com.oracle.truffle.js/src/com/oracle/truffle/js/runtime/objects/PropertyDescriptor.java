@@ -308,6 +308,20 @@ public final class PropertyDescriptor {
         return !(isAccessorDescriptor() || isDataDescriptor());
     }
 
+    /**
+     * Returns true if this property descriptor does not have any fields.
+     */
+    public boolean hasNoFields() {
+        return !hasValue() && !hasGet() && !hasSet() && !hasConfigurable() && !hasEnumerable() && !hasWritable();
+    }
+
+    /**
+     * Returns true if this is a fully populated data or accessor property descriptor.
+     */
+    public boolean isFullyPopulatedPropertyDescriptor() {
+        return hasConfigurable() && hasEnumerable() && ((hasValue() && hasWritable()) || (hasGet() && hasSet()));
+    }
+
     public int getFlags() {
         return JSAttributes.fromConfigurableEnumerableWritable(getIfHasConfigurable(false), getIfHasEnumerable(false), getIfHasWritable(false));
     }
