@@ -45,14 +45,11 @@ import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.nonWritableM
 import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.notExtensibleMessage;
 import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.reject;
 
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -81,7 +78,6 @@ import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
-import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
@@ -467,63 +463,6 @@ public final class JSDictionary extends JSNonProxy {
             desc = PropertyDescriptor.createData(value, JSProperty.isEnumerable(p), JSProperty.isWritable(p), JSProperty.isConfigurable(p));
         }
         return desc;
-    }
-
-    private static void makeOrdinaryObject(JSDynamicObject obj, String reason) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (JSConfig.TraceDictionaryObject) {
-            System.out.printf("transitioning from dictionary object to ordinary object: %s\n", reason);
-        }
-
-        EconomicMap<Object, PropertyDescriptor> hashMap = getHashMap(obj);
-        Shape oldShape = obj.getShape();
-        JSContext context = JSObject.getJSContext(obj);
-        Shape newRootShape = makeEmptyShapeForNewType(context, oldShape, JSOrdinary.INSTANCE, obj);
-
-        DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
-
-        List<Property> allProperties = oldShape.getPropertyListInternal(true);
-        List<Map.Entry<Property, Object>> archive = new ArrayList<>(allProperties.size());
-        for (Property prop : allProperties) {
-            Object key = prop.getKey();
-            Object value = Properties.getOrDefault(lib, obj, key, null);
-            if (HASHMAP_PROPERTY_NAME.equals(key)) {
-                continue;
-            }
-            archive.add(new AbstractMap.SimpleImmutableEntry<>(prop, value));
-        }
-
-        lib.resetShape(obj, newRootShape);
-
-        for (int i = 0; i < archive.size(); i++) {
-            Map.Entry<Property, Object> e = archive.get(i);
-            Property p = e.getKey();
-            Object key = p.getKey();
-            if (!newRootShape.hasProperty(key)) {
-                Object value = e.getValue();
-                if (p.getLocation().isConstant()) {
-                    Properties.putConstant(lib, obj, key, value, p.getFlags());
-                } else {
-                    Properties.putWithFlags(lib, obj, key, value, p.getFlags());
-                }
-            }
-        }
-
-        MapCursor<Object, PropertyDescriptor> cursor = hashMap.getEntries();
-        while (cursor.advance()) {
-            Object key = cursor.getKey();
-            assert JSRuntime.isPropertyKey(key);
-            PropertyDescriptor desc = cursor.getValue();
-            if (desc.isDataDescriptor()) {
-                Object value = desc.getValue();
-                assert !(value instanceof Accessor || value instanceof PropertyProxy);
-                JSObjectUtil.defineDataProperty(obj, key, value, desc.getFlags());
-            } else {
-                JSObjectUtil.defineAccessorProperty(obj, key, new Accessor(desc.getGet(), desc.getSet()), desc.getFlags());
-            }
-        }
-
-        assert JSOrdinary.isJSOrdinaryObject(obj) && obj.getShape().getProperty(HASHMAP_PROPERTY_NAME) == null;
     }
 
     public static Shape makeDictionaryShape(JSContext context, JSDynamicObject prototype) {
