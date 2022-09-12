@@ -2492,7 +2492,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             result = varRef.createDeleteNode();
         } else {
             // deleting a non-reference, always returns true
-            result = factory.createDual(context, transform(rhs), factory.createConstantBoolean(true));
+            if (rhs instanceof LiteralNode.PrimitiveLiteralNode<?>) {
+                result = factory.createConstantBoolean(true);
+            } else {
+                result = factory.createDual(context, transform(rhs), factory.createConstantBoolean(true));
+            }
         }
         return tagExpression(result, unaryNode);
     }
