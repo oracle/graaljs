@@ -91,12 +91,12 @@ public final class DefinePropertyUtil {
     /**
      * Implementation of ValidateAndApplyPropertyDescriptor as defined in ECMAScript 2015, 9.1.6.3.
      */
-    private static boolean validateAndApplyPropertyDescriptor(JSDynamicObject thisObj, Object propertyKey, boolean extensible, PropertyDescriptor descriptor, PropertyDescriptor current,
+    public static boolean validateAndApplyPropertyDescriptor(JSDynamicObject thisObj, Object propertyKey, boolean extensible, PropertyDescriptor descriptor, PropertyDescriptor current,
                     boolean doThrow) {
         CompilerAsserts.neverPartOfCompilation();
         if (current == null) {
             if (!extensible) {
-                return reject(doThrow, "object is not extensible");
+                return reject(doThrow, notExtensibleMessage(propertyKey, doThrow));
             }
             if (thisObj == Undefined.instance) {
                 return true;
@@ -123,7 +123,7 @@ public final class DefinePropertyUtil {
         boolean currentWritable = currentDesc.getWritable();
 
         // 5. Return true, if every field in Desc is absent.
-        if (everyFieldAbsent(descriptor)) {
+        if (descriptor.hasNoFields()) {
             return true;
         }
 
@@ -277,13 +277,6 @@ public final class DefinePropertyUtil {
     }
 
     /**
-     * Implements "return true, if every field in Desc is absent, as defined by 8.12.9 step 5.
-     */
-    private static boolean everyFieldAbsent(PropertyDescriptor descriptor) {
-        return !descriptor.hasValue() && !descriptor.hasGet() && !descriptor.hasSet() && !descriptor.hasConfigurable() && !descriptor.hasEnumerable() && !descriptor.hasWritable();
-    }
-
-    /**
      * Implementing 8.12.9 [[DefineOwnProperty]], section "4" (a new property is defined).
      *
      * @return whether the operation was successful
@@ -350,14 +343,21 @@ public final class DefinePropertyUtil {
         return false;
     }
 
-    private static String nonConfigurableMessage(Object key, boolean reject) {
+    public static String notExtensibleMessage(Object key, boolean reject) {
+        if (reject) {
+            return "Cannot define property " + key + ", object is not extensible";
+        }
+        return "";
+    }
+
+    public static String nonConfigurableMessage(Object key, boolean reject) {
         if (reject) {
             return isNashornMode() ? "property is not configurable" : cannotRedefineMessage(key);
         }
         return "";
     }
 
-    private static String nonWritableMessage(Object key, boolean reject) {
+    public static String nonWritableMessage(Object key, boolean reject) {
         if (reject) {
             return isNashornMode() ? "property is not writable" : cannotRedefineMessage(key);
         }
