@@ -128,7 +128,7 @@ public final class JSDictionary extends JSNonProxy {
 
     public static Object getValue(PropertyDescriptor property, Object receiver, Node encapsulatingNode) {
         if (property.isAccessorDescriptor()) {
-            JSDynamicObject getter = (JSDynamicObject) property.getGet();
+            Object getter = property.getGet();
             if (getter != Undefined.instance) {
                 return JSRuntime.call(getter, receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY, encapsulatingNode);
             } else {
@@ -222,7 +222,7 @@ public final class JSDictionary extends JSNonProxy {
 
     private static boolean setValue(Object key, PropertyDescriptor property, JSDynamicObject store, Object thisObj, Object value, boolean isStrict, Node encapsulatingNode) {
         if (property.isAccessorDescriptor()) {
-            JSDynamicObject setter = (JSDynamicObject) property.getSet();
+            Object setter = property.getSet();
             if (setter != Undefined.instance) {
                 JSRuntime.call(setter, thisObj, new Object[]{value}, encapsulatingNode);
                 return true;
