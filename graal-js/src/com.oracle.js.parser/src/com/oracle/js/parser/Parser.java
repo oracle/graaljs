@@ -117,7 +117,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import com.oracle.js.parser.ir.ClassElement;
 import org.graalvm.collections.Pair;
 
 import com.oracle.js.parser.ir.AccessNode;
@@ -129,6 +128,7 @@ import com.oracle.js.parser.ir.BreakNode;
 import com.oracle.js.parser.ir.CallNode;
 import com.oracle.js.parser.ir.CaseNode;
 import com.oracle.js.parser.ir.CatchNode;
+import com.oracle.js.parser.ir.ClassElement;
 import com.oracle.js.parser.ir.ClassNode;
 import com.oracle.js.parser.ir.ContinueNode;
 import com.oracle.js.parser.ir.DebuggerNode;
@@ -5848,7 +5848,6 @@ public class Parser extends AbstractParser {
      * @return Expression node.
      */
     private Expression unaryExpression(boolean yield, boolean await, CoverExpressionError coverExpression) {
-        final int unaryLine = line;
         final long unaryToken = token;
 
         switch (type) {
@@ -5860,7 +5859,7 @@ public class Parser extends AbstractParser {
                     throw error(AbstractParser.message(MSG_UNEXPECTED_TOKEN, type.getNameOrType()));
                 }
 
-                return verifyDeleteExpression(unaryLine, unaryToken, expr);
+                return verifyDeleteExpression(unaryToken, expr);
             }
             case VOID:
             case TYPEOF:
@@ -5913,7 +5912,7 @@ public class Parser extends AbstractParser {
         return expression;
     }
 
-    private Expression verifyDeleteExpression(final int unaryLine, final long unaryToken, final Expression expr) {
+    private Expression verifyDeleteExpression(final long unaryToken, final Expression expr) {
         if (expr instanceof BaseNode || expr instanceof IdentNode) {
             if (isStrictMode) {
                 if (expr instanceof IdentNode) {
@@ -5925,10 +5924,8 @@ public class Parser extends AbstractParser {
                     throw error(AbstractParser.message(MSG_STRICT_CANT_DELETE_PRIVATE), unaryToken);
                 }
             }
-            return new UnaryNode(unaryToken, expr);
         }
-        appendStatement(new ExpressionStatement(unaryLine, unaryToken, finish, expr));
-        return LiteralNode.newInstance(unaryToken, finish, true);
+        return new UnaryNode(unaryToken, expr);
     }
 
     private Expression verifyIncDecExpression(final long unaryToken, final TokenType opType, final Expression lhs, final boolean isPostfix) {
