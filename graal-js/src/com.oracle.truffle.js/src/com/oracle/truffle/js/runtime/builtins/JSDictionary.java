@@ -261,7 +261,7 @@ public final class JSDictionary extends JSNonProxy {
     public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key);
         if (!hasOwnProperty(thisObj, key) && JSObject.isExtensible(thisObj)) {
-            getHashMap(thisObj).put(key, desc);
+            getHashMap(thisObj).put(key, makeFullyPopulatedPropertyDescriptor(desc));
             return true;
         }
 
@@ -269,6 +269,31 @@ public final class JSDictionary extends JSNonProxy {
         // so we need to convert back to a normal shape-based object.
         makeOrdinaryObject(thisObj, "defineOwnProperty");
         return super.defineOwnProperty(thisObj, key, desc, doThrow);
+    }
+
+    /**
+     * Returns a fully populated property descriptor that is either an accessor property descriptor
+     * or a data property descriptor that has all of the corresponding fields. Missing fields are
+     * filled with default values.
+     */
+    private static PropertyDescriptor makeFullyPopulatedPropertyDescriptor(PropertyDescriptor desc) {
+        if (desc.isAccessorDescriptor()) {
+            if (desc.hasGet() && desc.hasSet() && desc.hasEnumerable() && desc.hasConfigurable()) {
+                return desc;
+            } else {
+                return PropertyDescriptor.createAccessor(desc.getGet(), desc.getSet(), desc.getEnumerable(), desc.getConfigurable());
+            }
+        } else if (desc.isDataDescriptor()) {
+            if (desc.hasValue() && desc.hasWritable() && desc.hasEnumerable() && desc.hasConfigurable()) {
+                return desc;
+            } else {
+                Object value = desc.hasValue() ? desc.getValue() : Undefined.instance;
+                return PropertyDescriptor.createData(value, desc.getEnumerable(), desc.getWritable(), desc.getConfigurable());
+            }
+        } else {
+            assert desc.isGenericDescriptor();
+            return PropertyDescriptor.createData(Undefined.instance, desc.getEnumerable(), desc.getWritable(), desc.getConfigurable());
+        }
     }
 
     @SuppressWarnings("unchecked")
