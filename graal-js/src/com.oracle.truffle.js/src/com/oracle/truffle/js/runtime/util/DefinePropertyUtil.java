@@ -117,15 +117,15 @@ public final class DefinePropertyUtil {
      *
      */
     private static boolean definePropertyExisting(JSDynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow, PropertyDescriptor currentDesc) {
-        JSDynamicObject obj = thisObj;
-        boolean currentEnumerable = currentDesc.getEnumerable();
-        boolean currentConfigurable = currentDesc.getConfigurable();
-        boolean currentWritable = currentDesc.getWritable();
-
-        // 5. Return true, if every field in Desc is absent.
+        CompilerAsserts.neverPartOfCompilation();
+        assert currentDesc.isFullyPopulatedPropertyDescriptor();
         if (descriptor.hasNoFields()) {
             return true;
         }
+
+        boolean currentEnumerable = currentDesc.getEnumerable();
+        boolean currentConfigurable = currentDesc.getConfigurable();
+        boolean currentWritable = currentDesc.getWritable();
 
         boolean enumerable = descriptor.getIfHasEnumerable(currentEnumerable);
         boolean configurable = descriptor.getIfHasConfigurable(currentConfigurable);
@@ -143,10 +143,6 @@ public final class DefinePropertyUtil {
         int newAttr;
         if (descriptor.isGenericDescriptor()) {
             // 8. "no further validation is required", however:
-            // if (current instanceof AccessorProperty) {
-            // // we need to adapt the attributes of the (existing) AccessorProperty
-            // attributes = current.getAttributes();
-            // }
             newAttr = JSAttributes.fromConfigurableEnumerableWritable(configurable, enumerable, currentWritable);
         } else if (currentDesc.isDataDescriptor() && descriptor.isDataDescriptor()) {
             // 10. IsDataDescriptor(current) and IsDataDescriptor(Desc) are both true
@@ -172,7 +168,6 @@ public final class DefinePropertyUtil {
         } else if (currentDesc.isAccessorDescriptor() && descriptor.isAccessorDescriptor()) {
             // 11. IsAccessorDescriptor(current) and IsAccessorDescriptor(Desc) are both true
             if (!currentConfigurable) { // 11.a.
-                // Accessor currentAccessor = (Accessor) current.get(obj, false);
                 Accessor currentAccessor = getAccessorFromDescriptor(currentDesc, doThrow);
                 if (currentAccessor == null) {
                     return false;
@@ -195,7 +190,6 @@ public final class DefinePropertyUtil {
             }
             // rest of 9 moved below, after duplicating the shapes
 
-            // writable = false if Accessor->Data else true
             boolean writable = descriptor.getIfHasWritable(currentDesc.isDataDescriptor());
             newAttr = JSAttributes.fromConfigurableEnumerableWritable(configurable, enumerable, writable);
         }
@@ -208,7 +202,7 @@ public final class DefinePropertyUtil {
         Property currentProperty = getPropertyByKey(thisObj, key);
 
         if (JSProperty.isProxy(currentProperty) && descriptor.isDataDescriptor()) {
-            PropertyProxy proxy = (PropertyProxy) JSDynamicObject.getOrNull(obj, key);
+            PropertyProxy proxy = (PropertyProxy) JSDynamicObject.getOrNull(thisObj, key);
             if (currentProperty.getFlags() != newAttr) {
                 if (descriptor.hasValue()) {
                     JSObjectUtil.defineDataProperty(thisObj, key, descriptor.getValue(), newAttr);
@@ -227,7 +221,6 @@ public final class DefinePropertyUtil {
                 }
             } else if (currentDesc.isAccessorDescriptor() && descriptor.isAccessorDescriptor()) {
                 if (descriptor.hasSet() || descriptor.hasGet()) {
-                    // Accessor currentAccessor = (Accessor) current.get(obj, false);
                     Accessor currentAccessor = getAccessorFromDescriptor(currentDesc, doThrow);
                     Accessor newAccessor = getAccessorFromDescriptor(descriptor, doThrow);
                     if (newAccessor == null || currentAccessor == null) {
