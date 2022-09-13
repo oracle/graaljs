@@ -2150,9 +2150,8 @@
     "filePath" : "mjsunit/regress/wasm/regress-1185464.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-08-10"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1201340.js",
     "status" : "SKIP",
@@ -3545,9 +3544,8 @@
     "filePath" : "mjsunit/wasm/anyfunc.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-08-10"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-exception-in-tonumber.js",
     "status" : "SKIP",
@@ -3608,7 +3606,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Fails with LinkError instead of RuntimeError"
   }, {
     "filePath" : "mjsunit/wasm/calls.js",
     "status" : "SKIP",
@@ -3649,7 +3648,7 @@
     "filePath" : "mjsunit/wasm/data-segments.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/disallow-codegen.js",
@@ -3780,28 +3779,26 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "V8 does not stick to the WASM API spec and supports globals with externref and anyfunc as imports"
   }, {
     "filePath" : "mjsunit/wasm/externref-globals.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "V8 does not stick to the WASM API spec and supports globals with externref and anyfunc as imports"
   }, {
     "filePath" : "mjsunit/wasm/externref-liftoff.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-08-10"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/externref.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-08-10"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/ffi-error.js",
     "status" : "SKIP",
@@ -3866,9 +3863,8 @@
     "filePath" : "mjsunit/wasm/generic-wrapper.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Requires WebAssembly reference types"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/globals-import-export-identity.js",
     "status" : "SKIP",
@@ -3976,7 +3972,7 @@
     "filePath" : "mjsunit/wasm/indirect-calls.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/indirect-sig-mismatch.js",
@@ -4137,9 +4133,8 @@
     "filePath" : "mjsunit/wasm/multi-table-element-section.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-08-10"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/multi-value.js",
     "status" : "SKIP",
@@ -4155,9 +4150,8 @@
     "filePath" : "mjsunit/wasm/mutable-globals.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-08-10"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/names.js",
     "status" : "SKIP",
@@ -4295,36 +4289,32 @@
     "filePath" : "mjsunit/wasm/table-access-liftoff.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-08-10"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/table-access.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-08-10"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/table-copy-externref.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-08-10"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/table-copy.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/table-fill.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-08-10"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/table-get.js",
     "status" : "SKIP",
@@ -4335,14 +4325,13 @@
     "filePath" : "mjsunit/wasm/table-grow-from-wasm.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-08-10"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/table-grow.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/table-limits.js",
@@ -4355,7 +4344,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "V8 does not stick to the WASM API spec of having a maximum table size of 10000000"
   }, {
     "filePath" : "mjsunit/wasm/test-partial-serialization.js",
     "status" : "SKIP",
@@ -4403,7 +4393,7 @@
     "filePath" : "mjsunit/wasm/unreachable-validation.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/unreachable.js",

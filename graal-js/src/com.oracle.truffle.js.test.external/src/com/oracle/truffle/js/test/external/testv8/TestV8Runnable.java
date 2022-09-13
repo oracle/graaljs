@@ -140,6 +140,8 @@ public class TestV8Runnable extends TestRunnable {
         }
         if (suite.getConfig().isPolyglot()) {
             extraOptions.put(JSContextOptions.WEBASSEMBLY_NAME, Boolean.toString(!flags.contains(NO_EXPOSE_WASM)));
+            // TODO: remove after reference types are enabled by default in wasm
+            extraOptions.put("wasm.BulkMemoryAndRefTypes", "true");
         }
 
         suite.logVerbose("Starting: " + getName());

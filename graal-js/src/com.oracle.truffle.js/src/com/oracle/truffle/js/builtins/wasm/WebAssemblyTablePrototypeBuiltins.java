@@ -65,7 +65,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTableObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssemblyTablePrototypeBuiltins.WebAssemblyTablePrototype> {
@@ -148,7 +147,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             try {
                 Object growFn = getRealm().getWASMTableGrow();
-                return tableGrowLib.execute(growFn, wasmTable, deltaInt, wasmValue, Null.instance);
+                return tableGrowLib.execute(growFn, wasmTable, deltaInt, wasmValue);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
@@ -229,7 +228,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             try {
                 Object setFn = getRealm().getWASMTableWrite();
-                tableSetLib.execute(setFn, wasmTable, indexInt, wasmValue, Null.instance);
+                tableSetLib.execute(setFn, wasmTable, indexInt, wasmValue);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
