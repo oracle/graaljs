@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,8 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * Implementation of ToJSValue() operation. See <a href="https://www.w3.org/TR/wasm-js-api/#tojsvalue">Wasm JS-API Spec</a>
+ * Implementation of ToJSValue() operation. See
+ * <a href="https://www.w3.org/TR/wasm-js-api/#tojsvalue">Wasm JS-API Spec</a>
  */
 public abstract class ToJSValueNode extends JavaScriptBaseNode {
     @Child InteropLibrary isFuncLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
