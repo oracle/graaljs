@@ -44,8 +44,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -99,7 +99,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
     public abstract static class JSIteratorFromNode extends JSBuiltinNode {
         @Child private GetMethodNode getIteratorMethodNode;
-        @Child private GetIteratorNode getIteratorNode;
+        @Child private GetIteratorBaseNode getIteratorNode;
         @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
         @Child private IsCallableNode isCallableNode;
@@ -110,7 +110,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         public JSIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR);
-            this.getIteratorNode = GetIteratorNode.create(getContext(), null);
+            this.getIteratorNode = GetIteratorBaseNode.create();
             this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(getContext());
             this.getIteratorDirectNode = GetIteratorDirectNode.create(getContext());
             this.isCallableNode = IsCallableNode.create();

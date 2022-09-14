@@ -52,8 +52,8 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
@@ -806,7 +806,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             @Child private IteratorCloseNode iteratorCloseNode;
 
             @Child private JSFunctionCallNode callNode;
-            @Child private GetIteratorNode getIteratorNode;
+            @Child private GetIteratorBaseNode getIteratorNode;
 
             @Child private PropertyGetNode getAliveNode;
             @Child private PropertySetNode setAliveNode;
@@ -822,7 +822,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 iteratorCloseNode = IteratorCloseNode.create(context);
 
                 callNode = JSFunctionCallNode.createCall();
-                getIteratorNode = GetIteratorNode.create(context, null);
+                getIteratorNode = GetIteratorBaseNode.create();
 
                 setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
                 getAliveNode = PropertyGetNode.createGetHidden(FLATMAP_ALIVE_ID, context);
