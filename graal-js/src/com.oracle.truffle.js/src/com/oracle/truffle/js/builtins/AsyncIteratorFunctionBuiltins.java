@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
@@ -49,6 +50,8 @@ import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -98,8 +101,10 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
 
         @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
         @Child private GetIteratorDirectNode getIteratorDirectNode;
+        @Child private IsCallableNode isCallableNode;
 
         private final ConditionProfile usingIteratorProfile = ConditionProfile.createBinaryProfile();
+        private final BranchProfile errorProfile = BranchProfile.create();
 
         public JSAsyncIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -119,6 +124,16 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
                 }
 
                 iteratorRecord = getIteratorNode.execute(arg);
+
+                if (isCallableNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    isCallableNode = insert(IsCallableNode.create());
+                }
+
+                if (!isCallableNode.executeBoolean(iteratorRecord.getNextMethod())) {
+                    errorProfile.enter();
+                    throw Errors.createTypeErrorCallableExpected();
+                }
 
                 if (ordinaryHasInstanceNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

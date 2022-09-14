@@ -91,6 +91,13 @@ public class IteratorFunctionBuiltinsTest {
 
             result = context.eval(JavaScriptLanguage.ID, "var x = [].values(); Iterator.from(x) === x");
             Assert.assertTrue(result.asBoolean());
+
+            try {
+                context.eval(JavaScriptLanguage.ID, "Iterator.from({[Symbol.iterator]: async () => ({next: () => ({done: true})})})");
+                Assert.fail("No exception thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
+            }
         }
     }
 }

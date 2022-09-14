@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
@@ -49,6 +50,8 @@ import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -99,8 +102,10 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         @Child private GetIteratorNode getIteratorNode;
         @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
+        @Child private IsCallableNode isCallableNode;
 
         private final ConditionProfile usingIteratorProfile = ConditionProfile.createBinaryProfile();
+        private final BranchProfile errorProfile = BranchProfile.create();
 
         public JSIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -108,16 +113,22 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             this.getIteratorNode = GetIteratorNode.create(getContext());
             this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(getContext());
             this.getIteratorDirectNode = GetIteratorDirectNode.create(getContext());
+            this.isCallableNode = IsCallableNode.create();
         }
 
 
         @Specialization
         protected JSDynamicObject iteratorFrom(Object arg) {
-            IteratorRecord iteratorRecord = null;
+            IteratorRecord iteratorRecord;
 
             Object usingIterator = getIteratorMethodNode.executeWithTarget(arg);
             if (usingIteratorProfile.profile(usingIterator != Undefined.instance)) {
                 iteratorRecord = getIteratorNode.execute(arg);
+                if (!isCallableNode.executeBoolean(iteratorRecord.getNextMethod())) {
+                    errorProfile.enter();
+                    throw Errors.createTypeErrorCallableExpected();
+                }
+
                 boolean hasInstance = ordinaryHasInstanceNode.executeBoolean(iteratorRecord.getIterator(), getRealm().getIteratorConstructor());
                 if (hasInstance) {
                     return iteratorRecord.getIterator();

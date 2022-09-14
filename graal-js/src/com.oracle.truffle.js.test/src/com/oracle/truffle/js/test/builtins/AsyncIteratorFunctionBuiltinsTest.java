@@ -76,7 +76,7 @@ public class AsyncIteratorFunctionBuiltinsTest {
         Context.Builder builder = JSTest.newContextBuilder();
         builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
-            Value result = context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({[Symbol.asyncIterator]: async () => ({next: () => ({done: true})})})");
+            Value result = context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({[Symbol.asyncIterator]: () => ({next: () => ({done: true})})})");
             Assert.assertTrue(result.hasMembers());
             Assert.assertTrue(result.hasMember("next"));
             Assert.assertTrue(result.getMember("next").canExecute());
@@ -99,6 +99,13 @@ public class AsyncIteratorFunctionBuiltinsTest {
 
             result = context.eval(JavaScriptLanguage.ID, "var x = (async function* test(){})(); AsyncIterator.from(x) === x");
             Assert.assertTrue(result.asBoolean());
+
+            try {
+                context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({[Symbol.asyncIterator]: async () => ({next: () => ({done: true})})})");
+                Assert.fail("No exception thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
+            }
         }
     }
 }
