@@ -861,14 +861,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "mjsunit/harmony/index-fields-nonextensible-global-proxy-no-lazy-feedback.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/harmony/index-fields-nonextensible-global-proxy.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
     "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
