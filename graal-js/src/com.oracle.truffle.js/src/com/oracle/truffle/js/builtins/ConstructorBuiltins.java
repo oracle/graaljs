@@ -93,8 +93,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDispla
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFinalizationRegistryNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFunctionNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructIteratorNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAsyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSAdapterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSProxyNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaImporterNodeGen;
@@ -131,6 +129,8 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAss
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAssemblyTableNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAsyncIteratorNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructIteratorNodeGen;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -2868,7 +2868,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getIteratorPrototype();
+            return realm.getAsyncIteratorPrototype();
         }
     }
 
