@@ -3003,6 +3003,16 @@ namespace v8 {
         return reinterpret_cast<const GraalValue*> (this)->IsArgumentsObject();
     }
 
+    bool Value::IsWasmMemoryObject() const {
+        TRACE
+        return false;
+    }
+
+    Local<ArrayBuffer> WasmMemoryObject::Buffer() {
+        TRACE
+        return nullptr;
+    }
+
     void Context::AllowCodeGenerationFromStrings(bool allow) {
         TRACE
     }
@@ -3816,6 +3826,10 @@ namespace v8 {
     }
 
     void String::VerifyExternalStringResourceBase(ExternalStringResourceBase* v, Encoding encoding) const {
+    }
+
+    void Isolate::SetModifyCodeGenerationFromStringsCallback(ModifyCodeGenerationFromStringsCallback2 callback) {
+        TRACE
     }
 
     void TracedReferenceBase::CheckValue() const {
