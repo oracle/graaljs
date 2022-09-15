@@ -476,8 +476,6 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     private RuntimeException throwInappropriateLengthError(long length) {
         if (getContext().isOptionNashornCompatibilityMode()) {
             throw Errors.createRangeError("inappropriate array buffer length: " + length);
-        } else if (getContext().isOptionV8CompatibilityMode()) {
-            throw Errors.createRangeError("Invalid array buffer length");
         } else {
             throw Errors.createRangeError("Invalid typed array length: " + length);
         }
