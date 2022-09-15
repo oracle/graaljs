@@ -269,6 +269,12 @@ EXPORT_TO_JS(IsName) {
     args.GetReturnValue().Set(args[0]->IsName());
 }
 
+// Value::IsWasmMemoryObject
+
+EXPORT_TO_JS(IsWasmMemoryObject) {
+    args.GetReturnValue().Set(args[0]->IsWasmMemoryObject());
+}
+
 //more tests for Value::IsExternal in external.cc
 
 // Value::IsNativeError
