@@ -3004,8 +3004,7 @@ namespace v8 {
     }
 
     bool Value::IsWasmMemoryObject() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsWasmMemoryObject();
     }
 
     Local<ArrayBuffer> WasmMemoryObject::Buffer() {

@@ -303,6 +303,11 @@ bool GraalValue::IsModuleNamespaceObject() const {
     return result;
 }
 
+bool GraalValue::IsWasmMemoryObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_wasm_memory_object, Boolean, GetJavaObject());
+    return result;
+}
+
 int32_t GraalValue::Int32Value() const {
     JNI_CALL(jint, result, Isolate(), GraalAccessMethod::value_int32_value, Int, GetJavaObject());
     return result;

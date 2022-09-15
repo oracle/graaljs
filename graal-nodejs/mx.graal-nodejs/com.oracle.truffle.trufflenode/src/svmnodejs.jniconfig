@@ -282,6 +282,7 @@
       { "name": "valueIsSharedArrayBuffer" },
       { "name": "valueIsStringObject" },
       { "name": "valueIsSymbolObject" },
+      { "name": "valueIsWasmMemoryObject" },
       { "name": "valueIsWeakMap" },
       { "name": "valueIsWeakSet" },
       { "name": "valueSerializerNew" },
