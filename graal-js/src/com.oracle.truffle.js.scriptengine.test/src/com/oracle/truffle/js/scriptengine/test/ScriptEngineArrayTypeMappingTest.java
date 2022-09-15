@@ -64,7 +64,8 @@ public class ScriptEngineArrayTypeMappingTest {
      */
     @Test
     public void testJavaScriptArrayViaScriptEngine() throws ScriptException {
-        try (GraalJSScriptEngine engine = new GraalJSEngineFactory().getScriptEngine()) {
+        GraalJSEngineFactory factory = new GraalJSEngineFactory();
+        try (GraalJSScriptEngine engine = (GraalJSScriptEngine) factory.getScriptEngine()) {
             Object result = engine.eval("['a', 'b', 'c']");
 
             Assert.assertTrue(result instanceof List);
