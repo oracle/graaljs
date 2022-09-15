@@ -184,6 +184,8 @@ test-vm-syntax-error-stderr: FAIL
 test-worker-cleanexit-with-js: SKIP
 test-worker-cleanexit-with-moduleload: SKIP
 test-worker-error-stack-getter-throws: FAIL
+test-worker-fshandles-error-on-termination: SKIP
+test-worker-fshandles-open-close-on-termination: SKIP
 test-worker-http2-stream-terminate: SKIP
 test-worker-stack-overflow-stack-size: SKIP
 test-zlib-invalid-input-memory: FAIL
