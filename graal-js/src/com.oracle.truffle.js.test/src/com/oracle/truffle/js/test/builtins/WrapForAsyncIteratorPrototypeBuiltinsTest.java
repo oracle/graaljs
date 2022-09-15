@@ -82,6 +82,10 @@ public class WrapForAsyncIteratorPrototypeBuiltinsTest {
 
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: () => {throw new Error('test')}}).next().catch(err => console.log(err))");
             Assert.assertEquals("Error: test\n", out.toString());
+            out.reset();
+
+            context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: () => null}).next().catch(err => { console.log(err); if (!(err instanceof TypeError)) throw err; });");
+            Assert.assertEquals("TypeError: Iterator result null is not an object\n", out.toString());
         }
     }
 
