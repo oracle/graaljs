@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -50,6 +51,7 @@ import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -116,6 +118,7 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
         @Child private IteratorNextNode iteratorNextNode;
         @Child private PropertyGetNode getContructorNode;
         @Child private JSFunctionCallNode callNode;
+        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
         public WrapForAsyncIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -139,8 +142,13 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
                 callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), result));
                 return promiseCapability.getPromise();
             } catch (AbstractTruffleException ex) {
+                if (getErrorObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+                }
+                Object error = getErrorObjectNode.execute(ex);
                 PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
-                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), ex));
+                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
                 return promiseCapability.getPromise();
             }
         }
@@ -162,6 +170,7 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
         @Child private PerformPromiseThenNode performPromiseThenNode;
         @Child private IsObjectNode isObjectNode;
         @Child private AsyncIteratorCloseResultCheckNode asyncIteratorCloseResultCheckNode;
+        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
         public WrapForAsyncIteratorReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -187,9 +196,14 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
                 }
 
                 return asyncIteratorCloseResultCheckNode.execute(frame, innerResult);
-            } catch (AbstractTruffleException e) {
+            } catch (AbstractTruffleException ex) {
+                if (getErrorObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+                }
+                Object error = getErrorObjectNode.execute(ex);
                 PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
-                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), e));
+                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
                 return promiseCapability.getPromise();
             }
         }
