@@ -3009,8 +3009,8 @@ namespace v8 {
     }
 
     Local<ArrayBuffer> WasmMemoryObject::Buffer() {
-        TRACE
-        return nullptr;
+        Local<String> bufferProp = String::NewFromUtf8Literal(GetIsolate(), "buffer");
+        return reinterpret_cast<GraalObject*> (this)->Get(bufferProp).As<ArrayBuffer>();
     }
 
     void Context::AllowCodeGenerationFromStrings(bool allow) {
