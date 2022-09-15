@@ -527,7 +527,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
     isolate->main_ = spawn_jvm;
     if (spawn_jvm) {
-        isolate->InitStackOverflowCheck((intptr_t) &params);
+        isolate->InitStackOverflowCheck((intptr_t) &jvm);
     }
 
     return reinterpret_cast<v8::Isolate*> (isolate);
