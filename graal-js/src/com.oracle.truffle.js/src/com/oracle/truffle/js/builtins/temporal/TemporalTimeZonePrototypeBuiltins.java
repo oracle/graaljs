@@ -213,8 +213,9 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected TruffleString toString(Object thisObj) {
-            return requireTemporalTimeZone(thisObj).getIdentifier();
+        protected TruffleString toString(Object thisObj,
+                                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            return requireTemporalTimeZone(thisObj, interop, getContext()).getIdentifier();
         }
     }
 

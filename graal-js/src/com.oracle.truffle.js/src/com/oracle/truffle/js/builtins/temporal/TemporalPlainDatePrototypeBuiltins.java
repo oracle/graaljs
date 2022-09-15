@@ -478,7 +478,6 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             throw TemporalErrors.createTypeErrorTemporalDurationExpected();
         }
 
-        // TODO may not be needed
         protected JSTemporalDurationObject convertJavaToJavascriptDuration(Object obj, InteropLibrary interop, JSContext ctx) {
             if (interop.isDuration(obj)) {
                 JSTemporalDurationObject dur = TemporalDurationPrototypeBuiltins.JSTemporalDurationGetterNode.javaDurationToDuration(obj, interop, ctx);

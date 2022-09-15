@@ -559,8 +559,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(guards = "isJSTemporalTime(otherObj)")
-        protected boolean equalsOtherObj(Object thisObj, JSDynamicObject otherObj) {
-            TemporalTime temporalTime = requireTemporalTime(thisObj);
+        protected boolean equalsOtherObj(Object thisObj, JSDynamicObject otherObj,
+                                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            TemporalTime temporalTime = requireTemporalTime(thisObj, interop, getContext());
             return equalsIntl(temporalTime, (TemporalTime) otherObj);
         }
 
