@@ -126,8 +126,20 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         if (JSRuntime.isArrayIndex(idx)) {
             ScriptArray array = typeProfile.profile(JSAbstractArray.arrayGetArrayType(thisObj));
             if (array.hasElement(thisObj, idx)) {
-                Object value = needValue ? array.getElement(thisObj, idx) : null;
-                return PropertyDescriptor.createData(value, true, needWritability && !array.isFrozen(), needConfigurability && !array.isSealed());
+                PropertyDescriptor desc = PropertyDescriptor.createEmpty();
+                if (needEnumerability) {
+                    desc.setEnumerable(true);
+                }
+                if (needConfigurability) {
+                    desc.setConfigurable(!array.isSealed());
+                }
+                if (needWritability) {
+                    desc.setWritable(!array.isFrozen());
+                }
+                if (needValue) {
+                    desc.setValue(array.getElement(thisObj, idx));
+                }
+                return desc;
             }
         }
         noSuchElementBranch.enter();
@@ -188,22 +200,18 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         if (hasPropertyBranch.profile(prop == null)) {
             return null;
         }
-        PropertyDescriptor d;
+        PropertyDescriptor d = PropertyDescriptor.createEmpty();
         if (isDataPropertyBranch.profile(JSProperty.isData(prop))) {
-            Object value = needValue ? getDataPropertyValue(thisObj, prop) : null;
-            d = PropertyDescriptor.createData(value);
             if (needWritability) {
                 d.setWritable(JSProperty.isWritable(prop));
             }
+            if (needValue) {
+                d.setValue(getDataPropertyValue(thisObj, prop));
+            }
         } else if (isAccessorPropertyBranch.profile(JSProperty.isAccessor(prop))) {
             if (needValue) {
-                Accessor acc = (Accessor) prop.getLocation().get(thisObj);
-                d = PropertyDescriptor.createAccessor(acc.getGetter(), acc.getSetter());
-            } else {
-                d = PropertyDescriptor.createAccessor(null, null);
+                d.setAccessor((Accessor) prop.getLocation().get(thisObj));
             }
-        } else {
-            d = PropertyDescriptor.createEmpty();
         }
         if (needEnumerability) {
             d.setEnumerable(JSProperty.isEnumerable(prop));
