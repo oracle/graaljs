@@ -3440,6 +3440,13 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
+    "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "MACOS" : "SKIP"
+    },
+    "comment" : "Skipping on macOS because of transient spurious failures (GR-41067)."
+  }, {
     "filePath" : "language/module-code/eval-gtbndng-indirect-faux-assertion.js",
     "status" : "FAIL",
     "comment" : "Tries to redefine the assert property on the globalThis object, which is not allowed in this context"
