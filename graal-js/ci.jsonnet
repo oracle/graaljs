@@ -71,7 +71,7 @@ local ci = import '../ci.jsonnet';
     run+: [
       ['cd', '../../graal/vm'],
       ['set-export', 'NATIVE_IMAGES', 'native-image'],
-      ['mx', '--dynamicimports', '/graal-js,/substratevm', '--strict-compliance', 'gate', '--strict-mode', '--tags', 'build,svm-truffle-tck-js'],
+      ['mx', '--dynamicimports', '/graal-js,/substratevm', '--strict-compliance', 'gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', 'build,svm-truffle-tck-js'],
     ],
     timelimit: '45:00',
   },
@@ -79,7 +79,7 @@ local ci = import '../ci.jsonnet';
   local downstreamSubstratevmEE = checkoutJsBenchmarks + ee + {
     suiteimports+:: ['substratevm'],
     run+: [
-      ['mx', '--strict-compliance', 'gate', '--all-suites', '--strict-mode', '--tags', 'build,${TAGS}'],
+      ['mx', '--strict-compliance', 'gate', '--all-suites', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', 'build,${TAGS}'],
     ],
     timelimit: '45:00',
   },
