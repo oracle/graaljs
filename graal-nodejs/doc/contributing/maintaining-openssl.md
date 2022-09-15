@@ -5,8 +5,10 @@ This document describes how to update `deps/openssl/`.
 If you need to provide updates across all active release lines you will
 currently need to generate three PRs as follows:
 
-* a PR for master which is generated following the instructions
-  below.
+* a PR for `main` which is generated following the instructions
+  below for OpenSSL 3.x.x.
+* a PR for 16.x following the instructions in the v16.x-staging version
+  of this guide.
 * a PR for 14.x following the instructions in the v14.x-staging version
   of this guide.
 * a PR which uses the same commit from the second PR to apply the
@@ -99,6 +101,16 @@ Use `make` to regenerate all platform dependent files in
 
 # On Linux machines
 % make -C deps/openssl/config
+```
+
+**Note**: If the 32-bit Windows is failing to compile run this workflow instead:
+
+```console
+% make -C deps/openssl/config clean
+# Edit deps/openssl/openssl/crypto/perlasm/x86asm.pl changing
+# #ifdef to %ifdef to make it compatible to nasm on 32-bit Windows.
+# See: https://github.com/nodejs/node/pull/43603#issuecomment-1170670844
+# Reference: https://github.com/openssl/openssl/issues/18459
 ```
 
 ## 3. Check diffs

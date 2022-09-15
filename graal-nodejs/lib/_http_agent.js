@@ -54,7 +54,10 @@ const {
     ERR_OUT_OF_RANGE,
   },
 } = require('internal/errors');
-const { once } = require('internal/util');
+const {
+  kEmptyObject,
+  once,
+} = require('internal/util');
 const {
   validateNumber,
   validateOneOf,
@@ -217,7 +220,7 @@ Agent.defaultMaxSockets = Infinity;
 Agent.prototype.createConnection = net.createConnection;
 
 // Get the key for a given set of request options
-Agent.prototype.getName = function getName(options = {}) {
+Agent.prototype.getName = function getName(options = kEmptyObject) {
   let name = options.host || 'localhost';
 
   name += ':';
@@ -336,7 +339,11 @@ Agent.prototype.createSocket = function createSocket(req, options, cb) {
     installListeners(this, s, options);
     cb(null, s);
   });
-
+  // When keepAlive is true, pass the related options to createConnection
+  if (this.keepAlive) {
+    options.keepAlive = this.keepAlive;
+    options.keepAliveInitialDelay = this.keepAliveMsecs;
+  }
   const newSocket = this.createConnection(options, oncreate);
   if (newSocket)
     oncreate(null, newSocket);

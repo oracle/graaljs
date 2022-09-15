@@ -3,15 +3,14 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-#include "env.h"
 #include "async_wrap.h"
-#include "allocated_buffer.h"
+#include "env.h"
 #include "node_errors.h"
 #include "node_external_reference.h"
 #include "node_internals.h"
+#include "string_bytes.h"
 #include "util.h"
 #include "v8.h"
-#include "string_bytes.h"
 
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -752,20 +751,6 @@ class ArrayBufferOrViewContents {
   size_t length_ = 0;
   std::shared_ptr<v8::BackingStore> store_;
 };
-
-template <typename T>
-std::vector<T> CopyBuffer(const ArrayBufferOrViewContents<T>& buf) {
-  std::vector<T> vec;
-  vec->resize(buf.size());
-  if (vec->size() > 0 && buf.data() != nullptr)
-    memcpy(vec->data(), buf.data(), vec->size());
-  return vec;
-}
-
-template <typename T>
-std::vector<T> CopyBuffer(v8::Local<v8::Value> buf) {
-  return CopyBuffer(ArrayBufferOrViewContents<T>(buf));
-}
 
 v8::MaybeLocal<v8::Value> EncodeBignum(
     Environment* env,

@@ -10,7 +10,10 @@ const {
 const {
   ERR_STREAM_PREMATURE_CLOSE
 } = codes;
-const { once } = require('internal/util');
+const {
+  kEmptyObject,
+  once,
+} = require('internal/util');
 const {
   validateAbortSignal,
   validateFunction,
@@ -64,9 +67,9 @@ function isReadableEnded(stream) {
 function eos(stream, options, callback) {
   if (arguments.length === 2) {
     callback = options;
-    options = {};
+    options = kEmptyObject;
   } else if (options == null) {
-    options = {};
+    options = kEmptyObject;
   } else {
     validateObject(options, 'options');
   }
@@ -217,7 +220,9 @@ function eos(stream, options, callback) {
       // Keep it because cleanup removes it.
       const endCallback = callback;
       cleanup();
-      endCallback.call(stream, new AbortError());
+      endCallback.call(
+        stream,
+        new AbortError(undefined, { cause: options.signal.reason }));
     };
     if (options.signal.aborted) {
       process.nextTick(abort);

@@ -11,16 +11,7 @@ description: Install package(s) and run tests
 <!-- see lib/commands/install-test.js -->
 
 ```bash
-npm install-test [<@scope>/]<pkg>
-npm install-test [<@scope>/]<pkg>@<tag>
-npm install-test [<@scope>/]<pkg>@<version>
-npm install-test [<@scope>/]<pkg>@<version range>
-npm install-test <alias>@npm:<name>
-npm install-test <folder>
-npm install-test <tarball file>
-npm install-test <tarball url>
-npm install-test <git:// url>
-npm install-test <github username>/<github project>
+npm install-test [<package-spec> ...]
 
 alias: it
 ```
@@ -70,8 +61,6 @@ rather than using npm's default semver range operator.
 
 * Default: false
 * Type: Boolean
-* DEPRECATED: `--global`, `--local` are deprecated. Use `--location=global`
-  instead.
 
 Operates in "global" mode, so that packages are installed into the `prefix`
 folder instead of the current working directory. See

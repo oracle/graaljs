@@ -141,6 +141,12 @@ class AbortSignal extends EventTarget {
     return this[kReason];
   }
 
+  throwIfAborted() {
+    if (this.aborted) {
+      throw this.reason;
+    }
+  }
+
   [customInspectSymbol](depth, options) {
     return customInspect(this, {
       aborted: this.aborted
@@ -151,7 +157,8 @@ class AbortSignal extends EventTarget {
    * @param {any} reason
    * @returns {AbortSignal}
    */
-  static abort(reason) {
+  static abort(
+    reason = new DOMException('This operation was aborted', 'AbortError')) {
     return createAbortSignal(true, reason);
   }
 
@@ -258,6 +265,7 @@ ObjectDefineProperties(AbortSignal.prototype, {
 });
 
 ObjectDefineProperty(AbortSignal.prototype, SymbolToStringTag, {
+  __proto__: null,
   writable: false,
   enumerable: false,
   configurable: true,
@@ -310,7 +318,7 @@ class AbortController {
   /**
    * @param {any} reason
    */
-  abort(reason) {
+  abort(reason = new DOMException('This operation was aborted', 'AbortError')) {
     validateAbortController(this);
     abortSignal(this[kSignal], reason);
   }
@@ -328,6 +336,7 @@ ObjectDefineProperties(AbortController.prototype, {
 });
 
 ObjectDefineProperty(AbortController.prototype, SymbolToStringTag, {
+  __proto__: null,
   writable: false,
   enumerable: false,
   configurable: true,

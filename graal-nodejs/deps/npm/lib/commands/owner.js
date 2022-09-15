@@ -27,9 +27,9 @@ class Owner extends BaseCommand {
   ]
 
   static usage = [
-    'add <user> [<@scope>/]<pkg>',
-    'rm <user> [<@scope>/]<pkg>',
-    'ls [<@scope>/]<pkg>',
+    'add <user> <package-spec>',
+    'rm <user> <package-spec>',
+    'ls <package-spec>',
   ]
 
   static ignoreImplicitWorkspace = false
@@ -202,7 +202,7 @@ class Owner extends BaseCommand {
 
     const dataPath = `/${spec.escapedName}/-rev/${encodeURIComponent(data._rev)}`
     try {
-      const res = await otplease(this.npm.flatOptions, opts => {
+      const res = await otplease(this.npm, this.npm.flatOptions, opts => {
         return npmFetch.json(dataPath, {
           ...opts,
           method: 'PUT',

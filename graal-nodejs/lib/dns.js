@@ -27,6 +27,7 @@ const {
   ObjectDefineProperties,
   ObjectDefineProperty,
   ReflectApply,
+  Symbol,
 } = primordials;
 
 const cares = internalBinding('cares_wrap');
@@ -43,7 +44,34 @@ const {
   emitInvalidHostnameWarning,
   getDefaultVerbatim,
   setDefaultResultOrder,
+  errorCodes: dnsErrorCodes,
 } = require('internal/dns/utils');
+const {
+  NODATA,
+  FORMERR,
+  SERVFAIL,
+  NOTFOUND,
+  NOTIMP,
+  REFUSED,
+  BADQUERY,
+  BADNAME,
+  BADFAMILY,
+  BADRESP,
+  CONNREFUSED,
+  TIMEOUT,
+  EOF,
+  FILE,
+  NOMEM,
+  DESTRUCTION,
+  BADSTR,
+  BADFLAGS,
+  NONAME,
+  BADHINTS,
+  NOTINITIALIZED,
+  LOADIPHLPAPI,
+  ADDRGETNETWORKPARAMS,
+  CANCELLED,
+} = dnsErrorCodes;
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
@@ -62,6 +90,16 @@ const {
   QueryReqWrap,
 } = cares;
 
+const kPerfHooksDnsLookupContext = Symbol('kPerfHooksDnsLookupContext');
+const kPerfHooksDnsLookupServiceContext = Symbol('kPerfHooksDnsLookupServiceContext');
+const kPerfHooksDnsLookupResolveContext = Symbol('kPerfHooksDnsLookupResolveContext');
+
+const {
+  hasObserver,
+  startPerf,
+  stopPerf,
+} = require('internal/perf/observe');
+
 const dnsException = errors.dnsException;
 
 let promises = null; // Lazy loaded
@@ -71,6 +109,9 @@ function onlookup(err, addresses) {
     return this.callback(dnsException(err, 'getaddrinfo', this.hostname));
   }
   this.callback(null, addresses[0], this.family || isIP(addresses[0]));
+  if (this[kPerfHooksDnsLookupContext] && hasObserver('dns')) {
+    stopPerf(this, kPerfHooksDnsLookupContext);
+  }
 }
 
 
@@ -89,6 +130,9 @@ function onlookupall(err, addresses) {
   }
 
   this.callback(null, addresses);
+  if (this[kPerfHooksDnsLookupContext] && hasObserver('dns')) {
+    stopPerf(this, kPerfHooksDnsLookupContext);
+  }
 }
 
 
@@ -161,11 +205,20 @@ function lookup(hostname, options, callback) {
     process.nextTick(callback, dnsException(err, 'getaddrinfo', hostname));
     return {};
   }
+  if (hasObserver('dns')) {
+    const detail = {
+      hostname,
+      family,
+      hints,
+      verbatim,
+    };
+    startPerf(req, kPerfHooksDnsLookupContext, { type: 'dns', name: 'lookup', detail });
+  }
   return req;
 }
 
 ObjectDefineProperty(lookup, customPromisifyArgs,
-                     { value: ['address', 'family'], enumerable: false });
+                     { __proto__: null, value: ['address', 'family'], enumerable: false });
 
 
 function onlookupservice(err, hostname, service) {
@@ -173,6 +226,9 @@ function onlookupservice(err, hostname, service) {
     return this.callback(dnsException(err, 'getnameinfo', this.hostname));
 
   this.callback(null, hostname, service);
+  if (this[kPerfHooksDnsLookupServiceContext] && hasObserver('dns')) {
+    stopPerf(this, kPerfHooksDnsLookupServiceContext);
+  }
 }
 
 
@@ -197,11 +253,21 @@ function lookupService(address, port, callback) {
 
   const err = cares.getnameinfo(req, address, port);
   if (err) throw dnsException(err, 'getnameinfo', address);
+  if (hasObserver('dns')) {
+    startPerf(req, kPerfHooksDnsLookupServiceContext, {
+      type: 'dns',
+      name: 'lookupService',
+      detail: {
+        host: address,
+        port,
+      },
+    });
+  }
   return req;
 }
 
 ObjectDefineProperty(lookupService, customPromisifyArgs,
-                     { value: ['hostname', 'service'], enumerable: false });
+                     { __proto__: null, value: ['hostname', 'service'], enumerable: false });
 
 
 function onresolve(err, result, ttls) {
@@ -211,8 +277,12 @@ function onresolve(err, result, ttls) {
 
   if (err)
     this.callback(dnsException(err, this.bindingName, this.hostname));
-  else
+  else {
     this.callback(null, result);
+    if (this[kPerfHooksDnsLookupResolveContext] && hasObserver('dns')) {
+      stopPerf(this, kPerfHooksDnsLookupResolveContext);
+    }
+  }
 }
 
 function resolver(bindingName) {
@@ -234,9 +304,19 @@ function resolver(bindingName) {
     req.ttl = !!(options && options.ttl);
     const err = this._handle[bindingName](req, toASCII(name));
     if (err) throw dnsException(err, bindingName, name);
+    if (hasObserver('dns')) {
+      startPerf(req, kPerfHooksDnsLookupResolveContext, {
+        type: 'dns',
+        name: bindingName,
+        detail: {
+          host: name,
+          ttl: req.ttl,
+        },
+      });
+    }
     return req;
   }
-  ObjectDefineProperty(query, 'name', { value: bindingName });
+  ObjectDefineProperty(query, 'name', { __proto__: null, value: bindingName });
   return query;
 }
 
@@ -299,43 +379,42 @@ module.exports = {
   V4MAPPED: cares.AI_V4MAPPED,
 
   // ERROR CODES
-  NODATA: 'ENODATA',
-  FORMERR: 'EFORMERR',
-  SERVFAIL: 'ESERVFAIL',
-  NOTFOUND: 'ENOTFOUND',
-  NOTIMP: 'ENOTIMP',
-  REFUSED: 'EREFUSED',
-  BADQUERY: 'EBADQUERY',
-  BADNAME: 'EBADNAME',
-  BADFAMILY: 'EBADFAMILY',
-  BADRESP: 'EBADRESP',
-  CONNREFUSED: 'ECONNREFUSED',
-  TIMEOUT: 'ETIMEOUT',
-  EOF: 'EOF',
-  FILE: 'EFILE',
-  NOMEM: 'ENOMEM',
-  DESTRUCTION: 'EDESTRUCTION',
-  BADSTR: 'EBADSTR',
-  BADFLAGS: 'EBADFLAGS',
-  NONAME: 'ENONAME',
-  BADHINTS: 'EBADHINTS',
-  NOTINITIALIZED: 'ENOTINITIALIZED',
-  LOADIPHLPAPI: 'ELOADIPHLPAPI',
-  ADDRGETNETWORKPARAMS: 'EADDRGETNETWORKPARAMS',
-  CANCELLED: 'ECANCELLED'
+  NODATA,
+  FORMERR,
+  SERVFAIL,
+  NOTFOUND,
+  NOTIMP,
+  REFUSED,
+  BADQUERY,
+  BADNAME,
+  BADFAMILY,
+  BADRESP,
+  CONNREFUSED,
+  TIMEOUT,
+  EOF,
+  FILE,
+  NOMEM,
+  DESTRUCTION,
+  BADSTR,
+  BADFLAGS,
+  NONAME,
+  BADHINTS,
+  NOTINITIALIZED,
+  LOADIPHLPAPI,
+  ADDRGETNETWORKPARAMS,
+  CANCELLED,
 };
 
 bindDefaultResolver(module.exports, getDefaultResolver());
 
 ObjectDefineProperties(module.exports, {
   promises: {
+    __proto__: null,
     configurable: true,
     enumerable: true,
     get() {
       if (promises === null) {
         promises = require('internal/dns/promises');
-        promises.setServers = defaultResolverSetServers;
-        promises.setDefaultResultOrder = setDefaultResultOrder;
       }
       return promises;
     }

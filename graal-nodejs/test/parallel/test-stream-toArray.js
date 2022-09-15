@@ -24,14 +24,16 @@ const assert = require('assert');
 }
 
 {
-  // Works on a non-object-mode stream and flattens it
+  // Works on a non-object-mode stream
   (async () => {
+    const firstBuffer = Buffer.from([1, 2, 3]);
+    const secondBuffer = Buffer.from([4, 5, 6]);
     const stream = Readable.from(
-      [Buffer.from([1, 2, 3]), Buffer.from([4, 5, 6])]
-      , { objectMode: false });
+      [firstBuffer, secondBuffer],
+      { objectMode: false });
     const result = await stream.toArray();
-    assert.strictEqual(Buffer.isBuffer(result), true);
-    assert.deepStrictEqual(Array.from(result), [1, 2, 3, 4, 5, 6]);
+    assert.strictEqual(Array.isArray(result), true);
+    assert.deepStrictEqual(result, [firstBuffer, secondBuffer]);
   })().then(common.mustCall());
 }
 
@@ -67,7 +69,7 @@ const assert = require('assert');
   }, {
     name: 'AbortError',
   }).then(common.mustCall(() => {
-    // Only stops toArray, does not destory the stream
+    // Only stops toArray, does not destroy the stream
     assert(stream.destroyed, false);
   }));
   ac.abort();
@@ -76,4 +78,16 @@ const assert = require('assert');
   // Test result is a Promise
   const result = Readable.from([1, 2, 3, 4, 5]).toArray();
   assert.strictEqual(result instanceof Promise, true);
+}
+{
+  // Error cases
+  assert.rejects(async () => {
+    await Readable.from([1]).toArray(1);
+  }, /ERR_INVALID_ARG_TYPE/).then(common.mustCall());
+
+  assert.rejects(async () => {
+    await Readable.from([1]).toArray({
+      signal: true
+    });
+  }, /ERR_INVALID_ARG_TYPE/).then(common.mustCall());
 }

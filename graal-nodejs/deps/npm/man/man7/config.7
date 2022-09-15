@@ -1,4 +1,4 @@
-.TH "CONFIG" "7" "May 2022" "" ""
+.TH "CONFIG" "7" "July 2022" "" ""
 .SH "NAME"
 \fBconfig\fR \- More than you probably want to know about npm configuration
 .SS Description
@@ -247,6 +247,19 @@ Type: null, "info", "low", "moderate", "high", "critical", or "none"
 .P
 The minimum level of vulnerability for \fBnpm audit\fP to exit with a non\-zero
 exit code\.
+.SS \fBauth\-type\fP
+.RS 0
+.IP \(bu 2
+Default: "legacy"
+.IP \(bu 2
+Type: "legacy", "web", "sso", "saml", "oauth", or "webauthn"
+
+.RE
+.P
+NOTE: auth\-type values "sso", "saml", "oauth", and "webauthn" will be
+removed in a future version\.
+.P
+What authentication strategy to use with \fBlogin\fP\|\.
 .SS \fBbefore\fP
 .RS 0
 .IP \(bu 2
@@ -387,8 +400,9 @@ cert="\-\-\-\-\-BEGIN CERTIFICATE\-\-\-\-\-\\nXXXX\\nXXXX\\n\-\-\-\-\-END CERTIF
 .fi
 .RE
 .P
-It is \fInot\fR the path to a certificate file (and there is no "certfile"
-option)\.
+It is \fInot\fR the path to a certificate file, though you can set a
+registry\-scoped "certfile" path like
+"//other\-registry\.tld/:certfile=/path/to/cert\.pem"\.
 .SS \fBci\-name\fP
 .RS 0
 .IP \(bu 2
@@ -739,6 +753,28 @@ Type: Boolean
 .P
 Tag the commit when using the \fBnpm version\fP command\. Setting this to false
 results in no commit being made at all\.
+.SS \fBglobal\fP
+.RS 0
+.IP \(bu 2
+Default: false
+.IP \(bu 2
+Type: Boolean
+
+.RE
+.P
+Operates in "global" mode, so that packages are installed into the \fBprefix\fP
+folder instead of the current working directory\. See
+npm help folders for more on the differences in behavior\.
+.RS 0
+.IP \(bu 2
+packages are installed into the \fB{prefix}/lib/node_modules\fP folder, instead
+of the current working directory\.
+.IP \(bu 2
+bin files are linked to \fB{prefix}/bin\fP
+.IP \(bu 2
+man pages are linked to \fB{prefix}/share/man\fP
+
+.RE
 .SS \fBglobal\-style\fP
 .RS 0
 .IP \(bu 2
@@ -977,7 +1013,8 @@ key="\-\-\-\-\-BEGIN PRIVATE KEY\-\-\-\-\-\\nXXXX\\nXXXX\\n\-\-\-\-\-END PRIVATE
 .fi
 .RE
 .P
-It is \fInot\fR the path to a key file (and there is no "keyfile" option)\.
+It is \fInot\fR the path to a key file, though you can set a registry\-scoped
+"keyfile" path like "//other\-registry\.tld/:keyfile=/path/to/key\.pem"\.
 .SS \fBlegacy\-bundling\fP
 .RS 0
 .IP \(bu 2
@@ -1570,7 +1607,7 @@ Type: null or String
 .RE
 .P
 The shell to use for scripts run with the \fBnpm exec\fP, \fBnpm run\fP and \fBnpm
-init <pkg>\fP commands\.
+init <package\-spec>\fP commands\.
 .SS \fBsearchexclude\fP
 .RS 0
 .IP \(bu 2
@@ -1970,19 +2007,6 @@ DEPRECATED: Please use \-\-include=dev instead\.
 .RE
 .P
 When set to \fBdev\fP or \fBdevelopment\fP, this is an alias for \fB\-\-include=dev\fP\|\.
-.SS \fBauth\-type\fP
-.RS 0
-.IP \(bu 2
-Default: "legacy"
-.IP \(bu 2
-Type: "legacy", "sso", "saml", or "oauth"
-.IP \(bu 2
-DEPRECATED: This method of SSO/SAML/OAuth is deprecated and will be removed
-in a future version of npm in favor of web\-based login\.
-
-.RE
-.P
-What authentication strategy to use with \fBadduser\fP/\fBlogin\fP\|\.
 .SS \fBcache\-max\fP
 .RS 0
 .IP \(bu 2
@@ -2019,31 +2043,6 @@ DEPRECATED: Please use \-\-include=dev instead\.
 .RE
 .P
 Alias for \fB\-\-include=dev\fP\|\.
-.SS \fBglobal\fP
-.RS 0
-.IP \(bu 2
-Default: false
-.IP \(bu 2
-Type: Boolean
-.IP \(bu 2
-DEPRECATED: \fB\-\-global\fP, \fB\-\-local\fP are deprecated\. Use \fB\-\-location=global\fP
-instead\.
-
-.RE
-.P
-Operates in "global" mode, so that packages are installed into the \fBprefix\fP
-folder instead of the current working directory\. See
-npm help folders for more on the differences in behavior\.
-.RS 0
-.IP \(bu 2
-packages are installed into the \fB{prefix}/lib/node_modules\fP folder, instead
-of the current working directory\.
-.IP \(bu 2
-bin files are linked to \fB{prefix}/bin\fP
-.IP \(bu 2
-man pages are linked to \fB{prefix}/share/man\fP
-
-.RE
 .SS \fBinit\.author\.email\fP
 .RS 0
 .IP \(bu 2

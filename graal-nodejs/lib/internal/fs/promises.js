@@ -5,7 +5,6 @@ const {
   Error,
   MathMax,
   MathMin,
-  ObjectCreate,
   NumberIsSafeInteger,
   Promise,
   PromisePrototypeThen,
@@ -16,13 +15,15 @@ const {
   Uint8Array,
 } = primordials;
 
+const { fs: constants } = internalBinding('constants');
 const {
   F_OK,
   O_SYMLINK,
   O_WRONLY,
   S_IFMT,
   S_IFREG
-} = internalBinding('constants').fs;
+} = constants;
+
 const binding = internalBinding('fs');
 const { Buffer } = require('buffer');
 
@@ -62,7 +63,7 @@ const {
   validateOffsetLengthWrite,
   validateRmOptions,
   validateRmdirOptions,
-  validateStringAfterArrayBufferView,
+  validatePrimitiveStringAfterArrayBufferView,
   warnOnNonPortableTemplate,
 } = require('internal/fs/utils');
 const { opendir } = require('internal/fs/dir');
@@ -76,7 +77,11 @@ const {
   validateString,
 } = require('internal/validators');
 const pathModule = require('path');
-const { lazyDOMException, promisify } = require('internal/util');
+const {
+  kEmptyObject,
+  lazyDOMException,
+  promisify,
+} = require('internal/util');
 const { EventEmitterMixin } = require('internal/event_target');
 const { watch } = require('internal/fs/watchers');
 const { isIterable } = require('internal/streams/utils');
@@ -319,7 +324,7 @@ async function fsCall(fn, handle, ...args) {
 
 function checkAborted(signal) {
   if (signal?.aborted)
-    throw new AbortError();
+    throw new AbortError(undefined, { cause: signal?.reason });
 }
 
 async function writeFileHandle(filehandle, data, signal, encoding) {
@@ -456,18 +461,27 @@ async function open(path, flags, mode) {
                                  flagsNumber, mode, kUsePromises));
 }
 
-async function read(handle, bufferOrOptions, offset, length, position) {
-  let buffer = bufferOrOptions;
+async function read(handle, bufferOrParams, offset, length, position) {
+  let buffer = bufferOrParams;
   if (!isArrayBufferView(buffer)) {
-    bufferOrOptions ??= ObjectCreate(null);
+    // This is fh.read(params)
     ({
       buffer = Buffer.alloc(16384),
       offset = 0,
       length = buffer.byteLength - offset,
-      position = null
-    } = bufferOrOptions);
+      position = null,
+    } = bufferOrParams ?? kEmptyObject);
 
     validateBuffer(buffer);
+  }
+
+  if (offset !== null && typeof offset === 'object') {
+    // This is fh.read(buffer, options)
+    ({
+      offset = 0,
+      length = buffer.byteLength - offset,
+      position = null,
+    } = offset);
   }
 
   if (offset == null) {
@@ -508,11 +522,20 @@ async function readv(handle, buffers, position) {
   return { bytesRead, buffers };
 }
 
-async function write(handle, buffer, offset, length, position) {
+async function write(handle, buffer, offsetOrOptions, length, position) {
   if (buffer?.byteLength === 0)
     return { bytesWritten: 0, buffer };
 
+  let offset = offsetOrOptions;
   if (isArrayBufferView(buffer)) {
+    if (typeof offset === 'object') {
+      ({
+        offset = 0,
+        length = buffer.byteLength - offset,
+        position = null,
+      } = offsetOrOptions ?? kEmptyObject);
+    }
+
     if (offset == null) {
       offset = 0;
     } else {
@@ -529,7 +552,7 @@ async function write(handle, buffer, offset, length, position) {
     return { bytesWritten, buffer };
   }
 
-  validateStringAfterArrayBufferView(buffer, 'buffer');
+  validatePrimitiveStringAfterArrayBufferView(buffer, 'buffer');
   validateEncoding(buffer, length);
   const bytesWritten = (await binding.writeString(handle.fd, buffer, offset,
                                                   length, kUsePromises)) || 0;
@@ -606,7 +629,7 @@ async function mkdir(path, options) {
   const {
     recursive = false,
     mode = 0o777
-  } = options || {};
+  } = options || kEmptyObject;
   path = getValidatedPath(path);
   validateBoolean(recursive, 'options.recursive');
 
@@ -616,7 +639,7 @@ async function mkdir(path, options) {
 }
 
 async function readdir(path, options) {
-  options = getOptions(options, {});
+  options = getOptions(options);
   path = getValidatedPath(path);
   const result = await binding.readdir(pathModule.toNamespacedPath(path),
                                        options.encoding,
@@ -628,7 +651,7 @@ async function readdir(path, options) {
 }
 
 async function readlink(path, options) {
-  options = getOptions(options, {});
+  options = getOptions(options);
   path = getValidatedPath(path, 'oldPath');
   return binding.readlink(pathModule.toNamespacedPath(path),
                           options.encoding, kUsePromises);
@@ -740,13 +763,13 @@ async function lutimes(path, atime, mtime) {
 }
 
 async function realpath(path, options) {
-  options = getOptions(options, {});
+  options = getOptions(options);
   path = getValidatedPath(path);
   return binding.realpath(path, options.encoding, kUsePromises);
 }
 
 async function mkdtemp(prefix, options) {
-  options = getOptions(options, {});
+  options = getOptions(options);
 
   validateString(prefix, 'prefix');
   nullCheck(prefix);
@@ -759,7 +782,7 @@ async function writeFile(path, data, options) {
   const flag = options.flag || 'w';
 
   if (!isArrayBufferView(data) && !isCustomIterable(data)) {
-    validateStringAfterArrayBufferView(data, 'data');
+    validatePrimitiveStringAfterArrayBufferView(data, 'data');
     data = Buffer.from(data, options.encoding || 'utf8');
   }
 
@@ -829,6 +852,7 @@ module.exports = {
     appendFile,
     readFile,
     watch,
+    constants,
   },
 
   FileHandle,

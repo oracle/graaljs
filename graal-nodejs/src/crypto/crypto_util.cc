@@ -1,8 +1,7 @@
 #include "crypto/crypto_util.h"
+#include "async_wrap-inl.h"
 #include "crypto/crypto_bio.h"
 #include "crypto/crypto_keys.h"
-#include "allocated_buffer-inl.h"
-#include "async_wrap-inl.h"
 #include "env-inl.h"
 #include "memory_tracker-inl.h"
 #include "node_buffer.h"
@@ -136,7 +135,13 @@ bool InitCryptoOnce(Isolate* isolate) {
   return true;
 }
 
+// Protect accesses to FIPS state with a mutex. This should potentially
+// be part of a larger mutex for global OpenSSL state.
+static Mutex fips_mutex;
+
 void InitCryptoOnce() {
+  Mutex::ScopedLock lock(per_process::cli_options_mutex);
+  Mutex::ScopedLock fips_lock(fips_mutex);
 #ifndef OPENSSL_IS_BORINGSSL
   OPENSSL_INIT_SETTINGS* settings = OPENSSL_INIT_new();
 
@@ -145,6 +150,16 @@ void InitCryptoOnce() {
   if (!per_process::cli_options->openssl_config.empty()) {
     const char* conf = per_process::cli_options->openssl_config.c_str();
     OPENSSL_INIT_set_config_filename(settings, conf);
+  }
+#endif
+
+#if OPENSSL_VERSION_MAJOR >= 3
+  // --openssl-legacy-provider
+  if (per_process::cli_options->openssl_legacy_provider) {
+    OSSL_PROVIDER* legacy_provider = OSSL_PROVIDER_load(nullptr, "legacy");
+    if (legacy_provider == nullptr) {
+      fprintf(stderr, "Unable to load legacy provider.\n");
+    }
   }
 #endif
 
@@ -186,6 +201,9 @@ void InitCryptoOnce() {
 }
 
 void GetFipsCrypto(const FunctionCallbackInfo<Value>& args) {
+  Mutex::ScopedLock lock(per_process::cli_options_mutex);
+  Mutex::ScopedLock fips_lock(fips_mutex);
+
 #if OPENSSL_VERSION_MAJOR >= 3
   args.GetReturnValue().Set(EVP_default_properties_is_fips_enabled(nullptr) ?
       1 : 0);
@@ -195,8 +213,13 @@ void GetFipsCrypto(const FunctionCallbackInfo<Value>& args) {
 }
 
 void SetFipsCrypto(const FunctionCallbackInfo<Value>& args) {
+  Mutex::ScopedLock lock(per_process::cli_options_mutex);
+  Mutex::ScopedLock fips_lock(fips_mutex);
+
   CHECK(!per_process::cli_options->force_fips_crypto);
   Environment* env = Environment::GetCurrent(args);
+  // TODO(addaleax): This should not be possible to set from worker threads.
+  // CHECK(env->owns_process_state());
   bool enable = args[0]->BooleanValue(env->isolate());
 
 #if OPENSSL_VERSION_MAJOR >= 3
@@ -217,6 +240,9 @@ void SetFipsCrypto(const FunctionCallbackInfo<Value>& args) {
 }
 
 void TestFipsCrypto(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Mutex::ScopedLock lock(per_process::cli_options_mutex);
+  Mutex::ScopedLock fips_lock(fips_mutex);
+
 #ifdef OPENSSL_FIPS
 #if OPENSSL_VERSION_MAJOR >= 3
   OSSL_PROVIDER* fips_provider = nullptr;

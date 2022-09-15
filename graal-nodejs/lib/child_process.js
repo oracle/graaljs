@@ -36,17 +36,18 @@ const {
   ObjectAssign,
   ObjectDefineProperty,
   ObjectPrototypeHasOwnProperty,
-  RegExpPrototypeTest,
+  RegExpPrototypeExec,
   SafeSet,
   StringPrototypeSlice,
   StringPrototypeToUpperCase,
 } = primordials;
 
 const {
-  promisify,
   convertToValidSignal,
   createDeferredPromise,
-  getSystemErrorName
+  getSystemErrorName,
+  kEmptyObject,
+  promisify,
 } = require('internal/util');
 const { isArrayBufferView } = require('internal/util/types');
 let debug = require('internal/util/debuglog').debuglog(
@@ -96,7 +97,7 @@ const MAX_BUFFER = 1024 * 1024;
  * @param {{
  *   cwd?: string;
  *   detached?: boolean;
- *   env?: Object;
+ *   env?: Record<string, string>;
  *   execPath?: string;
  *   execArgv?: string[];
  *   gid?: number;
@@ -202,7 +203,7 @@ function normalizeExecArgs(command, options, callback) {
  * @param {string} command
  * @param {{
  *   cmd?: string;
- *   env?: Object;
+ *   env?: Record<string, string>;
  *   encoding?: string;
  *   shell?: string;
  *   signal?: AbortSignal;
@@ -246,6 +247,7 @@ const customPromiseExecFunction = (orig) => {
 };
 
 ObjectDefineProperty(exec, promisify.custom, {
+  __proto__: null,
   enumerable: false,
   value: customPromiseExecFunction(exec)
 });
@@ -256,7 +258,7 @@ ObjectDefineProperty(exec, promisify.custom, {
  * @param {string[]} [args]
  * @param {{
  *   cwd?: string;
- *   env?: Object;
+ *   env?: Record<string, string>;
  *   encoding?: string;
  *   timeout?: number;
  *   maxBuffer?: number;
@@ -446,6 +448,11 @@ function execFile(file, args = [], options, callback) {
       child.stdout.setEncoding(encoding);
 
     child.stdout.on('data', function onChildStdout(chunk) {
+      // Do not need to count the length
+      if (options.maxBuffer === Infinity) {
+        ArrayPrototypePush(_stdout, chunk);
+        return;
+      }
       const encoding = child.stdout.readableEncoding;
       const length = encoding ?
         Buffer.byteLength(chunk, encoding) :
@@ -471,6 +478,11 @@ function execFile(file, args = [], options, callback) {
       child.stderr.setEncoding(encoding);
 
     child.stderr.on('data', function onChildStderr(chunk) {
+      // Do not need to count the length
+      if (options.maxBuffer === Infinity) {
+        ArrayPrototypePush(_stderr, chunk);
+        return;
+      }
       const encoding = child.stderr.readableEncoding;
       const length = encoding ?
         Buffer.byteLength(chunk, encoding) :
@@ -485,7 +497,7 @@ function execFile(file, args = [], options, callback) {
         ex = new ERR_CHILD_PROCESS_STDIO_MAXBUFFER('stderr');
         kill();
       } else {
-        _stderr.push(chunk);
+        ArrayPrototypePush(_stderr, chunk);
       }
     });
   }
@@ -497,6 +509,7 @@ function execFile(file, args = [], options, callback) {
 }
 
 ObjectDefineProperty(execFile, promisify.custom, {
+  __proto__: null,
   enumerable: false,
   value: customPromiseExecFunction(execFile)
 });
@@ -519,7 +532,7 @@ function normalizeSpawnArguments(file, args, options) {
   }
 
   if (options === undefined)
-    options = {};
+    options = kEmptyObject;
   else
     validateObject(options, 'options');
 
@@ -579,7 +592,7 @@ function normalizeSpawnArguments(file, args, options) {
       else
         file = process.env.comspec || 'cmd.exe';
       // '/d /s /c' is used only for cmd.exe.
-      if (RegExpPrototypeTest(/^(?:.*\\)?cmd(?:\.exe)?$/i, file)) {
+      if (RegExpPrototypeExec(/^(?:.*\\)?cmd(?:\.exe)?$/i, file) !== null) {
         args = ['/d', '/s', '/c', `"${command}"`];
         windowsVerbatimArguments = true;
       } else {
@@ -683,7 +696,7 @@ function abortChildProcess(child, killSignal) {
  * @param {string[]} [args]
  * @param {{
  *   cwd?: string;
- *   env?: Object;
+ *   env?: Record<string, string>;
  *   argv0?: string;
  *   stdio?: Array | string;
  *   detached?: boolean;
@@ -756,7 +769,7 @@ function spawn(file, args, options) {
  *   input?: string | Buffer | TypedArray | DataView;
  *   argv0?: string;
  *   stdio?: string | Array;
- *   env?: Object;
+ *   env?: Record<string, string>;
  *   uid?: number;
  *   gid?: number;
  *   timeout?: number;
@@ -848,7 +861,7 @@ function checkExecSyncError(ret, args, cmd) {
  *   cwd?: string;
  *   input?: string | Buffer | TypedArray | DataView;
  *   stdio?: string | Array;
- *   env?: Object;
+ *   env?: Record<string, string>;
  *   uid?: number;
  *   gid?: number;
  *   timeout?: number;
@@ -885,7 +898,7 @@ function execFileSync(command, args, options) {
  *   cwd?: string;
  *   input?: string | Buffer | TypedArray | DataView;
  *   stdio?: string | Array;
- *   env?: Object;
+ *   env?: Record<string, string>;
  *   shell?: string;
  *   uid?: number;
  *   gid?: number;

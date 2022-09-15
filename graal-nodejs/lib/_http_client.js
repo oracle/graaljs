@@ -31,7 +31,7 @@ const {
   ObjectKeys,
   ObjectSetPrototypeOf,
   ReflectApply,
-  RegExpPrototypeTest,
+  RegExpPrototypeExec,
   String,
   StringPrototypeCharCodeAt,
   StringPrototypeIncludes,
@@ -43,7 +43,10 @@ const {
 
 const net = require('net');
 const assert = require('internal/assert');
-const { once } = require('internal/util');
+const {
+  kEmptyObject,
+  once,
+} = require('internal/util');
 const {
   _checkIsHttpToken: checkIsHttpToken,
   freeParser,
@@ -52,12 +55,16 @@ const {
   isLenient,
   prepareError,
 } = require('_http_common');
-const { OutgoingMessage } = require('_http_outgoing');
+const {
+  kUniqueHeaders,
+  parseUniqueHeadersOption,
+  OutgoingMessage
+} = require('_http_outgoing');
 const Agent = require('_http_agent');
 const { Buffer } = require('buffer');
 const { defaultTriggerAsyncIdScope } = require('internal/async_hooks');
 const { URL, urlToHttpOptions, searchParamsSymbol } = require('internal/url');
-const { kOutHeaders, kNeedDrain, emitStatistics } = require('internal/http');
+const { kOutHeaders, kNeedDrain } = require('internal/http');
 const { connResetException, codes } = require('internal/errors');
 const {
   ERR_HTTP_HEADERS_SENT,
@@ -77,9 +84,15 @@ const {
 
 const {
   hasObserver,
+  startPerf,
+  stopPerf,
 } = require('internal/perf/observe');
 
 const kClientRequestStatistics = Symbol('ClientRequestStatistics');
+
+const dc = require('diagnostics_channel');
+const onClientRequestStartChannel = dc.channel('http.client.request.start');
+const onClientResponseFinishChannel = dc.channel('http.client.response.finish');
 
 const { addAbortSignal, finished } = require('stream');
 
@@ -127,7 +140,7 @@ function ClientRequest(input, options, cb) {
 
   if (typeof options === 'function') {
     cb = options;
-    options = input || {};
+    options = input || kEmptyObject;
   } else {
     options = ObjectAssign(input || {}, options);
   }
@@ -156,7 +169,7 @@ function ClientRequest(input, options, cb) {
 
   if (options.path) {
     const path = String(options.path);
-    if (RegExpPrototypeTest(INVALID_PATH_REGEX, path))
+    if (RegExpPrototypeExec(INVALID_PATH_REGEX, path) !== null)
       throw new ERR_UNESCAPED_CHARACTERS('Request path');
   }
 
@@ -300,6 +313,8 @@ function ClientRequest(input, options, cb) {
                       options.headers);
   }
 
+  this[kUniqueHeaders] = parseUniqueHeadersOption(options.uniqueHeaders);
+
   let optsWithoutSignal = options;
   if (optsWithoutSignal.signal) {
     optsWithoutSignal = ObjectAssign({}, options);
@@ -344,10 +359,22 @@ ClientRequest.prototype._finish = function _finish() {
   DTRACE_HTTP_CLIENT_REQUEST(this, this.socket);
   FunctionPrototypeCall(OutgoingMessage.prototype._finish, this);
   if (hasObserver('http')) {
-    this[kClientRequestStatistics] = {
-      startTime: process.hrtime(),
-      type: 'HttpClient',
-    };
+    startPerf(this, kClientRequestStatistics, {
+      type: 'http',
+      name: 'HttpClient',
+      detail: {
+        req: {
+          method: this.method,
+          url: `${this.protocol}//${this.host}${this.path}`,
+          headers: typeof this.getHeaders === 'function' ? this.getHeaders() : {},
+        },
+      },
+    });
+  }
+  if (onClientRequestStartChannel.hasSubscribers) {
+    onClientRequestStartChannel.publish({
+      request: this,
+    });
   }
 };
 
@@ -616,7 +643,23 @@ function parserOnIncomingClient(res, shouldKeepAlive) {
   }
 
   DTRACE_HTTP_CLIENT_RESPONSE(socket, req);
-  emitStatistics(req[kClientRequestStatistics]);
+  if (req[kClientRequestStatistics] && hasObserver('http')) {
+    stopPerf(req, kClientRequestStatistics, {
+      detail: {
+        res: {
+          statusCode: res.statusCode,
+          statusMessage: res.statusMessage,
+          headers: res.headers,
+        },
+      },
+    });
+  }
+  if (onClientResponseFinishChannel.hasSubscribers) {
+    onClientResponseFinishChannel.publish({
+      request: req,
+      response: res,
+    });
+  }
   req.res = res;
   res.req = req;
 

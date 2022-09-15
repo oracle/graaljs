@@ -1,10 +1,9 @@
 #include "crypto/crypto_rsa.h"
+#include "async_wrap-inl.h"
+#include "base_object-inl.h"
 #include "crypto/crypto_bio.h"
 #include "crypto/crypto_keys.h"
 #include "crypto/crypto_util.h"
-#include "allocated_buffer-inl.h"
-#include "async_wrap-inl.h"
-#include "base_object-inl.h"
 #include "env-inl.h"
 #include "memory_tracker-inl.h"
 #include "threadpoolwork-inl.h"
@@ -15,6 +14,8 @@
 
 namespace node {
 
+using v8::ArrayBuffer;
+using v8::BackingStore;
 using v8::FunctionCallbackInfo;
 using v8::Int32;
 using v8::Just;
@@ -555,17 +556,21 @@ Maybe<bool> GetRsaKeyDetail(
     return Nothing<bool>();
   }
 
-  int len = BN_num_bytes(e);
-  AllocatedBuffer public_exponent = AllocatedBuffer::AllocateManaged(env, len);
-  unsigned char* data =
-      reinterpret_cast<unsigned char*>(public_exponent.data());
-  CHECK_EQ(BN_bn2binpad(e, data, len), len);
+  std::unique_ptr<BackingStore> public_exponent;
+  {
+    NoArrayBufferZeroFillScope no_zero_fill_scope(env->isolate_data());
+    public_exponent =
+        ArrayBuffer::NewBackingStore(env->isolate(), BN_num_bytes(e));
+  }
+  CHECK_EQ(BN_bn2binpad(e,
+                        static_cast<unsigned char*>(public_exponent->Data()),
+                        public_exponent->ByteLength()),
+           static_cast<int>(public_exponent->ByteLength()));
 
   if (target
-          ->Set(
-              env->context(),
-              env->public_exponent_string(),
-              public_exponent.ToArrayBuffer())
+          ->Set(env->context(),
+                env->public_exponent_string(),
+                ArrayBuffer::New(env->isolate(), std::move(public_exponent)))
           .IsNothing()) {
     return Nothing<bool>();
   }

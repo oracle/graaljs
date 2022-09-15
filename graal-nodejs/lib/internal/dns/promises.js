@@ -5,6 +5,7 @@ const {
   ObjectDefineProperty,
   Promise,
   ReflectApply,
+  Symbol,
 } = primordials;
 
 const {
@@ -15,7 +16,36 @@ const {
   validateTries,
   emitInvalidHostnameWarning,
   getDefaultVerbatim,
+  errorCodes: dnsErrorCodes,
+  setDefaultResultOrder,
+  setDefaultResolver,
 } = require('internal/dns/utils');
+const {
+  NODATA,
+  FORMERR,
+  SERVFAIL,
+  NOTFOUND,
+  NOTIMP,
+  REFUSED,
+  BADQUERY,
+  BADNAME,
+  BADFAMILY,
+  BADRESP,
+  CONNREFUSED,
+  TIMEOUT,
+  EOF,
+  FILE,
+  NOMEM,
+  DESTRUCTION,
+  BADSTR,
+  BADFLAGS,
+  NONAME,
+  BADHINTS,
+  NOTINITIALIZED,
+  LOADIPHLPAPI,
+  ADDRGETNETWORKPARAMS,
+  CANCELLED,
+} = dnsErrorCodes;
 const { codes, dnsException } = require('internal/errors');
 const { toASCII } = require('internal/idna');
 const { isIP } = require('internal/net');
@@ -37,6 +67,16 @@ const {
   validateOneOf,
 } = require('internal/validators');
 
+const kPerfHooksDnsLookupContext = Symbol('kPerfHooksDnsLookupContext');
+const kPerfHooksDnsLookupServiceContext = Symbol('kPerfHooksDnsLookupServiceContext');
+const kPerfHooksDnsLookupResolveContext = Symbol('kPerfHooksDnsLookupResolveContext');
+
+const {
+  hasObserver,
+  startPerf,
+  stopPerf,
+} = require('internal/perf/observe');
+
 function onlookup(err, addresses) {
   if (err) {
     this.reject(dnsException(err, 'getaddrinfo', this.hostname));
@@ -45,6 +85,9 @@ function onlookup(err, addresses) {
 
   const family = this.family || isIP(addresses[0]);
   this.resolve({ address: addresses[0], family });
+  if (this[kPerfHooksDnsLookupContext] && hasObserver('dns')) {
+    stopPerf(this, kPerfHooksDnsLookupContext);
+  }
 }
 
 function onlookupall(err, addresses) {
@@ -55,7 +98,7 @@ function onlookupall(err, addresses) {
 
   const family = this.family;
 
-  for (var i = 0; i < addresses.length; i++) {
+  for (let i = 0; i < addresses.length; i++) {
     const address = addresses[i];
 
     addresses[i] = {
@@ -65,6 +108,9 @@ function onlookupall(err, addresses) {
   }
 
   this.resolve(addresses);
+  if (this[kPerfHooksDnsLookupContext] && hasObserver('dns')) {
+    stopPerf(this, kPerfHooksDnsLookupContext);
+  }
 }
 
 function createLookupPromise(family, hostname, all, hints, verbatim) {
@@ -95,15 +141,23 @@ function createLookupPromise(family, hostname, all, hints, verbatim) {
 
     if (err) {
       reject(dnsException(err, 'getaddrinfo', hostname));
+    } else if (hasObserver('dns')) {
+      const detail = {
+        hostname,
+        family,
+        hints,
+        verbatim,
+      };
+      startPerf(req, kPerfHooksDnsLookupContext, { type: 'dns', name: 'lookup', detail });
     }
   });
 }
 
 function lookup(hostname, options) {
-  var hints = 0;
-  var family = -1;
-  var all = false;
-  var verbatim = getDefaultVerbatim();
+  let hints = 0;
+  let family = -1;
+  let all = false;
+  let verbatim = getDefaultVerbatim();
 
   // Parse arguments
   if (hostname) {
@@ -136,6 +190,9 @@ function onlookupservice(err, hostname, service) {
   }
 
   this.resolve({ hostname, service });
+  if (this[kPerfHooksDnsLookupServiceContext] && hasObserver('dns')) {
+    stopPerf(this, kPerfHooksDnsLookupServiceContext);
+  }
 }
 
 function createLookupServicePromise(hostname, port) {
@@ -152,6 +209,16 @@ function createLookupServicePromise(hostname, port) {
 
     if (err)
       reject(dnsException(err, 'getnameinfo', hostname));
+    else if (hasObserver('dns')) {
+      startPerf(req, kPerfHooksDnsLookupServiceContext, {
+        type: 'dns',
+        name: 'lookupService',
+        detail: {
+          host: hostname,
+          port
+        }
+      });
+    }
   });
 }
 
@@ -179,6 +246,9 @@ function onresolve(err, result, ttls) {
       result, (address, index) => ({ address, ttl: ttls[index] }));
 
   this.resolve(result);
+  if (this[kPerfHooksDnsLookupResolveContext] && hasObserver('dns')) {
+    stopPerf(this, kPerfHooksDnsLookupResolveContext);
+  }
 }
 
 function createResolverPromise(resolver, bindingName, hostname, ttl) {
@@ -196,6 +266,16 @@ function createResolverPromise(resolver, bindingName, hostname, ttl) {
 
     if (err)
       reject(dnsException(err, bindingName, hostname));
+    else if (hasObserver('dns')) {
+      startPerf(req, kPerfHooksDnsLookupResolveContext, {
+        type: 'dns',
+        name: bindingName,
+        detail: {
+          host: hostname,
+          ttl
+        }
+      });
+    }
   });
 }
 
@@ -207,7 +287,7 @@ function resolver(bindingName) {
     return createResolverPromise(this, bindingName, name, ttl);
   }
 
-  ObjectDefineProperty(query, 'name', { value: bindingName });
+  ObjectDefineProperty(query, 'name', { __proto__: null, value: bindingName });
   return query;
 }
 
@@ -241,7 +321,7 @@ Resolver.prototype.resolveNaptr = resolveMap.NAPTR = resolver('queryNaptr');
 Resolver.prototype.resolveSoa = resolveMap.SOA = resolver('querySoa');
 Resolver.prototype.reverse = resolver('getHostByAddr');
 Resolver.prototype.resolve = function resolve(hostname, rrtype) {
-  var resolver;
+  let resolver;
 
   if (rrtype !== undefined) {
     validateString(rrtype, 'rrtype');
@@ -257,6 +337,45 @@ Resolver.prototype.resolve = function resolve(hostname, rrtype) {
   return ReflectApply(resolver, this, [hostname]);
 };
 
+function defaultResolverSetServers(servers) {
+  const resolver = new Resolver();
 
-module.exports = { lookup, lookupService, Resolver };
+  resolver.setServers(servers);
+  setDefaultResolver(resolver);
+  bindDefaultResolver(module.exports, Resolver.prototype);
+}
+
+module.exports = {
+  lookup,
+  lookupService,
+  Resolver,
+  setDefaultResultOrder,
+  setServers: defaultResolverSetServers,
+
+  // ERROR CODES
+  NODATA,
+  FORMERR,
+  SERVFAIL,
+  NOTFOUND,
+  NOTIMP,
+  REFUSED,
+  BADQUERY,
+  BADNAME,
+  BADFAMILY,
+  BADRESP,
+  CONNREFUSED,
+  TIMEOUT,
+  EOF,
+  FILE,
+  NOMEM,
+  DESTRUCTION,
+  BADSTR,
+  BADFLAGS,
+  NONAME,
+  BADHINTS,
+  NOTINITIALIZED,
+  LOADIPHLPAPI,
+  ADDRGETNETWORKPARAMS,
+  CANCELLED,
+};
 bindDefaultResolver(module.exports, Resolver.prototype);

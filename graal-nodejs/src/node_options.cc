@@ -5,6 +5,9 @@
 #include "node_binding.h"
 #include "node_external_reference.h"
 #include "node_internals.h"
+#if HAVE_OPENSSL
+#include "openssl/opensslv.h"
+#endif
 
 #include <errno.h>
 #include <sstream>
@@ -138,6 +141,24 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors) {
 
   if (heap_snapshot_near_heap_limit < 0) {
     errors->push_back("--heap-snapshot-near-heap-limit must not be negative");
+  }
+
+  if (test_runner) {
+    if (syntax_check_only) {
+      errors->push_back("either --test or --check can be used, not both");
+    }
+
+    if (has_eval_string) {
+      errors->push_back("either --test or --eval can be used, not both");
+    }
+
+    if (force_repl) {
+      errors->push_back("either --test or --interactive can be used, not both");
+    }
+
+    if (debug_options_.inspector_enabled) {
+      errors->push_back("the inspector cannot be used with --test");
+    }
   }
 
 #if HAVE_INSPECTOR
@@ -319,13 +340,17 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::experimental_fetch,
             kAllowedInEnvironment);
   AddOption("--experimental-json-modules", "", NoOp{}, kAllowedInEnvironment);
+  AddOption("--experimental-global-customevent",
+            "expose experimental CustomEvent on the global scope",
+            &EnvironmentOptions::experimental_global_customevent,
+            kAllowedInEnvironment);
   AddOption("--experimental-global-webcrypto",
             "expose experimental Web Crypto API on the global scope",
             &EnvironmentOptions::experimental_global_web_crypto,
             kAllowedInEnvironment);
   AddOption("--experimental-loader",
             "use the specified module as a custom loader",
-            &EnvironmentOptions::userland_loader,
+            &EnvironmentOptions::userland_loaders,
             kAllowedInEnvironment);
   AddAlias("--loader", "--experimental-loader");
   AddOption("--experimental-modules", "", NoOp{}, kAllowedInEnvironment);
@@ -411,6 +436,12 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::force_async_hooks_checks,
             kAllowedInEnvironment,
             true);
+  AddOption(
+      "--force-node-api-uncaught-exceptions-policy",
+      "enforces 'uncaughtException' event on Node API asynchronous callbacks",
+      &EnvironmentOptions::force_node_api_uncaught_exceptions_policy,
+      kAllowedInEnvironment,
+      false);
   AddOption("--addons",
             "disable loading native addons",
             &EnvironmentOptions::allow_native_addons,
@@ -494,6 +525,13 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--redirect-warnings",
             "write warnings to file instead of stderr",
             &EnvironmentOptions::redirect_warnings,
+            kAllowedInEnvironment);
+  AddOption("--test",
+            "launch test runner on startup",
+            &EnvironmentOptions::test_runner);
+  AddOption("--test-only",
+            "run tests with 'only' option set",
+            &EnvironmentOptions::test_only,
             kAllowedInEnvironment);
   AddOption("--test-udp-no-try-send", "",  // For testing only.
             &EnvironmentOptions::test_udp_no_try_send);
@@ -671,14 +709,8 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
             kAllowedInEnvironment);
   Implies("--report-signal", "--report-on-signal");
 
-  AddOption("--experimental-top-level-await",
-            "",
-            &PerIsolateOptions::experimental_top_level_await,
-            kAllowedInEnvironment);
-  AddOption("--harmony-top-level-await", "", V8Option{});
-  Implies("--experimental-top-level-await", "--harmony-top-level-await");
-  Implies("--harmony-top-level-await", "--experimental-top-level-await");
-  ImpliesNot("--no-harmony-top-level-await", "--experimental-top-level-await");
+  AddOption(
+      "--experimental-top-level-await", "", NoOp{}, kAllowedInEnvironment);
 
   Insert(eop, &PerIsolateOptions::get_per_env_options);
 }
@@ -717,6 +749,11 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             "disable Object.prototype.__proto__",
             &PerProcessOptions::disable_proto,
             kAllowedInEnvironment);
+  AddOption("--build-snapshot",
+            "Generate a snapshot blob when the process exits."
+            "Currently only supported in the node_mksnapshot binary.",
+            &PerProcessOptions::build_snapshot,
+            kDisallowedInEnvironment);
 
   // 12.x renamed this inadvertently, so alias it for consistency within the
   // release line, while using the original name for consistency with older
@@ -817,13 +854,16 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             "minimum allocation size from the OpenSSL secure heap",
             &PerProcessOptions::secure_heap_min,
             kAllowedInEnvironment);
+  AddOption("--openssl-shared-config",
+            "enable OpenSSL shared configuration",
+            &PerProcessOptions::openssl_shared_config,
+            kAllowedInEnvironment);
 #endif  // HAVE_OPENSSL
 #if OPENSSL_VERSION_MAJOR >= 3
   AddOption("--openssl-legacy-provider",
             "enable OpenSSL 3.0 legacy provider",
             &PerProcessOptions::openssl_legacy_provider,
             kAllowedInEnvironment);
-
 #endif  // OPENSSL_VERSION_MAJOR
   AddOption("--use-largepages",
             "Map the Node.js static code to large pages. Options are "
