@@ -373,7 +373,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             language='js',
         )
     ],
-    boot_jars=['graal-js:GRAALJS_SCRIPTENGINE'],
+    boot_jars=[],
     installable=True,
     stability="supported",
 ))
