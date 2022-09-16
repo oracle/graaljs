@@ -605,6 +605,9 @@ public class IteratorPrototypeBuiltinsTest {
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype[Symbol.toStringTag]");
             Assert.assertEquals("Iterator", result.asString());
+
+            result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype[Symbol.toStringTag] = 'Changed'; Iterator.prototype[Symbol.toStringTag]");
+            Assert.assertEquals("Changed", result.asString());
         }
     }
 

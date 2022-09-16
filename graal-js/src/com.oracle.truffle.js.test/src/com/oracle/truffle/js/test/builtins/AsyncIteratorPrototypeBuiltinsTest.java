@@ -511,6 +511,9 @@ public class AsyncIteratorPrototypeBuiltinsTest {
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype[Symbol.toStringTag]");
             Assert.assertEquals("Async Iterator", result.asString());
+
+            result = context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype[Symbol.toStringTag] = 'Changed'; AsyncIterator.prototype[Symbol.toStringTag]");
+            Assert.assertEquals("Changed", result.asString());
         }
     }
 
