@@ -2827,17 +2827,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        protected boolean isValidTarget(boolean isNewTargetCase, JSDynamicObject newTarget) {
+        protected boolean isValidTarget(JSDynamicObject newTarget) {
             return isNewTargetCase && newTarget != Undefined.instance;
         }
 
-        @Specialization(guards = {"isValidTarget(isNewTargetCase, newTarget)"})
+        @Specialization(guards = {"isValidTarget(newTarget)"})
         protected JSDynamicObject constructIterator(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             return swapPrototype(JSIterator.create(getContext(), getRealm()), newTarget);
         }
 
-        @Specialization(guards = {"!isValidTarget(isNewTargetCase, newTarget)"})
-        protected JSDynamicObject constructIteratorTypeError(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+        @Specialization(guards = {"!isValidTarget(newTarget)"})
+        protected JSDynamicObject constructIteratorTypeError(@SuppressWarnings("unused") JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             throw Errors.createTypeError("Cannot construct a new Iterator as it is an abstract class.");
         }
 
@@ -2852,17 +2852,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        protected boolean isValidTarget(boolean isNewTargetCase, JSDynamicObject newTarget) {
+        protected boolean isValidTarget(JSDynamicObject newTarget) {
             return isNewTargetCase && newTarget != Undefined.instance;
         }
 
-        @Specialization(guards = {"isValidTarget(isNewTargetCase, newTarget)"})
+        @Specialization(guards = {"isValidTarget(newTarget)"})
         protected JSDynamicObject constructIterator(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             return swapPrototype(JSAsyncIterator.create(getContext(), getRealm()), newTarget);
         }
 
-        @Specialization(guards = {"!isValidTarget(isNewTargetCase, newTarget)"})
-        protected JSDynamicObject constructIteratorTypeError(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+        @Specialization(guards = {"!isValidTarget(newTarget)"})
+        protected JSDynamicObject constructIteratorTypeError(@SuppressWarnings("unused") JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             throw Errors.createTypeError("Cannot construct a new AsyncIterator as it is an abstract class.");
         }
 

@@ -186,7 +186,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
 
 
-        IteratorBaseNode(JSContext context, JSBuiltin builtin, JSContext.BuiltinFunctionKey key) {
+        IteratorBaseNode(JSContext context, JSBuiltin builtin, @SuppressWarnings("unused") JSContext.BuiltinFunctionKey key) {
             super(context, builtin);
 
             getIteratorDirectNode = GetIteratorDirectNode.create(context);
@@ -240,7 +240,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             protected abstract Object execute(VirtualFrame frame, Object thisObj);
 
-            protected NextResult getNext(VirtualFrame frame, Object thisObj) {
+            protected NextResult getNext(Object thisObj) {
                 Object next = iteratorNextNode.execute(getArgs(thisObj).target);
                 if (!isObjectNode.executeBoolean(next)) {
                     errorProfile.enter();
@@ -279,12 +279,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
+            @SuppressWarnings("unchecked")
             protected T getArgs(Object thisObj) {
                 if (!hasArgsNode.executeHasHiddenKey(thisObj)) {
                     hasNoArgsProfile.enter();
                     throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
                 }
-                //noinspection unchecked
                 return (T) getArgsNode.getValue(thisObj);
             }
 
@@ -331,7 +331,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return getIteratorDirectNode.execute(thisObj);
         }
 
-        protected JSDynamicObject createIterator(Object thisObj, T args) {
+        protected JSDynamicObject createIterator(@SuppressWarnings("unused") Object thisObj, T args) {
             JSDynamicObject iterator = createObjectNode.execute(this.prototype);
             setArgsNode.setValue(iterator, args);
             setNextNode.setValue(iterator, JSFunction.create(getRealm(), implFn));
@@ -374,7 +374,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(Object thisObj, Object mapper) {
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -444,7 +444,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isCallable(filterer)")
-        public Object unsupported(Object thisObj, Object filterer) {
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object filterer) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -467,7 +467,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             public Object next(VirtualFrame frame, Object thisObj) {
                 IteratorFilterArgs args = getArgs(thisObj);
                 while (true) {
-                    NextResult result = getNext(frame, thisObj);
+                    NextResult result = getNext(thisObj);
                     if (result.done) {
                         return createResultDone(frame, thisObj);
                     }
@@ -745,7 +745,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 }
 
                 for (long i = 0; i < remaining; i++) {
-                    NextResult next = getNext(frame, thisObj);
+                    NextResult next = getNext(thisObj);
                     if (next.done) {
                         return createResultDone(frame, thisObj);
                     }
@@ -798,7 +798,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(Object thisObj, Object mapper) {
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -936,7 +936,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return Undefined.instance;
         }
 
-        protected Object step(IteratorRecord iterated, Object fn, Object value) {
+        protected Object step(@SuppressWarnings("unused") IteratorRecord iterated, @SuppressWarnings("unused") Object fn, @SuppressWarnings("unused") Object value) {
             return CONTINUE;
         }
 
@@ -954,7 +954,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "isCallableNode.executeBoolean(fn)")
-        protected Object compatible(VirtualFrame frame, Object thisObj, Object fn) {
+        protected Object compatible(Object thisObj, Object fn) {
             IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
             prepare();
             while (true) {
@@ -1135,7 +1135,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             Object accumulator;
             if (initialValue == Undefined.instance) {
                 Object next = iteratorStepNode.execute(iterated);
-                if (next == (Boolean) false) {
+                if (next == Boolean.FALSE) {
                     throw Errors.createTypeError("Reduce of empty iterator with no initial value");
                 }
 
@@ -1146,7 +1146,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             while (true) {
                 Object next = iteratorStepNode.execute(iterated);
-                if (next == (Boolean) false) {
+                if (next == Boolean.FALSE) {
                     return accumulator;
                 }
                 Object value = iteratorValueNode.execute(next);
@@ -1155,7 +1155,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isCallableNode.executeBoolean(reducer)")
-        protected void incompatible(Object thisObj, Object reducer, Object[] args) {
+        protected void incompatible(Object thisObj, Object reducer, @SuppressWarnings("unused") Object[] args) {
             getIteratorDirectNode.execute(thisObj);
             throw Errors.createTypeErrorNotAFunction(reducer);
         }

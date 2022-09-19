@@ -302,7 +302,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected Object incompatible(Object thisObj) {
+        protected Object incompatible(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeErrorGeneratorObjectExpected();
         }
     }

@@ -150,7 +150,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == Executing"})
-        public Object executing(Object thisObj) {
+        public Object executing(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeError("generator is already executing");
         }
         @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == SuspendedStart"})
