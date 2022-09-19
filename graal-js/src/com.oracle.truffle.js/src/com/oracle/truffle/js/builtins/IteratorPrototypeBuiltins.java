@@ -232,7 +232,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 hasArgsNode = HasHiddenKeyCacheNode.create(IteratorHelperPrototypeBuiltins.ARGS_ID);
                 createIterResultObjectNode = CreateIterResultObjectNode.create(context);
                 iteratorNextNode = IteratorNextNode.create();
-                iteratorValueNode = IteratorValueNode.create(context);
+                iteratorValueNode = IteratorValueNode.create();
                 getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
                 isObjectNode = IsJSObjectNode.create();
                 toBooleanNode = JSToBooleanNode.create();
@@ -822,7 +822,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 iteratorCloseNode = IteratorCloseNode.create(context);
 
                 callNode = JSFunctionCallNode.createCall();
-                getIteratorNode = GetIteratorNode.create(context);
+                getIteratorNode = GetIteratorNode.create(context, null);
 
                 setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
                 getAliveNode = PropertyGetNode.createGetHidden(FLATMAP_ALIVE_ID, context);
@@ -922,7 +922,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             callNode = JSFunctionCallNode.createCall();
 
             iteratorNextNode = IteratorNextNode.create();
-            iteratorValueNode = IteratorValueNode.create(context);
+            iteratorValueNode = IteratorValueNode.create();
             getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
             isObjectNode = IsJSObjectNode.create();
             toBooleanNode = JSToBooleanNode.create();
@@ -1108,8 +1108,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             getIteratorDirectNode = GetIteratorDirectNode.create(context);
             isCallableNode = IsCallableNode.create();
-            iteratorStepNode = IteratorStepNode.create(context);
-            iteratorValueNode = IteratorValueNode.create(context);
+            iteratorStepNode = IteratorStepNode.create();
+            iteratorValueNode = IteratorValueNode.create();
             callNode = JSFunctionCallNode.createCall();
         }
 
