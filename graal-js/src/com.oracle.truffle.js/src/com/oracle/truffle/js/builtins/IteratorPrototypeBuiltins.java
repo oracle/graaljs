@@ -74,6 +74,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -181,12 +182,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private PropertySetNode setNextNode;
         @Child private PropertySetNode setGeneratorStateNode;
 
-        private final JSFunctionData implFn;
-        private final JSDynamicObject prototype;
-
-
-
-        IteratorBaseNode(JSContext context, JSBuiltin builtin, @SuppressWarnings("unused") JSContext.BuiltinFunctionKey key) {
+        IteratorBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
             getIteratorDirectNode = GetIteratorDirectNode.create(context);
@@ -194,8 +190,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             setArgsNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
             setNextNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.NEXT_ID, context);
             setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
-            implFn = JSFunctionData.create(context, new IteratorRootNode(getImplementation(context)).getCallTarget(), 0, Strings.EMPTY);
-            prototype = createIteratorHelperPrototype();
         }
 
         protected abstract static class IteratorImplNode<T extends IteratorArgs> extends JavaScriptBaseNode {
@@ -332,30 +326,27 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected JSDynamicObject createIterator(@SuppressWarnings("unused") Object thisObj, T args) {
-            JSDynamicObject iterator = createObjectNode.execute(this.prototype);
+            JSDynamicObject iterator = createObjectNode.execute(getIteratorHelperPrototype());
             setArgsNode.setValue(iterator, args);
-            setNextNode.setValue(iterator, JSFunction.create(getRealm(), implFn));
+            setNextNode.setValue(iterator, JSFunction.create(getRealm(), getImplementation(getContext())));
             setGeneratorStateNode.setValue(iterator, JSFunction.GeneratorState.SuspendedStart);
             return iterator;
         }
 
-        protected abstract IteratorImplNode<T> getImplementation(JSContext context);
+        protected abstract JSFunctionData getImplementation(JSContext context);
 
-        private JSDynamicObject createIteratorHelperPrototype() {
+        protected static JSFunctionData createIteratorImplNextFunction(JSContext context, IteratorImplNode<?> implNode) {
+            return JSFunctionData.createCallOnly(context, IteratorRootNode.create(implNode).getCallTarget(), 0, Strings.EMPTY);
+        }
+
+        private JSDynamicObject getIteratorHelperPrototype() {
             return getRealm().getIteratorHelperPrototype();
-
-            //TODO: This would be a workaround for some performance issues but causes some unintended side-effects: https://github.com/oracle/graaljs/issues/636
-            //JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(getRealm(), getRealm().getIteratorPrototype());
-            //JSObjectUtil.putFunctionsFromContainer(getRealm(), prototype, new IteratorPrototypeBuiltins());
-            //JSObjectUtil.putFunctionsFromContainer(getRealm(), prototype, new IteratorHelperPrototypeBuiltins());
-            //JSObjectUtil.putToStringTag(prototype, IteratorHelperPrototypeBuiltins.TO_STRING_TAG);
-            //return prototype;
         }
     }
 
     protected abstract static class IteratorMapNode extends IteratorBaseNode<IteratorMapNode.IteratorMapArgs> {
         protected IteratorMapNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, JSContext.BuiltinFunctionKey.IteratorMap);
+            super(context, builtin);
         }
 
         protected static class IteratorMapArgs extends IteratorArgs {
@@ -417,15 +408,16 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorMapNodeGen.IteratorMapNextNodeGen.create(context);
             }
         }
+
         @Override
-        protected IteratorImplNode<IteratorMapArgs> getImplementation(JSContext context) {
-            return IteratorMapNextNode.create(context);
+        protected JSFunctionData getImplementation(JSContext context) {
+            return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.IteratorMap, c -> createIteratorImplNextFunction(c, IteratorMapNextNode.create(c)));
         }
     }
 
     protected abstract static class IteratorFilterNode extends IteratorBaseNode<IteratorFilterNode.IteratorFilterArgs> {
         protected IteratorFilterNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, JSContext.BuiltinFunctionKey.IteratorFilter);
+            super(context, builtin);
         }
 
         protected static class IteratorFilterArgs extends IteratorArgs {
@@ -494,9 +486,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorFilterNodeGen.IteratorFilterNextNodeGen.create(context);
             }
         }
+
         @Override
-        protected IteratorImplNode<IteratorFilterArgs> getImplementation(JSContext context) {
-            return IteratorFilterNextNode.create(context);
+        protected JSFunctionData getImplementation(JSContext context) {
+            return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.IteratorFilter, c -> createIteratorImplNextFunction(c, IteratorFilterNextNode.create(c)));
         }
     }
 
@@ -506,7 +499,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private PropertySetNode setIndexNode;
 
         protected IteratorIndexedNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, JSContext.BuiltinFunctionKey.IteratorIndexed);
+            super(context, builtin);
 
             setIndexNode = PropertySetNode.createSetHidden(INDEX_ID, context);
         }
@@ -559,9 +552,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorIndexedNodeGen.IteratorIndexedNextNodeGen.create(context);
             }
         }
+
         @Override
-        protected IteratorBaseNode.IteratorImplNode<IteratorArgs> getImplementation(JSContext context) {
-            return IteratorIndexedNextNode.create(context);
+        protected JSFunctionData getImplementation(JSContext context) {
+            return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.IteratorIndexed, c -> createIteratorImplNextFunction(c, IteratorIndexedNextNode.create(c)));
         }
     }
 
@@ -575,7 +569,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         private BranchProfile errorProfile = BranchProfile.create();
 
         protected IteratorTakeNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, JSContext.BuiltinFunctionKey.IteratorTake);
+            super(context, builtin);
 
             toNumberNode = JSToNumberNode.create();
             toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
@@ -663,9 +657,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorTakeNodeGen.IteratorTakeNextNodeGen.create(context);
             }
         }
+
         @Override
-        protected IteratorBaseNode.IteratorImplNode<IteratorTakeArgs> getImplementation(JSContext context) {
-            return IteratorTakeNextNode.create(context);
+        protected JSFunctionData getImplementation(JSContext context) {
+            return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.IteratorTake, c -> createIteratorImplNextFunction(c, IteratorTakeNextNode.create(c)));
         }
     }
 
@@ -679,7 +674,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         private final BranchProfile errorProfile = BranchProfile.create();
 
         protected IteratorDropNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, JSContext.BuiltinFunctionKey.IteratorDrop);
+            super(context, builtin);
 
             toNumberNode = JSToNumberNode.create();
             toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
@@ -766,8 +761,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Override
-        protected IteratorBaseNode.IteratorImplNode<IteratorDropArgs> getImplementation(JSContext context) {
-            return IteratorDropNextNode.create(context);
+        protected JSFunctionData getImplementation(JSContext context) {
+            return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.IteratorDrop, c -> createIteratorImplNextFunction(c, IteratorDropNextNode.create(c)));
         }
     }
 
@@ -775,7 +770,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private PropertySetNode setAliveNode;
 
         protected IteratorFlatMapNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, JSContext.BuiltinFunctionKey.IteratorFlatMap);
+            super(context, builtin);
 
             setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
         }
@@ -894,8 +889,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Override
-        protected IteratorBaseNode.IteratorImplNode<IteratorFlatMapArgs> getImplementation(JSContext context) {
-            return IteratorFlatMapNextNode.create(context);
+        protected JSFunctionData getImplementation(JSContext context) {
+            return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.IteratorFlatMap, c -> createIteratorImplNextFunction(c, IteratorFlatMapNextNode.create(c)));
         }
     }
 
