@@ -326,6 +326,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             protected RootNode cloneUninitialized() {
                 return create(implNode.copyUninitialized());
             }
+
+            @Override
+            public String toString() {
+                return implNode.toString();
+            }
         }
 
         protected IteratorRecord getIteratorDirect(Object thisObj) {
