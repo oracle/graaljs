@@ -64,7 +64,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -87,7 +86,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
     private static final HiddenKey NEXT_PROMISE_ID = new HiddenKey("promise");
 
     protected AsyncIteratorHelperPrototypeBuiltins() {
-        super(JSArray.ITERATOR_PROTOTYPE_NAME, AsyncIteratorHelperPrototypeBuiltins.HelperIteratorPrototype.class);
+        super(PROTOTYPE_NAME, AsyncIteratorHelperPrototypeBuiltins.HelperIteratorPrototype.class);
     }
 
     public enum HelperIteratorPrototype implements BuiltinEnum<AsyncIteratorHelperPrototypeBuiltins.HelperIteratorPrototype> {

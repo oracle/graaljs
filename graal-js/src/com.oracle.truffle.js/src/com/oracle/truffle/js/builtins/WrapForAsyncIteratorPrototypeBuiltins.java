@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -65,7 +66,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -79,8 +79,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WrapForAsyncIteratorPrototypeBuiltins.WrapForWrapForAsyncIterator> {
     public static final JSBuiltinsContainer BUILTINS = new WrapForAsyncIteratorPrototypeBuiltins();
 
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("%WrapForValidAsyncIteratorPrototype%");
+
     protected WrapForAsyncIteratorPrototypeBuiltins() {
-        super(JSAsyncIterator.CLASS_NAME, WrapForWrapForAsyncIterator.class);
+        super(PROTOTYPE_NAME, WrapForWrapForAsyncIterator.class);
     }
 
     public enum WrapForWrapForAsyncIterator implements BuiltinEnum<WrapForWrapForAsyncIterator> {

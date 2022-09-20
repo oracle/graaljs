@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -51,8 +52,8 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForIteratorObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -61,8 +62,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WrapForIteratorPrototypeBuiltins.WrapForIterator> {
     public static final JSBuiltinsContainer BUILTINS = new WrapForIteratorPrototypeBuiltins();
 
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("%WrapForValidIteratorPrototype%");
+
     protected WrapForIteratorPrototypeBuiltins() {
-        super(JSIterator.CLASS_NAME, WrapForIterator.class);
+        super(PROTOTYPE_NAME, WrapForIterator.class);
     }
 
     public enum WrapForIterator implements BuiltinEnum<WrapForIterator> {
