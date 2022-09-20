@@ -126,6 +126,13 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
         return true;
     }
 
+    /**
+     * Returns true if this built-in function should always be split per call site, if possible.
+     */
+    public boolean isSplitImmediately() {
+        return false;
+    }
+
     private static final boolean VERIFY_ARGUMENT_COUNT = false;
 
     public static JSBuiltinNode createBuiltin(JSContext ctx, JSBuiltin builtin, boolean construct, boolean newTarget) {

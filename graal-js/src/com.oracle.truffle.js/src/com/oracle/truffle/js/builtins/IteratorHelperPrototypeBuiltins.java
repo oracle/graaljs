@@ -240,7 +240,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
 
             try {
-                return callNode.executeCall(JSArguments.createZeroArg(thisObj, getNextImplNode.getValue(thisObj)));
+                Object next = getNextImplNode.getValue(thisObj);
+                return callNode.executeCall(JSArguments.createZeroArg(thisObj, next));
             } catch (AbstractTruffleException ex) {
                 setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
                 throw ex;
@@ -250,6 +251,11 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "!hasImpl(thisObj)")
         public Object unsupported(Object thisObj) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        }
+
+        @Override
+        public boolean isSplitImmediately() {
+            return true;
         }
     }
 }
