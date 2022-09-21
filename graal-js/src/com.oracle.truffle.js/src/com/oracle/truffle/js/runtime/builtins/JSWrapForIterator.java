@@ -66,11 +66,6 @@ public final class JSWrapForIterator extends JSNonProxy implements JSConstructor
         return obj instanceof JSWrapForIteratorObject;
     }
 
-    public static JSWrapForIteratorObject asWrapForIterator(Object obj) {
-        assert isWrapForIterator(obj);
-        return (JSWrapForIteratorObject) obj;
-    }
-
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSDynamicObject iteratorPrototype = realm.getIteratorPrototype();

@@ -96,10 +96,6 @@ public final class JSIterator extends JSNonProxy implements JSConstructorFactory
         return INSTANCE.createConstructorAndPrototype(realm, IteratorFunctionBuiltins.BUILTINS);
     }
 
-    public static boolean isJSIterator(Object object) {
-        return object instanceof JSIterator;
-    }
-
     @Override
     public TruffleString getClassName() {
         return CLASS_NAME;

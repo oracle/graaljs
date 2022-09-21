@@ -97,10 +97,6 @@ public final class JSAsyncIterator extends JSNonProxy implements JSConstructorFa
         return INSTANCE.createConstructorAndPrototype(realm, AsyncIteratorFunctionBuiltins.BUILTINS);
     }
 
-    public static boolean isJSAsyncIterator(Object object) {
-        return object instanceof JSAsyncIterator;
-    }
-
     @Override
     public TruffleString getClassName() {
         return CLASS_NAME;

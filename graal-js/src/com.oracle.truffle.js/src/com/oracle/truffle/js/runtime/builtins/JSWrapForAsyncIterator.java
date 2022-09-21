@@ -66,11 +66,6 @@ public final class JSWrapForAsyncIterator extends JSNonProxy implements JSConstr
         return obj instanceof JSWrapForAsyncIteratorObject;
     }
 
-    public static JSWrapForAsyncIteratorObject asWrapForIterator(Object obj) {
-        assert isWrapForAsyncIterator(obj);
-        return (JSWrapForAsyncIteratorObject) obj;
-    }
-
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSDynamicObject iteratorPrototype = realm.getAsyncIteratorPrototype();
