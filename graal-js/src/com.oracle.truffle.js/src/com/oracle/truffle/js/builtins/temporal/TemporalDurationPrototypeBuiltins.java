@@ -388,7 +388,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj, interop, getContext());
-            JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.executeDynamicObject(other, TemporalUtil.listEmpty);
+            JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.executeDynamicObject(convertJavaToJavascriptDuration(other, interop, getContext()), TemporalUtil.listEmpty);
             JSDynamicObject normalizedOptions = getOptionsObject(options);
             JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(normalizedOptions);
             JSTemporalDurationRecord result = durationAddNode.execute(duration.getYears(), duration.getMonths(),
@@ -420,7 +420,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj, interop, getContext());
-            JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.executeDynamicObject(other, TemporalUtil.listEmpty);
+            JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.executeDynamicObject(convertJavaToJavascriptDuration(other, interop, getContext()), TemporalUtil.listEmpty);
             JSDynamicObject normalizedOptions = getOptionsObject(options);
             JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(normalizedOptions);
             JSTemporalDurationRecord result = durationAddNode.execute(duration.getYears(), duration.getMonths(),

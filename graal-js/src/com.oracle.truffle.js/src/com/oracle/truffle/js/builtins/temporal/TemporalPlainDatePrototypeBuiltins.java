@@ -478,12 +478,12 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             throw TemporalErrors.createTypeErrorTemporalDurationExpected();
         }
 
-        protected JSTemporalDurationObject convertJavaToJavascriptDuration(Object obj, InteropLibrary interop, JSContext ctx) {
+        protected Object convertJavaToJavascriptDuration(Object obj, InteropLibrary interop, JSContext ctx) {
             if (interop.isDuration(obj)) {
                 JSTemporalDurationObject dur = TemporalDurationPrototypeBuiltins.JSTemporalDurationGetterNode.javaDurationToDuration(obj, interop, ctx);
                 return dur;
             }
-            return (JSTemporalDurationObject) obj;
+            return obj;
         }
 
         protected JSTemporalTimeZoneObject requireTemporalTimeZone(Object obj) {

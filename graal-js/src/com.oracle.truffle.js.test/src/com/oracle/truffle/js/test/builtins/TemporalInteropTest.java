@@ -328,6 +328,21 @@ public class TemporalInteropTest extends JSTest {
     }
 
     @Test
+    public void testDurationAdd2() {
+        String code = "javaDur.add(javaDur).hours";
+
+        java.time.Duration dur = Duration.ofHours(12);
+
+        try (Context ctx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).//
+                option(JSContextOptions.FOREIGN_OBJECT_PROTOTYPE_NAME, "true").//
+                option(JSContextOptions.TEMPORAL_NAME, "true").build()) {
+            ctx.getBindings(ID).putMember("javaDur", dur);
+            Value result = ctx.eval(ID, code);
+            Assert.assertEquals(24, result.asLong());
+        }
+    }
+
+    @Test
     public void testDurationSubtract() {
         String code = "javaDur.subtract({hours: 5}).hours";
 
@@ -341,6 +356,22 @@ public class TemporalInteropTest extends JSTest {
             Assert.assertEquals(7, result.asLong());
         }
     }
+
+    @Test
+    public void testDurationSubtract2() {
+        String code = "javaDur.subtract(javaDur).hours";
+
+        java.time.Duration dur = Duration.ofHours(12);
+
+        try (Context ctx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).//
+                option(JSContextOptions.FOREIGN_OBJECT_PROTOTYPE_NAME, "true").//
+                option(JSContextOptions.TEMPORAL_NAME, "true").build()) {
+            ctx.getBindings(ID).putMember("javaDur", dur);
+            Value result = ctx.eval(ID, code);
+            Assert.assertEquals(0, result.asLong());
+        }
+    }
+
     @Ignore // negated() does exist for java Duration.
     @Test
     public void testDurationNegated() {
