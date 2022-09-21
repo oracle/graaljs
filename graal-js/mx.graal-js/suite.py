@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "998ccb95dedc1b3fcedd7734f096d28bb8b890df",
+           "version" : "f879e0daa38c0a0131978487549c152301fb0954",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
