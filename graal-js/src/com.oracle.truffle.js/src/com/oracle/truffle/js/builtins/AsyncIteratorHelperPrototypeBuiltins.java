@@ -53,6 +53,7 @@ import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -212,6 +213,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private HasHiddenKeyCacheNode hasInnerNode;
         @Child private PropertyGetNode getInnerNode = null;
         @Child private IteratorCloseNode iteratorCloseNode = null;
+        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -236,8 +238,13 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 IteratorRecord iterated = getTargetNode.execute(thisObj);
                 return asyncIteratorClose.execute(iterated.getIterator());
             } catch (AbstractTruffleException ex) {
+                if (getErrorObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+                }
+                Object error = getErrorObjectNode.execute(Errors.createTypeErrorIncompatibleReceiver(thisObj));
                 PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
-                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, capabilityRecord.getReject(), Errors.createTypeErrorIncompatibleReceiver(thisObj)));
+                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, capabilityRecord.getReject(), error));
                 return capabilityRecord.getPromise();
             }
         }
@@ -268,6 +275,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private PropertyGetNode getPromiseNode;
         @Child private PropertySetNode setPromiseNode;
         @Child private PropertySetNode setThisNode;
+        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
         protected AsyncIteratorHelperNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -294,8 +302,13 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 setPromiseNode.setValue(thisObj, result);
                 return result;
             } catch (AbstractTruffleException ex) {
+                if (getErrorObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+                }
+                Object error = getErrorObjectNode.execute(Errors.createTypeErrorIncompatibleReceiver(thisObj));
                 PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
-                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, capabilityRecord.getReject(), Errors.createTypeErrorIncompatibleReceiver(thisObj)));
+                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, capabilityRecord.getReject(), error));
                 return capabilityRecord.getPromise();
             }
         }

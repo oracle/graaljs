@@ -157,8 +157,13 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         @Specialization(guards = "!isWrapForAsyncIterator(thisObj)")
         protected JSDynamicObject incompatible(Object thisObj) {
+            if (getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+            }
+            Object error = getErrorObjectNode.execute(Errors.createTypeErrorIncompatibleReceiver(thisObj));
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
-            callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), Errors.createTypeErrorIncompatibleReceiver(thisObj)));
+            callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
             return promiseCapability.getPromise();
         }
     }
@@ -212,8 +217,13 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         @Specialization(guards = "!isWrapForAsyncIterator(thisObj)")
         protected JSDynamicObject incompatible(Object thisObj) {
+            if (getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+            }
+            Object error = getErrorObjectNode.execute(Errors.createTypeErrorIncompatibleReceiver(thisObj));
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(getRealm().getPromiseConstructor());
-            callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), Errors.createTypeErrorIncompatibleReceiver(thisObj)));
+            callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
             return promiseCapability.getPromise();
         }
 
@@ -255,8 +265,10 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
             @Child private IsObjectNode isObjectNode;
             @Child private JSFunctionCallNode callNode;
             @Child private CreateIterResultObjectNode createIterResultObjectNode;
+            @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
             protected AsyncIteratorCloseResultCheckNode(JSContext context) {
+                super(context.getLanguage(), null, null);
                 newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
                 isObjectNode = IsObjectNode.create();
                 callNode = JSFunctionCallNode.createCall();
@@ -276,7 +288,12 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
             public final Object execute(VirtualFrame frame, Object innerResult) {
                 PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(getRealm().getPromiseConstructor());
                 if (!isObjectNode.executeBoolean(innerResult)) {
-                    callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), Errors.createTypeErrorIterResultNotAnObject(innerResult, this)));
+                    if (getErrorObjectNode == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getLanguage().getJSContext()));
+                    }
+                    Object error = getErrorObjectNode.execute(Errors.createTypeErrorIterResultNotAnObject(innerResult, this));
+                    callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
                 } else {
                     Object result = this.createIterResultObjectNode.execute(frame, innerResult, true);
                     callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), result));

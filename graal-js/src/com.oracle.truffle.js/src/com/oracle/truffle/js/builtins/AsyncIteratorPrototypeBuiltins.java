@@ -66,6 +66,7 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -176,9 +177,10 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Child private PropertyGetNode getThisNode;
             @Child protected JSFunctionCallNode callNode;
 
-            private final JSContext context;
+            protected final JSContext context;
 
             AsyncIteratorRootNode(JSContext context) {
+                super(context.getLanguage(), null, null);
                 this.context = context;
 
                 valueNode = AccessIndexedArgumentNode.create(0);
@@ -364,6 +366,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child protected IsObjectNode isObjectNode;
         @Child protected CreateIterResultObjectNode createIterResultObjectNode;
         @Child protected NewPromiseCapabilityNode newPromiseCapabilityNode;
+        @Child protected TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
         public AsyncIteratorNextUtilsRootNode(JSContext context) {
             super(context);
@@ -379,8 +382,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 return null;
             }
 
+            if (getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+            }
+            Object error = getErrorObjectNode.execute(Errors.createTypeErrorIterResultNotAnObject(value, this));
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
-            callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), Errors.createTypeErrorIterResultNotAnObject(value, this)));
+            callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
             return promiseCapability.getPromise();
         }
 
@@ -394,7 +402,12 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             return promiseCapability.getPromise();
         }
 
-        protected JSDynamicObject toReject(Object error) {
+        protected JSDynamicObject toReject(AbstractTruffleException ex) {
+            if (getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+            }
+            Object error = getErrorObjectNode.execute(ex);
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
             callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
             return promiseCapability.getPromise();
@@ -1383,9 +1396,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
                 JSDynamicObject promiseCompleted = checkComplete(frame, next);
                 if (promiseCompleted != null) {
+                    if (getErrorObjectNode == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+                    }
+                    Object error = getErrorObjectNode.execute(Errors.createTypeError("Reduce of empty iterator with no initial value"));
                     PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
-                    callNode.executeCall(
-                                    JSArguments.createOneArg(capabilityRecord.getPromise(), capabilityRecord.getReject(), Errors.createTypeError("Reduce of empty iterator with no initial value")));
+                    callNode.executeCall(JSArguments.createOneArg(capabilityRecord.getPromise(), capabilityRecord.getReject(), error));
                     return capabilityRecord.getPromise();
                 }
 
