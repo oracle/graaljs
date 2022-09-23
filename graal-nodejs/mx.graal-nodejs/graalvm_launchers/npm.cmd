@@ -12,7 +12,7 @@ echo %* | findstr = >nul && (
 
 set "node_exe=%~dp0node.exe"
 if not exist "%node_exe%" (
-  echo Error: Cannot find '%NODE_EXE%'
+  echo Error: Cannot find "%node_exe%"
   exit /b 1
 )
 
