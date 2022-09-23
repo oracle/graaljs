@@ -8,7 +8,7 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 ## Version 22.3.0
 * Implemented the [WebAssembly multi-value](https://github.com/WebAssembly/multi-value) proposal.
 * Added an experimental option `--js.unhandled-rejections=handler` that allows to use a custom callback to track unhandled promise rejections.
-* Updated Node.js to version 16.16.0.
+* Updated Node.js to version 16.17.1.
 * ECMA-402 Internationalization API has been enabled by default. It can be disabled by `--js.intl-402=false` option.
 * Implemented the [Decorators (stage 3)](https://github.com/tc39/proposal-decorators) proposal.
 
