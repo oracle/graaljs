@@ -260,7 +260,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         findLastIndex(1),
 
         // Next
-        toReversed(0);
+        toReversed(0),
+        toSorted(1);
 
         private final int length;
 
@@ -372,6 +373,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             case toReversed:
                 return ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(0).createArgumentNodes(context));
+            case toSorted:
+                return ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -2719,10 +2722,52 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object reverseArray(final JSDynamicObject thisObj) {
+        protected Object reverseArray(final Object thisObj) {
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
-            long length = arrayGetLength(thisObj);
+            long length = arrayGetLength((JSDynamicObject) thisJSObj);
             Object result = JSArray.createEmpty(getContext(), getRealm(), length);
+
+            for (long i = 0; i < length; i++) {
+                var value = read(thisJSObj, length-1-i);
+                write(result, i, value);
+            }
+
+            return result;
+        }
+    }
+
+    public abstract static class JSArrayToSortedNode extends JSArrayOperation {
+        public JSArrayToSortedNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        @Specialization
+        public Object sortArray(final JSArrayObject thisObj, final Object compare) {
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
+            long length = arrayGetLength((JSDynamicObject) thisJSObj);
+            Object result = JSArray.createEmpty(getContext(), getRealm(), length);
+
+            /*
+            * Object[] array = jsobjectToArray(thisJSObj, len);
+
+            Comparator<Object> comparator = getComparator(thisJSObj, comparefn);
+            if (isTypedArrayImplementation && comparefn == Undefined.instance) {
+                assert comparator == null;
+                prepareForDefaultComparator(array);
+            }
+            sortIntl(comparator, array);
+            reportLoopCount(len);
+
+            for (int i = 0; i < array.length; i++) {
+                write(thisJSObj, i, array[i]);
+            }
+
+            if (isSparse.profile(array.length < len)) {
+                deleteGenericElements(thisJSObj, array.length, len);
+            }
+            return thisJSObj;
+
+* */
 
             for (long i = 0; i < length; i++) {
                 var value = read(thisJSObj, length-1-i);
