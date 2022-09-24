@@ -42,15 +42,20 @@ package com.oracle.truffle.js.test.builtins;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.test.JSTest;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.function.Consumer;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class ArrayPrototypeBuiltins {
 
@@ -168,20 +173,123 @@ public class ArrayPrototypeBuiltins {
             testArray(src, expected.length, expected);
         }
 
-        private void testArray(String src, long arrayLength, Object[] result) {
+        @Test
+        public void reverseStringUsingPrototypeCall() {
+            String src = "Array.prototype.toReversed.call('a string')";
+
             Context.Builder builder = JSTest.newContextBuilder();
             builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
             try (Context context = builder.build()) {
                 var value = context.eval(JavaScriptLanguage.ID, src);
-                assertEquals(arrayLength, value.getArraySize());
-
-                for (int i = 0; i < arrayLength; i++) {
-                    assertEquals(result[i], value.getArrayElement(i).as(Object.class));
-                }
+                assertEquals("gnirts a", value.asString());
             }
         }
 
+        @Test
+        public void reverseComplexArrayUsingPrototypeCall() {
+            String src = "Array.prototype.toReversed.call(['hello', null, undefined, 0]);";
+            Object[] expected = new Object[]{0, null, null, "hello"};
+
+            testArray(src, expected.length, expected);
+        }
     }
 
+    public static class ToSortedTests {
+        @Test
+        public void throwsTypeErrorIfCompareFunctionIsInvalid() {
+            String src = "[41, 42, 43, 44, 45].toSorted(32);";
+            try {
+                executeSourceForResult(src, value -> {});
+                fail("expected TypeError to be thrown");
+            } catch (PolyglotException e) {
+                assertEquals("TypeError: The comparison function must be either a function or undefined", e.getMessage());
+            }
+        }
+
+        @Test
+        public void sortWithDefaultComparator() {
+            String src = "[45, 43, 41, 42, 44].toSorted();";
+            Integer[] expected = new Integer[]{41, 42, 43, 44, 45};
+
+            testArray(src, expected.length, expected);
+        }
+
+        @Test
+        public void sortNumberArray() {
+            String src = "[41, 42, 43, 44, 45].toSorted((a, b) => b - a);";
+            Integer[] expected = new Integer[]{45, 44, 43, 42, 41};
+
+            testArray(src, expected.length, expected);
+        }
+
+        @Test
+        public void complexComparator() {
+            // Comparator moves uneven numbers to the front
+            String src = "[1, 2, 3, 4, 5].toSorted((a, b) => {" +
+                    "   if (a % 2 == 0) return 1;" +
+                    "   else if (b % 2 == 0) return -1;" +
+                    "   else return a - b;" +
+                    "});";
+            Integer[] expected = new Integer[]{1, 3, 5, 2, 4};
+
+            testArray(src, expected.length, expected);
+        }
+
+        @Test
+        public void sortWithPrototypeCall() {
+            String src = "Array.prototype.toSorted.call([45, 43, 41, 42, 44])";
+            Integer[] expected = new Integer[]{41, 42, 43, 44, 45};
+
+            testArray(src, expected.length, expected);
+
+            src = "Array.prototype.toSorted.call([41, 42, 43, 44, 45], (a, b) => b - a);";
+            expected = new Integer[]{45, 44, 43, 42, 41};
+
+            testArray(src, expected.length, expected);
+        }
+
+        @Test
+        public void sortString() {
+            String src = "Array.prototype.toSorted.call('dcba')";
+
+            executeSourceForResult(src, value -> {
+                assertEquals("abcd", value.asString());
+            });
+
+            src = "Array.prototype.toSorted.call('abcd', (a, b) => 0)";
+
+            executeSourceForResult(src, value -> {
+                assertEquals("abcd", value.asString());
+            });
+
+//            Complex comparators with strings fail with
+//            org.graalvm.polyglot.PolyglotException: com.oracle.truffle.api.dsl.UnsupportedSpecializationException:
+//              Unexpected values provided for JSToStringNodeGen@72c8e7b: [a], [Character]
+//            src = "Array.prototype.toSorted.call('abcd', (a, b) => String(a).localCompare(String(b)))";
+//
+//            executeSourceForResult(src, value -> {
+//                assertEquals("dcba", value.asString());
+//            });
+        }
+    }
+
+    private static void testArray(String src, long arrayLength, Object[] result) {
+        executeSourceForResult(src, value -> {
+            assertEquals(arrayLength, value.getArraySize());
+
+            for (int i = 0; i < arrayLength; i++) {
+                assertEquals(result[i], value.getArrayElement(i).as(Object.class));
+            }
+        });
+    }
+
+    private static void executeSourceForResult(String src, Consumer<Value> consumer) {
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
+        try (Context context = builder.build()) {
+            var value = context.eval(JavaScriptLanguage.ID, src);
+            consumer.accept(value);
+        }
+    }
 
 }

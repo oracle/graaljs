@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -101,6 +102,7 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLoc
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshiftNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
+import com.oracle.truffle.js.builtins.sort.SortComparator;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -142,6 +144,8 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropCallNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
@@ -174,6 +178,8 @@ import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
+import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -195,6 +201,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.DEFAULT_JSARRAY_COMPARATOR;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
@@ -2722,17 +2729,38 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object reverseArray(final Object thisObj) {
+        protected Object reverse(final Object thisObj) {
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
-            long length = arrayGetLength((JSDynamicObject) thisJSObj);
+
+            if (isString(thisJSObj)) {
+                return reverseString((JSStringObject) thisJSObj);
+            } else {
+                return reverseArray((JSDynamicObject) thisJSObj);
+            }
+
+        }
+
+        private Object reverseArray(JSDynamicObject array) {
+            long length = arrayGetLength(array);
             Object result = JSArray.createEmpty(getContext(), getRealm(), length);
 
             for (long i = 0; i < length; i++) {
-                var value = read(thisJSObj, length-1-i);
+                var value = read(array, length-1-i);
                 write(result, i, value);
             }
 
             return result;
+        }
+
+        private Object reverseString(final JSStringObject jsString) {
+            String reversedString = new StringBuilder(jsString.asString()).reverse().toString();
+            TruffleString reversedTruffleString = TruffleString.fromJavaStringUncached(reversedString, TruffleString.Encoding.UTF_8);
+            return JSStringObject.create(jsString.getShape(), reversedTruffleString);
+        }
+
+        private boolean isString(final Object object) {
+            Object thisJSObj = toObjectOrValidateTypedArray(object);
+            return thisJSObj instanceof JSStringObject;
         }
     }
 
@@ -2742,39 +2770,74 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        public Object sortArray(final JSArrayObject thisObj, final Object compare) {
+        public Object sort(final Object thisObj, final Object compare) {
+            if (!(compare == Undefined.instance || isCallable(compare))) {
+                throw Errors.createTypeError("The comparison function must be either a function or undefined");
+            }
+
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
+
+            if (isString(thisJSObj)) {
+                return sortString(thisJSObj, compare);
+            } else {
+                return sortArray(thisJSObj, compare);
+            }
+        }
+
+        private Object sortArray(final Object thisJSObj, final Object compare) {
+            JSArrayObject arrayObject = (JSArrayObject) thisJSObj;
             long length = arrayGetLength((JSDynamicObject) thisJSObj);
+            Object[] array = JSArray.toArray(arrayObject);
+            Comparator<Object> comparator = compare == null || compare == Undefined.instance ?
+                    SortComparator.getDefaultComparator(arrayObject, isTypedArrayImplementation) :
+                    new SortComparator(compare);
+
             Object result = JSArray.createEmpty(getContext(), getRealm(), length);
 
-            /*
-            * Object[] array = jsobjectToArray(thisJSObj, len);
-
-            Comparator<Object> comparator = getComparator(thisJSObj, comparefn);
-            if (isTypedArrayImplementation && comparefn == Undefined.instance) {
-                assert comparator == null;
-                prepareForDefaultComparator(array);
-            }
-            sortIntl(comparator, array);
-            reportLoopCount(len);
+            Arrays.sort(array, comparator);
 
             for (int i = 0; i < array.length; i++) {
-                write(thisJSObj, i, array[i]);
-            }
-
-            if (isSparse.profile(array.length < len)) {
-                deleteGenericElements(thisJSObj, array.length, len);
-            }
-            return thisJSObj;
-
-* */
-
-            for (long i = 0; i < length; i++) {
-                var value = read(thisJSObj, length-1-i);
-                write(result, i, value);
+                write(result, i, array[i]);
             }
 
             return result;
+        }
+
+        private void insertionSortCharArray(char[] array, Comparator<Object> comparator) {
+            for (int i = 1; i < array.length; i++) {
+                int j = i - 1;
+                char key = array[i];
+
+                while(j >= 0 && comparator.compare(array[j], key) > 0) {
+                    array[j+1] = array[j];
+                    j = j-1;
+                }
+
+                array[j+1] = key;
+            }
+        }
+
+        private Object sortString(final Object thisJSObj, final Object compare) {
+            StringBuilder resultBuilder = new StringBuilder();
+            JSStringObject jsString = (JSStringObject)thisJSObj;
+            String string = jsString.asString();
+            Comparator<Object> comparator = compare == null || compare == Undefined.instance ?
+                    Comparator.comparing(Object::toString) :
+                    new SortComparator(compare);
+            char[] array = string.toCharArray();
+
+           insertionSortCharArray(array, comparator);
+
+            for (Object character : array) {
+                resultBuilder.append(character);
+            }
+
+            return JSStringObject.create(jsString.getShape(), TruffleString.fromJavaStringUncached(resultBuilder.toString(), TruffleString.Encoding.UTF_8));
+        }
+
+        private boolean isString(final Object object) {
+            Object thisJSObj = toObjectOrValidateTypedArray(object);
+            return thisJSObj instanceof JSStringObject;
         }
     }
 
@@ -2914,19 +2977,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private Comparator<Object> getDefaultComparator(Object thisObj) {
-            if (isTypedArrayImplementation) {
-                return null; // use Comparable.compareTo (equivalent to Comparator.naturalOrder())
-            } else {
-                if (JSArray.isJSArray(thisObj)) {
-                    ScriptArray array = arrayGetArrayType((JSDynamicObject) thisObj);
-                    if (array instanceof AbstractIntArray || array instanceof ConstantByteArray || array instanceof ConstantIntArray) {
-                        return JSArray.DEFAULT_JSARRAY_INTEGER_COMPARATOR;
-                    } else if (array instanceof AbstractDoubleArray || array instanceof ConstantDoubleArray) {
-                        return JSArray.DEFAULT_JSARRAY_DOUBLE_COMPARATOR;
-                    }
-                }
-                return JSArray.DEFAULT_JSARRAY_COMPARATOR;
-            }
+            return SortComparator.getDefaultComparator(thisObj, isTypedArrayImplementation);
         }
 
         /**
@@ -2971,51 +3022,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (needsConversion) {
                 for (int i = 0; i < array.length; i++) {
                     array[i] = JSRuntime.toDouble(array[i]);
-                }
-            }
-        }
-
-        private class SortComparator implements Comparator<Object> {
-            private final Object compFnObj;
-            private final boolean isFunction;
-
-            SortComparator(Object compFnObj) {
-                this.compFnObj = compFnObj;
-                this.isFunction = JSFunction.isJSFunction(compFnObj);
-            }
-
-            @Override
-            public int compare(Object arg0, Object arg1) {
-                if (arg0 == Undefined.instance) {
-                    if (arg1 == Undefined.instance) {
-                        return 0;
-                    }
-                    return 1;
-                } else if (arg1 == Undefined.instance) {
-                    return -1;
-                }
-                Object retObj;
-                if (isFunction) {
-                    retObj = JSFunction.call((JSFunctionObject) compFnObj, Undefined.instance, new Object[]{arg0, arg1});
-                } else {
-                    retObj = JSRuntime.call(compFnObj, Undefined.instance, new Object[]{arg0, arg1});
-                }
-                return convertResult(retObj);
-            }
-
-            private int convertResult(Object retObj) {
-                if (retObj instanceof Integer) {
-                    return (int) retObj;
-                } else {
-                    double d = JSRuntime.toDouble(retObj);
-                    if (d < 0) {
-                        return -1;
-                    } else if (d > 0) {
-                        return 1;
-                    } else {
-                        // +/-0 or NaN
-                        return 0;
-                    }
                 }
             }
         }
