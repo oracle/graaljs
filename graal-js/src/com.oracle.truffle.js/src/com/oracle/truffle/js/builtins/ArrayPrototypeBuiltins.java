@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -144,8 +143,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.nodes.interop.JSInteropCallNode;
-import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
@@ -161,11 +158,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
-import com.oracle.truffle.js.runtime.array.dyn.AbstractDoubleArray;
-import com.oracle.truffle.js.runtime.array.dyn.AbstractIntArray;
-import com.oracle.truffle.js.runtime.array.dyn.ConstantByteArray;
-import com.oracle.truffle.js.runtime.array.dyn.ConstantDoubleArray;
-import com.oracle.truffle.js.runtime.array.dyn.ConstantIntArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -178,7 +170,6 @@ import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
-import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -201,7 +192,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.DEFAULT_JSARRAY_COMPARATOR;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
@@ -2745,7 +2735,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object result = JSArray.createEmpty(getContext(), getRealm(), length);
 
             for (long i = 0; i < length; i++) {
-                var value = read(array, length-1-i);
+                var value = read(array, length - 1 - i);
                 write(result, i, value);
             }
 
@@ -2803,23 +2793,24 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return result;
         }
 
+        // Arrays.sort has no method to sort a char array _with_ a comparator.
         private void insertionSortCharArray(char[] array, Comparator<Object> comparator) {
             for (int i = 1; i < array.length; i++) {
                 int j = i - 1;
                 char key = array[i];
 
-                while(j >= 0 && comparator.compare(array[j], key) > 0) {
-                    array[j+1] = array[j];
-                    j = j-1;
+                while (j >= 0 && comparator.compare(array[j], key) > 0) {
+                    array[j + 1] = array[j];
+                    j = j - 1;
                 }
 
-                array[j+1] = key;
+                array[j + 1] = key;
             }
         }
 
         private Object sortString(final Object thisJSObj, final Object compare) {
             StringBuilder resultBuilder = new StringBuilder();
-            JSStringObject jsString = (JSStringObject)thisJSObj;
+            JSStringObject jsString = (JSStringObject) thisJSObj;
             String string = jsString.asString();
             Comparator<Object> comparator = compare == null || compare == Undefined.instance ?
                     Comparator.comparing(Object::toString) :
