@@ -42,7 +42,6 @@ package com.oracle.truffle.js.test.builtins;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.test.JSTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -159,8 +158,8 @@ public class ArrayPrototypeBuiltins {
 
             testArray(src, expected.length, expected);
 
-            src = "['abcd', 'hello', 't2xs', 'fge^°'].toReversed();";
-            expected = new String[]{"fge^°", "t2xs", "hello", "abcd"};
+            src = "['abcd', 'hello', 't2xs', 'fge^?'].toReversed();";
+            expected = new String[]{"fge^?", "t2xs", "hello", "abcd"};
 
             testArray(src, expected.length, expected);
         }
@@ -199,7 +198,7 @@ public class ArrayPrototypeBuiltins {
         public void throwsTypeErrorIfCompareFunctionIsInvalid() {
             String src = "[41, 42, 43, 44, 45].toSorted(32);";
             try {
-                executeSourceForResult(src, value -> {});
+                executeSourceForResult(src, value -> { });
                 fail("expected TypeError to be thrown");
             } catch (PolyglotException e) {
                 assertEquals("TypeError: The comparison function must be either a function or undefined", e.getMessage());
