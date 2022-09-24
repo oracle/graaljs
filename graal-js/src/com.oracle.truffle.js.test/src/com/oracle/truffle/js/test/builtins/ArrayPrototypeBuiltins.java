@@ -87,8 +87,8 @@ public class ArrayPrototypeBuiltins {
     }
 
     @Test
-    public void testBasicGroupBy() {
-        String src = "[41, 42, 43, 44, 45].groupBy(n => n % 2 === 0 ? 'even' : 'odd');";
+    public void testBasicGroup() {
+        String src = "[41, 42, 43, 44, 45].group(n => n % 2 === 0 ? 'even' : 'odd');";
         Context.Builder builder = JSTest.newContextBuilder();
         builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
         try (Context context = builder.build()) {
@@ -111,10 +111,10 @@ public class ArrayPrototypeBuiltins {
     }
 
     @Test
-    public void testBasicGroupByToMap() {
+    public void testBasicGroupToMap() {
         String src = "var odd = { odd: true };" +
                         "var even = { even: true };" +
-                        "[41, 42, 43, 44, 45].groupByToMap(n => {" +
+                        "[41, 42, 43, 44, 45].groupToMap(n => {" +
                         "  return n % 2 === 0 ? even : odd;" +
                         "});";
         Context.Builder builder = JSTest.newContextBuilder();

@@ -93,6 +93,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
@@ -245,8 +246,57 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
-    // 4.3.10
-    public abstract static class JSTemporalPlainTimeAdd extends JSTemporalBuiltinOperation {
+    public abstract static class PlainTimeOperation extends JSTemporalBuiltinOperation {
+        public PlainTimeOperation(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        protected JSTemporalPlainTimeObject addDurationToOrSubtractDurationFromPlainTime(int sign, TemporalTime temporalTime, Object temporalDurationLike,
+                        ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
+
+            JSTemporalDurationRecord result = TemporalUtil.addTimeDouble(
+                            temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
+                            temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
+                            sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
+                            sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds());
+            assert TemporalUtil.isValidTime(dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
+                            dtoi(result.getNanoseconds()));
+            return JSTemporalPlainTime.create(getContext(),
+                            dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
+                            dtoi(result.getNanoseconds()), errorBranch);
+        }
+
+        protected JSTemporalDurationObject differenceTemporalPlainTime(int sign, TemporalTime temporalTime, Object otherObj, Object optionsParam, JSToNumberNode toNumber,
+                        EnumerableOwnPropertyNamesNode namesNode, ToTemporalTimeNode toTemporalTime, TruffleString.EqualNode equalNode, TemporalRoundDurationNode roundDurationNode) {
+            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
+            JSDynamicObject options = getOptionsObject(optionsParam);
+            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode);
+            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode);
+            TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode);
+            if (sign == TemporalUtil.SINCE) {
+                roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
+            }
+            Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
+            long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
+            JSTemporalDurationRecord result = TemporalUtil.differenceTime(
+                            temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
+                            temporalTime.getNanosecond(),
+                            other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond());
+            JSTemporalDurationRecord result2 = roundDurationNode.execute(0, 0, 0, 0,
+                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(),
+                            result.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode, Undefined.instance);
+            JSTemporalDurationRecord result3 = TemporalUtil.balanceDuration(getContext(), namesNode,
+                            0, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(),
+                            result2.getNanoseconds(), largestUnit);
+            return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0,
+                            sign * result3.getHours(), sign * result3.getMinutes(), sign * result3.getSeconds(), sign * result3.getMilliseconds(), sign * result3.getMicroseconds(),
+                            sign * result3.getNanoseconds(), errorBranch);
+        }
+    }
+
+    public abstract static class JSTemporalPlainTimeAdd extends PlainTimeOperation {
 
         protected JSTemporalPlainTimeAdd(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -256,28 +306,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public JSDynamicObject add(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
-            TemporalUtil.rejectDurationSign(
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
-                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            JSTemporalDurationRecord result = TemporalUtil.addTimeDouble(
-                            temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
-                            temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
-                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            JSTemporalDurationRecord result2 = TemporalUtil.regulateTime(
-                            dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
-                            dtoi(result.getNanoseconds()),
-                            Overflow.REJECT);
-            return JSTemporalPlainTime.create(getContext(),
-                            dtoi(result2.getHours()), dtoi(result2.getMinutes()), dtoi(result2.getSeconds()), dtoi(result2.getMilliseconds()), dtoi(result2.getMicroseconds()),
-                            dtoi(result2.getNanoseconds()), errorBranch);
+            return addDurationToOrSubtractDurationFromPlainTime(TemporalUtil.ADD, temporalTime, temporalDurationLike, toLimitedTemporalDurationNode);
         }
     }
 
-    // 4.3.11
-    public abstract static class JSTemporalPlainTimeSubtract extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalPlainTimeSubtract extends PlainTimeOperation {
 
         protected JSTemporalPlainTimeSubtract(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -287,22 +320,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
-            TemporalUtil.rejectDurationSign(
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
-                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            JSTemporalDurationRecord result = TemporalUtil.addTimeDouble(
-                            temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
-                            temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
-                            -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
-                            -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
-            JSTemporalDurationRecord result2 = TemporalUtil.regulateTime(
-                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),
-                            Overflow.REJECT);
-            return JSTemporalPlainTime.create(getContext(),
-                            dtoi(result2.getHours()), dtoi(result2.getMinutes()), dtoi(result2.getSeconds()), dtoi(result2.getMilliseconds()), dtoi(result2.getMicroseconds()),
-                            dtoi(result2.getNanoseconds()), errorBranch);
+            return addDurationToOrSubtractDurationFromPlainTime(TemporalUtil.SUBTRACT, temporalTime, temporalDurationLike, toLimitedTemporalDurationNode);
         }
     }
 
@@ -386,8 +404,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
-    // 4.3.13
-    public abstract static class JSTemporalPlainTimeUntil extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalPlainTimeUntil extends PlainTimeOperation {
 
         protected JSTemporalPlainTimeUntil(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -400,31 +417,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
                         @Cached TruffleString.EqualNode equalNode, @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
-            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
-            JSDynamicObject options = getOptionsObject(optionsParam);
-            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode);
-            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode);
-            TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode);
-            Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
-            JSTemporalDurationRecord result = TemporalUtil.differenceTime(
-                            temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
-                            temporalTime.getNanosecond(),
-                            other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond());
-            JSTemporalDurationRecord result2 = roundDurationNode.execute(0, 0, 0, 0,
-                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),
-                            roundingIncrement, smallestUnit, roundingMode, Undefined.instance);
-            JSTemporalDurationRecord result3 = TemporalUtil.balanceDuration(getContext(), namesNode,
-                            0, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(), result2.getNanoseconds(),
-                            largestUnit);
-            return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0,
-                            result3.getHours(), result3.getMinutes(), result3.getSeconds(), result3.getMilliseconds(), result3.getMicroseconds(), result3.getNanoseconds(), errorBranch);
+            return differenceTemporalPlainTime(TemporalUtil.UNTIL, temporalTime, otherObj, optionsParam, toNumber, namesNode, toTemporalTime, equalNode, roundDurationNode);
         }
     }
 
-    // 4.3.14
-    public abstract static class JSTemporalPlainTimeSince extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalPlainTimeSince extends PlainTimeOperation {
 
         protected JSTemporalPlainTimeSince(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -438,29 +435,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
-            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
-            JSDynamicObject options = getOptionsObject(optionsParam);
-            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode);
-            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode);
-            TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode);
-            roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
-            Double max = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            double maximum = max == null ? Double.POSITIVE_INFINITY : max.doubleValue();
-            long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
-            JSTemporalDurationRecord result = TemporalUtil.differenceTime(
-                            other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond(), temporalTime.getHour(),
-                            temporalTime.getMinute(), temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
-                            temporalTime.getNanosecond());
-            JSTemporalDurationRecord result2 = roundDurationNode.execute(0, 0, 0, 0,
-                            -result.getHours(), -result.getMinutes(), -result.getSeconds(), -result.getMilliseconds(), -result.getMicroseconds(), -result.getNanoseconds(),
-                            roundingIncrement, smallestUnit, roundingMode, Undefined.instance);
-            JSTemporalDurationRecord result3 = TemporalUtil.balanceDuration(getContext(), namesNode,
-                            0,
-                            -result2.getHours(), -result2.getMinutes(), -result2.getSeconds(), -result2.getMilliseconds(), -result2.getMicroseconds(), -result2.getNanoseconds(),
-                            largestUnit);
-            return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0,
-                            result3.getHours(), result3.getMinutes(), result3.getSeconds(), result3.getMilliseconds(), result3.getMicroseconds(), result3.getNanoseconds(), errorBranch);
+            return differenceTemporalPlainTime(TemporalUtil.SINCE, temporalTime, otherObj, optionsParam, toNumber, namesNode, toTemporalTime, equalNode, roundDurationNode);
         }
     }
 

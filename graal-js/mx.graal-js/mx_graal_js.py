@@ -40,7 +40,7 @@ _suite = mx.suite('graal-js')
 TEST262_REPO = "https://" + "github.com/tc39/test262.git"
 
 # Git revision of Test262 to checkout
-TEST262_REV = "91a61b29acc087552e45a506837ab00a2f5e25a0"
+TEST262_REV = "033b79fde0fbb59b3454fc76eaf4b4c517768b3b"
 
 def get_jdk(forBuild=False):
     # Graal.nodejs requires a JDK at build time, to be passed as argument to `./configure`.
@@ -90,7 +90,7 @@ def _graal_js_gate_runner(args, tasks):
         'lazytranslation': ['-Dpolyglot.js.lazy-translation=true', 'gate'],
         'zonerulesbasedtimezones': ['-Dpolyglot.js.zone-rules-based-time-zones=true', 'gate'],
         'shareengine': ['gate', 'shareengine'],
-        'latestversion': ['gate', 'minesversion=2022'],
+        'latestversion': ['gate', 'minesversion=staging'],
         'instrument': ['gate', 'instrument', 'timeoutoverall=1800']
     }
 
@@ -349,6 +349,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     license_files=['LICENSE_GRAALJS.txt'],
     third_party_license_files=['THIRD_PARTY_LICENSE_GRAALJS.txt'],
     dependencies=[
+        'Graal.js Scripting API',
         'Truffle',
         'TRegex',
         'ICU4J',
@@ -372,8 +373,23 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             language='js',
         )
     ],
-    boot_jars=['graal-js:GRAALJS_SCRIPTENGINE'],
+    boot_jars=[],
     installable=True,
+    stability="supported",
+))
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    suite=_suite,
+    name='Graal.js Scripting API',
+    short_name='jss',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Graal SDK'],
+    truffle_jars=[],
+    support_distributions=[],
+    library_configs=[],
+    boot_jars=['graal-js:GRAALJS_SCRIPTENGINE'],
+    installable=False,
     stability="supported",
 ))
 

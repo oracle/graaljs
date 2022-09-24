@@ -107,6 +107,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
     @Specialization(guards = {"obj.getShape() == shape", "prototypeLocation != null"}, limit = "MAX_SHAPE_COUNT")
     static JSDynamicObject doCachedShape(JSDynamicObject obj,
                     @Cached("obj.getShape()") Shape shape,

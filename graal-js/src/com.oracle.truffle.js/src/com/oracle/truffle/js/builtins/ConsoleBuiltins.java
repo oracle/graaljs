@@ -227,7 +227,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
             writer.append(Strings.toJavaString(key));
             writer.append(": ");
             writer.append(String.valueOf(count));
-            writer.append(Strings.toJavaString(Strings.LINE_SEPARATOR));
+            writer.append(Strings.LINE_SEPARATOR_JLS);
             writer.flush();
             return Undefined.instance;
         }

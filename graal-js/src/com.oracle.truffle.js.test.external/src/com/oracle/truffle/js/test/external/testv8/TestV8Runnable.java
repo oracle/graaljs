@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,27 +78,31 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
     private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
+    private static final String HARMONY_TEMPORAL = "--harmony-temporal";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
 
     private static final Set<String> UNSUPPORTED_FLAGS = new HashSet<>(Arrays.asList(new String[]{
                     "--experimental-d8-web-snapshot-api",
+                    "--experimental-web-snapshots",
                     "--experimental-wasm-bulk-memory",
                     "--experimental-wasm-compilation-hints",
                     "--experimental-wasm-eh",
                     "--experimental-wasm-gc",
                     "--experimental-wasm-memory64",
-                    "--experimental-wasm-mv",
                     "--experimental-wasm-reftypes",
                     "--experimental-wasm-return-call",
                     "--experimental-wasm-simd",
                     "--experimental-wasm-threads",
                     "--experimental-wasm-typed-funcref",
                     "--experimental-wasm-type-reflection",
+                    "--harmony-shadow-realm",
                     "--wasm-staging"
     }));
     private static final Set<String> ES2023_FLAGS = new HashSet<>(Arrays.asList(new String[]{
+                    "--harmony-array-find-last",
+                    "--harmony-array-grouping",
                     "--harmony-atomics-waitasync",
                     "--harmony_intl_enumeration",
                     "--harmony_intl_locale_info",
@@ -178,6 +182,9 @@ public class TestV8Runnable extends TestRunnable {
         if (flags.contains(HARMONY_IMPORT_ASSERTIONS)) {
             extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
             extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
+        }
+        if (flags.contains(HARMONY_TEMPORAL)) {
+            extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");
         }
 
         if (supported) {

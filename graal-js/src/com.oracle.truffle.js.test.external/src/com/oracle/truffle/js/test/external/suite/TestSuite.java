@@ -82,7 +82,7 @@ import java.util.stream.Stream;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSParserOptions;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -983,10 +983,6 @@ public abstract class TestSuite {
         return text.toString();
     }
 
-    protected JSParserOptions getParserOptions() {
-        return new JSParserOptions();
-    }
-
     public String getBackTrace(Throwable cause) {
         return Arrays.stream(cause.getStackTrace()).limit(REPORTED_STACK_TRACE_ELEMENTS).map(StackTraceElement::toString).collect(Collectors.joining(", ", "at ", ""));
     }
@@ -1123,9 +1119,14 @@ public abstract class TestSuite {
                     builder.setShareEngine(true);
                     break;
                 case "minesversion":
-                    int minESVersion = Integer.parseInt(value);
-                    if (minESVersion > JSConfig.ECMAScriptVersionYearDelta) {
-                        minESVersion -= JSConfig.ECMAScriptVersionYearDelta;
+                    int minESVersion;
+                    if (JSContextOptions.ECMASCRIPT_VERSION_STAGING.equals(value)) {
+                        minESVersion = JSConfig.StagingECMAScriptVersion;
+                    } else {
+                        minESVersion = Integer.parseInt(value);
+                        if (minESVersion > JSConfig.ECMAScriptVersionYearDelta) {
+                            minESVersion -= JSConfig.ECMAScriptVersionYearDelta;
+                        }
                     }
                     builder.setMinESVersion(minESVersion);
                     break;

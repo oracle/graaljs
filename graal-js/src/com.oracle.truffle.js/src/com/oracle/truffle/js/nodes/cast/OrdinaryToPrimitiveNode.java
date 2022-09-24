@@ -82,9 +82,6 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     @Child private IsPrimitiveNode isPrimitiveNode;
     @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
 
-    private static final String TO_STRING = "toString";
-    private static final String VALUE_OF = "valueOf";
-
     protected OrdinaryToPrimitiveNode(Hint hint) {
         assert hint == Hint.String || hint == Hint.Number;
         this.hint = hint;
@@ -169,7 +166,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     private Object doForeignHintString(Object object, InteropLibrary interop) {
-        Object result = tryInvokeForeignMethod(object, interop, TO_STRING);
+        Object result = tryInvokeForeignMethod(object, interop, Strings.TO_STRING_JLS);
         if (result != null) {
             return result;
         }
@@ -182,7 +179,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             }
         }
 
-        result = tryInvokeForeignMethod(object, interop, VALUE_OF);
+        result = tryInvokeForeignMethod(object, interop, Strings.VALUE_OF_JLS);
         if (result != null) {
             return result;
         }
@@ -198,7 +195,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     private Object doForeignHintNumber(Object object, InteropLibrary interop) {
-        Object result = tryInvokeForeignMethod(object, interop, VALUE_OF);
+        Object result = tryInvokeForeignMethod(object, interop, Strings.VALUE_OF_JLS);
         if (result != null) {
             return result;
         }
@@ -211,7 +208,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             }
         }
 
-        result = tryInvokeForeignMethod(object, interop, TO_STRING);
+        result = tryInvokeForeignMethod(object, interop, Strings.TO_STRING_JLS);
         if (result != null) {
             return result;
         }

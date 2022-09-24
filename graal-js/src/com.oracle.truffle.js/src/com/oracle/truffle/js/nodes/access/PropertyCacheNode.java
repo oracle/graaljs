@@ -875,7 +875,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     public PropertyCacheNode(Object key, JSContext context) {
         this.key = key;
         this.context = context;
-        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
+        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey : key;
     }
 
     public final Object getKey() {
@@ -1430,17 +1430,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return Strings.concatAll(getset, Strings.toUpperCase(Strings.lazySubstring(key, 0, 1), Locale.US), Strings.lazySubstring(key, 1));
         }
         return null;
-    }
-
-    protected static DynamicObjectLibrary createCachedAccess(Object key, ReceiverCheckNode receiverCheck, JSDynamicObject store) {
-        assert key != null;
-        if (receiverCheck instanceof AbstractSingleRealmShapeCheckNode) {
-            return DynamicObjectLibrary.getFactory().create(store);
-        } else if (receiverCheck instanceof AbstractShapeCheckNode && !(receiverCheck instanceof AbstractSingleRealmShapeCheckNode)) {
-            return DynamicObjectLibrary.getFactory().create(store);
-        } else {
-            return DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit);
-        }
     }
 
     private static final DebugCounter polymorphicCount = DebugCounter.create("Polymorphic property cache count");

@@ -49,9 +49,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNodeGen.RequireObjectCoercibleWrapperNodeGen;
@@ -134,13 +132,6 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     @Specialization(guards = "isNullOrUndefined(object)")
     protected void doNullOrUndefined(JSDynamicObject object) {
         throw Errors.createTypeErrorNotObjectCoercible(object, this);
-    }
-
-    protected static Shape getShapeIfObject(JSDynamicObject object) {
-        if (JSGuards.isJSObject(object)) {
-            return object.getShape();
-        }
-        return null;
     }
 
     public abstract static class RequireObjectCoercibleWrapperNode extends JSUnaryNode {

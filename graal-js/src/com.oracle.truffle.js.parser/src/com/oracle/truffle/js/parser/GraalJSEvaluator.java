@@ -183,7 +183,6 @@ public final class GraalJSEvaluator implements JSParser {
         code.append(wrappedBody);
         code.append("})");
         Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
-
         return parseEval(context, null, source, false, null);
     }
 
@@ -1025,4 +1024,13 @@ public final class GraalJSEvaluator implements JSParser {
         return GraalJSParserHelper.parseExpression(context, Source.newBuilder(JavaScriptLanguage.ID, sourceString, "<unknown>").build(), context.getParserOptions());
     }
 
+    @Override
+    public void checkFunctionSyntax(JSContext context, JSParserOptions parserOptions, String parameterList, String body, boolean generator, boolean async, String sourceName) {
+        try {
+            GraalJSParserHelper.checkFunctionSyntax(context, parserOptions, parameterList, body, generator, async, sourceName);
+        } catch (com.oracle.js.parser.ParserException ex) {
+            // throw the correct JS error
+            parseFunction(context, parameterList, body, false, false, sourceName);
+        }
+    }
 }

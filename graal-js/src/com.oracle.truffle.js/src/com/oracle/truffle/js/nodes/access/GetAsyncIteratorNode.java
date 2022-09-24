@@ -64,7 +64,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public abstract class GetAsyncIteratorNode extends GetIteratorNode {
     @Child private PropertySetNode setState;
-    @Child private GetMethodNode getIteratorMethodNode;
     @Child private GetMethodNode getAsyncIteratorMethodNode;
 
     private final ConditionProfile asyncToSync = ConditionProfile.createBinaryProfile();

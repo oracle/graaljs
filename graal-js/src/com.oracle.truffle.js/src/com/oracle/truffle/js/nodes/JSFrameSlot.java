@@ -60,6 +60,9 @@ public final class JSFrameSlot {
     private final Object info;
     private final FrameSlotKind kind;
 
+    private boolean hasBeenDeclared;
+    private int mappedParameterIndex = -1;
+
     public JSFrameSlot(int index, Object identifier, int flags, FrameSlotKind kind) {
         this.index = index;
         this.flags = flags;
@@ -138,6 +141,28 @@ public final class JSFrameSlot {
 
     public static boolean isAllowedIdentifierType(Object identifier) {
         return identifier instanceof TruffleString || identifier instanceof InternalSlotId;
+    }
+
+    /**
+     * Has this symbol been declared.
+     */
+    public boolean hasBeenDeclared() {
+        return hasBeenDeclared;
+    }
+
+    /**
+     * Mark this symbol as declared/undeclared.
+     */
+    public void setHasBeenDeclared(boolean declared) {
+        this.hasBeenDeclared = declared;
+    }
+
+    public int getMappedParameterIndex() {
+        return mappedParameterIndex;
+    }
+
+    public void setMappedParameterIndex(int mappedParameterIndex) {
+        this.mappedParameterIndex = mappedParameterIndex;
     }
 
     /**

@@ -22,6 +22,13 @@ local common_json = (import "common.json");
     },
   },
 
+  jdk19: {
+    jdk:: 'jdk19',
+    downloads+: {
+      JAVA_HOME: common_json.jdks["labsjdk-ce-19"],
+    },
+  },
+
   deploy:      {targets+: ['deploy']},
   gate:        {targets+: ['gate']},
   postMerge:   {targets+: ['post-merge']},
@@ -90,6 +97,17 @@ local common_json = (import "common.json");
     capabilities: ['darwin_mojave', 'amd64'],
   },
 
+  darwin_aarch64: common + {
+    os:: 'darwin',
+    arch:: 'aarch64',
+    packages+: common_json.sulong.deps.darwin_aarch64.packages,
+    environment+: {
+      // for compatibility with macOS BigSur
+      MACOSX_DEPLOYMENT_TARGET: '11.0',
+    },
+    capabilities: ['darwin', 'aarch64'],
+  },
+
   windows: common + {
     os:: 'windows',
     arch:: 'amd64',
@@ -127,18 +145,6 @@ local common_json = (import "common.json");
     environment+: {
       ECLIPSE_EXE: '$ECLIPSE/eclipse',
     },
-  },
-
-  js_unittest: {
-      environment+: {
-          "MX_TEST_RESULT_TAGS": "js",
-      },
-  },
-
-  js_unittest_ee: self.js_unittest + {
-      environment+: {
-          "MX_TEST_RESULT_TAGS": "js,graal-enterprise",
-      },
   },
 
   build : {

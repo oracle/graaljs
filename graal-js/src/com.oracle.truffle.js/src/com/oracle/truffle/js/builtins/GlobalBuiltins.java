@@ -955,7 +955,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        @Specialization(guards = {"radix == 10", "isString(string)", "stringLength(string) < 15"})
+        @Specialization(guards = {"radix == 10", "stringLength(string) < 15"})
         protected Object parseIntStringInt10(TruffleString string, @SuppressWarnings("unused") int radix,
                         @Cached TruffleString.ReadCharUTF16Node readRawNode) {
             assert isShortStringInt10(string, radix);

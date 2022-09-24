@@ -121,13 +121,13 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static JSWebAssemblyGlobalObject create(JSContext context, JSRealm realm, Object wasmGlobal, TruffleString valueType) {
+    public static JSWebAssemblyGlobalObject create(JSContext context, JSRealm realm, Object wasmGlobal, TruffleString valueType, boolean mutable) {
         Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmGlobal);
         if (embedderData instanceof JSWebAssemblyGlobalObject) {
             return (JSWebAssemblyGlobalObject) embedderData;
         }
         JSObjectFactory factory = context.getWebAssemblyGlobalFactory();
-        JSWebAssemblyGlobalObject object = new JSWebAssemblyGlobalObject(factory.getShape(realm), wasmGlobal, valueType);
+        JSWebAssemblyGlobalObject object = new JSWebAssemblyGlobalObject(factory.getShape(realm), wasmGlobal, valueType, mutable);
         factory.initProto(object, realm);
         JSWebAssembly.setEmbedderData(realm, wasmGlobal, object);
         return context.trackAllocation(object);
@@ -177,6 +177,10 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                     Object thiz = JSArguments.getThisObject(args);
                     if (isJSWebAssemblyGlobal(thiz)) {
                         JSWebAssemblyGlobalObject global = (JSWebAssemblyGlobalObject) thiz;
+                        if (!global.isMutable()) {
+                            errorBranch.enter();
+                            throw Errors.createTypeError("set WebAssembly.Global.value: Can't set the value of an immutable global");
+                        }
                         Object wasmGlobal = global.getWASMGlobal();
                         try {
                             Object value;

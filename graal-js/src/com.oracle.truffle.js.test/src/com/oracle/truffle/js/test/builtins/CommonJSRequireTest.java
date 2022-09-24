@@ -617,6 +617,17 @@ public class CommonJSRequireTest {
         }
     }
 
+    @Test
+    public void testGit621() {
+        Path f = getTestRootFolder();
+        try (Context cx = testContext(f)) {
+            cx.eval(ID, "require('./github-621').foo;");
+            assert false : "Should throw";
+        } catch (PolyglotException e) {
+            Assert.assertTrue(e.getMessage().contains("Expected eof but found }"));
+        }
+    }
+
     // ##### ES Modules
 
     @Test

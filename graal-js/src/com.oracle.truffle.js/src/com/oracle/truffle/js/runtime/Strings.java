@@ -55,6 +55,7 @@ public final class Strings {
 
     public static final TruffleString EMPTY_STRING = TruffleString.Encoding.UTF_16.getEmpty();
     public static final TruffleString LINE_SEPARATOR = constant("\n");
+    public static final String LINE_SEPARATOR_JLS = toJavaString(LINE_SEPARATOR);
 
     /* Numeric */
     public static final TruffleString ZERO = constant("0");
@@ -187,6 +188,7 @@ public final class Strings {
     public static final TruffleString HAS = constant("has");
     public static final TruffleString INSTANCE = constant("instance");
     public static final TruffleString JOIN = constant("join");
+    public static final String JOIN_JLS = toJavaString(JOIN);
     public static final TruffleString JSON = constant("json");
     public static final TruffleString KEY = constant("key");
     public static final TruffleString KEYS = constant("keys");
@@ -224,6 +226,7 @@ public final class Strings {
     public static final TruffleString UPPER = constant("upper");
     public static final TruffleString URL = constant("url");
     public static final TruffleString VALUE = constant("value");
+    public static final String VALUE_JLS = toJavaString(VALUE);
     public static final TruffleString VALUES = constant("values");
     public static final TruffleString WITH = constant("with");
 
@@ -249,9 +252,11 @@ public final class Strings {
     public static final TruffleString TO_ISO_STRING = constant("toISOString");
     public static final TruffleString TO_LOCALE_STRING = constant("toLocaleString");
     public static final TruffleString TO_STRING = constant("toString");
+    public static final String TO_STRING_JLS = toJavaString(TO_STRING);
     public static final TruffleString TO_UTC_STRING = constant("toUTCString");
     public static final TruffleString TO_GMT_STRING = constant("toGMTString");
     public static final TruffleString VALUE_OF = constant("valueOf");
+    public static final String VALUE_OF_JLS = toJavaString(VALUE_OF);
     public static final TruffleString IMPORT_SCRIPT_ENGINE_GLOBAL_BINDINGS = constant("importScriptEngineGlobalBindings");
     public static final TruffleString HAS_INSTANCE = constant("hasInstance");
     public static final TruffleString IS_CONCAT_SPREADABLE = constant("isConcatSpreadable");
@@ -460,6 +465,7 @@ public final class Strings {
     public static final TruffleString VERSION_GRAAL_VM = constant("versionGraalVM");
     public static final TruffleString VERSION_ECMA_SCRIPT = constant("versionECMAScript");
     public static final TruffleString IS_GRAAL_RUNTIME = constant("isGraalRuntime");
+    public static final TruffleString SET_UNHANDLED_PROMISE_REJECTION_HANDLER = constant("setUnhandledPromiseRejectionHandler");
     public static final TruffleString UC_PACKAGES = constant("Packages");
     public static final TruffleString JAVA = constant("java");
     public static final TruffleString JAVAFX = constant("javafx");
@@ -566,8 +572,8 @@ public final class Strings {
     public static final TruffleString UNKNOWN_FILENAME = constant("<unknown>");
     public static final TruffleString DYNAMIC_FUNCTION_NAME = constant("anonymous");
     public static final TruffleString ASYNC = constant("async");
-    public static final TruffleString GROUP_BY = constant("groupBy");
-    public static final TruffleString GROUP_BY_TO_MAP = constant("groupByToMap");
+    public static final TruffleString GROUP = constant("group");
+    public static final TruffleString GROUP_TO_MAP = constant("groupToMap");
     public static final TruffleString UC_M = constant("M");
     public static final TruffleString UC_M0 = constant("M0");
     public static final TruffleString UC_Z = constant("Z");
@@ -579,6 +585,11 @@ public final class Strings {
     public static final TruffleString ELEMENT = constant("element");
     public static final TruffleString INITIAL = constant("initial");
     public static final TruffleString MAXIMUM = constant("maximum");
+
+    public static final TruffleString STATIC = constant("static");
+    public static final TruffleString PRIVATE = constant("private");
+    public static final TruffleString INIT = constant("init");
+
     /* end of constants */
 
     public static boolean isTString(Object string) {

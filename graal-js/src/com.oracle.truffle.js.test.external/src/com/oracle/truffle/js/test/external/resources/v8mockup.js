@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -52,6 +52,9 @@ var isInterpreted = function() {
     return v8IgnoreResult;
 }
 var isOptimized = function() {
+    return v8IgnoreResult;
+}
+var isMaglevved = function() {
     return v8IgnoreResult;
 }
 var isTurboFanned = function() {
@@ -1096,4 +1099,54 @@ function v8PretenureAllocationSite() {
 
 function version() {
     return Graal.versionGraalVM;
+}
+
+function v8CreatePrivateNameSymbol(name) {
+    return Symbol(name);
+}
+
+function v8ConstructInternalizedString(string) {
+    return string;
+}
+
+function v8ActiveTierIsMaglev(fun) {
+    return v8IgnoreResult;
+}
+
+function v8OptimizeMaglevOnNextCall(fun) {
+}
+
+function v8DisableOptimizationFinalization() {
+}
+
+function v8WaitForBackgroundOptimization() {
+}
+
+function v8FinalizeOptimization() {
+}
+
+function v8SystemBreak() {
+}
+
+function v8IsSameHeapObject(obj1, obj2) {
+    return Object.is(obj1, obj2);
+}
+
+function v8IsSharedString(obj) {
+    return typeof(obj) === "string" && v8IgnoreResult;
+}
+
+function v8IsInternalizedString(obj) {
+    return typeof(obj) === "string" && v8IgnoreResult;
+}
+
+function v8SharedGC() {
+}
+
+function v8GetWasmExceptionTagId(exception, instance) {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8IsTurboFanFunction(fun) {
+    return v8IgnoreResult;
 }

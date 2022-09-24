@@ -465,7 +465,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             assert JSRuntime.isForeignObject(target);
             return new ForeignObjectReadElementTypeCacheNode(target.getClass(), next);
         } else {
-            assert JSRuntime.isJavaPrimitive(target);
+            assert JSRuntime.isJavaPrimitive(target) : target;
             return new JavaObjectReadElementTypeCacheNode(target.getClass(), next);
         }
     }
@@ -633,7 +633,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private IsArrayNode isArrayNode;
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private JSObjectReadElementNonArrayTypeCacheNode nonArrayCaseNode;
-        @Child private IsJSObjectNode isObjectNode;
+        @Child private IsJSDynamicObjectNode isObjectNode;
         private final ConditionProfile arrayProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
@@ -641,7 +641,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         JSObjectReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
             super(next);
             this.isArrayNode = IsArrayNode.createIsAnyArray();
-            this.isObjectNode = IsJSObjectNode.createIncludeNullUndefined();
+            this.isObjectNode = IsJSDynamicObjectNode.create();
         }
 
         @Override

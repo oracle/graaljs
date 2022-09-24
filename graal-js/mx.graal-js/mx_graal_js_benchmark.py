@@ -66,8 +66,10 @@ class GraalJsVm(GuestVm):
         if hasattr(self.host_vm(), 'run_launcher'):
             if self.config_name() == 'trace-cache':
                 return self.run_aux_cache(cwd, args, 1, [])
-            if self.config_name() == 'trace-cache-many-compilations':
-                return self.run_aux_cache(cwd, args, 20, [])
+            if self.config_name() == 'trace-cache-3-runs':
+                return self.run_aux_cache(cwd, args, 3, [])
+            if self.config_name() == 'trace-cache-10-runs':
+                return self.run_aux_cache(cwd, args, 10, [])
             if self.config_name() == 'trace-cache-executed':
                 return self.run_aux_cache(cwd, args, 1, ['--engine.CacheCompile=executed'])
             else:
@@ -80,8 +82,9 @@ def register_js_vms():
         ('default', [], 10),
         ('interpreter', ['--experimental-options', '--engine.Compilation=false'], 100),
         ('trace-cache', [], 110),
-        ('trace-cache-many-compilations', [], 120),
-        ('trace-cache-executed', [], 130),
+        ('trace-cache-3-runs', [], 120),
+        ('trace-cache-10-runs', [], 130),
+        ('trace-cache-executed', [], 140),
     ]:
         if mx.suite('js-benchmarks', fatalIfMissing=False):
             import mx_js_benchmarks
@@ -101,5 +104,5 @@ class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
 
 add_bm_suite(JMHDistGraalJsBenchmarkSuite())
 
-mx_sdk_vm.register_vm_config('ce', ['cmp', 'icu4j', 'js', 'nfi', 'rgx', 'sdk', 'svm', 'svmnfi', 'tfl', 'tflm'], _suite)
-mx_sdk_vm.register_vm_config('ee', ['cmp', 'cmpee', 'icu4j', 'js', 'nfi', 'rgx', 'sdk', 'svm', 'svmee', 'svmeegc', 'svmnfi', 'tfl', 'tflm'], _suite)
+mx_sdk_vm.register_vm_config('ce', ['cmp', 'icu4j', 'js', 'nfi', 'rgx', 'sdk', 'svm', 'svmnfi', 'svmsl', 'tfl', 'tflm'], _suite)
+mx_sdk_vm.register_vm_config('ee', ['cmp', 'cmpee', 'icu4j', 'js', 'nfi', 'rgx', 'sdk', 'svm', 'svmee', 'svmeegc', 'svmnfi', 'svmsl', 'tfl', 'tflllm', 'tflm'], _suite)

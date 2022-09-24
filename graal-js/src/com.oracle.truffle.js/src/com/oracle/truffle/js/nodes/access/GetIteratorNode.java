@@ -62,7 +62,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * GetIterator(obj, hint = sync).
@@ -82,20 +81,12 @@ public abstract class GetIteratorNode extends JavaScriptNode {
         this.getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
     }
 
-    public static GetIteratorNode create(JSContext context) {
-        return create(context, null);
-    }
-
     public static GetIteratorNode create(JSContext context, JavaScriptNode iteratedObject) {
         return GetIteratorNodeGen.create(context, iteratedObject);
     }
 
     public static GetIteratorNode createAsync(JSContext context, JavaScriptNode iteratedObject) {
         return GetAsyncIteratorNodeGen.create(context, iteratedObject);
-    }
-
-    protected JSContext getContext() {
-        return context;
     }
 
     @Specialization
@@ -119,7 +110,9 @@ public abstract class GetIteratorNode extends JavaScriptNode {
                     JavaScriptBaseNode origin) {
         Object iterator = methodCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
         if (isObjectNode.executeBoolean(iterator)) {
-            return IteratorRecord.create((JSDynamicObject) iterator, getNextMethodNode.getValue(iterator), false);
+            JSDynamicObject jsIterator = (JSDynamicObject) iterator;
+            Object nextMethod = getNextMethodNode.getValue(jsIterator);
+            return IteratorRecord.create(jsIterator, nextMethod, false);
         } else {
             throw Errors.createTypeErrorNotAnObject(iterator, origin);
         }
@@ -132,7 +125,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return GetIteratorNodeGen.create(getContext(), cloneUninitialized(objectNode, materializedTags));
+        return GetIteratorNodeGen.create(context, cloneUninitialized(objectNode, materializedTags));
     }
 
     protected GetMethodNode getIteratorMethodNode() {
@@ -141,20 +134,5 @@ public abstract class GetIteratorNode extends JavaScriptNode {
             getIteratorMethodNode = insert(GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR));
         }
         return getIteratorMethodNode;
-    }
-
-    public static SimpleArrayList<Object> iterableToList(Object object, Object usingIterator, JSFunctionCallNode iteratorCallNode, IsJSObjectNode isObjectNode,
-                    IteratorStepNode iteratorStepNode, IteratorValueNode getIteratorValueNode, PropertyGetNode getNextMethodNode, JavaScriptBaseNode origin, BranchProfile growProfile) {
-        SimpleArrayList<Object> values = new SimpleArrayList<>();
-        IteratorRecord iterator = GetIteratorNode.getIterator(object, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, origin);
-        while (true) {
-            Object next = iteratorStepNode.execute(iterator);
-            if (next == Boolean.FALSE) {
-                break;
-            }
-            Object nextValue = getIteratorValueNode.execute(next);
-            values.add(nextValue, growProfile);
-        }
-        return values;
     }
 }

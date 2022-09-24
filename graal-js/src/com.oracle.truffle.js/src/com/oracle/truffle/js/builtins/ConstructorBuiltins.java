@@ -137,6 +137,7 @@ import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
@@ -145,6 +146,7 @@ import com.oracle.truffle.js.nodes.access.InstallErrorCauseNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IsRegExpNode;
+import com.oracle.truffle.js.nodes.access.IterableToListNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -1986,7 +1988,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (JSRuntime.isNumber(primitiveObj)) {
                 return numberToBigIntNode.executeBigInt(primitiveObj);
             } else {
-                return toBigIntNode.executeBigInteger(value);
+                return toBigIntNode.executeBigInteger(primitiveObj);
             }
         }
     }
@@ -2352,14 +2354,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructError(JSDynamicObject newTarget, Object errorsObj, Object messageObj, Object options,
-                        @Cached("create()") JSToStringNode toStringNode,
+                        @Cached JSToStringNode toStringNode,
                         @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                         @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
-                        @Cached("create()") IsJSObjectNode isObjectNode,
-                        @Cached("create(getContext())") IteratorStepNode iteratorStepNode,
-                        @Cached("create(getContext())") IteratorValueNode getIteratorValueNode,
-                        @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode,
-                        @Cached("create()") BranchProfile growProfile) {
+                        @Cached IsJSObjectNode isObjectNode,
+                        @Cached IterableToListNode iterableToListNode,
+                        @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode) {
             JSContext context = getContext();
             JSRealm realm = getRealm();
             JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
@@ -2378,8 +2378,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
 
             Object usingIterator = getIteratorMethodNode.executeWithTarget(errorsObj);
-            SimpleArrayList<Object> errors = GetIteratorNode.iterableToList(errorsObj, usingIterator,
-                            iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, getNextMethodNode, this, growProfile);
+            SimpleArrayList<Object> errors = iterableToListNode.execute(GetIteratorNode.getIterator(errorsObj, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, this));
             JSDynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors.toArray());
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();
@@ -2630,7 +2629,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private GetIteratorNode getIteratorNode;
+        @Child private GetIteratorBaseNode getIteratorNode;
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
         @Child private JSFunctionCallNode callAdderNode;
@@ -2648,7 +2647,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected IteratorRecord getIterator(Object iterator) {
             if (getIteratorNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorNode = insert(GetIteratorNode.create(getContext()));
+                getIteratorNode = insert(GetIteratorBaseNode.create());
             }
             return getIteratorNode.execute(iterator);
         }
@@ -2656,7 +2655,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Object getIteratorValue(JSDynamicObject iteratorResult) {
             if (getIteratorValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorValueNode = insert(IteratorValueNode.create(getContext()));
+                getIteratorValueNode = insert(IteratorValueNode.create());
             }
             return getIteratorValueNode.execute(iteratorResult);
         }
@@ -2664,7 +2663,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Object iteratorStep(IteratorRecord iterator) {
             if (iteratorStepNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorStepNode = insert(IteratorStepNode.create(getContext()));
+                iteratorStepNode = insert(IteratorStepNode.create());
             }
             return iteratorStepNode.execute(iterator);
         }
@@ -3239,7 +3238,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
-            return swapPrototype(JSWebAssemblyGlobal.create(getContext(), realm, wasmGlobal, valueType), newTarget);
+            return swapPrototype(JSWebAssemblyGlobal.create(getContext(), realm, wasmGlobal, valueType, mutable), newTarget);
         }
 
         @Override

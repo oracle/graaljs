@@ -46,7 +46,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.ResolveNodeGen;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
@@ -139,7 +139,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private PropertyGetNode getResolve;
         @Child private IsCallableNode isCallable;
-        @Child private GetIteratorNode getIteratorNode;
+        @Child private GetIteratorBaseNode getIteratorNode;
         @Child private PerformPromiseCombinatorNode performPromiseOpNode;
         @Child private JSFunctionCallNode callRejectNode;
         @Child private IteratorCloseNode iteratorCloseNode;
@@ -150,7 +150,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             this.getResolve = PropertyGetNode.create(JSPromise.RESOLVE, context);
             this.isCallable = IsCallableNode.create();
-            this.getIteratorNode = GetIteratorNode.create(context);
+            this.getIteratorNode = GetIteratorBaseNode.create();
             this.performPromiseOpNode = performPromiseOp;
         }
 

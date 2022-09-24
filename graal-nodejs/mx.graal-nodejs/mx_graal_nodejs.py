@@ -63,6 +63,12 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs, cwd=unitTestDir)
             if mx.suite('wasm', fatalIfMissing=False):
                 npm(['--scripts-prepend-node-path=auto', 'run', 'testwasm'] + commonArgs, cwd=unitTestDir)
+                # test that WebAssembly can be enabled using env. variables
+                _setEnvVar('NODE_OPTIONS', '--polyglot')
+                _setEnvVar('NODE_POLYGLOT_OPTIONS', '--js.webassembly --experimental-options')
+                node(commonArgs + ['-e', 'console.log(WebAssembly)'])
+                _setEnvVar('NODE_OPTIONS', '')
+                _setEnvVar('NODE_POLYGLOT_OPTIONS', '')
 
     with Task('TestNpm', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:

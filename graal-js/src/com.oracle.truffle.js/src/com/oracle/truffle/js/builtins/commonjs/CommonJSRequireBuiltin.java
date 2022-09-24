@@ -52,7 +52,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -81,6 +80,11 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
 
     private static final boolean LOG_REQUIRE_PATH_RESOLUTION = false;
     private static final Stack<String> requireDebugStack;
+
+    private static final String MODULE_PREAMBLE_PREFIX = "(function (";
+    private static final String MODULE_PREAMBLE_POST = ") {";
+    private static final String MODULE_END = "});";
+    private static final String MODULE_FUNCTION_ARGS = "exports, require, module, __filename, __dirname";
 
     public static final String UNSUPPORTED_NODE_FILE = "Unsupported .node file: ";
 
@@ -121,9 +125,6 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             requireDebugStack.pop();
         }
     }
-
-    private static final String MODULE_END = "\n});";
-    private static final String MODULE_PREAMBLE = "(function (exports, require, module, __filename, __dirname) {";
 
     @TruffleBoundary
     static TruffleFile getModuleResolveCurrentWorkingDirectory(JSContext context, TruffleLanguage.Env env) {
@@ -224,10 +225,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         JSObject env = JSOrdinary.create(getContext(), getRealm());
         JSObject.set(env, Strings.ENV_PROPERTY_NAME, JSOrdinary.create(getContext(), getRealm()));
         // Parse the module
-        CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_END;
-        Source moduleSources = Source.newBuilder(source).content(characters).mimeType(JavaScriptLanguage.TEXT_MIME_TYPE).build();
-        CallTarget moduleCallTarget = realm.getEnv().parsePublic(moduleSources);
-        Object moduleExecutableFunction = moduleCallTarget.call();
+        Object moduleExecutableFunction = parseModule(realm, source);
         // Execute the module.
         if (JSFunction.isJSFunction(moduleExecutableFunction)) {
             log("adding to cache ", normalizedPath);
@@ -249,6 +247,17 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             }
         }
         return null;
+    }
+
+    private static Object parseModule(JSRealm realm, Source source) {
+        JSContext context = realm.getContext();
+        String body = source.getCharacters() + "\n";
+        // Will throw a JS error (if syntax is wrong).
+        context.getEvaluator().checkFunctionSyntax(context, context.getParserOptions(), MODULE_FUNCTION_ARGS, body, false, false, source.getPath());
+        CharSequence characters = MODULE_PREAMBLE_PREFIX + MODULE_FUNCTION_ARGS + MODULE_PREAMBLE_POST + body + MODULE_END;
+        Source moduleSources = Source.newBuilder(source).content(characters).build();
+        CallTarget moduleCallTarget = realm.getEnv().parsePublic(moduleSources);
+        return moduleCallTarget.call();
     }
 
     private JSDynamicObject evalJsonFile(TruffleFile jsonFile) {

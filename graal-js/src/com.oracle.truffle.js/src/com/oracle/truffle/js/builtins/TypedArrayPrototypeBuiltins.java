@@ -421,8 +421,14 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             long sourceLen = sourceArray.length(array);
             rangeCheck(0, sourceLen, offset, targetArray.length(thisObj));
 
+            boolean isBigInt = JSArrayBufferView.isBigIntArrayBufferView(thisObj);
             for (int i = 0, j = offset; i < sourceLen; i++, j++) {
-                targetArray.setElement(thisObj, j, sourceArray.getElement(array, i), false);
+                Object value = sourceArray.getElement(array, i);
+                // IntegerIndexedElementSet
+                Object numValue = isBigInt ? toBigInt(value) : toNumber(value);
+                if (!JSArrayBufferView.hasDetachedBuffer(thisObj, getContext())) {
+                    targetArray.setElement(thisObj, j, numValue, false);
+                }
                 TruffleSafepoint.poll(this);
             }
         }
@@ -430,9 +436,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         private void setOther(JSDynamicObject thisObj, Object array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert !JSArray.isJSFastArray(array);
-            if (getContext().isOptionV8CompatibilityMode() && JSRuntime.isNumber(array)) {
-                throw Errors.createTypeError("invalid_argument");
-            }
             Object src = toObject(array);
             long srcLength = objectGetLength(src);
             TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj));

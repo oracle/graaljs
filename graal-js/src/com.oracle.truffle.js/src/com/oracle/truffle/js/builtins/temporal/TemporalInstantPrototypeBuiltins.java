@@ -217,8 +217,21 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
     }
 
-    // 4.3.10
-    public abstract static class JSTemporalInstantAdd extends JSTemporalBuiltinOperation {
+    public abstract static class InstantOperation extends JSTemporalBuiltinOperation {
+        public InstantOperation(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        protected JSTemporalInstantObject addDurationToOrSubtractDurationFromInstant(int sign, JSTemporalInstantObject instant, Object temporalDurationLike,
+                        ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
+            BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
+                            sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds());
+            return JSTemporalInstant.create(getContext(), getRealm(), ns);
+        }
+    }
+
+    public abstract static class JSTemporalInstantAdd extends InstantOperation {
 
         protected JSTemporalInstantAdd(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -228,14 +241,11 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public JSDynamicObject add(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
-            BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            return JSTemporalInstant.create(getContext(), getRealm(), ns);
+            return addDurationToOrSubtractDurationFromInstant(TemporalUtil.ADD, instant, temporalDurationLike, toLimitedTemporalDurationNode);
         }
     }
 
-    public abstract static class JSTemporalInstantSubtract extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalInstantSubtract extends InstantOperation {
 
         protected JSTemporalInstantSubtract(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -245,10 +255,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listPluralYMWD);
-            BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
-                            -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
-            return JSTemporalInstant.create(getContext(), getRealm(), ns);
+            return addDurationToOrSubtractDurationFromInstant(TemporalUtil.SUBTRACT, instant, temporalDurationLike, toLimitedTemporalDurationNode);
         }
     }
 
@@ -317,18 +324,18 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode);
             double maximum;
             if (Unit.HOUR == smallestUnit) {
-                maximum = 24;
+                maximum = TemporalUtil.HOURS_PER_DAY;
             } else if (Unit.MINUTE == smallestUnit) {
-                maximum = 1440;
+                maximum = TemporalUtil.MINUTES_PER_HOUR * TemporalUtil.HOURS_PER_DAY;
             } else if (Unit.SECOND == smallestUnit) {
-                maximum = 86400;
+                maximum = TemporalUtil.SECONDS_PER_MINUTE * TemporalUtil.MINUTES_PER_HOUR * TemporalUtil.HOURS_PER_DAY;
             } else if (Unit.MILLISECOND == smallestUnit) {
-                maximum = 8.64 * 10_000_000;
+                maximum = TemporalUtil.MS_PER_DAY;
             } else if (Unit.MICROSECOND == smallestUnit) {
-                maximum = 8.64 * 10_000_000_000d;
+                maximum = TemporalUtil.MS_PER_DAY * 1000;
             } else {
                 assert Unit.NANOSECOND == smallestUnit;
-                maximum = 8.64 * 10_000_000_000_000d;
+                maximum = TemporalUtil.NS_PER_DAY;
             }
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, true, isObjectNode, toNumber);
             BigInteger roundedNs = TemporalUtil.roundTemporalInstant(instant.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode);

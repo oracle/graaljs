@@ -69,9 +69,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /** Function identifier node */
     private final IdentNode ident;
 
-    /** Name space for function */
-    private final Namespace namespace;
-
     /** Line number for function declaration */
     private final int line;
 
@@ -117,16 +114,14 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @param token The token for the function
      * @param ident External function name
      * @param name Internal name of the function
-     * @param namespace Function's namespace
      * @param line The source line of the function
      * @param parameters The parameters of the function
      * @param parentScope The parent scope
      */
-    ParserContextFunctionNode(final long token, final IdentNode ident, final TruffleString name, final Namespace namespace, final int line, final int flags,
+    ParserContextFunctionNode(final long token, final IdentNode ident, final TruffleString name, final int line, final int flags,
                     final List<IdentNode> parameters, final int length, Scope parentScope, Scope functionScope) {
         super(flags);
         this.ident = ident;
-        this.namespace = namespace;
         this.line = line;
         this.name = name;
         this.parameters = parameters;
@@ -228,16 +223,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      */
     public boolean hasScopeBlock() {
         return getFlag(FunctionNode.HAS_SCOPE_BLOCK) != 0;
-    }
-
-    /**
-     * Create a unique name in the namespace of this FunctionNode
-     *
-     * @param base prefix for name
-     * @return base if no collision exists, otherwise a name prefix with base
-     */
-    public String uniqueName(final String base) {
-        return namespace.uniqueName(base);
     }
 
     /**

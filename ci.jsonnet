@@ -6,7 +6,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   // Used to run fewer jobs
   local useOverlay = true,
 
-  local overlay = '1a3a8ad59bad9d6ac0d8d1368ca7a19712ec6e5f',
+  local overlay = 'f0b83fcf35a4cc24c092649a82fe21b9e0cd7425',
 
   local no_overlay = 'cb733e564850cd37b685fcef6f3c16b59802b22c',
 

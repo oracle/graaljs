@@ -47,6 +47,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
@@ -60,7 +61,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
-import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -167,7 +167,7 @@ public final class JSModuleNamespace extends JSNonProxy {
         }
         FrameDescriptor targetEnvDesc = targetEnv.getFrameDescriptor();
         int slot = JSFrameUtil.findRequiredFrameSlotIndex(targetEnvDesc, bindingName);
-        if (JSFrameUtil.hasTemporalDeadZone(targetEnvDesc, slot) && targetEnv.isObject(slot) && targetEnv.getObject(slot) == Dead.instance()) {
+        if (JSFrameUtil.hasTemporalDeadZone(targetEnvDesc, slot) && targetEnv.getTag(slot) == FrameSlotKind.Illegal.tag) {
             // If it is an uninitialized binding, throw a ReferenceError
             throw Errors.createReferenceErrorNotDefined(bindingName, null);
         }

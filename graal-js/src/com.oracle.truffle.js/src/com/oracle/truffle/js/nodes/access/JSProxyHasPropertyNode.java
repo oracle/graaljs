@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -51,9 +52,11 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -68,6 +71,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callNode;
     @Child private JSToBooleanNode toBooleanNode;
     @Child private JSToPropertyKeyNode toPropertyKeyNode;
+    @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     public JSProxyHasPropertyNode(JSContext context) {
@@ -95,7 +99,11 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.hasProperty((JSDynamicObject) target, propertyKey);
             } else {
-                return JSInteropUtil.hasProperty(target, propertyKey);
+                boolean result = JSInteropUtil.hasProperty(target, propertyKey);
+                if (!result) {
+                    result = maybeHasInPrototype(target, propertyKey);
+                }
+                return result;
             }
         } else {
             Object callResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey));
@@ -109,4 +117,18 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
             return trapResult;
         }
     }
+
+    private boolean maybeHasInPrototype(Object target, Object propertyKey) {
+        assert JSRuntime.isPropertyKey(propertyKey);
+        if (getLanguage().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+            if (foreignObjectPrototypeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
+            }
+            JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
+            return JSObject.hasProperty(prototype, propertyKey);
+        }
+        return false;
+    }
+
 }

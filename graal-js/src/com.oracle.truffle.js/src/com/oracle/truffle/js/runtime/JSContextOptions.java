@@ -141,7 +141,7 @@ public final class JSContextOptions {
 
     public static final String INTL_402_NAME = JS_OPTION_PREFIX + "intl-402";
     @Option(name = INTL_402_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Enable ECMAScript Internationalization API.") //
-    public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(false);
+    public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(true);
     @CompilationFinal private boolean intl402;
 
     public static final String REGEXP_MATCH_INDICES_NAME = JS_OPTION_PREFIX + "regexp-match-indices";
@@ -417,7 +417,7 @@ public final class JSContextOptions {
 
     public static final String FUNCTION_CONSTRUCTOR_CACHE_SIZE_NAME = JS_OPTION_PREFIX + "function-constructor-cache-size";
     @Option(name = FUNCTION_CONSTRUCTOR_CACHE_SIZE_NAME, category = OptionCategory.EXPERT, usageSyntax = "<int>", help = "Maximum size of the parsing cache used by the Function constructor to avoid re-parsing known sources.") //
-    public static final OptionKey<Integer> FUNCTION_CONSTRUCTOR_CACHE_SIZE = new OptionKey<>(32);
+    public static final OptionKey<Integer> FUNCTION_CONSTRUCTOR_CACHE_SIZE = new OptionKey<>(256);
     @CompilationFinal private int functionConstructorCacheSize;
 
     public static final String REGEX_CACHE_SIZE_NAME = JS_OPTION_PREFIX + "regex-cache-size";
@@ -530,7 +530,8 @@ public final class JSContextOptions {
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
-        THROW;
+        THROW,
+        HANDLER;
 
         @Override
         public String toString() {
@@ -539,11 +540,14 @@ public final class JSContextOptions {
     }
 
     public static final String UNHANDLED_REJECTIONS_NAME = JS_OPTION_PREFIX + "unhandled-rejections";
+
     @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, help = "" +
                     "Configure unhandled promise rejections tracking. Accepted values: 'none', unhandled rejections are not tracked. " +
                     "'warn', a warning is printed to stderr when an unhandled rejection is detected. " +
-                    "'throw', an exception is thrown when an unhandled rejection is detected.") //
-    public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(UnhandledRejectionsTrackingMode.NONE);
+                    "'throw', an exception is thrown when an unhandled rejection is detected. " +
+                    "'handler', the handler function set with Graal.setUnhandledPromiseRejectionHandler will be " +
+                    "called with the rejection value and promise respectively as arguments.") public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(
+                                    UnhandledRejectionsTrackingMode.NONE);
     @CompilationFinal private UnhandledRejectionsTrackingMode unhandledRejectionsMode;
 
     public static final String OPERATOR_OVERLOADING_NAME = JS_OPTION_PREFIX + "operator-overloading";
@@ -649,7 +653,7 @@ public final class JSContextOptions {
         }
 
         this.annexB = readBooleanOption(ANNEX_B);
-        this.intl402 = readBooleanOption(INTL_402);
+        this.intl402 = INTL_402.hasBeenSet(optionValues) ? readBooleanOption(INTL_402) : !nashornCompatibilityMode;
         this.regexpStaticResult = patchBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME, regexpStaticResult, msg -> {
             regexpStaticResultCyclicAssumption.invalidate(msg);
             regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();

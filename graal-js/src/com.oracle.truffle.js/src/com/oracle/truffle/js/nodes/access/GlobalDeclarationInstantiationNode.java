@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -51,9 +50,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class GlobalDeclarationInstantiationNode extends StatementNode {
@@ -98,24 +94,6 @@ public class GlobalDeclarationInstantiationNode extends StatementNode {
         for (DeclareGlobalNode declaration : globalDeclarations) {
             declaration.executeVoid(frame, context, realm);
         }
-    }
-
-    @TruffleBoundary
-    private static boolean hasLexicalDeclaration(JSDynamicObject globalScope, String varName) {
-        PropertyDescriptor desc = JSObject.getOwnProperty(globalScope, varName);
-        return desc != null;
-    }
-
-    @TruffleBoundary
-    private static boolean hasRestrictedGlobalProperty(JSDynamicObject globalObject, String varName) {
-        PropertyDescriptor desc = JSObject.getOwnProperty(globalObject, varName);
-        return desc != null && !desc.getConfigurable();
-    }
-
-    @TruffleBoundary
-    private static boolean canDeclareGlobalFunction(JSDynamicObject globalObject, String varName) {
-        PropertyDescriptor desc = JSObject.getOwnProperty(globalObject, varName);
-        return desc == null || desc.getConfigurable() || (desc.isDataDescriptor() && desc.getWritable() && desc.getEnumerable());
     }
 
     @Override

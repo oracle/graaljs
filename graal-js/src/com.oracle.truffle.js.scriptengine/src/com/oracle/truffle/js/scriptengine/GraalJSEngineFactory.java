@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.scriptengine;
 
 import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -60,6 +61,16 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
                     "Graal.js", "graal.js", "Graal-js", "graal-js", "Graal.JS", "Graal-JS", "GraalJS", "GraalJSPolyglot");
     private static final List<String> MIME_TYPES = List.of("application/javascript", "application/ecmascript", "text/javascript", "text/ecmascript");
     private static final List<String> EXTENSIONS = List.of("js", "mjs");
+
+    private static final boolean JS_AVAILABLE;
+    private static final String PLACEHOLDER_NAME = "placeholder";
+    private static final String PLACEHOLDER_VERSION = "1";
+
+    static {
+        try (Engine engine = Engine.newBuilder().useSystemProperties(false).build()) {
+            JS_AVAILABLE = engine.getLanguages().containsKey("js");
+        }
+    }
 
     private WeakReference<Engine> defaultEngine;
     private final Engine userDefinedEngine;
@@ -95,7 +106,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     @Override
     public String getEngineName() {
-        return ENGINE_NAME;
+        return JS_AVAILABLE ? ENGINE_NAME : PLACEHOLDER_NAME;
     }
 
     @Override
@@ -105,27 +116,27 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     @Override
     public List<String> getExtensions() {
-        return EXTENSIONS;
+        return JS_AVAILABLE ? EXTENSIONS : Collections.emptyList();
     }
 
     @Override
     public List<String> getMimeTypes() {
-        return MIME_TYPES;
+        return JS_AVAILABLE ? MIME_TYPES : Collections.emptyList();
     }
 
     @Override
     public List<String> getNames() {
-        return NAMES;
+        return JS_AVAILABLE ? NAMES : Collections.singletonList(NAME);
     }
 
     @Override
     public String getLanguageName() {
-        return LANGUAGE;
+        return JS_AVAILABLE ? LANGUAGE : PLACEHOLDER_NAME;
     }
 
     @Override
     public String getLanguageVersion() {
-        return LANGUAGE_VERSION;
+        return JS_AVAILABLE ? LANGUAGE_VERSION : PLACEHOLDER_VERSION;
     }
 
     @Override
@@ -147,8 +158,8 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
     }
 
     @Override
-    public GraalJSScriptEngine getScriptEngine() {
-        return new GraalJSScriptEngine(this);
+    public ScriptEngine getScriptEngine() {
+        return JS_AVAILABLE ? new GraalJSScriptEngine(this) : new PlaceholderScriptEngine(this);
     }
 
     @Override
@@ -173,7 +184,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     @Override
     public String getOutputStatement(final String toDisplay) {
-        return "print(" + toDisplay + ")";
+        return "print(" + toDisplay + ")" + (JS_AVAILABLE ? "" : ";");
     }
 
     @Override

@@ -56,6 +56,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystemException;
+import java.nio.file.InvalidPathException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -146,7 +147,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 // Use the original message when it doesn't seem useless
                 throw Errors.createErrorFromException(fsex);
             }
-        } catch (IOException | UnsupportedOperationException | SecurityException e) {
+        } catch (IOException | UnsupportedOperationException | SecurityException | InvalidPathException e) {
             throw Errors.createErrorFromException(e);
         }
     }

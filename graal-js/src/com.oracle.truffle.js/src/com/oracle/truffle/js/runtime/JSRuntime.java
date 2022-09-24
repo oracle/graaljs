@@ -1187,8 +1187,8 @@ public final class JSRuntime {
         CompilerAsserts.neverPartOfCompilation();
         InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(truffleObject);
         assert objInterop.hasMembers(truffleObject);
-        if (allowSideEffects && objInterop.isMemberInvocable(truffleObject, Strings.toJavaString(Strings.TO_STRING))) {
-            return Strings.fromJavaString(objInterop.invokeMember(truffleObject, Strings.toJavaString(Strings.TO_STRING)).toString());
+        if (allowSideEffects && objInterop.isMemberInvocable(truffleObject, Strings.TO_STRING_JLS)) {
+            return toString(objInterop.invokeMember(truffleObject, Strings.TO_STRING_JLS));
         }
         Object keys = objInterop.getMembers(truffleObject);
         InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keys);
@@ -1306,11 +1306,6 @@ public final class JSRuntime {
             return Strings.fromLong(number.longValue());
         }
         throw new UnsupportedOperationException("unknown number value: " + number.toString() + " " + number.getClass().getSimpleName());
-    }
-
-    @TruffleBoundary
-    private static int lengthIntl(CharSequence cs) {
-        return cs.length();
     }
 
     public static String javaToString(Object obj) {

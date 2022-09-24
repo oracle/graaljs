@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -91,15 +90,6 @@ public final class JSDateObject extends JSNonProxyObject {
     @ExportMessage(name = "isTimeZone")
     protected boolean isDate() {
         return JSDate.isValidDate(this);
-    }
-
-    @ExportMessage
-    public Instant asInstant() throws UnsupportedMessageException {
-        if (isDate()) {
-            return JSDate.asInstant(this);
-        } else {
-            throw UnsupportedMessageException.create();
-        }
     }
 
     @ExportMessage

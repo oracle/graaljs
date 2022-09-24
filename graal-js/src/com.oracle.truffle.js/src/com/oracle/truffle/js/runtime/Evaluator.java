@@ -141,4 +141,6 @@ public interface Evaluator {
      * Creates a script that will be evaluated in a specified lexical context.
      */
     JavaScriptNode parseInlineScript(JSContext context, Source source, MaterializedFrame lexicalContextFrame, boolean isStrict, Node locationNode);
+
+    void checkFunctionSyntax(JSContext context, JSParserOptions parserOptions, String parameterList, String body, boolean generator, boolean async, String sourceName);
 }

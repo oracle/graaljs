@@ -150,7 +150,6 @@ import com.oracle.truffle.js.runtime.objects.JSPrototypeData;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.JSShapeData;
 import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
@@ -335,6 +334,7 @@ public class JSContext {
         SegmenterPosition,
         FunctionAsyncIterator,
         IsGraalRuntime,
+        SetUnhandledPromiseRejectionHandler,
         AsyncModuleExecutionFulfilled,
         AsyncModuleExecutionRejected,
         TopLevelAwaitResolve,
@@ -514,9 +514,6 @@ public class JSContext {
     @CompilationFinal private Locale locale;
     @CompilationFinal private Charset charset;
 
-    private final PropertyProxy argumentsPropertyProxy;
-    private final PropertyProxy callerPropertyProxy;
-
     private final Set<TruffleString> supportedImportAssertions;
 
     private static final TruffleString TYPE_IMPORT_ASSERTION = Strings.constant("type");
@@ -694,9 +691,6 @@ public class JSContext {
         this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
 
         this.factoryCount = builder.finish();
-
-        this.argumentsPropertyProxy = new JSFunction.ArgumentsProxyProperty(this);
-        this.callerPropertyProxy = new JSFunction.CallerProxyProperty(this);
 
         this.regExpGroupsEmptyShape = JSRegExp.makeInitialGroupsObjectShape(this);
 
@@ -1851,14 +1845,6 @@ public class JSContext {
         } else {
             return Charset.forName(name);
         }
-    }
-
-    public PropertyProxy getArgumentsPropertyProxy() {
-        return argumentsPropertyProxy;
-    }
-
-    public PropertyProxy getCallerPropertyProxy() {
-        return callerPropertyProxy;
     }
 
     public <T extends Node> T adoptNode(T node) {

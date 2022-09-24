@@ -62,6 +62,15 @@ public class GR39223 {
     public void testIntlDefault() throws ScriptException {
         ScriptEngine engine = getEngine();
         Object result = engine.eval("typeof Intl");
+        assertEquals("object", result);
+    }
+
+    @Test
+    public void testIntlNashornDefault() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("polyglot.js.nashorn-compat", true);
+        Object result = engine.eval("typeof Intl");
         assertEquals("undefined", result);
     }
 

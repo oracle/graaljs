@@ -2194,12 +2194,8 @@ public final class GraalJSAccess {
 
         String bodyJavaString = Strings.toJavaString((TruffleString) body);
         String sourceNameJavaString = Strings.toJavaString(sourceName);
-        try {
-            GraalJSParserHelper.checkFunctionSyntax(jsContext, parserOptions, parameterList, bodyJavaString, false, false, sourceNameJavaString);
-        } catch (com.oracle.js.parser.ParserException ex) {
-            // throw the correct JS error
-            nodeEvaluator.parseFunction(jsContext, parameterList, bodyJavaString, false, false, sourceNameJavaString);
-        }
+        // Will throw a JS error (if syntax is wrong).
+        nodeEvaluator.checkFunctionSyntax(jsContext, parserOptions, parameterList, bodyJavaString, false, false, sourceNameJavaString);
 
         StringBuilder code = new StringBuilder();
 
@@ -3155,7 +3151,7 @@ public final class GraalJSAccess {
         boolean internalError = !(exception instanceof com.oracle.truffle.api.exception.AbstractTruffleException) && !(exception instanceof StackOverflowError) &&
                         !(exception instanceof OutOfMemoryError) &&
                         !(exception instanceof ControlFlowException) && !(exception instanceof GraalJSKillException);
-        if (internalError) {
+        if (internalError && (VERBOSE || !exitInProgress)) {
             ((Throwable) exception).printStackTrace();
             exit(1);
         }
@@ -3365,8 +3361,11 @@ public final class GraalJSAccess {
         }
     }
 
+    private static volatile boolean exitInProgress;
+
     private void exit(int status) {
         try {
+            exitInProgress = true;
             evaluator.close();
         } finally {
             System.exit(status);

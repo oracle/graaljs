@@ -49,6 +49,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
+import com.oracle.truffle.js.nodes.access.IterableToListNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
@@ -57,7 +59,10 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.interop.InteropArray;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * WebAssembly host function (imported JS function).
@@ -65,8 +70,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ExportLibrary(InteropLibrary.class)
 public class WebAssemblyHostFunction implements TruffleObject {
     private final Object fn;
-    private final TruffleString returnType;
-    private final boolean returnTypeIsI64;
+    private final TruffleString[] resultTypes;
+    private final boolean anyReturnTypeIsI64;
     private final boolean anyArgTypeIsI64;
 
     public WebAssemblyHostFunction(JSContext context, Object fn, TruffleString typeInfo) {
@@ -77,8 +82,9 @@ public class WebAssemblyHostFunction implements TruffleObject {
         int idxOpen = Strings.indexOf(typeInfo, '(');
         int idxClose = Strings.indexOf(typeInfo, ')');
 
-        this.returnType = Strings.substring(context, typeInfo, idxClose + 1);
-        this.returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
+        TruffleString returnTypes = Strings.lazySubstring(typeInfo, idxClose + 1);
+        this.resultTypes = !Strings.isEmpty(returnTypes) ? Strings.split(context, returnTypes, Strings.SPACE) : new TruffleString[0];
+        this.anyReturnTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxClose + 1) >= 0;
         this.anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
     }
 
@@ -93,12 +99,14 @@ public class WebAssemblyHostFunction implements TruffleObject {
                     @Cached ToJSValueNode toJSValueNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Cached BranchProfile errorBranch,
+                    @Cached GetIteratorBaseNode getIteratorNode,
+                    @Cached IterableToListNode iterableToListNode,
                     @CachedLibrary("this") InteropLibrary self) {
-        if (!JavaScriptLanguage.get(self).getJSContext().getContextOptions().isWasmBigInt() && (returnTypeIsI64 || anyArgTypeIsI64)) {
+        JSContext context = JavaScriptLanguage.get(self).getJSContext();
+        if (!context.getContextOptions().isWasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
             errorBranch.enter();
             throw Errors.createTypeError("wasm function signature contains illegal type");
         }
-
         Object[] jsArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
             jsArgs[i] = toJSValueNode.execute(args[i]);
@@ -106,11 +114,23 @@ public class WebAssemblyHostFunction implements TruffleObject {
 
         Object result = callNode.executeCall(JSArguments.create(Undefined.instance, fn, jsArgs));
 
-        if (returnType.isEmpty()) {
+        if (resultTypes.length == 0) {
             return Undefined.instance;
+        } else if (resultTypes.length == 1) {
+            return toWebAssemblyValueNode.execute(result, resultTypes[0]);
         } else {
-            return toWebAssemblyValueNode.execute(result, returnType);
+            IteratorRecord iterator = getIteratorNode.execute(result);
+            SimpleArrayList<Object> values = iterableToListNode.execute(iterator);
+
+            if (resultTypes.length != values.size()) {
+                errorBranch.enter();
+                throw Errors.createTypeError("invalid result array arity");
+            }
+            Object[] wasmValues = new Object[values.size()];
+            for (int i = 0; i < values.size(); i++) {
+                wasmValues[i] = toWebAssemblyValueNode.execute(values.get(i), resultTypes[i]);
+            }
+            return InteropArray.create(wasmValues);
         }
     }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,9 +49,6 @@ import java.io.PrintWriter;
 public final class ScriptEnvironment {
     /** Error writer for this environment */
     private final PrintWriter err;
-
-    /** Top level namespace. */
-    private final Namespace namespace;
 
     /** Accept "const" keyword and treat it as variable. Interim feature */
     final boolean constAsVar;
@@ -126,7 +123,6 @@ public final class ScriptEnvironment {
                     boolean constAsVar, boolean allowBigInt, boolean annexB, boolean classFields, boolean importAssertions, boolean privateFieldsIn, boolean topLevelAwait,
                     FunctionStatementBehavior functionStatementBehavior,
                     PrintWriter dumpOnError) {
-        this.namespace = new Namespace();
         this.err = dumpOnError;
 
         this.constAsVar = constAsVar;
@@ -153,15 +149,6 @@ public final class ScriptEnvironment {
      */
     PrintWriter getErr() {
         return err;
-    }
-
-    /**
-     * Get the namespace for this environment
-     *
-     * @return namespace
-     */
-    Namespace getNamespace() {
-        return namespace;
     }
 
     public boolean isStrict() {

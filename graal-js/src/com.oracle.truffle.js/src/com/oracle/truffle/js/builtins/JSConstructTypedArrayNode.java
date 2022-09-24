@@ -61,8 +61,7 @@ import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
-import com.oracle.truffle.js.nodes.access.IteratorStepNode;
-import com.oracle.truffle.js.nodes.access.IteratorValueNode;
+import com.oracle.truffle.js.nodes.access.IterableToListNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -141,10 +140,6 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             integerIndexObjectCreateNode = insert(IntegerIndexedObjectCreateNodeGen.create(getContext(), factory));
         }
         return integerIndexObjectCreateNode.execute(arrayBuffer, typedArray, offset, length, proto);
-    }
-
-    protected final ReadElementNode createReadNode() {
-        return ReadElementNode.create(getContext());
     }
 
     private void checkDetachedBuffer(JSDynamicObject buffer) {
@@ -329,13 +324,11 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached("createBinaryProfile()") ConditionProfile isIterableProfile,
                     @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
                     @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
-                    @Cached("create()") IsJSObjectNode isObjectNode,
-                    @Cached("create(getContext())") IteratorStepNode iteratorStepNode,
-                    @Cached("create(getContext())") IteratorValueNode getIteratorValueNode,
-                    @Cached("createGetLength()") JSGetLengthNode getLengthNode,
-                    @Cached("create(getContext())") ReadElementNode readNode,
+                    @Cached IsJSObjectNode isObjectNode,
                     @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode,
-                    @Cached("create()") BranchProfile growProfile) {
+                    @Cached IterableToListNode iterableToListNode,
+                    @Cached("createGetLength()") JSGetLengthNode getLengthNode,
+                    @Cached("create(getContext())") ReadElementNode readNode) {
         assert JSRuntime.isObject(object) && !JSArrayBufferView.isJSArrayBufferView(object) && !JSAbstractBuffer.isJSAbstractBuffer(object);
 
         JSDynamicObject proto = getPrototypeFromConstructorView(newTarget);
@@ -343,8 +336,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         Object usingIterator = getIteratorMethodNode.executeWithTarget(object);
         if (isIterableProfile.profile(usingIterator != Undefined.instance)) {
-            SimpleArrayList<Object> values = GetIteratorNode.iterableToList(object, usingIterator, iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, getNextMethodNode, this,
-                            growProfile);
+            SimpleArrayList<Object> values = iterableToListNode.execute(GetIteratorNode.getIterator(object, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, this));
             int len = values.size();
             JSDynamicObject arrayBuffer = createTypedArrayBuffer(len);
             TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);

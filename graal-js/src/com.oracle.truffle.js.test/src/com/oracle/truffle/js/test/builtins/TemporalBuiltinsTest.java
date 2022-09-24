@@ -902,7 +902,7 @@ public class TemporalBuiltinsTest extends JSTest {
 
     @Test
     public void testTemporalParsingDuration() {
-        parseDurationIntl("-PT24.567890123H", "-PT24H34M4.404442799S");
+        parseDurationIntl("-PT24.567890123H", "-PT24H34M4.4044428S");
         parseDurationIntl("-PT1.03125H", "-PT1H1M52.5S"); // #1754
     }
 

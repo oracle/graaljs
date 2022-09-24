@@ -181,7 +181,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
                 throw Errors.createRangeErrorInvalidArrayLength();
             }
             if (size > 0) {
-                SimpleArrayList<Object> list = SimpleArrayList.create(size);
+                SimpleArrayList<Object> list = new SimpleArrayList<>((int) size);
                 for (long i = 0; i < arraySize; i++) {
                     TruffleString key = Strings.fromLong(i);
                     Object element;

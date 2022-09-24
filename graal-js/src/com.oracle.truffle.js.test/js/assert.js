@@ -42,6 +42,14 @@ function assertSame(expected, actual) {
     }
 }
 
+function assertSameContent(expected, actual) {
+    assertTrue(expected.length >= 0);
+    assertSame(expected.length, actual.length);
+    for (var i = 0; i < expected.length; i++) {
+        assertSame(expected[i], actual[i]);
+    }
+}
+
 function assertTrue(condition) {
     assertSame(true, condition);
 }

@@ -3,7 +3,7 @@ suite = {
 
   "name" : "graal-js",
 
-  "version" : "22.3.0",
+  "version" : "23.0.0",
   "release" : False,
   "groupId" : "org.graalvm.js",
   "url" : "http://www.graalvm.org/",
@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "d24695e267dbff610ec262c5c990560af88bd804",
+           "version" : "f879e0daa38c0a0131978487549c152301fb0954",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -74,8 +74,8 @@ suite = {
     },
 
     "TESTV8" : {
-      "sha1" : "673bdf0bdbe943b99680873386ee1781e8c401df",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testv8-20210709.tar.gz"],
+      "sha1" : "7f67ced5326c9c0f674566a69c6050e2e21c27a9",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testv8-20220810.tar.gz"],
     },
 
     "JACKSON_CORE" : {

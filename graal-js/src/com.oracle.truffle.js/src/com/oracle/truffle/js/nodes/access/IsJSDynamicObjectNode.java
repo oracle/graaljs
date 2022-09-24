@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,75 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.js.nodes.access;
 
-package com.oracle.js.parser;
-
-import java.util.HashMap;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 
 /**
- * A name space hierarchy, where each level holds a name directory with names that may be unique for
- * each level.
+ * Checks whether the argument is a JS object, null, or undefined.
  */
+@GenerateUncached
+@ImportStatic({CompilerDirectives.class})
+public abstract class IsJSDynamicObjectNode extends JavaScriptBaseNode {
 
-public class Namespace {
-    /** Parent namespace. */
-    private final Namespace parent;
-
-    /** Name directory - version count for each name */
-    private final HashMap<String, Integer> directory;
-
-    /**
-     * Constructor
-     */
-    public Namespace() {
-        this(null);
+    protected IsJSDynamicObjectNode() {
     }
 
-    /**
-     * Constructor
-     *
-     * @param parent parent name space
-     */
-    public Namespace(final Namespace parent) {
-        this.parent = parent;
-        this.directory = new HashMap<>();
+    public abstract boolean executeBoolean(Object obj);
+
+    @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
+    protected static boolean isObjectCached(@SuppressWarnings("unused") Object object,
+                    @Cached("getClassIfJSDynamicObject(object)") @SuppressWarnings("unused") Class<?> cachedClass,
+                    @Cached("isJSDynamicObject(object)") boolean cachedResult) {
+        return cachedResult;
     }
 
-    /**
-     * Return the parent Namespace of this space.
-     *
-     * @return parent name space
-     */
-    public Namespace getParent() {
-        return parent;
+    @Specialization(replaces = {"isObjectCached"})
+    protected boolean isObject(Object object,
+                    @Cached ConditionProfile resultProfile) {
+        return resultProfile.profile(JSGuards.isJSDynamicObject(object));
     }
 
-    /**
-     * Create a uniqueName name in the namespace in the form base$n where n varies .
-     *
-     * @param base Base of name. Base will be returned if uniqueName.
-     *
-     * @return Generated uniqueName name.
-     */
-    public String uniqueName(final String base) {
-        for (Namespace namespace = this; namespace != null; namespace = namespace.getParent()) {
-            final HashMap<String, Integer> namespaceDirectory = namespace.directory;
-            final Integer counter = namespaceDirectory.get(base);
-
-            if (counter != null) {
-                final int count = counter + 1;
-                namespaceDirectory.put(base, count);
-                return base + '-' + count;
-            }
-        }
-
-        directory.put(base, 0);
-
-        return base;
+    public static IsJSDynamicObjectNode create() {
+        return IsJSDynamicObjectNodeGen.create();
     }
 
-    @Override
-    public String toString() {
-        return directory.toString();
+    public static IsJSDynamicObjectNode getUncached() {
+        return IsJSDynamicObjectNodeGen.getUncached();
     }
 }

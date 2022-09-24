@@ -49,23 +49,23 @@ import com.oracle.truffle.api.strings.TruffleString;
 /**
  * IR representation of an object literal property.
  */
-public final class PropertyNode extends Node {
+public class PropertyNode extends Node {
 
     /** Property key. */
-    private final Expression key;
+    protected final Expression key;
 
     /** Property value. */
-    private final Expression value;
+    protected final Expression value;
 
     /** Property getter. */
-    private final FunctionNode getter;
+    protected final FunctionNode getter;
 
     /** Property setter. */
-    private final FunctionNode setter;
+    protected final FunctionNode setter;
 
-    private final boolean isStatic;
+    protected final boolean isStatic;
 
-    private final boolean computed;
+    protected final boolean computed;
 
     private final boolean coverInitializedName;
 
@@ -73,7 +73,19 @@ public final class PropertyNode extends Node {
 
     private final boolean classField;
 
-    private final boolean isAnonymousFunctionDefinition;
+    protected final boolean isAnonymousFunctionDefinition;
+
+    protected PropertyNode(long token,
+                    int finish,
+                    Expression key,
+                    Expression value,
+                    FunctionNode getter,
+                    FunctionNode setter,
+                    boolean isStatic,
+                    boolean computed,
+                    boolean isAnonymousFunctionDefinition) {
+        this(token, finish, key, value, getter, setter, isStatic, computed, false, false, false, isAnonymousFunctionDefinition);
+    }
 
     public PropertyNode(long token, int finish, Expression key, Expression value, FunctionNode getter, FunctionNode setter,
                     boolean isStatic, boolean computed, boolean coverInitializedName, boolean proto) {

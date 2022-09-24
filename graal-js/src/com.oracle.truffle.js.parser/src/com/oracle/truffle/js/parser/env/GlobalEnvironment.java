@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.StringJoiner;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
@@ -52,14 +53,59 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 
 public final class GlobalEnvironment extends DerivedEnvironment {
-    /** Entries: (name, const). */
-    private final EconomicMap<TruffleString, Boolean> lexicalDeclarations;
-    private final EconomicMap<TruffleString, Boolean> varDeclarations;
+
+    private enum DeclarationKind {
+        Var(false, false, true),
+        Let(true, false, false),
+        LetDeclared(true, false, true),
+        Const(true, true, false),
+        ConstDeclared(true, true, true);
+
+        private final boolean isLexical;
+        private final boolean isConst;
+        private final boolean isDeclared;
+
+        DeclarationKind(boolean isLexical, boolean isConst, boolean isDeclared) {
+            this.isLexical = isLexical;
+            this.isConst = isConst;
+            this.isDeclared = isDeclared;
+        }
+
+        public final boolean isLexical() {
+            return isLexical;
+        }
+
+        public final boolean isConst() {
+            return isConst;
+        }
+
+        public final boolean isDeclared() {
+            return isDeclared;
+        }
+
+        public final DeclarationKind withDeclared(boolean declared) {
+            assert isLexical() || declared;
+            if (!isLexical() || isDeclared() == declared) {
+                return this;
+            }
+            if (declared) {
+                return isConst() ? DeclarationKind.ConstDeclared : DeclarationKind.LetDeclared;
+            } else {
+                return isConst() ? DeclarationKind.Const : DeclarationKind.Let;
+            }
+        }
+    }
+
+    /**
+     * Always-defined immutable constant value properties of the global object.
+     */
+    private static final UnmodifiableEconomicMap<TruffleString, DeclarationKind> PREDEFINED_IMMUTABLE_GLOBALS = initPredefinedImmutableGlobals();
+
+    private final EconomicMap<TruffleString, DeclarationKind> declarations;
 
     public GlobalEnvironment(Environment parent, NodeFactory factory, JSContext context) {
         super(parent, factory, context);
-        this.lexicalDeclarations = EconomicMap.create();
-        this.varDeclarations = EconomicMap.create();
+        this.declarations = EconomicMap.create(PREDEFINED_IMMUTABLE_GLOBALS);
     }
 
     @Override
@@ -67,35 +113,62 @@ public final class GlobalEnvironment extends DerivedEnvironment {
         return null;
     }
 
-    public boolean addLexicalDeclaration(TruffleString name, boolean isConst) {
-        return lexicalDeclarations.put(name, isConst) == null;
+    public void addLexicalDeclaration(TruffleString name, boolean isConst) {
+        declarations.putIfAbsent(name, isConst ? DeclarationKind.Const : DeclarationKind.Let);
     }
 
     public boolean hasLexicalDeclaration(TruffleString name) {
-        return lexicalDeclarations.containsKey(name);
+        DeclarationKind decl = declarations.get(name);
+        return decl != null && decl.isLexical();
     }
 
     public boolean hasConstDeclaration(TruffleString name) {
-        return lexicalDeclarations.get(name, Boolean.FALSE);
+        DeclarationKind decl = declarations.get(name);
+        return decl != null && decl.isConst();
     }
 
-    public boolean addVarDeclaration(TruffleString name) {
-        return varDeclarations.put(name, Boolean.FALSE) == null;
+    public void addVarDeclaration(TruffleString name) {
+        declarations.putIfAbsent(name, DeclarationKind.Var);
     }
 
     public boolean hasVarDeclaration(TruffleString name) {
-        return varDeclarations.containsKey(name);
+        DeclarationKind decl = declarations.get(name);
+        return decl != null && !decl.isLexical();
     }
 
     /**
      * Returns true for always-defined immutable value properties of the global object.
      */
     public static boolean isGlobalObjectConstant(TruffleString name) {
-        return Strings.UNDEFINED.equals(name) || Strings.NAN.equals(name) || Strings.INFINITY.equals(name);
+        return PREDEFINED_IMMUTABLE_GLOBALS.containsKey(name);
+    }
+
+    private static UnmodifiableEconomicMap<TruffleString, DeclarationKind> initPredefinedImmutableGlobals() {
+        EconomicMap<TruffleString, DeclarationKind> map = EconomicMap.create();
+        map.put(Strings.UNDEFINED, DeclarationKind.Var);
+        map.put(Strings.NAN, DeclarationKind.Var);
+        map.put(Strings.INFINITY, DeclarationKind.Var);
+        return map;
+    }
+
+    public boolean hasBeenDeclared(TruffleString name) {
+        DeclarationKind decl = declarations.get(name);
+        if (decl != null) {
+            return decl.isDeclared();
+        } else {
+            return false;
+        }
+    }
+
+    public void setHasBeenDeclared(TruffleString name, boolean declared) {
+        DeclarationKind decl = declarations.get(name);
+        if (decl != null && decl.isLexical() && decl.isDeclared() != declared) {
+            declarations.put(name, decl.withDeclared(declared));
+        }
     }
 
     @Override
     protected String toStringImpl(Map<String, Integer> state) {
-        return "Global" + new StringJoiner(", ", "{", "}").add(joinElements(lexicalDeclarations.getKeys())).add(joinElements(varDeclarations.getKeys())).toString();
+        return "Global" + new StringJoiner(", ", "{", "}").add(joinElements(declarations.getKeys())).toString();
     }
 }

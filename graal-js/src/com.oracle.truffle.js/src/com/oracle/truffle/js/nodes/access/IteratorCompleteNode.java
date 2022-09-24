@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,28 +40,62 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 
 /**
  * ES6 7.4.3 IteratorComplete(iterResult).
  */
-public class IteratorCompleteNode extends JavaScriptBaseNode {
-    @Child private PropertyGetNode getDoneNode;
-    @Child private JSToBooleanNode toBooleanNode;
+public abstract class IteratorCompleteNode extends JavaScriptBaseNode {
 
-    protected IteratorCompleteNode(JSContext context) {
-        this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
-        this.toBooleanNode = JSToBooleanNode.create();
+    protected IteratorCompleteNode() {
     }
+
+    public abstract boolean execute(Object iterResult);
 
     public static IteratorCompleteNode create(JSContext context) {
-        return new IteratorCompleteNode(context);
+        return new Cached(context);
     }
 
-    public boolean execute(Object iterResult) {
-        return toBooleanNode.executeBoolean(getDoneNode.getValue(iterResult));
+    public static IteratorCompleteNode getUncached() {
+        return Uncached.INSTANCE;
+    }
+
+    static final class Cached extends IteratorCompleteNode {
+        @Child private PropertyGetNode getDoneNode;
+        @Child private JSToBooleanNode toBooleanNode;
+
+        Cached(JSContext context) {
+            this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
+            this.toBooleanNode = JSToBooleanNode.create();
+        }
+
+        @Override
+        public boolean execute(Object iterResult) {
+            return toBooleanNode.executeBoolean(getDoneNode.getValue(iterResult));
+        }
+    }
+
+    @DenyReplace
+    static final class Uncached extends IteratorCompleteNode {
+        static final Uncached INSTANCE = new Uncached();
+
+        private Uncached() {
+        }
+
+        @Override
+        public boolean execute(Object iterResult) {
+            return JSRuntime.toBoolean(JSInteropUtil.get(iterResult, Strings.DONE));
+        }
+
+        @Override
+        public boolean isAdoptable() {
+            return false;
+        }
     }
 }
