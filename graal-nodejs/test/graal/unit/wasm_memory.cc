@@ -97,4 +97,11 @@ EXPORT_TO_JS(CheckBackingStore) {
     args.GetReturnValue().Set(true);
 }
 
+// WasmMemoryObject::Buffer
+
+EXPORT_TO_JS(Buffer) {
+    Local<WasmMemoryObject> memory = args[0].As<WasmMemoryObject>();
+    args.GetReturnValue().Set(memory->Buffer());
+}
+
 #undef SUITE

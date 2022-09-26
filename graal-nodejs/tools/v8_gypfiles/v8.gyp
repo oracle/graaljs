@@ -322,7 +322,7 @@
              '<(V8_ROOT)/src/builtins/builtins-intl-gen.cc',
            ],
          }],
-        ['OS=="win"', {
+        ['OS=="win" and _toolset=="target"', {
           'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
           'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
           'sources': [
@@ -589,7 +589,7 @@
       ],
       'sources': ['<@(v8_compiler_sources)'],
       'conditions': [
-        ['OS=="win"', {
+        ['OS=="win" and _toolset=="target"', {
           'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
           'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
           'sources': [
@@ -614,7 +614,7 @@
       ],
       'sources': ['<@(v8_compiler_sources)'],
       'conditions': [
-        ['OS=="win"', {
+        ['OS=="win" and _toolset=="target"', {
           'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
           'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
           'sources': [

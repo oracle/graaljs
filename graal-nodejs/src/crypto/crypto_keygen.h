@@ -3,11 +3,10 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-#include "crypto/crypto_keys.h"
-#include "crypto/crypto_util.h"
-#include "allocated_buffer.h"
 #include "async_wrap.h"
 #include "base_object.h"
+#include "crypto/crypto_keys.h"
+#include "crypto/crypto_util.h"
 #include "env.h"
 #include "memory_tracker.h"
 #include "v8.h"
@@ -76,9 +75,6 @@ class KeyGenJob final : public CryptoJob<KeyGenTraits> {
             std::move(params)) {}
 
   void DoThreadPoolWork() override {
-    // Make sure the CSPRNG is properly seeded so the results are secure.
-    CheckEntropy();
-
     AdditionalParams* params = CryptoJob<KeyGenTraits>::params();
 
     switch (KeyGenTraits::DoKeyGen(AsyncWrap::env(), params)) {

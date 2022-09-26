@@ -527,7 +527,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
     isolate->main_ = spawn_jvm;
     if (spawn_jvm) {
-        isolate->InitStackOverflowCheck((intptr_t) &params);
+        isolate->InitStackOverflowCheck((intptr_t) &jvm);
     }
 
     return reinterpret_cast<v8::Isolate*> (isolate);
@@ -643,6 +643,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::value_is_generator_function, "valueIsGeneratorFunction", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_generator_object, "valueIsGeneratorObject", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_module_namespace_object, "valueIsModuleNamespaceObject", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_wasm_memory_object, "valueIsWasmMemoryObject", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_equals, "valueEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_strict_equals, "valueStrictEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_instance_of, "valueInstanceOf", "(Ljava/lang/Object;Ljava/lang/Object;)Z")

@@ -11,6 +11,10 @@
 #include "node_mutex.h"
 #include "util.h"
 
+#if HAVE_OPENSSL
+#include "openssl/opensslv.h"
+#endif
+
 namespace node {
 
 class HostPort {
@@ -105,6 +109,7 @@ class EnvironmentOptions : public Options {
   bool enable_source_maps = false;
   bool experimental_https_modules = false;
   bool experimental_fetch = false;
+  bool experimental_global_customevent = false;
   bool experimental_global_web_crypto = false;
   std::string experimental_specifier_resolution;
   bool experimental_wasm_modules = false;
@@ -116,6 +121,7 @@ class EnvironmentOptions : public Options {
   bool experimental_repl_await = true;
   bool experimental_vm_modules = false;
   bool expose_internals = false;
+  bool force_node_api_uncaught_exceptions_policy = false;
   bool frozen_intrinsics = false;
   int64_t heap_snapshot_near_heap_limit = 0;
   std::string heap_snapshot_signal;
@@ -144,6 +150,8 @@ class EnvironmentOptions : public Options {
 #endif  // HAVE_INSPECTOR
   std::string redirect_warnings;
   std::string diagnostic_dir;
+  bool test_runner = false;
+  bool test_only = false;
   bool test_udp_no_try_send = false;
   bool throw_deprecation = false;
   bool trace_atomics_wait = false;
@@ -154,7 +162,7 @@ class EnvironmentOptions : public Options {
   bool trace_uncaught = false;
   bool trace_warnings = false;
   std::string unhandled_rejections;
-  std::string userland_loader;
+  std::vector<std::string> userland_loaders;
   bool verify_base_objects =
 #ifdef DEBUG
       true;
@@ -199,7 +207,6 @@ class PerIsolateOptions : public Options {
   bool node_snapshot = true;
   bool report_uncaught_exception = false;
   bool report_on_signal = false;
-  bool experimental_top_level_await = true;
   std::string report_signal = "SIGUSR2";
   inline EnvironmentOptions* get_per_env_options();
   void CheckOptions(std::vector<std::string>* errors) override;
@@ -224,6 +231,7 @@ class PerProcessOptions : public Options {
   bool zero_fill_all_buffers = false;
   bool debug_arraybuffer_allocations = false;
   std::string disable_proto;
+  bool build_snapshot;
 
   std::vector<std::string> security_reverts;
   bool print_bash_completion = false;
@@ -242,6 +250,7 @@ class PerProcessOptions : public Options {
   std::string tls_cipher_list = DEFAULT_CIPHER_LIST_CORE;
   int64_t secure_heap = 0;
   int64_t secure_heap_min = 2;
+  bool openssl_shared_config = false;
 #ifdef NODE_OPENSSL_CERT_STORE
   bool ssl_openssl_cert_store = true;
 #else
@@ -251,6 +260,9 @@ class PerProcessOptions : public Options {
   bool use_bundled_ca = false;
   bool enable_fips_crypto = false;
   bool force_fips_crypto = false;
+#endif
+#if OPENSSL_VERSION_MAJOR >= 3
+  bool openssl_legacy_provider = false;
 #endif
 
   // Per-process because reports can be triggered outside a known V8 context.
@@ -478,7 +490,7 @@ void Parse(
 namespace per_process {
 
 extern Mutex cli_options_mutex;
-extern std::shared_ptr<PerProcessOptions> cli_options;
+extern NODE_EXTERN_PRIVATE std::shared_ptr<PerProcessOptions> cli_options;
 
 }  // namespace per_process
 

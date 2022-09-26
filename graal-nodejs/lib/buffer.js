@@ -23,8 +23,10 @@
 
 const {
   Array,
+  ArrayFrom,
   ArrayIsArray,
   ArrayPrototypeForEach,
+  ArrayPrototypeIncludes,
   MathFloor,
   MathMin,
   MathTrunc,
@@ -35,8 +37,8 @@ const {
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
+  RegExpPrototypeSymbolReplace,
   StringPrototypeCharCodeAt,
-  StringPrototypeReplace,
   StringPrototypeSlice,
   StringPrototypeToLowerCase,
   StringPrototypeTrim,
@@ -131,11 +133,13 @@ addBufferPrototypeMethods(Buffer.prototype);
 
 const constants = ObjectDefineProperties({}, {
   MAX_LENGTH: {
+    __proto__: null,
     value: kMaxLength,
     writable: false,
     enumerable: true
   },
   MAX_STRING_LENGTH: {
+    __proto__: null,
     value: kStringMaxLength,
     writable: false,
     enumerable: true
@@ -283,6 +287,7 @@ function Buffer(arg, encodingOrOffset, length) {
 }
 
 ObjectDefineProperty(Buffer, SymbolSpecies, {
+  __proto__: null,
   enumerable: false,
   configurable: true,
   get() { return FastBuffer; }
@@ -758,6 +763,7 @@ Buffer.byteLength = byteLength;
 
 // For backwards compatibility.
 ObjectDefineProperty(Buffer.prototype, 'parent', {
+  __proto__: null,
   enumerable: true,
   get() {
     if (!(this instanceof Buffer))
@@ -766,6 +772,7 @@ ObjectDefineProperty(Buffer.prototype, 'parent', {
   }
 });
 ObjectDefineProperty(Buffer.prototype, 'offset', {
+  __proto__: null,
   enumerable: true,
   get() {
     if (!(this instanceof Buffer))
@@ -836,8 +843,8 @@ Buffer.prototype[customInspectSymbol] = function inspect(recurseTimes, ctx) {
   const max = INSPECT_MAX_BYTES;
   const actualMax = MathMin(max, this.length);
   const remaining = this.length - max;
-  let str = StringPrototypeTrim(StringPrototypeReplace(
-    this.hexSlice(0, actualMax), /(.{2})/g, '$1 '));
+  let str = StringPrototypeTrim(RegExpPrototypeSymbolReplace(
+    /(.{2})/g, this.hexSlice(0, actualMax), '$1 '));
   if (remaining > 0)
     str += ` ... ${remaining} more byte${remaining > 1 ? 's' : ''}`;
   // Inspect special properties as well, if possible.
@@ -1234,8 +1241,25 @@ function btoa(input) {
   return buf.toString('base64');
 }
 
-const kBase64Digits =
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+// Refs: https://infra.spec.whatwg.org/#forgiving-base64-decode
+const kForgivingBase64AllowedChars = [
+  // ASCII whitespace
+  // Refs: https://infra.spec.whatwg.org/#ascii-whitespace
+  0x09, 0x0A, 0x0C, 0x0D, 0x20,
+
+  // Uppercase letters
+  ...ArrayFrom({ length: 26 }, (_, i) => StringPrototypeCharCodeAt('A') + i),
+
+  // Lowercase letters
+  ...ArrayFrom({ length: 26 }, (_, i) => StringPrototypeCharCodeAt('a') + i),
+
+  // Decimal digits
+  ...ArrayFrom({ length: 10 }, (_, i) => StringPrototypeCharCodeAt('0') + i),
+
+  0x2B, // +
+  0x2F, // /
+  0x3D, // =
+];
 
 function atob(input) {
   // The implementation here has not been performance optimized in any way and
@@ -1246,7 +1270,8 @@ function atob(input) {
   }
   input = `${input}`;
   for (let n = 0; n < input.length; n++) {
-    if (!kBase64Digits.includes(input[n]))
+    if (!ArrayPrototypeIncludes(kForgivingBase64AllowedChars,
+                                StringPrototypeCharCodeAt(input, n)))
       throw lazyDOMException('Invalid character', 'InvalidCharacterError');
   }
   return Buffer.from(input, 'base64').toString('latin1');
@@ -1267,11 +1292,13 @@ module.exports = {
 
 ObjectDefineProperties(module.exports, {
   constants: {
+    __proto__: null,
     configurable: false,
     enumerable: true,
     value: constants
   },
   INSPECT_MAX_BYTES: {
+    __proto__: null,
     configurable: true,
     enumerable: true,
     get() { return INSPECT_MAX_BYTES; },

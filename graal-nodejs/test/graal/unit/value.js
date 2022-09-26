@@ -545,6 +545,27 @@ describe('Value - Is*()', function () {
             assert.strictEqual(module.Value_IsName(42), false);
         });
     });
+    describe('IsWasmMemoryObject', function () {
+        it('should return false for undefined', function () {
+            assert.strictEqual(module.Value_IsWasmMemoryObject(undefined), false);
+        });
+        it('should return false for an ordinary object', function () {
+            assert.strictEqual(module.Value_IsWasmMemoryObject({}), false);
+        });
+        if (typeof WebAssembly !== 'undefined') {
+            it('should return false for WebAssembly object', function () {
+                assert.strictEqual(module.Value_IsWasmMemoryObject(WebAssembly), false);
+            });
+            it('should return true for WebAssembly.Memory object', function () {
+                let memory = new WebAssembly.Memory({ initial: 1 });
+                assert.strictEqual(module.Value_IsWasmMemoryObject(memory), true);
+            });
+            it('should return false for WebAssembly.Global object', function () {
+                let wasmGlobal = new WebAssembly.Global({ value: 'i32' });
+                assert.strictEqual(module.Value_IsWasmMemoryObject(wasmGlobal), false);
+            });
+        }
+    });
 });
 
 describe('Value - *Value()', function () {

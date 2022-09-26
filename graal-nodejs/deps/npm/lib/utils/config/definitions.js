@@ -3,6 +3,7 @@ module.exports = definitions
 
 const Definition = require('./definition.js')
 
+const log = require('../log-shim')
 const { version: npmVersion } = require('../../../package.json')
 const ciDetect = require('@npmcli/ci-detect')
 const ciName = ciDetect()
@@ -238,15 +239,24 @@ define('audit-level', {
 
 define('auth-type', {
   default: 'legacy',
-  type: ['legacy', 'sso', 'saml', 'oauth'],
-  deprecated: `
-    This method of SSO/SAML/OAuth is deprecated and will be removed in
-    a future version of npm in favor of web-based login.
-  `,
+  type: ['legacy', 'web', 'sso', 'saml', 'oauth', 'webauthn'],
+  // deprecation in description rather than field, because not every value
+  // is deprecated
   description: `
-    What authentication strategy to use with \`adduser\`/\`login\`.
+    NOTE: auth-type values "sso", "saml", "oauth", and "webauthn" will be
+    removed in a future version.
+
+    What authentication strategy to use with \`login\`.
   `,
-  flatten,
+  flatten (key, obj, flatOptions) {
+    flatOptions.authType = obj[key]
+    if (obj[key] === 'sso') {
+      // no need to deprecate saml/oauth here, as sso-type will be set by these in
+      // lib/auth/ and is deprecated already
+      log.warn('config',
+        '--auth-type=sso is will be removed in a future version.')
+    }
+  },
 })
 
 define('before', {
@@ -426,8 +436,8 @@ define('cert', {
     cert="-----BEGIN CERTIFICATE-----\\nXXXX\\nXXXX\\n-----END CERTIFICATE-----"
     \`\`\`
 
-    It is _not_ the path to a certificate file (and there is no "certfile"
-    option).
+    It is _not_ the path to a certificate file, though you can set a registry-scoped
+    "certfile" path like "//other-registry.tld/:certfile=/path/to/cert.pem".
   `,
   flatten,
 })
@@ -533,7 +543,7 @@ define('dev', {
 
 define('diff', {
   default: [],
-  hint: '<pkg-name|spec|version>',
+  hint: '<package-spec>',
   type: [String, Array],
   description: `
     Define arguments to compare in \`npm diff\`.
@@ -811,9 +821,6 @@ define('global', {
   default: false,
   type: Boolean,
   short: 'g',
-  deprecated: `
-    \`--global\`, \`--local\` are deprecated. Use \`--location=global\` instead.
-  `,
   description: `
     Operates in "global" mode, so that packages are installed into the
     \`prefix\` folder instead of the current working directory.  See
@@ -1111,7 +1118,8 @@ define('key', {
     key="-----BEGIN PRIVATE KEY-----\\nXXXX\\nXXXX\\n-----END PRIVATE KEY-----"
     \`\`\`
 
-    It is _not_ the path to a key file (and there is no "keyfile" option).
+    It is _not_ the path to a key file, though you can set a registry-scoped
+    "keyfile" path like "//other-registry.tld/:keyfile=/path/to/key.pem".
   `,
   flatten,
 })
@@ -1459,7 +1467,7 @@ define('otp', {
 
 define('package', {
   default: [],
-  hint: '<pkg>[@<version>]',
+  hint: '<package-spec>',
   type: [String, Array],
   description: `
     The package to install for [\`npm exec\`](/commands/npm-exec)
@@ -1868,7 +1876,7 @@ define('script-shell', {
   type: [null, String],
   description: `
     The shell to use for scripts run with the \`npm exec\`,
-    \`npm run\` and \`npm init <pkg>\` commands.
+    \`npm run\` and \`npm init <package-spec>\` commands.
   `,
   flatten (key, obj, flatOptions) {
     flatOptions.scriptShell = obj[key] || undefined

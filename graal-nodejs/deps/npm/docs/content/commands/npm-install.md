@@ -11,16 +11,7 @@ description: Install a package
 <!-- see lib/commands/install.js -->
 
 ```bash
-npm install [<@scope>/]<pkg>
-npm install [<@scope>/]<pkg>@<tag>
-npm install [<@scope>/]<pkg>@<version>
-npm install [<@scope>/]<pkg>@<version range>
-npm install <alias>@npm:<name>
-npm install <folder>
-npm install <tarball file>
-npm install <tarball url>
-npm install <git:// url>
-npm install <github username>/<github project>
+npm install [<package-spec> ...]
 
 aliases: add, i, in, ins, inst, insta, instal, isnt, isnta, isntal, isntall
 ```
@@ -460,8 +451,6 @@ rather than using npm's default semver range operator.
 
 * Default: false
 * Type: Boolean
-* DEPRECATED: `--global`, `--local` are deprecated. Use `--location=global`
-  instead.
 
 Operates in "global" mode, so that packages are installed into the `prefix`
 folder instead of the current working directory. See

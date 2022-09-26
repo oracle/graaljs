@@ -13,6 +13,7 @@ const {
 const {
   getOptionValue,
   getEmbedderOptions,
+  refreshOptions,
 } = require('internal/options');
 const { reconnectZeroFillToggle } = require('internal/buffer');
 const {
@@ -25,7 +26,10 @@ const { Buffer } = require('buffer');
 const { ERR_MANIFEST_ASSERT_INTEGRITY } = require('internal/errors').codes;
 const assert = require('internal/assert');
 
-function prepareMainThreadExecution(expandArgv1 = false) {
+function prepareMainThreadExecution(expandArgv1 = false,
+                                    initialzeModules = true) {
+  refreshRuntimeOptions();
+
   // TODO(joyeecheung): this is also necessary for workers when they deserialize
   // this toggle from the snapshot.
   reconnectZeroFillToggle();
@@ -38,6 +42,7 @@ function prepareMainThreadExecution(expandArgv1 = false) {
   setupWarningHandler();
   setupFetch();
   setupWebCrypto();
+  setupCustomEvent();
 
   // Resolve the coverage directory to an absolute path, and
   // overwrite process.env so that the original path gets passed
@@ -46,7 +51,6 @@ function prepareMainThreadExecution(expandArgv1 = false) {
     process.env.NODE_V8_COVERAGE =
       setupCoverageHooks(process.env.NODE_V8_COVERAGE);
   }
-
 
   setupDebugEnv();
 
@@ -77,13 +81,23 @@ function prepareMainThreadExecution(expandArgv1 = false) {
   initializeSourceMapsHandlers();
   initializeDeprecations();
   initializeWASI();
+
+  require('internal/v8/startup_snapshot').runDeserializeCallbacks();
+
+  if (!initialzeModules) {
+    return;
+  }
+
   initializeCJSLoader();
   initializeESMLoader();
-
   const CJSLoader = require('internal/modules/cjs/loader');
   assert(!CJSLoader.hasLoadedAnyUserCJSModule);
   loadPreloadModules();
   initializeFrozenIntrinsics();
+}
+
+function refreshRuntimeOptions() {
+  refreshOptions();
 }
 
 function patchProcessObject(expandArgv1) {
@@ -93,10 +107,15 @@ function patchProcessObject(expandArgv1) {
   require('internal/process/per_thread').refreshHrtimeBuffer();
 
   ObjectDefineProperty(process, 'argv0', {
+    __proto__: null,
     enumerable: true,
-    configurable: false,
+    // Only set it to true during snapshot building.
+    configurable: getOptionValue('--build-snapshot'),
     value: process.argv[0]
   });
+
+  process.exitCode = undefined;
+  process._exiting = false;
   process.argv[0] = process.execPath;
 
   if (expandArgv1 && process.argv[1] &&
@@ -109,6 +128,12 @@ function patchProcessObject(expandArgv1) {
       // Continue regardless of error.
     }
   }
+
+  // We need to initialize the global console here again with process.stdout
+  // and friends for snapshot deserialization.
+  const globalConsole = require('internal/console/global');
+  const { initializeGlobalConsole } = require('internal/console/constructor');
+  initializeGlobalConsole(globalConsole);
 
   // TODO(joyeecheung): most of these should be deprecated and removed,
   // except some that we need to be able to mutate during run time.
@@ -138,6 +163,7 @@ function addReadOnlyProcessAlias(name, option, enumerable = true) {
   const value = getOptionValue(option);
   if (value) {
     ObjectDefineProperty(process, name, {
+      __proto__: null,
       writable: false,
       configurable: true,
       enumerable,
@@ -182,33 +208,47 @@ function setupWebCrypto() {
 
   let webcrypto;
   ObjectDefineProperty(globalThis, 'crypto',
-                       ObjectGetOwnPropertyDescriptor({
+                       { __proto__: null, ...ObjectGetOwnPropertyDescriptor({
                          get crypto() {
                            webcrypto ??= require('internal/crypto/webcrypto');
                            return webcrypto.crypto;
                          }
-                       }, 'crypto'));
+                       }, 'crypto') });
   if (internalBinding('config').hasOpenSSL) {
     webcrypto ??= require('internal/crypto/webcrypto');
     ObjectDefineProperty(globalThis, 'Crypto', {
+      __proto__: null,
       writable: true,
       enumerable: false,
       configurable: true,
       value: webcrypto.Crypto
     });
     ObjectDefineProperty(globalThis, 'CryptoKey', {
+      __proto__: null,
       writable: true,
       enumerable: false,
       configurable: true,
       value: webcrypto.CryptoKey
     });
     ObjectDefineProperty(globalThis, 'SubtleCrypto', {
+      __proto__: null,
       writable: true,
       enumerable: false,
       configurable: true,
       value: webcrypto.SubtleCrypto
     });
   }
+}
+
+// TODO(daeyeon): move this to internal/bootstrap/browser when the CLI flag is
+//                removed.
+function setupCustomEvent() {
+  if (process.config.variables.node_no_browser_globals ||
+      !getOptionValue('--experimental-global-customevent')) {
+    return;
+  }
+  const { CustomEvent } = require('internal/event_target');
+  exposeInterface(globalThis, 'CustomEvent', CustomEvent);
 }
 
 // Setup User-facing NODE_V8_COVERAGE environment variable that writes
@@ -245,6 +285,7 @@ function setupStacktracePrinterOnSigint() {
 function initializeReport() {
   const { report } = require('internal/process/report');
   ObjectDefineProperty(process, 'report', {
+    __proto__: null,
     enumerable: true,
     configurable: true,
     get() {
@@ -352,6 +393,7 @@ function initializeDeprecations() {
   const { noBrowserGlobals } = internalBinding('config');
   if (noBrowserGlobals) {
     ObjectDefineProperty(process, '_noBrowserGlobals', {
+      __proto__: null,
       writable: false,
       enumerable: true,
       configurable: true,
@@ -374,6 +416,7 @@ function initializeDeprecations() {
   // See https://github.com/nodejs/node/pull/26334.
   let _process = process;
   ObjectDefineProperty(globalThis, 'process', {
+    __proto__: null,
     get() {
       return _process;
     },
@@ -386,6 +429,7 @@ function initializeDeprecations() {
 
   let _Buffer = Buffer;
   ObjectDefineProperty(globalThis, 'Buffer', {
+    __proto__: null,
     get() {
       return _Buffer;
     },
@@ -548,11 +592,13 @@ function loadPreloadModules() {
 }
 
 module.exports = {
+  refreshRuntimeOptions,
   patchProcessObject,
   setupCoverageHooks,
   setupWarningHandler,
   setupFetch,
   setupWebCrypto,
+  setupCustomEvent,
   setupDebugEnv,
   setupPerfHooks,
   prepareMainThreadExecution,
