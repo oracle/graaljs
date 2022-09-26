@@ -346,11 +346,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                         Function<JSContext, JSFunctionData> create) {
             return new AsyncIteratorAwaitNode<>(context, key, create, false);
         }
+
         public static <T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> AsyncIteratorAwaitNode<T> createWithClose(JSContext context, JSContext.BuiltinFunctionKey key,
-                                                                                                            Function<JSContext, JSFunctionData> create) {
+                        Function<JSContext, JSFunctionData> create) {
             return new AsyncIteratorAwaitNode<>(context, key, create, true);
         }
-
 
         private static JSFunctionData createIfAbruptCloseFunctionImpl(JSContext context) {
             return JSFunctionData.createCallOnly(context, new AsyncIteratorIfAbruptCloseNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
@@ -419,8 +419,8 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         public AsyncIteratorCreateResultNode(JSContext context, boolean closeOnAbrupt) {
             awaitNode = closeOnAbrupt
-                    ? AsyncIteratorAwaitNode.createWithClose(context, JSContext.BuiltinFunctionKey.AsyncIteratorCreateResult, AsyncIteratorCreateResultNode::createCreateResultFunctionImpl)
-                    : AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorCreateResult, AsyncIteratorCreateResultNode::createCreateResultFunctionImpl);
+                            ? AsyncIteratorAwaitNode.createWithClose(context, JSContext.BuiltinFunctionKey.AsyncIteratorCreateResult, AsyncIteratorCreateResultNode::createCreateResultFunctionImpl)
+                            : AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorCreateResult, AsyncIteratorCreateResultNode::createCreateResultFunctionImpl);
         }
 
         public Object execute(VirtualFrame frame, Object value, IteratorRecord iterated) {
@@ -449,6 +449,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public static AsyncIteratorCreateResultNode create(JSContext context) {
             return new AsyncIteratorCreateResultNode(context, false);
         }
+
         public static AsyncIteratorCreateResultNode createWithClose(JSContext context) {
             return new AsyncIteratorCreateResultNode(context, true);
         }
@@ -509,7 +510,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         protected static class AsyncIteratorMapWithValueRootNode extends AsyncIteratorNextUtilsRootNode<AsyncIteratorMapArgs> {
             @Child private IteratorValueNode iteratorValueNode;
             @Child private AsyncIteratorCreateResultNode createResultNode;
-
 
             public AsyncIteratorMapWithValueRootNode(JSContext context) {
                 super(context);
@@ -912,6 +912,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 return awaitNode.execute(frame, value, getArgs(frame));
             }
         }
+
         protected static class AsyncIteratorDropWithValueLoopRootNode extends AsyncIteratorNextUtilsRootNode<AsyncIteratorDropArgs> {
             @Child private IteratorNextNode iteratorNextNode;
             @Child private IteratorValueNode iteratorValueNode;
@@ -1138,7 +1139,8 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 callNode = JSFunctionCallNode.createCall();
                 getInnerNode = PropertyGetNode.createGetHidden(CURRENT_ID, context);
                 awaitOuterNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorFlatMapWithValue, AsyncIteratorFlatMapNode::createFlatMapWithValueFunctionImpl);
-                awaitInnerNode = AsyncIteratorAwaitNode.createWithClose(context, JSContext.BuiltinFunctionKey.AsyncIteratorFlatMapInnerWithValue, AsyncIteratorFlatMapNode::createFlatMapInnerWithValueFunctionImpl);
+                awaitInnerNode = AsyncIteratorAwaitNode.createWithClose(context, JSContext.BuiltinFunctionKey.AsyncIteratorFlatMapInnerWithValue,
+                                AsyncIteratorFlatMapNode::createFlatMapInnerWithValueFunctionImpl);
             }
 
             @Override

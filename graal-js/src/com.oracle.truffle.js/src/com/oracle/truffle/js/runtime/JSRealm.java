@@ -57,9 +57,6 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.js.builtins.AsyncIteratorHelperPrototypeBuiltins;
-import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
-import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
@@ -92,6 +89,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.AsyncIteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
@@ -128,6 +126,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
@@ -160,6 +159,7 @@ import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForIterator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
@@ -1659,6 +1659,7 @@ public class JSRealm {
     public JSFunctionObject getIteratorConstructor() {
         return iteratorConstructor;
     }
+
     public JSFunctionObject getAsyncIteratorConstructor() {
         return asyncIteratorContructor;
     }
@@ -1698,6 +1699,7 @@ public class JSRealm {
     public JSDynamicObject getIteratorHelperPrototype() {
         return iteratorHelperPrototype;
     }
+
     public JSDynamicObject getAsyncIteratorHelperPrototype() {
         return asyncIteratorHelperPrototype;
     }

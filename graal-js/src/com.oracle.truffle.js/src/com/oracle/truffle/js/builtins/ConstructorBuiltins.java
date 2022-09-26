@@ -617,7 +617,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case AsyncIterator:
                 if (construct) {
                     return newTarget ? ConstructAsyncIteratorNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
-                            : ConstructAsyncIteratorNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
+                                    : ConstructAsyncIteratorNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }

@@ -532,7 +532,6 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> ITERATOR_HELPERS = new OptionKey<>(false);
     @CompilationFinal private boolean iteratorHelpers;
 
-
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,

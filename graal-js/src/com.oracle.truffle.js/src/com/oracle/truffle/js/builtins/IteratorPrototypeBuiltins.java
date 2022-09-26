@@ -382,6 +382,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected abstract static class IteratorMapNextNode extends IteratorImplNode<IteratorMapArgs> {
             @Child private IteratorCloseNode iteratorCloseNode;
             @Child private JSFunctionCallNode callNode;
+
             protected IteratorMapNextNode(JSContext context) {
                 super(context);
 
@@ -612,7 +613,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             private final ConditionProfile finiteProfile = ConditionProfile.createBinaryProfile();
 
-
             protected IteratorTakeNextNode(JSContext context) {
                 super(context);
 
@@ -632,7 +632,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         remaining = getLimitNode.getValueLong(thisObj);
                     } catch (UnexpectedResultException e) {
                         assert false : "Unreachable";
-                        throw new RuntimeException(e); //Unreachable
+                        throw new RuntimeException(e); // Unreachable
                     }
 
                     if (remaining == 0) {
@@ -710,7 +710,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             @Child private PropertySetNode setLimitNode;
 
             private final ConditionProfile finiteProfile = ConditionProfile.createBinaryProfile();
-
 
             protected IteratorDropNextNode(JSContext context) {
                 super(context);
@@ -827,7 +826,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     innerAlive = getAliveNode.getValueBoolean(thisObj);
                 } catch (UnexpectedResultException e) {
                     assert false : "Unreachable";
-                    throw new RuntimeException(e); //Unreachable
+                    throw new RuntimeException(e); // Unreachable
                 }
 
                 while (true) {

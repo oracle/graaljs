@@ -83,4 +83,3 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
         return GetIteratorDirectNodeGen.create(context);
     }
 }
-

@@ -78,10 +78,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public static final TruffleString TO_STRING_TAG = Strings.constant("Iterator Helper");
 
-
     public static final HiddenKey NEXT_ID = new HiddenKey("next");
     public static final HiddenKey ARGS_ID = new HiddenKey("target");
-
 
     protected IteratorHelperPrototypeBuiltins() {
         super(PROTOTYPE_NAME, IteratorHelperPrototypeBuiltins.HelperIteratorPrototype.class);
@@ -124,7 +122,6 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private HasHiddenKeyCacheNode hasNextImplNode;
         @Child private HasHiddenKeyCacheNode hasInnerNode;
 
-
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
@@ -141,9 +138,11 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected boolean hasImpl(Object thisObj) {
             return hasNextImplNode.executeHasHiddenKey(thisObj);
         }
+
         protected boolean hasInner(Object thisObj) {
             return hasInnerNode.executeHasHiddenKey(thisObj);
         }
+
         protected JSFunction.GeneratorState getState(Object thisObject) {
             return (JSFunction.GeneratorState) getGeneratorStateNode.getValue(thisObject);
         }
@@ -152,6 +151,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public Object executing(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeError("generator is already executing");
         }
+
         @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == SuspendedStart"})
         public Object suspendedStart(VirtualFrame frame, Object thisObj) {
             setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
@@ -160,9 +160,9 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == SuspendedYield", "hasInner(thisObj)"})
         public Object closeInner(VirtualFrame frame, Object thisObj,
-                                 @Cached("createGetHidden(FLATMAP_ALIVE_ID, getContext())") PropertyGetNode isAliveNode,
-                                 @Cached("createGetHidden(FLATMAP_INNER_ID, getContext())") PropertyGetNode getInnerNode,
-                                 @Cached("createBinaryProfile()") ConditionProfile aliveProfile) {
+                        @Cached("createGetHidden(FLATMAP_ALIVE_ID, getContext())") PropertyGetNode isAliveNode,
+                        @Cached("createGetHidden(FLATMAP_INNER_ID, getContext())") PropertyGetNode getInnerNode,
+                        @Cached("createBinaryProfile()") ConditionProfile aliveProfile) {
             setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
 
             try {
@@ -189,7 +189,6 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
-
 
         @Specialization(guards = "!hasImpl(thisObj)")
         public Object unsupported(Object thisObj) {
@@ -221,8 +220,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "hasImpl(thisObj)")
         public Object next(VirtualFrame frame, Object thisObj,
-                           @Cached("create()") BranchProfile executingProfile,
-                           @Cached("create()") BranchProfile completedProfile) {
+                        @Cached("create()") BranchProfile executingProfile,
+                        @Cached("create()") BranchProfile completedProfile) {
             Object state = getGeneratorStateNode.getValue(thisObj);
             if (state == JSFunction.GeneratorState.Executing) {
                 executingProfile.enter();

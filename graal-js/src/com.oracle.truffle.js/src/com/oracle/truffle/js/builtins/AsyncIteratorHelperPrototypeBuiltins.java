@@ -231,7 +231,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 try {
                     getIteratorCloseNode().executeAbrupt(((IteratorRecord) getGetInnerNode().getValue(thisObj)).getIterator());
                 } catch (AbstractTruffleException ex) {
-                    //We don't care
+                    // We don't care
                 }
             }
             try {

@@ -116,7 +116,6 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             this.isCallableNode = IsCallableNode.create();
         }
 
-
         @Specialization
         protected JSDynamicObject iteratorFrom(Object arg) {
             IteratorRecord iteratorRecord;
@@ -139,7 +138,6 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
             return JSWrapForIterator.create(getContext(), getRealm(), iteratorRecord);
         }
-
 
     }
 }

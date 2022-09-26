@@ -145,6 +145,7 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         setPromiseNode.setValue(function, promise);
         return function;
     }
+
     public JSFunctionObject createCloseAbruptFunction(JSDynamicObject promise, Object completion) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncIteratorCloseAbrupt, AsyncIteratorCloseNode::createCloseAbruptFunctionImpl);
         JSFunctionObject function = JSFunction.create(getRealm(), functionData);
@@ -156,6 +157,7 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
     private static JSFunctionData createCloseFunctionImpl(JSContext context) {
         return JSFunctionData.createCallOnly(context, new AsyncIteratorCloseRootNode(context, false).getCallTarget(), 1, Strings.EMPTY_STRING);
     }
+
     private static JSFunctionData createCloseAbruptFunctionImpl(JSContext context) {
         return JSFunctionData.createCallOnly(context, new AsyncIteratorCloseRootNode(context, true).getCallTarget(), 1, Strings.EMPTY_STRING);
     }

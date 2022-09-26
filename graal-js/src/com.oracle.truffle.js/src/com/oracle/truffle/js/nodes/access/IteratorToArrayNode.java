@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -63,9 +64,8 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
     @Child @Executed JavaScriptNode iteratorNode;
     @Child private IteratorGetNextValueNode iteratorStepNode;
 
-    @CompilerDirectives.CompilationFinal private int capacity = 0;
-    @CompilerDirectives.CompilationFinal private boolean first = true;
-
+    @CompilationFinal private int capacity = 0;
+    @CompilationFinal private boolean first = true;
 
     protected IteratorToArrayNode(JSContext context, JavaScriptNode iteratorNode, IteratorGetNextValueNode iteratorStepNode) {
         this.context = context;
@@ -80,8 +80,8 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
 
     @Specialization(guards = "!iteratorRecord.isDone()")
     protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord,
-                                @Cached BranchProfile firstGrowProfile,
-                                @Cached BranchProfile growProfile) {
+                    @Cached BranchProfile firstGrowProfile,
+                    @Cached BranchProfile growProfile) {
         SimpleArrayList<Object> elements = new SimpleArrayList<>(capacity);
         Object value;
         while ((value = iteratorStepNode.execute(frame, iteratorRecord)) != null) {
@@ -93,7 +93,8 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
                 capacity = elements.size();
                 first = false;
             } else if (capacity != elements.size()) {
-                //Capacity is changing even though we are still in interpreter. Assume fluctuating capacity values.
+                // Capacity is changing even though we are still in interpreter.
+                // Assume fluctuating capacity values.
                 capacity = 0;
             }
         }
