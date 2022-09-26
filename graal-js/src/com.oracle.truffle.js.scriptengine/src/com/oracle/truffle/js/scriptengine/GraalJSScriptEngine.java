@@ -108,6 +108,10 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         b.targetTypeMapping(Number.class, Long.class, n -> true, n -> n.longValue(), TargetMappingPrecedence.LOWEST);
         b.targetTypeMapping(Number.class, Boolean.class, n -> true, n -> toBoolean(n.doubleValue()), TargetMappingPrecedence.LOWEST);
         b.targetTypeMapping(String.class, Boolean.class, n -> true, n -> !n.isEmpty(), TargetMappingPrecedence.LOWEST);
+        // Resembles the conversions in NashornPrimitiveLinker/JavaArgumentConverters
+        b.targetTypeMapping(Double.class, Float.class, n -> true, n -> n.floatValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Double.class, Short.class, n -> true, n -> n.shortValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Double.class, Byte.class, n -> true, n -> n.byteValue(), TargetMappingPrecedence.LOWEST);
         return b.build();
     }
 

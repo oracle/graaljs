@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -195,6 +195,48 @@ public class TestNashornTypeConversion {
         assertEquals(String.valueOf(result), Boolean.hashCode(true), result);
         result = engine.eval("java.lang.Boolean.hashCode(0);");
         assertEquals(String.valueOf(result), Boolean.hashCode(false), result);
+    }
+
+    @Test
+    public void testDoubleToFloat() throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        Object result = engine.eval("java.lang.Float.isFinite(Math.PI)");
+        assertEquals(String.valueOf(result), true, result);
+    }
+
+    @Test
+    public void testIntegerToFloat() throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        Object result = engine.eval("java.lang.Float.isFinite(1073741823)");
+        assertEquals(String.valueOf(result), true, result);
+    }
+
+    @Test
+    public void testDoubleToShort() throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        Object result = engine.eval("java.lang.Short.toUnsignedInt(Math.PI)");
+        assertEquals(String.valueOf(result), 3, result);
+    }
+
+    @Test
+    public void testIntegerToShort() throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        Object result = engine.eval("java.lang.Short.toUnsignedInt(java.lang.Integer.MAX_VALUE)");
+        assertEquals(String.valueOf(result), 65535, result);
+    }
+
+    @Test
+    public void testDoubleToByte() throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        Object result = engine.eval("java.lang.Byte.toUnsignedInt(Math.PI)");
+        assertEquals(String.valueOf(result), 3, result);
+    }
+
+    @Test
+    public void testIntegerToByte() throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        Object result = engine.eval("java.lang.Byte.toUnsignedInt(java.lang.Integer.MAX_VALUE)");
+        assertEquals(String.valueOf(result), 255, result);
     }
 
     @Test
