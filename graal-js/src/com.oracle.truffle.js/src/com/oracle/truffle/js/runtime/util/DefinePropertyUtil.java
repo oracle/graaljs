@@ -91,12 +91,12 @@ public final class DefinePropertyUtil {
     /**
      * Implementation of ValidateAndApplyPropertyDescriptor as defined in ECMAScript 2015, 9.1.6.3.
      */
-    private static boolean validateAndApplyPropertyDescriptor(JSDynamicObject thisObj, Object propertyKey, boolean extensible, PropertyDescriptor descriptor, PropertyDescriptor current,
+    public static boolean validateAndApplyPropertyDescriptor(JSDynamicObject thisObj, Object propertyKey, boolean extensible, PropertyDescriptor descriptor, PropertyDescriptor current,
                     boolean doThrow) {
         CompilerAsserts.neverPartOfCompilation();
         if (current == null) {
             if (!extensible) {
-                return reject(doThrow, "object is not extensible");
+                return reject(doThrow, notExtensibleMessage(propertyKey, doThrow));
             }
             if (thisObj == Undefined.instance) {
                 return true;
@@ -117,15 +117,15 @@ public final class DefinePropertyUtil {
      *
      */
     private static boolean definePropertyExisting(JSDynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow, PropertyDescriptor currentDesc) {
-        JSDynamicObject obj = thisObj;
+        CompilerAsserts.neverPartOfCompilation();
+        assert currentDesc.isFullyPopulatedPropertyDescriptor();
+        if (descriptor.hasNoFields()) {
+            return true;
+        }
+
         boolean currentEnumerable = currentDesc.getEnumerable();
         boolean currentConfigurable = currentDesc.getConfigurable();
         boolean currentWritable = currentDesc.getWritable();
-
-        // 5. Return true, if every field in Desc is absent.
-        if (everyFieldAbsent(descriptor)) {
-            return true;
-        }
 
         boolean enumerable = descriptor.getIfHasEnumerable(currentEnumerable);
         boolean configurable = descriptor.getIfHasConfigurable(currentConfigurable);
@@ -143,10 +143,6 @@ public final class DefinePropertyUtil {
         int newAttr;
         if (descriptor.isGenericDescriptor()) {
             // 8. "no further validation is required", however:
-            // if (current instanceof AccessorProperty) {
-            // // we need to adapt the attributes of the (existing) AccessorProperty
-            // attributes = current.getAttributes();
-            // }
             newAttr = JSAttributes.fromConfigurableEnumerableWritable(configurable, enumerable, currentWritable);
         } else if (currentDesc.isDataDescriptor() && descriptor.isDataDescriptor()) {
             // 10. IsDataDescriptor(current) and IsDataDescriptor(Desc) are both true
@@ -172,7 +168,6 @@ public final class DefinePropertyUtil {
         } else if (currentDesc.isAccessorDescriptor() && descriptor.isAccessorDescriptor()) {
             // 11. IsAccessorDescriptor(current) and IsAccessorDescriptor(Desc) are both true
             if (!currentConfigurable) { // 11.a.
-                // Accessor currentAccessor = (Accessor) current.get(obj, false);
                 Accessor currentAccessor = getAccessorFromDescriptor(currentDesc, doThrow);
                 if (currentAccessor == null) {
                     return false;
@@ -195,7 +190,6 @@ public final class DefinePropertyUtil {
             }
             // rest of 9 moved below, after duplicating the shapes
 
-            // writable = false if Accessor->Data else true
             boolean writable = descriptor.getIfHasWritable(currentDesc.isDataDescriptor());
             newAttr = JSAttributes.fromConfigurableEnumerableWritable(configurable, enumerable, writable);
         }
@@ -208,7 +202,7 @@ public final class DefinePropertyUtil {
         Property currentProperty = getPropertyByKey(thisObj, key);
 
         if (JSProperty.isProxy(currentProperty) && descriptor.isDataDescriptor()) {
-            PropertyProxy proxy = (PropertyProxy) JSDynamicObject.getOrNull(obj, key);
+            PropertyProxy proxy = (PropertyProxy) JSDynamicObject.getOrNull(thisObj, key);
             if (currentProperty.getFlags() != newAttr) {
                 if (descriptor.hasValue()) {
                     JSObjectUtil.defineDataProperty(thisObj, key, descriptor.getValue(), newAttr);
@@ -227,7 +221,6 @@ public final class DefinePropertyUtil {
                 }
             } else if (currentDesc.isAccessorDescriptor() && descriptor.isAccessorDescriptor()) {
                 if (descriptor.hasSet() || descriptor.hasGet()) {
-                    // Accessor currentAccessor = (Accessor) current.get(obj, false);
                     Accessor currentAccessor = getAccessorFromDescriptor(currentDesc, doThrow);
                     Accessor newAccessor = getAccessorFromDescriptor(descriptor, doThrow);
                     if (newAccessor == null || currentAccessor == null) {
@@ -274,13 +267,6 @@ public final class DefinePropertyUtil {
             }
             return true;
         }
-    }
-
-    /**
-     * Implements "return true, if every field in Desc is absent, as defined by 8.12.9 step 5.
-     */
-    private static boolean everyFieldAbsent(PropertyDescriptor descriptor) {
-        return !descriptor.hasValue() && !descriptor.hasGet() && !descriptor.hasSet() && !descriptor.hasConfigurable() && !descriptor.hasEnumerable() && !descriptor.hasWritable();
     }
 
     /**
@@ -350,14 +336,21 @@ public final class DefinePropertyUtil {
         return false;
     }
 
-    private static String nonConfigurableMessage(Object key, boolean reject) {
+    public static String notExtensibleMessage(Object key, boolean reject) {
+        if (reject) {
+            return "Cannot define property " + key + ", object is not extensible";
+        }
+        return "";
+    }
+
+    public static String nonConfigurableMessage(Object key, boolean reject) {
         if (reject) {
             return isNashornMode() ? "property is not configurable" : cannotRedefineMessage(key);
         }
         return "";
     }
 
-    private static String nonWritableMessage(Object key, boolean reject) {
+    public static String nonWritableMessage(Object key, boolean reject) {
         if (reject) {
             return isNashornMode() ? "property is not writable" : cannotRedefineMessage(key);
         }

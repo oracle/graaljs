@@ -73,10 +73,10 @@ public abstract class DefineMethodPropertyNode extends Node {
 
     @Specialization(guards = {"record.isGetter()", "!record.isPrivate()"})
     public void doGetter(JSDynamicObject homeObject, ClassElementDefinitionRecord record, boolean enumerable) {
-        JSDynamicObject otherAccessor = Undefined.instance;
+        Object otherAccessor = Undefined.instance;
         PropertyDescriptor ownProperty = JSObject.getOwnProperty(homeObject, record.getKey());
         if (ownProperty != null) {
-            otherAccessor = (JSDynamicObject) ownProperty.getSet();
+            otherAccessor = ownProperty.getSet();
         }
         PropertyDescriptor desc = PropertyDescriptor.createAccessor(record.getValue(), otherAccessor, enumerable, true);
         JSRuntime.definePropertyOrThrow(homeObject, record.getKey(), desc);

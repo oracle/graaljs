@@ -84,12 +84,7 @@ public final class PropertyDescriptor {
     }
 
     public static PropertyDescriptor createData(Object value, int attributes) {
-        PropertyDescriptor desc = new PropertyDescriptor();
-        desc.setValue(value);
-        desc.setEnumerable(JSAttributes.isEnumerable(attributes));
-        desc.setWritable(JSAttributes.isWritable(attributes));
-        desc.setConfigurable(JSAttributes.isConfigurable(attributes));
-        return desc;
+        return createData(value, JSAttributes.isEnumerable(attributes), JSAttributes.isWritable(attributes), JSAttributes.isConfigurable(attributes));
     }
 
     public static PropertyDescriptor createData(Object value) {
@@ -117,10 +112,7 @@ public final class PropertyDescriptor {
     }
 
     public static PropertyDescriptor createAccessor(Object getter, Object setter, int attributes) {
-        PropertyDescriptor desc = createAccessor(getter, setter);
-        desc.setEnumerable(JSAttributes.isEnumerable(attributes));
-        desc.setConfigurable(JSAttributes.isConfigurable(attributes));
-        return desc;
+        return createAccessor(getter, setter, JSAttributes.isEnumerable(attributes), JSAttributes.isConfigurable(attributes));
     }
 
     public static PropertyDescriptor createAccessor(Object getter, Object setter, boolean isEnumerable, boolean isConfigurable) {
@@ -138,6 +130,8 @@ public final class PropertyDescriptor {
     }
 
     public void setValue(Object value) {
+        assert !isAccessorDescriptor() : this;
+        assert value != null;
         this.data = value;
         this.flags |= HAS_VALUE;
     }
@@ -172,6 +166,12 @@ public final class PropertyDescriptor {
             data = new Accessor(null, set);
         }
         this.flags |= HAS_SET;
+    }
+
+    public void setAccessor(Accessor accessor) {
+        assert !isDataDescriptor() : this;
+        this.data = accessor;
+        this.flags |= HAS_GET | HAS_SET;
     }
 
     public boolean getEnumerable() {
@@ -306,6 +306,20 @@ public final class PropertyDescriptor {
      */
     public boolean isGenericDescriptor() {
         return !(isAccessorDescriptor() || isDataDescriptor());
+    }
+
+    /**
+     * Returns true if this property descriptor does not have any fields.
+     */
+    public boolean hasNoFields() {
+        return !hasValue() && !hasGet() && !hasSet() && !hasConfigurable() && !hasEnumerable() && !hasWritable();
+    }
+
+    /**
+     * Returns true if this is a fully populated data or accessor property descriptor.
+     */
+    public boolean isFullyPopulatedPropertyDescriptor() {
+        return hasConfigurable() && hasEnumerable() && ((hasValue() && hasWritable()) || (hasGet() && hasSet()));
     }
 
     public int getFlags() {
