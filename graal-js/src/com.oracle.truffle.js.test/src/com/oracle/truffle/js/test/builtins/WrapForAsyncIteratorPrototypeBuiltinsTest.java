@@ -72,7 +72,8 @@ public class WrapForAsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("string object boolean true\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: async () => ({value: typeof this, done: true})}).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.from({next: async () => ({value: typeof this, done: true})}).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
             Assert.assertEquals("string object boolean true\n", out.toString());
             out.reset();
 
@@ -96,11 +97,13 @@ public class WrapForAsyncIteratorPrototypeBuiltinsTest {
         builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: () => ({value: typeof this, done: false}), return: () => ({done: true})}).return().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
+            context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: () => ({value: typeof this, done: false}), return: () => ({done: true})}).return().then(" +
+                            "x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
             Assert.assertEquals("object [object Object] boolean true\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "var called = false; AsyncIterator.from({next: () => ({value: typeof this, done: false}), return: () => (called = true, {done: true})}).return().then(() => console.log(called))");
+            context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "AsyncIterator.from({next: () => ({value: typeof this, done: false}), return: () => (called = true, {done: true})}).return().then(() => console.log(called))");
             Assert.assertEquals("true\n", out.toString());
             out.reset();
 
@@ -108,7 +111,8 @@ public class WrapForAsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("TypeError: 1 is not an Object\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: () => ({value: typeof this, done: true}), return: () => ({done: true})}).return.call((function* test(){})()).catch(err => console.log(err))");
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.from({next: () => ({value: typeof this, done: true}), return: () => ({done: true})}).return.call((function* test(){})()).catch(err => console.log(err))");
             Assert.assertEquals("TypeError: incompatible receiver: {}\n", out.toString());
         }
     }

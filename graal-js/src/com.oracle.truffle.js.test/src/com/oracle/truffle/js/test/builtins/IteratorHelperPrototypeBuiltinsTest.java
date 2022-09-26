@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class IteratorHelperPrototypeBuiltinsTest {
     @Test
@@ -96,7 +97,6 @@ public class IteratorHelperPrototypeBuiltinsTest {
             Assert.assertTrue(result.getMember("done").asBoolean());
             Assert.assertTrue(result.getMember("value").isNull());
 
-
             result = context.eval(JavaScriptLanguage.ID, "function* test() {yield 1; yield 2;}; var x = test(); var y = [1].values().flatMap(() => x); y.next(); y.return(); x.next()");
             Assert.assertTrue(result.hasMembers());
             Assert.assertTrue(result.hasMember("done"));
@@ -132,14 +132,12 @@ public class IteratorHelperPrototypeBuiltinsTest {
             Assert.assertTrue(result.getMember("done").asBoolean());
             Assert.assertTrue(result.getMember("value").isNull());
 
-
             result = context.eval(JavaScriptLanguage.ID, "var obj = Iterator.from({next(){throw 'X'}}).map(v => v); try {obj.next()} catch {}; obj.next()");
             Assert.assertTrue(result.hasMembers());
             Assert.assertTrue(result.hasMember("done"));
             Assert.assertTrue(result.hasMember("value"));
             Assert.assertTrue(result.getMember("done").asBoolean());
             Assert.assertTrue(result.getMember("value").isNull());
-
 
             result = context.eval(JavaScriptLanguage.ID, "function* test() {try {yield 1} finally {yield 2}}; test().map(x => x).return()");
             Assert.assertTrue(result.hasMembers());
@@ -148,7 +146,9 @@ public class IteratorHelperPrototypeBuiltinsTest {
             Assert.assertTrue(result.getMember("done").asBoolean());
             Assert.assertTrue(result.getMember("value").isNull());
 
-            result = context.eval(JavaScriptLanguage.ID, "var called = false; function* test() {try {yield 1} finally {called = true; yield 2}}; test().map(x => x).return(); called");
+            result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "function* test() {try {yield 1} finally {called = true; yield 2}}; test().map(x => x).return();" +
+                            "called");
             Assert.assertTrue(result.isBoolean());
             Assert.assertFalse(result.asBoolean());
 
@@ -159,7 +159,9 @@ public class IteratorHelperPrototypeBuiltinsTest {
             Assert.assertTrue(result.getMember("done").asBoolean());
             Assert.assertTrue(result.getMember("value").isNull());
 
-            result = context.eval(JavaScriptLanguage.ID, "var called = false; function* test() {try {yield 1} finally {called = true; yield 2}}; var obj = test().map(x => x); obj.next(); obj.return(); called");
+            result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "function* test() {try {yield 1} finally {called = true; yield 2}}; var obj = test().map(x => x); obj.next(); obj.return();" +
+                            "called");
             Assert.assertTrue(result.isBoolean());
             Assert.assertTrue(result.asBoolean());
         }

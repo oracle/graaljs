@@ -87,15 +87,18 @@ public class AsyncIteratorHelperPrototypeBuiltinsTest {
         builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
-            context.eval(JavaScriptLanguage.ID, "async function* test() {yield 1; yield 2;}; var x = test(); var y = x.drop(0); y.next().then(() => y.return()).then(() => x.next()).then(x => console.log(x.value, x.done))");
+            context.eval(JavaScriptLanguage.ID, "async function* test() {yield 1; yield 2;}; " +
+                            "var x = test(); var y = x.drop(0); y.next().then(() => y.return()).then(() => x.next()).then(x => console.log(x.value, x.done))");
             Assert.assertEquals("undefined true\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "async function* test() {yield 1; yield 2;}; var x = test(); var y = test().flatMap(() => x); y.next().then(() => y.return()).then(() => x.next()).then(x => console.log(x.value, x.done))");
+            context.eval(JavaScriptLanguage.ID, "async function* test() {yield 1; yield 2;}; var x = test(); " +
+                            "var y = test().flatMap(() => x); y.next().then(() => y.return()).then(() => x.next()).then(x => console.log(x.value, x.done))");
             Assert.assertEquals("undefined true\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "async function* test() {yield 1; yield 2;}; test().drop(0).return.call(test()).catch(err => console.log(err))");
+            context.eval(JavaScriptLanguage.ID, "async function* test() {yield 1; yield 2;}; " +
+                            "test().drop(0).return.call(test()).catch(err => console.log(err))");
             Assert.assertTrue(out.toString().startsWith("TypeError: "));
         }
     }

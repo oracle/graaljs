@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class WrapForIteratorPrototypeBuiltinsTest {
     @Test
@@ -92,7 +93,9 @@ public class WrapForIteratorPrototypeBuiltinsTest {
             Assert.assertTrue(result.hasMember("value"));
             Assert.assertTrue(result.getMember("done").asBoolean());
 
-            result = context.eval(JavaScriptLanguage.ID, "var called = false; Iterator.from({next: () => ({value: typeof this, done: false}), return: () => (called = true, {done: true})}).return(); called");
+            result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "Iterator.from({next: () => ({value: typeof this, done: false}), return: () => (called = true, {done: true})}).return();" +
+                            "called");
             Assert.assertTrue(result.asBoolean());
 
             try {

@@ -101,13 +101,14 @@ public class AsyncIteratorPrototypeBuiltinsTest {
                 Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.map.call({next: () => ({value: 1, done: true})}, x => x).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.prototype.map.call({next: () => ({value: 1, done: true})}, x => x).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
             Assert.assertEquals("undefined undefined boolean true\n", out.toString());
             out.reset();
 
             context.eval(JavaScriptLanguage.ID, "var called = false; " +
-                    "AsyncIterator.prototype.map.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})" +
-                    ".next().catch(err => console.log(called, err))");
+                            "AsyncIterator.prototype.map.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})" +
+                            ".next().catch(err => console.log(called, err))");
             Assert.assertEquals("true Error: test\n", out.toString());
         }
     }
@@ -136,13 +137,14 @@ public class AsyncIteratorPrototypeBuiltinsTest {
                 Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.filter.call({next: () => ({value: 1, done: true})}, () => true).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.prototype.filter.call({next: () => ({value: 1, done: true})}, () => true).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
             Assert.assertEquals("undefined undefined boolean true\n", out.toString());
             out.reset();
 
             context.eval(JavaScriptLanguage.ID, "var called = false; " +
-                    "AsyncIterator.prototype.filter.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})" +
-                    ".next().catch(err => console.log(called, err))");
+                            "AsyncIterator.prototype.filter.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})" +
+                            ".next().catch(err => console.log(called, err))");
             Assert.assertEquals("true Error: test\n", out.toString());
         }
     }
@@ -184,11 +186,13 @@ public class AsyncIteratorPrototypeBuiltinsTest {
                 Assert.assertEquals("RangeError: ", e.getMessage().substring(0, "RangeError: ".length()));
             }
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.take.call({next: () => ({value: 1, done: true})}, 1).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.prototype.take.call({next: () => ({value: 1, done: true})}, 1).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
             Assert.assertEquals("undefined undefined boolean true\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.take.call({next: () => ({value: 1, done: false})}, 0).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.prototype.take.call({next: () => ({value: 1, done: false})}, 0).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
             Assert.assertEquals("undefined undefined boolean true\n", out.toString());
         }
     }
@@ -230,11 +234,13 @@ public class AsyncIteratorPrototypeBuiltinsTest {
                 Assert.assertEquals("RangeError: ", e.getMessage().substring(0, "RangeError: ".length()));
             }
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.drop.call({next: () => ({value: 1, done: true})}, 1).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.prototype.drop.call({next: () => ({value: 1, done: true})}, 1).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
             Assert.assertEquals("undefined undefined boolean true\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.drop.call({next: () => ({value: 1, done: false})}, 10).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.prototype.drop.call({next: () => ({value: 1, done: false})}, 10).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
             Assert.assertEquals("number 1 boolean false\n", out.toString());
         }
     }
@@ -257,7 +263,8 @@ public class AsyncIteratorPrototypeBuiltinsTest {
                 Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.indexed.call({next: () => ({value: 1, done: true})}, 1).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.prototype.indexed.call({next: () => ({value: 1, done: true})}, 1).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
             Assert.assertEquals("undefined undefined boolean true\n", out.toString());
         }
     }
@@ -286,13 +293,14 @@ public class AsyncIteratorPrototypeBuiltinsTest {
                 Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.flatMap.call({next: () => ({value: 1, done: true})}, x => x).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.prototype.flatMap.call({next: () => ({value: 1, done: true})}, x => x).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
             Assert.assertEquals("undefined undefined boolean true\n", out.toString());
             out.reset();
 
             context.eval(JavaScriptLanguage.ID, "var called = false; " +
-                    "AsyncIterator.prototype.flatMap.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})" +
-                    ".next().catch(err => console.log(called, err))");
+                            "AsyncIterator.prototype.flatMap.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})" +
+                            ".next().catch(err => console.log(called, err))");
             Assert.assertEquals("true Error: test\n", out.toString());
         }
     }
@@ -329,7 +337,8 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("0\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "var called = false; AsyncIterator.prototype.reduce.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).catch(err => console.log(called, err))");
+            context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "AsyncIterator.prototype.reduce.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).catch(err => console.log(called, err))");
             Assert.assertEquals("true Error: test\n", out.toString());
         }
     }
@@ -381,11 +390,14 @@ public class AsyncIteratorPrototypeBuiltinsTest {
                 Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.forEach.call({next: () => ({value: 1, done: true})}, x => {throw new Error('test')}).then(() => console.log())");
+            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.forEach.call({next: () => ({value: 1, done: true})}," +
+                            "x => {throw new Error('test')}).then(() => console.log())");
             Assert.assertEquals("\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "var called = false; AsyncIterator.prototype.forEach.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).catch(err => console.log(called, err))");
+            context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "AsyncIterator.prototype.forEach.call({next: () => ({value: 1, done: false}), return: () => called = true}," +
+                            "x => {throw new Error('test')}).catch(err => console.log(called, err))");
             Assert.assertEquals("true Error: test\n", out.toString());
         }
     }
@@ -405,7 +417,6 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("false\n", out.toString());
             out.reset();
 
-
             try {
                 context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.some.call({}, x => x)");
                 Assert.fail("No exception thrown");
@@ -419,11 +430,14 @@ public class AsyncIteratorPrototypeBuiltinsTest {
                 Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.some.call({next: () => ({value: 1, done: true})}, x => {throw new Error('test')}).then(x => console.log(x))");
+            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.some.call({next: () => ({value: 1, done: true})}," +
+                            "x => {throw new Error('test')}).then(x => console.log(x))");
             Assert.assertEquals("false\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "var called = false; AsyncIterator.prototype.some.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).catch(err => console.log(called, err))");
+            context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "AsyncIterator.prototype.some.call({next: () => ({value: 1, done: false}), return: () => called = true}," +
+                            "x => {throw new Error('test')}).catch(err => console.log(called, err))");
             Assert.assertEquals("true Error: test\n", out.toString());
         }
     }
@@ -443,7 +457,6 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("false\n", out.toString());
             out.reset();
 
-
             try {
                 context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.every.call({}, x => x)");
                 Assert.fail("No exception thrown");
@@ -457,11 +470,14 @@ public class AsyncIteratorPrototypeBuiltinsTest {
                 Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.every.call({next: () => ({value: 1, done: true})}, x => {throw new Error('test')}).then(x => console.log(x))");
+            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.every.call({next: () => ({value: 1, done: true})}," +
+                            "x => {throw new Error('test')}).then(x => console.log(x))");
             Assert.assertEquals("true\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "var called = false; AsyncIterator.prototype.every.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).catch(err => console.log(called, err))");
+            context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "AsyncIterator.prototype.every.call({next: () => ({value: 1, done: false}), return: () => called = true}," +
+                            "x => {throw new Error('test')}).catch(err => console.log(called, err))");
             Assert.assertEquals("true Error: test\n", out.toString());
         }
     }
@@ -481,7 +497,6 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("3\n", out.toString());
             out.reset();
 
-
             try {
                 context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.find.call({}, x => x)");
                 Assert.fail("No exception thrown");
@@ -495,11 +510,14 @@ public class AsyncIteratorPrototypeBuiltinsTest {
                 Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
             }
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.find.call({next: () => ({value: 1, done: true})}, x => {throw new Error('test')}).then(x => console.log(x))");
+            context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.find.call({next: () => ({value: 1, done: true})}," +
+                            "x => {throw new Error('test')}).then(x => console.log(x))");
             Assert.assertEquals("undefined\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "var called = false; AsyncIterator.prototype.find.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).catch(err => console.log(called, err))");
+            context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "AsyncIterator.prototype.find.call({next: () => ({value: 1, done: false}), return: () => called = true}," +
+                            "x => {throw new Error('test')}).catch(err => console.log(called, err))");
             Assert.assertEquals("true Error: test\n", out.toString());
         }
     }
@@ -517,7 +535,6 @@ public class AsyncIteratorPrototypeBuiltinsTest {
         }
     }
 
-
     @Test
     public void testCombined() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
@@ -525,7 +542,8 @@ public class AsyncIteratorPrototypeBuiltinsTest {
         builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([4,5,6,7]).indexed().flatMap(x => x).filter(x=>x>1).map(x => x*2).drop(3).take(1).reduce((a, b) => a + b, -1).then(x => console.log(x))");
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.from([4,5,6,7]).indexed().flatMap(x => x).filter(x=>x>1).map(x => x*2).drop(3).take(1).reduce((a, b) => a + b, -1).then(x => console.log(x))");
             Assert.assertEquals("11\n", out.toString());
         }
     }

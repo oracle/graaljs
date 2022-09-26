@@ -121,7 +121,8 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertTrue(result.getMember("done").asBoolean());
             Assert.assertTrue(result.getMember("value").isNull());
 
-            result = context.eval(JavaScriptLanguage.ID, "var called = false; () => Iterator.prototype.map.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).next()");
+            result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "() => Iterator.prototype.map.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).next()");
             try {
                 result.execute();
                 Assert.fail("No exception thrown");
@@ -164,7 +165,8 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertTrue(result.getMember("done").asBoolean());
             Assert.assertTrue(result.getMember("value").isNull());
 
-            result = context.eval(JavaScriptLanguage.ID, "var called = false; () => Iterator.prototype.filter.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).next()");
+            result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "() => Iterator.prototype.filter.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).next()");
             try {
                 result.execute();
                 Assert.fail("No exception thrown");
@@ -351,7 +353,8 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertTrue(result.getMember("done").asBoolean());
             Assert.assertTrue(result.getMember("value").isNull());
 
-            result = context.eval(JavaScriptLanguage.ID, "var called = false; () => Iterator.prototype.flatMap.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).next()");
+            result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "() => Iterator.prototype.flatMap.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')}).next()");
             try {
                 result.execute();
                 Assert.fail("No exception thrown");
@@ -392,7 +395,8 @@ public class IteratorPrototypeBuiltinsTest {
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.reduce.call({next: () => ({value: 1, done: true})}, x => x, 0)");
             Assert.assertEquals(0, result.asInt());
 
-            result = context.eval(JavaScriptLanguage.ID, "var called = false; () => Iterator.prototype.reduce.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})");
+            result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "() => Iterator.prototype.reduce.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})");
             try {
                 result.execute();
                 Assert.fail("No exception thrown");
@@ -463,7 +467,8 @@ public class IteratorPrototypeBuiltinsTest {
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.forEach.call({next: () => ({value: 1, done: true})}, x => {throw new Error('test')})");
             Assert.assertTrue(result.isNull());
 
-            result = context.eval(JavaScriptLanguage.ID, "var called = false; () => Iterator.prototype.forEach.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})");
+            result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "() => Iterator.prototype.forEach.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})");
             try {
                 result.execute();
                 Assert.fail("No exception thrown");
@@ -487,7 +492,6 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertTrue(result.isBoolean());
             Assert.assertFalse(result.asBoolean());
 
-
             try {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.some.call({}, x => x)");
                 Assert.fail("No exception thrown");
@@ -505,7 +509,8 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertTrue(result.isBoolean());
             Assert.assertFalse(result.asBoolean());
 
-            result = context.eval(JavaScriptLanguage.ID, "var called = false; () => Iterator.prototype.some.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})");
+            result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "() => Iterator.prototype.some.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})");
             try {
                 result.execute();
                 Assert.fail("No exception thrown");
@@ -529,7 +534,6 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertTrue(result.isBoolean());
             Assert.assertFalse(result.asBoolean());
 
-
             try {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.every.call({}, x => x)");
                 Assert.fail("No exception thrown");
@@ -547,7 +551,8 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertTrue(result.isBoolean());
             Assert.assertTrue(result.asBoolean());
 
-            result = context.eval(JavaScriptLanguage.ID, "var called = false; () => Iterator.prototype.every.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})");
+            result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "() => Iterator.prototype.every.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})");
             try {
                 result.execute();
                 Assert.fail("No exception thrown");
@@ -570,7 +575,6 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertTrue(result.isNumber());
             Assert.assertEquals(3, result.asInt());
 
-
             try {
                 context.eval(JavaScriptLanguage.ID, "Iterator.prototype.find.call({}, x => x)");
                 Assert.fail("No exception thrown");
@@ -587,7 +591,8 @@ public class IteratorPrototypeBuiltinsTest {
             result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.find.call({next: () => ({value: 1, done: true})}, x => {throw new Error('test')})");
             Assert.assertTrue(result.isNull());
 
-            result = context.eval(JavaScriptLanguage.ID, "var called = false; () => Iterator.prototype.find.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})");
+            result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
+                            "() => Iterator.prototype.find.call({next: () => ({value: 1, done: false}), return: () => called = true}, x => {throw new Error('test')})");
             try {
                 result.execute();
                 Assert.fail("No exception thrown");
@@ -610,7 +615,6 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertEquals("Changed", result.asString());
         }
     }
-
 
     @Test
     public void testCombined() {
