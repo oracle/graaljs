@@ -40,23 +40,24 @@ async function importModuleDynamicallyCallback(wrap, specifier, assertions) {
 };
 
 const esmLoader = new ESMLoader();
-
 exports.esmLoader = esmLoader;
+
+// Module.runMain() causes loadESM() to re-run (which it should do); however, this should NOT cause
+// ESM to be re-initialised; doing so causes duplicate custom loaders to be added to the public
+// esmLoader.
+let isESMInitialized = false;
 
 /**
  * Causes side-effects: user-defined loader hooks are added to esmLoader.
  * @returns {void}
  */
 async function initializeLoader() {
+  if (isESMInitialized) { return; }
+
   const { getOptionValue } = require('internal/options');
-  // customLoaders CURRENTLY can be only 1 (a string)
-  // Once chaining is implemented, it will be string[]
   const customLoaders = getOptionValue('--experimental-loader');
 
-  if (!customLoaders.length) return;
-
-  const { emitExperimentalWarning } = require('internal/util');
-  emitExperimentalWarning('--experimental-loader');
+  if (customLoaders.length === 0) return;
 
   let cwd;
   try {
@@ -71,7 +72,7 @@ async function initializeLoader() {
   const internalEsmLoader = new ESMLoader();
 
   // Importation must be handled by internal loader to avoid poluting userland
-  const exports = await internalEsmLoader.import(
+  const keyedExportsList = await internalEsmLoader.import(
     customLoaders,
     pathToFileURL(cwd).href,
     ObjectCreate(null),
@@ -79,7 +80,9 @@ async function initializeLoader() {
 
   // Hooks must then be added to external/public loader
   // (so they're triggered in userland)
-  await esmLoader.addCustomLoaders(exports);
+  await esmLoader.addCustomLoaders(keyedExportsList);
+
+  isESMInitialized = true;
 }
 
 exports.loadESM = async function loadESM(callback) {

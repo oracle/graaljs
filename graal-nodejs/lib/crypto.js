@@ -248,26 +248,31 @@ function getFipsForced() {
 }
 
 ObjectDefineProperty(constants, 'defaultCipherList', {
+  __proto__: null,
   value: getOptionValue('--tls-cipher-list')
 });
 
 ObjectDefineProperties(module.exports, {
   createCipher: {
+    __proto__: null,
     enumerable: false,
     value: deprecate(createCipher,
                      'crypto.createCipher is deprecated.', 'DEP0106')
   },
   createDecipher: {
+    __proto__: null,
     enumerable: false,
     value: deprecate(createDecipher,
                      'crypto.createDecipher is deprecated.', 'DEP0106')
   },
   // crypto.fips is deprecated. DEP0093. Use crypto.getFips()/crypto.setFips()
   fips: {
+    __proto__: null,
     get: fipsForced ? getFipsForced : getFipsCrypto,
     set: fipsForced ? setFipsForced : setFipsCrypto
   },
   DEFAULT_ENCODING: {
+    __proto__: null,
     enumerable: false,
     configurable: true,
     get: deprecate(getDefaultEncoding,
@@ -276,12 +281,14 @@ ObjectDefineProperties(module.exports, {
                    'crypto.DEFAULT_ENCODING is deprecated.', 'DEP0091')
   },
   constants: {
+    __proto__: null,
     configurable: false,
     enumerable: true,
     value: constants
   },
 
   webcrypto: {
+    __proto__: null,
     configurable: false,
     enumerable: true,
     get() { return lazyRequire('internal/crypto/webcrypto').crypto; }
@@ -290,6 +297,7 @@ ObjectDefineProperties(module.exports, {
   // Aliases for randomBytes are deprecated.
   // The ecosystem needs those to exist for backwards compatibility.
   prng: {
+    __proto__: null,
     enumerable: false,
     configurable: true,
     writable: true,
@@ -298,6 +306,7 @@ ObjectDefineProperties(module.exports, {
       randomBytes
   },
   pseudoRandomBytes: {
+    __proto__: null,
     enumerable: false,
     configurable: true,
     writable: true,
@@ -307,6 +316,7 @@ ObjectDefineProperties(module.exports, {
       randomBytes
   },
   rng: {
+    __proto__: null,
     enumerable: false,
     configurable: true,
     writable: true,

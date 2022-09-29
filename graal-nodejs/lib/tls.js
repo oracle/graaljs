@@ -34,13 +34,12 @@ const {
   ObjectDefineProperty,
   ObjectFreeze,
   RegExpPrototypeExec,
-  RegExpPrototypeTest,
+  RegExpPrototypeSymbolReplace,
   StringFromCharCode,
   StringPrototypeCharCodeAt,
   StringPrototypeEndsWith,
   StringPrototypeIncludes,
   StringPrototypeIndexOf,
-  StringPrototypeReplace,
   StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
@@ -54,7 +53,10 @@ const {
 } = require('internal/errors').codes;
 const internalUtil = require('internal/util');
 internalUtil.assertCrypto();
-const { isArrayBufferView } = require('internal/util/types');
+const {
+  isArrayBufferView,
+  isUint8Array,
+} = require('internal/util/types');
 
 const net = require('net');
 const { getOptionValue } = require('internal/options');
@@ -108,6 +110,7 @@ function cacheRootCertificates() {
 }
 
 ObjectDefineProperty(exports, 'rootCertificates', {
+  __proto__: null,
   configurable: false,
   enumerable: true,
   get: () => {
@@ -145,14 +148,19 @@ exports.convertALPNProtocols = function convertALPNProtocols(protocols, out) {
   // If protocols is Array - translate it into buffer
   if (ArrayIsArray(protocols)) {
     out.ALPNProtocols = convertProtocols(protocols);
-  } else if (isArrayBufferView(protocols)) {
+  } else if (isUint8Array(protocols)) {
     // Copy new buffer not to be modified by user.
     out.ALPNProtocols = Buffer.from(protocols);
+  } else if (isArrayBufferView(protocols)) {
+    out.ALPNProtocols = Buffer.from(protocols.buffer.slice(
+      protocols.byteOffset,
+      protocols.byteOffset + protocols.byteLength
+    ));
   }
 };
 
 function unfqdn(host) {
-  return StringPrototypeReplace(host, /[.]$/, '');
+  return RegExpPrototypeSymbolReplace(/[.]$/, host, '');
 }
 
 // String#toLowerCase() is locale-sensitive so we use
@@ -163,7 +171,7 @@ function toLowerCase(c) {
 
 function splitHost(host) {
   return StringPrototypeSplit(
-    StringPrototypeReplace(unfqdn(host), /[A-Z]/g, toLowerCase),
+    RegExpPrototypeSymbolReplace(/[A-Z]/g, unfqdn(host), toLowerCase),
     '.'
   );
 }
@@ -186,7 +194,7 @@ function check(hostParts, pattern, wildcards) {
   // good way to detect their encoding or normalize them so we simply
   // reject them.  Control characters and blanks are rejected as well
   // because nothing good can come from accepting them.
-  const isBad = (s) => RegExpPrototypeTest(/[^\u0021-\u007F]/u, s);
+  const isBad = (s) => RegExpPrototypeExec(/[^\u0021-\u007F]/u, s) !== null;
   if (ArrayPrototypeSome(patternParts, isBad))
     return false;
 

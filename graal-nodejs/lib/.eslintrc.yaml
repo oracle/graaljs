@@ -41,6 +41,8 @@ rules:
       message: Use `const { BroadcastChannel } = require('internal/worker/io');` instead of the global.
     - name: Buffer
       message: Use `const { Buffer } = require('buffer');` instead of the global.
+    - name: CustomEvent
+      message: Use `const { CustomEvent } = require('internal/event_target');` instead of the global.
     - name: Event
       message: Use `const { Event } = require('internal/event_target');` instead of the global.
     - name: EventTarget
@@ -116,6 +118,7 @@ rules:
     - name: SubtleCrypto
       message: Use `const { SubtleCrypto } = require('internal/crypto/webcrypto');` instead of the global.
   # Custom rules in tools/eslint-rules
+  node-core/avoid-prototype-pollution: error
   node-core/lowercase-name-for-primitive: error
   node-core/non-ascii-character: error
   node-core/no-array-destructuring: error

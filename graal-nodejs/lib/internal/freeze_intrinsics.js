@@ -375,6 +375,7 @@ module.exports = function() {
 
   // 19.1 Value Properties of the Global Object
   ObjectDefineProperty(globalThis, 'globalThis', {
+    __proto__: null,
     configurable: false,
     writable: false,
     value: globalThis,
@@ -430,16 +431,8 @@ module.exports = function() {
         const descs = ObjectGetOwnPropertyDescriptors(obj);
         enqueue(proto);
         ArrayPrototypeForEach(ReflectOwnKeys(descs), (name) => {
-          // TODO: Uncurried form
-          // TODO: getOwnPropertyDescriptors is guaranteed to return well-formed
-          // descriptors, but they still inherit from Object.prototype. If
-          // someone has poisoned Object.prototype to add 'value' or 'get'
-          // properties, then a simple 'if ("value" in desc)' or 'desc.value'
-          // test could be confused. We use hasOwnProperty to be sure about
-          // whether 'value' is present or not, which tells us for sure that
-          // this is a data property.
           const desc = descs[name];
-          if ('value' in desc) {
+          if (ObjectPrototypeHasOwnProperty(desc, 'value')) {
             // todo uncurried form
             enqueue(desc.value);
           } else {
@@ -491,7 +484,7 @@ module.exports = function() {
    * objects succeed if otherwise possible.
    */
   function enableDerivedOverride(obj, prop, desc) {
-    if ('value' in desc && desc.configurable) {
+    if (ObjectPrototypeHasOwnProperty(desc, 'value') && desc.configurable) {
       const value = desc.value;
 
       function getter() {
@@ -513,6 +506,7 @@ module.exports = function() {
           this[prop] = newValue;
         } else {
           ObjectDefineProperty(this, prop, {
+            __proto__: null,
             value: newValue,
             writable: true,
             enumerable: true,
@@ -522,6 +516,7 @@ module.exports = function() {
       }
 
       ObjectDefineProperty(obj, prop, {
+        __proto__: null,
         get: getter,
         set: setter,
         enumerable: desc.enumerable,

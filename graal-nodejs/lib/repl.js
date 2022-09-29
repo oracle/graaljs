@@ -74,32 +74,32 @@ const {
   ObjectKeys,
   ObjectSetPrototypeOf,
   Promise,
-  PromiseRace,
   ReflectApply,
   RegExp,
   RegExpPrototypeExec,
   RegExpPrototypeSymbolReplace,
-  RegExpPrototypeTest,
+  SafePromiseRace,
+  RegExpPrototypeSymbolSplit,
   SafeSet,
   SafeWeakSet,
   StringPrototypeCharAt,
   StringPrototypeCodePointAt,
   StringPrototypeEndsWith,
   StringPrototypeIncludes,
-  StringPrototypeMatch,
   StringPrototypeRepeat,
-  StringPrototypeReplace,
   StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
   StringPrototypeTrim,
   StringPrototypeTrimLeft,
+  StringPrototypeToLocaleLowerCase,
   Symbol,
   SyntaxError,
   SyntaxErrorPrototype,
   globalThis,
 } = primordials;
 
+const { NativeModule } = require('internal/bootstrap/loaders');
 const {
   makeRequireFunction,
   addBuiltinLibsToObject
@@ -129,6 +129,10 @@ let _builtinLibs = ArrayPrototypeFilter(
 );
 const nodeSchemeBuiltinLibs = ArrayPrototypeMap(
   _builtinLibs, (lib) => `node:${lib}`);
+ArrayPrototypeForEach(
+  NativeModule.getSchemeOnlyModuleNames(),
+  (lib) => ArrayPrototypePush(nodeSchemeBuiltinLibs, `node:${lib}`),
+);
 const domain = require('domain');
 let debug = require('internal/util/debuglog').debuglog('repl', (fn) => {
   debug = fn;
@@ -280,6 +284,7 @@ function REPLServer(prompt,
     (options.preview !== undefined ? !!options.preview : !eval_);
 
   ObjectDefineProperty(this, 'inputStream', {
+    __proto__: null,
     get: pendingDeprecation ?
       deprecate(() => this.input,
                 'repl.inputStream and repl.outputStream are deprecated. ' +
@@ -296,6 +301,7 @@ function REPLServer(prompt,
     configurable: true
   });
   ObjectDefineProperty(this, 'outputStream', {
+    __proto__: null,
     get: pendingDeprecation ?
       deprecate(() => this.output,
                 'repl.inputStream and repl.outputStream are deprecated. ' +
@@ -415,8 +421,8 @@ function REPLServer(prompt,
     // to wrap it in parentheses, so that it will be interpreted as
     // an expression.  Note that if the above condition changes,
     // lib/internal/repl/utils.js needs to be changed to match.
-    if (RegExpPrototypeTest(/^\s*{/, code) &&
-        !RegExpPrototypeTest(/;\s*$/, code)) {
+    if (RegExpPrototypeExec(/^\s*{/, code) !== null &&
+        RegExpPrototypeExec(/;\s*$/, code) === null) {
       code = `(${StringPrototypeTrim(code)})\n`;
       wrappedCmd = true;
     }
@@ -491,7 +497,7 @@ function REPLServer(prompt,
       while (true) {
         try {
           if (self.replMode === module.exports.REPL_MODE_STRICT &&
-              !RegExpPrototypeTest(/^\s*$/, code)) {
+              RegExpPrototypeExec(/^\s*$/, code) === null) {
             // "void 0" keeps the repl from returning "use strict" as the result
             // value for statements and declarations that don't return a value.
             code = `'use strict'; void 0;\n${code}`;
@@ -527,7 +533,7 @@ function REPLServer(prompt,
 
     // This will set the values from `savedRegExMatches` to corresponding
     // predefined RegExp properties `RegExp.$1`, `RegExp.$2` ... `RegExp.$9`
-    RegExpPrototypeTest(regExMatcher,
+    RegExpPrototypeExec(regExMatcher,
                         ArrayPrototypeJoin(savedRegExMatches, sep));
 
     let finished = false;
@@ -605,12 +611,12 @@ function REPLServer(prompt,
             };
             prioritizedSigintQueue.add(sigintListener);
           });
-          promise = PromiseRace([promise, interrupt]);
+          promise = SafePromiseRace([promise, interrupt]);
         }
 
         (async () => {
           try {
-            const result = await promise;
+            const result = (await promise)?.value;
             finishExecution(null, result);
           } catch (err) {
             if (err && process.domain) {
@@ -679,22 +685,24 @@ function REPLServer(prompt,
         if (e.stack) {
           if (e.name === 'SyntaxError') {
             // Remove stack trace.
-            e.stack = StringPrototypeReplace(StringPrototypeReplace(e.stack,
-                                                                    /^REPL\d+:\d+\r?\n/, ''),
-                                             /^\s+at\s.*\n?/gm, '');
+            e.stack = RegExpPrototypeSymbolReplace(
+              /^\s+at\s.*\n?/gm,
+              RegExpPrototypeSymbolReplace(/^REPL\d+:\d+\r?\n/, e.stack, ''),
+              '');
             const importErrorStr = 'Cannot use import statement outside a ' +
               'module';
             if (StringPrototypeIncludes(e.message, importErrorStr)) {
               e.message = 'Cannot use import statement inside the Node.js ' +
                 'REPL, alternatively use dynamic import';
-              e.stack = StringPrototypeReplace(e.stack,
-                                               /SyntaxError:.*\n/,
-                                               `SyntaxError: ${e.message}\n`);
+              e.stack = RegExpPrototypeSymbolReplace(
+                /SyntaxError:.*\n/,
+                e.stack,
+                `SyntaxError: ${e.message}\n`);
             }
           } else if (self.replMode === module.exports.REPL_MODE_STRICT) {
-            e.stack = StringPrototypeReplace(
-              e.stack,
+            e.stack = RegExpPrototypeSymbolReplace(
               /(\s+at\s+REPL\d+:)(\d+)/,
+              e.stack,
               (_, pre, line) => pre + (line - 1)
             );
           }
@@ -724,13 +732,13 @@ function REPLServer(prompt,
       if (errStack === '') {
         errStack = self.writer(e);
       }
-      const lines = StringPrototypeSplit(errStack, /(?<=\n)/);
+      const lines = RegExpPrototypeSymbolSplit(/(?<=\n)/, errStack);
       let matched = false;
 
       errStack = '';
       ArrayPrototypeForEach(lines, (line) => {
         if (!matched &&
-            RegExpPrototypeTest(/^\[?([A-Z][a-z0-9_]*)*Error/, line)) {
+            RegExpPrototypeExec(/^\[?([A-Z][a-z0-9_]*)*Error/, line) !== null) {
           errStack += writer.options.breakLength >= line.length ?
             `Uncaught ${line}` :
             `Uncaught:\n${line}`;
@@ -782,6 +790,7 @@ function REPLServer(prompt,
 
     if (options[kStandaloneREPL]) {
       ObjectDefineProperty(inspect, 'replDefaults', {
+        __proto__: null,
         get() {
           return writer.options;
         },
@@ -857,7 +866,7 @@ function REPLServer(prompt,
 
       // code alignment
       const matches = self._sawKeyPress ?
-        StringPrototypeMatch(cmd, /^\s+/) : null;
+        RegExpPrototypeExec(/^\s+/, cmd) : null;
       if (matches) {
         const prefix = matches[0];
         self.write(prefix);
@@ -877,7 +886,7 @@ function REPLServer(prompt,
       if (StringPrototypeCharAt(trimmedCmd, 0) === '.' &&
           StringPrototypeCharAt(trimmedCmd, 1) !== '.' &&
           NumberIsNaN(NumberParseFloat(trimmedCmd))) {
-        const matches = StringPrototypeMatch(trimmedCmd, /^\.([^\s]+)\s*(.*)$/);
+        const matches = RegExpPrototypeExec(/^\.([^\s]+)\s*(.*)$/, trimmedCmd);
         const keyword = matches && matches[1];
         const rest = matches && matches[2];
         if (ReflectApply(_parseREPLKeyword, self, [keyword, rest]) === true) {
@@ -1082,12 +1091,16 @@ REPLServer.prototype.createContext = function() {
       // Only set properties that do not already exist as a global builtin.
       if (!globalBuiltins.has(name)) {
         ObjectDefineProperty(context, name,
-                             ObjectGetOwnPropertyDescriptor(globalThis, name));
+                             {
+                               __proto__: null,
+                               ...ObjectGetOwnPropertyDescriptor(globalThis, name),
+                             });
       }
     });
     context.global = context;
     const _console = new Console(this.output);
     ObjectDefineProperty(context, 'console', {
+      __proto__: null,
       configurable: true,
       writable: true,
       value: _console
@@ -1098,11 +1111,13 @@ REPLServer.prototype.createContext = function() {
   replModule.paths = CJSModule._resolveLookupPaths('<repl>', parentModule);
 
   ObjectDefineProperty(context, 'module', {
+    __proto__: null,
     configurable: true,
     writable: true,
     value: replModule
   });
   ObjectDefineProperty(context, 'require', {
+    __proto__: null,
     configurable: true,
     writable: true,
     value: makeRequireFunction(replModule)
@@ -1122,6 +1137,7 @@ REPLServer.prototype.resetContext = function() {
   this.lines.level = [];
 
   ObjectDefineProperty(this.context, '_', {
+    __proto__: null,
     configurable: true,
     get: () => this.last,
     set: (value) => {
@@ -1134,6 +1150,7 @@ REPLServer.prototype.resetContext = function() {
   });
 
   ObjectDefineProperty(this.context, '_error', {
+    __proto__: null,
     configurable: true,
     get: () => this.lastError,
     set: (value) => {
@@ -1249,9 +1266,9 @@ function gracefulReaddir(...args) {
   }
 }
 
-function completeFSFunctions(line) {
+function completeFSFunctions(match) {
   let baseName = '';
-  let filePath = StringPrototypeMatch(line, fsAutoCompleteRE)[1];
+  let filePath = match[1];
   let fileList = gracefulReaddir(filePath, { withFileTypes: true });
 
   if (!fileList) {
@@ -1289,17 +1306,18 @@ function complete(line, callback) {
   // Ignore right whitespace. It could change the outcome.
   line = StringPrototypeTrimLeft(line);
 
-  // REPL commands (e.g. ".break").
   let filter = '';
-  if (RegExpPrototypeTest(/^\s*\.(\w*)$/, line)) {
+
+  let match;
+  // REPL commands (e.g. ".break").
+  if ((match = RegExpPrototypeExec(/^\s*\.(\w*)$/, line)) !== null) {
     ArrayPrototypePush(completionGroups, ObjectKeys(this.commands));
-    completeOn = StringPrototypeMatch(line, /^\s*\.(\w*)$/)[1];
+    completeOn = match[1];
     if (completeOn.length) {
       filter = completeOn;
     }
-  } else if (RegExpPrototypeTest(requireRE, line)) {
+  } else if ((match = RegExpPrototypeExec(requireRE, line)) !== null) {
     // require('...<Tab>')
-    const match = StringPrototypeMatch(line, requireRE);
     completeOn = match[1];
     filter = completeOn;
     if (this.allowBlockingCompletions) {
@@ -1316,7 +1334,7 @@ function complete(line, callback) {
         group = ['./', '../'];
       } else if (completeOn === '..') {
         group = ['../'];
-      } else if (RegExpPrototypeTest(/^\.\.?\//, completeOn)) {
+      } else if (RegExpPrototypeExec(/^\.\.?\//, completeOn) !== null) {
         paths = [process.cwd()];
       } else {
         paths = ArrayPrototypeConcat(module.paths, CJSModule.globalPaths);
@@ -1326,7 +1344,7 @@ function complete(line, callback) {
         dir = path.resolve(dir, subdir);
         const dirents = gracefulReaddir(dir, { withFileTypes: true }) || [];
         ArrayPrototypeForEach(dirents, (dirent) => {
-          if (RegExpPrototypeTest(versionedFileNamesRe, dirent.name) ||
+          if (RegExpPrototypeExec(versionedFileNamesRe, dirent.name) !== null ||
               dirent.name === '.npm') {
             // Exclude versioned names that 'npm' installs.
             return;
@@ -1356,9 +1374,8 @@ function complete(line, callback) {
     }
 
     ArrayPrototypePush(completionGroups, _builtinLibs, nodeSchemeBuiltinLibs);
-  } else if (RegExpPrototypeTest(importRE, line)) {
+  } else if ((match = RegExpPrototypeExec(importRE, line)) !== null) {
     // import('...<Tab>')
-    const match = StringPrototypeMatch(line, importRE);
     completeOn = match[1];
     filter = completeOn;
     if (this.allowBlockingCompletions) {
@@ -1379,7 +1396,7 @@ function complete(line, callback) {
         group = ['./', '../'];
       } else if (completeOn === '..') {
         group = ['../'];
-      } else if (RegExpPrototypeTest(/^\.\.?\//, completeOn)) {
+      } else if (RegExpPrototypeExec(/^\.\.?\//, completeOn) !== null) {
         paths = [process.cwd()];
       } else {
         paths = ArrayPrototypeSlice(module.paths);
@@ -1391,7 +1408,7 @@ function complete(line, callback) {
         const dirents = gracefulReaddir(dir, { withFileTypes: true }) || [];
         ArrayPrototypeForEach(dirents, (dirent) => {
           const { name } = dirent;
-          if (RegExpPrototypeTest(versionedFileNamesRe, name) ||
+          if (RegExpPrototypeExec(versionedFileNamesRe, name) !== null ||
               name === '.npm') {
             // Exclude versioned names that 'npm' installs.
             return;
@@ -1424,9 +1441,9 @@ function complete(line, callback) {
     }
 
     ArrayPrototypePush(completionGroups, _builtinLibs, nodeSchemeBuiltinLibs);
-  } else if (RegExpPrototypeTest(fsAutoCompleteRE, line) &&
+  } else if ((match = RegExpPrototypeExec(fsAutoCompleteRE, line)) !== null &&
              this.allowBlockingCompletions) {
-    ({ 0: completionGroups, 1: completeOn } = completeFSFunctions(line));
+    ({ 0: completionGroups, 1: completeOn } = completeFSFunctions(match));
   // Handle variable member lookup.
   // We support simple chained expressions like the following (no function
   // calls, etc.). That is for simplicity and also because we *eval* that
@@ -1438,7 +1455,7 @@ function complete(line, callback) {
   //   foo<|>         # all scope vars with filter 'foo'
   //   foo.<|>        # completions for 'foo' with filter ''
   } else if (line.length === 0 ||
-             RegExpPrototypeTest(/\w|\.|\$/, line[line.length - 1])) {
+             RegExpPrototypeExec(/\w|\.|\$/, line[line.length - 1]) !== null) {
     const { 0: match } = RegExpPrototypeExec(simpleExpressionRE, line) || [''];
     if (line.length !== 0 && !match) {
       completionGroupsLoaded();
@@ -1533,11 +1550,16 @@ function complete(line, callback) {
     // Filter, sort (within each group), uniq and merge the completion groups.
     if (completionGroups.length && filter) {
       const newCompletionGroups = [];
+      const lowerCaseFilter = StringPrototypeToLocaleLowerCase(filter);
       ArrayPrototypeForEach(completionGroups, (group) => {
-        const filteredGroup = ArrayPrototypeFilter(
-          group,
-          (str) => StringPrototypeStartsWith(str, filter)
-        );
+        const filteredGroup = ArrayPrototypeFilter(group, (str) => {
+          // Filter is always case-insensitive following chromium autocomplete
+          // behavior.
+          return StringPrototypeStartsWith(
+            StringPrototypeToLocaleLowerCase(str),
+            lowerCaseFilter
+          );
+        });
         if (filteredGroup.length) {
           ArrayPrototypePush(newCompletionGroups, filteredGroup);
         }
@@ -1622,14 +1644,17 @@ function _memory(cmd) {
   // I need to know "depth."
   // Because I can not tell the difference between a } that
   // closes an object literal and a } that closes a function
+  const countMatches = (regex, str) => {
+    let count = 0;
+    while (RegExpPrototypeExec(regex, str) !== null) count++;
+    return count;
+  };
 
   // Going down is { and (   e.g. function() {
   // going up is } and )
-  let dw = StringPrototypeMatch(cmd, /[{(]/g);
-  let up = StringPrototypeMatch(cmd, /[})]/g);
-  up = up ? up.length : 0;
-  dw = dw ? dw.length : 0;
-  let depth = dw - up;
+  const dw = countMatches(/[{(]/g, cmd);
+  const up = countMatches(/[})]/g, cmd);
+  let depth = dw.length - up.length;
 
   if (depth) {
     (function workIt() {
@@ -1804,6 +1829,7 @@ module.exports = {
 };
 
 ObjectDefineProperty(module.exports, 'builtinModules', {
+  __proto__: null,
   get: () => _builtinLibs,
   set: (val) => _builtinLibs = val,
   enumerable: true,
@@ -1811,6 +1837,7 @@ ObjectDefineProperty(module.exports, 'builtinModules', {
 });
 
 ObjectDefineProperty(module.exports, '_builtinLibs', {
+  __proto__: null,
   get: pendingDeprecation ? deprecate(
     () => _builtinLibs,
     'repl._builtinLibs is deprecated. Check module.builtinModules instead',

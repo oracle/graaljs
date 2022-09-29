@@ -1,23 +1,44 @@
 'use strict';
 
 const {
-  Error,
+  ErrorCaptureStackTrace,
+  ErrorPrototype,
   ObjectDefineProperties,
   ObjectDefineProperty,
+  ObjectSetPrototypeOf,
   SafeWeakMap,
   SafeMap,
+  SafeSet,
   SymbolToStringTag,
   TypeError,
 } = primordials;
 
-class ERR_INVALID_THIS extends TypeError {
-  constructor(type) {
-    super('Value of "this" must be of ' + type);
-  }
-
-  get code() { return 'ERR_INVALID_THIS'; }
+function throwInvalidThisError(Base, type) {
+  const err = new Base();
+  const key = 'ERR_INVALID_THIS';
+  ObjectDefineProperties(err, {
+    message: {
+      __proto__: null,
+      value: `Value of "this" must be of ${type}`,
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    },
+    toString: {
+      __proto__: null,
+      value() {
+        return `${this.name} [${key}]: ${this.message}`;
+      },
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    },
+  });
+  err.code = key;
+  throw err;
 }
 
+let disusedNamesSet;
 let internalsMap;
 let nameToCodeMap;
 let isInitialized = false;
@@ -34,13 +55,21 @@ function ensureInitialized() {
   forEachCode((name, codeName, value) => {
     nameToCodeMap.set(name, value);
   });
+
+  // These were removed from the error names table.
+  // See https://github.com/heycam/webidl/pull/946.
+  disusedNamesSet = new SafeSet()
+    .add('DOMStringSizeError')
+    .add('NoDataAllowedError')
+    .add('ValidationError');
+
   isInitialized = true;
 }
 
-class DOMException extends Error {
+class DOMException {
   constructor(message = '', name = 'Error') {
     ensureInitialized();
-    super();
+    ErrorCaptureStackTrace(this);
     internalsMap.set(this, {
       message: `${message}`,
       name: `${name}`
@@ -51,7 +80,7 @@ class DOMException extends Error {
     ensureInitialized();
     const internals = internalsMap.get(this);
     if (internals === undefined) {
-      throw new ERR_INVALID_THIS('DOMException');
+      throwInvalidThisError(TypeError, 'DOMException');
     }
     return internals.name;
   }
@@ -60,7 +89,7 @@ class DOMException extends Error {
     ensureInitialized();
     const internals = internalsMap.get(this);
     if (internals === undefined) {
-      throw new ERR_INVALID_THIS('DOMException');
+      throwInvalidThisError(TypeError, 'DOMException');
     }
     return internals.message;
   }
@@ -69,18 +98,24 @@ class DOMException extends Error {
     ensureInitialized();
     const internals = internalsMap.get(this);
     if (internals === undefined) {
-      throw new ERR_INVALID_THIS('DOMException');
+      throwInvalidThisError(TypeError, 'DOMException');
     }
+
+    if (disusedNamesSet.has(internals.name)) {
+      return 0;
+    }
+
     const code = nameToCodeMap.get(internals.name);
     return code === undefined ? 0 : code;
   }
 }
 
+ObjectSetPrototypeOf(DOMException.prototype, ErrorPrototype);
 ObjectDefineProperties(DOMException.prototype, {
-  [SymbolToStringTag]: { configurable: true, value: 'DOMException' },
-  name: { enumerable: true, configurable: true },
-  message: { enumerable: true, configurable: true },
-  code: { enumerable: true, configurable: true }
+  [SymbolToStringTag]: { __proto__: null, configurable: true, value: 'DOMException' },
+  name: { __proto__: null, enumerable: true, configurable: true },
+  message: { __proto__: null, enumerable: true, configurable: true },
+  code: { __proto__: null, enumerable: true, configurable: true }
 });
 
 function forEachCode(fn) {

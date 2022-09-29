@@ -56,7 +56,7 @@ changes:
     description: Added the new optional reason argument.
 -->
 
-* `reason` {any} An optional reason, retrievable on the `AbortSignal`s
+* `reason` {any} An optional reason, retrievable on the `AbortSignal`'s
   `reason` property.
 
 Triggers the abort signal, causing the `abortController.signal` to emit
@@ -179,6 +179,14 @@ ac.abort(new Error('boom!'));
 console.log(ac.signal.reason);  // Error('boom!');
 ```
 
+#### `abortSignal.throwIfAborted()`
+
+<!-- YAML
+added: v16.17.0
+-->
+
+If `abortSignal.aborted` is `true`, throws `abortSignal.reason`.
+
 ## Class: `Buffer`
 
 <!-- YAML
@@ -272,7 +280,7 @@ added: v16.15.0
 
 A browser-compatible implementation of {Crypto}. This global is available
 only if the Node.js binary was compiled with including support for the
-`crypto` module.
+`node:crypto` module.
 
 ## `crypto`
 
@@ -296,7 +304,20 @@ added: v16.15.0
 
 A browser-compatible implementation of {CryptoKey}. This global is available
 only if the Node.js binary was compiled with including support for the
-`crypto` module.
+`node:crypto` module.
+
+## `CustomEvent`
+
+<!-- YAML
+added: v16.17.0
+-->
+
+> Stability: 1 - Experimental. Enable this API with the
+> [`--experimental-global-customevent`][] CLI flag.
+
+<!-- type=global -->
+
+A browser-compatible implementation of the [`CustomEvent` Web API][].
 
 ## `Event`
 
@@ -415,6 +436,10 @@ The `MessagePort` class. See [`MessagePort`][] for more details.
 This variable may appear to be global but is not. See [`module`][].
 
 ## `performance`
+
+<!-- YAML
+added: v16.0.0
+-->
 
 The [`perf_hooks.performance`][] object.
 
@@ -537,7 +562,7 @@ added: v16.15.0
 
 A browser-compatible implementation of {SubtleCrypto}. This global is available
 only if the Node.js binary was compiled with including support for the
-`crypto` module.
+`node:crypto` module.
 
 ## `TextDecoder`
 
@@ -595,8 +620,10 @@ The object that acts as the namespace for all W3C
 
 [Web Crypto API]: webcrypto.md
 [`--experimental-fetch`]: cli.md#--experimental-fetch
+[`--experimental-global-customevent`]: cli.md#--experimental-global-customevent
 [`--experimental-global-webcrypto`]: cli.md#--experimental-global-webcrypto
 [`AbortController`]: https://developer.mozilla.org/en-US/docs/Web/API/AbortController
+[`CustomEvent` Web API]: https://dom.spec.whatwg.org/#customevent
 [`EventTarget` and `Event` API]: events.md#eventtarget-and-event-api
 [`MessageChannel`]: worker_threads.md#class-messagechannel
 [`MessageEvent`]: https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent/MessageEvent

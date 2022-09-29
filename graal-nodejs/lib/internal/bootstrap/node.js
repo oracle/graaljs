@@ -136,6 +136,7 @@ let processConfig = new Proxy(
   deprecationHandler);
 
 ObjectDefineProperty(process, 'config', {
+  __proto__: null,
   enumerable: true,
   configurable: true,
   get() { return processConfig; },
@@ -281,6 +282,7 @@ setTraceCategoryStateUpdateHandler(perThreadSetup.toggleTraceCategoryState);
 
 // process.allowedNodeEnvironmentFlags
 ObjectDefineProperty(process, 'allowedNodeEnvironmentFlags', {
+  __proto__: null,
   get() {
     const flags = perThreadSetup.buildAllowedFlags();
     process.allowedNodeEnvironmentFlags = flags;
@@ -290,6 +292,7 @@ ObjectDefineProperty(process, 'allowedNodeEnvironmentFlags', {
   // this completely to that value.
   set(value) {
     ObjectDefineProperty(this, 'allowedNodeEnvironmentFlags', {
+      __proto__: null,
       value,
       configurable: true,
       enumerable: true,
@@ -327,6 +330,7 @@ const features = {
 };
 
 ObjectDefineProperty(process, 'features', {
+  __proto__: null,
   enumerable: true,
   writable: false,
   configurable: false,
@@ -413,6 +417,7 @@ function setupProcessObject() {
   ObjectSetPrototypeOf(origProcProto, EventEmitter.prototype);
   FunctionPrototypeCall(EventEmitter, process);
   ObjectDefineProperty(process, SymbolToStringTag, {
+    __proto__: null,
     enumerable: false,
     writable: true,
     configurable: false,
@@ -420,6 +425,7 @@ function setupProcessObject() {
   });
   // Make process globally available to users by putting it on the global proxy
   ObjectDefineProperty(globalThis, 'process', {
+    __proto__: null,
     value: process,
     enumerable: false,
     writable: true,
@@ -429,11 +435,13 @@ function setupProcessObject() {
 
 function setupGlobalProxy() {
   ObjectDefineProperty(globalThis, SymbolToStringTag, {
+    __proto__: null,
     value: 'global',
     writable: false,
     enumerable: false,
     configurable: true
   });
+  globalThis.global = globalThis;
 }
 
 function setupBuffer() {
@@ -451,18 +459,21 @@ function setupBuffer() {
 
   ObjectDefineProperties(globalThis, {
     'Buffer': {
+      __proto__: null,
       value: Buffer,
       enumerable: false,
       writable: true,
       configurable: true,
     },
     'atob': {
+      __proto__: null,
       value: atob,
       enumerable: false,
       writable: true,
       configurable: true,
     },
     'btoa': {
+      __proto__: null,
       value: btoa,
       enumerable: false,
       writable: true,
@@ -491,6 +502,7 @@ function createGlobalConsole(consoleFromVM) {
 // https://heycam.github.io/webidl/#es-namespaces
 function exposeNamespace(target, name, namespaceObject) {
   ObjectDefineProperty(target, name, {
+    __proto__: null,
     writable: true,
     enumerable: false,
     configurable: true,
@@ -501,6 +513,7 @@ function exposeNamespace(target, name, namespaceObject) {
 // https://heycam.github.io/webidl/#es-interfaces
 function exposeInterface(target, name, interfaceObject) {
   ObjectDefineProperty(target, name, {
+    __proto__: null,
     writable: true,
     enumerable: false,
     configurable: true,
@@ -511,6 +524,7 @@ function exposeInterface(target, name, interfaceObject) {
 // https://heycam.github.io/webidl/#define-the-operations
 function defineOperation(target, name, method) {
   ObjectDefineProperty(target, name, {
+    __proto__: null,
     writable: true,
     enumerable: true,
     configurable: true,
@@ -521,6 +535,7 @@ function defineOperation(target, name, method) {
 // https://heycam.github.io/webidl/#Replaceable
 function defineReplacableAttribute(target, name, value) {
   ObjectDefineProperty(target, name, {
+    __proto__: null,
     writable: true,
     enumerable: true,
     configurable: true,

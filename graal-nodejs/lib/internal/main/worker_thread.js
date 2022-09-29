@@ -19,6 +19,7 @@ const {
   setupWarningHandler,
   setupFetch,
   setupWebCrypto,
+  setupCustomEvent,
   setupDebugEnv,
   setupPerfHooks,
   initializeDeprecations,
@@ -77,6 +78,7 @@ setupDebugEnv();
 setupWarningHandler();
 setupFetch();
 setupWebCrypto();
+setupCustomEvent();
 initializeSourceMapsHandlers();
 
 // Since worker threads cannot switch cwd, we do not need to
@@ -99,11 +101,13 @@ port.sharedMemMessaging = SharedMemMessagingInit();
 if (process.env.NODE_CHANNEL_FD) {
   const workerThreadSetup = require('internal/process/worker_thread_only');
   ObjectDefineProperty(process, 'channel', {
+    __proto__: null,
     enumerable: false,
     get: workerThreadSetup.unavailable('process.channel')
   });
 
   ObjectDefineProperty(process, 'connected', {
+    __proto__: null,
     enumerable: false,
     get: workerThreadSetup.unavailable('process.connected')
   });
@@ -181,6 +185,7 @@ port.on('message', (message) => {
       // This is necessary for CJS module compilation.
       // TODO: pass this with something really internal.
       ObjectDefineProperty(process, '_eval', {
+        __proto__: null,
         configurable: true,
         enumerable: true,
         value: filename,

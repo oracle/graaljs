@@ -98,7 +98,7 @@ analysis using a debugger (such as `lldb`, `gdb`, and `mdb`).
 
 If this flag is passed, the behavior can still be set to not abort through
 [`process.setUncaughtExceptionCaptureCallback()`][] (and through usage of the
-`domain` module that uses it).
+`node:domain` module that uses it).
 
 ### `--completion-bash`
 
@@ -226,7 +226,7 @@ added: v9.8.0
 
 Make built-in language features like `eval` and `new Function` that generate
 code from strings throw an exception instead. This does not affect the Node.js
-`vm` module.
+`node:vm` module.
 
 ### `--dns-result-order=order`
 
@@ -280,6 +280,14 @@ added: v16.15.0
 
 Enable experimental support for the [Fetch API][].
 
+### `--experimental-global-customevent`
+
+<!-- YAML
+added: v16.17.0
+-->
+
+Expose the [CustomEvent Web API][] on the global scope.
+
 ### `--experimental-global-webcrypto`
 
 <!-- YAML
@@ -301,7 +309,12 @@ Enable experimental `import.meta.resolve()` support.
 ### `--experimental-loader=module`
 
 <!-- YAML
-added: v9.0.0
+added: v8.8.0
+changes:
+  - version: v12.11.1
+    pr-url: https://github.com/nodejs/node/pull/29752
+    description: This flag was renamed from `--loader` to
+                 `--experimental-loader`.
 -->
 
 Specify the `module` of a custom experimental [ECMAScript module loader][].
@@ -356,7 +369,7 @@ See [customizing ESM specifier resolution][] for example usage.
 added: v9.6.0
 -->
 
-Enable experimental ES Module support in the `vm` module.
+Enable experimental ES Module support in the `node:vm` module.
 
 ### `--experimental-wasi-unstable-preview1`
 
@@ -414,6 +427,18 @@ under this flag.
 
 To allow polyfills to be added, `--require` runs before freezing intrinsics.
 
+### `--force-node-api-uncaught-exceptions-policy`
+
+<!-- YAML
+added: v16.17.0
+-->
+
+Enforces `uncaughtException` event on Node-API asynchronous callbacks.
+
+To prevent from an existing add-on from crashing the process, this flag is not
+enabled by default. In the future, this flag will be enabled by default to
+enforce the correct behavior.
+
 ### `--heapsnapshot-near-heap-limit=max_count`
 
 <!-- YAML
@@ -427,7 +452,7 @@ heap limit. `count` should be a non-negative integer (in which case
 Node.js will write no more than `max_count` snapshots to disk).
 
 When generating snapshots, garbage collection may be triggered and bring
-the heap usage down, therefore multiple snapshots may be written to disk
+the heap usage down. Therefore multiple snapshots may be written to disk
 before the Node.js instance finally runs out of memory. These heap snapshots
 can be compared to determine what objects are being allocated during the
 time consecutive snapshots are taken. It's not guaranteed that Node.js will
@@ -558,6 +583,8 @@ module. String input is input via `--eval`, `--print`, or `STDIN`.
 
 Valid values are `"commonjs"` and `"module"`. The default is `"commonjs"`.
 
+The REPL does not support this option.
+
 ### `--inspect-brk[=[host:]port]`
 
 <!-- YAML
@@ -656,10 +683,10 @@ added:
 changes:
   - version: v13.13.0
     pr-url: https://github.com/nodejs/node/pull/32520
-    description: Change maximum default size of HTTP headers from 8 KB to 16 KB.
+    description: Change maximum default size of HTTP headers from 8 KiB to 16 KiB.
 -->
 
-Specify the maximum size, in bytes, of HTTP headers. Defaults to 16 KB.
+Specify the maximum size, in bytes, of HTTP headers. Defaults to 16 KiB.
 
 ### `--napi-modules`
 
@@ -731,6 +758,30 @@ added: v6.9.0
 Load an OpenSSL configuration file on startup. Among other uses, this can be
 used to enable FIPS-compliant crypto if Node.js is built
 against FIPS-enabled OpenSSL.
+
+### `--openssl-shared-config`
+
+<!-- YAML
+added: v16.17.0
+-->
+
+Enable OpenSSL default configuration section, `openssl_conf` to be read from
+the OpenSSL configuration file. The default configuration file is named
+`openssl.cnf` but this can be changed using the environment variable
+`OPENSSL_CONF`, or by using the command line option `--openssl-config`.
+The location of the default OpenSSL configuration file depends on how OpenSSL
+is being linked to Node.js. Sharing the OpenSSL configuration may have unwanted
+implications and it is recommended to use a configuration section specific to
+Node.js which is `nodejs_conf` and is default when this option is not used.
+
+### `--openssl-legacy-provider`
+
+<!-- YAML
+added: v16.17.0
+-->
+
+Enable OpenSSL 3.0 legacy provider when dynamically linking to OpenSSL 3.x.
+For more information please see [OSSL\_PROVIDER-legacy][OSSL_PROVIDER-legacy].
 
 ### `--pending-deprecation`
 
@@ -1020,6 +1071,25 @@ When using `--secure-heap`, the `--secure-heap-min` flag specifies the
 minimum allocation from the secure heap. The minimum value is `2`.
 The maximum value is the lesser of `--secure-heap` or `2147483647`.
 The value given must be a power of two.
+
+### `--test`
+
+<!-- YAML
+added: v16.17.0
+-->
+
+Starts the Node.js command line test runner. This flag cannot be combined with
+`--check`, `--eval`, `--interactive`, or the inspector. See the documentation
+on [running tests from the command line][] for more details.
+
+### `--test-only`
+
+<!-- YAML
+added: v16.17.0
+-->
+
+Configures the test runner to only execute top level tests that have the `only`
+option set.
 
 ### `--throw-deprecation`
 
@@ -1557,6 +1627,7 @@ Node.js options that are allowed are:
 * `--enable-source-maps`
 * `--experimental-abortcontroller`
 * `--experimental-fetch`
+* `--experimental-global-customevent`
 * `--experimental-global-webcrypto`
 * `--experimental-import-meta-resolve`
 * `--experimental-json-modules`
@@ -1571,6 +1642,7 @@ Node.js options that are allowed are:
 * `--experimental-wasm-modules`
 * `--force-context-aware`
 * `--force-fips`
+* `--force-node-api-uncaught-exceptions-policy`
 * `--frozen-intrinsics`
 * `--heapsnapshot-near-heap-limit`
 * `--heapsnapshot-signal`
@@ -1594,6 +1666,8 @@ Node.js options that are allowed are:
 * `--no-warnings`
 * `--node-memory-debug`
 * `--openssl-config`
+* `--openssl-legacy-provider`
+* `--openssl-shared-config`
 * `--pending-deprecation`
 * `--policy-integrity`
 * `--polyglot`
@@ -1611,6 +1685,7 @@ Node.js options that are allowed are:
 * `--require`, `-r`
 * `--secure-heap-min`
 * `--secure-heap`
+* `--test-only`
 * `--throw-deprecation`
 * `--title`
 * `--tls-cipher-list`
@@ -1892,9 +1967,9 @@ changes:
 
 The `TZ` environment variable is used to specify the timezone configuration.
 
-While the Node.js support for `TZ` will not handle all of the various
-[ways that `TZ` is handled in other environments][], it will support basic
-[timezone IDs][] (such as `'Etc/UTC'`, `'Europe/Paris'` or `'America/New_York'`.
+While Node.js does not support all of the various [ways that `TZ` is handled in
+other environments][], it does support basic [timezone IDs][] (such as
+`'Etc/UTC'`, `'Europe/Paris'`, or `'America/New_York'`).
 It may support a few other abbreviations or aliases, but these are strongly
 discouraged and not guaranteed.
 
@@ -1943,18 +2018,46 @@ Sets the max memory size of V8's old memory section. As memory
 consumption approaches the limit, V8 will spend more time on
 garbage collection in an effort to free unused memory.
 
-On a machine with 2 GB of memory, consider setting this to
-1536 (1.5 GB) to leave some memory for other uses and avoid swapping.
+On a machine with 2 GiB of memory, consider setting this to
+1536 (1.5 GiB) to leave some memory for other uses and avoid swapping.
 
 ```console
 $ node --max-old-space-size=1536 index.js
 ```
 
+### `--max-semi-space-size=SIZE` (in megabytes)
+
+Sets the maximum [semi-space][] size for V8's [scavenge garbage collector][] in
+MiB (megabytes).
+Increasing the max size of a semi-space may improve throughput for Node.js at
+the cost of more memory consumption.
+
+Since the young generation size of the V8 heap is three times (see
+[`YoungGenerationSizeFromSemiSpaceSize`][] in V8) the size of the semi-space,
+an increase of 1 MiB to semi-space applies to each of the three individual
+semi-spaces and causes the heap size to increase by 3 MiB. The throughput
+improvement depends on your workload (see [#42511][]).
+
+The default value is 16 MiB for 64-bit systems and 8 MiB for 32-bit systems. To
+get the best configuration for your application, you should try different
+max-semi-space-size values when running benchmarks for your application.
+
+For example, benchmark on a 64-bit systems:
+
+```bash
+for MiB in 16 32 64 128; do
+    node --max-semi-space-size=$MiB index.js
+done
+```
+
+[#42511]: https://github.com/nodejs/node/issues/42511
 [Chrome DevTools Protocol]: https://chromedevtools.github.io/devtools-protocol/
 [CommonJS]: modules.md
+[CustomEvent Web API]: https://dom.spec.whatwg.org/#customevent
 [ECMAScript module loader]: esm.md#loaders
 [Fetch API]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
 [Modules loaders]: packages.md#modules-loaders
+[OSSL_PROVIDER-legacy]: https://www.openssl.org/docs/man3.0/man7/OSSL_PROVIDER-legacy.html
 [REPL]: repl.md
 [ScriptCoverage]: https://chromedevtools.github.io/devtools-protocol/tot/Profiler#type-ScriptCoverage
 [Source Map]: https://sourcemaps.info/spec.html
@@ -1974,6 +2077,7 @@ $ node --max-old-space-size=1536 index.js
 [`NODE_OPTIONS`]: #node_optionsoptions
 [`NO_COLOR`]: https://no-color.org
 [`SlowBuffer`]: buffer.md#class-slowbuffer
+[`YoungGenerationSizeFromSemiSpaceSize`]: https://chromium.googlesource.com/v8/v8.git/+/refs/tags/10.3.129/src/heap/heap.cc#328
 [`dns.lookup()`]: dns.md#dnslookuphostname-options-callback
 [`dns.setDefaultResultOrder()`]: dns.md#dnssetdefaultresultorderorder
 [`dnsPromises.lookup()`]: dns.md#dnspromiseslookuphostname-options
@@ -1992,6 +2096,9 @@ $ node --max-old-space-size=1536 index.js
 [jitless]: https://v8.dev/blog/jitless
 [libuv threadpool documentation]: https://docs.libuv.org/en/latest/threadpool.html
 [remote code execution]: https://www.owasp.org/index.php/Code_Injection
+[running tests from the command line]: test.md#running-tests-from-the-command-line
+[scavenge garbage collector]: https://v8.dev/blog/orinoco-parallel-scavenger
 [security warning]: #warning-binding-inspector-to-a-public-ipport-combination-is-insecure
+[semi-space]: https://www.memorymanagement.org/glossary/s.html#semi.space
 [timezone IDs]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 [ways that `TZ` is handled in other environments]: https://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html

@@ -371,13 +371,13 @@ ADDONS_BINDING_SOURCES := \
 	$(filter-out test/addons/??_*/*.h, $(wildcard test/addons/*/*.h))
 
 ADDONS_PREREQS := config.gypi \
-	deps/npm/node_modules/node-gyp/package.json tools/build-addons.js \
+	deps/npm/node_modules/node-gyp/package.json tools/build-addons.mjs \
 	deps/uv/include/*.h deps/v8/include/*.h \
 	src/node.h src/node_buffer.h src/node_object_wrap.h src/node_version.h
 
 define run_build_addons
 env npm_config_loglevel=$(LOGLEVEL) npm_config_nodedir="$$PWD" \
-	npm_config_python="$(PYTHON)" $(NODE) "$$PWD/tools/build-addons" \
+	npm_config_python="$(PYTHON)" $(NODE) "$$PWD/tools/build-addons.mjs" \
 	"$$PWD/deps/npm/node_modules/node-gyp/bin/node-gyp.js" \
 	$1
 touch $2
@@ -1101,7 +1101,7 @@ endif
 		$(MACOSOUTDIR)/dist/npm/usr/local/lib/node_modules
 	unlink $(MACOSOUTDIR)/dist/node/usr/local/bin/npm
 	unlink $(MACOSOUTDIR)/dist/node/usr/local/bin/npx
-	$(NODE) tools/license2rtf.js < LICENSE > \
+	$(NODE) tools/license2rtf.mjs < LICENSE > \
 		$(MACOSOUTDIR)/installer/productbuild/Resources/license.rtf
 	cp doc/osx_installer_logo.png $(MACOSOUTDIR)/installer/productbuild/Resources
 	pkgbuild --version $(FULLVERSION) \
@@ -1434,8 +1434,8 @@ CLANG_FORMAT_START ?= HEAD
 #  $ make format-cpp
 # To format HEAD~1...HEAD (latest commit):
 #  $ CLANG_FORMAT_START=`git rev-parse HEAD~1` make format-cpp
-# To format diff between master and current branch head (master...HEAD):
-#  $ CLANG_FORMAT_START=master make format-cpp
+# To format diff between main and current branch head (main...HEAD):
+#  $ CLANG_FORMAT_START=main make format-cpp
 format-cpp: ## Format C++ diff from $CLANG_FORMAT_START to current changes
 ifneq ("","$(wildcard tools/clang-format/node_modules/)")
 	$(info Formatting C++ diff from $(CLANG_FORMAT_START)..)
@@ -1445,7 +1445,7 @@ ifneq ("","$(wildcard tools/clang-format/node_modules/)")
 		$(CLANG_FORMAT_START) -- \
 		$(LINT_CPP_FILES)
 else
-	$(info clang-format is not installed.)
+	$(info Required tooling for C++ code formatting is not installed.)
 	$(info To install (requires internet access) run: $$ make format-cpp-build)
 endif
 

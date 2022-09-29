@@ -4,7 +4,6 @@ const {
   ArrayFrom,
   Boolean,
   Error,
-  FunctionPrototypeBind,
   FunctionPrototypeCall,
   NumberIsInteger,
   ObjectAssign,
@@ -35,7 +34,11 @@ const {
 } = require('internal/errors');
 const { validateObject, validateString } = require('internal/validators');
 
-const { customInspectSymbol, kEnumerableProperty } = require('internal/util');
+const {
+  customInspectSymbol,
+  kEmptyObject,
+  kEnumerableProperty,
+} = require('internal/util');
 const { inspect } = require('util');
 
 const kIsEventTarget = SymbolFor('nodejs.event_target');
@@ -73,6 +76,7 @@ const kTimestamp = Symbol('timestamp');
 const kBubbles = Symbol('bubbles');
 const kComposed = Symbol('composed');
 const kPropagationStopped = Symbol('propagationStopped');
+const kDetail = Symbol('detail');
 
 const isTrustedSet = new SafeWeakSet();
 const isTrusted = ObjectGetOwnPropertyDescriptor({
@@ -94,16 +98,15 @@ class Event {
    *   composed?: boolean,
    * }} [options]
    */
-  constructor(type, options = null) {
+  constructor(type, options = kEmptyObject) {
     if (arguments.length === 0)
       throw new ERR_MISSING_ARGS('type');
-    validateObject(options, 'options', {
-      allowArray: true, allowFunction: true, nullable: true,
-    });
-    const { cancelable, bubbles, composed } = { ...options };
+    validateObject(options, 'options');
+    const { bubbles, cancelable, composed } = options;
     this[kCancelable] = !!cancelable;
     this[kBubbles] = !!bubbles;
     this[kComposed] = !!composed;
+
     this[kType] = `${type}`;
     this[kDefaultPrevented] = false;
     this[kTimestamp] = now();
@@ -114,6 +117,7 @@ class Event {
 
     // isTrusted is special (LegacyUnforgeable)
     ObjectDefineProperty(this, 'isTrusted', {
+      __proto__: null,
       get: isTrusted,
       enumerable: true,
       configurable: false
@@ -300,6 +304,7 @@ class Event {
 ObjectDefineProperties(
   Event.prototype, {
     [SymbolToStringTag]: {
+      __proto__: null,
       writable: false,
       enumerable: false,
       configurable: true,
@@ -322,6 +327,49 @@ ObjectDefineProperties(
     cancelBubble: kEnumerableProperty,
     stopPropagation: kEnumerableProperty,
   });
+
+function isCustomEvent(value) {
+  return isEvent(value) && (value?.[kDetail] !== undefined);
+}
+
+class CustomEvent extends Event {
+  /**
+   * @constructor
+   * @param {string} type
+   * @param {{
+   *   bubbles?: boolean,
+   *   cancelable?: boolean,
+   *   composed?: boolean,
+   *   detail?: any,
+   * }} [options]
+   */
+  constructor(type, options = kEmptyObject) {
+    if (arguments.length === 0)
+      throw new ERR_MISSING_ARGS('type');
+    super(type, options);
+    this[kDetail] = options?.detail ?? null;
+  }
+
+  /**
+   * @type {any}
+   */
+  get detail() {
+    if (!isCustomEvent(this))
+      throw new ERR_INVALID_THIS('CustomEvent');
+    return this[kDetail];
+  }
+}
+
+ObjectDefineProperties(CustomEvent.prototype, {
+  [SymbolToStringTag]: {
+    __proto__: null,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+    value: 'CustomEvent',
+  },
+  detail: kEnumerableProperty,
+});
 
 class NodeCustomEvent extends Event {
   constructor(type, options) {
@@ -379,7 +427,10 @@ class Listener {
       this.callback = listener;
       this.listener = listener;
     } else {
-      this.callback = FunctionPrototypeBind(listener.handleEvent, listener);
+      this.callback = async (...args) => {
+        if (listener.handleEvent)
+          await ReflectApply(listener.handleEvent, listener, args);
+      };
       this.listener = listener;
     }
   }
@@ -455,13 +506,13 @@ class EventTarget {
    *   signal?: AbortSignal
    * }} [options]
    */
-  addEventListener(type, listener, options = {}) {
+  addEventListener(type, listener, options = kEmptyObject) {
     if (!isEventTarget(this))
       throw new ERR_INVALID_THIS('EventTarget');
     if (arguments.length < 2)
       throw new ERR_MISSING_ARGS('type', 'listener');
 
-    // We validateOptions before the shouldAddListeners check because the spec
+    // We validateOptions before the validateListener check because the spec
     // requires us to hit getters.
     const {
       once,
@@ -472,7 +523,7 @@ class EventTarget {
       weak,
     } = validateEventListenerOptions(options);
 
-    if (!shouldAddListener(listener)) {
+    if (!validateEventListener(listener)) {
       // The DOM silently allows passing undefined as a second argument
       // No error code for this since it is a Warning
       // eslint-disable-next-line no-restricted-syntax
@@ -542,10 +593,10 @@ class EventTarget {
    *   capture?: boolean,
    * }} [options]
    */
-  removeEventListener(type, listener, options = {}) {
+  removeEventListener(type, listener, options = kEmptyObject) {
     if (!isEventTarget(this))
       throw new ERR_INVALID_THIS('EventTarget');
-    if (!shouldAddListener(listener))
+    if (!validateEventListener(listener))
       return;
 
     type = String(type);
@@ -681,6 +732,7 @@ ObjectDefineProperties(EventTarget.prototype, {
   removeEventListener: kEnumerableProperty,
   dispatchEvent: kEnumerableProperty,
   [SymbolToStringTag]: {
+    __proto__: null,
     writable: false,
     enumerable: false,
     configurable: true,
@@ -853,7 +905,7 @@ ObjectDefineProperties(NodeEventTarget.prototype, {
 
 // EventTarget API
 
-function shouldAddListener(listener) {
+function validateEventListener(listener) {
   if (typeof listener === 'function' ||
       typeof listener?.handleEvent === 'function') {
     return true;
@@ -861,6 +913,11 @@ function shouldAddListener(listener) {
 
   if (listener == null)
     return false;
+
+  if (typeof listener === 'object') {
+    // Require `handleEvent` lazily.
+    return true;
+  }
 
   throw new ERR_INVALID_ARG_TYPE('listener', 'EventListener', listener);
 }
@@ -870,7 +927,7 @@ function validateEventListenerOptions(options) {
     return { capture: options };
 
   if (options === null)
-    return {};
+    return kEmptyObject;
   validateObject(options, 'options', {
     allowArray: true, allowFunction: true,
   });
@@ -928,6 +985,7 @@ function makeEventHandler(handler) {
 function defineEventHandler(emitter, name) {
   // 8.1.5.1 Event handlers - basically `on[eventName]` attributes
   ObjectDefineProperty(emitter, `on${name}`, {
+    __proto__: null,
     get() {
       return this[kHandlers]?.get(name)?.handler ?? null;
     },
@@ -975,6 +1033,7 @@ const EventEmitterMixin = (Superclass) => {
 
 module.exports = {
   Event,
+  CustomEvent,
   EventEmitterMixin,
   EventTarget,
   NodeEventTarget,

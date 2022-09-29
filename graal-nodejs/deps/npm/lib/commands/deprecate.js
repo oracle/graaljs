@@ -9,7 +9,7 @@ const BaseCommand = require('../base-command.js')
 class Deprecate extends BaseCommand {
   static description = 'Deprecate a version of a package'
   static name = 'deprecate'
-  static usage = ['<pkg>[@<version>] <message>']
+  static usage = ['<package-spec> <message>']
   static params = [
     'registry',
     'otp',
@@ -60,7 +60,7 @@ class Deprecate extends BaseCommand {
         packument.versions[v].deprecated = msg
       })
 
-    return otplease(this.npm.flatOptions, opts => fetch(uri, {
+    return otplease(this.npm, this.npm.flatOptions, opts => fetch(uri, {
       ...opts,
       spec: p,
       method: 'PUT',

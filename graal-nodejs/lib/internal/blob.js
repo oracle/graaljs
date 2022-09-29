@@ -9,8 +9,8 @@ const {
   PromiseReject,
   SafePromisePrototypeFinally,
   ReflectConstruct,
+  RegExpPrototypeExec,
   RegExpPrototypeSymbolReplace,
-  RegExpPrototypeTest,
   StringPrototypeToLowerCase,
   StringPrototypeSplit,
   Symbol,
@@ -44,7 +44,7 @@ const {
 const {
   createDeferredPromise,
   customInspectSymbol: kInspect,
-  emitExperimentalWarning,
+  kEmptyObject,
 } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
 
@@ -134,12 +134,11 @@ class Blob {
    * }} [options]
    * @constructs {Blob}
    */
-  constructor(sources = [], options = {}) {
-    emitExperimentalWarning('buffer.Blob');
+  constructor(sources = [], options = kEmptyObject) {
     if (sources === null ||
         typeof sources[SymbolIterator] !== 'function' ||
         typeof sources === 'string') {
-      throw new ERR_INVALID_ARG_TYPE('sources', 'Iterable', sources);
+      throw new ERR_INVALID_ARG_TYPE('sources', 'a sequence', sources);
     }
     validateObject(options, 'options');
     let {
@@ -165,7 +164,7 @@ class Blob {
     this[kLength] = length;
 
     type = `${type}`;
-    this[kType] = RegExpPrototypeTest(disallowedTypeCharacters, type) ?
+    this[kType] = RegExpPrototypeExec(disallowedTypeCharacters, type) !== null ?
       '' : StringPrototypeToLowerCase(type);
 
     // eslint-disable-next-line no-constructor-return
@@ -247,7 +246,7 @@ class Blob {
     end |= 0;
 
     contentType = `${contentType}`;
-    if (RegExpPrototypeTest(disallowedTypeCharacters, contentType)) {
+    if (RegExpPrototypeExec(disallowedTypeCharacters, contentType) !== null) {
       contentType = '';
     } else {
       contentType = StringPrototypeToLowerCase(contentType);
@@ -293,7 +292,7 @@ class Blob {
 
     job.ondone = (err, ab) => {
       if (err !== undefined)
-        return reject(new AbortError());
+        return reject(new AbortError(undefined, { cause: err }));
       resolve(ab);
     };
     this[kArrayBufferPromise] =
@@ -357,6 +356,7 @@ function createBlob(handle, length, type = '') {
 }
 
 ObjectDefineProperty(Blob.prototype, SymbolToStringTag, {
+  __proto__: null,
   configurable: true,
   value: 'Blob',
 });

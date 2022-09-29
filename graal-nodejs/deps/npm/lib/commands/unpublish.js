@@ -20,7 +20,7 @@ class Unpublish extends BaseCommand {
   static description = 'Remove a package from the registry'
   static name = 'unpublish'
   static params = ['dry-run', 'force', 'workspace', 'workspaces']
-  static usage = ['[<@scope>/]<pkg>[@<version>]']
+  static usage = ['[<package-spec>]']
   static ignoreImplicitWorkspace = false
 
   async getKeysOfVersions (name, opts) {
@@ -130,7 +130,7 @@ class Unpublish extends BaseCommand {
     }
 
     if (!dryRun) {
-      await otplease(opts, opts => libunpub(spec, opts))
+      await otplease(this.npm, opts, opts => libunpub(spec, opts))
     }
     if (!silent) {
       this.npm.output(`- ${pkgName}${pkgVersion}`)

@@ -11,7 +11,7 @@ description: List installed packages
 <!-- see lib/commands/ls.js -->
 
 ```bash
-npm ls [[<@scope>/]<pkg> ...]
+npm ls <package-spec>
 
 alias: list
 ```
@@ -137,8 +137,6 @@ Output parseable results from commands that write to standard output. For
 
 * Default: false
 * Type: Boolean
-* DEPRECATED: `--global`, `--local` are deprecated. Use `--location=global`
-  instead.
 
 Operates in "global" mode, so that packages are installed into the `prefix`
 folder instead of the current working directory. See
@@ -303,6 +301,7 @@ symlink. This option has no effect on workspaces.
 
 ### See Also
 
+* [package spec](/using-npm/package-spec)
 * [npm explain](/commands/npm-explain)
 * [npm config](/commands/npm-config)
 * [npmrc](/configuring-npm/npmrc)

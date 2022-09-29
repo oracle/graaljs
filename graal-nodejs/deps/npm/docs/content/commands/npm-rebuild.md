@@ -11,7 +11,7 @@ description: Rebuild a package
 <!-- see lib/commands/rebuild.js -->
 
 ```bash
-npm rebuild [[<@scope>/]<name>[@<version>] ...]
+npm rebuild [<package-spec>] ...]
 
 alias: rb
 ```
@@ -29,9 +29,8 @@ C++ addons with the new binary.  It is also useful when installing with
 `--ignore-scripts` and `--no-bin-links`, to explicitly choose which
 packages to build and/or link bins.
 
-If one or more package names (and optionally version ranges) are provided,
-then only packages with a name and version matching one of the specifiers
-will be rebuilt.
+If one or more package specs are provided, then only packages with a
+name and version matching one of the specifiers will be rebuilt.
 
 ### Configuration
 
@@ -42,8 +41,6 @@ will be rebuilt.
 
 * Default: false
 * Type: Boolean
-* DEPRECATED: `--global`, `--local` are deprecated. Use `--location=global`
-  instead.
 
 Operates in "global" mode, so that packages are installed into the `prefix`
 folder instead of the current working directory. See
@@ -180,4 +177,5 @@ symlink. This option has no effect on workspaces.
 
 ### See Also
 
+* [package spec](/using-npm/package-spec)
 * [npm install](/commands/npm-install)

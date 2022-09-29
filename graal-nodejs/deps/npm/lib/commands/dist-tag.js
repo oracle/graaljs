@@ -12,9 +12,9 @@ class DistTag extends BaseCommand {
   static params = ['workspace', 'workspaces', 'include-workspace-root']
   static name = 'dist-tag'
   static usage = [
-    'add <pkg>@<version> [<tag>]',
-    'rm <pkg> <tag>',
-    'ls [<pkg>]',
+    'add <package-spec (with version)> [<tag>]',
+    'rm <package-spec> <tag>',
+    'ls [<package-spec>]',
   ]
 
   static ignoreImplicitWorkspace = false
@@ -90,7 +90,7 @@ class DistTag extends BaseCommand {
     log.verbose('dist-tag add', defaultTag, 'to', spec.name + '@' + version)
 
     if (!spec.name || !version || !defaultTag) {
-      throw this.usageError()
+      throw this.usageError('must provide a spec with a name and version, and a tag to add')
     }
 
     const t = defaultTag.trim()
@@ -116,7 +116,7 @@ class DistTag extends BaseCommand {
       },
       spec,
     }
-    await otplease(reqOpts, reqOpts => regFetch(url, reqOpts))
+    await otplease(this.npm, reqOpts, reqOpts => regFetch(url, reqOpts))
     this.npm.output(`+${t}: ${spec.name}@${version}`)
   }
 
@@ -142,7 +142,7 @@ class DistTag extends BaseCommand {
       method: 'DELETE',
       spec,
     }
-    await otplease(reqOpts, reqOpts => regFetch(url, reqOpts))
+    await otplease(this.npm, reqOpts, reqOpts => regFetch(url, reqOpts))
     this.npm.output(`-${tag}: ${spec.name}@${version}`)
   }
 

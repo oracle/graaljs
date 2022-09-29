@@ -6,10 +6,11 @@ const {
   ArrayPrototypeJoin,
   ArrayPrototypeMap,
   NumberIsInteger,
+  NumberIsNaN,
   NumberMAX_SAFE_INTEGER,
   NumberMIN_SAFE_INTEGER,
   NumberParseInt,
-  RegExpPrototypeTest,
+  RegExpPrototypeExec,
   String,
   StringPrototypeToUpperCase,
   StringPrototypeTrim,
@@ -59,7 +60,7 @@ const modeDesc = 'must be a 32-bit unsigned integer or an octal string';
 function parseFileMode(value, name, def) {
   value ??= def;
   if (typeof value === 'string') {
-    if (!RegExpPrototypeTest(octalReg, value)) {
+    if (RegExpPrototypeExec(octalReg, value) === null) {
       throw new ERR_INVALID_ARG_VALUE(name, value, modeDesc);
     }
     value = NumberParseInt(value, 8);
@@ -83,10 +84,10 @@ const validateInteger = hideStackFrames(
 const validateInt32 = hideStackFrames(
   (value, name, min = -2147483648, max = 2147483647) => {
     // The defaults for min and max correspond to the limits of 32-bit integers.
+    if (typeof value !== 'number') {
+      throw new ERR_INVALID_ARG_TYPE(name, 'number', value);
+    }
     if (!isInt32(value)) {
-      if (typeof value !== 'number') {
-        throw new ERR_INVALID_ARG_TYPE(name, 'number', value);
-      }
       if (!NumberIsInteger(value)) {
         throw new ERR_OUT_OF_RANGE(name, 'an integer', value);
       }
@@ -99,10 +100,10 @@ const validateInt32 = hideStackFrames(
 );
 
 const validateUint32 = hideStackFrames((value, name, positive) => {
+  if (typeof value !== 'number') {
+    throw new ERR_INVALID_ARG_TYPE(name, 'number', value);
+  }
   if (!isUint32(value)) {
-    if (typeof value !== 'number') {
-      throw new ERR_INVALID_ARG_TYPE(name, 'number', value);
-    }
     if (!NumberIsInteger(value)) {
       throw new ERR_OUT_OF_RANGE(name, 'an integer', value);
     }
@@ -120,9 +121,17 @@ function validateString(value, name) {
     throw new ERR_INVALID_ARG_TYPE(name, 'string', value);
 }
 
-function validateNumber(value, name) {
+function validateNumber(value, name, min = undefined, max) {
   if (typeof value !== 'number')
     throw new ERR_INVALID_ARG_TYPE(name, 'number', value);
+
+  if ((min != null && value < min) || (max != null && value > max) ||
+      ((min != null || max != null) && NumberIsNaN(value))) {
+    throw new ERR_OUT_OF_RANGE(
+      name,
+      `${min != null ? `>= ${min}` : ''}${min != null && max != null ? ' && ' : ''}${max != null ? `<= ${max}` : ''}`,
+      value);
+  }
 }
 
 const validateOneOf = hideStackFrames((value, name, oneOf) => {
@@ -248,6 +257,12 @@ const validateUndefined = hideStackFrames((value, name) => {
     throw new ERR_INVALID_ARG_TYPE(name, 'undefined', value);
 });
 
+function validateUnion(value, name, union) {
+  if (!ArrayPrototypeIncludes(union, value)) {
+    throw new ERR_INVALID_ARG_TYPE(name, `('${ArrayPrototypeJoin(union, '|')}')`, value);
+  }
+}
+
 module.exports = {
   isInt32,
   isUint32,
@@ -255,6 +270,7 @@ module.exports = {
   validateArray,
   validateBoolean,
   validateBuffer,
+  validateCallback,
   validateEncoding,
   validateFunction,
   validateInt32,
@@ -268,6 +284,6 @@ module.exports = {
   validateString,
   validateUint32,
   validateUndefined,
-  validateCallback,
+  validateUnion,
   validateAbortSignal,
 };

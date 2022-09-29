@@ -6,7 +6,7 @@
 
 <!-- source_link=lib/dns.js -->
 
-The `dns` module enables name resolution. For example, use it to look up IP
+The `node:dns` module enables name resolution. For example, use it to look up IP
 addresses of host names.
 
 Although named for the [Domain Name System (DNS)][], it does not always use the
@@ -16,7 +16,7 @@ communication. To perform name resolution the way other applications on the same
 system do, use [`dns.lookup()`][].
 
 ```js
-const dns = require('dns');
+const dns = require('node:dns');
 
 dns.lookup('example.org', (err, address, family) => {
   console.log('address: %j family: IPv%s', address, family);
@@ -24,14 +24,14 @@ dns.lookup('example.org', (err, address, family) => {
 // address: "93.184.216.34" family: IPv4
 ```
 
-All other functions in the `dns` module connect to an actual DNS server to
+All other functions in the `node:dns` module connect to an actual DNS server to
 perform name resolution. They will always use the network to perform DNS
 queries. These functions do not use the same set of configuration files used by
 [`dns.lookup()`][] (e.g. `/etc/hosts`). Use these functions to always perform
 DNS queries, bypassing other name-resolution facilities.
 
 ```js
-const dns = require('dns');
+const dns = require('node:dns');
 
 dns.resolve4('archive.org', (err, addresses) => {
   if (err) throw err;
@@ -65,7 +65,7 @@ the servers used for a resolver using
 other resolvers:
 
 ```js
-const { Resolver } = require('dns');
+const { Resolver } = require('node:dns');
 const resolver = new Resolver();
 resolver.setServers(['4.4.4.4']);
 
@@ -75,7 +75,7 @@ resolver.resolve4('example.org', (err, addresses) => {
 });
 ```
 
-The following methods from the `dns` module are available:
+The following methods from the `node:dns` module are available:
 
 * [`resolver.getServers()`][`dns.getServers()`]
 * [`resolver.resolve()`][`dns.resolve()`]
@@ -140,7 +140,7 @@ The resolver instance will send its requests from the specified IP address.
 This allows programs to specify outbound interfaces when used on multi-homed
 systems.
 
-If a v4 or v6 address is not specified, it is set to the default, and the
+If a v4 or v6 address is not specified, it is set to the default and the
 operating system will choose a local address automatically.
 
 The resolver will use the v4 local address when making requests to IPv4 DNS
@@ -222,7 +222,7 @@ such as no available file descriptors.
 
 `dns.lookup()` does not necessarily have anything to do with the DNS protocol.
 The implementation uses an operating system facility that can associate names
-with addresses, and vice versa. This implementation can have subtle but
+with addresses and vice versa. This implementation can have subtle but
 important consequences on the behavior of any Node.js program. Please take some
 time to consult the [Implementation considerations section][] before using
 `dns.lookup()`.
@@ -230,7 +230,7 @@ time to consult the [Implementation considerations section][] before using
 Example usage:
 
 ```js
-const dns = require('dns');
+const dns = require('node:dns');
 const options = {
   family: 6,
   hints: dns.ADDRCONFIG | dns.V4MAPPED,
@@ -268,7 +268,7 @@ The following flags can be passed as hints to [`dns.lookup()`][].
   returned if the current system has at least one IPv4 address configured.
 * `dns.V4MAPPED`: If the IPv6 family was specified, but no IPv6 addresses were
   found, then return IPv4 mapped IPv6 addresses. It is not supported
-  on some operating systems (e.g FreeBSD 10.1).
+  on some operating systems (e.g. FreeBSD 10.1).
 * `dns.ALL`: If `dns.V4MAPPED` is specified, return resolved IPv6 addresses as
   well as IPv4 mapped IPv6 addresses.
 
@@ -295,7 +295,7 @@ will be thrown.
 On an error, `err` is an [`Error`][] object, where `err.code` is the error code.
 
 ```js
-const dns = require('dns');
+const dns = require('node:dns');
 dns.lookupService('127.0.0.1', 22, (err, hostname, service) => {
   console.log(hostname, service);
   // Prints: localhost ssh
@@ -353,7 +353,7 @@ changes:
 
 * `hostname` {string} Host name to resolve.
 * `options` {Object}
-  * `ttl` {boolean} Retrieve the Time-To-Live value (TTL) of each record.
+  * `ttl` {boolean} Retrieves the Time-To-Live value (TTL) of each record.
     When `true`, the callback receives an array of
     `{ address: '1.2.3.4', ttl: 60 }` objects rather than an array of strings,
     with the TTL expressed in seconds.
@@ -387,7 +387,7 @@ changes:
   * `err` {Error}
   * `addresses` {string\[] | Object\[]}
 
-Uses the DNS protocol to resolve a IPv6 addresses (`AAAA` records) for the
+Uses the DNS protocol to resolve IPv6 addresses (`AAAA` records) for the
 `hostname`. The `addresses` argument passed to the `callback` function
 will contain an array of IPv6 addresses.
 
@@ -501,7 +501,7 @@ added: v0.9.12
   * `err` {Error}
   * `addresses` {Object\[]}
 
-Uses the DNS protocol to resolve regular expression based records (`NAPTR`
+Uses the DNS protocol to resolve regular expression-based records (`NAPTR`
 records) for the `hostname`. The `addresses` argument passed to the `callback`
 function will contain an array of objects with the following properties:
 
@@ -736,7 +736,7 @@ changes:
 
 The `dns.promises` API provides an alternative set of asynchronous DNS methods
 that return `Promise` objects rather than using callbacks. The API is accessible
-via `require('dns').promises` or `require('dns/promises')`.
+via `require('node:dns').promises` or `require('node:dns/promises')`.
 
 ### Class: `dnsPromises.Resolver`
 
@@ -752,7 +752,7 @@ the servers used for a resolver using
 other resolvers:
 
 ```js
-const { Resolver } = require('dns').promises;
+const { Resolver } = require('node:dns').promises;
 const resolver = new Resolver();
 resolver.setServers(['4.4.4.4']);
 
@@ -793,7 +793,7 @@ added: v15.3.0
 -->
 
 Cancel all outstanding DNS queries made by this resolver. The corresponding
-promises will be rejected with an error with code `ECANCELLED`.
+promises will be rejected with an error with the code `ECANCELLED`.
 
 ### `dnsPromises.getServers()`
 
@@ -857,7 +857,7 @@ such as no available file descriptors.
 
 [`dnsPromises.lookup()`][] does not necessarily have anything to do with the DNS
 protocol. The implementation uses an operating system facility that can
-associate names with addresses, and vice versa. This implementation can have
+associate names with addresses and vice versa. This implementation can have
 subtle but important consequences on the behavior of any Node.js program. Please
 take some time to consult the [Implementation considerations section][] before
 using `dnsPromises.lookup()`.
@@ -865,7 +865,7 @@ using `dnsPromises.lookup()`.
 Example usage:
 
 ```js
-const dns = require('dns');
+const dns = require('node:dns');
 const dnsPromises = dns.promises;
 const options = {
   family: 6,
@@ -905,7 +905,7 @@ On error, the `Promise` is rejected with an [`Error`][] object, where `err.code`
 is the error code.
 
 ```js
-const dnsPromises = require('dns').promises;
+const dnsPromises = require('node:dns').promises;
 dnsPromises.lookupService('127.0.0.1', 22).then((result) => {
   console.log(result.hostname, result.service);
   // Prints: localhost ssh
@@ -1072,7 +1072,7 @@ added: v10.6.0
 
 * `hostname` {string}
 
-Uses the DNS protocol to resolve regular expression based records (`NAPTR`
+Uses the DNS protocol to resolve regular expression-based records (`NAPTR`
 records) for the `hostname`. On success, the `Promise` is resolved with an array
 of objects with the following properties:
 
@@ -1268,11 +1268,11 @@ earlier ones time out or result in some other error.
 
 Each DNS query can return one of the following error codes:
 
-* `dns.NODATA`: DNS server returned answer with no data.
+* `dns.NODATA`: DNS server returned an answer with no data.
 * `dns.FORMERR`: DNS server claims query was misformatted.
 * `dns.SERVFAIL`: DNS server returned general failure.
 * `dns.NOTFOUND`: Domain name not found.
-* `dns.NOTIMP`: DNS server does not implement requested operation.
+* `dns.NOTIMP`: DNS server does not implement the requested operation.
 * `dns.REFUSED`: DNS server refused query.
 * `dns.BADQUERY`: Misformatted DNS query.
 * `dns.BADNAME`: Misformatted host name.
@@ -1292,6 +1292,8 @@ Each DNS query can return one of the following error codes:
 * `dns.LOADIPHLPAPI`: Error loading `iphlpapi.dll`.
 * `dns.ADDRGETNETWORKPARAMS`: Could not find `GetNetworkParams` function.
 * `dns.CANCELLED`: DNS query cancelled.
+
+The `dnsPromises` API also exports the above error codes, e.g., `dnsPromises.NODATA`.
 
 ## Implementation considerations
 
@@ -1323,11 +1325,11 @@ using `dns.resolve()` and using the address instead of a host name. Also, some
 networking APIs (such as [`socket.connect()`][] and [`dgram.createSocket()`][])
 allow the default resolver, `dns.lookup()`, to be replaced.
 
-### `dns.resolve()`, `dns.resolve*()` and `dns.reverse()`
+### `dns.resolve()`, `dns.resolve*()`, and `dns.reverse()`
 
 These functions are implemented quite differently than [`dns.lookup()`][]. They
 do not use getaddrinfo(3) and they _always_ perform a DNS query on the
-network. This network communication is always done asynchronously, and does not
+network. This network communication is always done asynchronously and does not
 use libuv's threadpool.
 
 As a result, these functions cannot have the same negative impact on other

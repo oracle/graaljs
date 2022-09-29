@@ -100,7 +100,10 @@ const {
   kSubstringSearch,
 } = require('internal/readline/utils');
 
-const { promisify } = require('internal/util');
+const {
+  kEmptyObject,
+  promisify,
+} = require('internal/util');
 
 const { StringDecoder } = require('string_decoder');
 
@@ -365,6 +368,7 @@ ObjectSetPrototypeOf(Interface.prototype, EventEmitter.prototype);
 ObjectSetPrototypeOf(Interface, EventEmitter);
 
 ObjectDefineProperty(Interface.prototype, 'columns', {
+  __proto__: null,
   configurable: true,
   enumerable: true,
   get: function() {
@@ -450,7 +454,7 @@ Interface.prototype.question = function(query, options, cb) {
   }
 };
 
-Interface.prototype.question[promisify.custom] = function(query, options) {
+Interface.prototype.question[promisify.custom] = function question(query, options) {
   options = typeof options === 'object' && options !== null ? options : {};
 
   if (options.signal && options.signal.aborted) {
@@ -987,7 +991,7 @@ Interface.prototype._moveCursor = function(dx) {
 };
 
 function _ttyWriteDumb(s, key) {
-  key = key || {};
+  key = key || kEmptyObject;
 
   if (key.name === 'escape') return;
 

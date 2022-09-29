@@ -31,8 +31,9 @@ const {
   ObjectSetPrototypeOf,
   ReflectApply,
   RegExp,
-  RegExpPrototypeTest,
-  StringPrototypeReplace,
+  RegExpPrototypeExec,
+  RegExpPrototypeSymbolReplace,
+  StringPrototypeReplaceAll,
   StringPrototypeSlice,
   Symbol,
   SymbolFor,
@@ -40,7 +41,8 @@ const {
 
 const {
   assertCrypto,
-  deprecate
+  deprecate,
+  kEmptyObject,
 } = require('internal/util');
 
 assertCrypto();
@@ -425,8 +427,8 @@ function onerror(err) {
     owner.destroy(err);
   } else if (owner._tlsOptions?.isServer &&
              owner._rejectUnauthorized &&
-             RegExpPrototypeTest(/peer did not return a certificate/,
-                                 err.message)) {
+             RegExpPrototypeExec(/peer did not return a certificate/,
+                                 err.message) !== null) {
     // Ignore server's authorization errors
     owner.destroy();
   } else {
@@ -632,6 +634,7 @@ TLSSocket.prototype._wrapHandle = function(wrap) {
 // Ref: https://github.com/nodejs/node/commit/f7620fb96d339f704932f9bb9a0dceb9952df2d4
 function defineHandleReading(socket, handle) {
   ObjectDefineProperty(handle, 'reading', {
+    __proto__: null,
     get: () => {
       return socket[kRes].reading;
     },
@@ -1182,9 +1185,9 @@ function Server(options, listener) {
 
   if (typeof options === 'function') {
     listener = options;
-    options = {};
+    options = kEmptyObject;
   } else if (options == null || typeof options === 'object') {
-    options = options || {};
+    options = options ?? kEmptyObject;
   } else {
     throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
   }
@@ -1446,9 +1449,9 @@ Server.prototype.addContext = function(servername, context) {
     throw new ERR_TLS_REQUIRED_SERVER_NAME();
   }
 
-  const re = new RegExp('^' + StringPrototypeReplace(
-    StringPrototypeReplace(servername, /([.^$+?\-\\[\]{}])/g, '\\$1'),
-    /\*/g, '[^.]*'
+  const re = new RegExp('^' + StringPrototypeReplaceAll(
+    RegExpPrototypeSymbolReplace(/([.^$+?\-\\[\]{}])/g, servername, '\\$1'),
+    '*', '[^.]*'
   ) + '$');
   ArrayPrototypePush(this._contexts,
                      [re, tls.createSecureContext(context).context]);
@@ -1472,7 +1475,7 @@ function SNICallback(servername, callback) {
 
   for (let i = contexts.length - 1; i >= 0; --i) {
     const elem = contexts[i];
-    if (RegExpPrototypeTest(elem[0], servername)) {
+    if (RegExpPrototypeExec(elem[0], servername) !== null) {
       callback(null, elem[1]);
       return;
     }

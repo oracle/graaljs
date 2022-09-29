@@ -88,6 +88,19 @@ exit code.
 <!-- automatically generated, do not edit manually -->
 <!-- see lib/utils/config/definitions.js -->
 
+#### \`auth-type\`
+
+* Default: "legacy"
+* Type: "legacy", "web", "sso", "saml", "oauth", or "webauthn"
+
+NOTE: auth-type values "sso", "saml", "oauth", and "webauthn" will be
+removed in a future version.
+
+What authentication strategy to use with \`login\`.
+
+<!-- automatically generated, do not edit manually -->
+<!-- see lib/utils/config/definitions.js -->
+
 #### \`before\`
 
 * Default: null
@@ -217,8 +230,9 @@ newlines replaced by the string "\\n". For example:
 cert="-----BEGIN CERTIFICATE-----\\nXXXX\\nXXXX\\n-----END CERTIFICATE-----"
 \`\`\`
 
-It is _not_ the path to a certificate file (and there is no "certfile"
-option).
+It is _not_ the path to a certificate file, though you can set a
+registry-scoped "certfile" path like
+"//other-registry.tld/:certfile=/path/to/cert.pem".
 
 <!-- automatically generated, do not edit manually -->
 <!-- see lib/utils/config/definitions.js -->
@@ -560,6 +574,23 @@ results in no commit being made at all.
 <!-- automatically generated, do not edit manually -->
 <!-- see lib/utils/config/definitions.js -->
 
+#### \`global\`
+
+* Default: false
+* Type: Boolean
+
+Operates in "global" mode, so that packages are installed into the \`prefix\`
+folder instead of the current working directory. See
+[folders](/configuring-npm/folders) for more on the differences in behavior.
+
+* packages are installed into the \`{prefix}/lib/node_modules\` folder, instead
+  of the current working directory.
+* bin files are linked to \`{prefix}/bin\`
+* man pages are linked to \`{prefix}/share/man\`
+
+<!-- automatically generated, do not edit manually -->
+<!-- see lib/utils/config/definitions.js -->
+
 #### \`global-style\`
 
 * Default: false
@@ -789,7 +820,8 @@ format with newlines replaced by the string "\\n". For example:
 key="-----BEGIN PRIVATE KEY-----\\nXXXX\\nXXXX\\n-----END PRIVATE KEY-----"
 \`\`\`
 
-It is _not_ the path to a key file (and there is no "keyfile" option).
+It is _not_ the path to a key file, though you can set a registry-scoped
+"keyfile" path like "//other-registry.tld/:keyfile=/path/to/key.pem".
 
 <!-- automatically generated, do not edit manually -->
 <!-- see lib/utils/config/definitions.js -->
@@ -1374,7 +1406,7 @@ npm init --scope=@foo --yes
 * Type: null or String
 
 The shell to use for scripts run with the \`npm exec\`, \`npm run\` and \`npm
-init <pkg>\` commands.
+init <package-spec>\` commands.
 
 <!-- automatically generated, do not edit manually -->
 <!-- see lib/utils/config/definitions.js -->
@@ -1761,18 +1793,6 @@ When set to \`dev\` or \`development\`, this is an alias for \`--include=dev\`.
 <!-- automatically generated, do not edit manually -->
 <!-- see lib/utils/config/definitions.js -->
 
-#### \`auth-type\`
-
-* Default: "legacy"
-* Type: "legacy", "sso", "saml", or "oauth"
-* DEPRECATED: This method of SSO/SAML/OAuth is deprecated and will be removed
-  in a future version of npm in favor of web-based login.
-
-What authentication strategy to use with \`adduser\`/\`login\`.
-
-<!-- automatically generated, do not edit manually -->
-<!-- see lib/utils/config/definitions.js -->
-
 #### \`cache-max\`
 
 * Default: Infinity
@@ -1802,25 +1822,6 @@ What authentication strategy to use with \`adduser\`/\`login\`.
 * DEPRECATED: Please use --include=dev instead.
 
 Alias for \`--include=dev\`.
-
-<!-- automatically generated, do not edit manually -->
-<!-- see lib/utils/config/definitions.js -->
-
-#### \`global\`
-
-* Default: false
-* Type: Boolean
-* DEPRECATED: \`--global\`, \`--local\` are deprecated. Use \`--location=global\`
-  instead.
-
-Operates in "global" mode, so that packages are installed into the \`prefix\`
-folder instead of the current working directory. See
-[folders](/configuring-npm/folders) for more on the differences in behavior.
-
-* packages are installed into the \`{prefix}/lib/node_modules\` folder, instead
-  of the current working directory.
-* bin files are linked to \`{prefix}/bin\`
-* man pages are linked to \`{prefix}/share/man\`
 
 <!-- automatically generated, do not edit manually -->
 <!-- see lib/utils/config/definitions.js -->

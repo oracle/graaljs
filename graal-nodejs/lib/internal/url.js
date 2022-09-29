@@ -220,6 +220,7 @@ class URLSearchParams {
       } else {
         // Record<USVString, USVString>
         // Need to use reflection APIs for full spec compliance.
+        const visited = {};
         this[searchParams] = [];
         const keys = ReflectOwnKeys(init);
         for (let i = 0; i < keys.length; i++) {
@@ -228,7 +229,16 @@ class URLSearchParams {
           if (desc !== undefined && desc.enumerable) {
             const typedKey = toUSVString(key);
             const typedValue = toUSVString(init[key]);
-            this[searchParams].push(typedKey, typedValue);
+
+            // Two different key may result same after `toUSVString()`, we only
+            // leave the later one. Refers to WPT.
+            if (visited[typedKey] !== undefined) {
+              this[searchParams][visited[typedKey]] = typedValue;
+            } else {
+              visited[typedKey] = ArrayPrototypePush(this[searchParams],
+                                                     typedKey,
+                                                     typedValue) - 1;
+            }
           }
         }
       }
@@ -520,10 +530,11 @@ ObjectDefineProperties(URLSearchParams.prototype, {
   keys: kEnumerableProperty,
   values: kEnumerableProperty,
   toString: kEnumerableProperty,
-  [SymbolToStringTag]: { configurable: true, value: 'URLSearchParams' },
+  [SymbolToStringTag]: { __proto__: null, configurable: true, value: 'URLSearchParams' },
 
   // https://heycam.github.io/webidl/#es-iterable-entries
   [SymbolIterator]: {
+    __proto__: null,
     configurable: true,
     writable: true,
     value: URLSearchParams.prototype.entries,
@@ -983,8 +994,8 @@ class URL {
 }
 
 ObjectDefineProperties(URL.prototype, {
-  [kFormat]: { configurable: false, writable: false },
-  [SymbolToStringTag]: { configurable: true, value: 'URL' },
+  [kFormat]: { __proto__: null, configurable: false, writable: false },
+  [SymbolToStringTag]: { __proto__: null, configurable: true, value: 'URL' },
   toString: kEnumerableProperty,
   href: kEnumerableProperty,
   origin: kEnumerableProperty,
@@ -1167,6 +1178,7 @@ function serializeParams(array) {
 function defineIDLClass(proto, classStr, obj) {
   // https://heycam.github.io/webidl/#dfn-class-string
   ObjectDefineProperty(proto, SymbolToStringTag, {
+    __proto__: null,
     writable: false,
     enumerable: false,
     configurable: true,
@@ -1176,6 +1188,7 @@ function defineIDLClass(proto, classStr, obj) {
   // https://heycam.github.io/webidl/#es-operations
   for (const key of ObjectKeys(obj)) {
     ObjectDefineProperty(proto, key, {
+      __proto__: null,
       writable: true,
       enumerable: true,
       configurable: true,
@@ -1184,6 +1197,7 @@ function defineIDLClass(proto, classStr, obj) {
   }
   for (const key of ObjectGetOwnPropertySymbols(obj)) {
     ObjectDefineProperty(proto, key, {
+      __proto__: null,
       writable: true,
       enumerable: false,
       configurable: true,

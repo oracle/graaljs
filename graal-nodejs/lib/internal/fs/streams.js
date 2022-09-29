@@ -16,7 +16,10 @@ const {
   ERR_OUT_OF_RANGE,
   ERR_METHOD_NOT_IMPLEMENTED,
 } = require('internal/errors').codes;
-const { deprecate } = require('internal/util');
+const {
+  deprecate,
+  kEmptyObject,
+} = require('internal/util');
 const {
   validateFunction,
   validateInteger,
@@ -150,7 +153,7 @@ function ReadStream(path, options) {
     return new ReadStream(path, options);
 
   // A little bit bigger buffer and water marks by default
-  options = copyObject(getOptions(options, {}));
+  options = copyObject(getOptions(options, kEmptyObject));
   if (options.highWaterMark === undefined)
     options.highWaterMark = 64 * 1024;
 
@@ -216,6 +219,7 @@ ObjectSetPrototypeOf(ReadStream.prototype, Readable.prototype);
 ObjectSetPrototypeOf(ReadStream, Readable);
 
 ObjectDefineProperty(ReadStream.prototype, 'autoClose', {
+  __proto__: null,
   get() {
     return this._readableState.autoDestroy;
   },
@@ -299,6 +303,7 @@ ReadStream.prototype.close = function(cb) {
 };
 
 ObjectDefineProperty(ReadStream.prototype, 'pending', {
+  __proto__: null,
   get() { return this.fd === null; },
   configurable: true
 });
@@ -307,7 +312,7 @@ function WriteStream(path, options) {
   if (!(this instanceof WriteStream))
     return new WriteStream(path, options);
 
-  options = copyObject(getOptions(options, {}));
+  options = copyObject(getOptions(options, kEmptyObject));
 
   // Only buffers are supported.
   options.decodeStrings = true;
@@ -377,6 +382,7 @@ ObjectSetPrototypeOf(WriteStream.prototype, Writable.prototype);
 ObjectSetPrototypeOf(WriteStream, Writable);
 
 ObjectDefineProperty(WriteStream.prototype, 'autoClose', {
+  __proto__: null,
   get() {
     return this._writableState.autoDestroy;
   },
@@ -485,6 +491,7 @@ WriteStream.prototype.close = function(cb) {
 WriteStream.prototype.destroySoon = WriteStream.prototype.end;
 
 ObjectDefineProperty(WriteStream.prototype, 'pending', {
+  __proto__: null,
   get() { return this.fd === null; },
   configurable: true
 });

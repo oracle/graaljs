@@ -38,7 +38,10 @@ const {
   kAesKeyLengths,
 } = require('internal/crypto/util');
 
-const { customPromisifyArgs } = require('internal/util');
+const {
+  customPromisifyArgs,
+  kEmptyObject,
+} = require('internal/util');
 
 const {
   isInt32,
@@ -93,6 +96,7 @@ function generateKeyPair(type, options, callback) {
 }
 
 ObjectDefineProperty(generateKeyPair, customPromisifyArgs, {
+  __proto__: null,
   value: ['publicKey', 'privateKey'],
   enumerable: false
 });
@@ -118,7 +122,7 @@ function handleError(ret) {
   };
 }
 
-function parseKeyEncoding(keyType, options = {}) {
+function parseKeyEncoding(keyType, options = kEmptyObject) {
   const { publicKeyEncoding, privateKeyEncoding } = options;
 
   let publicFormat, publicType;
@@ -356,7 +360,7 @@ function generateKeyJob(mode, keyType, options) {
   const { length } = options;
   switch (keyType) {
     case 'hmac':
-      validateInteger(length, 'options.length', 1, 2 ** 31 - 1);
+      validateInteger(length, 'options.length', 8, 2 ** 31 - 1);
       break;
     case 'aes':
       validateOneOf(length, 'options.length', kAesKeyLengths);

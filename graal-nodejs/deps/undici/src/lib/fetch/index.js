@@ -31,13 +31,11 @@ const {
   coarsenedSharedCurrentTime,
   createDeferredPromise,
   isBlobLike,
-  CORBCheck,
   sameOrigin,
   isCancelled,
   isAborted
 } = require('./util')
 const { kState, kHeaders, kGuard, kRealm } = require('./symbols')
-const { AbortError } = require('../core/errors')
 const assert = require('assert')
 const { safelyExtractBody, extractBody } = require('./body')
 const {
@@ -45,19 +43,23 @@ const {
   nullBodyStatus,
   safeMethods,
   requestBodyHeader,
-  subresource
+  subresource,
+  DOMException
 } = require('./constants')
 const { kHeadersList } = require('../core/symbols')
 const EE = require('events')
 const { Readable, pipeline } = require('stream')
 const { isErrored, isReadable } = require('../core/util')
 const { dataURLProcessor } = require('./dataURL')
-const { kIsMockActive } = require('../mock/mock-symbols')
 const { TransformStream } = require('stream/web')
 
 /** @type {import('buffer').resolveObjectURL} */
 let resolveObjectURL
 let ReadableStream
+
+const nodeVersion = process.versions.node.split('.')
+const nodeMajor = Number(nodeVersion[0])
+const nodeMinor = Number(nodeVersion[1])
 
 class Fetch extends EE {
   constructor (dispatcher) {
@@ -84,7 +86,7 @@ class Fetch extends EE {
       return
     }
 
-    const reason = new AbortError()
+    const reason = new DOMException('The operation was aborted.', 'AbortError')
 
     this.state = 'aborted'
     this.connection?.destroy(reason)
@@ -93,24 +95,12 @@ class Fetch extends EE {
 }
 
 // https://fetch.spec.whatwg.org/#fetch-method
-async function fetch (...args) {
-  if (args.length < 1) {
+async function fetch (input, init = {}) {
+  if (arguments.length < 1) {
     throw new TypeError(
-      `Failed to execute 'fetch' on 'Window': 1 argument required, but only ${args.length} present.`
+      `Failed to execute 'fetch' on 'Window': 1 argument required, but only ${arguments.length} present.`
     )
   }
-  if (
-    args.length >= 1 &&
-    typeof args[1] !== 'object' &&
-    args[1] !== undefined
-  ) {
-    throw new TypeError(
-      "Failed to execute 'fetch' on 'Window': cannot convert to dictionary."
-    )
-  }
-
-  const resource = args[0]
-  const init = args.length >= 1 ? args[1] ?? {} : {}
 
   // 1. Let p be a new promise.
   const p = createDeferredPromise()
@@ -118,7 +108,14 @@ async function fetch (...args) {
   // 2. Let requestObject be the result of invoking the initial value of
   // Request as constructor with input and init as arguments. If this throws
   // an exception, reject p with it and return p.
-  const requestObject = new Request(resource, init)
+  let requestObject
+
+  try {
+    requestObject = new Request(input, init)
+  } catch (e) {
+    p.reject(e)
+    return p.promise
+  }
 
   // 3. Let request be requestObject’s request.
   const request = requestObject[kState]
@@ -290,14 +287,16 @@ function finalizeAndReportTiming (response, initiatorType = 'other') {
 }
 
 // https://w3c.github.io/resource-timing/#dfn-mark-resource-timing
-function markResourceTiming () {
-  // TODO
+function markResourceTiming (timingInfo, originalURL, initiatorType, globalThis, cacheState) {
+  if (nodeMajor >= 18 && nodeMinor >= 2) {
+    performance.markResourceTiming(timingInfo, originalURL, initiatorType, globalThis, cacheState)
+  }
 }
 
 // https://fetch.spec.whatwg.org/#abort-fetch
 function abortFetch (p, request, responseObject) {
   // 1. Let error be an "AbortError" DOMException.
-  const error = new AbortError()
+  const error = new DOMException('The operation was aborted.', 'AbortError')
 
   // 2. Reject promise with error.
   p.reject(error)
@@ -588,18 +587,8 @@ async function mainFetch (fetchParams, recursive = false) {
         // 2. Set request’s response tainting to "opaque".
         request.responseTainting = 'opaque'
 
-        // 3. Let noCorsResponse be the result of running scheme fetch given
-        // fetchParams.
-        const noCorsResponse = await schemeFetch(fetchParams)
-
-        // 4. If noCorsResponse is a filtered response or the CORB check with
-        // request and noCorsResponse returns allowed, then return noCorsResponse.
-        if (noCorsResponse.status === 0 || CORBCheck(request, noCorsResponse) === 'allowed') {
-          return noCorsResponse
-        }
-
-        // 5. Return a new response whose status is noCorsResponse’s status.
-        return makeResponse({ status: noCorsResponse.status })
+        // 3. Return the result of running scheme fetch given fetchParams.
+        return await schemeFetch(fetchParams)
       }
 
       // request’s current URL’s scheme is not an HTTP(S) scheme
@@ -768,7 +757,7 @@ async function schemeFetch (fetchParams) {
   const {
     protocol: scheme,
     pathname: path
-  } = new URL(requestCurrentURL(request))
+  } = requestCurrentURL(request)
 
   // switch on request’s current URL’s scheme, and run the associated steps:
   switch (scheme) {
@@ -780,7 +769,7 @@ async function schemeFetch (fetchParams) {
         const resp = makeResponse({
           statusText: 'OK',
           headersList: [
-            'content-type', 'text/html;charset=utf-8'
+            ['content-type', 'text/html;charset=utf-8']
           ]
         })
 
@@ -792,7 +781,7 @@ async function schemeFetch (fetchParams) {
       return makeNetworkError('invalid path called')
     }
     case 'blob:': {
-      resolveObjectURL ??= require('buffer').resolveObjectURL
+      resolveObjectURL = resolveObjectURL || require('buffer').resolveObjectURL
 
       // 1. Run these steps, but abort when the ongoing fetch is terminated:
       //    1. Let blob be request’s current URL’s blob URL entry’s object.
@@ -871,7 +860,7 @@ async function schemeFetch (fetchParams) {
       return makeResponse({
         statusText: 'OK',
         headersList: [
-          'content-type', contentType
+          ['content-type', contentType]
         ],
         body: extractBody(dataURLStruct.body)[0]
       })
@@ -1070,7 +1059,7 @@ async function httpFetch (fetchParams) {
     // 2. Switch on request’s redirect mode:
     if (request.redirect === 'error') {
       // Set response to a network error.
-      response = makeNetworkError()
+      response = makeNetworkError('unexpected redirect')
     } else if (request.redirect === 'manual') {
       // Set response to an opaque-redirect filtered response whose internal
       // response is actualResponse.
@@ -1176,7 +1165,7 @@ async function httpRedirectFetch (fetchParams, response) {
   if (
     ([301, 302].includes(actualResponse.status) && request.method === 'POST') ||
     (actualResponse.status === 303 &&
-      !['GET', 'HEADER'].includes(request.method))
+      !['GET', 'HEAD'].includes(request.method))
   ) {
     // then:
     // 1. Set request’s method to `GET` and request’s body to null.
@@ -1567,7 +1556,7 @@ async function httpNetworkFetch (
     destroy (err) {
       if (!this.destroyed) {
         this.destroyed = true
-        this.abort?.(err ?? new AbortError())
+        this.abort?.(err ?? new DOMException('The operation was aborted.', 'AbortError'))
       }
     }
   }
@@ -1827,6 +1816,11 @@ async function httpNetworkFetch (
       let bytes
       try {
         const { done, value } = await fetchParams.controller.next()
+
+        if (isAborted(fetchParams)) {
+          break
+        }
+
         bytes = done ? undefined : value
       } catch (err) {
         if (fetchParams.controller.ended && !timingInfo.encodedBodySize) {
@@ -1892,7 +1886,9 @@ async function httpNetworkFetch (
 
       // 2. If stream is readable, error stream with an "AbortError" DOMException.
       if (isReadable(stream)) {
-        fetchParams.controller.controller.error(new AbortError())
+        fetchParams.controller.controller.error(
+          new DOMException('The operation was aborted.', 'AbortError')
+        )
       }
     } else {
       // 3. Otherwise, if stream is readable, error stream with a TypeError.
@@ -1918,9 +1914,11 @@ async function httpNetworkFetch (
         path: url.pathname + url.search,
         origin: url.origin,
         method: request.method,
-        body: fetchParams.controller.dispatcher[kIsMockActive] ? request.body && request.body.source : body,
-        headers: request.headersList,
-        maxRedirections: 0
+        body: fetchParams.controller.dispatcher.isMockActive ? request.body && request.body.source : body,
+        headers: [...request.headersList].flat(),
+        maxRedirections: 0,
+        bodyTimeout: 300_000,
+        headersTimeout: 300_000
       },
       {
         body: null,
@@ -1931,7 +1929,7 @@ async function httpNetworkFetch (
           const { connection } = fetchParams.controller
 
           if (connection.destroyed) {
-            abort(new AbortError())
+            abort(new DOMException('The operation was aborted.', 'AbortError'))
           } else {
             fetchParams.controller.on('terminated', abort)
             this.abort = connection.abort = abort
@@ -1962,16 +1960,18 @@ async function httpNetworkFetch (
           const decoders = []
 
           // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
-          for (const coding of codings) {
-            if (/(x-)?gzip/.test(coding)) {
-              decoders.push(zlib.createGunzip())
-            } else if (/(x-)?deflate/.test(coding)) {
-              decoders.push(zlib.createInflate())
-            } else if (coding === 'br') {
-              decoders.push(zlib.createBrotliDecompress())
-            } else {
-              decoders.length = 0
-              break
+          if (request.method !== 'HEAD' && request.method !== 'CONNECT' && !nullBodyStatus.includes(status)) {
+            for (const coding of codings) {
+              if (/(x-)?gzip/.test(coding)) {
+                decoders.push(zlib.createGunzip())
+              } else if (/(x-)?deflate/.test(coding)) {
+                decoders.push(zlib.createInflate())
+              } else if (coding === 'br') {
+                decoders.push(zlib.createBrotliDecompress())
+              } else {
+                decoders.length = 0
+                break
+              }
             }
           }
 
@@ -2029,7 +2029,7 @@ async function httpNetworkFetch (
 
           fetchParams.controller.terminate(error)
 
-          reject(makeNetworkError(error))
+          reject(error)
         }
       }
     ))

@@ -24,7 +24,7 @@
 const {
   MathMin,
   Symbol,
-  RegExpPrototypeTest,
+  RegExpPrototypeExec,
 } = primordials;
 const { setImmediate } = require('timers');
 
@@ -128,7 +128,7 @@ function parserOnHeadersComplete(versionMajor, versionMinor, headers, method,
   return parser.onIncoming(incoming, shouldKeepAlive);
 }
 
-function parserOnBody(b, start, len) {
+function parserOnBody(b) {
   const stream = this.incoming;
 
   // If the stream has already been removed, then drop it.
@@ -136,9 +136,8 @@ function parserOnBody(b, start, len) {
     return;
 
   // Pretend this was the result of a stream._read call.
-  if (len > 0 && !stream._dumped) {
-    const slice = b.slice(start, start + len);
-    const ret = stream.push(slice);
+  if (!stream._dumped) {
+    const ret = stream.push(b);
     if (!ret)
       readStop(this.socket);
   }
@@ -219,7 +218,7 @@ const tokenRegExp = /^[\^_`a-zA-Z\-0-9!#$%&'*+.|~]+$/;
  * See https://tools.ietf.org/html/rfc7230#section-3.2.6
  */
 function checkIsHttpToken(val) {
-  return RegExpPrototypeTest(tokenRegExp, val);
+  return RegExpPrototypeExec(tokenRegExp, val) !== null;
 }
 
 const headerCharRegex = /[^\t\x20-\x7e\x80-\xff]/;
@@ -230,7 +229,7 @@ const headerCharRegex = /[^\t\x20-\x7e\x80-\xff]/;
  *  field-vchar    = VCHAR / obs-text
  */
 function checkInvalidHeaderChar(val) {
-  return RegExpPrototypeTest(headerCharRegex, val);
+  return RegExpPrototypeExec(headerCharRegex, val) !== null;
 }
 
 function cleanParser(parser) {
