@@ -23,7 +23,7 @@ const {
   ReflectGet,
   ReflectGetPrototypeOf,
   ReflectSet,
-  RegExpPrototypeTest,
+  RegExpPrototypeExec,
   SafeArrayIterator,
   SafeMap,
   SafeSet,
@@ -37,7 +37,8 @@ const {
 const {
   assertCrypto,
   customInspectSymbol: kInspect,
-  promisify
+  kEmptyObject,
+  promisify,
 } = require('internal/util');
 
 assertCrypto();
@@ -189,10 +190,10 @@ let debug = require('internal/util/debuglog').debuglog('http2', (fn) => {
   debug = fn;
 });
 
-// TODO(addaleax): See if this can be made more efficient by figuring out
-// whether debugging is enabled before we perform any further steps. Currently,
-// this seems pretty fast, though.
 function debugStream(id, sessionType, message, ...args) {
+  if (!debug.enabled) {
+    return;
+  }
   debug('Http2Stream %s [Http2Session %s]: ' + message,
         id, sessionName(sessionType), ...new SafeArrayIterator(args));
 }
@@ -981,6 +982,7 @@ function trackAssignmentsTypedArray(typedArray) {
   }
 
   return new Proxy(typedArray, {
+    __proto__: null,
     get(obj, prop, receiver) {
       if (prop === 'copyAssigned') {
         return copyAssigned;
@@ -1658,7 +1660,7 @@ class ServerHttp2Session extends Http2Session {
     }
 
     validateString(alt, 'alt');
-    if (!RegExpPrototypeTest(kQuotedString, alt))
+    if (RegExpPrototypeExec(kQuotedString, alt) === null)
       throw new ERR_INVALID_CHAR('alt');
 
     // Max length permitted for ALTSVC
@@ -1792,7 +1794,9 @@ class ClientHttp2Session extends Http2Session {
     const { signal } = options;
     if (signal) {
       validateAbortSignal(signal, 'options.signal');
-      const aborter = () => stream.destroy(new AbortError());
+      const aborter = () => {
+        stream.destroy(new AbortError(undefined, { cause: signal.reason }));
+      };
       if (signal.aborted) {
         aborter();
       } else {
@@ -3111,7 +3115,7 @@ function initializeTLSOptions(options, servername) {
   options.ALPNProtocols = ['h2'];
   if (options.allowHTTP1 === true)
     ArrayPrototypePush(options.ALPNProtocols, 'http/1.1');
-  if (servername !== undefined && options.servername === undefined)
+  if (servername !== undefined && !options.servername)
     options.servername = servername;
   return options;
 }
@@ -3294,6 +3298,7 @@ function connect(authority, options, listener) {
 
 // Support util.promisify
 ObjectDefineProperty(connect, promisify.custom, {
+  __proto__: null,
   value: (authority, options) => {
     return new Promise((resolve) => {
       const server = connect(authority, options, () => resolve(server));
@@ -3323,7 +3328,7 @@ function getPackedSettings(settings) {
   return binding.packSettings();
 }
 
-function getUnpackedSettings(buf, options = {}) {
+function getUnpackedSettings(buf, options = kEmptyObject) {
   if (!isArrayBufferView(buf) || buf.length === undefined) {
     throw new ERR_INVALID_ARG_TYPE('buf',
                                    ['Buffer', 'TypedArray'], buf);
@@ -3393,6 +3398,7 @@ module.exports = {
   sensitiveHeaders: kSensitiveHeaders,
   Http2Session,
   Http2Stream,
+  ServerHttp2Session,
   Http2ServerRequest,
   Http2ServerResponse
 };

@@ -190,6 +190,7 @@ All commands:
 
                     Options:
                     [--registry <registry>] [--scope <@scope>]
+                    [--auth-type <legacy|web|sso|saml|oauth|webauthn>]
 
                     aliases: login, add-user
 
@@ -198,7 +199,7 @@ All commands:
     audit           Run a security audit
 
                     Usage:
-                    npm audit [fix]
+                    npm audit [fix|signatures]
 
                     Options:
                     [--audit-level <info|low|moderate|high|critical|none>] [--dry-run] [-f|--force]
@@ -237,11 +238,7 @@ All commands:
     cache           Manipulates packages cache
 
                     Usage:
-                    npm cache add <tarball file>
-                    npm cache add <folder>
-                    npm cache add <tarball url>
-                    npm cache add <git url>
-                    npm cache add <name>@<version>
+                    npm cache add <package-spec>
                     npm cache clean [<key>]
                     npm cache ls [<name>@<version>]
                     npm cache verify
@@ -307,7 +304,7 @@ All commands:
     deprecate       Deprecate a version of a package
 
                     Usage:
-                    npm deprecate <pkg>[@<version>] <message>
+                    npm deprecate <package-spec> <message>
 
                     Options:
                     [--registry <registry>] [--otp <otp>]
@@ -320,10 +317,10 @@ All commands:
                     npm diff [...<paths>]
 
                     Options:
-                    [--diff <pkg-name|spec|version> [--diff <pkg-name|spec|version> ...]]
-                    [--diff-name-only] [--diff-unified <number>] [--diff-ignore-all-space]
-                    [--diff-no-prefix] [--diff-src-prefix <path>] [--diff-dst-prefix <path>]
-                    [--diff-text] [-g|--global] [--tag <tag>]
+                    [--diff <package-spec> [--diff <package-spec> ...]] [--diff-name-only]
+                    [--diff-unified <number>] [--diff-ignore-all-space] [--diff-no-prefix]
+                    [--diff-src-prefix <path>] [--diff-dst-prefix <path>] [--diff-text] [-g|--global]
+                    [--tag <tag>]
                     [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
                     [-ws|--workspaces] [--include-workspace-root]
 
@@ -332,9 +329,9 @@ All commands:
     dist-tag        Modify package distribution tags
 
                     Usage:
-                    npm dist-tag add <pkg>@<version> [<tag>]
-                    npm dist-tag rm <pkg> <tag>
-                    npm dist-tag ls [<pkg>]
+                    npm dist-tag add <package-spec (with version)> [<tag>]
+                    npm dist-tag rm <package-spec> <tag>
+                    npm dist-tag ls [<package-spec>]
 
                     Options:
                     [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
@@ -387,8 +384,7 @@ All commands:
                     npm exec --package=foo -c '<cmd> [args...]'
 
                     Options:
-                    [--package <pkg>[@<version>] [--package <pkg>[@<version>] ...]]
-                    [-c|--call <call>]
+                    [--package <package-spec> [--package <package-spec> ...]] [-c|--call <call>]
                     [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
                     [-ws|--workspaces] [--include-workspace-root]
 
@@ -399,7 +395,7 @@ All commands:
     explain         Explain installed packages
 
                     Usage:
-                    npm explain <folder | specifier>
+                    npm explain <package-spec>
 
                     Options:
                     [--json] [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
@@ -435,7 +431,7 @@ All commands:
     fund            Retrieve funding information
 
                     Usage:
-                    npm fund [[<@scope>/]<pkg>]
+                    npm fund [<package-spec>]
 
                     Options:
                     [--json] [--no-browser|--browser <browser>] [--unicode]
@@ -479,14 +475,13 @@ All commands:
     init            Create a package.json file
 
                     Usage:
-                    npm init [--force|-f|--yes|-y|--scope]
+                    npm init <package-spec> (same as \`npx <package-spec>)
                     npm init <@scope> (same as \`npx <@scope>/create\`)
-                    npm init [<@scope>/]<name> (same as \`npx [<@scope>/]create-<name>\`)
 
                     Options:
-                    [-y|--yes] [-f|--force]
+                    [-y|--yes] [-f|--force] [--scope <@scope>]
                     [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
-                    [-ws|--workspaces] [--include-workspace-root]
+                    [-ws|--workspaces] [--no-workspaces-update] [--include-workspace-root]
 
                     aliases: create, innit
 
@@ -495,16 +490,7 @@ All commands:
     install         Install a package
 
                     Usage:
-                    npm install [<@scope>/]<pkg>
-                    npm install [<@scope>/]<pkg>@<tag>
-                    npm install [<@scope>/]<pkg>@<version>
-                    npm install [<@scope>/]<pkg>@<version range>
-                    npm install <alias>@npm:<name>
-                    npm install <folder>
-                    npm install <tarball file>
-                    npm install <tarball url>
-                    npm install <git:// url>
-                    npm install <github username>/<github project>
+                    npm install [<package-spec> ...]
 
                     Options:
                     [-S|--save|--no-save|--save-prod|--save-dev|--save-optional|--save-peer|--save-bundle]
@@ -535,16 +521,7 @@ All commands:
     install-test    Install package(s) and run tests
 
                     Usage:
-                    npm install-test [<@scope>/]<pkg>
-                    npm install-test [<@scope>/]<pkg>@<tag>
-                    npm install-test [<@scope>/]<pkg>@<version>
-                    npm install-test [<@scope>/]<pkg>@<version range>
-                    npm install-test <alias>@npm:<name>
-                    npm install-test <folder>
-                    npm install-test <tarball file>
-                    npm install-test <tarball url>
-                    npm install-test <git:// url>
-                    npm install-test <github username>/<github project>
+                    npm install-test [<package-spec> ...]
 
                     Options:
                     [-S|--save|--no-save|--save-prod|--save-dev|--save-optional|--save-peer|--save-bundle]
@@ -562,8 +539,7 @@ All commands:
     link            Symlink a package folder
 
                     Usage:
-                    npm link (in package dir)
-                    npm link [<@scope>/]<pkg>[@<version>]
+                    npm link [<package-spec>]
 
                     Options:
                     [-S|--save|--no-save|--save-prod|--save-dev|--save-optional|--save-peer|--save-bundle]
@@ -601,6 +577,7 @@ All commands:
 
                     Options:
                     [--registry <registry>] [--scope <@scope>]
+                    [--auth-type <legacy|web|sso|saml|oauth|webauthn>]
 
                     aliases: login, add-user
 
@@ -619,7 +596,7 @@ All commands:
     ls              List installed packages
 
                     Usage:
-                    npm ls [[<@scope>/]<pkg> ...]
+                    npm ls <package-spec>
 
                     Options:
                     [-a|--all] [--json] [-l|--long] [-p|--parseable] [-g|--global] [--depth <depth>]
@@ -649,7 +626,7 @@ All commands:
     outdated        Check for outdated packages
 
                     Usage:
-                    npm outdated [[<@scope>/]<pkg> ...]
+                    npm outdated [<package-spec> ...]
 
                     Options:
                     [-a|--all] [--json] [-l|--long] [-p|--parseable] [-g|--global]
@@ -660,9 +637,9 @@ All commands:
     owner           Manage package owners
 
                     Usage:
-                    npm owner add <user> [<@scope>/]<pkg>
-                    npm owner rm <user> [<@scope>/]<pkg>
-                    npm owner ls [<@scope>/]<pkg>
+                    npm owner add <user> <package-spec>
+                    npm owner rm <user> <package-spec>
+                    npm owner ls <package-spec>
 
                     Options:
                     [--registry <registry>] [--otp <otp>]
@@ -676,7 +653,7 @@ All commands:
     pack            Create a tarball from a package
 
                     Usage:
-                    npm pack [[<@scope>/]<pkg>...]
+                    npm pack <package-spec>
 
                     Options:
                     [--dry-run] [--json] [--pack-destination <pack-destination>]
@@ -750,7 +727,7 @@ All commands:
     publish         Publish a package
 
                     Usage:
-                    npm publish [<folder>]
+                    npm publish <package-spec>
 
                     Options:
                     [--tag <tag>] [--access <restricted|public>] [--dry-run] [--otp <otp>]
@@ -762,7 +739,7 @@ All commands:
     rebuild         Rebuild a package
 
                     Usage:
-                    npm rebuild [[<@scope>/]<name>[@<version>] ...]
+                    npm rebuild [<package-spec>] ...]
 
                     Options:
                     [-g|--global] [--no-bin-links] [--foreground-scripts] [--ignore-scripts]
@@ -813,7 +790,7 @@ All commands:
                     Options:
                     [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
                     [-ws|--workspaces] [--include-workspace-root] [--if-present] [--ignore-scripts]
-                    [--script-shell <script-shell>]
+                    [--foreground-scripts] [--script-shell <script-shell>]
 
                     aliases: run, rum, urn
 
@@ -861,7 +838,7 @@ All commands:
     star            Mark your favorite packages
 
                     Usage:
-                    npm star [<pkg>...]
+                    npm star [<package-spec>...]
 
                     Options:
                     [--registry <registry>] [--unicode] [--otp <otp>]
@@ -954,7 +931,7 @@ All commands:
     unpublish       Remove a package from the registry
 
                     Usage:
-                    npm unpublish [<@scope>/]<pkg>[@<version>]
+                    npm unpublish [<package-spec>]
 
                     Options:
                     [--dry-run] [-f|--force]
@@ -966,7 +943,7 @@ All commands:
     unstar          Remove an item from your favorite packages
 
                     Usage:
-                    npm unstar [<pkg>...]
+                    npm unstar [<package-spec>...]
 
                     Options:
                     [--registry <registry>] [--unicode] [--otp <otp>]
@@ -1009,7 +986,7 @@ All commands:
     view            View registry info
 
                     Usage:
-                    npm view [<@scope>/]<pkg>[@<version>] [<field>[.subfield]...]
+                    npm view [<package-spec>] [<field>[.subfield]...]
 
                     Options:
                     [--json] [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]

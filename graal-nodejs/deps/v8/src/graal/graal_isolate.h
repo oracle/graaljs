@@ -125,6 +125,7 @@ enum GraalAccessMethod {
     value_is_generator_function,
     value_is_generator_object,
     value_is_module_namespace_object,
+    value_is_wasm_memory_object,
     value_equals,
     value_strict_equals,
     value_instance_of,

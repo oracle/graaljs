@@ -1,12 +1,11 @@
+#include "node_http2.h"
 #include "aliased_buffer.h"
-#include "allocated_buffer-inl.h"
 #include "aliased_struct-inl.h"
 #include "debug_utils-inl.h"
 #include "histogram-inl.h"
 #include "memory_tracker-inl.h"
 #include "node.h"
 #include "node_buffer.h"
-#include "node_http2.h"
 #include "node_http_common-inl.h"
 #include "node_mem-inl.h"
 #include "node_perf.h"
@@ -641,7 +640,7 @@ void Http2Stream::EmitStatistics() {
   std::unique_ptr<Http2StreamPerformanceEntry> entry =
       std::make_unique<Http2StreamPerformanceEntry>(
           "Http2Stream",
-          start,
+          start - (node::performance::timeOrigin / 1e6),
           duration,
           statistics_);
 
@@ -661,7 +660,7 @@ void Http2Session::EmitStatistics() {
   std::unique_ptr<Http2SessionPerformanceEntry> entry =
       std::make_unique<Http2SessionPerformanceEntry>(
           "Http2Session",
-          start,
+          start - (node::performance::timeOrigin / 1e6),
           duration,
           statistics_);
 
@@ -2646,7 +2645,6 @@ void Http2Session::New(const FunctionCallbackInfo<Value>& args) {
       static_cast<SessionType>(
           args[0]->Int32Value(env->context()).ToChecked());
   Http2Session* session = new Http2Session(state, args.This(), type);
-  session->get_async_id();  // avoid compiler warning
   Debug(session, "session created");
 }
 

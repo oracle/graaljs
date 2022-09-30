@@ -13,7 +13,6 @@ const {
   RegExp,
   RegExpPrototypeExec,
   RegExpPrototypeSymbolReplace,
-  RegExpPrototypeTest,
   SafeMap,
   SafeSet,
   String,
@@ -21,6 +20,7 @@ const {
   StringPrototypeIncludes,
   StringPrototypeIndexOf,
   StringPrototypeLastIndexOf,
+  StringPrototypeReplace,
   StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
@@ -387,7 +387,6 @@ function resolveDirectoryEntry(search) {
 }
 
 const encodedSepRegEx = /%2F|%5C/i;
-let experimentalSpecifierResolutionWarned = false;
 /**
  * @param {URL} resolved
  * @param {string | URL | undefined} base
@@ -395,20 +394,13 @@ let experimentalSpecifierResolutionWarned = false;
  * @returns {URL | undefined}
  */
 function finalizeResolution(resolved, base, preserveSymlinks) {
-  if (RegExpPrototypeTest(encodedSepRegEx, resolved.pathname))
+  if (RegExpPrototypeExec(encodedSepRegEx, resolved.pathname) !== null)
     throw new ERR_INVALID_MODULE_SPECIFIER(
       resolved.pathname, 'must not include encoded "/" or "\\" characters',
       fileURLToPath(base));
 
   let path = fileURLToPath(resolved);
   if (getOptionValue('--experimental-specifier-resolution') === 'node') {
-    if (!experimentalSpecifierResolutionWarned) {
-      process.emitWarning(
-        'The Node.js specifier resolution flag is experimental. It could change or be removed at any time.',
-        'ExperimentalWarning');
-      experimentalSpecifierResolutionWarned = true;
-    }
-
     let file = resolveExtensionsWithTryExactName(resolved);
 
     // Directory
@@ -531,7 +523,7 @@ function resolvePackageTargetString(
     throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
   }
 
-  if (RegExpPrototypeTest(invalidSegmentRegEx, StringPrototypeSlice(target, 2)))
+  if (RegExpPrototypeExec(invalidSegmentRegEx, StringPrototypeSlice(target, 2)) !== null)
     throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
 
   const resolved = new URL(target, packageJSONUrl);
@@ -543,8 +535,11 @@ function resolvePackageTargetString(
 
   if (subpath === '') return resolved;
 
-  if (RegExpPrototypeTest(invalidSegmentRegEx, subpath))
-    throwInvalidSubpath(match + subpath, packageJSONUrl, internal, base);
+  if (RegExpPrototypeExec(invalidSegmentRegEx, subpath) !== null) {
+    const request = pattern ?
+      StringPrototypeReplace(match, '*', () => subpath) : match + subpath;
+    throwInvalidSubpath(request, packageJSONUrl, internal, base);
+  }
 
   if (pattern) {
     return new URL(
@@ -895,8 +890,10 @@ function parsePackageName(specifier, base) {
  * @returns {URL}
  */
 function packageResolve(specifier, base, conditions) {
-  if (NativeModule.canBeRequiredByUsers(specifier))
+  if (NativeModule.canBeRequiredByUsers(specifier) &&
+      NativeModule.canBeRequiredWithoutScheme(specifier)) {
     return new URL('node:' + specifier);
+  }
 
   const { packageName, packageSubpath, isScoped } =
     parsePackageName(specifier, base);
@@ -1058,8 +1055,6 @@ function resolveAsCommonJS(specifier, parentURL) {
 // TODO(@JakobJingleheimer): de-dupe `specifier` & `parsed`
 function checkIfDisallowedImport(specifier, parsed, parsedParentURL) {
   if (parsedParentURL) {
-    const parentURL = fileURLToPath(parsedParentURL?.href);
-
     if (
       parsedParentURL.protocol === 'http:' ||
       parsedParentURL.protocol === 'https:'
@@ -1073,24 +1068,25 @@ function checkIfDisallowedImport(specifier, parsed, parsedParentURL) {
         ) {
           throw new ERR_NETWORK_IMPORT_DISALLOWED(
             specifier,
-            parentURL,
+            parsedParentURL,
             'remote imports cannot import from a local location.'
           );
         }
 
         return { url: parsed.href };
       }
-      if (NativeModule.canBeRequiredByUsers(specifier)) {
+      if (NativeModule.canBeRequiredByUsers(specifier) &&
+          NativeModule.canBeRequiredWithoutScheme(specifier)) {
         throw new ERR_NETWORK_IMPORT_DISALLOWED(
           specifier,
-          parentURL,
+          parsedParentURL,
           'remote imports cannot import from a local location.'
         );
       }
 
       throw new ERR_NETWORK_IMPORT_DISALLOWED(
         specifier,
-        parentURL,
+        parsedParentURL,
         'only relative and absolute specifiers are supported.'
       );
     }
@@ -1125,7 +1121,7 @@ function throwIfUnsupportedURLScheme(parsed, experimentalNetworkImports) {
   }
 }
 
-async function defaultResolve(specifier, context = {}, defaultResolveUnused) {
+async function defaultResolve(specifier, context = {}) {
   let { parentURL, conditions } = context;
   if (parentURL && policy?.manifest) {
     const redirects = policy.manifest.getDependencyMapper(parentURL);
@@ -1271,7 +1267,7 @@ if (policy) {
     specifier,
     context
   ) {
-    const ret = await $defaultResolve(specifier, context, $defaultResolve);
+    const ret = await $defaultResolve(specifier, context);
     // This is a preflight check to avoid data exfiltration by query params etc.
     policy.manifest.mightAllow(ret.url, () =>
       new ERR_MANIFEST_DEPENDENCY_MISSING(

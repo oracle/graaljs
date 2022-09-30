@@ -431,7 +431,7 @@ v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
   for (size_t i = 0; i < vec.size(); ++i) {
     if (!ToV8Value(context, vec[i], isolate).ToLocal(&item))
       return v8::MaybeLocal<v8::Value>();
-    array->Set(context, i, item);
+    array->Set(context, i, item).Check();
   }
 
   return handle_scope.Escape(array);

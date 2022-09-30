@@ -114,9 +114,18 @@ function oneTo5() {
     concurrency: 'Foo'
   }), /ERR_OUT_OF_RANGE/);
   assert.throws(() => Readable.from([1]).flatMap((x) => x, 1), /ERR_INVALID_ARG_TYPE/);
+  assert.throws(() => Readable.from([1]).flatMap((x) => x, { signal: true }), /ERR_INVALID_ARG_TYPE/);
 }
 {
   // Test result is a Readable
   const stream = oneTo5().flatMap((x) => x);
   assert.strictEqual(stream.readable, true);
+}
+{
+  const stream = oneTo5();
+  Object.defineProperty(stream, 'map', {
+    value: common.mustNotCall(() => {}),
+  });
+  // Check that map isn't getting called.
+  stream.flatMap(() => true);
 }

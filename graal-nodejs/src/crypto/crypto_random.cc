@@ -1,7 +1,6 @@
 #include "crypto/crypto_random.h"
-#include "crypto/crypto_util.h"
-#include "allocated_buffer-inl.h"
 #include "async_wrap-inl.h"
+#include "crypto/crypto_util.h"
 #include "env-inl.h"
 #include "memory_tracker-inl.h"
 #include "threadpoolwork-inl.h"
@@ -67,8 +66,7 @@ bool RandomBytesTraits::DeriveBits(
     Environment* env,
     const RandomBytesConfig& params,
     ByteSource* unused) {
-  CheckEntropy();  // Ensure that OpenSSL's PRNG is properly seeded.
-  return RAND_bytes(params.buffer, params.size) != 0;
+  return CSPRNG(params.buffer, params.size).is_ok();
 }
 
 void RandomPrimeConfig::MemoryInfo(MemoryTracker* tracker) const {
@@ -122,11 +120,9 @@ Maybe<bool> RandomPrimeTraits::AdditionalConfig(
     }
   }
 
+  // The JS interface already ensures that the (positive) size fits into an int.
   int bits = static_cast<int>(size);
-  if (bits < 0) {
-    THROW_ERR_OUT_OF_RANGE(env, "invalid size");
-    return Nothing<bool>();
-  }
+  CHECK_GT(bits, 0);
 
   if (params->add) {
     if (BN_num_bits(params->add.get()) > bits) {
@@ -159,12 +155,12 @@ Maybe<bool> RandomPrimeTraits::AdditionalConfig(
   return Just(true);
 }
 
-bool RandomPrimeTraits::DeriveBits(
-    Environment* env,
-    const RandomPrimeConfig& params,
-    ByteSource* unused) {
-
-  CheckEntropy();
+bool RandomPrimeTraits::DeriveBits(Environment* env,
+                                   const RandomPrimeConfig& params,
+                                   ByteSource* unused) {
+  // BN_generate_prime_ex() calls RAND_bytes_ex() internally.
+  // Make sure the CSPRNG is properly seeded.
+  CHECK(CSPRNG(nullptr, 0).is_ok());
 
   if (BN_generate_prime_ex(
           params.prime.get(),

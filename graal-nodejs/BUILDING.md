@@ -337,13 +337,14 @@ You can execute the entire suite of tests for a given subsystem
 by providing the name of a subsystem:
 
 ```text
-$ tools/test.py -J child-process
+$ tools/test.py child-process
 ```
 
-You can also execute the tests in a tests directory (such as `test/message`):
+You can also execute the tests in a test suite directory
+(such as `test/message`):
 
 ```text
-$ tools/test.py -J test/message
+$ tools/test.py test/message
 ```
 
 If you want to check the other options, please refer to the help by using
@@ -551,7 +552,7 @@ When modifying only the JS layer in `lib`, it is possible to externally load it
 without modifying the executable:
 
 ```console
-$ ./configure --node-builtin-modules-path $(pwd)
+$ ./configure --node-builtin-modules-path "$(pwd)"
 ```
 
 The resulting binary won't include any JS files and will try to load them from
@@ -578,9 +579,9 @@ to run it again before invoking `make -j4`.
 
 * [Python 3.10](https://www.microsoft.com/en-us/p/python-310/9pjpw5ldxlz5)
 * The "Desktop development with C++" workload from
-  [Visual Studio 2019](https://visualstudio.microsoft.com/downloads/) or
+  [Visual Studio 2019](https://visualstudio.microsoft.com/vs/older-downloads/#visual-studio-2019-and-other-products) or
   the "C++ build tools" workload from the
-  [Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019),
+  [Build Tools](https://aka.ms/vs/16/release/vs_buildtools.exe),
   with the default optional components
 * Basic Unix tools required for some tests,
   [Git for Windows](https://git-scm.com/download/win) includes Git Bash
@@ -620,7 +621,7 @@ packages:
 * [NetWide Assembler](https://chocolatey.org/packages/nasm)
 
 To install Node.js prerequisites using
-[Boxstarter WebLauncher](https://boxstarter.org/WebLauncher), open
+[Boxstarter WebLauncher](https://boxstarter.org/weblauncher), open
 <https://boxstarter.org/package/nr/url?https://raw.githubusercontent.com/nodejs/node/HEAD/tools/bootstrap/windows_boxstarter>
 with Internet Explorer or Edge browser on the target machine.
 

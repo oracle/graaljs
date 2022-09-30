@@ -35,6 +35,12 @@ const {
   streamReturningOperators,
   promiseReturningOperators,
 } = require('internal/streams/operators');
+
+const {
+  codes: {
+    ERR_ILLEGAL_CONSTRUCTOR,
+  },
+} = require('internal/errors');
 const compose = require('internal/streams/compose');
 const { pipeline } = require('internal/streams/pipeline');
 const { destroyer } = require('internal/streams/destroy');
@@ -51,15 +57,39 @@ Stream.isReadable = utils.isReadable;
 Stream.Readable = require('internal/streams/readable');
 for (const key of ObjectKeys(streamReturningOperators)) {
   const op = streamReturningOperators[key];
-  Stream.Readable.prototype[key] = function(...args) {
+  function fn(...args) {
+    if (new.target) {
+      throw ERR_ILLEGAL_CONSTRUCTOR();
+    }
     return Stream.Readable.from(ReflectApply(op, this, args));
-  };
+  }
+  ObjectDefineProperty(fn, 'name', { __proto__: null, value: op.name });
+  ObjectDefineProperty(fn, 'length', { __proto__: null, value: op.length });
+  ObjectDefineProperty(Stream.Readable.prototype, key, {
+    __proto__: null,
+    value: fn,
+    enumerable: false,
+    configurable: true,
+    writable: true,
+  });
 }
 for (const key of ObjectKeys(promiseReturningOperators)) {
   const op = promiseReturningOperators[key];
-  Stream.Readable.prototype[key] = function(...args) {
+  function fn(...args) {
+    if (new.target) {
+      throw ERR_ILLEGAL_CONSTRUCTOR();
+    }
     return ReflectApply(op, this, args);
-  };
+  }
+  ObjectDefineProperty(fn, 'name', { __proto__: null, value: op.name });
+  ObjectDefineProperty(fn, 'length', { __proto__: null, value: op.length });
+  ObjectDefineProperty(Stream.Readable.prototype, key, {
+    __proto__: null,
+    value: fn,
+    enumerable: false,
+    configurable: true,
+    writable: true,
+  });
 }
 Stream.Writable = require('internal/streams/writable');
 Stream.Duplex = require('internal/streams/duplex');
@@ -73,6 +103,7 @@ Stream.destroy = destroyer;
 Stream.compose = compose;
 
 ObjectDefineProperty(Stream, 'promises', {
+  __proto__: null,
   configurable: true,
   enumerable: true,
   get() {
@@ -81,6 +112,7 @@ ObjectDefineProperty(Stream, 'promises', {
 });
 
 ObjectDefineProperty(pipeline, customPromisify, {
+  __proto__: null,
   enumerable: true,
   get() {
     return promises.pipeline;
@@ -88,6 +120,7 @@ ObjectDefineProperty(pipeline, customPromisify, {
 });
 
 ObjectDefineProperty(eos, customPromisify, {
+  __proto__: null,
   enumerable: true,
   get() {
     return promises.finished;

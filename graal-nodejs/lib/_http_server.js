@@ -26,7 +26,7 @@ const {
   Error,
   ObjectKeys,
   ObjectSetPrototypeOf,
-  RegExpPrototypeTest,
+  RegExpPrototypeExec,
   Symbol,
   SymbolFor,
 } = primordials;
@@ -46,11 +46,14 @@ const {
   _checkInvalidHeaderChar: checkInvalidHeaderChar,
   prepareError,
 } = require('_http_common');
-const { OutgoingMessage } = require('_http_outgoing');
+const {
+  kUniqueHeaders,
+  parseUniqueHeadersOption,
+  OutgoingMessage
+} = require('_http_outgoing');
 const {
   kOutHeaders,
   kNeedDrain,
-  emitStatistics
 } = require('internal/http');
 const {
   defaultTriggerAsyncIdScope,
@@ -94,6 +97,8 @@ const kServerResponseStatistics = Symbol('ServerResponseStatistics');
 
 const {
   hasObserver,
+  startPerf,
+  stopPerf,
 } = require('internal/perf/observe');
 
 const STATUS_CODES = {
@@ -186,16 +191,23 @@ function ServerResponse(req) {
   this._expect_continue = false;
 
   if (req.httpVersionMajor < 1 || req.httpVersionMinor < 1) {
-    this.useChunkedEncodingByDefault = RegExpPrototypeTest(chunkExpression,
-                                                           req.headers.te);
+    this.useChunkedEncodingByDefault = RegExpPrototypeExec(chunkExpression,
+                                                           req.headers.te) !== null;
     this.shouldKeepAlive = false;
   }
 
   if (hasObserver('http')) {
-    this[kServerResponseStatistics] = {
-      startTime: process.hrtime(),
-      type: 'HttpRequest',
-    };
+    startPerf(this, kServerResponseStatistics, {
+      type: 'http',
+      name: 'HttpRequest',
+      detail: {
+        req: {
+          method: req.method,
+          url: req.url,
+          headers: req.headers,
+        },
+      },
+    });
   }
 }
 ObjectSetPrototypeOf(ServerResponse.prototype, OutgoingMessage.prototype);
@@ -203,7 +215,17 @@ ObjectSetPrototypeOf(ServerResponse, OutgoingMessage);
 
 ServerResponse.prototype._finish = function _finish() {
   DTRACE_HTTP_SERVER_RESPONSE(this.socket);
-  emitStatistics(this[kServerResponseStatistics]);
+  if (this[kServerResponseStatistics] && hasObserver('http')) {
+    stopPerf(this, kServerResponseStatistics, {
+      detail: {
+        res: {
+          statusCode: this.statusCode,
+          statusMessage: this.statusMessage,
+          headers: typeof this.getHeaders === 'function' ? this.getHeaders() : {},
+        },
+      },
+    });
+  }
   OutgoingMessage.prototype._finish.call(this);
 };
 
@@ -404,6 +426,7 @@ function Server(options, requestListener) {
   this.maxRequestsPerSocket = 0;
   this.headersTimeout = 60 * 1000; // 60 seconds
   this.requestTimeout = 0;
+  this[kUniqueHeaders] = parseUniqueHeadersOption(options.uniqueHeaders);
 }
 ObjectSetPrototypeOf(Server.prototype, net.Server.prototype);
 ObjectSetPrototypeOf(Server, net.Server);
@@ -886,6 +909,7 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
                                                socket, state);
 
   res.shouldKeepAlive = keepAlive;
+  res[kUniqueHeaders] = server[kUniqueHeaders];
   DTRACE_HTTP_SERVER_REQUEST(req, socket);
 
   if (onRequestStartChannel.hasSubscribers) {
@@ -927,13 +951,13 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
     if (isRequestsLimitSet &&
       (server.maxRequestsPerSocket < state.requestsCount)) {
       handled = true;
-
+      server.emit('dropRequest', req, socket);
       res.writeHead(503);
       res.end();
     } else if (req.headers.expect !== undefined) {
       handled = true;
 
-      if (RegExpPrototypeTest(continueExpression, req.headers.expect)) {
+      if (RegExpPrototypeExec(continueExpression, req.headers.expect) !== null) {
         res._expect_continue = true;
 
         if (server.listenerCount('checkContinue') > 0) {

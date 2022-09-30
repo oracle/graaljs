@@ -24,6 +24,8 @@ const {
     NODE_PERFORMANCE_ENTRY_TYPE_GC,
     NODE_PERFORMANCE_ENTRY_TYPE_HTTP2,
     NODE_PERFORMANCE_ENTRY_TYPE_HTTP,
+    NODE_PERFORMANCE_ENTRY_TYPE_NET,
+    NODE_PERFORMANCE_ENTRY_TYPE_DNS,
   },
   installGarbageCollectionTracking,
   observerCounts,
@@ -53,6 +55,7 @@ const {
   customInspectSymbol: kInspect,
   deprecate,
   lazyDOMException,
+  kEmptyObject,
 } = require('internal/util');
 
 const {
@@ -60,6 +63,8 @@ const {
 } = require('timers');
 
 const { inspect } = require('util');
+
+const { now } = require('internal/perf/utils');
 
 const kBuffer = Symbol('kBuffer');
 const kCallback = Symbol('kCallback');
@@ -79,21 +84,26 @@ const kTypeMultiple = 1;
 let gcTrackingInstalled = false;
 
 const kSupportedEntryTypes = ObjectFreeze([
+  'dns',
   'function',
   'gc',
   'http',
   'http2',
   'mark',
   'measure',
+  'net',
+  'resource',
 ]);
 
 // Performance timeline entry Buffers
 let markEntryBuffer = [];
 let measureEntryBuffer = [];
+let resourceTimingBuffer = [];
 const kMaxPerformanceEntryBuffers = 1e6;
 const kClearPerformanceEntryBuffers = ObjectFreeze({
   'mark': 'performance.clearMarks',
   'measure': 'performance.clearMeasures',
+  'resource': 'performance.clearResourceTimings',
 });
 const kWarnedEntryTypes = new SafeMap();
 
@@ -118,6 +128,8 @@ function getObserverType(type) {
     case 'gc': return NODE_PERFORMANCE_ENTRY_TYPE_GC;
     case 'http2': return NODE_PERFORMANCE_ENTRY_TYPE_HTTP2;
     case 'http': return NODE_PERFORMANCE_ENTRY_TYPE_HTTP;
+    case 'net': return NODE_PERFORMANCE_ENTRY_TYPE_NET;
+    case 'dns': return NODE_PERFORMANCE_ENTRY_TYPE_DNS;
   }
 }
 
@@ -204,7 +216,7 @@ class PerformanceObserver {
     this[kCallback] = callback;
   }
 
-  observe(options = {}) {
+  observe(options = kEmptyObject) {
     validateObject(options, 'options');
     const {
       entryTypes,
@@ -337,6 +349,8 @@ function enqueue(entry) {
     buffer = markEntryBuffer;
   } else if (entryType === 'measure') {
     buffer = measureEntryBuffer;
+  } else if (entryType === 'resource') {
+    buffer = resourceTimingBuffer;
   } else {
     return;
   }
@@ -362,16 +376,19 @@ function enqueue(entry) {
 }
 
 function clearEntriesFromBuffer(type, name) {
-  if (type !== 'mark' && type !== 'measure') {
+  if (type !== 'mark' && type !== 'measure' && type !== 'resource') {
     return;
   }
 
   if (type === 'mark') {
     markEntryBuffer = name === undefined ?
       [] : ArrayPrototypeFilter(markEntryBuffer, (entry) => entry.name !== name);
-  } else {
+  } else if (type === 'measure') {
     measureEntryBuffer = name === undefined ?
       [] : ArrayPrototypeFilter(measureEntryBuffer, (entry) => entry.name !== name);
+  } else {
+    resourceTimingBuffer = name === undefined ?
+      [] : ArrayPrototypeFilter(resourceTimingBuffer, (entry) => entry.name !== name);
   }
 }
 
@@ -381,11 +398,13 @@ function filterBufferMapByNameAndType(name, type) {
     bufferList = markEntryBuffer;
   } else if (type === 'measure') {
     bufferList = measureEntryBuffer;
+  } else if (type === 'resource') {
+    bufferList = resourceTimingBuffer;
   } else if (type !== undefined) {
     // Unrecognized type;
     return [];
   } else {
-    bufferList = ArrayPrototypeConcat(markEntryBuffer, measureEntryBuffer);
+    bufferList = ArrayPrototypeConcat(markEntryBuffer, measureEntryBuffer, resourceTimingBuffer);
   }
   if (name !== undefined) {
     bufferList = ArrayPrototypeFilter(bufferList, (buffer) => buffer.name === name);
@@ -443,6 +462,30 @@ function hasObserver(type) {
   return observerCounts[observerType] > 0;
 }
 
+
+function startPerf(target, key, context = {}) {
+  target[key] = {
+    ...context,
+    startTime: now(),
+  };
+}
+
+function stopPerf(target, key, context = {}) {
+  const ctx = target[key];
+  if (!ctx) {
+    return;
+  }
+  const startTime = ctx.startTime;
+  const entry = new InternalPerformanceEntry(
+    ctx.name,
+    ctx.type,
+    startTime,
+    now() - startTime,
+    { ...ctx.detail, ...context.detail },
+  );
+  enqueue(entry);
+}
+
 module.exports = {
   PerformanceObserver,
   PerformanceObserverEntryList,
@@ -450,4 +493,6 @@ module.exports = {
   hasObserver,
   clearEntriesFromBuffer,
   filterBufferMapByNameAndType,
+  startPerf,
+  stopPerf,
 };

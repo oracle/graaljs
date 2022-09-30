@@ -3,6 +3,7 @@
 const { redirectStatus } = require('./constants')
 const { performance } = require('perf_hooks')
 const { isBlobLike, toUSVString, ReadableStreamFrom } = require('../core/util')
+const assert = require('assert')
 
 let File
 
@@ -141,6 +142,49 @@ function isValidHTTPToken (characters) {
       return false
     }
   }
+  return true
+}
+
+// https://fetch.spec.whatwg.org/#header-name
+// https://github.com/chromium/chromium/blob/b3d37e6f94f87d59e44662d6078f6a12de845d17/net/http/http_util.cc#L342
+function isValidHeaderName (potentialValue) {
+  if (potentialValue.length === 0) {
+    return false
+  }
+
+  for (const char of potentialValue) {
+    if (!isValidHTTPToken(char)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+/**
+ * @see https://fetch.spec.whatwg.org/#header-value
+ * @param {string} potentialValue
+ */
+function isValidHeaderValue (potentialValue) {
+  // - Has no leading or trailing HTTP tab or space bytes.
+  // - Contains no 0x00 (NUL) or HTTP newline bytes.
+  if (
+    potentialValue.startsWith('\t') ||
+    potentialValue.startsWith(' ') ||
+    potentialValue.endsWith('\t') ||
+    potentialValue.endsWith(' ')
+  ) {
+    return false
+  }
+
+  if (
+    potentialValue.includes('\0') ||
+    potentialValue.includes('\r') ||
+    potentialValue.includes('\n')
+  ) {
+    return false
+  }
+
   return true
 }
 
@@ -316,12 +360,6 @@ function sameOrigin (A, B) {
   return false
 }
 
-// https://fetch.spec.whatwg.org/#corb-check
-function CORBCheck (request, response) {
-  // TODO
-  return 'allowed'
-}
-
 function createDeferredPromise () {
   let res
   let rej
@@ -348,6 +386,55 @@ function normalizeMethod (method) {
     ? method.toUpperCase()
     : method
 }
+
+// https://infra.spec.whatwg.org/#serialize-a-javascript-value-to-a-json-string
+function serializeJavascriptValueToJSONString (value) {
+  // 1. Let result be ? Call(%JSON.stringify%, undefined, « value »).
+  const result = JSON.stringify(value)
+
+  // 2. If result is undefined, then throw a TypeError.
+  if (result === undefined) {
+    throw new TypeError('Value is not JSON serializable')
+  }
+
+  // 3. Assert: result is a string.
+  assert(typeof result === 'string')
+
+  // 4. Return result.
+  return result
+}
+
+// https://tc39.es/ecma262/#sec-%25iteratorprototype%25-object
+const esIteratorPrototype = Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]()))
+
+// https://webidl.spec.whatwg.org/#dfn-iterator-prototype-object
+function makeIterator (iterator, name) {
+  const i = {
+    next () {
+      if (Object.getPrototypeOf(this) !== i) {
+        throw new TypeError(
+          `'next' called on an object that does not implement interface ${name} Iterator.`
+        )
+      }
+
+      return iterator.next()
+    },
+    // The class string of an iterator prototype object for a given interface is the
+    // result of concatenating the identifier of the interface and the string " Iterator".
+    [Symbol.toStringTag]: `${name} Iterator`
+  }
+
+  // The [[Prototype]] internal slot of an iterator prototype object must be %IteratorPrototype%.
+  Object.setPrototypeOf(i, esIteratorPrototype)
+  // esIteratorPrototype needs to be the prototype of i
+  // which is the prototype of an empty object. Yes, it's confusing.
+  return Object.setPrototypeOf({}, i)
+}
+
+/**
+ * Fetch supports node >= 16.8.0, but Object.hasOwn was added in v16.9.0.
+ */
+const hasOwn = Object.hasOwn || ((dict, key) => Object.prototype.hasOwnProperty.call(dict, key))
 
 module.exports = {
   isAborted,
@@ -377,6 +464,10 @@ module.exports = {
   isFileLike,
   isValidReasonPhrase,
   sameOrigin,
-  CORBCheck,
-  normalizeMethod
+  normalizeMethod,
+  serializeJavascriptValueToJSONString,
+  makeIterator,
+  isValidHeaderName,
+  isValidHeaderValue,
+  hasOwn
 }

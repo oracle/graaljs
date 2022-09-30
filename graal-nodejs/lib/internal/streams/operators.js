@@ -1,7 +1,6 @@
 'use strict';
 
 const { AbortController } = require('internal/abort_controller');
-const { Buffer } = require('buffer');
 
 const {
   codes: {
@@ -11,7 +10,11 @@ const {
   },
   AbortError,
 } = require('internal/errors');
-const { validateInteger } = require('internal/validators');
+const {
+  validateAbortSignal,
+  validateInteger,
+  validateObject,
+} = require('internal/validators');
 const { kWeakHandler } = require('internal/event_target');
 const { finished } = require('internal/streams/end-of-stream');
 
@@ -34,9 +37,11 @@ function map(fn, options) {
     throw new ERR_INVALID_ARG_TYPE(
       'fn', ['Function', 'AsyncFunction'], fn);
   }
-
-  if (options != null && typeof options !== 'object') {
-    throw new ERR_INVALID_ARG_TYPE('options', ['Object']);
+  if (options != null) {
+    validateObject(options, 'options');
+  }
+  if (options?.signal != null) {
+    validateAbortSignal(options.signal, 'options.signal');
   }
 
   let concurrency = 1;
@@ -162,40 +167,33 @@ function map(fn, options) {
   }.call(this);
 }
 
-async function* asIndexedPairs(options) {
-  let index = 0;
-  for await (const val of this) {
-    if (options?.signal?.aborted) {
-      throw new AbortError({ cause: options.signal.reason });
-    }
-    yield [index++, val];
+function asIndexedPairs(options = undefined) {
+  if (options != null) {
+    validateObject(options, 'options');
   }
+  if (options?.signal != null) {
+    validateAbortSignal(options.signal, 'options.signal');
+  }
+
+  return async function* asIndexedPairs() {
+    let index = 0;
+    for await (const val of this) {
+      if (options?.signal?.aborted) {
+        throw new AbortError({ cause: options.signal.reason });
+      }
+      yield [index++, val];
+    }
+  }.call(this);
 }
 
-async function some(fn, options) {
-  // https://tc39.es/proposal-iterator-helpers/#sec-iteratorprototype.some
-  // Note that some does short circuit but also closes the iterator if it does
-  const ac = new AbortController();
-  if (options?.signal) {
-    if (options.signal.aborted) {
-      ac.abort();
-    }
-    options.signal.addEventListener('abort', () => ac.abort(), {
-      [kWeakHandler]: this,
-      once: true,
-    });
-  }
-  const mapped = this.map(fn, { ...options, signal: ac.signal });
-  for await (const result of mapped) {
-    if (result) {
-      ac.abort();
-      return true;
-    }
+async function some(fn, options = undefined) {
+  for await (const unused of filter.call(this, fn, options)) {
+    return true;
   }
   return false;
 }
 
-async function every(fn, options) {
+async function every(fn, options = undefined) {
   if (typeof fn !== 'function') {
     throw new ERR_INVALID_ARG_TYPE(
       'fn', ['Function', 'AsyncFunction'], fn);
@@ -204,6 +202,13 @@ async function every(fn, options) {
   return !(await some.call(this, async (...args) => {
     return !(await fn(...args));
   }, options));
+}
+
+async function find(fn, options) {
+  for await (const result of filter.call(this, fn, options)) {
+    return result;
+  }
+  return undefined;
 }
 
 async function forEach(fn, options) {
@@ -216,7 +221,7 @@ async function forEach(fn, options) {
     return kEmpty;
   }
   // eslint-disable-next-line no-unused-vars
-  for await (const unused of this.map(forEachFn, options));
+  for await (const unused of map.call(this, forEachFn, options));
 }
 
 function filter(fn, options) {
@@ -230,7 +235,7 @@ function filter(fn, options) {
     }
     return kEmpty;
   }
-  return this.map(filterFn, options);
+  return map.call(this, filterFn, options);
 }
 
 // Specific to provide better error to reduce since the argument is only
@@ -247,6 +252,13 @@ async function reduce(reducer, initialValue, options) {
     throw new ERR_INVALID_ARG_TYPE(
       'reducer', ['Function', 'AsyncFunction'], reducer);
   }
+  if (options != null) {
+    validateObject(options, 'options');
+  }
+  if (options?.signal != null) {
+    validateAbortSignal(options.signal, 'options.signal');
+  }
+
   let hasInitialValue = arguments.length > 1;
   if (options?.signal?.aborted) {
     const err = new AbortError(undefined, { cause: options.signal.reason });
@@ -284,6 +296,13 @@ async function reduce(reducer, initialValue, options) {
 }
 
 async function toArray(options) {
+  if (options != null) {
+    validateObject(options, 'options');
+  }
+  if (options?.signal != null) {
+    validateAbortSignal(options.signal, 'options.signal');
+  }
+
   const result = [];
   for await (const val of this) {
     if (options?.signal?.aborted) {
@@ -291,14 +310,11 @@ async function toArray(options) {
     }
     ArrayPrototypePush(result, val);
   }
-  if (!this.readableObjectMode) {
-    return Buffer.concat(result);
-  }
   return result;
 }
 
 function flatMap(fn, options) {
-  const values = this.map(fn, options);
+  const values = map.call(this, fn, options);
   return async function* flatMap() {
     for await (const val of values) {
       yield* val;
@@ -319,7 +335,14 @@ function toIntegerOrInfinity(number) {
   return number;
 }
 
-function drop(number, options) {
+function drop(number, options = undefined) {
+  if (options != null) {
+    validateObject(options, 'options');
+  }
+  if (options?.signal != null) {
+    validateAbortSignal(options.signal, 'options.signal');
+  }
+
   number = toIntegerOrInfinity(number);
   return async function* drop() {
     if (options?.signal?.aborted) {
@@ -336,8 +359,14 @@ function drop(number, options) {
   }.call(this);
 }
 
+function take(number, options = undefined) {
+  if (options != null) {
+    validateObject(options, 'options');
+  }
+  if (options?.signal != null) {
+    validateAbortSignal(options.signal, 'options.signal');
+  }
 
-function take(number, options) {
   number = toIntegerOrInfinity(number);
   return async function* take() {
     if (options?.signal?.aborted) {
@@ -371,4 +400,5 @@ module.exports.promiseReturningOperators = {
   reduce,
   toArray,
   some,
+  find,
 };

@@ -20,7 +20,6 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "node_buffer.h"
-#include "allocated_buffer-inl.h"
 #include "node.h"
 #include "node_blob.h"
 #include "node_errors.h"
@@ -498,12 +497,25 @@ MaybeLocal<Object> New(Environment* env,
     if (length > kMaxLength) {
       Isolate* isolate(env->isolate());
       isolate->ThrowException(ERR_BUFFER_TOO_LARGE(isolate));
+      free(data);
       return Local<Object>();
     }
   }
 
-  auto free_callback = [](char* data, void* hint) { free(data); };
-  return New(env, data, length, free_callback, nullptr);
+  EscapableHandleScope handle_scope(env->isolate());
+
+  auto free_callback = [](void* data, size_t length, void* deleter_data) {
+    free(data);
+  };
+  std::unique_ptr<BackingStore> bs =
+      v8::ArrayBuffer::NewBackingStore(data, length, free_callback, nullptr);
+
+  Local<ArrayBuffer> ab = v8::ArrayBuffer::New(env->isolate(), std::move(bs));
+
+  Local<Object> obj;
+  if (Buffer::New(env, ab, 0, length).ToLocal(&obj))
+    return handle_scope.Escape(obj);
+  return Local<Object>();
 }
 
 namespace {

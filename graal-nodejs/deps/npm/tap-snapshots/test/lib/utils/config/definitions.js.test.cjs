@@ -253,11 +253,12 @@ exports[`test/lib/utils/config/definitions.js TAP > config description for auth-
 #### \`auth-type\`
 
 * Default: "legacy"
-* Type: "legacy", "sso", "saml", or "oauth"
-* DEPRECATED: This method of SSO/SAML/OAuth is deprecated and will be removed
-  in a future version of npm in favor of web-based login.
+* Type: "legacy", "web", "sso", "saml", "oauth", or "webauthn"
 
-What authentication strategy to use with \`adduser\`/\`login\`.
+NOTE: auth-type values "sso", "saml", "oauth", and "webauthn" will be
+removed in a future version.
+
+What authentication strategy to use with \`login\`.
 `
 
 exports[`test/lib/utils/config/definitions.js TAP > config description for before 1`] = `
@@ -403,8 +404,9 @@ newlines replaced by the string "\\n". For example:
 cert="-----BEGIN CERTIFICATE-----\\nXXXX\\nXXXX\\n-----END CERTIFICATE-----"
 \`\`\`
 
-It is _not_ the path to a certificate file (and there is no "certfile"
-option).
+It is _not_ the path to a certificate file, though you can set a
+registry-scoped "certfile" path like
+"//other-registry.tld/:certfile=/path/to/cert.pem".
 `
 
 exports[`test/lib/utils/config/definitions.js TAP > config description for ci-name 1`] = `
@@ -731,8 +733,6 @@ exports[`test/lib/utils/config/definitions.js TAP > config description for globa
 
 * Default: false
 * Type: Boolean
-* DEPRECATED: \`--global\`, \`--local\` are deprecated. Use \`--location=global\`
-  instead.
 
 Operates in "global" mode, so that packages are installed into the \`prefix\`
 folder instead of the current working directory. See
@@ -1017,7 +1017,8 @@ format with newlines replaced by the string "\\n". For example:
 key="-----BEGIN PRIVATE KEY-----\\nXXXX\\nXXXX\\n-----END PRIVATE KEY-----"
 \`\`\`
 
-It is _not_ the path to a key file (and there is no "keyfile" option).
+It is _not_ the path to a key file, though you can set a registry-scoped
+"keyfile" path like "//other-registry.tld/:keyfile=/path/to/key.pem".
 `
 
 exports[`test/lib/utils/config/definitions.js TAP > config description for legacy-bundling 1`] = `
@@ -1591,7 +1592,7 @@ exports[`test/lib/utils/config/definitions.js TAP > config description for scrip
 * Type: null or String
 
 The shell to use for scripts run with the \`npm exec\`, \`npm run\` and \`npm
-init <pkg>\` commands.
+init <package-spec>\` commands.
 `
 
 exports[`test/lib/utils/config/definitions.js TAP > config description for searchexclude 1`] = `

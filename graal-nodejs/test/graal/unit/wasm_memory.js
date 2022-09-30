@@ -117,6 +117,11 @@ if (typeof WebAssembly !== 'undefined') {
         }));
         assert.strictEqual(calls, 6);
       }).timeout(5000);
+      
+      it('Buffer() should return the underlying ArrayBuffer', function() {
+        let memory = new WebAssembly.Memory({ initial: 1 });
+        assert.strictEqual(module.WasmMemory_Buffer(memory), memory.buffer);
+      });
     });
   });
 }

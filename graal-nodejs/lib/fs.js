@@ -33,13 +33,13 @@ const {
   BigIntPrototypeToString,
   MathMax,
   Number,
-  ObjectCreate,
   ObjectDefineProperties,
   ObjectDefineProperty,
   Promise,
   ReflectApply,
   RegExpPrototypeExec,
   SafeMap,
+  SafeSet,
   String,
   StringPrototypeCharCodeAt,
   StringPrototypeIndexOf,
@@ -83,7 +83,13 @@ const {
 
 const { FSReqCallback } = binding;
 const { toPathIfFileURL } = require('internal/url');
-const internalUtil = require('internal/util');
+const {
+  customPromisifyArgs: kCustomPromisifyArgsSymbol,
+  kEmptyObject,
+  promisify: {
+    custom: kCustomPromisifiedSymbol,
+  },
+} = require('internal/util');
 const {
   constants: {
     kIoMaxLength,
@@ -116,6 +122,7 @@ const {
   validateRmOptionsSync,
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
+  validatePrimitiveStringAfterArrayBufferView,
   warnOnNonPortableTemplate
 } = require('internal/fs/utils');
 const {
@@ -136,6 +143,7 @@ const {
   validateEncoding,
   validateFunction,
   validateInteger,
+  validateObject,
   validateString,
 } = require('internal/validators');
 
@@ -270,10 +278,11 @@ function exists(path, callback) {
   }
 }
 
-ObjectDefineProperty(exists, internalUtil.promisify.custom, {
-  value: (path) => {
+ObjectDefineProperty(exists, kCustomPromisifiedSymbol, {
+  __proto__: null,
+  value: function exists(path) { // eslint-disable-line func-name-matching
     return new Promise((resolve) => fs.exists(path, resolve));
-  }
+  },
 });
 
 // fs.existsSync never throws, it only returns true or false.
@@ -350,7 +359,7 @@ function readFileAfterStat(err, stats) {
 
 function checkAborted(signal, callback) {
   if (signal?.aborted) {
-    callback(new AbortError());
+    callback(new AbortError(undefined, { cause: signal?.reason }));
     return true;
   }
   return false;
@@ -590,9 +599,9 @@ function openSync(path, flags, mode) {
  * Reads file from the specified `fd` (file descriptor).
  * @param {number} fd
  * @param {Buffer | TypedArray | DataView} buffer
- * @param {number} offset
+ * @param {number} offsetOrOptions
  * @param {number} length
- * @param {number | bigint} position
+ * @param {number | bigint | null} position
  * @param {(
  *   err?: Error,
  *   bytesRead?: number,
@@ -600,30 +609,36 @@ function openSync(path, flags, mode) {
  *   ) => any} callback
  * @returns {void}
  */
-function read(fd, buffer, offset, length, position, callback) {
+function read(fd, buffer, offsetOrOptions, length, position, callback) {
   fd = getValidatedFd(fd);
 
-  if (arguments.length <= 3) {
-    // Assume fs.read(fd, options, callback)
-    let options = ObjectCreate(null);
-    if (arguments.length < 3) {
-      // This is fs.read(fd, callback)
-      // buffer will be the callback
-      callback = buffer;
+  let offset = offsetOrOptions;
+  let params = null;
+  if (arguments.length <= 4) {
+    if (arguments.length === 4) {
+      // This is fs.read(fd, buffer, options, callback)
+      validateObject(offsetOrOptions, 'options', { nullable: true });
+      callback = length;
+      params = offsetOrOptions;
+    } else if (arguments.length === 3) {
+      // This is fs.read(fd, bufferOrParams, callback)
+      if (!isArrayBufferView(buffer)) {
+        // This is fs.read(fd, params, callback)
+        params = buffer;
+        ({ buffer = Buffer.alloc(16384) } = params ?? kEmptyObject);
+      }
+      callback = offsetOrOptions;
     } else {
-      // This is fs.read(fd, {}, callback)
-      // buffer will be the options object
-      // offset is the callback
-      options = buffer;
-      callback = offset;
+      // This is fs.read(fd, callback)
+      callback = buffer;
+      buffer = Buffer.alloc(16384);
     }
 
     ({
-      buffer = Buffer.alloc(16384),
       offset = 0,
       length = buffer.byteLength - offset,
-      position = null
-    } = options);
+      position = null,
+    } = params ?? kEmptyObject);
   }
 
   validateBuffer(buffer);
@@ -666,8 +681,8 @@ function read(fd, buffer, offset, length, position, callback) {
   binding.read(fd, buffer, offset, length, position, req);
 }
 
-ObjectDefineProperty(read, internalUtil.customPromisifyArgs,
-                     { value: ['bytesRead', 'buffer'], enumerable: false });
+ObjectDefineProperty(read, kCustomPromisifyArgsSymbol,
+                     { __proto__: null, value: ['bytesRead', 'buffer'], enumerable: false });
 
 /**
  * Synchronously reads the file from the
@@ -677,7 +692,7 @@ ObjectDefineProperty(read, internalUtil.customPromisifyArgs,
  * @param {{
  *   offset?: number;
  *   length?: number;
- *   position?: number | bigint;
+ *   position?: number | bigint | null;
  *   }} [offset]
  * @returns {number}
  */
@@ -688,12 +703,12 @@ function readSync(fd, buffer, offset, length, position) {
 
   if (arguments.length <= 3) {
     // Assume fs.readSync(fd, buffer, options)
-    const options = offset || ObjectCreate(null);
+    const options = offset || kEmptyObject;
 
     ({
       offset = 0,
       length = buffer.byteLength - offset,
-      position = null
+      position = null,
     } = options);
   }
 
@@ -733,7 +748,7 @@ function readSync(fd, buffer, offset, length, position) {
  * and writes to an array of `ArrayBufferView`s.
  * @param {number} fd
  * @param {ArrayBufferView[]} buffers
- * @param {number} [position]
+ * @param {number | null} [position]
  * @param {(
  *   err?: Error,
  *   bytesRead?: number,
@@ -759,8 +774,8 @@ function readv(fd, buffers, position, callback) {
   return binding.readBuffers(fd, buffers, position, req);
 }
 
-ObjectDefineProperty(readv, internalUtil.customPromisifyArgs,
-                     { value: ['bytesRead', 'buffers'], enumerable: false });
+ObjectDefineProperty(readv, kCustomPromisifyArgsSymbol,
+                     { __proto__: null, value: ['bytesRead', 'buffers'], enumerable: false });
 
 /**
  * Synchronously reads file from the
@@ -768,7 +783,7 @@ ObjectDefineProperty(readv, internalUtil.customPromisifyArgs,
  * of `ArrayBufferView`s.
  * @param {number} fd
  * @param {ArrayBufferView[]} buffers
- * @param {number} [position]
+ * @param {number | null} [position]
  * @returns {number}
  */
 function readvSync(fd, buffers, position) {
@@ -789,9 +804,9 @@ function readvSync(fd, buffers, position) {
  * Writes `buffer` to the specified `fd` (file descriptor).
  * @param {number} fd
  * @param {Buffer | TypedArray | DataView | string | object} buffer
- * @param {number} [offset]
+ * @param {number | object} [offsetOrOptions]
  * @param {number} [length]
- * @param {number} [position]
+ * @param {number | null} [position]
  * @param {(
  *   err?: Error,
  *   bytesWritten?: number;
@@ -799,7 +814,7 @@ function readvSync(fd, buffers, position) {
  *   ) => any} callback
  * @returns {void}
  */
-function write(fd, buffer, offset, length, position, callback) {
+function write(fd, buffer, offsetOrOptions, length, position, callback) {
   function wrapper(err, written) {
     // Retain a reference to buffer so that it can't be GC'ed too soon.
     callback(err, written || 0, buffer);
@@ -807,8 +822,18 @@ function write(fd, buffer, offset, length, position, callback) {
 
   fd = getValidatedFd(fd);
 
+  let offset = offsetOrOptions;
   if (isArrayBufferView(buffer)) {
     callback = maybeCallback(callback || position || length || offset);
+
+    if (typeof offset === 'object') {
+      ({
+        offset = 0,
+        length = buffer.byteLength - offset,
+        position = null,
+      } = offsetOrOptions ?? kEmptyObject);
+    }
+
     if (offset == null || typeof offset === 'function') {
       offset = 0;
     } else {
@@ -846,24 +871,35 @@ function write(fd, buffer, offset, length, position, callback) {
   return binding.writeString(fd, str, offset, length, req);
 }
 
-ObjectDefineProperty(write, internalUtil.customPromisifyArgs,
-                     { value: ['bytesWritten', 'buffer'], enumerable: false });
+ObjectDefineProperty(write, kCustomPromisifyArgsSymbol,
+                     { __proto__: null, value: ['bytesWritten', 'buffer'], enumerable: false });
 
 /**
  * Synchronously writes `buffer` to the
  * specified `fd` (file descriptor).
  * @param {number} fd
- * @param {Buffer | TypedArray | DataView | string | object} buffer
- * @param {number} [offset]
- * @param {number} [length]
- * @param {number} [position]
+ * @param {Buffer | TypedArray | DataView | string} buffer
+ * @param {{
+ *   offset?: number;
+ *   length?: number;
+ *   position?: number | null;
+ *   }} [offsetOrOptions]
  * @returns {number}
  */
-function writeSync(fd, buffer, offset, length, position) {
+function writeSync(fd, buffer, offsetOrOptions, length, position) {
   fd = getValidatedFd(fd);
   const ctx = {};
   let result;
+
+  let offset = offsetOrOptions;
   if (isArrayBufferView(buffer)) {
+    if (typeof offset === 'object') {
+      ({
+        offset = 0,
+        length = buffer.byteLength - offset,
+        position = null,
+      } = offsetOrOptions ?? kEmptyObject);
+    }
     if (position === undefined)
       position = null;
     if (offset == null) {
@@ -877,7 +913,7 @@ function writeSync(fd, buffer, offset, length, position) {
     result = binding.writeBuffer(fd, buffer, offset, length, position,
                                  undefined, ctx);
   } else {
-    validateStringAfterArrayBufferView(buffer, 'buffer');
+    validatePrimitiveStringAfterArrayBufferView(buffer, 'buffer');
     validateEncoding(buffer, length);
 
     if (offset === undefined)
@@ -894,7 +930,7 @@ function writeSync(fd, buffer, offset, length, position) {
  * specified `fd` (file descriptor).
  * @param {number} fd
  * @param {ArrayBufferView[]} buffers
- * @param {number} [position]
+ * @param {number | null} [position]
  * @param {(
  *   err?: Error,
  *   bytesWritten?: number,
@@ -925,7 +961,8 @@ function writev(fd, buffers, position, callback) {
   return binding.writeBuffers(fd, buffers, position, req);
 }
 
-ObjectDefineProperty(writev, internalUtil.customPromisifyArgs, {
+ObjectDefineProperty(writev, kCustomPromisifyArgsSymbol, {
+  __proto__: null,
   value: ['bytesWritten', 'buffer'],
   enumerable: false
 });
@@ -935,7 +972,7 @@ ObjectDefineProperty(writev, internalUtil.customPromisifyArgs, {
  * to the specified `fd` (file descriptor).
  * @param {number} fd
  * @param {ArrayBufferView[]} buffers
- * @param {number} [position]
+ * @param {number | null} [position]
  * @returns {number}
  */
 function writevSync(fd, buffers, position) {
@@ -1367,7 +1404,7 @@ function mkdirSync(path, options) {
  */
 function readdir(path, options, callback) {
   callback = makeCallback(typeof options === 'function' ? options : callback);
-  options = getOptions(options, {});
+  options = getOptions(options);
   path = getValidatedPath(path);
 
   const req = new FSReqCallback();
@@ -1396,7 +1433,7 @@ function readdir(path, options, callback) {
  * @returns {string | Buffer[] | Dirent[]}
  */
 function readdirSync(path, options) {
-  options = getOptions(options, {});
+  options = getOptions(options);
   path = getValidatedPath(path);
   const ctx = { path };
   const result = binding.readdir(pathModule.toNamespacedPath(path),
@@ -1420,7 +1457,7 @@ function readdirSync(path, options) {
 function fstat(fd, options = { bigint: false }, callback) {
   if (typeof options === 'function') {
     callback = options;
-    options = {};
+    options = kEmptyObject;
   }
   fd = getValidatedFd(fd);
   callback = makeStatsCallback(callback);
@@ -1444,7 +1481,7 @@ function fstat(fd, options = { bigint: false }, callback) {
 function lstat(path, options = { bigint: false }, callback) {
   if (typeof options === 'function') {
     callback = options;
-    options = {};
+    options = kEmptyObject;
   }
   callback = makeStatsCallback(callback);
   path = getValidatedPath(path);
@@ -1467,7 +1504,7 @@ function lstat(path, options = { bigint: false }, callback) {
 function stat(path, options = { bigint: false }, callback) {
   if (typeof options === 'function') {
     callback = options;
-    options = {};
+    options = kEmptyObject;
   }
   callback = makeStatsCallback(callback);
   path = getValidatedPath(path);
@@ -1565,7 +1602,7 @@ function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
  */
 function readlink(path, options, callback) {
   callback = makeCallback(typeof options === 'function' ? options : callback);
-  options = getOptions(options, {});
+  options = getOptions(options);
   path = getValidatedPath(path, 'oldPath');
   const req = new FSReqCallback();
   req.oncomplete = callback;
@@ -1580,7 +1617,7 @@ function readlink(path, options, callback) {
  * @returns {string | Buffer}
  */
 function readlinkSync(path, options) {
-  options = getOptions(options, {});
+  options = getOptions(options);
   path = getValidatedPath(path, 'oldPath');
   const ctx = { path };
   const result = binding.readlink(pathModule.toNamespacedPath(path),
@@ -1593,7 +1630,7 @@ function readlinkSync(path, options) {
  * Creates the link called `path` pointing to `target`.
  * @param {string | Buffer | URL} target
  * @param {string | Buffer | URL} path
- * @param {string} [type_]
+ * @param {string | null} [type_]
  * @param {(err?: Error) => any} callback_
  * @returns {void}
  */
@@ -1646,7 +1683,7 @@ function symlink(target, path, type_, callback_) {
  * pointing to `target`.
  * @param {string | Buffer | URL} target
  * @param {string | Buffer | URL} path
- * @param {string} [type]
+ * @param {string | null} [type]
  * @returns {void}
  */
 function symlinkSync(target, path, type) {
@@ -2067,7 +2104,7 @@ function lutimesSync(path, atime, mtime) {
 
 function writeAll(fd, isUserFd, buffer, offset, length, signal, callback) {
   if (signal?.aborted) {
-    const abortError = new AbortError();
+    const abortError = new AbortError(undefined, { cause: signal?.reason });
     if (isUserFd) {
       callback(abortError);
     } else {
@@ -2251,7 +2288,7 @@ function watch(filename, options, listener) {
   if (typeof options === 'function') {
     listener = options;
   }
-  options = getOptions(options, {});
+  options = getOptions(options);
 
   // Don't make changes directly on options object
   options = copyObject(options);
@@ -2414,8 +2451,6 @@ if (isWindows) {
   };
 }
 
-const emptyObj = ObjectCreate(null);
-
 /**
  * Returns the resolved pathname.
  * @param {string | Buffer | URL} p
@@ -2423,7 +2458,7 @@ const emptyObj = ObjectCreate(null);
  * @returns {string | Buffer}
  */
 function realpathSync(p, options) {
-  options = getOptions(options, emptyObj);
+  options = getOptions(options);
   p = toPathIfFileURL(p);
   if (typeof p !== 'string') {
     p += '';
@@ -2437,8 +2472,8 @@ function realpathSync(p, options) {
     return maybeCachedResult;
   }
 
-  const seenLinks = ObjectCreate(null);
-  const knownHard = ObjectCreate(null);
+  const seenLinks = new SafeMap();
+  const knownHard = new SafeSet();
   const original = p;
 
   // Current character position in p
@@ -2459,7 +2494,7 @@ function realpathSync(p, options) {
     const ctx = { path: base };
     binding.lstat(pathModule.toNamespacedPath(base), false, undefined, ctx);
     handleErrorFromBinding(ctx);
-    knownHard[base] = true;
+    knownHard.add(base);
   }
 
   // Walk down the path, swapping out linked path parts for their real
@@ -2481,7 +2516,7 @@ function realpathSync(p, options) {
     }
 
     // Continue if not a symlink, break if a pipe/socket
-    if (knownHard[base] || cache?.get(base) === base) {
+    if (knownHard.has(base) || cache?.get(base) === base) {
       if (isFileType(binding.statValues, S_IFIFO) ||
           isFileType(binding.statValues, S_IFSOCK)) {
         break;
@@ -2503,7 +2538,7 @@ function realpathSync(p, options) {
       handleErrorFromBinding(ctx);
 
       if (!isFileType(stats, S_IFLNK)) {
-        knownHard[base] = true;
+        knownHard.add(base);
         cache?.set(base, base);
         continue;
       }
@@ -2516,8 +2551,8 @@ function realpathSync(p, options) {
         const dev = BigIntPrototypeToString(stats[0], 32);
         const ino = BigIntPrototypeToString(stats[7], 32);
         id = `${dev}:${ino}`;
-        if (seenLinks[id]) {
-          linkTarget = seenLinks[id];
+        if (seenLinks.has(id)) {
+          linkTarget = seenLinks.get(id);
         }
       }
       if (linkTarget === null) {
@@ -2530,7 +2565,7 @@ function realpathSync(p, options) {
       resolvedLink = pathModule.resolve(previous, linkTarget);
 
       cache?.set(base, resolvedLink);
-      if (!isWindows) seenLinks[id] = linkTarget;
+      if (!isWindows) seenLinks.set(id, linkTarget);
     }
 
     // Resolve the link, then start over
@@ -2541,11 +2576,11 @@ function realpathSync(p, options) {
     pos = current.length;
 
     // On windows, check that the root exists. On unix there is no need.
-    if (isWindows && !knownHard[base]) {
+    if (isWindows && !knownHard.has(base)) {
       const ctx = { path: base };
       binding.lstat(pathModule.toNamespacedPath(base), false, undefined, ctx);
       handleErrorFromBinding(ctx);
-      knownHard[base] = true;
+      knownHard.add(base);
     }
   }
 
@@ -2560,7 +2595,7 @@ function realpathSync(p, options) {
  * @returns {string | Buffer}
  */
 realpathSync.native = (path, options) => {
-  options = getOptions(options, {});
+  options = getOptions(options);
   path = getValidatedPath(path);
   const ctx = { path };
   const result = binding.realpath(path, options.encoding, undefined, ctx);
@@ -2581,7 +2616,7 @@ realpathSync.native = (path, options) => {
  */
 function realpath(p, options, callback) {
   callback = typeof options === 'function' ? options : maybeCallback(callback);
-  options = getOptions(options, {});
+  options = getOptions(options);
   p = toPathIfFileURL(p);
 
   if (typeof p !== 'string') {
@@ -2590,8 +2625,8 @@ function realpath(p, options, callback) {
   validatePath(p);
   p = pathModule.resolve(p);
 
-  const seenLinks = ObjectCreate(null);
-  const knownHard = ObjectCreate(null);
+  const seenLinks = new SafeMap();
+  const knownHard = new SafeSet();
 
   // Current character position in p
   let pos;
@@ -2606,10 +2641,10 @@ function realpath(p, options, callback) {
   pos = current.length;
 
   // On windows, check that the root exists. On unix there is no need.
-  if (isWindows && !knownHard[base]) {
+  if (isWindows && !knownHard.has(base)) {
     fs.lstat(base, (err, stats) => {
       if (err) return callback(err);
-      knownHard[base] = true;
+      knownHard.add(base);
       LOOP();
     });
   } else {
@@ -2639,7 +2674,7 @@ function realpath(p, options, callback) {
     }
 
     // Continue if not a symlink, break if a pipe/socket
-    if (knownHard[base]) {
+    if (knownHard.has(base)) {
       if (isFileType(binding.statValues, S_IFIFO) ||
           isFileType(binding.statValues, S_IFSOCK)) {
         return callback(null, encodeRealpathResult(p, options));
@@ -2655,7 +2690,7 @@ function realpath(p, options, callback) {
 
     // If not a symlink, skip to the next path part
     if (!stats.isSymbolicLink()) {
-      knownHard[base] = true;
+      knownHard.add(base);
       return process.nextTick(LOOP);
     }
 
@@ -2667,15 +2702,15 @@ function realpath(p, options, callback) {
       const dev = BigIntPrototypeToString(stats.dev, 32);
       const ino = BigIntPrototypeToString(stats.ino, 32);
       id = `${dev}:${ino}`;
-      if (seenLinks[id]) {
-        return gotTarget(null, seenLinks[id]);
+      if (seenLinks.has(id)) {
+        return gotTarget(null, seenLinks.get(id));
       }
     }
     fs.stat(base, (err) => {
       if (err) return callback(err);
 
       fs.readlink(base, (err, target) => {
-        if (!isWindows) seenLinks[id] = target;
+        if (!isWindows) seenLinks.set(id, target);
         gotTarget(err, target);
       });
     });
@@ -2694,10 +2729,10 @@ function realpath(p, options, callback) {
     pos = current.length;
 
     // On windows, check that the root exists. On unix there is no need.
-    if (isWindows && !knownHard[base]) {
+    if (isWindows && !knownHard.has(base)) {
       fs.lstat(base, (err) => {
         if (err) return callback(err);
-        knownHard[base] = true;
+        knownHard.add(base);
         LOOP();
       });
     } else {
@@ -2719,7 +2754,7 @@ function realpath(p, options, callback) {
  */
 realpath.native = (path, options, callback) => {
   callback = makeCallback(callback || options);
-  options = getOptions(options, {});
+  options = getOptions(options);
   path = getValidatedPath(path);
   const req = new FSReqCallback();
   req.oncomplete = callback;
@@ -2738,7 +2773,7 @@ realpath.native = (path, options, callback) => {
  */
 function mkdtemp(prefix, options, callback) {
   callback = makeCallback(typeof options === 'function' ? options : callback);
-  options = getOptions(options, {});
+  options = getOptions(options);
 
   validateString(prefix, 'prefix');
   nullCheck(prefix, 'prefix');
@@ -2755,7 +2790,7 @@ function mkdtemp(prefix, options, callback) {
  * @returns {string}
  */
 function mkdtempSync(prefix, options) {
-  options = getOptions(options, {});
+  options = getOptions(options);
 
   validateString(prefix, 'prefix');
   nullCheck(prefix, 'prefix');
@@ -2865,7 +2900,7 @@ function lazyLoadStreams() {
 
 /**
  * Creates a readable stream with a default `highWaterMark`
- * of 64 kb.
+ * of 64 KiB.
  * @param {string | Buffer | URL} path
  * @param {string | {
  *   flags?: string;
@@ -2877,7 +2912,7 @@ function lazyLoadStreams() {
  *   start: number;
  *   end?: number;
  *   highWaterMark?: number;
- *   fs?: Object | null;
+ *   fs?: object | null;
  *   }} [options]
  * @returns {ReadStream}
  */
@@ -2897,7 +2932,7 @@ function createReadStream(path, options) {
  *   autoClose?: boolean;
  *   emitClose?: boolean;
  *   start: number;
- *   fs?: Object | null;
+ *   fs?: object | null;
  *   }} [options]
  * @returns {WriteStream}
  */
@@ -3041,16 +3076,18 @@ module.exports = fs = {
 };
 
 ObjectDefineProperties(fs, {
-  F_OK: { enumerable: true, value: F_OK || 0 },
-  R_OK: { enumerable: true, value: R_OK || 0 },
-  W_OK: { enumerable: true, value: W_OK || 0 },
-  X_OK: { enumerable: true, value: X_OK || 0 },
+  F_OK: { __proto__: null, enumerable: true, value: F_OK || 0 },
+  R_OK: { __proto__: null, enumerable: true, value: R_OK || 0 },
+  W_OK: { __proto__: null, enumerable: true, value: W_OK || 0 },
+  X_OK: { __proto__: null, enumerable: true, value: X_OK || 0 },
   constants: {
+    __proto__: null,
     configurable: false,
     enumerable: true,
     value: constants
   },
   promises: {
+    __proto__: null,
     configurable: true,
     enumerable: true,
     get() {

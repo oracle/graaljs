@@ -240,6 +240,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
@@ -796,6 +797,10 @@ public final class GraalJSAccess {
 
     public boolean valueIsModuleNamespaceObject(Object object) {
         return JSModuleNamespace.isJSModuleNamespace(object);
+    }
+
+    public boolean valueIsWasmMemoryObject(Object object) {
+        return (object instanceof JSWebAssemblyMemoryObject);
     }
 
     public boolean valueEquals(Object left, Object right) {
