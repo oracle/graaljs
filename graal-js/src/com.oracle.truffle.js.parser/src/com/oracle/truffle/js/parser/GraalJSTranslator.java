@@ -3648,8 +3648,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (context.isOptionDisableWith()) {
             throw Errors.createSyntaxError("with statement is disabled.");
         }
-        // Store with object in synthetic block environment that can be captured by closures.
-        Environment withParentEnv = lc.getCurrentFunction().hasClosures() ? new BlockEnvironment(environment, factory, context) : environment;
+        // Store with object in synthetic block environment that can be captured by closures/eval.
+        FunctionNode function = lc.getCurrentFunction();
+        Environment withParentEnv = (function.hasClosures() || function.hasEval()) ? new BlockEnvironment(environment, factory, context) : environment;
         try (EnvironmentCloseable withParent = new EnvironmentCloseable(withParentEnv)) {
             JavaScriptNode withExpression = transform(withNode.getExpression());
             JavaScriptNode toObject = factory.createToObjectFromWith(context, withExpression, true);
