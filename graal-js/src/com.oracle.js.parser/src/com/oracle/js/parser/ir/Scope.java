@@ -46,9 +46,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
 
-import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Represents a binding scope (corresponds to LexicalEnvironment or VariableEnvironment).
@@ -250,7 +251,14 @@ public final class Scope {
             Symbol existingSymbol = current.getExistingSymbol(varName);
             if (existingSymbol != null && existingSymbol.isBlockScoped()) {
                 if (existingSymbol.isCatchParameter() && annexB) {
-                    continue; // B.3.5 VariableStatements in Catch Blocks
+                    // https://tc39.es/ecma262/#sec-variablestatements-in-catch-blocks
+                    /*
+                     * The Block of a Catch clause may contain var declarations that bind a name
+                     * that is also bound by the CatchParameter. At runtime, such bindings are
+                     * instantiated in the VariableDeclarationEnvironment. They do not shadow the
+                     * same-named bindings introduced by the CatchParameter.
+                     */
+                    continue;
                 }
                 return true;
             }
