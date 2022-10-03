@@ -1226,6 +1226,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode prepareArguments() {
         VarRef argumentsVar = environment.findLocalVar(Strings.ARGUMENTS);
+        if (JSFrameUtil.hasTemporalDeadZone(argumentsVar.getFrameSlot()) && !JSFrameUtil.isArguments(argumentsVar.getFrameSlot())) {
+            // Not the special arguments binding but an ordinary local variable named 'arguments'.
+            return factory.createEmpty();
+        }
         boolean unmappedArgumentsObject = currentFunction().isStrictMode() || !currentFunction().hasSimpleParameterList();
         JavaScriptNode argumentsObject = factory.createArgumentsObjectNode(context, unmappedArgumentsObject, currentFunction().getLeadingArgumentCount());
         if (!unmappedArgumentsObject) {
@@ -1428,8 +1432,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (symbol.isVarRedeclaredHere()) {
                 // redeclaration of parameter binding; initial value is copied from outer scope.
                 assert blockScope.isFunctionBodyScope();
-                JavaScriptNode outerVar = environment.findBlockScopedVar(symbol.getNameTS()).createReadNode();
-                blockWithInit.add(findScopeVar(symbol.getNameTS(), true).createWriteNode(outerVar));
+                VarRef outerVarRef = environment.findBlockScopedVar(symbol.getNameTS());
+                VarRef innerVarRef = findScopeVar(symbol.getNameTS(), true);
+                JavaScriptNode outerVar = outerVarRef.createReadNode();
+                blockWithInit.add(innerVarRef.createWriteNode(outerVar));
             }
         }
 

@@ -2603,8 +2603,18 @@ public class Parser extends AbstractParser {
                             (varNode.isHoistableDeclaration() ? Symbol.IS_HOISTABLE_DECLARATION : 0) |
                             (varScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0);
             // if the var name appears in a non-simple parameter list, we need to copy its value.
-            if (function.hasParameterExpressions() && function.getParameterBlock().getScope().hasSymbol(name)) {
-                symbolFlags |= Symbol.IS_VAR_REDECLARED_HERE;
+            if (function.hasParameterExpressions()) {
+                if (function.getParameterScope().hasSymbol(name)) {
+                    symbolFlags |= Symbol.IS_VAR_REDECLARED_HERE;
+                } else if (!varNode.isHoistableDeclaration() && !function.isArrow() && isArguments(varNode.getName())) {
+                    // `var arguments` implies an implicit arguments binding in the parameter scope
+                    // that is copied over to the var scope, except for hoisted var declarations.
+                    symbolFlags |= Symbol.IS_VAR_REDECLARED_HERE;
+                }
+            } else if (!varNode.isHoistableDeclaration() && !function.isArrow() && isArguments(varNode.getName())) {
+                // `var arguments;` refers to the arguments object in a normal function context.
+                // A top-level `function arguments() {}` replaces the arguments object, though.
+                symbolFlags |= Symbol.IS_ARGUMENTS;
             }
             varScope.putSymbol(new Symbol(varNode.getName().getNameTS(), symbolFlags));
 

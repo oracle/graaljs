@@ -540,8 +540,9 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      */
     private void putFunctionSymbolIfAbsent(String bindingName, TruffleString bindingNameTS, int symbolFlags) {
         if (hasParameterExpressions()) {
+            // if arguments is used (or eval() in parameters), it must be defined in parameter scope
             Scope parameterScope = getParameterScope();
-            if (!parameterScope.hasSymbol(bindingName) && !bodyScope.hasSymbol(bindingName)) {
+            if (!parameterScope.hasSymbol(bindingName) && ((symbolFlags & Symbol.IS_ARGUMENTS) != 0 || !bodyScope.hasSymbol(bindingName))) {
                 parameterScope.putSymbol(new Symbol(bindingNameTS, Symbol.IS_LET | symbolFlags | Symbol.HAS_BEEN_DECLARED));
             }
         } else {
