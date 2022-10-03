@@ -186,13 +186,15 @@ import com.oracle.truffle.api.strings.TruffleString;
 @SuppressWarnings("fallthrough")
 public class Parser extends AbstractParser {
     /** The arguments variable name. */
-    static final TruffleString ARGUMENTS_NAME = ParserStrings.constant("arguments");
+    static final String ARGUMENTS_NAME = "arguments";
+    static final TruffleString ARGUMENTS_NAME_TS = ParserStrings.constant(ARGUMENTS_NAME);
     /** The eval function variable name. */
     private static final String EVAL_NAME = "eval";
     private static final TruffleString CONSTRUCTOR_NAME = ParserStrings.constant("constructor");
     private static final String PRIVATE_CONSTRUCTOR_NAME = "#constructor";
     private static final String PROTO_NAME = "__proto__";
-    static final TruffleString NEW_TARGET_NAME = ParserStrings.constant("new.target");
+    static final String NEW_TARGET_NAME = "new.target";
+    static final TruffleString NEW_TARGET_NAME_TS = ParserStrings.constant(NEW_TARGET_NAME);
     private static final TruffleString IMPORT_META_NAME = ParserStrings.constant("import.meta");
     private static final String PROTOTYPE_NAME = "prototype";
     /** Function.prototype.apply method name. */
@@ -980,11 +982,15 @@ public class Parser extends AbstractParser {
     }
 
     static boolean isArguments(final TruffleString name) {
+        return ARGUMENTS_NAME_TS.equals(name);
+    }
+
+    static boolean isArguments(final String name) {
         return ARGUMENTS_NAME.equals(name);
     }
 
     static boolean isArguments(final IdentNode ident) {
-        return isArguments(ident.getNameTS());
+        return isArguments(ident.getName());
     }
 
     /**
@@ -2355,7 +2361,7 @@ public class Parser extends AbstractParser {
 
     private static boolean isValidStrictIdent(final IdentNode ident, final boolean bindingIdentifier) {
         if (bindingIdentifier) {
-            if (EVAL_NAME.equals(ident.getName()) || ARGUMENTS_NAME.equals(ident.getNameTS())) {
+            if (EVAL_NAME.equals(ident.getName()) || ARGUMENTS_NAME.equals(ident.getName())) {
                 return false;
             }
         }
@@ -7383,7 +7389,7 @@ public class Parser extends AbstractParser {
         if (!fn.isProgram()) {
             fn.setFlag(FunctionNode.USES_NEW_TARGET);
         }
-        addIdentifierReference(NEW_TARGET_NAME.toJavaStringUncached());
+        addIdentifierReference(NEW_TARGET_NAME);
     }
 
     private static boolean markApplyArgumentsCall(final ParserContext lc, List<Expression> arguments) {

@@ -483,8 +483,8 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         if (hasParameterExpressions()) {
             parent = getParameterScope();
             if (needsArguments()) {
-                assert !parent.hasSymbol(Parser.ARGUMENTS_NAME.toJavaStringUncached());
-                parent.putSymbol(new Symbol(stringIntern.apply(Parser.ARGUMENTS_NAME), Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
+                assert !parent.hasSymbol(Parser.ARGUMENTS_NAME);
+                parent.putSymbol(new Symbol(stringIntern.apply(Parser.ARGUMENTS_NAME_TS), Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
             }
             parameters = List.of();
         } else {
@@ -538,15 +538,15 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /**
      * Add a function-level binding if it is not shadowed by a parameter or var declaration.
      */
-    private void putFunctionSymbolIfAbsent(TruffleString bindingName, int symbolFlags) {
+    private void putFunctionSymbolIfAbsent(String bindingName, TruffleString bindingNameTS, int symbolFlags) {
         if (hasParameterExpressions()) {
             Scope parameterScope = getParameterScope();
-            if (!parameterScope.hasSymbol(bindingName.toJavaStringUncached()) && !bodyScope.hasSymbol(bindingName.toJavaStringUncached())) {
-                parameterScope.putSymbol(new Symbol(bindingName, Symbol.IS_LET | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            if (!parameterScope.hasSymbol(bindingName) && !bodyScope.hasSymbol(bindingName)) {
+                parameterScope.putSymbol(new Symbol(bindingNameTS, Symbol.IS_LET | symbolFlags | Symbol.HAS_BEEN_DECLARED));
             }
         } else {
-            if (!bodyScope.hasSymbol(bindingName.toJavaStringUncached())) {
-                bodyScope.putSymbol(new Symbol(bindingName, Symbol.IS_VAR | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            if (!bodyScope.hasSymbol(bindingName)) {
+                bodyScope.putSymbol(new Symbol(bindingNameTS, Symbol.IS_VAR | symbolFlags | Symbol.HAS_BEEN_DECLARED));
             }
         }
     }
@@ -559,21 +559,21 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             return;
         }
         if (needsArguments()) {
-            putFunctionSymbolIfAbsent(stringIntern.apply(Parser.ARGUMENTS_NAME), Symbol.IS_ARGUMENTS);
+            putFunctionSymbolIfAbsent(Parser.ARGUMENTS_NAME, stringIntern.apply(Parser.ARGUMENTS_NAME_TS), Symbol.IS_ARGUMENTS);
         }
         if (hasFunctionSelf()) {
-            putFunctionSymbolIfAbsent(getNameTS(), Symbol.IS_FUNCTION_SELF);
+            putFunctionSymbolIfAbsent(getName(), getNameTS(), Symbol.IS_FUNCTION_SELF);
         }
         if (!isArrow()) {
             boolean needsThisForEval = hasEval() || hasArrowEval();
             if (usesThis() || usesSuper() || needsThisForEval || getFlag(FunctionNode.HAS_DIRECT_SUPER) != 0) {
-                putFunctionSymbolIfAbsent(stringIntern.apply(TokenType.THIS.getNameTS()), Symbol.IS_THIS);
+                putFunctionSymbolIfAbsent(TokenType.THIS.getName(), stringIntern.apply(TokenType.THIS.getNameTS()), Symbol.IS_THIS);
             }
             if (usesSuper() || (isMethod() && needsThisForEval)) {
-                putFunctionSymbolIfAbsent(stringIntern.apply(TokenType.SUPER.getNameTS()), Symbol.IS_SUPER);
+                putFunctionSymbolIfAbsent(TokenType.SUPER.getName(), stringIntern.apply(TokenType.SUPER.getNameTS()), Symbol.IS_SUPER);
             }
             if (usesNewTarget() || needsThisForEval) {
-                putFunctionSymbolIfAbsent(stringIntern.apply(Parser.NEW_TARGET_NAME), Symbol.IS_NEW_TARGET);
+                putFunctionSymbolIfAbsent(Parser.NEW_TARGET_NAME, stringIntern.apply(Parser.NEW_TARGET_NAME_TS), Symbol.IS_NEW_TARGET);
             }
         }
         if (hasParameterExpressions()) {
