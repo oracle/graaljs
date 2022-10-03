@@ -190,7 +190,8 @@ public class Parser extends AbstractParser {
     static final TruffleString ARGUMENTS_NAME_TS = ParserStrings.constant(ARGUMENTS_NAME);
     /** The eval function variable name. */
     private static final String EVAL_NAME = "eval";
-    private static final TruffleString CONSTRUCTOR_NAME = ParserStrings.constant("constructor");
+    private static final String CONSTRUCTOR_NAME = "constructor";
+    private static final TruffleString CONSTRUCTOR_NAME_TS = ParserStrings.constant(CONSTRUCTOR_NAME);
     private static final String PRIVATE_CONSTRUCTOR_NAME = "#constructor";
     private static final String PROTO_NAME = "__proto__";
     static final String NEW_TARGET_NAME = "new.target";
@@ -1604,7 +1605,7 @@ public class Parser extends AbstractParser {
             final long propertyToken = token;
             final int propertyLine = line;
             next();
-            final int flags = CONSTRUCTOR_NAME.equals(ident) ? FunctionNode.IS_CLASS_CONSTRUCTOR : FunctionNode.IS_METHOD;
+            final int flags = CONSTRUCTOR_NAME_TS.equals(ident) ? FunctionNode.IS_CLASS_CONSTRUCTOR : FunctionNode.IS_METHOD;
             addPropertyFunctionStatement(propertyMethodFunction(identNode, propertyToken, propertyLine, false, flags, false, false));
             return true;
         }
@@ -1880,7 +1881,7 @@ public class Parser extends AbstractParser {
                     declarePrivateName(classScope, classElement);
                 }
 
-                if (!classElement.isStatic() && !classElement.isComputed() && classElement.getKeyNameTS().equals(CONSTRUCTOR_NAME)) {
+                if (!classElement.isStatic() && !classElement.isComputed() && classElement.getKeyNameTS().equals(CONSTRUCTOR_NAME_TS)) {
                     assert !classElement.isClassField();
                     if (constructor == null) {
                         if (classElement.getDecorators() != null && classElement.getDecorators().size() > 0) {
@@ -2057,13 +2058,13 @@ public class Parser extends AbstractParser {
         }
         if (className == null) {
             function.setFlag(FunctionNode.IS_ANONYMOUS);
-            function.setInternalName(lexer.stringIntern(CONSTRUCTOR_NAME));
+            function.setInternalName(lexer.stringIntern(CONSTRUCTOR_NAME_TS));
         }
 
         // currently required for all functions, including synthetic ones.
         lc.setCurrentFunctionFlag(FunctionNode.HAS_CLOSURES);
 
-        return ClassElement.createDefaultConstructor(classToken, ctorFinish, new IdentNode(identToken, ctorFinish, CONSTRUCTOR_NAME),
+        return ClassElement.createDefaultConstructor(classToken, ctorFinish, new IdentNode(identToken, ctorFinish, CONSTRUCTOR_NAME_TS),
                         createFunctionNode(function, classToken, className, classLineNumber, body));
     }
 
@@ -2084,7 +2085,7 @@ public class Parser extends AbstractParser {
                 return ClassElement.createAccessor(startToken, finish, methodDefinition.key, null, methodDefinition.functionNode, classElementDecorators, isPrivate, isStatic,
                                 methodDefinition.computed);
             } else {
-                if (!isStatic && !generator && name.equals(CONSTRUCTOR_NAME.toJavaStringUncached())) {
+                if (!isStatic && !generator && name.equals(CONSTRUCTOR_NAME)) {
                     flags |= FunctionNode.IS_CLASS_CONSTRUCTOR;
                     if (derived) {
                         flags |= FunctionNode.IS_DERIVED_CONSTRUCTOR;
@@ -2103,13 +2104,13 @@ public class Parser extends AbstractParser {
     private void verifyAllowedMethodName(Expression key, boolean isStatic, boolean computed, boolean generator, boolean accessor, boolean async) {
         if (!computed) {
             final String name = ((PropertyKey) key).getPropertyName();
-            if (!isStatic && generator && name.equals(CONSTRUCTOR_NAME.toJavaStringUncached())) {
+            if (!isStatic && generator && name.equals(CONSTRUCTOR_NAME)) {
                 throw error(AbstractParser.message(MSG_GENERATOR_CONSTRUCTOR), key.getToken());
             }
-            if (!isStatic && accessor && name.equals(CONSTRUCTOR_NAME.toJavaStringUncached())) {
+            if (!isStatic && accessor && name.equals(CONSTRUCTOR_NAME)) {
                 throw error(AbstractParser.message(MSG_ACCESSOR_CONSTRUCTOR), key.getToken());
             }
-            if (!isStatic && async && name.equals(CONSTRUCTOR_NAME.toJavaStringUncached())) {
+            if (!isStatic && async && name.equals(CONSTRUCTOR_NAME)) {
                 throw error(AbstractParser.message(MSG_ASYNC_CONSTRUCTOR), key.getToken());
             }
             if (isStatic && name.equals(PROTOTYPE_NAME)) {
@@ -2125,7 +2126,7 @@ public class Parser extends AbstractParser {
         // "constructor" or #constructor is not allowed as an instance field name
         if (!computed && propertyName instanceof PropertyKey) {
             String name = ((PropertyKey) propertyName).getPropertyName();
-            if (CONSTRUCTOR_NAME.toJavaStringUncached().equals(name) || PRIVATE_CONSTRUCTOR_NAME.equals(name)) {
+            if (CONSTRUCTOR_NAME.equals(name) || PRIVATE_CONSTRUCTOR_NAME.equals(name)) {
                 throw error(AbstractParser.message(MSG_CONSTRUCTOR_FIELD), startToken);
             }
             if (isStatic && PROTOTYPE_NAME.equals(name)) {
