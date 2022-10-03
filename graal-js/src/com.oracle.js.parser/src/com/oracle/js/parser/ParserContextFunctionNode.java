@@ -476,7 +476,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         assert hasParameterExpressions() && getParameterScope().hasSymbol(param.getName());
     }
 
-    public Scope createBodyScope(Function<TruffleString, TruffleString> stringIntern) {
+    public Scope createBodyScope() {
         assert !isScriptOrModule();
         // We only need the parameter scope if the parameter list contains expressions.
         Scope parent;

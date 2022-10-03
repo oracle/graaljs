@@ -642,7 +642,7 @@ public class Parser extends AbstractParser {
 
             assert lc.getCurrentScope() == null;
             lc.push(function);
-            final ParserContextBlockNode body = newBlock(function.createBodyScope(lexer::stringIntern));
+            final ParserContextBlockNode body = newBlock(function.createBodyScope());
             functionDeclarations = new ArrayList<>();
             try {
                 sourceElements(generator, async, 0);
@@ -2048,7 +2048,7 @@ public class Parser extends AbstractParser {
         ParserContextFunctionNode function = createParserContextFunctionNode(className, classToken, functionFlags, classLineNumber, parameters, 0);
         function.setLastToken(lastToken);
 
-        Scope scope = function.createBodyScope(lexer::stringIntern);
+        Scope scope = function.createBodyScope();
         scope.close();
         Block body = new Block(classToken, ctorFinish, Block.IS_BODY, scope, statements);
 
@@ -2158,7 +2158,7 @@ public class Parser extends AbstractParser {
         ParserContextFunctionNode function = createParserContextFunctionNode(null, fieldToken, functionFlags, lineNumber, List.of(), 0);
         function.setInternalName(lexer.stringIntern(INITIALIZER_FUNCTION_NAME));
         lc.push(function);
-        ParserContextBlockNode body = newBlock(function.createBodyScope(lexer::stringIntern));
+        ParserContextBlockNode body = newBlock(function.createBodyScope());
         Expression initializer;
         try {
             initializer = assignmentExpression(true, false, false);
@@ -5644,7 +5644,7 @@ public class Parser extends AbstractParser {
         final boolean parseBody;
         Object endParserState = null;
         // Create a new function block.
-        ParserContextBlockNode body = newBlock(functionNode.createBodyScope(lexer::stringIntern));
+        ParserContextBlockNode body = newBlock(functionNode.createBodyScope());
         try {
             final int functionId = functionNode.getId();
             parseBody = reparsedFunction == null || functionId <= reparsedFunction.getFunctionNodeId();
