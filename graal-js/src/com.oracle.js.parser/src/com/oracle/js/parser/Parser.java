@@ -2582,15 +2582,17 @@ public class Parser extends AbstractParser {
             assert existing == null || (existing.isBlockFunctionDeclaration() && varNode.isFunctionDeclaration()) : existing;
 
             if (varNode.isFunctionDeclaration() && isAnnexB()) {
-                // B.3.3 Block-Level Function Declaration hoisting
-                // B.3.3.1 Changes to FunctionDeclarationInstantiation
-                // B.3.3.2 Changes to GlobalDeclarationInstantiation
+                // Block-Level Function Declaration hoisting.
+                // https://tc39.es/ecma262/#sec-block-level-function-declarations-web-legacy-compatibility-semantics
+                // Changes to FunctionDeclarationInstantiation and GlobalDeclarationInstantiation.
                 ParserContextFunctionNode function = lc.getCurrentFunction();
                 Scope varScope = function.getBodyScope();
                 if (!function.isStrict() && scope != varScope) {
                     assert !scope.isFunctionBodyScope() && !scope.isFunctionParameterScope();
                     // If we already find a conflicting declaration, we can skip this step.
-                    if (varScope.getExistingSymbol(name) == null && !scope.getParent().isLexicallyDeclaredName(name, true, true)) {
+                    Symbol existingSymbol = varScope.getExistingSymbol(name);
+                    if ((existingSymbol == null || (!existingSymbol.isBlockScoped() && !existingSymbol.isParam())) &&
+                                    !scope.getParent().isLexicallyDeclaredName(name, true, true)) {
                         function.recordHoistableBlockFunctionDeclaration(varNode, scope);
                     }
                 }

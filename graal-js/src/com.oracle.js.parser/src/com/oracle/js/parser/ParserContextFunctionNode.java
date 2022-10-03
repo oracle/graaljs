@@ -482,10 +482,8 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         Scope parent;
         if (hasParameterExpressions()) {
             parent = getParameterScope();
-            if (needsArguments()) {
-                assert !parent.hasSymbol(Parser.ARGUMENTS_NAME);
-                parent.putSymbol(new Symbol(stringIntern.apply(Parser.ARGUMENTS_NAME_TS), Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
-            }
+            // Note: Not adding 'arguments' yet in order to simplify var redeclaration checks.
+            assert !parent.hasSymbol(Parser.ARGUMENTS_NAME) || !parent.getExistingSymbol(Parser.ARGUMENTS_NAME).isArguments();
             parameters = List.of();
         } else {
             parent = parentScope;
@@ -528,7 +526,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     private boolean needsArguments() {
         return getFlag(FunctionNode.USES_ARGUMENTS | FunctionNode.HAS_EVAL) != 0 &&
-                        getFlag(FunctionNode.DEFINES_ARGUMENTS | FunctionNode.IS_ARROW | FunctionNode.IS_CLASS_FIELD_INITIALIZER) == 0;
+                        getFlag(FunctionNode.DEFINES_ARGUMENTS | FunctionNode.IS_ARROW | FunctionNode.IS_CLASS_FIELD_INITIALIZER | FunctionNode.IS_PROGRAM) == 0;
     }
 
     private boolean hasFunctionSelf() {
@@ -539,6 +537,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * Add a function-level binding if it is not shadowed by a parameter or var declaration.
      */
     private void putFunctionSymbolIfAbsent(String bindingName, TruffleString bindingNameTS, int symbolFlags) {
+        assert !isScriptOrModule();
         if (hasParameterExpressions()) {
             // if arguments is used (or eval() in parameters), it must be defined in parameter scope
             Scope parameterScope = getParameterScope();
@@ -553,14 +552,14 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     public void finishBodyScope(Function<TruffleString, TruffleString> stringIntern) {
+        if (needsArguments()) {
+            putFunctionSymbolIfAbsent(Parser.ARGUMENTS_NAME, stringIntern.apply(Parser.ARGUMENTS_NAME_TS), Symbol.IS_ARGUMENTS);
+        }
         if (hoistableBlockFunctionDeclarations != null) {
             declareHoistedBlockFunctionDeclarations();
         }
         if (isScriptOrModule()) {
             return;
-        }
-        if (needsArguments()) {
-            putFunctionSymbolIfAbsent(Parser.ARGUMENTS_NAME, stringIntern.apply(Parser.ARGUMENTS_NAME_TS), Symbol.IS_ARGUMENTS);
         }
         if (hasFunctionSelf()) {
             putFunctionSymbolIfAbsent(getName(), getNameTS(), Symbol.IS_FUNCTION_SELF);
@@ -683,7 +682,17 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             }
             // declare var (if not already declared) and hoist the function declaration
             if (bodyScope.getExistingSymbol(varName) == null) {
-                bodyScope.putSymbol(new Symbol(functionDecl.getName().getNameTS(), Symbol.IS_VAR | (bodyScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0)));
+                int symbolFlags = Symbol.IS_VAR | (bodyScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0);
+                if (hasParameterExpressions() && getParameterScope().hasSymbol(functionDecl.getName().getName())) {
+                    /**
+                     * Since parameterNames are excluded from function hoisting, this case may only
+                     * happen for the implicit "arguments" binding. The var binding created for the
+                     * hoisted function is initialized with the value from the top-level env.
+                     */
+                    assert Parser.ARGUMENTS_NAME.equals(functionDecl.getName().getName()) : functionDecl;
+                    symbolFlags |= Symbol.IS_VAR_REDECLARED_HERE;
+                }
+                bodyScope.putSymbol(new Symbol(functionDecl.getName().getNameTS(), symbolFlags));
             }
             functionDeclScope.getExistingSymbol(varName).setHoistedBlockFunctionDeclaration();
         }
