@@ -631,8 +631,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     try {
                         remaining = getLimitNode.getValueLong(thisObj);
                     } catch (UnexpectedResultException e) {
-                        assert false : "Unreachable";
-                        throw new RuntimeException(e); // Unreachable
+                        throw Errors.shouldNotReachHere(e);
                     }
 
                     if (remaining == 0) {
@@ -825,8 +824,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 try {
                     innerAlive = getAliveNode.getValueBoolean(thisObj);
                 } catch (UnexpectedResultException e) {
-                    assert false : "Unreachable";
-                    throw new RuntimeException(e); // Unreachable
+                    throw Errors.shouldNotReachHere(e);
                 }
 
                 while (true) {
