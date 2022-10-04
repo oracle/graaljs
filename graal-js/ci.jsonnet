@@ -133,7 +133,7 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk17 + common.gate   + common.windows_jdk17  + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk17-windows-amd64'},
 
     // darwin amd64
-    graalJs + common.jdk17 + common.gate   + common.darwin         + gateTags('default')                                                 + ee + {name: 'js-gate-default-ee-jdk17-darwin-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.darwin         + gateTags('default')                                                 + ee + {name: 'js-gate-default-ee-jdk17-darwin-amd64', timelimit: '45:00'},
 
     // linux aarch64
     graalJs + common.jdk11 + common.gate   + common.linux_aarch64  + gateTags('default')                                                      + {name: 'js-gate-default-ce-jdk11-linux-aarch64'},
