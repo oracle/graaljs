@@ -283,33 +283,17 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         public final JSDynamicObject execute(VirtualFrame frame, Object promiseOrValue, T args) {
-            JSDynamicObject promise;
-            if (!JSPromise.isJSPromise(promiseOrValue) || getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) != getRealm().getPromiseConstructor()) {
-                PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
-                callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), promiseOrValue));
-                promise = promiseCapability.getPromise();
-            } else {
-                promise = (JSDynamicObject) promiseOrValue;
-            }
-
-            JSFunctionObject then = createFunction(args);
-            JSFunctionObject catchObj = closeOnAbrupt ? createIfAbruptCloseFunction(args) : createIfAbruptReturnFunction(args);
-
-            Object thisObj = getThisNode.getValue(JSFrameUtil.getFunctionObject(frame));
-            setThisNode.setValue(then, thisObj);
-            setThisNode.setValue(catchObj, thisObj);
-
-            return performPromiseThenNode.execute(promise, then, catchObj, newPromiseCapabilityNode.executeDefault());
+            return executeThis(promiseOrValue, args, getThisNode.getValue(JSFrameUtil.getFunctionObject(frame)));
         }
 
-        public JSDynamicObject executeThis(Object promiseOrValue, T args, Object thisObj) {
+        public final JSDynamicObject executeThis(Object promiseOrValue, T args, Object thisObj) {
             JSDynamicObject promise;
-            if (!JSPromise.isJSPromise(promiseOrValue) || getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) != getRealm().getPromiseConstructor()) {
+            if (JSPromise.isJSPromise(promiseOrValue) && getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) == getRealm().getPromiseConstructor()) {
+                promise = (JSDynamicObject) promiseOrValue;
+            } else {
                 PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
                 callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), promiseOrValue));
                 promise = promiseCapability.getPromise();
-            } else {
-                promise = (JSDynamicObject) promiseOrValue;
             }
 
             JSFunctionObject then = createFunction(args);
