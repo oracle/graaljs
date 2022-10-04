@@ -109,8 +109,6 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
             case return_:
                 return WrapForAsyncIteratorPrototypeBuiltinsFactory.WrapForAsyncIteratorReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
-
-        assert false : "Unreachable! Missing entries in switch?";
         return null;
     }
 

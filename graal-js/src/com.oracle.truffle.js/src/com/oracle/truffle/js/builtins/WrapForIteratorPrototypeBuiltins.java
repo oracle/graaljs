@@ -92,8 +92,6 @@ public final class WrapForIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             case return_:
                 return WrapForIteratorPrototypeBuiltinsFactory.WrapForIteratorReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
-
-        assert false : "Unreachable! Missing entries in switch?";
         return null;
     }
 
