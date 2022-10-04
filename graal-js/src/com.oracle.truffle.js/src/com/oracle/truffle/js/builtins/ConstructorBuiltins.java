@@ -262,7 +262,6 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
-import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -3180,8 +3179,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             Object wasmMemory;
             try {
                 Object createMemory = realm.getWASMMemAlloc();
-                Object memoryType = InteropArray.create(new Object[]{initialInt, maximumInt});
-                wasmMemory = memAllocLib.execute(createMemory, memoryType);
+                wasmMemory = memAllocLib.execute(createMemory, initialInt, maximumInt);
             } catch (AbstractTruffleException tex) {
                 throw Errors.createRangeError("WebAssembly.Memory(): could not allocate memory");
             } catch (InteropException ex) {
@@ -3227,8 +3225,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Table(): Argument 0 must be a table descriptor", this);
             }
-            TruffleString elementType = toStringNode.executeString(getElementNode.getValue(descriptor));
-            if (!JSWebAssemblyValueTypes.isReferenceType(elementType)) {
+            TruffleString elementKind = toStringNode.executeString(getElementNode.getValue(descriptor));
+            if (!JSWebAssemblyValueTypes.isReferenceType(elementKind)) {
                 throw Errors.createTypeError("WebAssembly.Table(): Descriptor property 'element' must be 'anyfunc' or 'externref'", this);
             }
             Object initial = getInitialNode.getValue(descriptor);
@@ -3252,22 +3250,21 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'maximum': value %d is above the upper bound %d", this, maximumInt, JSWebAssemblyTable.MAX_TABLE_SIZE);
                 }
             }
+            final JSRealm realm = getRealm();
             Object wasmValue;
             if (args.length == 0) {
-                wasmValue = JSWebAssemblyValueTypes.getDefaultValue(elementType);
+                wasmValue = JSWebAssemblyValueTypes.getDefaultValue(realm, elementKind);
             } else {
-                wasmValue = toWebAssemblyValueNode.execute(args[0], elementType);
+                wasmValue = toWebAssemblyValueNode.execute(args[0], elementKind);
             }
-            JSRealm realm = getRealm();
             Object wasmTable;
             try {
                 Object createTable = realm.getWASMTableAlloc();
-                Object tableType = InteropArray.create(new Object[]{initialInt, maximumInt, elementType});
-                wasmTable = tableAllocLib.execute(createTable, tableType, wasmValue);
+                wasmTable = tableAllocLib.execute(createTable, initialInt, maximumInt, elementKind, wasmValue);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
-            return swapPrototype(JSWebAssemblyTable.create(getContext(), realm, wasmTable), newTarget);
+            return swapPrototype(JSWebAssemblyTable.create(getContext(), realm, wasmTable, elementKind), newTarget);
         }
 
         @Override
@@ -3307,23 +3304,22 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (!JSWebAssemblyValueTypes.isValueType(valueType)) {
                 throw Errors.createTypeError("WebAssembly.Global(): Descriptor property 'value' must be a WebAssembly type (i32, i64, f32, f64, anyfunc, externref)", this);
             }
+            final JSRealm realm = getRealm();
             Object webAssemblyValue;
             // According to the spec only missing values should produce a default value.
             // According to the tests also undefined should use the default value.
             if (args.length == 0 || args[0] == Undefined.instance) {
-                webAssemblyValue = JSWebAssemblyValueTypes.getDefaultValue(valueType);
+                webAssemblyValue = JSWebAssemblyValueTypes.getDefaultValue(realm, valueType);
             } else {
                 if (!getContext().getContextOptions().isWasmBigInt() && JSWebAssemblyValueTypes.isI64(valueType)) {
                     throw Errors.createTypeError("WebAssembly.Global(): Can't set the value of i64 WebAssembly.Global", this);
                 }
                 webAssemblyValue = toWebAssemblyValueNode.execute(args[0], valueType);
             }
-            JSRealm realm = getRealm();
             Object wasmGlobal;
             try {
                 Object createGlobal = realm.getWASMGlobalAlloc();
-                Object globalType = InteropArray.create(new Object[]{valueType, mutable});
-                wasmGlobal = globalAllocLib.execute(createGlobal, globalType, webAssemblyValue);
+                wasmGlobal = globalAllocLib.execute(createGlobal, valueType, mutable, webAssemblyValue);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }

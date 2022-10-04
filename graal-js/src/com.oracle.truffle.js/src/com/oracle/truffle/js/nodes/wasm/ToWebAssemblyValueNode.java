@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.wasm.WebAssemblyUndefined;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
@@ -54,7 +54,6 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Implementation of ToWebAssemblyValue() operation. See
@@ -99,21 +98,23 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
             return JSRuntime.toDouble(numberValue);
         } else if (JSWebAssemblyValueTypes.isReferenceType(type)) {
             if (value == Null.instance) {
-                return value;
+                return getRealm().getWasmRefNull();
             } else if (JSWebAssemblyValueTypes.isAnyfunc(type)) {
                 if (JSWebAssembly.isExportedFunction(value)) {
                     return JSWebAssembly.getExportedFunction((JSDynamicObject) value);
                 }
                 errorBranch.enter();
-                throw Errors.createTypeError("value is not an exported function");
+                notAnExportedFunctionError();
             } else if (JSWebAssemblyValueTypes.isExtenref(type)) {
-                if (value == Undefined.instance) {
-                    return WebAssemblyUndefined.instance;
-                }
                 return value;
             }
         }
         throw Errors.shouldNotReachHere();
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void notAnExportedFunctionError() {
+        throw Errors.createTypeError("value is not an exported function");
     }
 
     static class Uncached extends ToWebAssemblyValueNode {
@@ -136,22 +137,17 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
                 return JSRuntime.toDouble(value);
             } else if (JSWebAssemblyValueTypes.isReferenceType(type)) {
                 if (value == Null.instance) {
-                    return value;
+                    return getRealm().getWasmRefNull();
                 } else if (JSWebAssemblyValueTypes.isAnyfunc(type)) {
                     if (JSWebAssembly.isExportedFunction(value)) {
                         return JSWebAssembly.getExportedFunction((JSDynamicObject) value);
                     }
-                    throw Errors.createTypeError("value is not an exported function");
+                    ToWebAssemblyValueNode.notAnExportedFunctionError();
                 } else if (JSWebAssemblyValueTypes.isExtenref(type)) {
-                    if (value == Undefined.instance) {
-                        return WebAssemblyUndefined.instance;
-                    }
                     return value;
                 }
             }
             throw Errors.shouldNotReachHere();
         }
-
     }
-
 }

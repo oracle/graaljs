@@ -42,10 +42,10 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.wasm.WebAssemblyUndefined;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Represents the value types used in WebAssembly and provides some methods to check their string
@@ -91,7 +91,7 @@ public final class JSWebAssemblyValueTypes {
         return isAnyfunc(type) || isExtenref(type);
     }
 
-    public static Object getDefaultValue(TruffleString type) {
+    public static Object getDefaultValue(JSRealm realm, TruffleString type) {
         if (isI32(type)) {
             return 0;
         } else if (isI64(type)) {
@@ -101,9 +101,9 @@ public final class JSWebAssemblyValueTypes {
         } else if (isF64(type)) {
             return 0d;
         } else if (isAnyfunc(type)) {
-            return Null.instance;
+            return realm.getWasmRefNull();
         } else if (isExtenref(type)) {
-            return WebAssemblyUndefined.instance;
+            return Undefined.instance;
         } else {
             throw Errors.shouldNotReachHere();
         }

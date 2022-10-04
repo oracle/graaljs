@@ -2285,7 +2285,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1273705.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-08-10"
   }, {
@@ -2838,7 +2838,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-803788.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-8059.js",
@@ -2882,7 +2882,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-817380.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-819869.js",
@@ -3174,7 +3174,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-964607.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-08-10"
   }, {
@@ -3266,7 +3266,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-v8-9106.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/resizablearraybuffer-growablesharedarraybuffer.js",

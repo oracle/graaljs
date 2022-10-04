@@ -75,7 +75,6 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -190,7 +189,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     value = JSWebAssemblyMemory.create(context, realm, externval);
                 } else {
                     assert Strings.TABLE.equals(externtype);
-                    value = JSWebAssemblyTable.create(context, realm, externval);
+                    TruffleString type = asTString(exportInterop.readMember(exportInfo, "type"));
+                    value = JSWebAssemblyTable.create(context, realm, externval, type);
                 }
 
                 JSObject.set(exports, name, value);
@@ -343,8 +343,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         Object webAssemblyValue = ToWebAssemblyValueNode.getUncached().execute(value, valueType);
                         try {
                             Object createGlobal = realm.getWASMGlobalAlloc();
-                            Object globalType = InteropArray.create(new Object[]{valueType, false});
-                            wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, globalType, webAssemblyValue);
+                            wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, valueType, false, webAssemblyValue);
                         } catch (InteropException ex) {
                             throw Errors.shouldNotReachHere(ex);
                         }

@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -60,7 +59,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTableObject;
@@ -116,7 +114,6 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Child ToWebAssemblyValueNode toWebAssemblyValueNode;
         private final BranchProfile errorBranch = BranchProfile.create();
         @Child InteropLibrary tableGrowLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-        @Child InteropLibrary tableTypeLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyTableGrowNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -130,23 +127,20 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Table.grow(): Receiver is not a WebAssembly.Table");
             }
+            JSWebAssemblyTableObject table = (JSWebAssemblyTableObject) thiz;
             int deltaInt = toDeltaNode.executeInt(delta);
-            Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
-            final TruffleString tableType;
-            try {
-                Object tableTypeFn = getRealm().getWASMTableType();
-                tableType = asTString(tableTypeLib.execute(tableTypeFn, wasmTable));
-            } catch (InteropException ex) {
-                throw Errors.shouldNotReachHere(ex);
-            }
+            Object wasmTable = table.getWASMTable();
+            TruffleString elementKind = table.getElementKind();
+
+            final JSRealm realm = getRealm();
             final Object wasmValue;
             if (args.length == 0) {
-                wasmValue = JSWebAssemblyValueTypes.getDefaultValue(tableType);
+                wasmValue = JSWebAssemblyValueTypes.getDefaultValue(realm, elementKind);
             } else {
-                wasmValue = toWebAssemblyValueNode.execute(args[0], tableType);
+                wasmValue = toWebAssemblyValueNode.execute(args[0], elementKind);
             }
             try {
-                Object growFn = getRealm().getWASMTableGrow();
+                Object growFn = realm.getWASMTableGrow();
                 return tableGrowLib.execute(growFn, wasmTable, deltaInt, wasmValue);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
@@ -197,7 +191,6 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Child ToWebAssemblyValueNode toWebAssemblyValueNode;
         private final BranchProfile errorBranch = BranchProfile.create();
         @Child InteropLibrary tableSetLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-        @Child InteropLibrary tableTypeLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyTableSetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -211,23 +204,20 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Table.set(): Receiver is not a WebAssembly.Table");
             }
+            JSWebAssemblyTableObject table = (JSWebAssemblyTableObject) thiz;
             int indexInt = toIndexNode.executeInt(index);
-            Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
-            final TruffleString tableType;
-            try {
-                Object tableTypeFn = getRealm().getWASMTableType();
-                tableType = asTString(tableTypeLib.execute(tableTypeFn, wasmTable));
-            } catch (InteropException ex) {
-                throw Errors.shouldNotReachHere(ex);
-            }
+            Object wasmTable = table.getWASMTable();
+            TruffleString elementKind = table.getElementKind();
+            final JSRealm realm = getRealm();
+
             final Object wasmValue;
             if (args.length == 0) {
-                wasmValue = JSWebAssemblyValueTypes.getDefaultValue(tableType);
+                wasmValue = JSWebAssemblyValueTypes.getDefaultValue(realm, elementKind);
             } else {
-                wasmValue = toWebAssemblyValueNode.execute(args[0], tableType);
+                wasmValue = toWebAssemblyValueNode.execute(args[0], elementKind);
             }
             try {
-                Object setFn = getRealm().getWASMTableWrite();
+                Object setFn = realm.getWASMTableWrite();
                 tableSetLib.execute(setFn, wasmTable, indexInt, wasmValue);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
@@ -238,12 +228,5 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             return Undefined.instance;
         }
 
-    }
-
-    private static TruffleString asTString(Object string) throws UnsupportedMessageException {
-        if (string instanceof String) {
-            return Strings.fromJavaString((String) string);
-        }
-        return InteropLibrary.getUncached(string).asTruffleString(string);
     }
 }
