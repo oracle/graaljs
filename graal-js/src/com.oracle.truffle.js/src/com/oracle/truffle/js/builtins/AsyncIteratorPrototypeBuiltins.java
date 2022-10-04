@@ -50,11 +50,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorMethodNode;
+import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorMethodWithCallableNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
@@ -68,7 +69,6 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.AsyncHandlerRootNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
@@ -455,27 +455,26 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorMapNode extends JSBuiltinNode {
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    protected abstract static class AsyncIteratorMapNode extends IteratorMethodWithCallableNode {
         @Child private AsyncIteratorAwaitNode<AsyncIteratorMapArgs> awaitNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
 
         public AsyncIteratorMapNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorMap, AsyncIteratorMapNode::createMapFunctionImpl);
         }
 
         @Specialization(guards = "isCallable(mapper)")
         public JSDynamicObject map(Object thisObj, Object mapper) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
             return createAsyncIteratorHelperNode.execute(record, awaitNode.createFunction(new AsyncIteratorMapArgs(record, mapper)));
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
+        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -554,27 +553,26 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorFilterNode extends JSBuiltinNode {
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    protected abstract static class AsyncIteratorFilterNode extends IteratorMethodWithCallableNode {
         @Child private AsyncIteratorAwaitNode<AsyncIteratorFilterArgs> awaitNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
 
         public AsyncIteratorFilterNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorFilter, AsyncIteratorFilterNode::createFilterFunctionImpl);
         }
 
         @Specialization(guards = "isCallable(filterer)")
         public JSDynamicObject filter(Object thisObj, Object filterer) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
             return createAsyncIteratorHelperNode.execute(record, awaitNode.createFunction(new AsyncIteratorFilterArgs(record, filterer)));
         }
 
         @Specialization(guards = "!isCallable(filterer)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object filterer) {
+        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object filterer) {
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -691,10 +689,9 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorTakeNode extends JSBuiltinNode {
+    protected abstract static class AsyncIteratorTakeNode extends IteratorMethodNode {
         private static final HiddenKey REMAINING_ID = new HiddenKey("remaining");
 
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorTakeArgs> awaitNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
         @Child private JSToNumberNode toNumberNode;
@@ -706,7 +703,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorTakeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorTake, AsyncIteratorTakeNode::createTakeFunctionImpl);
             toNumberNode = JSToNumberNode.create();
@@ -716,7 +712,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization
         public JSDynamicObject take(Object thisObj, Object limit) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (Double.isNaN(numLimit.doubleValue())) {
@@ -822,10 +818,9 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorDropNode extends JSBuiltinNode {
+    protected abstract static class AsyncIteratorDropNode extends IteratorMethodNode {
         private static final HiddenKey REMAINING_ID = new HiddenKey("remaining");
 
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorAwaitNode.AsyncIteratorArgs> awaitNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
         @Child private JSToNumberNode toNumberNode;
@@ -837,7 +832,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorDropNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorDrop, AsyncIteratorDropNode::createDropFunctionImpl);
             toNumberNode = JSToNumberNode.create();
@@ -847,7 +841,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization
         public JSDynamicObject drop(Object thisObj, Object limit) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (Double.isNaN(numLimit.doubleValue())) {
@@ -992,23 +986,21 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorIndexedNode extends JSBuiltinNode {
+    protected abstract static class AsyncIteratorIndexedNode extends IteratorMethodNode {
         private static final HiddenKey INDEX_ID = new HiddenKey("index");
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorIndexedArgs> awaitNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
 
         public AsyncIteratorIndexedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorIndexed, AsyncIteratorIndexedNode::createIndexedFunctionImpl);
         }
 
         @Specialization
         public JSDynamicObject indexed(Object thisObj) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
             return createAsyncIteratorHelperNode.execute(record, awaitNode.createFunction(new AsyncIteratorIndexedArgs(record, 0)));
         }
 
@@ -1090,29 +1082,28 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorFlatMapNode extends JSBuiltinNode {
+    protected abstract static class AsyncIteratorFlatMapNode extends IteratorMethodWithCallableNode {
         public static HiddenKey CURRENT_ID = new HiddenKey("current");
 
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorFlatMapArgs> awaitNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
 
         public AsyncIteratorFlatMapNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorFlatMap, AsyncIteratorFlatMapNode::createFlatMapFunctionImpl);
         }
 
         @Specialization(guards = "isCallable(mapper)")
         public JSDynamicObject flatMap(Object thisObj, Object mapper) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
             return createAsyncIteratorHelperNode.execute(record, awaitNode.createFunction(new AsyncIteratorFlatMapArgs(record, mapper)));
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
+        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1282,8 +1273,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorReduceNode extends JSBuiltinNode {
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    protected abstract static class AsyncIteratorReduceNode extends IteratorMethodWithCallableNode {
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorReduceArgs> initialAwaitNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorReduceArgs> awaitNode;
@@ -1291,7 +1281,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public AsyncIteratorReduceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorReduce, AsyncIteratorReduceNode::createReduceFunctionImpl);
             initialAwaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorReduceInitial, AsyncIteratorReduceNode::createReduceInitialFunctionImpl);
@@ -1299,7 +1288,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization(guards = "isCallable(reducer)")
         public JSDynamicObject reduce(Object thisObj, Object reducer, Object[] args) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
             Object value = iteratorNextNode.execute(record);
 
             Object initialValue = JSRuntime.getArgOrUndefined(args, 0);
@@ -1311,7 +1300,8 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(reducer)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object reducer, @SuppressWarnings("unused") Object[] args) {
+        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object reducer, @SuppressWarnings("unused") Object[] args) {
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1448,22 +1438,20 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorToArrayNode extends JSBuiltinNode {
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    protected abstract static class AsyncIteratorToArrayNode extends IteratorMethodNode {
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorToArrayArgs> awaitNode;
 
         public AsyncIteratorToArrayNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorToArray, AsyncIteratorToArrayNode::createToArrayFunctionImpl);
         }
 
         @Specialization
         public JSDynamicObject toArray(Object thisObj) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
             Object value = iteratorNextNode.execute(record);
 
             return awaitNode.executeThis(value, new AsyncIteratorToArrayArgs(record, new SimpleArrayList<>()), thisObj);
@@ -1528,29 +1516,28 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorForEachNode extends JSBuiltinNode {
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    protected abstract static class AsyncIteratorForEachNode extends IteratorMethodWithCallableNode {
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorForEachArgs> awaitNode;
 
         public AsyncIteratorForEachNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorForEach, AsyncIteratorForEachNode::createForEachFunctionImpl);
         }
 
         @Specialization(guards = "isCallable(fn)")
         public JSDynamicObject forEach(Object thisObj, Object fn) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
             Object value = iteratorNextNode.execute(record);
 
             return awaitNode.executeThis(value, new AsyncIteratorForEachArgs(record, fn), thisObj);
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
+        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1632,29 +1619,28 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorSomeNode extends JSBuiltinNode {
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    protected abstract static class AsyncIteratorSomeNode extends IteratorMethodWithCallableNode {
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorSomeArgs> awaitNode;
 
         public AsyncIteratorSomeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorSome, AsyncIteratorSomeNode::createSomeFunctionImpl);
         }
 
         @Specialization(guards = "isCallable(fn)")
         public JSDynamicObject some(Object thisObj, Object fn) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
             Object value = iteratorNextNode.execute(record);
 
             return awaitNode.executeThis(value, new AsyncIteratorSomeArgs(record, fn), thisObj);
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
+        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1743,29 +1729,28 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorEveryNode extends JSBuiltinNode {
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    protected abstract static class AsyncIteratorEveryNode extends IteratorMethodWithCallableNode {
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorEveryArgs> awaitNode;
 
         public AsyncIteratorEveryNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorEvery, AsyncIteratorEveryNode::createEveryFunctionImpl);
         }
 
         @Specialization(guards = "isCallable(fn)")
         public JSDynamicObject every(Object thisObj, Object fn) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
             Object value = iteratorNextNode.execute(record);
 
             return awaitNode.executeThis(value, new AsyncIteratorEveryArgs(record, fn), thisObj);
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
+        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1854,29 +1839,28 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorFindNode extends JSBuiltinNode {
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    protected abstract static class AsyncIteratorFindNode extends IteratorMethodWithCallableNode {
         @Child private IteratorNextNode iteratorNextNode;
         @Child private AsyncIteratorAwaitNode<AsyncIteratorFindArgs> awaitNode;
 
         public AsyncIteratorFindNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
             awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorFind, AsyncIteratorFindNode::createFindFunctionImpl);
         }
 
         @Specialization(guards = "isCallable(fn)")
         public JSDynamicObject find(Object thisObj, Object fn) {
-            IteratorRecord record = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord record = getIteratorDirect(thisObj);
             Object value = iteratorNextNode.execute(record);
 
             return awaitNode.executeThis(value, new AsyncIteratorFindArgs(record, fn), thisObj);
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
+        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 

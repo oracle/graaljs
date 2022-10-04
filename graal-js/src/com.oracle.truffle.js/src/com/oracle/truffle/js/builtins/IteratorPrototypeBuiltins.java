@@ -177,8 +177,40 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    private abstract static class IteratorBaseNode<T extends IteratorArgs> extends JSBuiltinNode {
+    protected abstract static class IteratorMethodNode extends JSBuiltinNode {
         @Child private GetIteratorDirectNode getIteratorDirectNode;
+
+        protected IteratorMethodNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.getIteratorDirectNode = GetIteratorDirectNode.create(context);
+        }
+
+        protected final IteratorRecord getIteratorDirect(Object thisObj) {
+            return getIteratorDirectNode.execute(thisObj);
+        }
+    }
+
+    protected abstract static class IteratorMethodWithCallableNode extends IteratorMethodNode {
+
+        @Child private IsCallableNode isCallableNode;
+
+        protected IteratorMethodWithCallableNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.isCallableNode = IsCallableNode.create();
+        }
+
+        public final boolean isCallable(Object fn) {
+            return isCallableNode.executeBoolean(fn);
+        }
+
+        protected final void requireCallable(Object fn) {
+            if (!isCallableNode.executeBoolean(fn)) {
+                throw Errors.createTypeErrorNotAFunction(fn);
+            }
+        }
+    }
+
+    private abstract static class IteratorBaseNode<T extends IteratorArgs> extends IteratorMethodWithCallableNode {
         @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
         @Child private PropertySetNode setArgsNode;
         @Child private PropertySetNode setNextNode;
@@ -190,11 +222,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         IteratorBaseNode(JSContext context, JSBuiltin builtin, BuiltinFunctionKey nextKey, Function<JSContext, JSFunctionData> nextFactory) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
-            createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
-            setArgsNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
-            setNextNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.NEXT_ID, context);
-            setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
+            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
+            this.setArgsNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
+            this.setNextNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.NEXT_ID, context);
+            this.setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.nextKey = nextKey;
             this.nextFactory = nextFactory;
         }
@@ -333,10 +364,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
         }
 
-        protected IteratorRecord getIteratorDirect(Object thisObj) {
-            return getIteratorDirectNode.execute(thisObj);
-        }
-
         protected JSDynamicObject createIterator(@SuppressWarnings("unused") Object thisObj, T args) {
             JSDynamicObject iterator = createObjectNode.execute(getIteratorHelperPrototype());
             setArgsNode.setValue(iterator, args);
@@ -376,6 +403,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "!isCallable(mapper)")
         public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -443,7 +471,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isCallable(filterer)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object filterer) {
+        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object filterer) {
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -782,6 +811,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "!isCallable(mapper)")
         public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -877,9 +907,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     }
 
-    protected abstract static class IteratorWithCallableNode extends JSBuiltinNode {
-        @Child protected IsCallableNode isCallableNode;
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    protected abstract static class IteratorConsumerWithCallableNode extends IteratorMethodWithCallableNode {
         @Child private JSFunctionCallNode callNode;
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private IteratorNextNode iteratorNextNode;
@@ -892,11 +920,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         protected static final Object CONTINUE = new Object();
 
-        protected IteratorWithCallableNode(JSContext context, JSBuiltin builtin) {
+        protected IteratorConsumerWithCallableNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            isCallableNode = IsCallableNode.create();
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             callNode = JSFunctionCallNode.createCall();
 
             iteratorNextNode = IteratorNextNode.create();
@@ -931,9 +957,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
         }
 
-        @Specialization(guards = "isCallableNode.executeBoolean(fn)")
+        @Specialization(guards = "isCallable(fn)")
         protected Object compatible(Object thisObj, Object fn) {
-            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord iterated = getIteratorDirect(thisObj);
             prepare();
             while (true) {
                 Object next = iteratorNextNode.execute(iterated);
@@ -956,48 +982,43 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
         }
 
-        @Specialization(guards = "!isCallableNode.executeBoolean(fn)")
+        @Specialization(guards = "!isCallable(fn)")
         protected void incompatible(Object thisObj, Object fn) {
-            getIteratorDirectNode.execute(thisObj);
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorNotAFunction(fn);
         }
     }
 
-    protected abstract static class IteratorToArrayNode extends JSBuiltinNode {
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    protected abstract static class IteratorToArrayNode extends IteratorMethodNode {
         @Child private com.oracle.truffle.js.nodes.access.IteratorToArrayNode toArrayNode;
 
         protected IteratorToArrayNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
             toArrayNode = com.oracle.truffle.js.nodes.access.IteratorToArrayNode.create(context, null);
         }
 
         @Specialization
         protected Object toArray(VirtualFrame frame, Object thisObj) {
-            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord iterated = getIteratorDirect(thisObj);
             return toArrayNode.execute(frame, iterated);
         }
     }
 
-    public abstract static class IteratorToAsyncNode extends JSBuiltinNode {
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    public abstract static class IteratorToAsyncNode extends IteratorMethodNode {
 
         protected IteratorToAsyncNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
         }
 
         @Specialization
         protected JSDynamicObject toAsync(Object thisObj) {
-            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord iterated = getIteratorDirect(thisObj);
             return JSWrapForAsyncIterator.create(getContext(), getRealm(), iterated);
         }
     }
 
-    public abstract static class IteratorForEachNode extends IteratorWithCallableNode {
+    public abstract static class IteratorForEachNode extends IteratorConsumerWithCallableNode {
         protected IteratorForEachNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -1009,7 +1030,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    public abstract static class IteratorSomeNode extends IteratorWithCallableNode {
+    public abstract static class IteratorSomeNode extends IteratorConsumerWithCallableNode {
         @Child private JSToBooleanNode toBooleanNode;
 
         protected IteratorSomeNode(JSContext context, JSBuiltin builtin) {
@@ -1032,7 +1053,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    public abstract static class IteratorEveryNode extends IteratorWithCallableNode {
+    public abstract static class IteratorEveryNode extends IteratorConsumerWithCallableNode {
         @Child private JSToBooleanNode toBooleanNode;
 
         protected IteratorEveryNode(JSContext context, JSBuiltin builtin) {
@@ -1055,7 +1076,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    public abstract static class IteratorFindNode extends IteratorWithCallableNode {
+    public abstract static class IteratorFindNode extends IteratorConsumerWithCallableNode {
         @Child private JSToBooleanNode toBooleanNode;
 
         protected IteratorFindNode(JSContext context, JSBuiltin builtin) {
@@ -1073,9 +1094,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    public abstract static class IteratorReduceNode extends JSBuiltinNode {
-        @Child protected IsCallableNode isCallableNode;
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
+    public abstract static class IteratorReduceNode extends IteratorMethodWithCallableNode {
         @Child private IteratorStepNode iteratorStepNode;
         @Child private IteratorValueNode iteratorValueNode;
         @Child private JSFunctionCallNode callNode;
@@ -1084,8 +1103,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorReduceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getIteratorDirectNode = GetIteratorDirectNode.create(context);
-            isCallableNode = IsCallableNode.create();
             iteratorStepNode = IteratorStepNode.create();
             iteratorValueNode = IteratorValueNode.create();
             callNode = JSFunctionCallNode.createCall();
@@ -1104,9 +1121,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
         }
 
-        @Specialization(guards = "isCallableNode.executeBoolean(reducer)")
+        @Specialization(guards = "isCallable(reducer)")
         protected Object reduce(Object thisObj, Object reducer, Object[] args) {
-            IteratorRecord iterated = getIteratorDirectNode.execute(thisObj);
+            IteratorRecord iterated = getIteratorDirect(thisObj);
 
             Object initialValue = JSRuntime.getArgOrUndefined(args, 0);
 
@@ -1132,9 +1149,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
         }
 
-        @Specialization(guards = "!isCallableNode.executeBoolean(reducer)")
+        @Specialization(guards = "!isCallable(reducer)")
         protected void incompatible(Object thisObj, Object reducer, @SuppressWarnings("unused") Object[] args) {
-            getIteratorDirectNode.execute(thisObj);
+            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorNotAFunction(reducer);
         }
     }
