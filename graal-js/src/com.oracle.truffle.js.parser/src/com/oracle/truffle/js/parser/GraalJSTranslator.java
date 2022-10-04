@@ -1226,10 +1226,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode prepareArguments() {
         VarRef argumentsVar = environment.findLocalVar(Strings.ARGUMENTS);
-        if (JSFrameUtil.hasTemporalDeadZone(argumentsVar.getFrameSlot()) && !JSFrameUtil.isArguments(argumentsVar.getFrameSlot())) {
-            // Not the special arguments binding but an ordinary local variable named 'arguments'.
-            return factory.createEmpty();
-        }
         boolean unmappedArgumentsObject = currentFunction().isStrictMode() || !currentFunction().hasSimpleParameterList();
         JavaScriptNode argumentsObject = factory.createArgumentsObjectNode(context, unmappedArgumentsObject, currentFunction().getLeadingArgumentCount());
         if (!unmappedArgumentsObject) {

@@ -365,10 +365,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     private boolean addParameterBinding(IdentNode bindingIdentifier) {
-        if (Parser.isArguments(bindingIdentifier)) {
-            setFlag(FunctionNode.DEFINES_ARGUMENTS);
-        }
-
         // Parameters have a temporal dead zone if the parameter list contains expressions.
         boolean tdz = hasParameterExpressions();
         Symbol paramSymbol = new Symbol(bindingIdentifier.getNameTS(), Symbol.IS_LET | Symbol.IS_PARAM | (!tdz ? Symbol.HAS_BEEN_DECLARED : 0));
@@ -538,15 +534,23 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      */
     private void putFunctionSymbolIfAbsent(String bindingName, TruffleString bindingNameTS, int symbolFlags) {
         assert !isScriptOrModule();
+        boolean isArguments = (symbolFlags & Symbol.IS_ARGUMENTS) != 0;
         if (hasParameterExpressions()) {
             // if arguments is used (or eval() in parameters), it must be defined in parameter scope
             Scope parameterScope = getParameterScope();
-            if (!parameterScope.hasSymbol(bindingName) && ((symbolFlags & Symbol.IS_ARGUMENTS) != 0 || !bodyScope.hasSymbol(bindingName))) {
+            if (!parameterScope.hasSymbol(bindingName) && (isArguments || !bodyScope.hasSymbol(bindingName))) {
                 parameterScope.putSymbol(new Symbol(bindingNameTS, Symbol.IS_LET | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            } else if (isArguments) {
+                // Formal parameter overrides implicit arguments.
+                setFlag(FunctionNode.DEFINES_ARGUMENTS);
             }
         } else {
-            if (!bodyScope.hasSymbol(bindingName)) {
+            Symbol existingSymbol = bodyScope.getExistingSymbol(bindingName);
+            if (existingSymbol == null) {
                 bodyScope.putSymbol(new Symbol(bindingNameTS, Symbol.IS_VAR | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            } else if (isArguments && (existingSymbol.isBlockScoped() || existingSymbol.isParam() || existingSymbol.isHoistableDeclaration())) {
+                // Declaration overrides implicit arguments.
+                setFlag(FunctionNode.DEFINES_ARGUMENTS);
             }
         }
     }
