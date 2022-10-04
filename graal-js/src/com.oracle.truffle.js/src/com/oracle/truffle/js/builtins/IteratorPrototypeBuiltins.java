@@ -259,15 +259,15 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             public IteratorImplNode(JSContext context) {
                 this.context = context;
 
-                setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
-                getArgsNode = PropertyGetNode.createGetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
-                hasArgsNode = HasHiddenKeyCacheNode.create(IteratorHelperPrototypeBuiltins.ARGS_ID);
-                createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-                iteratorNextNode = IteratorNextNode.create();
-                iteratorValueNode = IteratorValueNode.create();
-                getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
-                isObjectNode = IsJSObjectNode.create();
-                toBooleanNode = JSToBooleanNode.create();
+                this.setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
+                this.getArgsNode = PropertyGetNode.createGetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
+                this.hasArgsNode = HasHiddenKeyCacheNode.create(IteratorHelperPrototypeBuiltins.ARGS_ID);
+                this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
+                this.iteratorNextNode = IteratorNextNode.create();
+                this.iteratorValueNode = IteratorValueNode.create();
+                this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
+                this.isObjectNode = IsJSObjectNode.create();
+                this.toBooleanNode = JSToBooleanNode.create();
             }
 
             protected abstract Object execute(VirtualFrame frame, Object thisObj);
@@ -414,8 +414,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             protected IteratorMapNextNode(JSContext context) {
                 super(context);
 
-                iteratorCloseNode = IteratorCloseNode.create(context);
-                callNode = JSFunctionCallNode.createCall();
+                this.iteratorCloseNode = IteratorCloseNode.create(context);
+                this.callNode = JSFunctionCallNode.createCall();
             }
 
             @Specialization
@@ -484,11 +484,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             protected IteratorFilterNextNode(JSContext context) {
                 super(context);
 
-                iteratorCloseNode = IteratorCloseNode.create(context);
-
-                callNode = JSFunctionCallNode.createCall();
-
-                toBooleanNode = JSToBooleanNode.create();
+                this.iteratorCloseNode = IteratorCloseNode.create(context);
+                this.callNode = JSFunctionCallNode.createCall();
+                this.toBooleanNode = JSToBooleanNode.create();
             }
 
             @Specialization
@@ -533,7 +531,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorIndexedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, BuiltinFunctionKey.IteratorIndexed, c -> createIteratorImplNextFunction(c, IteratorIndexedNextNode.create(c)));
 
-            setIndexNode = PropertySetNode.createSetHidden(INDEX_ID, context);
+            this.setIndexNode = PropertySetNode.createSetHidden(INDEX_ID, context);
         }
 
         @Specialization
@@ -551,8 +549,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             protected IteratorIndexedNextNode(JSContext context) {
                 super(context);
 
-                setIndexNode = PropertySetNode.createSetHidden(INDEX_ID, context);
-                getIndexNode = PropertyGetNode.createGetHidden(INDEX_ID, context);
+                this.setIndexNode = PropertySetNode.createSetHidden(INDEX_ID, context);
+                this.getIndexNode = PropertyGetNode.createGetHidden(INDEX_ID, context);
             }
 
             @Specialization(rewriteOn = RuntimeException.class)
@@ -599,9 +597,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorTakeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, BuiltinFunctionKey.IteratorTake, c -> createIteratorImplNextFunction(c, IteratorTakeNextNode.create(c)));
 
-            toNumberNode = JSToNumberNode.create();
-            toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
-            setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
+            this.toNumberNode = JSToNumberNode.create();
+            this.toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
+            this.setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
         }
 
         protected static class IteratorTakeArgs extends IteratorArgs {
@@ -645,10 +643,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             protected IteratorTakeNextNode(JSContext context) {
                 super(context);
 
-                iteratorCloseNode = IteratorCloseNode.create(context);
+                this.iteratorCloseNode = IteratorCloseNode.create(context);
 
-                getLimitNode = PropertyGetNode.createGetHidden(LIMIT_ID, context);
-                setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
+                this.getLimitNode = PropertyGetNode.createGetHidden(LIMIT_ID, context);
+                this.setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
             }
 
             @Specialization
@@ -698,9 +696,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorDropNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, BuiltinFunctionKey.IteratorDrop, c -> createIteratorImplNextFunction(c, IteratorDropNextNode.create(c)));
 
-            toNumberNode = JSToNumberNode.create();
-            toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
-            setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
+            this.toNumberNode = JSToNumberNode.create();
+            this.toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
+            this.setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
         }
 
         protected static class IteratorDropArgs extends IteratorArgs {
@@ -742,8 +740,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             protected IteratorDropNextNode(JSContext context) {
                 super(context);
 
-                getLimitNode = PropertyGetNode.createGetHidden(LIMIT_ID, context);
-                setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
+                this.getLimitNode = PropertyGetNode.createGetHidden(LIMIT_ID, context);
+                this.setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
             }
 
             @Specialization
@@ -789,7 +787,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorFlatMapNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, BuiltinFunctionKey.IteratorFlatMap, c -> createIteratorImplNextFunction(c, IteratorFlatMapNextNode.create(c)));
 
-            setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
+            this.setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
         }
 
         protected static class IteratorFlatMapArgs extends IteratorArgs {
@@ -832,18 +830,18 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             protected IteratorFlatMapNextNode(JSContext context) {
                 super(context);
 
-                iteratorCloseNode = IteratorCloseNode.create(context);
+                this.iteratorCloseNode = IteratorCloseNode.create(context);
 
-                callNode = JSFunctionCallNode.createCall();
-                getIteratorNode = GetIteratorBaseNode.create();
+                this.callNode = JSFunctionCallNode.createCall();
+                this.getIteratorNode = GetIteratorBaseNode.create();
 
-                setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
-                getAliveNode = PropertyGetNode.createGetHidden(FLATMAP_ALIVE_ID, context);
+                this.setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
+                this.getAliveNode = PropertyGetNode.createGetHidden(FLATMAP_ALIVE_ID, context);
 
-                setInnerNode = PropertySetNode.createSetHidden(FLATMAP_INNER_ID, context);
-                getInnerNode = PropertyGetNode.createGetHidden(FLATMAP_INNER_ID, context);
+                this.setInnerNode = PropertySetNode.createSetHidden(FLATMAP_INNER_ID, context);
+                this.getInnerNode = PropertyGetNode.createGetHidden(FLATMAP_INNER_ID, context);
 
-                getNextValueNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
+                this.getNextValueNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
             }
 
             @Specialization
@@ -923,13 +921,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorConsumerWithCallableNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            callNode = JSFunctionCallNode.createCall();
+            this.callNode = JSFunctionCallNode.createCall();
 
-            iteratorNextNode = IteratorNextNode.create();
-            iteratorValueNode = IteratorValueNode.create();
-            getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
-            isObjectNode = IsJSObjectNode.create();
-            toBooleanNode = JSToBooleanNode.create();
+            this.iteratorNextNode = IteratorNextNode.create();
+            this.iteratorValueNode = IteratorValueNode.create();
+            this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
+            this.isObjectNode = IsJSObjectNode.create();
+            this.toBooleanNode = JSToBooleanNode.create();
         }
 
         protected void prepare() {
@@ -995,7 +993,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorToArrayNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            toArrayNode = com.oracle.truffle.js.nodes.access.IteratorToArrayNode.create(context, null);
+            this.toArrayNode = com.oracle.truffle.js.nodes.access.IteratorToArrayNode.create(context, null);
         }
 
         @Specialization
@@ -1036,7 +1034,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorSomeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            toBooleanNode = JSToBooleanNode.create();
+            this.toBooleanNode = JSToBooleanNode.create();
         }
 
         @Override
@@ -1059,7 +1057,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorEveryNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            toBooleanNode = JSToBooleanNode.create();
+            this.toBooleanNode = JSToBooleanNode.create();
         }
 
         @Override
@@ -1082,7 +1080,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorFindNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            toBooleanNode = JSToBooleanNode.create();
+            this.toBooleanNode = JSToBooleanNode.create();
         }
 
         @Override
@@ -1103,9 +1101,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected IteratorReduceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            iteratorStepNode = IteratorStepNode.create();
-            iteratorValueNode = IteratorValueNode.create();
-            callNode = JSFunctionCallNode.createCall();
+            this.iteratorStepNode = IteratorStepNode.create();
+            this.iteratorValueNode = IteratorValueNode.create();
+            this.callNode = JSFunctionCallNode.createCall();
         }
 
         private Object callReducer(IteratorRecord iterated, Object reducer, Object accumulator, Object value) {
