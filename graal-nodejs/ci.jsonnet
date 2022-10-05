@@ -108,11 +108,9 @@ local ci = import '../ci.jsonnet';
     graalNodeJs + common.jdk17 + common.gate      + common.linux                             + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-gate-jdk17-linux-amd64'},
     graalNodeJs + common.jdk19 + common.gate      + common.linux                             + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-gate-jdk19-linux-amd64'},
     graalNodeJs + common.jdk17 + common.gate      + common.linux_aarch64                     + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-gate-jdk17-linux-aarch64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.darwin                            + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-gate-jdk17-darwin-amd64', timelimit: '55:00'},
     graalNodeJs + common.jdk17 + common.gate      + common.darwin_aarch64                    + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-gate-jdk17-darwin-aarch64'},
     graalNodeJs + common.jdk17 + common.gate      + common.windows_jdk17                     + gateTags('windows')      + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-gate-jdk17-windows-amd64'},
 
-    graalNodeJs + common.jdk17 + common.gate      + common.darwin                            + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-ce-jdk17-darwin-amd64', timelimit: '55:00'},
     graalNodeJs + common.jdk17 + common.gate      + common.darwin_aarch64                    + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-ce-jdk17-darwin-aarch64'},
     graalNodeJs + common.jdk17 + common.gate      + common.windows_jdk17                     + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-ce-jdk17-windows-amd64'},
 
@@ -139,5 +137,8 @@ local ci = import '../ci.jsonnet';
 
     // post-merges
     graalNodeJs + common.jdk17 + common.postMerge + common.linux + vm_env + build            + testNode(parallelHttp2,   part='-r0,1', max_heap='8G')                               + {name: 'nodejs-postmerge-parallel-http2-jdk17-linux-amd64'},
+
+    graalNodeJs + common.jdk17 + common.postMerge + common.darwin                            + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-postmerge-jdk17-darwin-amd64', timelimit: '55:00'},
+    graalNodeJs + common.jdk17 + common.postMerge + common.darwin                            + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-postmerge-substratevm-ce-jdk17-darwin-amd64', timelimit: '55:00'},
   ],
 }

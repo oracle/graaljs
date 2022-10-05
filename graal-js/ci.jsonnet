@@ -132,8 +132,8 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk17 + common.gate   + common.windows_jdk17  + gateTags('Test262-default')                                              + {name: 'js-gate-test262-default-jdk17-windows-amd64'},
     graalJs + common.jdk17 + common.gate   + common.windows_jdk17  + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk17-windows-amd64'},
 
-    // darwin amd64
-    graalJs + common.jdk17 + common.gate   + common.darwin         + gateTags('default')                                                 + ee + {name: 'js-gate-default-ee-jdk17-darwin-amd64', timelimit: '45:00'},
+    // darwin aarch64
+    graalJs + common.jdk17 + common.gate   + common.darwin_aarch64 + gateTags('default')                                                 + ee + {name: 'js-gate-default-ee-jdk17-darwin-aarch64'},
 
     // linux aarch64
     graalJs + common.jdk17 + common.gate   + common.linux_aarch64  + gateTags('default')                                                      + {name: 'js-gate-default-ce-jdk17-linux-aarch64'},
@@ -150,6 +150,8 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk17 + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk17-linux-amd64'},
 
     // POST-MERGE
+    graalJs + common.jdk17 + common.postMerge + common.darwin      + gateTags('default')                                                 + ee + {name: 'js-postmerge-default-ee-jdk17-darwin-amd64', timelimit: '45:00'},
+
     // PGO profiles
     graalJs + common.jdk17 + common.postMerge + common.linux       + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}     + {name: 'js-postmerge-pgo-profiles-jdk17-linux-amd64'},
 
