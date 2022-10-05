@@ -2722,7 +2722,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             TruffleString thisStr = toString(thisObj);
             TruffleString formStr = toString(form);
             Normalizer.Form useForm = null;
-            if (form == Undefined.instance || Strings.length(formStr) <= 0 || Strings.equals(stringEqualsNode, formStr, Strings.NFC)) {
+            if (form == Undefined.instance || Strings.equals(stringEqualsNode, formStr, Strings.NFC)) {
                 useForm = Normalizer.Form.NFC;
             } else if (Strings.equals(stringEqualsNode, formStr, Strings.NFD)) {
                 useForm = Normalizer.Form.NFD;
