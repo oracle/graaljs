@@ -2720,18 +2720,22 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
-            TruffleString formStr = toString(form);
             Normalizer.Form useForm = null;
-            if (form == Undefined.instance || Strings.equals(stringEqualsNode, formStr, Strings.NFC)) {
+            if (form == Undefined.instance) {
                 useForm = Normalizer.Form.NFC;
-            } else if (Strings.equals(stringEqualsNode, formStr, Strings.NFD)) {
-                useForm = Normalizer.Form.NFD;
-            } else if (Strings.equals(stringEqualsNode, formStr, Strings.NFKC)) {
-                useForm = Normalizer.Form.NFKC;
-            } else if (Strings.equals(stringEqualsNode, formStr, Strings.NFKD)) {
-                useForm = Normalizer.Form.NFKD;
             } else {
-                throw Errors.createRangeError("invalid form string");
+                TruffleString formStr = toString(form);
+                if (Strings.equals(stringEqualsNode, formStr, Strings.NFC)) {
+                    useForm = Normalizer.Form.NFC;
+                } else if (Strings.equals(stringEqualsNode, formStr, Strings.NFD)) {
+                    useForm = Normalizer.Form.NFD;
+                } else if (Strings.equals(stringEqualsNode, formStr, Strings.NFKC)) {
+                    useForm = Normalizer.Form.NFKC;
+                } else if (Strings.equals(stringEqualsNode, formStr, Strings.NFKD)) {
+                    useForm = Normalizer.Form.NFKD;
+                } else {
+                    throw Errors.createRangeError("invalid form string");
+                }
             }
             return Strings.fromJavaString(fromJavaStringNode, doNormalize(Strings.toJavaString(toJavaStringNode, thisStr), useForm));
         }
