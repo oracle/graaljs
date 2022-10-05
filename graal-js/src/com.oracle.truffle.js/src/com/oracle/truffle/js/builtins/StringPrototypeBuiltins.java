@@ -2734,7 +2734,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 } else if (Strings.equals(stringEqualsNode, formStr, Strings.NFKD)) {
                     useForm = Normalizer.Form.NFKD;
                 } else {
-                    throw Errors.createRangeError("invalid form string");
+                    throw Errors.createRangeError("The normalization form should be one of NFC, NFD, NFKC, NFKD.");
                 }
             }
             return Strings.fromJavaString(fromJavaStringNode, doNormalize(Strings.toJavaString(toJavaStringNode, thisStr), useForm));
