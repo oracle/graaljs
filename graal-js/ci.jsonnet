@@ -109,12 +109,10 @@ local ci = import '../ci.jsonnet';
   builds: [
     // GATE
     // style
-    graalJs + common.jdk11 + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk11-linux-amd64'},
     graalJs + common.jdk17 + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk17-linux-amd64'},
     graalJs + common.jdk19 + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk19-linux-amd64'},
 
     // linux amd64
-    graalJs + common.jdk11 + common.gate   + common.linux          + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk11-linux-amd64'} ,
     graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk17-linux-amd64'},
     graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('default')                                                 + ee + {name: 'js-gate-default-ee-jdk17-linux-amd64'},
     graalJs + common.jdk19 + common.gate   + common.linux          + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk19-linux-amd64'} ,
@@ -131,7 +129,6 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk17 + common.gate   + common.linux          + auxEngineCache                                                      + ee + {name: 'js-gate-aux-engine-cache-jdk17-linux-amd64'},
 
     // windows amd64
-    graalJs + common.jdk11 + common.gate   + common.windows_jdk11  + gateTags('Test262-default')                                              + {name: 'js-gate-test262-default-jdk11-windows-amd64'},
     graalJs + common.jdk17 + common.gate   + common.windows_jdk17  + gateTags('Test262-default')                                              + {name: 'js-gate-test262-default-jdk17-windows-amd64'},
     graalJs + common.jdk17 + common.gate   + common.windows_jdk17  + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk17-windows-amd64'},
 
@@ -139,11 +136,7 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk17 + common.gate   + common.darwin         + gateTags('default')                                                 + ee + {name: 'js-gate-default-ee-jdk17-darwin-amd64', timelimit: '45:00'},
 
     // linux aarch64
-    graalJs + common.jdk11 + common.gate   + common.linux_aarch64  + gateTags('default')                                                      + {name: 'js-gate-default-ce-jdk11-linux-aarch64'},
     graalJs + common.jdk17 + common.gate   + common.linux_aarch64  + gateTags('default')                                                      + {name: 'js-gate-default-ce-jdk17-linux-aarch64'},
-
-    // maven deploy dry run
-    graalJs + common.jdk11 + common.gate   + common.linux          + mavenDeployDryRun                                                        + {name: 'js-gate-maven-dry-run-jdk11-linux-amd64'},
 
     // downstream graal gate
     graalJs + common.jdk17 + common.gate   + common.linux          + downstreamGraal                                                          + {name: 'js-gate-downstream-graal-jdk17-linux-amd64'},
