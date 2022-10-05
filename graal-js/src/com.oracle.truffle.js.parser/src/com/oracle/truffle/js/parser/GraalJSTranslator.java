@@ -1428,8 +1428,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (symbol.isVarRedeclaredHere()) {
                 // redeclaration of parameter binding; initial value is copied from outer scope.
                 assert blockScope.isFunctionBodyScope();
-                JavaScriptNode outerVar = environment.findBlockScopedVar(symbol.getNameTS()).createReadNode();
-                blockWithInit.add(findScopeVar(symbol.getNameTS(), true).createWriteNode(outerVar));
+                VarRef outerVarRef = environment.findBlockScopedVar(symbol.getNameTS());
+                VarRef innerVarRef = findScopeVar(symbol.getNameTS(), true);
+                JavaScriptNode outerVar = outerVarRef.createReadNode();
+                blockWithInit.add(innerVarRef.createWriteNode(outerVar));
             }
         }
 

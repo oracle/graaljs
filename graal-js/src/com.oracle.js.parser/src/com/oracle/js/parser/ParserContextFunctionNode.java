@@ -365,10 +365,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     private boolean addParameterBinding(IdentNode bindingIdentifier) {
-        if (Parser.isArguments(bindingIdentifier)) {
-            setFlag(FunctionNode.DEFINES_ARGUMENTS);
-        }
-
         // Parameters have a temporal dead zone if the parameter list contains expressions.
         boolean tdz = hasParameterExpressions();
         Symbol paramSymbol = new Symbol(bindingIdentifier.getNameTS(), Symbol.IS_LET | Symbol.IS_PARAM | (!tdz ? Symbol.HAS_BEEN_DECLARED : 0));
@@ -476,16 +472,14 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         assert hasParameterExpressions() && getParameterScope().hasSymbol(param.getName());
     }
 
-    public Scope createBodyScope(Function<TruffleString, TruffleString> stringIntern) {
+    public Scope createBodyScope() {
         assert !isScriptOrModule();
         // We only need the parameter scope if the parameter list contains expressions.
         Scope parent;
         if (hasParameterExpressions()) {
             parent = getParameterScope();
-            if (needsArguments()) {
-                assert !parent.hasSymbol(Parser.ARGUMENTS_NAME.toJavaStringUncached());
-                parent.putSymbol(new Symbol(stringIntern.apply(Parser.ARGUMENTS_NAME), Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
-            }
+            // Note: Not adding 'arguments' yet in order to simplify var redeclaration checks.
+            assert !parent.hasSymbol(Parser.ARGUMENTS_NAME) || !parent.getExistingSymbol(Parser.ARGUMENTS_NAME).isArguments();
             parameters = List.of();
         } else {
             parent = parentScope;
@@ -528,7 +522,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     private boolean needsArguments() {
         return getFlag(FunctionNode.USES_ARGUMENTS | FunctionNode.HAS_EVAL) != 0 &&
-                        getFlag(FunctionNode.DEFINES_ARGUMENTS | FunctionNode.IS_ARROW | FunctionNode.IS_CLASS_FIELD_INITIALIZER) == 0;
+                        getFlag(FunctionNode.DEFINES_ARGUMENTS | FunctionNode.IS_ARROW | FunctionNode.IS_CLASS_FIELD_INITIALIZER | FunctionNode.IS_PROGRAM) == 0;
     }
 
     private boolean hasFunctionSelf() {
@@ -538,42 +532,52 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /**
      * Add a function-level binding if it is not shadowed by a parameter or var declaration.
      */
-    private void putFunctionSymbolIfAbsent(TruffleString bindingName, int symbolFlags) {
+    private void putFunctionSymbolIfAbsent(String bindingName, TruffleString bindingNameTS, int symbolFlags) {
+        assert !isScriptOrModule();
+        boolean isArguments = (symbolFlags & Symbol.IS_ARGUMENTS) != 0;
         if (hasParameterExpressions()) {
+            // if arguments is used (or eval() in parameters), it must be defined in parameter scope
             Scope parameterScope = getParameterScope();
-            if (!parameterScope.hasSymbol(bindingName.toJavaStringUncached()) && !bodyScope.hasSymbol(bindingName.toJavaStringUncached())) {
-                parameterScope.putSymbol(new Symbol(bindingName, Symbol.IS_LET | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            if (!parameterScope.hasSymbol(bindingName) && (isArguments || !bodyScope.hasSymbol(bindingName))) {
+                parameterScope.putSymbol(new Symbol(bindingNameTS, Symbol.IS_LET | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            } else if (isArguments) {
+                // Formal parameter overrides implicit arguments.
+                setFlag(FunctionNode.DEFINES_ARGUMENTS);
             }
         } else {
-            if (!bodyScope.hasSymbol(bindingName.toJavaStringUncached())) {
-                bodyScope.putSymbol(new Symbol(bindingName, Symbol.IS_VAR | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            Symbol existingSymbol = bodyScope.getExistingSymbol(bindingName);
+            if (existingSymbol == null) {
+                bodyScope.putSymbol(new Symbol(bindingNameTS, Symbol.IS_VAR | symbolFlags | Symbol.HAS_BEEN_DECLARED));
+            } else if (isArguments && (existingSymbol.isBlockScoped() || existingSymbol.isParam() || existingSymbol.isHoistableDeclaration())) {
+                // Declaration overrides implicit arguments.
+                setFlag(FunctionNode.DEFINES_ARGUMENTS);
             }
         }
     }
 
     public void finishBodyScope(Function<TruffleString, TruffleString> stringIntern) {
+        if (needsArguments()) {
+            putFunctionSymbolIfAbsent(Parser.ARGUMENTS_NAME, stringIntern.apply(Parser.ARGUMENTS_NAME_TS), Symbol.IS_ARGUMENTS);
+        }
         if (hoistableBlockFunctionDeclarations != null) {
             declareHoistedBlockFunctionDeclarations();
         }
         if (isScriptOrModule()) {
             return;
         }
-        if (needsArguments()) {
-            putFunctionSymbolIfAbsent(stringIntern.apply(Parser.ARGUMENTS_NAME), Symbol.IS_ARGUMENTS);
-        }
         if (hasFunctionSelf()) {
-            putFunctionSymbolIfAbsent(getNameTS(), Symbol.IS_FUNCTION_SELF);
+            putFunctionSymbolIfAbsent(getName(), getNameTS(), Symbol.IS_FUNCTION_SELF);
         }
         if (!isArrow()) {
             boolean needsThisForEval = hasEval() || hasArrowEval();
             if (usesThis() || usesSuper() || needsThisForEval || getFlag(FunctionNode.HAS_DIRECT_SUPER) != 0) {
-                putFunctionSymbolIfAbsent(stringIntern.apply(TokenType.THIS.getNameTS()), Symbol.IS_THIS);
+                putFunctionSymbolIfAbsent(TokenType.THIS.getName(), stringIntern.apply(TokenType.THIS.getNameTS()), Symbol.IS_THIS);
             }
             if (usesSuper() || (isMethod() && needsThisForEval)) {
-                putFunctionSymbolIfAbsent(stringIntern.apply(TokenType.SUPER.getNameTS()), Symbol.IS_SUPER);
+                putFunctionSymbolIfAbsent(TokenType.SUPER.getName(), stringIntern.apply(TokenType.SUPER.getNameTS()), Symbol.IS_SUPER);
             }
             if (usesNewTarget() || needsThisForEval) {
-                putFunctionSymbolIfAbsent(stringIntern.apply(Parser.NEW_TARGET_NAME), Symbol.IS_NEW_TARGET);
+                putFunctionSymbolIfAbsent(Parser.NEW_TARGET_NAME, stringIntern.apply(Parser.NEW_TARGET_NAME_TS), Symbol.IS_NEW_TARGET);
             }
         }
         if (hasParameterExpressions()) {
@@ -682,7 +686,17 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             }
             // declare var (if not already declared) and hoist the function declaration
             if (bodyScope.getExistingSymbol(varName) == null) {
-                bodyScope.putSymbol(new Symbol(functionDecl.getName().getNameTS(), Symbol.IS_VAR | (bodyScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0)));
+                int symbolFlags = Symbol.IS_VAR | (bodyScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0);
+                if (hasParameterExpressions() && getParameterScope().hasSymbol(functionDecl.getName().getName())) {
+                    /**
+                     * Since parameterNames are excluded from function hoisting, this case may only
+                     * happen for the implicit "arguments" binding. The var binding created for the
+                     * hoisted function is initialized with the value from the top-level env.
+                     */
+                    assert Parser.ARGUMENTS_NAME.equals(functionDecl.getName().getName()) : functionDecl;
+                    symbolFlags |= Symbol.IS_VAR_REDECLARED_HERE;
+                }
+                bodyScope.putSymbol(new Symbol(functionDecl.getName().getNameTS(), symbolFlags));
             }
             functionDeclScope.getExistingSymbol(varName).setHoistedBlockFunctionDeclaration();
         }

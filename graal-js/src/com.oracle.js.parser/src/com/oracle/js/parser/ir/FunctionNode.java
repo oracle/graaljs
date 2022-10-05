@@ -176,7 +176,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Does this function potentially need "arguments"? Note that this is not a full test, as
-     * further negative check of REDEFINES_ARGS is needed.
+     * further negative check of {@link #DEFINES_ARGUMENTS} is needed.
      */
     private static final int MAYBE_NEEDS_ARGUMENTS = USES_ARGUMENTS | HAS_EVAL;
 
