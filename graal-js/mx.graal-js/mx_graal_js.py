@@ -219,7 +219,26 @@ def _fetch_test_suite(dest, library_names):
             mx.ensure_dir_exists(dest)
         for _lib_name in library_names:
             with tarfile.open(_get_lib_path(_lib_name), 'r') as _tar:
-                _tar.extractall(dest)
+                def is_within_directory(directory, target):
+                    
+                    abs_directory = os.path.abspath(directory)
+                    abs_target = os.path.abspath(target)
+                
+                    prefix = os.path.commonprefix([abs_directory, abs_target])
+                    
+                    return prefix == abs_directory
+                
+                def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+                
+                    for member in tar.getmembers():
+                        member_path = os.path.join(path, member.name)
+                        if not is_within_directory(path, member_path):
+                            raise Exception("Attempted Path Traversal in Tar File")
+                
+                    tar.extractall(path, members, numeric_owner=numeric_owner) 
+                    
+                
+                safe_extract(_tar, dest)
 
 def _run_test_suite(custom_args, default_vm_args, max_heap, stack_size, main_class, nonZeroIsFatal, cwd):
     _vm_args, _prog_args = parse_js_args(custom_args)

@@ -402,7 +402,29 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
         tarfilepath = mx.distribution('TRUFFLENODE_GRAALVM_SUPPORT').path
         with tarfile.open(tarfilepath, 'r:') as tar:
             mx.logv('Extracting {} to {}'.format(tarfilepath, _suite.dir))
-            tar.extractall(_suite.dir)
+            
+            import os
+            
+            def is_within_directory(directory, target):
+                
+                abs_directory = os.path.abspath(directory)
+                abs_target = os.path.abspath(target)
+            
+                prefix = os.path.commonprefix([abs_directory, abs_target])
+                
+                return prefix == abs_directory
+            
+            def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+            
+                for member in tar.getmembers():
+                    member_path = os.path.join(path, member.name)
+                    if not is_within_directory(path, member_path):
+                        raise Exception("Attempted Path Traversal in Tar File")
+            
+                tar.extractall(path, members, numeric_owner=numeric_owner) 
+                
+            
+            safe_extract(tar, _suite.dir)
 
     return mode, vmArgs, progArgs
 
