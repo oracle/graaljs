@@ -86,6 +86,7 @@ import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectValues
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -850,7 +851,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"!isJSObject(object)", "!isNullOrUndefined(object)", "!isForeignObject(object)"})
-        static Object setPrototypeOfValue(Object object, @SuppressWarnings("unused") Object newProto) {
+        protected Object setPrototypeOfValue(Object object, Object newProto) {
+            if (!JSGuards.isValidPrototype(newProto)) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorInvalidPrototype(newProto);
+            }
             // If Type(O) is not Object, return O.
             return object;
         }
