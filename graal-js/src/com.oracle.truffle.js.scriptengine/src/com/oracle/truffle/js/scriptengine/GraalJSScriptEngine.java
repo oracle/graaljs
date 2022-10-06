@@ -73,6 +73,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -504,7 +505,20 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             // Re-use the stack-trace of PolyglotException (with guest-language stack-frames)
             sex.setStackTrace(ex.getStackTrace());
         } else {
-            sex = new ScriptException(ex);
+            SourceSection sourceSection = ex.getSourceLocation();
+            if (sourceSection != null && sourceSection.isAvailable()) {
+                Source source = sourceSection.getSource();
+                String fileName = source.getPath();
+                if (fileName == null) {
+                    fileName = source.getName();
+                }
+                int lineNo = sourceSection.getStartLine();
+                int columnNo = sourceSection.getStartColumn();
+                sex = new ScriptException(ex.getMessage(), fileName, lineNo, columnNo);
+                sex.initCause(ex);
+            } else {
+                sex = new ScriptException(ex);
+            }
         }
         return sex;
     }
