@@ -2920,10 +2920,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return rhsNode;
         }
         // evaluate rhs and throw TypeError
-        TruffleString message = TruffleString.fromJavaStringUncached(context.isOptionV8CompatibilityMode() ? "Assignment to constant variable." : "Assignment to constant \"" + identifier + "\"",
-                        TruffleString.Encoding.UTF_16);
-        JavaScriptNode throwTypeError = factory.createThrowError(JSErrorType.TypeError, message);
-        return isPotentiallySideEffecting(rhsNode) ? createBlock(rhsNode, throwTypeError) : throwTypeError;
+        return factory.createWriteConstantVariable(rhsNode, true, identifier);
     }
 
     private JavaScriptNode transformPropertyAssignment(AccessNode accessNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertToNumeric) {

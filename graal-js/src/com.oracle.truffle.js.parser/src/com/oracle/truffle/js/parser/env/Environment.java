@@ -851,7 +851,7 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            return factory.createWriteConstantVariable(rhs, isStrictMode());
+            return factory.createWriteConstantVariable(rhs, isStrictMode(), getName());
         }
     }
 
@@ -1094,7 +1094,7 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            JavaScriptNode writeNode = wrappee.isConst() ? factory.createWriteConstantVariable(rhs, true) : wrappee.createWriteNode(rhs);
+            JavaScriptNode writeNode = wrappee.isConst() ? factory.createWriteConstantVariable(rhs, true, getName()) : wrappee.createWriteNode(rhs);
             return wrapClosure.apply(writeNode, WrapAccess.Write);
         }
 
@@ -1160,7 +1160,7 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            return factory.createWriteConstantVariable(rhs, isStrictMode());
+            return factory.createWriteConstantVariable(rhs, isStrictMode(), getName());
         }
 
         @Override

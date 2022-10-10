@@ -92,7 +92,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
             throw Errors.createReferenceErrorNotDefined(getLanguage().getJSContext(), varName, this);
         }
         if (constAssignment) {
-            throw Errors.createTypeErrorConstReassignment(varName, scope, this);
+            throw Errors.createTypeErrorConstReassignment(varName, this);
         }
         return exists;
     }
@@ -111,7 +111,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
                 throw Errors.createReferenceErrorNotDefined(getLanguage().getJSContext(), varName, this);
             } else if (write && JSProperty.isConst(property)) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorConstReassignment(varName, scope, this);
+                throw Errors.createTypeErrorConstReassignment(varName, this);
             }
             return true;
         }
