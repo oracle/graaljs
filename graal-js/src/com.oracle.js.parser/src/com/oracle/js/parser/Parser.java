@@ -2411,9 +2411,9 @@ public class Parser extends AbstractParser {
         Expression missingAssignment;
         /** First declaration with an initializer. */
         long declarationWithInitializerToken;
-        /** Destructuring assignments. */
-        Expression init;
+        /** First binding identifier or pattern. */
         Expression firstBinding;
+        /** Second binding identifier or pattern for error reporting when only one is allowed. */
         Expression secondBinding;
 
         void recordMissingAssignment(Expression binding) {
@@ -2435,14 +2435,6 @@ public class Parser extends AbstractParser {
                 secondBinding = binding;
             }
             // ignore the rest
-        }
-
-        void addAssignment(Expression assignment) {
-            if (init == null) {
-                init = assignment;
-            } else {
-                init = new BinaryNode(Token.recast(init.getToken(), COMMARIGHT), init, assignment);
-            }
         }
     }
 
@@ -2544,11 +2536,9 @@ public class Parser extends AbstractParser {
                 assert init != null || !isStatement;
                 if (init != null) {
                     final Expression assignment = verifyAssignment(Token.recast(varToken, ASSIGN_INIT), binding, init, true);
-                    if (isStatement) {
-                        appendStatement(new ExpressionStatement(varLine, assignment.getToken(), finish, assignment));
-                    } else {
-                        forResult.addAssignment(assignment);
-                        forResult.addBinding(assignment);
+                    appendStatement(new ExpressionStatement(varLine, assignment.getToken(), finish, assignment));
+                    if (!isStatement) {
+                        forResult.addBinding(binding);
                     }
                 } else if (!isStatement) {
                     forResult.recordMissingAssignment(binding);
@@ -3008,7 +2998,7 @@ public class Parser extends AbstractParser {
                     // for (init; test; modify)
                     if (varDeclList != null) {
                         assert init == null;
-                        init = varDeclList.init;
+                        // init has already been hoisted to the surrounding (declaration) block.
                         // late check for missing assignment, now we know it's a
                         // for (init; test; modify) loop
                         if (varDeclList.missingAssignment != null) {
@@ -3061,14 +3051,14 @@ public class Parser extends AbstractParser {
                             // for (var i, j in obj) is invalid
                             throw error(AbstractParser.message(MSG_MANY_VARS_IN_FOR_IN_LOOP, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), varDeclList.secondBinding.getToken());
                         }
-                        if (varDeclList.declarationWithInitializerToken != 0 && (isStrictMode || type != TokenType.IN || varType != VAR || varDeclList.init != null)) {
+                        init = varDeclList.firstBinding;
+                        assert init instanceof IdentNode || isDestructuringLhs(init) : init;
+                        if (varDeclList.declarationWithInitializerToken != 0 && (isStrictMode || type != IN || varType != VAR || isDestructuringLhs(init))) {
                             // ES5 legacy: for (var i = AssignmentExpressionNoIn in Expression)
                             // Invalid in ES6, but allow it in non-strict mode if no ES6 features
                             // used, i.e., error if strict, for-of, let/const, or destructuring
                             throw error(AbstractParser.message(MSG_FOR_IN_LOOP_INITIALIZER, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), varDeclList.declarationWithInitializerToken);
                         }
-                        init = varDeclList.firstBinding;
-                        assert init instanceof IdentNode || isDestructuringLhs(init);
                         if (varType == CONST || varType == LET) {
                             flags |= ForNode.PER_ITERATION_SCOPE;
                         }
@@ -3102,8 +3092,10 @@ public class Parser extends AbstractParser {
 
             boolean skipVars = (flags & ForNode.PER_ITERATION_SCOPE) != 0 && (isForOf || isForAwaitOf || (flags & ForNode.IS_FOR_IN) != 0);
             if (!skipVars) {
+                // Variable declaration and initialization statements.
+                // e.g.: `for (let [a, b] = c, d = e; ...; ...)` =>
+                // `let a; let b; [a, b] := c; let d = e;`
                 for (final Statement var : forNode.getStatements()) {
-                    assert var instanceof VarNode;
                     appendStatement(var);
                 }
             }
