@@ -177,11 +177,6 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> V8_REALM_BUILTIN = new OptionKey<>(false);
     @CompilationFinal private boolean v8RealmBuiltin;
 
-    public static final String V8_LEGACY_CONST_NAME = JS_OPTION_PREFIX + "v8-legacy-const";
-    @Option(name = V8_LEGACY_CONST_NAME, category = OptionCategory.INTERNAL, help = "Emulate v8 behavior when trying to mutate const variables in non-strict mode.") //
-    public static final OptionKey<Boolean> V8_LEGACY_CONST = new OptionKey<>(false);
-    @CompilationFinal private boolean v8LegacyConst;
-
     public static final String NASHORN_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "nashorn-compat";
     @Option(name = NASHORN_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the OpenJDK Nashorn engine. Do not use with untrusted code.") //
     public static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
@@ -546,8 +541,8 @@ public final class JSContextOptions {
                     "'warn', a warning is printed to stderr when an unhandled rejection is detected. " +
                     "'throw', an exception is thrown when an unhandled rejection is detected. " +
                     "'handler', the handler function set with Graal.setUnhandledPromiseRejectionHandler will be " +
-                    "called with the rejection value and promise respectively as arguments.") public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(
-                                    UnhandledRejectionsTrackingMode.NONE);
+                    "called with the rejection value and promise respectively as arguments.") //
+    public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(UnhandledRejectionsTrackingMode.NONE);
     @CompilationFinal private UnhandledRejectionsTrackingMode unhandledRejectionsMode;
 
     public static final String OPERATOR_OVERLOADING_NAME = JS_OPTION_PREFIX + "operator-overloading";
@@ -665,7 +660,6 @@ public final class JSContextOptions {
             v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
         });
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN);
-        this.v8LegacyConst = readBooleanOption(V8_LEGACY_CONST);
         this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, msg -> {
             directByteBufferCyclicAssumption.invalidate(msg);
             directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
@@ -857,10 +851,6 @@ public final class JSContextOptions {
 
     public boolean isV8RealmBuiltin() {
         return v8RealmBuiltin;
-    }
-
-    public boolean isV8LegacyConst() {
-        return v8LegacyConst;
     }
 
     public boolean hasZoneRulesBasedTimeZones() {
@@ -1158,7 +1148,6 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.sharedArrayBuffer ? 1 : 0);
         hash = 53 * hash + (this.v8CompatibilityMode ? 1 : 0);
         hash = 53 * hash + (this.v8RealmBuiltin ? 1 : 0);
-        hash = 53 * hash + (this.v8LegacyConst ? 1 : 0);
         hash = 53 * hash + (this.nashornCompatibilityMode ? 1 : 0);
         hash = 53 * hash + (this.debug ? 1 : 0);
         hash = 53 * hash + (this.directByteBuffer ? 1 : 0);
@@ -1249,9 +1238,6 @@ public final class JSContextOptions {
             return false;
         }
         if (this.v8RealmBuiltin != other.v8RealmBuiltin) {
-            return false;
-        }
-        if (this.v8LegacyConst != other.v8LegacyConst) {
             return false;
         }
         if (this.nashornCompatibilityMode != other.nashornCompatibilityMode) {
