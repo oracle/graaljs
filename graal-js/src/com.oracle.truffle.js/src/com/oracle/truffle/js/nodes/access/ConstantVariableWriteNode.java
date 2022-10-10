@@ -45,27 +45,31 @@ import java.util.Set;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.control.RuntimeErrorNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSErrorType;
 
 public class ConstantVariableWriteNode extends JavaScriptNode implements WriteNode {
     @Child protected JavaScriptNode rhs;
-    @Child protected JavaScriptNode errorNode;
+    protected final boolean doThrow;
+    protected final Object varName;
 
-    protected ConstantVariableWriteNode(JavaScriptNode rhs, boolean doThrow) {
+    protected ConstantVariableWriteNode(JavaScriptNode rhs, boolean doThrow, Object varName) {
         this.rhs = rhs;
-        this.errorNode = doThrow ? RuntimeErrorNode.create(JSErrorType.TypeError, "Assignment to constant variable.") : null;
+        this.doThrow = doThrow;
+        this.varName = varName;
     }
 
-    public static ConstantVariableWriteNode create(JavaScriptNode rhs, boolean doThrow) {
-        return new ConstantVariableWriteNode(rhs, doThrow);
+    public static ConstantVariableWriteNode create(JavaScriptNode rhs, boolean doThrow, Object varName) {
+        return new ConstantVariableWriteNode(rhs, doThrow, varName);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         Object result = rhs.execute(frame);
-        return (errorNode == null) ? result : errorNode.execute(frame);
+        if (doThrow) {
+            throw Errors.createTypeErrorConstReassignment(varName, this);
+        } else {
+            return result;
+        }
     }
 
     @Override
@@ -80,7 +84,7 @@ public class ConstantVariableWriteNode extends JavaScriptNode implements WriteNo
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(rhs, materializedTags), errorNode != null);
+        return create(cloneUninitialized(rhs, materializedTags), doThrow, varName);
     }
 
 }

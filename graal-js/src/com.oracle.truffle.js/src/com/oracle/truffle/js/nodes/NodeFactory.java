@@ -803,8 +803,8 @@ public class NodeFactory {
         return WritePropertyNode.create(target, name, rhs, context, isStrict, isGlobal, verifyHasProperty);
     }
 
-    public ConstantVariableWriteNode createWriteConstantVariable(JavaScriptNode rhs, boolean doThrow) {
-        return ConstantVariableWriteNode.create(rhs, doThrow);
+    public ConstantVariableWriteNode createWriteConstantVariable(JavaScriptNode rhs, boolean doThrow, Object name) {
+        return ConstantVariableWriteNode.create(rhs, doThrow, name);
     }
 
     public JSTargetableNode createReadGlobalProperty(JSContext context, TruffleString name) {

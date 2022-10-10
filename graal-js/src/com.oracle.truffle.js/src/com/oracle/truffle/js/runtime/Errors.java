@@ -427,11 +427,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorConstReassignment(Object key, Object thisObj, Node originatingNode) {
-        if (JSDynamicObject.isJSDynamicObject(thisObj) && JSObject.getJSContext((JSDynamicObject) thisObj).isOptionV8CompatibilityMode()) {
-            throw Errors.createTypeError("Assignment to constant variable.", originatingNode);
+    public static JSException createTypeErrorConstReassignment(Object key, Node originatingNode) {
+        if (JavaScriptLanguage.get(originatingNode).getJSContext().isOptionV8CompatibilityMode()) {
+            return Errors.createTypeError("Assignment to constant variable.", originatingNode);
         }
-        throw Errors.createTypeError("Assignment to constant \"" + key + "\"", originatingNode);
+        return Errors.createTypeError("Assignment to constant \"" + key + "\"", originatingNode);
     }
 
     private static String keyToString(Object key) {
