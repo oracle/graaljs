@@ -2884,7 +2884,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (isLogicalOp(binaryOp)) {
                 assert !convertLHSToNumeric && !returnOldValue;
                 JavaScriptNode readNode = tagExpression(scopeVar.createReadNode(), identNode);
-                JavaScriptNode writeNode = scopeVar.createWriteNode(assignedValue);
+                JavaScriptNode writeNode = scopeVar.createWriteNode(rhs);
                 return factory.createBinary(context, binaryOp, readNode, writeNode);
             } else {
                 // e.g.: lhs *= rhs => lhs = lhs * rhs
