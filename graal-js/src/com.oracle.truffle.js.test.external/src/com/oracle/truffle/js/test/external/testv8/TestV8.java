@@ -92,7 +92,6 @@ public class TestV8 extends TestSuite {
         options.put(JSContextOptions.VALIDATE_REGEXP_LITERALS_NAME, "false");
         options.put(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
         options.put(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
-        options.put(JSContextOptions.V8_LEGACY_CONST_NAME, "true");
         options.put(JSContextOptions.INTL_402_NAME, "true");
         options.put(JSContextOptions.SHELL_NAME, "true"); // readbuffer, quit
         // Reduce string length limit in order to avoid transient out of memory errors.

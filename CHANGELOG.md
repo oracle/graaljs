@@ -5,6 +5,9 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) for release dates.
 
+## Version 23.0.0
+* Removed experimental option `v8-legacy-const`.
+
 ## Version 22.3.0
 * Implemented the [WebAssembly multi-value](https://github.com/WebAssembly/multi-value) proposal.
 * Added an experimental option `--js.unhandled-rejections=handler` that allows to use a custom callback to track unhandled promise rejections.
