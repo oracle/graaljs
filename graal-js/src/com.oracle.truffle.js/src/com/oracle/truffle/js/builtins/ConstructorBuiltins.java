@@ -58,6 +58,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -200,6 +201,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PromiseHook;
@@ -2827,17 +2829,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        protected boolean isValidTarget(JSDynamicObject newTarget) {
-            return isNewTargetCase && newTarget != Undefined.instance;
+        protected final boolean isValidTarget(VirtualFrame frame, JSDynamicObject newTarget) {
+            return isNewTargetCase && newTarget != Undefined.instance && newTarget != JSFrameUtil.getFunctionObjectNoCast(frame);
         }
 
-        @Specialization(guards = {"isValidTarget(newTarget)"})
-        protected JSDynamicObject constructIterator(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+        @Specialization(guards = {"isValidTarget(frame, newTarget)"})
+        protected JSDynamicObject constructIterator(@SuppressWarnings("unused") VirtualFrame frame, JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             return swapPrototype(JSIterator.create(getContext(), getRealm()), newTarget);
         }
 
-        @Specialization(guards = {"!isValidTarget(newTarget)"})
-        protected JSDynamicObject constructIteratorTypeError(@SuppressWarnings("unused") JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+        @Specialization(guards = {"!isValidTarget(frame, newTarget)"})
+        protected JSDynamicObject constructIteratorTypeError(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject newTarget,
+                        @SuppressWarnings("unused") Object[] args) {
             throw Errors.createTypeError("Cannot construct a new Iterator as it is an abstract class.");
         }
 
@@ -2852,17 +2855,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        protected boolean isValidTarget(JSDynamicObject newTarget) {
-            return isNewTargetCase && newTarget != Undefined.instance;
+        protected final boolean isValidTarget(VirtualFrame frame, JSDynamicObject newTarget) {
+            return isNewTargetCase && newTarget != Undefined.instance && newTarget != JSFrameUtil.getFunctionObjectNoCast(frame);
         }
 
-        @Specialization(guards = {"isValidTarget(newTarget)"})
-        protected JSDynamicObject constructIterator(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+        @Specialization(guards = {"isValidTarget(frame, newTarget)"})
+        protected JSDynamicObject constructIterator(@SuppressWarnings("unused") VirtualFrame frame, JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             return swapPrototype(JSAsyncIterator.create(getContext(), getRealm()), newTarget);
         }
 
-        @Specialization(guards = {"!isValidTarget(newTarget)"})
-        protected JSDynamicObject constructIteratorTypeError(@SuppressWarnings("unused") JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+        @Specialization(guards = {"!isValidTarget(frame, newTarget)"})
+        protected JSDynamicObject constructIteratorTypeError(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject newTarget,
+                        @SuppressWarnings("unused") Object[] args) {
             throw Errors.createTypeError("Cannot construct a new AsyncIterator as it is an abstract class.");
         }
 
