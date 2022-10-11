@@ -237,12 +237,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 this.callNode = JSFunctionCallNode.createCall();
             }
 
-            @SuppressWarnings("unused")
             @Override
             public Object execute(VirtualFrame frame) {
-                AsyncIteratorArgs args = getArgs(frame);
                 PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
-                callNode.executeCall(JSArguments.createOneArg(capabilityRecord.getPromise(), capabilityRecord.getReject(), valueNode.execute(frame)));
+                Object rejection = valueNode.execute(frame);
+                callNode.executeCall(JSArguments.createOneArg(capabilityRecord.getPromise(), capabilityRecord.getReject(), rejection));
                 return capabilityRecord.getPromise();
             }
         }
