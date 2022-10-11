@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.truffle.api.CompilerAsserts;
+
 public final class AsyncGeneratorRequest {
     private final Completion.Type completionType;
     private final Object completionValue;
@@ -81,5 +83,11 @@ public final class AsyncGeneratorRequest {
 
     public static AsyncGeneratorRequest create(Completion completion, PromiseCapabilityRecord promiseCapability) {
         return new AsyncGeneratorRequest(completion.type, completion.value, promiseCapability);
+    }
+
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        return "AsyncGeneratorRequest{" + "completionType=" + completionType + ", completionValue=" + completionValue + ", promise=" + promiseCapability.getPromise() + "}";
     }
 }

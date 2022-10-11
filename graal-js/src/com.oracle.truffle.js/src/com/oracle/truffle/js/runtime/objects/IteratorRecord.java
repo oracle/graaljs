@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
@@ -76,5 +77,11 @@ public final class IteratorRecord {
 
     public void setDone(boolean done) {
         this.done = done;
+    }
+
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        return "IteratorRecord{iterator=" + iterator + ", done=" + done + ", next=" + nextMethod + "}";
     }
 }
