@@ -553,7 +553,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 this.getIndexNode = PropertyGetNode.createGetHidden(INDEX_ID, context);
             }
 
-            @Specialization(rewriteOn = RuntimeException.class)
+            @Specialization
             public Object next(VirtualFrame frame, Object thisObj) {
                 return getNextValue(frame, thisObj);
             }
