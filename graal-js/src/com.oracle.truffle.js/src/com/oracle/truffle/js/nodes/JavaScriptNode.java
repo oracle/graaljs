@@ -305,9 +305,13 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
 
     private void checkSameSourceSection(SourceSection newSection) {
         SourceSection sourceSection = getSourceSection();
-        if (sourceSection != null && !sourceSection.equals(newSection)) {
+        if (sourceSection != null && !sourceSection.equals(newSection) && !equivalentUnavailableSections(sourceSection, newSection)) {
             throw new IllegalStateException(String.format("Source section is already assigned. Old: %s, new: %s", sourceSection, newSection));
         }
+    }
+
+    private static boolean equivalentUnavailableSections(SourceSection section1, SourceSection section2) {
+        return !section1.isAvailable() && !section2.isAvailable() && section1.getSource().equals(section2.getSource());
     }
 
     public boolean isResultAlwaysOfType(@SuppressWarnings("unused") Class<?> clazz) {
