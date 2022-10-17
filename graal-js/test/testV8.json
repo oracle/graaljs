@@ -307,10 +307,6 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/asm/global-imports.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/async-hooks/api-methods.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
