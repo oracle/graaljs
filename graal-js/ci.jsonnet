@@ -151,7 +151,7 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk17 + common.gate   + common.linux          + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}        + {name: 'js-gate-downstream-substratevm-enterprise-jdk17-linux-amd64'},
 
     // coverage
-    graalJs + common.jdk17 + common.weekly + common.linux          + gateCoverage                                                             + {name: 'js-coverage-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.weekly + common.linux          + gateCoverage                                                             + {name: 'weekly-js-coverage-jdk17-linux-amd64'},
 
     // interop benchmarks
     graalJs + common.jdk17 + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk17-linux-amd64'},
