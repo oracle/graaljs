@@ -21,7 +21,7 @@ local ci = import '../ci.jsonnet';
     coverage_gate_args:: ['--jacoco-omit-excluded', '--jacoco-generic-paths', '--jacoco-omit-src-gen', '--jacocout', 'coverage', '--jacoco-format', 'lcov'],
     run+: [
       ['set-export', 'GRAALJS_HOME', ['pwd']],
-      ['mx', '--strict-compliance'] + self.coverage_mx_args + ['gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', '${TAGS}'] + self.coverage_gate_args,
+      ['mx', '--strict-compliance'] + self.coverage_mx_args + ['gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', 'build,coverage'] + self.coverage_gate_args,
     ],
     teardown+: [
       ['mx', 'sversions', '--print-repositories', '--json', '|', 'coverage-uploader.py', '--associated-repos', '-'],
@@ -151,7 +151,7 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk17 + common.gate   + common.linux          + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}        + {name: 'js-gate-downstream-substratevm-enterprise-jdk17-linux-amd64'},
 
     // coverage
-    graalJs + common.jdk17 + common.weekly + common.linux          + gateCoverage              + {environment+: {TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.weekly + common.linux          + gateCoverage                                                             + {name: 'js-coverage-jdk17-linux-amd64'},
 
     // interop benchmarks
     graalJs + common.jdk17 + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk17-linux-amd64'},

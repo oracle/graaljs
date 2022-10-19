@@ -54,6 +54,7 @@ class GraalJsDefaultTags:
     default = 'default'
     tck = 'tck'
     all = 'all'
+    coverage = 'coverage'
 
 def _graal_js_pre_gate_runner(args, tasks):
     with Task('CI Setup Check', tasks, tags=[Tags.style]) as t:
@@ -71,7 +72,7 @@ def _graal_js_gate_runner(args, tasks):
             js(['-Dpolyglot.js.profile-time=true', '-e', '""'])
 
     webassemblyTestSuite = 'com.oracle.truffle.js.test.suite.WebAssemblySimpleTestSuite'
-    with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all]) as t:
+    with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage]) as t:
         if t:
             noWebAssemblyTestSuite = '^(?!' + webassemblyTestSuite  + ')'
             commonOptions = ['--enable-timing', '--very-verbose', '--suite', _suite.name]
@@ -110,7 +111,7 @@ def _graal_js_gate_runner(args, tasks):
                 if t:
                     gateTestCommands[testCommandName](gateTestConfigs[testConfigName])
 
-    with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck]) as t:
+    with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck, GraalJsDefaultTags.coverage]) as t:
         if t:
             import mx_truffle
             mx_truffle._tck([])
