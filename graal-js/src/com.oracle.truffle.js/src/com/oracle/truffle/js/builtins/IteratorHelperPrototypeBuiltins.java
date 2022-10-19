@@ -180,7 +180,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public Object close(VirtualFrame frame, Object thisObj) {
             setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
 
-            IteratorRecord iterated = ((IteratorPrototypeBuiltins.IteratorArgs) getTargetNode.getValue(thisObj)).target;
+            IteratorRecord iterated = ((IteratorPrototypeBuiltins.IteratorArgs) getTargetNode.getValue(thisObj)).iterated;
 
             try {
                 iteratorCloseNode.executeVoid(iterated.getIterator());
