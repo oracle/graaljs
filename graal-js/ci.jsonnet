@@ -17,11 +17,14 @@ local ci = import '../ci.jsonnet';
   },
 
   local gateCoverage = common.eclipse + {
+    coverage_mx_args:: ['--jacoco-whitelist-package', 'com.oracle.js.parser', '--jacoco-whitelist-package', 'com.oracle.truffle.js', '--jacoco-exclude-annotation', '@GeneratedBy'],
+    coverage_gate_args:: ['--jacoco-omit-excluded', '--jacoco-generic-paths', '--jacoco-omit-src-gen', '--jacocout', 'coverage', '--jacoco-format', 'lcov'],
     run+: [
       ['set-export', 'GRAALJS_HOME', ['pwd']],
-      ['mx', '--jacoco-whitelist-package', 'com.oracle.js.parser', '--jacoco-whitelist-package', 'com.oracle.truffle.js', '--jacoco-exclude-annotation', '@GeneratedBy', '--jacoco-dest-file', '${GRAALJS_HOME}/jacoco.exec', '--strict-compliance', 'gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', '${TAGS}', '--jacocout', 'html'],
-      ['mx', '--jacoco-whitelist-package', 'com.oracle.js.parser', '--jacoco-whitelist-package', 'com.oracle.truffle.js', '--jacoco-exclude-annotation', '@GeneratedBy', '--jacoco-dest-file', '${GRAALJS_HOME}/jacoco.exec', 'sonarqube-upload', '-Dsonar.host.url=$SONAR_HOST_URL', '-Dsonar.projectKey=com.oracle.graalvm.js', '-Dsonar.projectName=GraalVM - JS', '--exclude-generated'],
-      ['mx', '--jacoco-whitelist-package', 'com.oracle.js.parser', '--jacoco-whitelist-package', 'com.oracle.truffle.js', '--jacoco-exclude-annotation', '@GeneratedBy', '--jacoco-dest-file', '${GRAALJS_HOME}/jacoco.exec', 'coverage-upload']
+      ['mx', '--strict-compliance'] + self.coverage_mx_args + ['gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', '${TAGS}'] + self.coverage_gate_args,
+    ],
+    teardown+: [
+      ['mx', 'sversions', '--print-repositories', '--json', '|', 'coverage-uploader.py', '--associated-repos', '-'],
     ],
     timelimit: '30:00',
   },
