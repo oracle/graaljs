@@ -586,11 +586,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     protected abstract static class IteratorTakeNode extends IteratorBaseNode<IteratorTakeNode.IteratorTakeArgs> {
-        private static final HiddenKey LIMIT_ID = new HiddenKey("limit");
 
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
-        @Child private PropertySetNode setLimitNode;
 
         private BranchProfile errorProfile = BranchProfile.create();
 
@@ -599,15 +597,14 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             this.toNumberNode = JSToNumberNode.create();
             this.toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
-            this.setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
         }
 
         protected static class IteratorTakeArgs extends IteratorArgs {
-            public final boolean finite;
+            public double remaining;
 
-            public IteratorTakeArgs(IteratorRecord target, boolean finite) {
+            public IteratorTakeArgs(IteratorRecord target, double limit) {
                 super(target);
-                this.finite = finite;
+                this.remaining = limit;
             }
         }
 
@@ -621,22 +618,17 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
-            Number integerLimit = toIntegerOrInfinityNode.executeNumber(limit);
-            if (integerLimit.doubleValue() < 0) {
+            double integerLimit = toIntegerOrInfinityNode.executeNumber(limit).doubleValue();
+            if (integerLimit < 0) {
                 errorProfile.enter();
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
-            JSDynamicObject result = createIterator(thisObj, new IteratorTakeArgs(iterated, !Double.isInfinite(integerLimit.doubleValue())));
-            setLimitNode.setValue(result, Double.isInfinite(integerLimit.doubleValue()) ? Long.MAX_VALUE : integerLimit.longValue());
-            return result;
+            return createIterator(thisObj, new IteratorTakeArgs(iterated, integerLimit));
         }
 
         protected abstract static class IteratorTakeNextNode extends IteratorBaseNode.IteratorImplNode<IteratorTakeArgs> {
             @Child private IteratorCloseNode iteratorCloseNode;
-
-            @Child private PropertyGetNode getLimitNode;
-            @Child private PropertySetNode setLimitNode;
 
             private final ConditionProfile finiteProfile = ConditionProfile.createBinaryProfile();
 
@@ -644,29 +636,18 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 super(context);
 
                 this.iteratorCloseNode = IteratorCloseNode.create(context);
-
-                this.getLimitNode = PropertyGetNode.createGetHidden(LIMIT_ID, context);
-                this.setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
             }
 
             @Specialization
             public Object next(VirtualFrame frame, Object thisObj) {
                 IteratorTakeArgs args = getArgs(thisObj);
+                double remaining = args.remaining;
 
-                if (finiteProfile.profile(args.finite)) {
-                    long remaining;
-                    try {
-                        remaining = getLimitNode.getValueLong(thisObj);
-                    } catch (UnexpectedResultException e) {
-                        throw Errors.shouldNotReachHere(e);
-                    }
-
-                    if (remaining == 0) {
-                        iteratorCloseNode.executeVoid(args.target.getIterator());
-                        return createResultDone(frame, thisObj);
-                    }
-
-                    setLimitNode.setValue(thisObj, remaining - 1);
+                if (remaining == 0) {
+                    iteratorCloseNode.executeVoid(args.target.getIterator());
+                    return createResultDone(frame, thisObj);
+                } else if (finiteProfile.profile(!Double.isInfinite(remaining))) {
+                    args.remaining = remaining - 1;
                 }
 
                 return getNextValue(frame, thisObj);
@@ -685,11 +666,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     protected abstract static class IteratorDropNode extends IteratorBaseNode<IteratorDropNode.IteratorDropArgs> {
-        private static final HiddenKey LIMIT_ID = new HiddenKey("limit");
 
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
-        @Child private PropertySetNode setLimitNode;
 
         private final BranchProfile errorProfile = BranchProfile.create();
 
@@ -698,15 +677,14 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             this.toNumberNode = JSToNumberNode.create();
             this.toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
-            this.setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
         }
 
         protected static class IteratorDropArgs extends IteratorArgs {
-            public final boolean finite;
+            public double remaining;
 
-            public IteratorDropArgs(IteratorRecord target, boolean finite) {
+            public IteratorDropArgs(IteratorRecord target, double limit) {
                 super(target);
-                this.finite = finite;
+                this.remaining = limit;
             }
         }
 
@@ -720,51 +698,36 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
-            Number integerLimit = toIntegerOrInfinityNode.executeNumber(limit);
-            if (integerLimit.doubleValue() < 0) {
+            double integerLimit = toIntegerOrInfinityNode.executeNumber(limit).doubleValue();
+            if (integerLimit < 0) {
                 errorProfile.enter();
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
-            JSDynamicObject result = createIterator(thisObj, new IteratorDropArgs(iterated, !Double.isInfinite(integerLimit.doubleValue())));
-            setLimitNode.setValue(result, Double.isInfinite(integerLimit.doubleValue()) ? Long.MAX_VALUE : integerLimit.longValue());
-            return result;
+            return createIterator(thisObj, new IteratorDropArgs(iterated, integerLimit));
         }
 
         protected abstract static class IteratorDropNextNode extends IteratorBaseNode.IteratorImplNode<IteratorDropArgs> {
-            @Child private PropertyGetNode getLimitNode;
-            @Child private PropertySetNode setLimitNode;
 
             private final ConditionProfile finiteProfile = ConditionProfile.createBinaryProfile();
 
             protected IteratorDropNextNode(JSContext context) {
                 super(context);
-
-                this.getLimitNode = PropertyGetNode.createGetHidden(LIMIT_ID, context);
-                this.setLimitNode = PropertySetNode.createSetHidden(LIMIT_ID, context);
             }
 
             @Specialization
             public Object next(VirtualFrame frame, Object thisObj) {
                 IteratorDropArgs args = getArgs(thisObj);
-                if (!finiteProfile.profile(args.finite)) {
-                    return getNextValue(frame, thisObj);
-                }
-
-                long remaining;
-                try {
-                    remaining = getLimitNode.getValueLong(thisObj);
-                } catch (UnexpectedResultException e) {
-                    throw Errors.shouldNotReachHere();
-                }
-
-                for (long i = 0; i < remaining; i++) {
+                double remaining = args.remaining;
+                while (remaining > 0) {
+                    if (finiteProfile.profile(!Double.isInfinite(remaining))) {
+                        args.remaining = remaining -= 1;
+                    }
                     NextResult next = getNext(thisObj);
                     if (next.done) {
                         return createResultDone(frame, thisObj);
                     }
                 }
-                setLimitNode.setValue(thisObj, 0L);
 
                 return getNextValue(frame, thisObj);
             }
