@@ -496,58 +496,58 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     protected abstract static class IteratorIndexedNode extends IteratorBaseNode<IteratorArgs> {
-        private static final HiddenKey INDEX_ID = new HiddenKey("index");
-
-        @Child private PropertySetNode setIndexNode;
 
         protected IteratorIndexedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, BuiltinFunctionKey.IteratorIndexed, c -> createIteratorImplNextFunction(c, IteratorIndexedNextNode.create(c)));
+        }
 
-            this.setIndexNode = PropertySetNode.createSetHidden(INDEX_ID, context);
+        protected static class IteratorIndexedArgs extends IteratorArgs {
+            protected long index;
+
+            protected IteratorIndexedArgs(IteratorRecord iterated) {
+                super(iterated);
+            }
         }
 
         @Specialization
         public JSDynamicObject indexed(Object thisObj) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            JSDynamicObject result = createIterator(thisObj, new IteratorArgs(iterated));
-            setIndexNode.setValue(result, 0L);
-            return result;
+            return createIterator(thisObj, new IteratorIndexedArgs(iterated));
         }
 
-        protected abstract static class IteratorIndexedNextNode extends IteratorBaseNode.IteratorImplNode<IteratorArgs> {
-            @Child private PropertyGetNode getIndexNode;
-            @Child private PropertySetNode setIndexNode;
+        protected abstract static class IteratorIndexedNextNode extends IteratorBaseNode.IteratorImplNode<IteratorIndexedArgs> {
+
+            private ConditionProfile intIndexProfile = ConditionProfile.create();
 
             protected IteratorIndexedNextNode(JSContext context) {
                 super(context);
-
-                this.setIndexNode = PropertySetNode.createSetHidden(INDEX_ID, context);
-                this.getIndexNode = PropertyGetNode.createGetHidden(INDEX_ID, context);
             }
 
             @Specialization
             public Object next(VirtualFrame frame, Object thisObj) {
-                Object next = iteratorStep(getArgs(frame).iterated);
+                IteratorIndexedArgs args = getArgs(thisObj);
+                Object next = iteratorStep(args.iterated);
                 if (next == Boolean.FALSE) {
                     return createResultDone(frame, thisObj);
                 }
 
-                long index;
-                try {
-                    index = getIndexNode.getValueLong(thisObj);
-                } catch (UnexpectedResultException e) {
-                    throw Errors.shouldNotReachHere();
-                }
-
                 Object value = iteratorValue(next);
-                JSArrayObject pair = JSArray.createConstant(getContext(), getRealm(), new Object[]{index, value});
-                setIndexNode.setValue(thisObj, index + 1);
-
+                long index = args.index;
+                JSArrayObject pair = JSArray.createConstant(getContext(), getRealm(), new Object[]{indexToJS(index), value});
+                args.index = index + 1;
                 return createResultContinue(frame, thisObj, pair);
             }
 
+            private Object indexToJS(long index) {
+                if (intIndexProfile.profile(JSRuntime.longIsRepresentableAsInt(index))) {
+                    return (int) index;
+                } else {
+                    return (double) index;
+                }
+            }
+
             @Override
-            public IteratorImplNode<IteratorArgs> copyUninitialized() {
+            public IteratorImplNode<IteratorIndexedArgs> copyUninitialized() {
                 return create(context);
             }
 
