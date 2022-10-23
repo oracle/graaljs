@@ -352,7 +352,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     private JSFunctionData getValueSetterFrameUncached() {
         if (valueSetterFrameUncached == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            valueSetterFrameUncached = createSetterFromFrameUncached(context, ClassElementDefinitionRecord.Kind.Setter);
+            valueSetterFrameUncached = createSetterFromFrameUncached(context);
         }
         return valueSetterFrameUncached;
     }
@@ -564,7 +564,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     }
 
     @TruffleBoundary
-    private static JSFunctionData createSetterFromFrameUncached(JSContext context, ClassElementDefinitionRecord.Kind kind) {
+    private static JSFunctionData createSetterFromFrameUncached(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child private PropertyGetNode getMagic = PropertyGetNode.createGetHidden(MAGIC_KEY, context);
@@ -587,37 +587,22 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 if (blockScopeFrame.isObject(classSlot) && blockScopeFrame.isObject(keySlot)) {
                     Object constructor = blockScopeFrame.getObject(classSlot);
                     if (thiz == constructor) {
-                        JSDynamicObject newValue = Undefined.instance;
+                        Object newValue;
                         if (JSArguments.getUserArgumentCount(frame.getArguments()) > 0) {
-                            Object maybeNewValue = JSArguments.getUserArgument(frame.getArguments(), 0);
-                            if (maybeNewValue instanceof JSDynamicObject) {
-                                newValue = (JSDynamicObject) maybeNewValue;
-                            } else {
-                                throw Errors.createTypeErrorIllegalAccessorTarget(this);
-                            }
-                        }
-                        if (kind == ClassElementDefinitionRecord.Kind.Setter) {
-                            Accessor accessor = (Accessor) blockScopeFrame.getObject(keySlot);
-                            Accessor updated = new Accessor(accessor.getGetter(), newValue);
-                            blockScopeFrame.setObject(keySlot, updated);
-                        } else if (kind == Getter) {
-                            Accessor accessor = (Accessor) blockScopeFrame.getObject(keySlot);
-                            Accessor updated = new Accessor(newValue, accessor.getSetter());
-                            blockScopeFrame.setObject(keySlot, updated);
+                            newValue = JSArguments.getUserArgument(frame.getArguments(), 0);
                         } else {
-                            assert kind == ClassElementDefinitionRecord.Kind.Method;
-                            blockScopeFrame.setObject(keySlot, newValue);
+                            newValue = Undefined.instance;
                         }
+                        Accessor accessor = (Accessor) blockScopeFrame.getObject(keySlot);
+                        assert accessor.hasSetter();
+                        JSRuntime.call(accessor.getSetter(), thiz, new Object[]{newValue});
+                        return Undefined.instance;
                     }
                 }
                 throw Errors.createTypeErrorIllegalAccessorTarget(this);
             }
         }.getCallTarget();
-        if (kind == Getter) {
-            return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
-        } else {
-            return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
-        }
+        return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
     }
 
     private static Object checkPrivateAccess(VirtualFrame frame, Object thiz, PropertyGetNode getMagic, DynamicObjectLibrary access, Node self) {
