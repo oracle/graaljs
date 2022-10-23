@@ -82,7 +82,7 @@ class C7 { @f static [Symbol('foo')] = 42 }
 assertSame(42, context.access.get.call(C7));
 
 class C8 { @f static [Symbol('foo')] = 42 }
-assertSame(211, context.access.set.call(C8, 211));
+assertSame(undefined, context.access.set.call(C8, 211));
 
 assertSame(undefined, context.access.set.call({}));
 assertSame(undefined, context.access.get.call({}));

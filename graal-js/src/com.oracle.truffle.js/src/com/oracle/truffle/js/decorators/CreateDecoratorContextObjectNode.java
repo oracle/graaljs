@@ -352,7 +352,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     private JSFunctionData getValueSetterFrameUncached() {
         if (valueSetterFrameUncached == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            valueSetterFrameUncached = createSetterFromFrameUncached(context, ClassElementDefinitionRecord.Kind.Setter);
+            valueSetterFrameUncached = createSetterFromFrameUncached(context);
         }
         return valueSetterFrameUncached;
     }
@@ -513,7 +513,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 Object[] args = frame.getArguments();
                 Object newValue = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
                 propertySetNode.setValue(thiz, newValue);
-                return newValue;
+                return Undefined.instance;
             }
         }.getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
@@ -550,15 +550,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                     if (thiz == constructor) {
                         if (kind == Getter) {
                             Accessor accessor = (Accessor) method;
-                            Object getter = accessor.getGetter();
-                            if (getter != Undefined.instance) {
-                                return JSRuntime.call(getter, thiz, JSArguments.EMPTY_ARGUMENTS_ARRAY);
-                            } else {
-                                return Undefined.instance;
-                            }
-                        } else if (kind == ClassElementDefinitionRecord.Kind.Setter) {
-                            Accessor accessor = (Accessor) method;
-                            return accessor.getSetter();
+                            assert accessor.hasGetter();
+                            return JSRuntime.call(accessor.getGetter(), thiz, JSArguments.EMPTY_ARGUMENTS_ARRAY);
                         }
                         assert kind == ClassElementDefinitionRecord.Kind.Method;
                         return method;
@@ -571,7 +564,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     }
 
     @TruffleBoundary
-    private static JSFunctionData createSetterFromFrameUncached(JSContext context, ClassElementDefinitionRecord.Kind kind) {
+    private static JSFunctionData createSetterFromFrameUncached(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child private PropertyGetNode getMagic = PropertyGetNode.createGetHidden(MAGIC_KEY, context);
@@ -594,37 +587,22 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 if (blockScopeFrame.isObject(classSlot) && blockScopeFrame.isObject(keySlot)) {
                     Object constructor = blockScopeFrame.getObject(classSlot);
                     if (thiz == constructor) {
-                        JSDynamicObject newValue = Undefined.instance;
+                        Object newValue;
                         if (JSArguments.getUserArgumentCount(frame.getArguments()) > 0) {
-                            Object maybeNewValue = JSArguments.getUserArgument(frame.getArguments(), 0);
-                            if (maybeNewValue instanceof JSDynamicObject) {
-                                newValue = (JSDynamicObject) maybeNewValue;
-                            } else {
-                                throw Errors.createTypeErrorIllegalAccessorTarget(this);
-                            }
-                        }
-                        if (kind == ClassElementDefinitionRecord.Kind.Setter) {
-                            Accessor accessor = (Accessor) blockScopeFrame.getObject(keySlot);
-                            Accessor updated = new Accessor(accessor.getGetter(), newValue);
-                            blockScopeFrame.setObject(keySlot, updated);
-                        } else if (kind == Getter) {
-                            Accessor accessor = (Accessor) blockScopeFrame.getObject(keySlot);
-                            Accessor updated = new Accessor(newValue, accessor.getSetter());
-                            blockScopeFrame.setObject(keySlot, updated);
+                            newValue = JSArguments.getUserArgument(frame.getArguments(), 0);
                         } else {
-                            assert kind == ClassElementDefinitionRecord.Kind.Method;
-                            blockScopeFrame.setObject(keySlot, newValue);
+                            newValue = Undefined.instance;
                         }
+                        Accessor accessor = (Accessor) blockScopeFrame.getObject(keySlot);
+                        assert accessor.hasSetter();
+                        JSRuntime.call(accessor.getSetter(), thiz, new Object[]{newValue});
+                        return Undefined.instance;
                     }
                 }
                 throw Errors.createTypeErrorIllegalAccessorTarget(this);
             }
         }.getCallTarget();
-        if (kind == Getter) {
-            return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
-        } else {
-            return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
-        }
+        return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
     }
 
     private static Object checkPrivateAccess(VirtualFrame frame, Object thiz, PropertyGetNode getMagic, DynamicObjectLibrary access, Node self) {
@@ -648,7 +626,11 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
             public Object execute(VirtualFrame frame) {
                 Object thiz = JSFrameUtil.getThisObj(frame);
                 Object key = checkPrivateAccess(frame, thiz, getMagic, access, this);
-                return propertyGetNode.executeWithTargetAndIndex(thiz, key);
+                if (key instanceof HiddenKey) {
+                    return Properties.getOrDefault(access, (JSDynamicObject) thiz, key, Undefined.instance);
+                } else {
+                    return propertyGetNode.executeWithTargetAndIndex(thiz, key);
+                }
             }
         }.getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
@@ -667,8 +649,12 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 Object key = checkPrivateAccess(frame, thiz, getMagic, access, this);
                 Object[] args = frame.getArguments();
                 Object newValue = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
-                propertySetNode.executeWithTargetAndIndexAndValue(thiz, key, newValue);
-                return newValue;
+                if (key instanceof HiddenKey) {
+                    Properties.putIfPresent(access, (JSDynamicObject) thiz, key, newValue);
+                } else {
+                    propertySetNode.executeWithTargetAndIndexAndValue(thiz, key, newValue);
+                }
+                return Undefined.instance;
             }
         }.getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);

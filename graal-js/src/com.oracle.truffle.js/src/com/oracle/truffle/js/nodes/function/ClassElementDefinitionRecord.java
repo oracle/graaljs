@@ -101,7 +101,7 @@ public class ClassElementDefinitionRecord {
 
     public static ClassElementDefinitionRecord createPrivateSetter(JSContext context, Object key, int frameSlot, int brandSlot, int blockSlot, Object value, boolean anonymousFunctionDefinition,
                     Object[] decorators) {
-        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, context, key, frameSlot, brandSlot, blockSlot, value, anonymousFunctionDefinition, decorators);
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Setter, context, key, frameSlot, brandSlot, blockSlot, value, anonymousFunctionDefinition, decorators);
     }
 
     public static ClassElementDefinitionRecord createAutoAccessor(JSContext context, Object key, HiddenKey backingStorageKey, Object value, boolean isPrivate, boolean anonymousFunctionDefinition,
