@@ -550,15 +550,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                     if (thiz == constructor) {
                         if (kind == Getter) {
                             Accessor accessor = (Accessor) method;
-                            Object getter = accessor.getGetter();
-                            if (getter != Undefined.instance) {
-                                return JSRuntime.call(getter, thiz, JSArguments.EMPTY_ARGUMENTS_ARRAY);
-                            } else {
-                                return Undefined.instance;
-                            }
-                        } else if (kind == ClassElementDefinitionRecord.Kind.Setter) {
-                            Accessor accessor = (Accessor) method;
-                            return accessor.getSetter();
+                            assert accessor.hasGetter();
+                            return JSRuntime.call(accessor.getGetter(), thiz, JSArguments.EMPTY_ARGUMENTS_ARRAY);
                         }
                         assert kind == ClassElementDefinitionRecord.Kind.Method;
                         return method;
