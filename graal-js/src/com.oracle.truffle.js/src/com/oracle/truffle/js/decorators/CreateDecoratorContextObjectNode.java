@@ -648,7 +648,11 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
             public Object execute(VirtualFrame frame) {
                 Object thiz = JSFrameUtil.getThisObj(frame);
                 Object key = checkPrivateAccess(frame, thiz, getMagic, access, this);
-                return propertyGetNode.executeWithTargetAndIndex(thiz, key);
+                if (key instanceof HiddenKey) {
+                    return Properties.getOrDefault(access, (JSDynamicObject) thiz, key, Undefined.instance);
+                } else {
+                    return propertyGetNode.executeWithTargetAndIndex(thiz, key);
+                }
             }
         }.getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
@@ -667,7 +671,11 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 Object key = checkPrivateAccess(frame, thiz, getMagic, access, this);
                 Object[] args = frame.getArguments();
                 Object newValue = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
-                propertySetNode.executeWithTargetAndIndexAndValue(thiz, key, newValue);
+                if (key instanceof HiddenKey) {
+                    Properties.putIfPresent(access, (JSDynamicObject) thiz, key, newValue);
+                } else {
+                    propertySetNode.executeWithTargetAndIndexAndValue(thiz, key, newValue);
+                }
                 return newValue;
             }
         }.getCallTarget();
