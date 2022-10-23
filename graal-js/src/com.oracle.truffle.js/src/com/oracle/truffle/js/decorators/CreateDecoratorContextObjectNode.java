@@ -513,7 +513,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 Object[] args = frame.getArguments();
                 Object newValue = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
                 propertySetNode.setValue(thiz, newValue);
-                return newValue;
+                return Undefined.instance;
             }
         }.getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
@@ -654,7 +654,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 } else {
                     propertySetNode.executeWithTargetAndIndexAndValue(thiz, key, newValue);
                 }
-                return newValue;
+                return Undefined.instance;
             }
         }.getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
