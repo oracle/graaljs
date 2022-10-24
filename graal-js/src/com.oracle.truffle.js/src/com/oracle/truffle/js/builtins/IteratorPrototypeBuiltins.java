@@ -81,6 +81,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
@@ -688,6 +689,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 super(context);
             }
 
+            @SuppressFBWarnings(value = "FL_FLOATS_AS_LOOP_COUNTERS", justification = "intentional use of floating-point variable as loop counter")
             @Specialization
             public Object next(VirtualFrame frame, Object thisObj) {
                 IteratorDropArgs args = getArgs(thisObj);
