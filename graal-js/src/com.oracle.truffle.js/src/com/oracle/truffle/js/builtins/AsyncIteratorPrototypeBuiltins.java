@@ -553,18 +553,19 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child protected PropertyGetNode getConstructorNode;
         @Child protected NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child protected PerformPromiseThenNode performPromiseThenNode;
-        private final JSContext.BuiltinFunctionKey key;
+        private final JSContext.BuiltinFunctionKey thenKey;
+        private final Function<JSContext, JSFunctionData> thenCreate;
+        private final JSContext.BuiltinFunctionKey catchKey;
+        private final Function<JSContext, JSFunctionData> catchCreate;
         private final JSContext context;
-        private final Function<JSContext, JSFunctionData> create;
-        private final boolean closeOnAbrupt;
-        private final boolean asyncGenerator;
 
-        public AsyncIteratorAwaitNode(JSContext context, JSContext.BuiltinFunctionKey key, Function<JSContext, JSFunctionData> create, boolean closeOnAbrupt, boolean generator) {
-            this.key = key;
+        public AsyncIteratorAwaitNode(JSContext context, JSContext.BuiltinFunctionKey thenKey, Function<JSContext, JSFunctionData> thenCreate,
+                        JSContext.BuiltinFunctionKey catchKey, Function<JSContext, JSFunctionData> catchCreate) {
             this.context = context;
-            this.create = create;
-            this.closeOnAbrupt = closeOnAbrupt;
-            this.asyncGenerator = generator;
+            this.thenKey = thenKey;
+            this.thenCreate = thenCreate;
+            this.catchKey = catchKey;
+            this.catchCreate = catchCreate;
 
             this.setArgs = PropertySetNode.createSetHidden(ARGS_ID, context);
             this.setThisNode = PropertySetNode.createSetHidden(THIS_ID, context);
@@ -579,23 +580,21 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             return executeThis(promiseOrValue, args, getThisNode.getValue(JSFrameUtil.getFunctionObject(frame)));
         }
 
-        public final JSDynamicObject executeThis(Object promiseOrValue, T args, Object thisObj) {
-            JSDynamicObject promise;
+        private JSDynamicObject promiseResolve(Object promiseOrValue) {
             if (JSPromise.isJSPromise(promiseOrValue) && getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) == getRealm().getPromiseConstructor()) {
-                promise = (JSDynamicObject) promiseOrValue;
+                return (JSDynamicObject) promiseOrValue;
             } else {
                 PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
                 callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), promiseOrValue));
-                promise = promiseCapability.getPromise();
+                return promiseCapability.getPromise();
             }
+        }
+
+        public final JSDynamicObject executeThis(Object promiseOrValue, T args, Object thisObj) {
+            JSDynamicObject promise = promiseResolve(promiseOrValue);
 
             JSFunctionObject then = createFunction(args);
-            JSFunctionObject catchObj;
-            if (closeOnAbrupt) {
-                catchObj = asyncGenerator ? createGeneratorIfAbruptCloseFunction(args) : createIfAbruptCloseFunction(args);
-            } else {
-                catchObj = asyncGenerator ? createGeneratorIfAbruptReturnFunction(args) : createIfAbruptReturnFunction(args);
-            }
+            JSFunctionObject catchObj = createFunctionWithArgs(args, context.getOrCreateBuiltinFunctionData(catchKey, catchCreate));
 
             setThisNode.setValue(then, thisObj);
             setThisNode.setValue(catchObj, thisObj);
@@ -610,56 +609,41 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         public JSFunctionObject createFunction(T args) {
-            return createFunctionWithArgs(args, context.getOrCreateBuiltinFunctionData(this.key, create));
+            return createFunctionWithArgs(args, context.getOrCreateBuiltinFunctionData(thenKey, thenCreate));
         }
 
-        public JSFunctionObject createIfAbruptCloseFunction(AsyncIteratorArgs args) {
-            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncIteratorIfAbruptClose, AsyncIteratorAwaitNode::createIfAbruptCloseFunctionImpl);
-            return createFunctionWithArgs(args, functionData);
+        public static <T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> AsyncIteratorAwaitNode<T> create(JSContext context,
+                        JSContext.BuiltinFunctionKey key, Function<JSContext, JSFunctionData> create, boolean closeOnAbrupt) {
+            JSContext.BuiltinFunctionKey catchKey;
+            Function<JSContext, JSFunctionData> catchCreate;
+            if (closeOnAbrupt) {
+                catchKey = JSContext.BuiltinFunctionKey.AsyncIteratorIfAbruptClose;
+                catchCreate = AsyncIteratorAwaitNode::createIfAbruptCloseFunctionImpl;
+            } else {
+                catchKey = JSContext.BuiltinFunctionKey.AsyncIteratorIfAbruptReturn;
+                catchCreate = AsyncIteratorAwaitNode::createIfAbruptReturnFunctionImpl;
+            }
+            return new AsyncIteratorAwaitNode<>(context, key, create, catchKey, catchCreate);
         }
 
-        public JSFunctionObject createIfAbruptReturnFunction(AsyncIteratorArgs args) {
-            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncIteratorIfAbruptReturn, AsyncIteratorAwaitNode::createIfAbruptReturnFunctionImpl);
-            return createFunctionWithArgs(args, functionData);
-        }
-
-        public JSFunctionObject createGeneratorIfAbruptCloseFunction(AsyncIteratorArgs args) {
-            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncIteratorGeneratorIfAbruptClose,
-                            AsyncIteratorAwaitNode::createGeneratorIfAbruptCloseFunctionImpl);
-            return createFunctionWithArgs(args, functionData);
-        }
-
-        public JSFunctionObject createGeneratorIfAbruptReturnFunction(AsyncIteratorArgs args) {
-            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncIteratorGeneratorIfAbruptReturn,
-                            AsyncIteratorAwaitNode::createGeneratorIfAbruptReturnFunctionImpl);
-            return createFunctionWithArgs(args, functionData);
-        }
-
-        public JSFunctionObject createGeneratorReturnFunction(AsyncIteratorArgs args) {
-            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncIteratorGeneratorReturn,
-                            AsyncIteratorAwaitNode::createGeneratorReturnFunctionImpl);
-            return createFunctionWithArgs(args, functionData);
-        }
-
-        public static <T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> AsyncIteratorAwaitNode<T> create(JSContext context, JSContext.BuiltinFunctionKey key,
-                        Function<JSContext, JSFunctionData> create, boolean closeOnAbrupt) {
-            return create(context, key, create, closeOnAbrupt, false);
-        }
-
-        public static <T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> AsyncIteratorAwaitNode<T> createGen(JSContext context, JSContext.BuiltinFunctionKey key,
-                        Function<JSContext, JSFunctionData> create, boolean closeOnAbrupt) {
-            return create(context, key, create, closeOnAbrupt, true);
+        public static <T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> AsyncIteratorAwaitNode<T> createGen(JSContext context,
+                        JSContext.BuiltinFunctionKey key, Function<JSContext, JSFunctionData> create, boolean closeOnAbrupt) {
+            JSContext.BuiltinFunctionKey catchKey;
+            Function<JSContext, JSFunctionData> catchCreate;
+            if (closeOnAbrupt) {
+                catchKey = JSContext.BuiltinFunctionKey.AsyncIteratorGeneratorIfAbruptClose;
+                catchCreate = AsyncIteratorAwaitNode::createGeneratorIfAbruptCloseFunctionImpl;
+            } else {
+                catchKey = JSContext.BuiltinFunctionKey.AsyncIteratorGeneratorIfAbruptReturn;
+                catchCreate = AsyncIteratorAwaitNode::createGeneratorIfAbruptReturnFunctionImpl;
+            }
+            return new AsyncIteratorAwaitNode<>(context, key, create, catchKey, catchCreate);
         }
 
         public static <T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> AsyncIteratorAwaitNode<T> createGeneratorYield(JSContext context) {
             // First part of AsyncGeneratorYield: Await(value).
             // Always followed by IfAbruptCloseAsyncIterator.
             return AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorYield, AsyncIteratorYieldResultRootNode::createYieldResultFunctionImpl, true);
-        }
-
-        public static <T extends AsyncIteratorArgs> AsyncIteratorAwaitNode<T> create(JSContext context, JSContext.BuiltinFunctionKey key, Function<JSContext, JSFunctionData> create,
-                        boolean closeOnAbrupt, boolean generator) {
-            return new AsyncIteratorAwaitNode<>(context, key, create, closeOnAbrupt, generator);
         }
 
         private static JSFunctionData createIfAbruptCloseFunctionImpl(JSContext context) {
