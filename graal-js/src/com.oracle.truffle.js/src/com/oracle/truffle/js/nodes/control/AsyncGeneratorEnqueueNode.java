@@ -80,8 +80,20 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
         this.asyncGeneratorResumeNextNode = AsyncGeneratorResumeNextNode.create(context);
     }
 
+    protected AsyncGeneratorEnqueueNode(JSContext context, AsyncGeneratorResumeNextNode impl) {
+        this.getGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
+        this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
+        this.hasAsyncGeneratorInternalSlotsNode = HasHiddenKeyCacheNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID);
+        this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
+        this.asyncGeneratorResumeNextNode = impl;
+    }
+
     public static AsyncGeneratorEnqueueNode create(JSContext context) {
         return new AsyncGeneratorEnqueueNode(context);
+    }
+
+    public static AsyncGeneratorEnqueueNode create(JSContext context, AsyncGeneratorResumeNextNode impl) {
+        return new AsyncGeneratorEnqueueNode(context, impl);
     }
 
     @SuppressWarnings("unchecked")

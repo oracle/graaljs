@@ -99,37 +99,32 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         return new AsyncIteratorCloseNode(context);
     }
 
-    public final JSDynamicObject execute(JSDynamicObject iterator) {
+    public final Object execute(JSDynamicObject iterator, Object outerResult) {
         Object returnMethod = getReturnNode.executeWithTarget(iterator);
         if (returnMethod != Undefined.instance) {
             Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-            JSDynamicObject promise = this.toPromise(innerResult);
-            return performPromiseThenNode.execute(promise, createCloseFunction(promise), Undefined.instance, newPromiseCapabilityNode.executeDefault());
+            JSDynamicObject promise = promiseResolve(innerResult);
+            return performPromiseThenNode.execute(promise, createCloseFunction(promise, outerResult), Undefined.instance, newPromiseCapabilityNode.executeDefault());
         }
-        return Undefined.instance;
+        return outerResult;
     }
 
-    public final JSDynamicObject executeAbrupt(JSDynamicObject iterator, Object error) {
-        PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
-        callNode.executeCall(JSArguments.createOneArg(capabilityRecord.getPromise(), capabilityRecord.getReject(), error));
-        JSDynamicObject completion = capabilityRecord.getPromise();
-
+    public final Object executeAbrupt(JSDynamicObject iterator, Object error) {
         try {
             Object returnMethod = getReturnNode.executeWithTarget(iterator);
             if (returnMethod != Undefined.instance) {
                 Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-                JSDynamicObject promise = this.toPromise(innerResult);
-                JSFunctionObject finallyFunction = createCloseAbruptFunction(promise, completion);
+                JSDynamicObject promise = promiseResolve(innerResult);
+                JSFunctionObject finallyFunction = createCloseAbruptFunction(promise, error);
                 return performPromiseThenNode.execute(promise, finallyFunction, finallyFunction, newPromiseCapabilityNode.executeDefault());
             }
         } catch (AbstractTruffleException e) {
             // re-throw outer exception, see AsyncIteratorClose
         }
-
-        return completion;
+        return error;
     }
 
-    private JSDynamicObject toPromise(Object promiseOrValue) {
+    private JSDynamicObject promiseResolve(Object promiseOrValue) {
         if (!JSPromise.isJSPromise(promiseOrValue) || getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) != getRealm().getPromiseConstructor()) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
             callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), promiseOrValue));
@@ -139,10 +134,11 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         return (JSDynamicObject) promiseOrValue;
     }
 
-    public JSFunctionObject createCloseFunction(JSDynamicObject promise) {
+    public JSFunctionObject createCloseFunction(JSDynamicObject promise, Object completion) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncIteratorClose, AsyncIteratorCloseNode::createCloseFunctionImpl);
         JSFunctionObject function = JSFunction.create(getRealm(), functionData);
         setPromiseNode.setValue(function, promise);
+        setCompletionNode.setValue(function, completion);
         return function;
     }
 
@@ -173,9 +169,8 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         AsyncIteratorCloseRootNode(JSContext context, boolean isAbrupt) {
             this.isAbrupt = isAbrupt;
 
-            if (isAbrupt) {
-                getCompletionNode = PropertyGetNode.createGetHidden(COMPLETION_ID, context);
-            } else {
+            getCompletionNode = PropertyGetNode.createGetHidden(COMPLETION_ID, context);
+            if (!isAbrupt) {
                 valueNode = AccessIndexedArgumentNode.create(0);
                 isObjectNode = IsJSObjectNode.create();
             }
@@ -183,14 +178,15 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
+            Object completion = getCompletionNode.getValue(JSFrameUtil.getFunctionObject(frame));
             if (isAbrupt) {
-                return getCompletionNode.getValue(JSFrameUtil.getFunctionObject(frame));
+                return completion;
             } else {
                 Object innerResult = valueNode.execute(frame);
                 if (!isObjectNode.executeBoolean(innerResult)) {
                     throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
                 }
-                return Undefined.instance;
+                return completion;
             }
         }
 

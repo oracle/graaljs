@@ -40,32 +40,37 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.util.ArrayDeque;
+
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.AsyncIteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
-import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
-import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.control.AsyncGeneratorAwaitReturnNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
+import com.oracle.truffle.js.nodes.function.InternalCallNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
-import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
+import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -82,9 +87,8 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     public static final TruffleString TO_STRING_TAG = Strings.constant("Async Iterator Helper");
 
-    private static final HiddenKey TARGET_ID = new HiddenKey("target");
-    private static final HiddenKey IMPL_ID = new HiddenKey("impl");
-    private static final HiddenKey NEXT_PROMISE_ID = new HiddenKey("promise");
+    private static final HiddenKey ITERATED_ID = new HiddenKey("Iterated");
+    public static final HiddenKey IMPL_ID = new HiddenKey("ResumptionTarget");
 
     protected AsyncIteratorHelperPrototypeBuiltins() {
         super(PROTOTYPE_NAME, AsyncIteratorHelperPrototypeBuiltins.HelperIteratorPrototype.class);
@@ -119,31 +123,30 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     protected static class CreateAsyncIteratorHelperNode extends JavaScriptBaseNode {
         @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
-        @Child private PropertySetNode setTargetNode;
-        @Child private PropertySetNode setImplNode;
-        @Child private PropertySetNode setPromiseNode;
-
-        @Child private JSFunctionCallNode callNode;
-        @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
+        @Child private PropertySetNode setIteratedNode;
+        @Child private PropertySetNode setGeneratorResumptionTargetNode;
+        @Child private PropertySetNode setGeneratorState;
+        @Child private PropertySetNode setGeneratorQueue;
+        @Child private PropertySetNode setThisNode;
 
         public CreateAsyncIteratorHelperNode(JSContext context) {
-            createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
-            setTargetNode = PropertySetNode.createSetHidden(TARGET_ID, context);
-            setImplNode = PropertySetNode.createSetHidden(IMPL_ID, context);
-            setPromiseNode = PropertySetNode.createSetHidden(NEXT_PROMISE_ID, context);
+            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
+            this.setIteratedNode = PropertySetNode.createSetHidden(ITERATED_ID, context);
+            this.setGeneratorResumptionTargetNode = PropertySetNode.createSetHidden(IMPL_ID, context);
 
-            callNode = JSFunctionCallNode.createCall();
-            newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
+            this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
+            this.setGeneratorQueue = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
+            this.setThisNode = PropertySetNode.createSetHidden(AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.THIS_ID, context);
         }
 
-        public JSDynamicObject execute(IteratorRecord target, JSFunctionObject next) {
-            JSDynamicObject iterator = createObjectNode.execute(JSRealm.get(this).getAsyncIteratorHelperPrototype());
-            setTargetNode.setValue(iterator, target);
-            setImplNode.setValue(iterator, next);
+        public JSDynamicObject execute(IteratorRecord iterated, JSFunctionObject start) {
+            JSDynamicObject iterator = createObjectNode.execute(getRealm().getAsyncIteratorHelperPrototype());
+            setIteratedNode.setValue(iterator, iterated);
+            setGeneratorResumptionTargetNode.setValue(iterator, start);
+            setGeneratorState.setValue(iterator, JSFunction.AsyncGeneratorState.SuspendedStart);
+            setGeneratorQueue.setValue(iterator, new ArrayDeque<AsyncGeneratorRequest>(4));
 
-            PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
-            callNode.executeCall(JSArguments.createOneArg(capabilityRecord.getPromise(), capabilityRecord.getResolve(), Undefined.instance));
-            setPromiseNode.setValue(iterator, capabilityRecord.getPromise());
+            setThisNode.setValue(start, iterator);
             return iterator;
         }
 
@@ -152,170 +155,137 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class GetTargetNode extends JavaScriptBaseNode {
-        @Child private PropertyGetNode getTargetNode;
-        @Child private HasHiddenKeyCacheNode hasTargetNode;
-
-        private final BranchProfile errorProfile = BranchProfile.create();
-
-        public GetTargetNode(JSContext context) {
-            getTargetNode = PropertyGetNode.createGetHidden(TARGET_ID, context);
-            hasTargetNode = HasHiddenKeyCacheNode.create(TARGET_ID);
-        }
-
-        public abstract IteratorRecord execute(JSDynamicObject generator);
-
-        @Specialization
-        protected IteratorRecord get(JSDynamicObject generator) {
-            if (!hasTargetNode.executeHasHiddenKey(generator)) {
-                errorProfile.enter();
-                throw Errors.createTypeErrorIncompatibleReceiver(generator);
-            }
-
-            return (IteratorRecord) getTargetNode.getValue(generator);
-        }
-
-        public static GetTargetNode create(JSContext context) {
-            return AsyncIteratorHelperPrototypeBuiltinsFactory.GetTargetNodeGen.create(context);
-        }
-    }
-
-    protected abstract static class GetNextNode extends JavaScriptBaseNode {
-        @Child private PropertyGetNode getTargetNode;
-        @Child private HasHiddenKeyCacheNode hasTargetNode;
-
-        public GetNextNode(JSContext context) {
-            getTargetNode = PropertyGetNode.createGetHidden(IMPL_ID, context);
-            hasTargetNode = HasHiddenKeyCacheNode.create(IMPL_ID);
-        }
-
-        public abstract JSFunctionObject execute(JSDynamicObject generator);
-
-        @Specialization
-        protected JSFunctionObject get(JSDynamicObject generator) {
-            if (!hasTargetNode.executeHasHiddenKey(generator)) {
-                throw Errors.createTypeErrorIncompatibleReceiver(generator);
-            }
-
-            return (JSFunctionObject) getTargetNode.getValue(generator);
-        }
-
-        public static GetNextNode create(JSContext context) {
-            return AsyncIteratorHelperPrototypeBuiltinsFactory.GetNextNodeGen.create(context);
-        }
-    }
-
-    public abstract static class IteratorHelperReturnNode extends JSBuiltinNode {
-        @Child private GetTargetNode getTargetNode;
-        @Child private AsyncIteratorCloseNode asyncIteratorClose;
-        @Child private JSFunctionCallNode callNode;
+    protected abstract static class AsyncIteratorHelperResumeNode extends JSBuiltinNode {
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
-        @Child private HasHiddenKeyCacheNode hasInnerNode;
-        @Child private PropertyGetNode getInnerNode = null;
-        @Child private IteratorCloseNode iteratorCloseNode = null;
+        @Child private PropertyGetNode getGeneratorResumptionTargetNode;
+        @Child protected PropertyGetNode getAsyncGeneratorStateNode;
+        @Child private PropertyGetNode getAsyncGeneratorQueueNode;
+        @Child private InternalCallNode internalCallNode;
+        @Child private JSFunctionCallNode callNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+
+        protected AsyncIteratorHelperResumeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+            this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
+            this.getGeneratorResumptionTargetNode = PropertyGetNode.createGetHidden(IMPL_ID, context);
+            this.getAsyncGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
+            this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
+            this.internalCallNode = InternalCallNode.create();
+            this.callNode = JSFunctionCallNode.createCall();
+        }
+
+        protected Object validateAndResume(VirtualFrame frame, Object thisObj) {
+            PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
+            try {
+                // AsyncGeneratorValidate(generator, brand)
+                // We assume that the 'brand' field being there implies all the fields are there.
+                if (!JSObject.isJSObject(thisObj) || getGeneratorResumptionTargetNode.getValue(thisObj) == Undefined.instance) {
+                    throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+                }
+                JSObject generator = (JSObject) thisObj;
+                performNextOrReturn(frame, generator, promiseCapability);
+            } catch (AbstractTruffleException ex) {
+                if (getErrorObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+                }
+                Object error = getErrorObjectNode.execute(ex);
+                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
+            }
+            return promiseCapability.getPromise();
+        }
+
+        protected abstract void performNextOrReturn(VirtualFrame frame, JSObject generator, PromiseCapabilityRecord promiseCapability);
+
+        protected final void performResumeNext(JSDynamicObject iterator, Completion completion, JSFunction.AsyncGeneratorState state) {
+            assert state == JSFunction.AsyncGeneratorState.SuspendedStart || state == JSFunction.AsyncGeneratorState.SuspendedYield : state;
+            JSFunctionObject resumptionClosure = (JSFunctionObject) getGeneratorResumptionTargetNode.getValue(iterator);
+            ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(iterator);
+            assert !queue.isEmpty();
+
+            CallTarget resumptionTarget = JSFunction.getCallTarget(resumptionClosure);
+            internalCallNode.execute(resumptionTarget, JSArguments.createOneArg(iterator, resumptionClosure, completion));
+        }
+
+        @SuppressWarnings("unchecked")
+        protected final ArrayDeque<AsyncGeneratorRequest> getAsyncGeneratorQueue(JSDynamicObject iterator) {
+            return (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(iterator);
+        }
+    }
+
+    public abstract static class IteratorHelperReturnNode extends AsyncIteratorHelperResumeNode {
+
+        @Child private AsyncGeneratorAwaitReturnNode asyncGeneratorAwaitReturnNode;
 
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getTargetNode = GetTargetNode.create(context);
-            newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
-            callNode = JSFunctionCallNode.createCall();
-            asyncIteratorClose = AsyncIteratorCloseNode.create(context);
-            hasInnerNode = HasHiddenKeyCacheNode.create(AsyncIteratorPrototypeBuiltins.AsyncIteratorFlatMapNode.CURRENT_ID);
+            this.asyncGeneratorAwaitReturnNode = AsyncGeneratorAwaitReturnNode.create(context);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        public Object close(JSObject thisObj) {
-            if (hasInnerNode.executeHasHiddenKey(thisObj)) {
-                try {
-                    getIteratorCloseNode().executeAbrupt(((IteratorRecord) getGetInnerNode().getValue(thisObj)).getIterator());
-                } catch (AbstractTruffleException ex) {
-                    // We don't care
-                }
-            }
-            try {
-                IteratorRecord iterated = getTargetNode.execute(thisObj);
-                return asyncIteratorClose.execute(iterated.getIterator());
-            } catch (AbstractTruffleException ex) {
-                if (getErrorObjectNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
-                }
-                Object error = getErrorObjectNode.execute(Errors.createTypeErrorIncompatibleReceiver(thisObj));
-                PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
-                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, capabilityRecord.getReject(), error));
-                return capabilityRecord.getPromise();
-            }
+        @Specialization
+        @Override
+        protected final Object validateAndResume(VirtualFrame frame, Object thisObj) {
+            return super.validateAndResume(frame, thisObj);
         }
 
-        private IteratorCloseNode getIteratorCloseNode() {
-            if (iteratorCloseNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorCloseNode = IteratorCloseNode.create(getContext());
+        @Override
+        protected final void performNextOrReturn(VirtualFrame frame, JSObject generator, PromiseCapabilityRecord promiseCapability) {
+            Completion completion = Completion.forReturn(Undefined.instance);
+            // Perform AsyncGeneratorEnqueue(generator, completion, promiseCapability).
+            ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
+            AsyncGeneratorRequest request = AsyncGeneratorRequest.create(completion, promiseCapability);
+            Boundaries.queueAdd(queue, request);
+            JSFunction.AsyncGeneratorState state = (JSFunction.AsyncGeneratorState) getAsyncGeneratorStateNode.getValue(generator);
+            if (state == JSFunction.AsyncGeneratorState.SuspendedStart || state == JSFunction.AsyncGeneratorState.Completed) {
+                // Perform ! AsyncGeneratorAwaitReturn(generator).
+                asyncGeneratorAwaitReturnNode.executeAsyncGeneratorAwaitReturn(frame, generator, queue);
+            } else if (state == JSFunction.AsyncGeneratorState.SuspendedYield) {
+                // Perform AsyncGeneratorResume(generator, completion).
+                performResumeNext(generator, completion, state);
+            } else {
+                assert state == JSFunction.AsyncGeneratorState.Executing || state == JSFunction.AsyncGeneratorState.AwaitingReturn;
             }
-            return iteratorCloseNode;
-        }
-
-        private PropertyGetNode getGetInnerNode() {
-            if (getInnerNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getInnerNode = PropertyGetNode.create(AsyncIteratorPrototypeBuiltins.AsyncIteratorFlatMapNode.CURRENT_ID, getContext());
-            }
-            return getInnerNode;
         }
     }
 
-    public abstract static class AsyncIteratorHelperNextNode extends JSBuiltinNode {
-        @Child private GetNextNode getNextNode;
-        @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
-        @Child private JSFunctionCallNode callNode;
-        @Child private PerformPromiseThenNode performPromiseThenNode;
-        @Child private PropertySetNode setIteratorPromiseNode;
-        @Child private PropertyGetNode getPromiseNode;
-        @Child private PropertySetNode setPromiseNode;
-        @Child private PropertySetNode setThisNode;
-        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+    public abstract static class AsyncIteratorHelperNextNode extends AsyncIteratorHelperResumeNode {
+        @Child private JSFunctionCallNode callResolveNode;
+
+        @Child private CreateIterResultObjectNode createIterResultObjectNode;
 
         protected AsyncIteratorHelperNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getNextNode = GetNextNode.create(context);
-            newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
-            performPromiseThenNode = PerformPromiseThenNode.create(context);
-            callNode = JSFunctionCallNode.createCall();
-            setIteratorPromiseNode = PropertySetNode.createSetHidden(AsyncIteratorPrototypeBuiltins.PROMISE_ID, context);
-            getPromiseNode = PropertyGetNode.createGetHidden(NEXT_PROMISE_ID, context);
-            setPromiseNode = PropertySetNode.createSetHidden(NEXT_PROMISE_ID, context);
-            setThisNode = PropertySetNode.createSetHidden(AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.THIS_ID, context);
+            this.callResolveNode = JSFunctionCallNode.createCall();
+            this.getAsyncGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
+            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         }
 
-        @Specialization(guards = {"isJSObject(thisObj)"})
-        protected Object next(JSObject thisObj) {
-            try {
-                JSDynamicObject promise = (JSDynamicObject) getPromiseNode.getValue(thisObj);
+        @Specialization
+        @Override
+        protected final Object validateAndResume(VirtualFrame frame, Object thisObj) {
+            return super.validateAndResume(frame, thisObj);
+        }
 
-                Object impl = getNextNode.execute(thisObj);
-                setIteratorPromiseNode.setValue(thisObj, promise);
-                setThisNode.setValue(impl, thisObj);
-                JSDynamicObject result = performPromiseThenNode.execute(promise, impl, Undefined.instance, newPromiseCapabilityNode.executeDefault());
-                setPromiseNode.setValue(thisObj, result);
-                return result;
-            } catch (AbstractTruffleException ex) {
-                if (getErrorObjectNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+        @Override
+        protected final void performNextOrReturn(VirtualFrame frame, JSObject generator, PromiseCapabilityRecord promiseCapability) {
+            JSFunction.AsyncGeneratorState state = (JSFunction.AsyncGeneratorState) getAsyncGeneratorStateNode.getValue(generator);
+            if (state == JSFunction.AsyncGeneratorState.Completed) {
+                Object iteratorResult = createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                callResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), iteratorResult));
+            } else {
+                Completion completion = Completion.forNormal(Undefined.instance);
+                ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
+                AsyncGeneratorRequest request = AsyncGeneratorRequest.create(completion, promiseCapability);
+                Boundaries.queueAdd(queue, request);
+                if (state == JSFunction.AsyncGeneratorState.SuspendedStart || state == JSFunction.AsyncGeneratorState.SuspendedYield) {
+                    performResumeNext(generator, completion, state);
+                } else {
+                    assert state == JSFunction.AsyncGeneratorState.Executing || state == JSFunction.AsyncGeneratorState.AwaitingReturn;
                 }
-                Object error = getErrorObjectNode.execute(Errors.createTypeErrorIncompatibleReceiver(thisObj));
-                PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
-                callNode.executeCall(JSArguments.createOneArg(Undefined.instance, capabilityRecord.getReject(), error));
-                return capabilityRecord.getPromise();
             }
-        }
-
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected Object incompatible(@SuppressWarnings("unused") Object thisObj) {
-            throw Errors.createTypeErrorGeneratorObjectExpected();
         }
     }
 }
