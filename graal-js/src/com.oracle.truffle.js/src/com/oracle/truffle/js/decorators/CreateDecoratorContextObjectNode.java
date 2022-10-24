@@ -56,11 +56,13 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PrivateBrandCheckNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -466,8 +468,14 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 if (brandCheckNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     JSReadFrameSlotNode readConstructor = JSReadFrameSlotNode.create(blockScopeFrame.getFrameDescriptor(), constructorSlot);
+                    JavaScriptNode brandNode;
+                    if (isStatic) {
+                        brandNode = readConstructor;
+                    } else {
+                        brandNode = PropertyNode.createGetHidden(context, readConstructor, JSFunction.PRIVATE_BRAND_ID);
+                    }
                     this.readMethod = insert(JSReadFrameSlotNode.create(blockScopeFrame.getFrameDescriptor(), keySlot));
-                    this.brandCheckNode = insert(PrivateBrandCheckNode.create(readMethod, readConstructor));
+                    this.brandCheckNode = insert(PrivateBrandCheckNode.create(readMethod, brandNode));
                 }
                 if (brandCheckNode.executeWithTarget(blockScopeFrame, thiz) != Undefined.instance) {
                     return readMethod.execute(blockScopeFrame);
