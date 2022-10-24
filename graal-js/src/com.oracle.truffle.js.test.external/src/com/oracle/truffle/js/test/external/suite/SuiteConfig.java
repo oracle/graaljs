@@ -74,7 +74,17 @@ public class SuiteConfig {
     private final boolean regenerateConfig;
     private final boolean shareEngine;
     private final int minESVersion;
-    private final int timeoutTest; // individual timeouts not supported by all engines
+    /**
+     * Per-test timeout in seconds. Not supported by all engines.
+     *
+     * @see TestSuite#INDIVIDUAL_TIMEOUT_SECONDS
+     */
+    private final int timeoutTest;
+    /**
+     * Overall timeout in seconds.
+     *
+     * @see TestSuite#OVERALL_TIMEOUT_SECONDS
+     */
     private final int timeoutOverall;
     private final String containsFilter;
     private final String regexFilter;
@@ -294,7 +304,9 @@ public class SuiteConfig {
         private boolean textOutput;
         private boolean regenerateConfig;
         private boolean shareEngine;
-        private int timeoutTest; // individual timeouts not supported by all engines
+        /** Per-test timeout in seconds. Not supported by all engines. */
+        private int timeoutTest;
+        /** Overall timeout in seconds. */
         private int timeoutOverall;
         private String containsFilter;
         private String regexFilter;

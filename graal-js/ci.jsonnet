@@ -26,7 +26,7 @@ local ci = import '../ci.jsonnet';
     teardown+: [
       ['mx', 'sversions', '--print-repositories', '--json', '|', 'coverage-uploader.py', '--associated-repos', '-'],
     ],
-    timelimit: '30:00',
+    timelimit: '1:00:00',
   },
 
   local checkoutJsBenchmarks = {

@@ -90,7 +90,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class TestSuite {
 
-    public static final int OVERALL_TIMEOUT_SECONDS = 60 * 14;
+    public static final int OVERALL_TIMEOUT_SECONDS = 20 * 60;
     public static final int INDIVIDUAL_TIMEOUT_SECONDS = 30;
 
     private static final char LINE_SEPARATOR = '\n';
@@ -857,7 +857,7 @@ public abstract class TestSuite {
             try {
                 assert result.isDone();
                 if (result.isCancelled()) {
-                    log("Overall TIMEOUT, exiting " + config.getSuiteDescription());
+                    log("Overall TIMEOUT (" + config.getTimeoutOverall() + "s), exiting " + config.getSuiteDescription());
                     System.exit(-1);
                 }
                 result.get();
