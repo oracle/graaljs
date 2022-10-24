@@ -41,7 +41,7 @@ var C3 = class {
     ['#m'] = 42;
 }
 
-assertSame('function', typeof getter.call(C3));
+assertSame('function', typeof getter.call(new C3()));
 assertThrows(() => {
     getter.call({});
 }, TypeError);
