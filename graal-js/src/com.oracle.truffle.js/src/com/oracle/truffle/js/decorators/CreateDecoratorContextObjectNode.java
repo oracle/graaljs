@@ -83,6 +83,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import java.util.List;
@@ -312,7 +313,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     protected JSFunctionData getMethodGetterFrameUncached() {
         if (methodGetterFrameUncached == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            methodGetterFrameUncached = createGetterFromFrameUncached(context, ClassElementDefinitionRecord.Kind.Method);
+            methodGetterFrameUncached = createGetterFromFrameUncached(context, ClassElementDefinitionRecord.Kind.Method, isStatic);
         }
         return methodGetterFrameUncached;
     }
@@ -336,7 +337,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     private JSFunctionData getValueGetterFrameUncached() {
         if (valueGetterFrameUncached == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            valueGetterFrameUncached = createGetterFromFrameUncached(context, Getter);
+            valueGetterFrameUncached = createGetterFromFrameUncached(context, Getter, isStatic);
         }
         return valueGetterFrameUncached;
     }
@@ -352,7 +353,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     private JSFunctionData getValueSetterFrameUncached() {
         if (valueSetterFrameUncached == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            valueSetterFrameUncached = createSetterFromFrameUncached(context);
+            valueSetterFrameUncached = createSetterFromFrameUncached(context, isStatic);
         }
         return valueSetterFrameUncached;
     }
@@ -524,7 +525,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     //
 
     @TruffleBoundary
-    private static JSFunctionData createGetterFromFrameUncached(JSContext context, ClassElementDefinitionRecord.Kind kind) {
+    private static JSFunctionData createGetterFromFrameUncached(JSContext context, ClassElementDefinitionRecord.Kind kind, boolean isStatic) {
         CompilerAsserts.neverPartOfCompilation();
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child private PropertyGetNode getMagic = PropertyGetNode.createGetHidden(MAGIC_KEY, context);
@@ -547,7 +548,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 if (blockScopeFrame.isObject(classSlot) && blockScopeFrame.isObject(keySlot)) {
                     Object method = blockScopeFrame.getObject(keySlot);
                     Object constructor = blockScopeFrame.getObject(classSlot);
-                    if (thiz == constructor) {
+                    if (privateBrandCheck(thiz, constructor, isStatic)) {
                         if (kind == Getter) {
                             Accessor accessor = (Accessor) method;
                             assert accessor.hasGetter();
@@ -563,8 +564,22 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
     }
 
+    private static boolean privateBrandCheck(Object target, Object constructor, boolean isStatic) {
+        if (isStatic) {
+            return target == constructor;
+        } else {
+            if (target instanceof JSObject && constructor instanceof JSObject) {
+                Object brandKey = Properties.getOrDefaultUncached((JSObject) constructor, JSFunction.PRIVATE_BRAND_ID, null);
+                if (brandKey instanceof HiddenKey) {
+                    return Properties.containsKeyUncached((JSObject) target, brandKey);
+                }
+            }
+            return false;
+        }
+    }
+
     @TruffleBoundary
-    private static JSFunctionData createSetterFromFrameUncached(JSContext context) {
+    private static JSFunctionData createSetterFromFrameUncached(JSContext context, boolean isStatic) {
         CompilerAsserts.neverPartOfCompilation();
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child private PropertyGetNode getMagic = PropertyGetNode.createGetHidden(MAGIC_KEY, context);
@@ -586,7 +601,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                 assert slots[0] == keySlot && slots[1] == classSlot : "slot must not change";
                 if (blockScopeFrame.isObject(classSlot) && blockScopeFrame.isObject(keySlot)) {
                     Object constructor = blockScopeFrame.getObject(classSlot);
-                    if (thiz == constructor) {
+                    if (privateBrandCheck(thiz, constructor, isStatic)) {
                         Object newValue;
                         if (JSArguments.getUserArgumentCount(frame.getArguments()) > 0) {
                             newValue = JSArguments.getUserArgument(frame.getArguments(), 0);
