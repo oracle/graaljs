@@ -17,6 +17,8 @@ function d(value, context) {
     access = context.access;
 };
 
+// Static class elements
+
 // Field
 C = class { @d static x = 42 };
 assertSame('function', typeof access.get);
@@ -90,4 +92,92 @@ C = class { @d static set #x(v) { newValue = v; } };
 assertSame('undefined', typeof access.get);
 assertSame('function', typeof access.set);
 assertSame(undefined, access.set.call(C, 42));
+assertSame(42, newValue);
+
+// Instance class elements
+var c;
+
+// Field
+C = class { @d x = 42 };
+c = new C();
+assertSame('function', typeof access.get);
+assertSame('function', typeof access.set);
+assertSame(42, access.get.call(c));
+assertSame(undefined, access.set.call(c, 211));
+assertSame(211, access.get.call(c));
+assertSame(211, c.x);
+
+// Private field
+C = class { @d #x = 43; getX() { return this.#x; } };
+c = new C();
+assertSame('function', typeof access.get);
+assertSame('function', typeof access.set);
+assertSame(43, access.get.call(c));
+assertSame(undefined, access.set.call(c, 212));
+assertSame(212, access.get.call(c));
+assertSame(212, c.getX());
+
+// Method
+C = class { @d x() {} };
+c = new C();
+assertSame('function', typeof access.get);
+assertSame('undefined', typeof access.set);
+assertSame(c.x, access.get.call(c));
+
+// Private method
+C = class { @d #x() {}; getX() { return this.#x; } };
+c = new C();
+assertSame('function', typeof access.get);
+assertSame('undefined', typeof access.set);
+assertSame(c.getX(), access.get.call(c));
+
+// Auto-accessor
+C = class { @d accessor x = 42 };
+c = new C();
+assertSame('function', typeof access.get);
+assertSame('function', typeof access.set);
+assertSame(42, access.get.call(c));
+assertSame(undefined, access.set.call(c, 211));
+assertSame(211, access.get.call(c));
+assertSame(211, c.x);
+
+// Private auto-accessor
+C = class { @d accessor #x = 43; };
+c = new C();
+assertSame('function', typeof access.get);
+assertSame('function', typeof access.set);
+assertSame(43, access.get.call(c));
+assertSame(undefined, access.set.call(c, 212));
+assertSame(212, access.get.call(c));
+
+// Getter
+C = class { @d get x() { return 42; } };
+c = new C();
+assertSame('function', typeof access.get);
+assertSame('undefined', typeof access.set);
+assertSame(42, access.get.call(c));
+
+// Private getter
+C = class { @d get #x() { return 43; } };
+c = new C();
+assertSame('function', typeof access.get);
+assertSame('undefined', typeof access.set);
+assertSame(43, access.get.call(c));
+
+// Setter
+newValue = undefined;
+C = class { @d set x(v) { newValue = v; } };
+c = new C();
+assertSame('undefined', typeof access.get);
+assertSame('function', typeof access.set);
+assertSame(undefined, access.set.call(c, 42));
+assertSame(42, newValue);
+
+// Private setter
+newValue = undefined;
+C = class { @d set #x(v) { newValue = v; } };
+c = new C();
+assertSame('undefined', typeof access.get);
+assertSame('function', typeof access.set);
+assertSame(undefined, access.set.call(c, 42));
 assertSame(42, newValue);
