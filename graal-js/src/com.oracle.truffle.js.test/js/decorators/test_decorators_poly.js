@@ -65,7 +65,7 @@ for (let i=0; i<10; i++) {
         @foo #m() {};
         ['#m'] = 42;
     }
-    assertSame('function', typeof getter.call(C2));
+    assertSame('function', typeof getter.call(new C2()));
 
     assertThrows(() => {
         getter.call({});
