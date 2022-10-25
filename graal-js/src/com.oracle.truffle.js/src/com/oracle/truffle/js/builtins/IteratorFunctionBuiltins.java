@@ -41,25 +41,18 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
-import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Contains builtins for {@linkplain JSIterator} function (constructor).
@@ -98,45 +91,27 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
     }
 
     public abstract static class JSIteratorFromNode extends JSBuiltinNode {
-        @Child private GetMethodNode getIteratorMethodNode;
-        @Child private GetIteratorBaseNode getIteratorNode;
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
-        @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
-        @Child private IsCallableNode isCallableNode;
+        @Child private GetIteratorFlattenableNode getIteratorFlattenableNode;
 
-        private final ConditionProfile usingIteratorProfile = ConditionProfile.createBinaryProfile();
-        private final BranchProfile errorProfile = BranchProfile.create();
+        @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
 
         public JSIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR);
-            this.getIteratorNode = GetIteratorBaseNode.create();
-            this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(getContext());
-            this.getIteratorDirectNode = GetIteratorDirectNode.create(getContext());
-            this.isCallableNode = IsCallableNode.create();
+            this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(false, context);
+            this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
         }
 
         @Specialization
         protected JSDynamicObject iteratorFrom(Object arg) {
-            IteratorRecord iteratorRecord;
+            IteratorRecord iteratorRecord = getIteratorFlattenableNode.execute(arg);
 
-            Object usingIterator = getIteratorMethodNode.executeWithTarget(arg);
-            if (usingIteratorProfile.profile(usingIterator != Undefined.instance)) {
-                iteratorRecord = getIteratorNode.execute(arg);
-                if (!isCallableNode.executeBoolean(iteratorRecord.getNextMethod())) {
-                    errorProfile.enter();
-                    throw Errors.createTypeErrorCallableExpected();
-                }
-
-                boolean hasInstance = ordinaryHasInstanceNode.executeBoolean(iteratorRecord.getIterator(), getRealm().getIteratorConstructor());
-                if (hasInstance) {
-                    return iteratorRecord.getIterator();
-                }
-            } else {
-                iteratorRecord = getIteratorDirectNode.execute(arg);
+            JSRealm realm = getRealm();
+            boolean hasInstance = ordinaryHasInstanceNode.executeBoolean(iteratorRecord.getIterator(), realm.getIteratorConstructor());
+            if (hasInstance) {
+                return iteratorRecord.getIterator();
             }
 
-            return JSWrapForIterator.create(getContext(), getRealm(), iteratorRecord);
+            return JSWrapForIterator.create(getContext(), realm, iteratorRecord);
         }
 
     }

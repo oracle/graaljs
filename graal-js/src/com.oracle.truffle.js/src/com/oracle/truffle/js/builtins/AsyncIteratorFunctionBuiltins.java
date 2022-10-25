@@ -40,26 +40,18 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<AsyncIteratorFunctionBuiltins.AsyncIteratorFunction> {
 
@@ -95,65 +87,27 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
     }
 
     public abstract static class JSAsyncIteratorFromNode extends JSBuiltinNode {
-        @Child private GetMethodNode getAsyncIteratorMethodNode;
-        @Child private GetMethodNode getIteratorMethodNode;
-        @Child private GetIteratorNode getIteratorNode;
+        @Child private GetIteratorFlattenableNode getIteratorFlattenableNode;
 
         @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
-        @Child private GetIteratorDirectNode getIteratorDirectNode;
-        @Child private IsCallableNode isCallableNode;
-
-        private final ConditionProfile usingIteratorProfile = ConditionProfile.createBinaryProfile();
-        private final BranchProfile errorProfile = BranchProfile.create();
 
         public JSAsyncIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getAsyncIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ASYNC_ITERATOR);
-            this.getIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR);
+            this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(true, context);
+            this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
         }
 
         @Specialization
         protected JSDynamicObject asyncIteratorFrom(Object arg) {
-            IteratorRecord iteratorRecord = null;
+            IteratorRecord iteratorRecord = getIteratorFlattenableNode.execute(arg);
 
-            Object usingIterator = getAsyncIteratorMethodNode.executeWithTarget(arg);
-            if (usingIteratorProfile.profile(usingIterator != Undefined.instance || getIteratorMethodNode.executeWithTarget(arg) != Undefined.instance)) {
-                if (getIteratorNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getIteratorNode = insert(GetIteratorNode.createAsync(getContext(), null));
-                }
-
-                iteratorRecord = getIteratorNode.execute(arg);
-
-                if (isCallableNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    isCallableNode = insert(IsCallableNode.create());
-                }
-
-                if (!isCallableNode.executeBoolean(iteratorRecord.getNextMethod())) {
-                    errorProfile.enter();
-                    throw Errors.createTypeErrorCallableExpected();
-                }
-
-                if (ordinaryHasInstanceNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ordinaryHasInstanceNode = insert(OrdinaryHasInstanceNode.create(getContext()));
-                }
-
-                boolean hasInstance = ordinaryHasInstanceNode.executeBoolean(iteratorRecord.getIterator(), getRealm().getAsyncIteratorConstructor());
-                if (hasInstance) {
-                    return iteratorRecord.getIterator();
-                }
-            } else {
-                if (getIteratorDirectNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getIteratorDirectNode = insert(GetIteratorDirectNode.create(getContext()));
-                }
-
-                iteratorRecord = getIteratorDirectNode.execute(arg);
+            JSRealm realm = getRealm();
+            boolean hasInstance = ordinaryHasInstanceNode.executeBoolean(iteratorRecord.getIterator(), realm.getAsyncIteratorConstructor());
+            if (hasInstance) {
+                return iteratorRecord.getIterator();
             }
 
-            return JSWrapForAsyncIterator.create(getContext(), getRealm(), iteratorRecord);
+            return JSWrapForAsyncIterator.create(getContext(), realm, iteratorRecord);
         }
     }
 }

@@ -46,10 +46,8 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
@@ -114,33 +112,26 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     @ImportStatic({IteratorHelperPrototypeBuiltins.class, IteratorPrototypeBuiltins.class, JSFunction.GeneratorState.class})
     public abstract static class IteratorHelperReturnNode extends JSBuiltinNode {
-        @Child private PropertyGetNode getTargetNode;
+        @Child private PropertyGetNode getArgsNode;
         @Child private PropertyGetNode getGeneratorStateNode;
         @Child private PropertySetNode setGeneratorStateNode;
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private HasHiddenKeyCacheNode hasNextImplNode;
-        @Child private HasHiddenKeyCacheNode hasInnerNode;
 
         protected IteratorHelperReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            getTargetNode = PropertyGetNode.create(ARGS_ID, context);
+            getArgsNode = PropertyGetNode.create(ARGS_ID, context);
             getGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
             setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             iteratorCloseNode = IteratorCloseNode.create(context);
             createIterResultObjectNode = CreateIterResultObjectNode.create(context);
             hasNextImplNode = HasHiddenKeyCacheNode.create(ARGS_ID);
-
-            hasInnerNode = HasHiddenKeyCacheNode.create(IteratorPrototypeBuiltins.FLATMAP_ALIVE_ID);
         }
 
         protected boolean hasImpl(Object thisObj) {
             return hasNextImplNode.executeHasHiddenKey(thisObj);
-        }
-
-        protected boolean hasInner(Object thisObj) {
-            return hasInnerNode.executeHasHiddenKey(thisObj);
         }
 
         protected JSFunction.GeneratorState getState(Object thisObject) {
@@ -158,30 +149,21 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 
-        @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == SuspendedYield", "hasInner(thisObj)"})
-        public Object closeInner(VirtualFrame frame, Object thisObj,
-                        @Cached("createGetHidden(FLATMAP_ALIVE_ID, getContext())") PropertyGetNode isAliveNode,
-                        @Cached("createGetHidden(FLATMAP_INNER_ID, getContext())") PropertyGetNode getInnerNode,
-                        @Cached("createBinaryProfile()") ConditionProfile aliveProfile) {
+        @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == SuspendedYield"})
+        public Object suspendedYield(VirtualFrame frame, Object thisObj,
+                        @Cached BranchProfile aliveBranch) {
             setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
 
-            try {
-                if (aliveProfile.profile(isAliveNode.getValueBoolean(thisObj))) {
-                    IteratorRecord iterated = (IteratorRecord) getInnerNode.getValue(thisObj);
-                    iteratorCloseNode.executeAbrupt(iterated.getIterator());
+            var args = (IteratorPrototypeBuiltins.IteratorArgs) getArgsNode.getValue(thisObj);
+            if (args instanceof IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs) {
+                var flatMapArgs = (IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs) args;
+                if (flatMapArgs.innerAlive) {
+                    aliveBranch.enter();
+                    iteratorCloseNode.executeAbrupt(flatMapArgs.innerIterator.getIterator());
                 }
-            } catch (UnexpectedResultException ex) {
-                throw Errors.shouldNotReachHere(ex);
             }
-            return close(frame, thisObj);
-        }
 
-        @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == SuspendedYield", "!hasInner(thisObj)"})
-        public Object close(VirtualFrame frame, Object thisObj) {
-            setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
-
-            IteratorRecord iterated = ((IteratorPrototypeBuiltins.IteratorArgs) getTargetNode.getValue(thisObj)).iterated;
-
+            IteratorRecord iterated = args.iterated;
             try {
                 iteratorCloseNode.executeVoid(iterated.getIterator());
             } finally {

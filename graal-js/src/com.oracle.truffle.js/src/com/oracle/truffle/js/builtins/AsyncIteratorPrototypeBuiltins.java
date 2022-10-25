@@ -57,7 +57,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -1463,7 +1463,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         protected static class AsyncIteratorFlatMapWithResultRootNode extends AsyncIteratorAwaitNode.AsyncIteratorGeneratorAwaitResumptionRootNode<AsyncIteratorFlatMapArgs> {
             @Child private IteratorNextNode iteratorNextNode;
-            @Child private GetIteratorNode getIteratorNode;
+            @Child private GetIteratorFlattenableNode getIteratorFlattenableNode;
             @Child private AsyncIteratorAwaitNode<AsyncIteratorFlatMapArgs> awaitInnerNode;
 
             public AsyncIteratorFlatMapWithResultRootNode(JSContext context) {
@@ -1471,7 +1471,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
                 this.iteratorNextNode = IteratorNextNode.create();
                 this.callNode = JSFunctionCallNode.createCall();
-                this.getIteratorNode = GetIteratorNode.createAsync(context, null);
+                this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(true, context);
                 this.awaitInnerNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorFlatMapInnerWithValue,
                                 AsyncIteratorFlatMapNode::createFlatMapInnerWithValueFunctionImpl, true);
             }
@@ -1481,7 +1481,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 AsyncIteratorFlatMapArgs args = getArgs(frame);
 
                 Object mapped = valueNode.execute(frame);
-                IteratorRecord inner = getIteratorNode.execute(mapped);
+                IteratorRecord inner = getIteratorFlattenableNode.execute(mapped);
                 args.innerIterator = inner;
 
                 Object innerNext = iteratorNextNode.execute(inner);

@@ -47,15 +47,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
@@ -97,9 +95,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<IteratorPrototypeBuiltins.IteratorPrototype> {
 
     public static final JSBuiltinsContainer BUILTINS = new IteratorPrototypeBuiltins();
-
-    public static final HiddenKey FLATMAP_ALIVE_ID = new HiddenKey("innerAlive");
-    public static final HiddenKey FLATMAP_INNER_ID = new HiddenKey("innerIterator");
 
     private IteratorPrototypeBuiltins() {
         super(JSIterator.PROTOTYPE_NAME, IteratorPrototype.class);
@@ -666,16 +661,15 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     protected abstract static class IteratorFlatMapNode extends IteratorBaseNode<IteratorFlatMapNode.IteratorFlatMapArgs> {
-        @Child private PropertySetNode setAliveNode;
 
         protected IteratorFlatMapNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, BuiltinFunctionKey.IteratorFlatMap, c -> createIteratorImplNextFunction(c, IteratorFlatMapNextNode.create(c)));
-
-            this.setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
         }
 
         protected static class IteratorFlatMapArgs extends IteratorWithCounterArgs {
             public final Object mapper;
+            public boolean innerAlive;
+            public IteratorRecord innerIterator;
 
             public IteratorFlatMapArgs(IteratorRecord target, Object mapper) {
                 super(target);
@@ -686,9 +680,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isCallable(mapper)")
         public JSDynamicObject flatMap(Object thisObj, Object mapper) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            JSDynamicObject result = createIterator(thisObj, new IteratorFlatMapArgs(iterated, mapper));
-            setAliveNode.setValueBoolean(result, false);
-            return result;
+            return createIterator(thisObj, new IteratorFlatMapArgs(iterated, mapper));
         }
 
         @Specialization(guards = "!isCallable(mapper)")
@@ -701,14 +693,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             @Child private IteratorCloseNode iteratorCloseNode;
 
             @Child private JSFunctionCallNode callNode;
-            @Child private GetIteratorBaseNode getIteratorNode;
-
-            @Child private PropertyGetNode getAliveNode;
-            @Child private PropertySetNode setAliveNode;
-
-            @Child private PropertyGetNode getInnerNode;
-            @Child private PropertySetNode setInnerNode;
-
+            @Child private GetIteratorFlattenableNode getIteratorFlattenableNode;
             @Child private IteratorGetNextValueNode getNextValueNode;
 
             protected IteratorFlatMapNextNode(JSContext context) {
@@ -717,13 +702,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 this.iteratorCloseNode = IteratorCloseNode.create(context);
 
                 this.callNode = JSFunctionCallNode.createCall();
-                this.getIteratorNode = GetIteratorBaseNode.create();
-
-                this.setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
-                this.getAliveNode = PropertyGetNode.createGetHidden(FLATMAP_ALIVE_ID, context);
-
-                this.setInnerNode = PropertySetNode.createSetHidden(FLATMAP_INNER_ID, context);
-                this.getInnerNode = PropertyGetNode.createGetHidden(FLATMAP_INNER_ID, context);
+                this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(false, context);
 
                 this.getNextValueNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
             }
@@ -731,49 +710,39 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             @Specialization
             public Object next(VirtualFrame frame, Object thisObj) {
                 IteratorFlatMapArgs args = getArgs(thisObj);
-
-                boolean innerAlive;
-                try {
-                    innerAlive = getAliveNode.getValueBoolean(thisObj);
-                } catch (UnexpectedResultException e) {
-                    throw Errors.shouldNotReachHere(e);
-                }
-
+                boolean innerAlive = args.innerAlive;
                 while (true) {
                     if (innerAlive) {
-                        IteratorRecord iterated = (IteratorRecord) getInnerNode.getValue(thisObj);
-
-                        Object value;
+                        Object innerValue;
                         try {
-                            value = getNextValueNode.execute(frame, iterated);
+                            innerValue = getNextValueNode.execute(frame, args.innerIterator);
                         } catch (AbstractTruffleException e) {
                             iteratorCloseNode.executeAbrupt(args.iterated.getIterator());
                             throw e;
                         }
-                        if (value == null) {
+                        if (innerValue == null) {
                             innerAlive = false;
+                            args.innerAlive = false;
+                            args.innerIterator = null;
                             continue;
                         }
-                        return createResultContinue(frame, thisObj, value);
+                        return createResultContinue(frame, thisObj, innerValue);
                     } else {
                         Object value = getNextValueNode.execute(frame, args.iterated);
                         if (value == null) {
-                            setAliveNode.setValueBoolean(thisObj, false);
                             return createResultDone(frame, thisObj);
                         }
 
-                        IteratorRecord innerIterator;
                         try {
                             Object mapped = callNode.executeCall(JSArguments.create(Undefined.instance, args.mapper, value, indexToJS(args.counter)));
-                            innerIterator = getIteratorNode.execute(mapped);
+                            args.innerIterator = getIteratorFlattenableNode.execute(mapped);
                         } catch (AbstractTruffleException e) {
                             iteratorCloseNode.executeAbrupt(args.iterated.getIterator());
                             throw e;
                         }
                         args.counter++;
-                        setInnerNode.setValue(thisObj, innerIterator);
                         innerAlive = true;
-                        setAliveNode.setValueBoolean(thisObj, true);
+                        args.innerAlive = true;
                     }
                 }
             }
