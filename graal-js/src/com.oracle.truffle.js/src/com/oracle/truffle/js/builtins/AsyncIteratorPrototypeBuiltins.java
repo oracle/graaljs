@@ -371,7 +371,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public abstract static class AbstractAsyncIteratorGeneratorResumptionRootNode<T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> extends AsyncIteratorRootNode<T> {
 
             @Child protected PropertySetNode setGeneratorState;
-            @Child protected PropertyGetNode getGeneratorQueue;
+            @Child private PropertyGetNode getGeneratorQueue;
             @Child private AsyncGeneratorDrainQueueNode asyncGeneratorOpNode;
 
             protected AbstractAsyncIteratorGeneratorResumptionRootNode(JSContext context) {
@@ -394,6 +394,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             protected final void asyncGeneratorCompleteStep(VirtualFrame frame, Completion.Type completionType, Object completionValue, boolean done, ArrayDeque<AsyncGeneratorRequest> queue) {
                 asyncGeneratorOpNode.asyncGeneratorCompleteStep(frame, completionType, completionValue, done, queue);
+            }
+
+            @SuppressWarnings("unchecked")
+            protected final ArrayDeque<AsyncGeneratorRequest> getAsyncGeneratorQueue(Object generator) {
+                return (ArrayDeque<AsyncGeneratorRequest>) getGeneratorQueue.getValue(generator);
             }
         }
 
@@ -501,7 +506,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             public abstract Object executeBody(VirtualFrame frame);
 
-            @SuppressWarnings("unchecked")
             @Override
             public final Object execute(VirtualFrame frame) {
                 Object generator = getThis(frame);
@@ -514,7 +518,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 Completion.Type resultType = Completion.Type.Normal;
                 Object resultValue = Undefined.instance;
                 if (suspendedState == JSFunction.AsyncGeneratorState.SuspendedYield) {
-                    ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getGeneratorQueue.getValue(generator);
+                    ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
                     assert !queue.isEmpty();
                     AsyncGeneratorRequest toYield = queue.peekFirst();
                     // AsyncGeneratorUnwrapYieldResumption
@@ -679,26 +683,23 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected static class AsyncIteratorYieldResultRootNode extends AsyncIteratorAwaitNode.AbstractAsyncIteratorGeneratorResumptionRootNode<AsyncIteratorArgs> {
-        @Child private PropertyGetNode getGeneratorQueue;
         @Child private PropertySetNode setGeneratorState;
         @Child private JSFunctionCallNode callNode;
         @Child private PropertyGetNode getContinuation;
 
         protected AsyncIteratorYieldResultRootNode(JSContext context) {
             super(context);
-            this.getGeneratorQueue = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
             this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
             this.callNode = JSFunctionCallNode.createCall();
             this.getContinuation = PropertyGetNode.createGetHidden(AsyncIteratorHelperPrototypeBuiltins.IMPL_ID, context);
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public Object execute(VirtualFrame frame) {
             Object value = valueNode.execute(frame); // awaited value
             Object generator = getThis(frame);
 
-            ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getGeneratorQueue.getValue(generator);
+            ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
             assert !queue.isEmpty();
             // Perform AsyncGeneratorCompleteStep
             asyncGeneratorCompleteStep(frame, Completion.Type.Normal, value, false, queue);
@@ -738,13 +739,12 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.isObjectNode = closeResumption ? IsJSObjectNode.create() : null;
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public Object executeBody(VirtualFrame frame) {
             Object awaitedValue = valueNode.execute(frame);
             Object generator = getThis(frame);
 
-            ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getGeneratorQueue.getValue(generator);
+            ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
             assert !queue.isEmpty();
             AsyncGeneratorRequest result = queue.peekFirst();
             if (result.isReturn()) {
@@ -794,13 +794,12 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                             AsyncIteratorFlatMapUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseResumptionImpl, true);
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public Object executeBody(VirtualFrame frame) {
             Object awaitedValue = valueNode.execute(frame);
             Object generator = getThis(frame);
 
-            ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getGeneratorQueue.getValue(generator);
+            ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
             assert !queue.isEmpty();
             AsyncGeneratorRequest result = queue.peekFirst();
             if (result.isReturn()) {
