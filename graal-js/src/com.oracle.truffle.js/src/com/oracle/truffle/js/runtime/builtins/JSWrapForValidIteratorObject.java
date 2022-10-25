@@ -46,10 +46,10 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public final class JSWrapForAsyncIteratorObject extends JSNonProxyObject {
+public final class JSWrapForValidIteratorObject extends JSNonProxyObject {
     private final IteratorRecord iterated;
 
-    protected JSWrapForAsyncIteratorObject(Shape shape, IteratorRecord iterated) {
+    protected JSWrapForValidIteratorObject(Shape shape, IteratorRecord iterated) {
         super(shape);
         this.iterated = iterated;
     }
@@ -60,10 +60,10 @@ public final class JSWrapForAsyncIteratorObject extends JSNonProxyObject {
 
     @Override
     public TruffleString getClassName() {
-        return JSAsyncIterator.CLASS_NAME;
+        return JSIterator.CLASS_NAME;
     }
 
-    public static JSWrapForAsyncIteratorObject create(JSRealm realm, JSObjectFactory factory, IteratorRecord iterated) {
-        return factory.initProto(new JSWrapForAsyncIteratorObject(factory.getShape(realm), iterated), realm);
+    public static JSWrapForValidIteratorObject create(JSRealm realm, JSObjectFactory factory, IteratorRecord iterated) {
+        return factory.initProto(new JSWrapForValidIteratorObject(factory.getShape(realm), iterated), realm);
     }
 }

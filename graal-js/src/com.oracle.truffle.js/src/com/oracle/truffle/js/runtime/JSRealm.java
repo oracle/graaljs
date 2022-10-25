@@ -159,8 +159,8 @@ import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
-import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
-import com.oracle.truffle.js.runtime.builtins.JSWrapForIterator;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
@@ -712,11 +712,11 @@ public class JSRealm {
             this.iteratorConstructor = ctor.getFunctionObject();
             this.iteratorPrototype = ctor.getPrototype();
 
-            this.wrapForIteratorPrototype = JSWrapForIterator.INSTANCE.createPrototype(this, iteratorConstructor);
+            this.wrapForIteratorPrototype = JSWrapForValidIterator.INSTANCE.createPrototype(this, iteratorConstructor);
             ctor = JSAsyncIterator.createConstructor(this);
             this.asyncIteratorPrototype = ctor.getPrototype();
             this.asyncIteratorContructor = ctor.getFunctionObject();
-            this.wrapForAsyncIteratorPrototype = JSWrapForAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
+            this.wrapForAsyncIteratorPrototype = JSWrapForValidAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
             this.asyncIteratorHelperPrototype = createAsyncIteratorHelperPrototype();
             this.iteratorHelperPrototype = createIteratorHelperPrototype();
         } else {

@@ -84,7 +84,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
-import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -868,7 +868,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization
         protected JSDynamicObject toAsync(Object thisObj) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            return JSWrapForAsyncIterator.create(getContext(), getRealm(), iterated);
+            return JSWrapForValidAsyncIterator.create(getContext(), getRealm(), iterated);
         }
     }
 

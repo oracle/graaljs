@@ -42,35 +42,35 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.WrapForAsyncIteratorPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.WrapForValidIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public final class JSWrapForAsyncIterator extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
+public final class JSWrapForValidIterator extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
-    public static final JSWrapForAsyncIterator INSTANCE = new JSWrapForAsyncIterator();
+    public static final JSWrapForValidIterator INSTANCE = new JSWrapForValidIterator();
 
-    private JSWrapForAsyncIterator() {
+    private JSWrapForValidIterator() {
     }
 
-    public static JSWrapForAsyncIteratorObject create(JSContext context, JSRealm realm, IteratorRecord iteratorRecord) {
-        JSObjectFactory factory = context.getWrapForAsyncIteratorFactory();
-        JSWrapForAsyncIteratorObject obj = factory.initProto(new JSWrapForAsyncIteratorObject(factory.getShape(realm), iteratorRecord), realm);
+    public static JSWrapForValidIteratorObject create(JSContext context, JSRealm realm, IteratorRecord iteratorRecord) {
+        JSObjectFactory factory = context.getWrapForIteratorFactory();
+        JSWrapForValidIteratorObject obj = factory.initProto(new JSWrapForValidIteratorObject(factory.getShape(realm), iteratorRecord), realm);
         return context.trackAllocation(obj);
     }
 
-    public static boolean isWrapForAsyncIterator(Object obj) {
-        return obj instanceof JSWrapForAsyncIteratorObject;
+    public static boolean isWrapForIterator(Object obj) {
+        return obj instanceof JSWrapForValidIteratorObject;
     }
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSDynamicObject iteratorPrototype = realm.getAsyncIteratorPrototype();
+        JSDynamicObject iteratorPrototype = realm.getIteratorPrototype();
         JSDynamicObject wrapForIteratorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, iteratorPrototype);
-        JSObjectUtil.putFunctionsFromContainer(realm, wrapForIteratorPrototype, WrapForAsyncIteratorPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putFunctionsFromContainer(realm, wrapForIteratorPrototype, WrapForValidIteratorPrototypeBuiltins.BUILTINS);
         return wrapForIteratorPrototype;
     }
 
@@ -82,12 +82,12 @@ public final class JSWrapForAsyncIterator extends JSNonProxy implements JSConstr
 
     @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getWrapForAsyncIteratorPrototype();
+        return realm.getWrapForIteratorPrototype();
     }
 
     @Override
     public TruffleString getClassName() {
-        return JSAsyncIterator.CLASS_NAME;
+        return JSIterator.CLASS_NAME;
     }
 
     @Override

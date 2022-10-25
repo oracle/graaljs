@@ -69,19 +69,19 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
-import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIterator;
-import com.oracle.truffle.js.runtime.builtins.JSWrapForAsyncIteratorObject;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIteratorObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WrapForAsyncIteratorPrototypeBuiltins.WrapForWrapForAsyncIterator> {
-    public static final JSBuiltinsContainer BUILTINS = new WrapForAsyncIteratorPrototypeBuiltins();
+public final class WrapForValidAsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WrapForValidAsyncIteratorPrototypeBuiltins.WrapForWrapForAsyncIterator> {
+    public static final JSBuiltinsContainer BUILTINS = new WrapForValidAsyncIteratorPrototypeBuiltins();
 
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("%WrapForValidAsyncIteratorPrototype%");
 
-    protected WrapForAsyncIteratorPrototypeBuiltins() {
+    protected WrapForValidAsyncIteratorPrototypeBuiltins() {
         super(PROTOTYPE_NAME, WrapForWrapForAsyncIterator.class);
     }
 
@@ -105,14 +105,14 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, WrapForWrapForAsyncIterator builtinEnum) {
         switch (builtinEnum) {
             case next:
-                return WrapForAsyncIteratorPrototypeBuiltinsFactory.WrapForAsyncIteratorNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return WrapForValidAsyncIteratorPrototypeBuiltinsFactory.WrapForAsyncIteratorNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case return_:
-                return WrapForAsyncIteratorPrototypeBuiltinsFactory.WrapForAsyncIteratorReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return WrapForValidAsyncIteratorPrototypeBuiltinsFactory.WrapForAsyncIteratorReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
 
-    @ImportStatic({JSWrapForAsyncIterator.class})
+    @ImportStatic({JSWrapForValidAsyncIterator.class})
     public abstract static class WrapForAsyncIteratorNextNode extends JSBuiltinNode {
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private IteratorNextNode iteratorNextNode;
@@ -130,7 +130,7 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
         }
 
         @Specialization
-        protected JSDynamicObject next(JSWrapForAsyncIteratorObject thisObj) {
+        protected JSDynamicObject next(JSWrapForValidAsyncIteratorObject thisObj) {
 
             try {
                 Object result = iteratorNextNode.execute(thisObj.getIterated());
@@ -166,7 +166,7 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
         }
     }
 
-    @ImportStatic({JSWrapForAsyncIterator.class})
+    @ImportStatic({JSWrapForValidAsyncIterator.class})
     public abstract static class WrapForAsyncIteratorReturnNode extends JSBuiltinNode {
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private JSFunctionCallNode callNode;
@@ -191,7 +191,7 @@ public final class WrapForAsyncIteratorPrototypeBuiltins extends JSBuiltinsConta
         }
 
         @Specialization
-        protected Object performReturn(VirtualFrame frame, JSWrapForAsyncIteratorObject thisObj) {
+        protected Object performReturn(VirtualFrame frame, JSWrapForValidAsyncIteratorObject thisObj) {
             try {
                 Object innerResult = iteratorCloseNode.execute(thisObj.getIterated().getIterator());
                 if (JSPromise.isJSPromise(innerResult)) {

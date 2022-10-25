@@ -50,7 +50,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
-import com.oracle.truffle.js.runtime.builtins.JSWrapForIterator;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
@@ -111,7 +111,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                 return iteratorRecord.getIterator();
             }
 
-            return JSWrapForIterator.create(getContext(), realm, iteratorRecord);
+            return JSWrapForValidIterator.create(getContext(), realm, iteratorRecord);
         }
 
     }
