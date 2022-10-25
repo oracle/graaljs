@@ -28,16 +28,50 @@ function testInvalidReceiver() {
 
     function* dummyGenerator() { yield 42; };
 
-    for (let invalidGenerator of [42, {}, dummyGenerator()]) {
+    for (let method of ['next', 'return']) {
+      for (let invalidGenerator of [42, {}, dummyGenerator()]) {
+        try {
+          iteratorHelper[method].call(invalidGenerator);
+          throw new DidNotThrow(TypeError);
+        } catch (e) {
+          assertInstanceof(e, TypeError);
+        }
+      }
+    }
+
+    assertSame(0, iterator.nextCalls);
+    assertSame(0, iterator.returnCalls);
+  }
+}
+
+function testGeneratorBrandCheck() {
+  helper(it => it.drop(0));
+  helper(it => it.take(1));
+  helper(it => it.indexed());
+  helper(it => it.map(x => x));
+  helper(it => it.flatMap(x => x));
+  helper(it => it.filter(x => true));
+
+  function helper(helperFactory) {
+    let iterator = new IteratorSequence();
+    let iteratorHelper = helperFactory(iterator);
+
+    function* dummyGenerator() { yield 42; };
+    let generator = dummyGenerator();
+
+    for (let method of ['next', 'return', 'throw']) {
       try {
-        iteratorHelper.next.call(invalidGenerator);
+        generator[method].call(iteratorHelper);
         throw new DidNotThrow(TypeError);
       } catch (e) {
         assertInstanceof(e, TypeError);
       }
     }
+
     assertSame(0, iterator.nextCalls);
+    assertSame(0, iterator.returnCalls);
   }
 }
 
 testInvalidReceiver();
+testGeneratorBrandCheck();

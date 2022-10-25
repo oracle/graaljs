@@ -29,9 +29,42 @@ async function testInvalidReceiver() {
 
     async function* dummyGenerator() { yield 42; };
 
-    for (let invalidGenerator of [42, {}, dummyGenerator()]) {
+    for (let method of ['next', 'return']) {
+      for (let invalidGenerator of [42, {}, dummyGenerator()]) {
+        // Should not throw directly but return a rejected promise.
+        let promise = iteratorHelper[method].call(invalidGenerator);
+        try {
+          await promise;
+          throw new DidNotThrow(TypeError);
+        } catch (e) {
+          assertInstanceof(e, TypeError);
+        }
+      }
+    }
+
+    assertSame(0, asyncIterator.nextCalls);
+    assertSame(0, asyncIterator.returnCalls);
+  }
+}
+
+async function testGeneratorBrandCheck() {
+  await helper(it => it.drop(0));
+  await helper(it => it.take(1));
+  await helper(it => it.indexed());
+  await helper(it => it.map(x => x));
+  await helper(it => it.flatMap(x => x));
+  await helper(it => it.filter(x => true));
+
+  async function helper(helperFactory) {
+    let asyncIterator = new AsyncIteratorSequence();
+    let iteratorHelper = helperFactory(asyncIterator);
+
+    async function* dummyGenerator() { yield 42; };
+    let generator = dummyGenerator();
+
+    for (let method of ['next', 'return', 'throw']) {
       // Should not throw directly but return a rejected promise.
-      let promise = iteratorHelper.next.call(invalidGenerator);
+      let promise = generator[method].call(iteratorHelper);
       try {
         await promise;
         throw new DidNotThrow(TypeError);
@@ -39,13 +72,16 @@ async function testInvalidReceiver() {
         assertInstanceof(e, TypeError);
       }
     }
+
     assertSame(0, asyncIterator.nextCalls);
+    assertSame(0, asyncIterator.returnCalls);
   }
 }
 
 (async function main() {
   try {
     await testInvalidReceiver();
+    await testGeneratorBrandCheck();
 
     debugLog("DONE");
   } catch (e) {
