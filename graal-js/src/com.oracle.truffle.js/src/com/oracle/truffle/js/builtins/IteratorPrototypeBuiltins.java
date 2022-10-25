@@ -209,7 +209,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    private abstract static class IteratorBaseNode<T extends IteratorArgs> extends IteratorMethodWithCallableNode {
+    private abstract static class IteratorFromGeneratorNode<T extends IteratorArgs> extends IteratorMethodWithCallableNode {
         @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
         @Child private PropertySetNode setArgsNode;
         @Child private PropertySetNode setNextNode;
@@ -218,7 +218,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         private final BuiltinFunctionKey nextKey;
         private final Function<JSContext, JSFunctionData> nextFactory;
 
-        IteratorBaseNode(JSContext context, JSBuiltin builtin, BuiltinFunctionKey nextKey, Function<JSContext, JSFunctionData> nextFactory) {
+        IteratorFromGeneratorNode(JSContext context, JSBuiltin builtin, BuiltinFunctionKey nextKey, Function<JSContext, JSFunctionData> nextFactory) {
             super(context, builtin);
 
             this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
@@ -229,7 +229,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.nextFactory = nextFactory;
         }
 
-        protected abstract static class IteratorImplNode<T extends IteratorArgs> extends JavaScriptBaseNode {
+        protected abstract static class IteratorFromGeneratorImplNode<T extends IteratorArgs> extends JavaScriptBaseNode {
             @Child private PropertyGetNode getArgsNode;
             @Child private HasHiddenKeyCacheNode hasArgsNode;
             @Child private CreateIterResultObjectNode createIterResultObjectNode;
@@ -242,7 +242,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             private final BranchProfile doubleIndexBranch = BranchProfile.create();
             protected final JSContext context;
 
-            public IteratorImplNode(JSContext context) {
+            public IteratorFromGeneratorImplNode(JSContext context) {
                 this.context = context;
 
                 this.setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
@@ -294,7 +294,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return context;
             }
 
-            public abstract IteratorImplNode<T> copyUninitialized();
+            public abstract IteratorFromGeneratorImplNode<T> copyUninitialized();
 
             protected final Object indexToJS(long index) {
                 return JSRuntime.longToIntOrDouble(index, doubleIndexBranch);
@@ -302,9 +302,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         private static class IteratorRootNode extends JavaScriptRootNode {
-            @Child private IteratorImplNode<?> implNode;
+            @Child private IteratorFromGeneratorImplNode<?> implNode;
 
-            IteratorRootNode(IteratorImplNode<?> implNode) {
+            IteratorRootNode(IteratorFromGeneratorImplNode<?> implNode) {
                 this.implNode = implNode;
             }
 
@@ -313,7 +313,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return implNode.execute(frame, JSFrameUtil.getThisObj(frame));
             }
 
-            public static IteratorRootNode create(IteratorImplNode<?> implNode) {
+            public static IteratorRootNode create(IteratorFromGeneratorImplNode<?> implNode) {
                 return new IteratorRootNode(implNode);
             }
 
@@ -338,7 +338,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
         }
 
-        protected JSDynamicObject createIterator(@SuppressWarnings("unused") Object thisObj, T args) {
+        protected final JSDynamicObject createIterator(@SuppressWarnings("unused") Object thisObj, T args) {
             JSDynamicObject iterator = createObjectNode.execute(getIteratorHelperPrototype());
             setArgsNode.setValue(iterator, args);
             setNextNode.setValue(iterator, JSFunction.create(getRealm(), getContext().getOrCreateBuiltinFunctionData(nextKey, nextFactory)));
@@ -346,7 +346,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return iterator;
         }
 
-        protected static JSFunctionData createIteratorImplNextFunction(JSContext context, IteratorImplNode<?> implNode) {
+        protected static JSFunctionData createIteratorFromGeneratorFunctionImpl(JSContext context, IteratorFromGeneratorImplNode<?> implNode) {
             return JSFunctionData.createCallOnly(context, IteratorRootNode.create(implNode).getCallTarget(), 0, Strings.EMPTY);
         }
 
@@ -355,9 +355,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    protected abstract static class IteratorMapNode extends IteratorBaseNode<IteratorMapNode.IteratorMapArgs> {
+    protected abstract static class IteratorMapNode extends IteratorFromGeneratorNode<IteratorMapNode.IteratorMapArgs> {
         protected IteratorMapNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, BuiltinFunctionKey.IteratorMap, c -> createIteratorImplNextFunction(c, IteratorMapNextNode.create(c)));
+            super(context, builtin, BuiltinFunctionKey.IteratorMap, c -> createIteratorFromGeneratorFunctionImpl(c, IteratorMapNextNode.create(c)));
         }
 
         protected static class IteratorMapArgs extends IteratorWithCounterArgs {
@@ -381,7 +381,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        protected abstract static class IteratorMapNextNode extends IteratorImplNode<IteratorMapArgs> {
+        protected abstract static class IteratorMapNextNode extends IteratorFromGeneratorImplNode<IteratorMapArgs> {
             @Child private IteratorCloseNode iteratorCloseNode;
             @Child private JSFunctionCallNode callNode;
 
@@ -413,7 +413,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Override
-            public IteratorImplNode<IteratorMapArgs> copyUninitialized() {
+            public IteratorFromGeneratorImplNode<IteratorMapArgs> copyUninitialized() {
                 return create(context);
             }
 
@@ -424,9 +424,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     }
 
-    protected abstract static class IteratorFilterNode extends IteratorBaseNode<IteratorFilterNode.IteratorFilterArgs> {
+    protected abstract static class IteratorFilterNode extends IteratorFromGeneratorNode<IteratorFilterNode.IteratorFilterArgs> {
         protected IteratorFilterNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, BuiltinFunctionKey.IteratorFilter, c -> createIteratorImplNextFunction(c, IteratorFilterNextNode.create(c)));
+            super(context, builtin, BuiltinFunctionKey.IteratorFilter, c -> createIteratorFromGeneratorFunctionImpl(c, IteratorFilterNextNode.create(c)));
         }
 
         protected static class IteratorFilterArgs extends IteratorWithCounterArgs {
@@ -450,7 +450,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        protected abstract static class IteratorFilterNextNode extends IteratorImplNode<IteratorFilterArgs> {
+        protected abstract static class IteratorFilterNextNode extends IteratorFromGeneratorImplNode<IteratorFilterArgs> {
             @Child private IteratorCloseNode iteratorCloseNode;
             @Child private JSFunctionCallNode callNode;
             @Child private JSToBooleanNode toBooleanNode;
@@ -489,7 +489,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Override
-            public IteratorImplNode<IteratorFilterArgs> copyUninitialized() {
+            public IteratorFromGeneratorImplNode<IteratorFilterArgs> copyUninitialized() {
                 return create(context);
             }
 
@@ -500,7 +500,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     }
 
-    protected abstract static class IteratorTakeNode extends IteratorBaseNode<IteratorTakeNode.IteratorTakeArgs> {
+    protected abstract static class IteratorTakeNode extends IteratorFromGeneratorNode<IteratorTakeNode.IteratorTakeArgs> {
 
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
@@ -508,7 +508,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         private BranchProfile errorProfile = BranchProfile.create();
 
         protected IteratorTakeNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, BuiltinFunctionKey.IteratorTake, c -> createIteratorImplNextFunction(c, IteratorTakeNextNode.create(c)));
+            super(context, builtin, BuiltinFunctionKey.IteratorTake, c -> createIteratorFromGeneratorFunctionImpl(c, IteratorTakeNextNode.create(c)));
 
             this.toNumberNode = JSToNumberNode.create();
             this.toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
@@ -542,7 +542,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return createIterator(thisObj, new IteratorTakeArgs(iterated, integerLimit));
         }
 
-        protected abstract static class IteratorTakeNextNode extends IteratorBaseNode.IteratorImplNode<IteratorTakeArgs> {
+        protected abstract static class IteratorTakeNextNode extends IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<IteratorTakeArgs> {
             @Child private IteratorCloseNode iteratorCloseNode;
 
             private final ConditionProfile finiteProfile = ConditionProfile.createBinaryProfile();
@@ -569,7 +569,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Override
-            public IteratorImplNode<IteratorTakeArgs> copyUninitialized() {
+            public IteratorFromGeneratorImplNode<IteratorTakeArgs> copyUninitialized() {
                 return create(context);
             }
 
@@ -580,7 +580,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     }
 
-    protected abstract static class IteratorDropNode extends IteratorBaseNode<IteratorDropNode.IteratorDropArgs> {
+    protected abstract static class IteratorDropNode extends IteratorFromGeneratorNode<IteratorDropNode.IteratorDropArgs> {
 
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
@@ -588,7 +588,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         private final BranchProfile errorProfile = BranchProfile.create();
 
         protected IteratorDropNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, BuiltinFunctionKey.IteratorDrop, c -> createIteratorImplNextFunction(c, IteratorDropNextNode.create(c)));
+            super(context, builtin, BuiltinFunctionKey.IteratorDrop, c -> createIteratorFromGeneratorFunctionImpl(c, IteratorDropNextNode.create(c)));
 
             this.toNumberNode = JSToNumberNode.create();
             this.toIntegerOrInfinityNode = JSToIntegerOrInfinityNode.create();
@@ -622,7 +622,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return createIterator(thisObj, new IteratorDropArgs(iterated, integerLimit));
         }
 
-        protected abstract static class IteratorDropNextNode extends IteratorBaseNode.IteratorImplNode<IteratorDropArgs> {
+        protected abstract static class IteratorDropNextNode extends IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<IteratorDropArgs> {
 
             private final ConditionProfile finiteProfile = ConditionProfile.createBinaryProfile();
 
@@ -649,7 +649,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Override
-            public IteratorImplNode<IteratorDropArgs> copyUninitialized() {
+            public IteratorFromGeneratorImplNode<IteratorDropArgs> copyUninitialized() {
                 return create(context);
             }
 
@@ -660,10 +660,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     }
 
-    protected abstract static class IteratorFlatMapNode extends IteratorBaseNode<IteratorFlatMapNode.IteratorFlatMapArgs> {
+    protected abstract static class IteratorFlatMapNode extends IteratorFromGeneratorNode<IteratorFlatMapNode.IteratorFlatMapArgs> {
 
         protected IteratorFlatMapNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, BuiltinFunctionKey.IteratorFlatMap, c -> createIteratorImplNextFunction(c, IteratorFlatMapNextNode.create(c)));
+            super(context, builtin, BuiltinFunctionKey.IteratorFlatMap, c -> createIteratorFromGeneratorFunctionImpl(c, IteratorFlatMapNextNode.create(c)));
         }
 
         protected static class IteratorFlatMapArgs extends IteratorWithCounterArgs {
@@ -689,7 +689,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        protected abstract static class IteratorFlatMapNextNode extends IteratorBaseNode.IteratorImplNode<IteratorFlatMapArgs> {
+        protected abstract static class IteratorFlatMapNextNode extends IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<IteratorFlatMapArgs> {
             @Child private IteratorCloseNode iteratorCloseNode;
 
             @Child private JSFunctionCallNode callNode;
@@ -748,7 +748,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Override
-            public IteratorImplNode<IteratorFlatMapArgs> copyUninitialized() {
+            public IteratorFromGeneratorImplNode<IteratorFlatMapArgs> copyUninitialized() {
                 return create(context);
             }
 
