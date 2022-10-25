@@ -178,6 +178,14 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
+    protected static class IteratorWithCounterArgs extends IteratorArgs {
+        public long counter;
+
+        protected IteratorWithCounterArgs(IteratorRecord iterated) {
+            super(iterated);
+        }
+    }
+
     protected abstract static class IteratorMethodNode extends JSBuiltinNode {
         @Child private GetIteratorDirectNode getIteratorDirectNode;
 
@@ -241,6 +249,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             @Child private PropertySetNode setGeneratorStateNode;
 
             private final BranchProfile hasNoArgsProfile = BranchProfile.create();
+            private final BranchProfile doubleIndexBranch = BranchProfile.create();
             protected final JSContext context;
 
             public IteratorImplNode(JSContext context) {
@@ -283,7 +292,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @SuppressWarnings("unchecked")
-            protected T getArgs(Object thisObj) {
+            protected final T getArgs(Object thisObj) {
                 if (!hasArgsNode.executeHasHiddenKey(thisObj)) {
                     hasNoArgsProfile.enter();
                     throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
@@ -296,6 +305,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             public abstract IteratorImplNode<T> copyUninitialized();
+
+            protected final Object indexToJS(long index) {
+                return JSRuntime.longToIntOrDouble(index, doubleIndexBranch);
+            }
         }
 
         private static class IteratorRootNode extends JavaScriptRootNode {
@@ -357,7 +370,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             super(context, builtin, BuiltinFunctionKey.IteratorMap, c -> createIteratorImplNextFunction(c, IteratorMapNextNode.create(c)));
         }
 
-        protected static class IteratorMapArgs extends IteratorArgs {
+        protected static class IteratorMapArgs extends IteratorWithCounterArgs {
             public final Object mapper;
 
             public IteratorMapArgs(IteratorRecord target, Object mapper) {
@@ -400,12 +413,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 Object value = iteratorValue(next);
                 Object mapped;
                 try {
-                    mapped = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.mapper, value));
+                    mapped = callNode.executeCall(JSArguments.create(Undefined.instance, args.mapper, value, indexToJS(args.counter)));
                 } catch (AbstractTruffleException e) {
                     iteratorCloseNode.executeAbrupt(args.iterated.getIterator());
                     throw e;
                 }
-
+                args.counter++;
                 return createResultContinue(frame, thisObj, mapped);
             }
 
@@ -426,7 +439,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             super(context, builtin, BuiltinFunctionKey.IteratorFilter, c -> createIteratorImplNextFunction(c, IteratorFilterNextNode.create(c)));
         }
 
-        protected static class IteratorFilterArgs extends IteratorArgs {
+        protected static class IteratorFilterArgs extends IteratorWithCounterArgs {
             public final Object filterer;
 
             public IteratorFilterArgs(IteratorRecord target, Object filterer) {
@@ -473,11 +486,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
                     Object selected;
                     try {
-                        selected = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.filterer, value));
+                        selected = callNode.executeCall(JSArguments.create(Undefined.instance, args.filterer, value, indexToJS(args.counter)));
                     } catch (AbstractTruffleException e) {
                         iteratorCloseNode.executeAbrupt(args.iterated.getIterator());
                         throw e;
                     }
+                    args.counter++;
                     if (toBooleanNode.executeBoolean(selected)) {
                         return createResultContinue(frame, thisObj, value);
                     }
@@ -518,8 +532,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         protected abstract static class IteratorIndexedNextNode extends IteratorBaseNode.IteratorImplNode<IteratorIndexedArgs> {
 
-            private ConditionProfile intIndexProfile = ConditionProfile.create();
-
             protected IteratorIndexedNextNode(JSContext context) {
                 super(context);
             }
@@ -537,14 +549,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 JSArrayObject pair = JSArray.createConstant(getContext(), getRealm(), new Object[]{indexToJS(index), value});
                 args.index = index + 1;
                 return createResultContinue(frame, thisObj, pair);
-            }
-
-            private Object indexToJS(long index) {
-                if (intIndexProfile.profile(JSRuntime.longIsRepresentableAsInt(index))) {
-                    return (int) index;
-                } else {
-                    return (double) index;
-                }
             }
 
             @Override
@@ -728,7 +732,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.setAliveNode = PropertySetNode.createSetHidden(FLATMAP_ALIVE_ID, context);
         }
 
-        protected static class IteratorFlatMapArgs extends IteratorArgs {
+        protected static class IteratorFlatMapArgs extends IteratorWithCounterArgs {
             public final Object mapper;
 
             public IteratorFlatMapArgs(IteratorRecord target, Object mapper) {
@@ -818,12 +822,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
                         IteratorRecord innerIterator;
                         try {
-                            Object mapped = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.mapper, value));
+                            Object mapped = callNode.executeCall(JSArguments.create(Undefined.instance, args.mapper, value, indexToJS(args.counter)));
                             innerIterator = getIteratorNode.execute(mapped);
                         } catch (AbstractTruffleException e) {
                             iteratorCloseNode.executeAbrupt(args.iterated.getIterator());
                             throw e;
                         }
+                        args.counter++;
                         setInnerNode.setValue(thisObj, innerIterator);
                         innerAlive = true;
                         setAliveNode.setValueBoolean(thisObj, true);
@@ -853,6 +858,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private IteratorValueNode iteratorValueNode;
 
         protected final BranchProfile errorProfile = BranchProfile.create();
+        private final BranchProfile doubleIndexBranch = BranchProfile.create();
 
         protected static final Object CONTINUE = new Object();
 
@@ -868,21 +874,18 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.toBooleanNode = JSToBooleanNode.create();
         }
 
-        protected void prepare() {
-
-        }
-
         protected Object end() {
             return Undefined.instance;
         }
 
-        protected Object step(@SuppressWarnings("unused") IteratorRecord iterated, @SuppressWarnings("unused") Object fn, @SuppressWarnings("unused") Object value) {
+        @SuppressWarnings("unused")
+        protected Object step(IteratorRecord iterated, Object fn, Object value, long counter) {
             return CONTINUE;
         }
 
-        protected Object callMapper(IteratorRecord iterated, Object fn, Object value) {
+        protected final Object callMapper(IteratorRecord iterated, Object fn, Object value, long counter) {
             try {
-                return callNode.executeCall(JSArguments.createOneArg(Undefined.instance, fn, value));
+                return callNode.executeCall(JSArguments.create(Undefined.instance, fn, value, indexToJS(counter)));
             } catch (AbstractTruffleException ex) {
                 if (iteratorCloseNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -896,7 +899,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isCallable(fn)")
         protected Object compatible(Object thisObj, Object fn) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            prepare();
+            long counter = 0;
             while (true) {
                 Object next = iteratorNextNode.execute(iterated);
                 if (!isObjectNode.executeBoolean(next)) {
@@ -907,7 +910,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     return end();
                 }
 
-                Object result = step(iterated, fn, iteratorValueNode.execute(next));
+                Object result = step(iterated, fn, iteratorValueNode.execute(next), counter++);
                 if (result != CONTINUE) {
                     if (iteratorCloseNode == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -922,6 +925,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected void incompatible(Object thisObj, Object fn) {
             getIteratorDirect(thisObj);
             throw Errors.createTypeErrorNotAFunction(fn);
+        }
+
+        protected final Object indexToJS(long index) {
+            return JSRuntime.longToIntOrDouble(index, doubleIndexBranch);
         }
     }
 
@@ -960,8 +967,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Override
-        protected Object step(IteratorRecord iterated, Object fn, Object value) {
-            callMapper(iterated, fn, value);
+        protected Object step(IteratorRecord iterated, Object fn, Object value, long counter) {
+            callMapper(iterated, fn, value, counter);
             return CONTINUE;
         }
     }
@@ -976,8 +983,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Override
-        protected Object step(IteratorRecord iterated, Object fn, Object value) {
-            if (toBooleanNode.executeBoolean(callMapper(iterated, fn, value))) {
+        protected Object step(IteratorRecord iterated, Object fn, Object value, long counter) {
+            if (toBooleanNode.executeBoolean(callMapper(iterated, fn, value, counter))) {
                 return true;
             }
             return CONTINUE;
@@ -999,8 +1006,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Override
-        protected Object step(IteratorRecord iterated, Object fn, Object value) {
-            if (!toBooleanNode.executeBoolean(callMapper(iterated, fn, value))) {
+        protected Object step(IteratorRecord iterated, Object fn, Object value, long counter) {
+            if (!toBooleanNode.executeBoolean(callMapper(iterated, fn, value, counter))) {
                 return false;
             }
             return CONTINUE;
@@ -1022,8 +1029,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Override
-        protected Object step(IteratorRecord iterated, Object fn, Object value) {
-            if (toBooleanNode.executeBoolean(callMapper(iterated, fn, value))) {
+        protected Object step(IteratorRecord iterated, Object fn, Object value, long counter) {
+            if (toBooleanNode.executeBoolean(callMapper(iterated, fn, value, counter))) {
                 return value;
             }
             return CONTINUE;
@@ -1035,6 +1042,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private IteratorValueNode iteratorValueNode;
         @Child private JSFunctionCallNode callNode;
         @Child private IteratorCloseNode iteratorCloseNode;
+        private final BranchProfile doubleIndexBranch = BranchProfile.create();
 
         protected IteratorReduceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1044,9 +1052,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.callNode = JSFunctionCallNode.createCall();
         }
 
-        private Object callReducer(IteratorRecord iterated, Object reducer, Object accumulator, Object value) {
+        private Object callReducer(IteratorRecord iterated, Object reducer, Object accumulator, Object value, long counter) {
             try {
-                return callNode.executeCall(JSArguments.create(Undefined.instance, reducer, accumulator, value));
+                return callNode.executeCall(JSArguments.create(Undefined.instance, reducer, accumulator, value, JSRuntime.longToIntOrDouble(counter, doubleIndexBranch)));
             } catch (AbstractTruffleException ex) {
                 if (iteratorCloseNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1064,6 +1072,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             Object initialValue = JSRuntime.getArgOrUndefined(args, 0);
 
             Object accumulator;
+            long counter;
             if (initialValue == Undefined.instance) {
                 Object next = iteratorStepNode.execute(iterated);
                 if (next == Boolean.FALSE) {
@@ -1071,8 +1080,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 }
 
                 accumulator = iteratorValueNode.execute(next);
+                counter = 1;
             } else {
                 accumulator = initialValue;
+                counter = 0;
             }
 
             while (true) {
@@ -1081,7 +1092,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     return accumulator;
                 }
                 Object value = iteratorValueNode.execute(next);
-                accumulator = callReducer(iterated, reducer, accumulator, value);
+                accumulator = callReducer(iterated, reducer, accumulator, value, counter);
+                counter++;
             }
         }
 

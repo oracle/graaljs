@@ -185,6 +185,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Child protected JSFunctionCallNode callNode;
 
             protected final JSContext context;
+            private final BranchProfile doubleIndexBranch = BranchProfile.create();
 
             protected AsyncIteratorRootNode(JSContext context) {
                 super(context.getLanguage(), null, null);
@@ -196,12 +197,12 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
 
             @SuppressWarnings("unchecked")
-            protected T getArgs(VirtualFrame frame) {
+            protected final T getArgs(VirtualFrame frame) {
                 JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 return (T) getArgsNode.getValue(functionObject);
             }
 
-            protected Object getThis(VirtualFrame frame) {
+            protected final Object getThis(VirtualFrame frame) {
                 if (getThisNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getThisNode = insert(PropertyGetNode.createGetHidden(THIS_ID, context));
@@ -214,6 +215,10 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
                 JSDynamicObject promise = (JSDynamicObject) JSObjectUtil.getHiddenProperty((JSDynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, THIS_ID), PROMISE_ID);
                 return new AsyncStackTraceInfo(promise, null);
+            }
+
+            protected final Object indexToJS(long index) {
+                return JSRuntime.longToIntOrDouble(index, doubleIndexBranch);
             }
         }
 
@@ -550,8 +555,16 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public static class AsyncIteratorArgs {
             public final IteratorRecord iterated;
 
-            AsyncIteratorArgs(IteratorRecord iterated) {
+            public AsyncIteratorArgs(IteratorRecord iterated) {
                 this.iterated = iterated;
+            }
+        }
+
+        protected static class AsyncIteratorWithCounterArgs extends AsyncIteratorArgs {
+            public long counter;
+
+            protected AsyncIteratorWithCounterArgs(IteratorRecord iterated) {
+                super(iterated);
             }
         }
 
@@ -880,7 +893,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        protected static class AsyncIteratorMapArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
+        protected static final class AsyncIteratorMapArgs extends AsyncIteratorAwaitNode.AsyncIteratorWithCounterArgs {
             public final Object mapper;
 
             public AsyncIteratorMapArgs(IteratorRecord iterated, Object mapper) {
@@ -934,10 +947,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 Object value = iteratorValueNode.execute(next);
                 Object result;
                 try {
-                    result = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.mapper, value));
+                    result = callNode.executeCall(JSArguments.create(Undefined.instance, args.mapper, value, indexToJS(args.counter)));
                 } catch (AbstractTruffleException ex) {
                     return asyncIteratorCloseAbrupt(args.iterated, ex);
                 }
+                args.counter++;
                 return yieldNode.execute(frame, result, args);
             }
         }
@@ -974,23 +988,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        protected static class AsyncIteratorFilterArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
+        protected static final class AsyncIteratorFilterArgs extends AsyncIteratorAwaitNode.AsyncIteratorWithCounterArgs {
             public final Object filterer;
+            public Object value;
 
             public AsyncIteratorFilterArgs(IteratorRecord iterated, Object filterer) {
                 super(iterated);
                 this.filterer = filterer;
-            }
-        }
-
-        protected static class AsyncIteratorFilterWithResultArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
-            public final AsyncIteratorFilterArgs args;
-            public final Object value;
-
-            public AsyncIteratorFilterWithResultArgs(AsyncIteratorFilterArgs args, Object value) {
-                super(args.iterated);
-                this.args = args;
-                this.value = value;
             }
         }
 
@@ -1016,7 +1020,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         protected static class AsyncIteratorFilterWithValueRootNode extends AsyncIteratorAwaitNode.AsyncIteratorGeneratorAwaitResumptionWithCloseRootNode<AsyncIteratorFilterArgs> {
-            @Child private AsyncIteratorAwaitNode<AsyncIteratorFilterWithResultArgs> awaitNode;
+            @Child private AsyncIteratorAwaitNode<AsyncIteratorFilterArgs> awaitNode;
 
             public AsyncIteratorFilterWithValueRootNode(JSContext context) {
                 super(context);
@@ -1040,15 +1044,17 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 Object value = iteratorValueNode.execute(next);
                 Object result;
                 try {
-                    result = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.filterer, value));
+                    result = callNode.executeCall(JSArguments.create(Undefined.instance, args.filterer, value, indexToJS(args.counter)));
                 } catch (AbstractTruffleException ex) {
                     return asyncIteratorCloseAbrupt(args.iterated, ex);
                 }
-                return awaitNode.execute(frame, result, new AsyncIteratorFilterWithResultArgs(args, value));
+                args.value = value;
+                args.counter++;
+                return awaitNode.execute(frame, result, args);
             }
         }
 
-        protected static class AsyncIteratorFilterWithResultRootNode extends AsyncIteratorAwaitNode.AsyncIteratorGeneratorAwaitResumptionRootNode<AsyncIteratorFilterWithResultArgs> {
+        protected static class AsyncIteratorFilterWithResultRootNode extends AsyncIteratorAwaitNode.AsyncIteratorGeneratorAwaitResumptionRootNode<AsyncIteratorFilterArgs> {
             @Child private JSToBooleanNode toBooleanNode;
             @Child private AsyncIteratorAwaitNode<AsyncIteratorFilterArgs> awaitNode;
             @Child private AsyncIteratorAwaitNode<AsyncIteratorArgs> yieldNode;
@@ -1063,11 +1069,14 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             @Override
             public Object executeBody(VirtualFrame frame) {
-                AsyncIteratorFilterWithResultArgs args = getArgs(frame);
+                AsyncIteratorFilterArgs args = getArgs(frame);
+                Object value = args.value;
+                assert value != null;
+                args.value = null;
                 if (toBooleanNode.executeBoolean(valueNode.execute(frame))) {
-                    return yieldNode.execute(frame, args.value, args);
+                    return yieldNode.execute(frame, value, args);
                 } else {
-                    return awaitNode.execute(frame, Undefined.instance, args.args);
+                    return awaitNode.execute(frame, Undefined.instance, args);
                 }
             }
         }
@@ -1120,8 +1129,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
 
             AsyncIteratorTakeArgs args = new AsyncIteratorTakeArgs(record, integerLimit);
-            JSFunctionObject functionObject = awaitNode.createFunction(args);
-            return createAsyncIteratorHelperNode.execute(record, functionObject);
+            return createAsyncIteratorHelperNode.execute(record, awaitNode.createFunction(args));
         }
 
         protected static class AsyncIteratorTakeArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
@@ -1240,8 +1248,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
 
             AsyncIteratorDropArgs args = new AsyncIteratorDropArgs(record, integerLimit);
-            JSFunctionObject startResumption = awaitNode.createFunction(args);
-            return createAsyncIteratorHelperNode.execute(record, startResumption);
+            return createAsyncIteratorHelperNode.execute(record, awaitNode.createFunction(args));
         }
 
         protected static class AsyncIteratorDropArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
@@ -1463,7 +1470,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        protected static class AsyncIteratorFlatMapArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
+        protected static final class AsyncIteratorFlatMapArgs extends AsyncIteratorAwaitNode.AsyncIteratorWithCounterArgs {
             public final Object mapper;
 
             protected IteratorRecord innerIterator;
@@ -1532,10 +1539,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 Object value = iteratorValueNode.execute(next);
                 Object mapped;
                 try {
-                    mapped = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.mapper, value));
+                    mapped = callNode.executeCall(JSArguments.create(Undefined.instance, args.mapper, value, indexToJS(args.counter)));
                 } catch (AbstractTruffleException ex) {
                     return asyncIteratorCloseAbrupt(args.iterated, ex);
                 }
+                args.counter++;
                 return awaitNode.execute(frame, mapped, args);
             }
         }
@@ -1646,9 +1654,9 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        private static class AsyncIteratorReduceArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
+        protected static final class AsyncIteratorReduceArgs extends AsyncIteratorAwaitNode.AsyncIteratorWithCounterArgs {
             public final Object reducer;
-            public final Object accumulator;
+            public Object accumulator;
 
             AsyncIteratorReduceArgs(IteratorRecord iterated, Object reducer, Object accumulator) {
                 super(iterated);
@@ -1683,10 +1691,12 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 Object value = iteratorValueNode.execute(next);
                 Object result;
                 try {
-                    result = callNode.executeCall(JSArguments.create(Undefined.instance, args.reducer, args.accumulator, value));
+                    result = callNode.executeCall(JSArguments.create(Undefined.instance, args.reducer, args.accumulator, value, indexToJS(args.counter)));
                 } catch (AbstractTruffleException ex) {
                     return asyncIteratorCloseAbrupt(args.iterated, ex);
                 }
+                args.accumulator = result;
+                args.counter++;
                 return awaitNode.execute(frame, result, args);
             }
         }
@@ -1717,7 +1727,9 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
                 Object value = iteratorValueNode.execute(next);
                 Object nextNext = iteratorNextNode.execute(args.iterated);
-                return awaitNode.execute(frame, nextNext, new AsyncIteratorReduceArgs(args.iterated, args.reducer, value));
+                args.accumulator = value;
+                args.counter = 1;
+                return awaitNode.execute(frame, nextNext, args);
             }
         }
 
@@ -1737,8 +1749,9 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             public Object executeBody(VirtualFrame frame) {
                 AsyncIteratorReduceArgs args = getArgs(frame);
                 Object result = valueNode.execute(frame);
-                Object value = iteratorNextNode.execute(args.iterated);
-                return awaitNode.execute(frame, value, new AsyncIteratorReduceArgs(args.iterated, args.reducer, result));
+                Object next = iteratorNextNode.execute(args.iterated);
+                args.accumulator = result;
+                return awaitNode.execute(frame, next, args);
             }
         }
 
@@ -1774,7 +1787,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             return awaitNode.executeThis(value, new AsyncIteratorToArrayArgs(record, new SimpleArrayList<>()), thisObj);
         }
 
-        private static class AsyncIteratorToArrayArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
+        protected static final class AsyncIteratorToArrayArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
             public final SimpleArrayList<Object> result;
 
             AsyncIteratorToArrayArgs(IteratorRecord iterated, SimpleArrayList<Object> result) {
@@ -1848,7 +1861,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        private static class AsyncIteratorForEachArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
+        protected static final class AsyncIteratorForEachArgs extends AsyncIteratorAwaitNode.AsyncIteratorWithCounterArgs {
             public final Object fn;
 
             AsyncIteratorForEachArgs(IteratorRecord iterated, Object fn) {
@@ -1883,10 +1896,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 Object value = iteratorValueNode.execute(next);
                 Object result;
                 try {
-                    result = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.fn, value));
+                    result = callNode.executeCall(JSArguments.create(Undefined.instance, args.fn, value, indexToJS(args.counter)));
                 } catch (AbstractTruffleException ex) {
                     return asyncIteratorCloseAbrupt(args.iterated, ex);
                 }
+                args.counter++;
                 return awaitNode.execute(frame, result, args);
             }
         }
@@ -1944,7 +1958,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        private static class AsyncIteratorSomeArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
+        protected static final class AsyncIteratorSomeArgs extends AsyncIteratorAwaitNode.AsyncIteratorWithCounterArgs {
             public final Object fn;
 
             AsyncIteratorSomeArgs(IteratorRecord iterated, Object fn) {
@@ -1978,10 +1992,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 Object value = iteratorValueNode.execute(next);
                 Object result;
                 try {
-                    result = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.fn, value));
+                    result = callNode.executeCall(JSArguments.create(Undefined.instance, args.fn, value, indexToJS(args.counter)));
                 } catch (AbstractTruffleException ex) {
                     return asyncIteratorCloseAbrupt(args.iterated, ex);
                 }
+                args.counter++;
                 return awaitNode.execute(frame, result, args);
             }
         }
@@ -2050,7 +2065,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        private static class AsyncIteratorEveryArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
+        protected static final class AsyncIteratorEveryArgs extends AsyncIteratorAwaitNode.AsyncIteratorWithCounterArgs {
             public final Object fn;
 
             AsyncIteratorEveryArgs(IteratorRecord iterated, Object fn) {
@@ -2084,10 +2099,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 Object value = iteratorValueNode.execute(next);
                 Object result;
                 try {
-                    result = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.fn, value));
+                    result = callNode.executeCall(JSArguments.create(Undefined.instance, args.fn, value, indexToJS(args.counter)));
                 } catch (AbstractTruffleException ex) {
                     return asyncIteratorCloseAbrupt(args.iterated, ex);
                 }
+                args.counter++;
                 return awaitNode.execute(frame, result, args);
             }
         }
@@ -2155,8 +2171,9 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        private static class AsyncIteratorFindArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
+        protected static final class AsyncIteratorFindArgs extends AsyncIteratorAwaitNode.AsyncIteratorWithCounterArgs {
             public final Object fn;
+            public Object value;
 
             AsyncIteratorFindArgs(IteratorRecord iterated, Object fn) {
                 super(iterated);
@@ -2164,19 +2181,8 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
         }
 
-        private static class AsyncIteratorFindWithResultArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
-            public final AsyncIteratorFindArgs args;
-            public final Object value;
-
-            AsyncIteratorFindWithResultArgs(AsyncIteratorFindArgs args, Object value) {
-                super(args.iterated);
-                this.args = args;
-                this.value = value;
-            }
-        }
-
         protected static class AsyncIteratorFindRootNode extends AsyncIteratorAwaitNode.AsyncIteratorNonGeneratorResumptionWithCloseRootNode<AsyncIteratorFindArgs> {
-            @Child private AsyncIteratorAwaitNode<AsyncIteratorFindWithResultArgs> awaitNode;
+            @Child private AsyncIteratorAwaitNode<AsyncIteratorFindArgs> awaitNode;
             @Child private JSFunctionCallNode callNode;
 
             public AsyncIteratorFindRootNode(JSContext context) {
@@ -2200,15 +2206,17 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 Object value = iteratorValueNode.execute(next);
                 Object result;
                 try {
-                    result = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, args.fn, value));
+                    result = callNode.executeCall(JSArguments.create(Undefined.instance, args.fn, value, indexToJS(args.counter)));
                 } catch (AbstractTruffleException ex) {
                     return asyncIteratorCloseAbrupt(args.iterated, ex);
                 }
-                return awaitNode.execute(frame, result, new AsyncIteratorFindWithResultArgs(args, value));
+                args.value = value;
+                args.counter++;
+                return awaitNode.execute(frame, result, args);
             }
         }
 
-        protected static class AsyncIteratorFindWithResultRootNode extends AsyncIteratorAwaitNode.AsyncIteratorNonGeneratorResumptionRootNode<AsyncIteratorFindWithResultArgs> {
+        protected static class AsyncIteratorFindWithResultRootNode extends AsyncIteratorAwaitNode.AsyncIteratorNonGeneratorResumptionRootNode<AsyncIteratorFindArgs> {
             @Child private IteratorNextNode iteratorNextNode;
             @Child private AsyncIteratorAwaitNode<AsyncIteratorFindArgs> awaitNode;
             @Child private JSToBooleanNode toBooleanNode;
@@ -2224,14 +2232,17 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             @Override
             public Object executeBody(VirtualFrame frame) {
-                AsyncIteratorFindWithResultArgs args = getArgs(frame);
+                AsyncIteratorFindArgs args = getArgs(frame);
                 Object result = valueNode.execute(frame);
+                Object value = args.value;
+                assert value != null;
+                args.value = null;
                 if (toBooleanNode.executeBoolean(result)) {
-                    return args.value;
+                    return value;
                 }
 
-                Object value = iteratorNextNode.execute(args.args.iterated);
-                return awaitNode.execute(frame, value, args.args);
+                Object next = iteratorNextNode.execute(args.iterated);
+                return awaitNode.execute(frame, next, args);
             }
         }
 
