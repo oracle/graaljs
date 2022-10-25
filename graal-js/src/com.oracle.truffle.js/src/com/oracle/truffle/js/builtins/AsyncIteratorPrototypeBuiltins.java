@@ -490,8 +490,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             AsyncIteratorGeneratorYieldResumptionRootNode(JSContext context) {
                 super(context);
                 this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
-                this.awaitYieldResumptionNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorUnwrapYieldResumptionClose,
-                                AsyncIteratorUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseImpl, true);
+                if (this instanceof AsyncIteratorFlatMapNode.AsyncIteratorFlatMapRootNode) {
+                    this.awaitYieldResumptionNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorUnwrapYieldResumptionCloseInnerIterator,
+                                    AsyncIteratorFlatMapUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseImpl, true);
+                } else {
+                    this.awaitYieldResumptionNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorUnwrapYieldResumptionClose,
+                                    AsyncIteratorUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseImpl, true);
+                }
             }
 
             public abstract Object executeBody(VirtualFrame frame);
@@ -623,7 +628,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 catchKey = JSContext.BuiltinFunctionKey.AsyncIteratorIfAbruptReturn;
                 catchCreate = AsyncIteratorAwaitNode::createIfAbruptReturnFunctionImpl;
             }
-            return new AsyncIteratorAwaitNode<>(context, key, create, catchKey, catchCreate);
+            return create(context, key, create, catchKey, catchCreate);
         }
 
         public static <T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> AsyncIteratorAwaitNode<T> createGen(JSContext context,
@@ -637,7 +642,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 catchKey = JSContext.BuiltinFunctionKey.AsyncIteratorGeneratorIfAbruptReturn;
                 catchCreate = AsyncIteratorAwaitNode::createGeneratorIfAbruptReturnFunctionImpl;
             }
-            return new AsyncIteratorAwaitNode<>(context, key, create, catchKey, catchCreate);
+            return create(context, key, create, catchKey, catchCreate);
+        }
+
+        public static <T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> AsyncIteratorAwaitNode<T> create(JSContext context,
+                        JSContext.BuiltinFunctionKey thenKey, Function<JSContext, JSFunctionData> thenCreate,
+                        JSContext.BuiltinFunctionKey catchKey, Function<JSContext, JSFunctionData> catchCreate) {
+            return new AsyncIteratorAwaitNode<>(context, thenKey, thenCreate, catchKey, catchCreate);
         }
 
         public static <T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> AsyncIteratorAwaitNode<T> createGeneratorYield(JSContext context) {
@@ -671,7 +682,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private PropertyGetNode getGeneratorQueue;
         @Child private PropertySetNode setGeneratorState;
         @Child private JSFunctionCallNode callNode;
-        @Child private AsyncIteratorAwaitNode<AsyncIteratorAwaitNode.AsyncIteratorArgs> awaitYieldResumptionNode;
         @Child private PropertyGetNode getContinuation;
 
         protected AsyncIteratorYieldResultRootNode(JSContext context) {
@@ -679,15 +689,12 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.getGeneratorQueue = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
             this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
             this.callNode = JSFunctionCallNode.createCall();
-            this.awaitYieldResumptionNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorUnwrapYieldResumptionClose,
-                            AsyncIteratorUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseImpl, true);
             this.getContinuation = PropertyGetNode.createGetHidden(AsyncIteratorHelperPrototypeBuiltins.IMPL_ID, context);
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public Object execute(VirtualFrame frame) {
-            AsyncIteratorArgs args = getArgs(frame);
             Object value = valueNode.execute(frame); // awaited value
             Object generator = getThis(frame);
 
@@ -698,25 +705,17 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             if (!queue.isEmpty()) {
                 // NOTE: Execution continues without suspending the generator.
-                return asyncGeneratorUnwrapYieldResumption(args, generator, queue);
+                return asyncGeneratorUnwrapYieldResumption(generator);
             } else {
                 setGeneratorState.setValue(generator, JSFunction.AsyncGeneratorState.SuspendedYield);
                 return Undefined.instance;
             }
         }
 
-        private Object asyncGeneratorUnwrapYieldResumption(AsyncIteratorArgs args, Object generator, ArrayDeque<AsyncGeneratorRequest> queue) {
-            AsyncGeneratorRequest toYield = queue.peekFirst();
-            return asyncGeneratorUnwrapYieldResumption(args, generator, toYield.getCompletionType(), toYield.getCompletionValue());
-        }
-
-        private Object asyncGeneratorUnwrapYieldResumption(AsyncIteratorArgs args, Object generator, Completion.Type resumptionType, Object resumptionValue) {
-            if (resumptionType != Completion.Type.Return) {
-                Object continuation = getContinuation.getValue(generator);
-                return callNode.executeCall(JSArguments.createZeroArg(generator, continuation));
-            } else {
-                return awaitYieldResumptionNode.executeThis(resumptionValue, args, generator);
-            }
+        private Object asyncGeneratorUnwrapYieldResumption(Object generator) {
+            setGeneratorState.setValue(generator, JSFunction.AsyncGeneratorState.SuspendedYield);
+            Object continuation = getContinuation.getValue(generator);
+            return callNode.executeCall(JSArguments.createZeroArg(generator, continuation));
         }
 
         protected static JSFunctionData createYieldResultFunctionImpl(JSContext context) {
@@ -724,21 +723,19 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected static class AsyncIteratorUnwrapYieldResumptionRootNode
-                    extends AsyncIteratorAwaitNode.AsyncIteratorGeneratorAwaitResumptionRootNode<AsyncIteratorAwaitNode.AsyncIteratorArgs> {
+    protected static class AsyncIteratorUnwrapYieldResumptionRootNode<T extends AsyncIteratorAwaitNode.AsyncIteratorArgs>
+                    extends AsyncIteratorAwaitNode.AsyncIteratorGeneratorAwaitResumptionRootNode<T> {
 
-        @Child private GetMethodNode getReturnNode;
-        @Child private AsyncIteratorAwaitNode<AsyncIteratorArgs> awaitInnerResult;
-        @Child private IsJSObjectNode isObjectNode;
+        @Child protected GetMethodNode getReturnNode;
+        @Child protected AsyncIteratorAwaitNode<AsyncIteratorArgs> awaitReturnResult;
+        @Child protected IsJSObjectNode isObjectNode;
 
-        protected AsyncIteratorUnwrapYieldResumptionRootNode(JSContext context, boolean closeOnAbrupt, boolean closeCheckInner) {
+        protected AsyncIteratorUnwrapYieldResumptionRootNode(JSContext context, boolean closeResumption) {
             super(context);
             this.getReturnNode = GetMethodNode.create(context, Strings.RETURN);
-            if (closeOnAbrupt) {
-                this.awaitInnerResult = !closeCheckInner ? AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorUnwrapYieldResumptionCloseInner,
-                                AsyncIteratorUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseInnerImpl, false) : null;
-                this.isObjectNode = closeCheckInner ? IsJSObjectNode.create() : null;
-            }
+            this.awaitReturnResult = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorUnwrapYieldResumptionCloseResumption,
+                            AsyncIteratorUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseResumptionImpl, false);
+            this.isObjectNode = closeResumption ? IsJSObjectNode.create() : null;
         }
 
         @SuppressWarnings("unchecked")
@@ -752,18 +749,17 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             AsyncGeneratorRequest result = queue.peekFirst();
             if (result.isReturn()) {
                 // AsyncIteratorClose
-                if (awaitInnerResult != null) {
-                    AsyncIteratorArgs args = getArgs(frame);
-                    JSDynamicObject innerIterator = args.iterated.getIterator();
-                    Object returnMethod = getReturnNode.executeWithTarget(innerIterator);
+                AsyncIteratorArgs args = getArgs(frame);
+                if (isObjectNode == null) {
+                    JSDynamicObject iterator = args.iterated.getIterator();
+                    Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
-                        Object innerResult = callNode.executeCall(JSArguments.createZeroArg(innerIterator, returnMethod));
-                        return awaitInnerResult.executeThis(innerResult, args, generator);
+                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        return awaitReturnResult.executeThis(returnResult, args, generator);
                     }
-                } else if (isObjectNode != null) {
-                    Object innerResult = awaitedValue;
-                    if (!isObjectNode.executeBoolean(innerResult)) {
-                        throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
+                } else {
+                    if (!isObjectNode.executeBoolean(awaitedValue)) {
+                        throw Errors.createTypeErrorIterResultNotAnObject(awaitedValue, this);
                     }
                 }
             }
@@ -775,15 +771,90 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
          * AsyncIteratorClose(iterated, awaitedValue) and either awaits or returns;
          */
         protected static JSFunctionData createCreateUnwrapYieldResumptionCloseImpl(JSContext context) {
-            return JSFunctionData.createCallOnly(context, new AsyncIteratorUnwrapYieldResumptionRootNode(context, true, false).getCallTarget(), 1, Strings.EMPTY_STRING);
+            return JSFunctionData.createCallOnly(context, new AsyncIteratorUnwrapYieldResumptionRootNode<>(context, false).getCallTarget(), 1, Strings.EMPTY_STRING);
         }
 
         /**
          * Resumption of AsyncIteratorClose: Await(innerResult.[[Value]]) with normal completion.
          * Checks that innerResult is an object and returns from the generator.
          */
-        protected static JSFunctionData createCreateUnwrapYieldResumptionCloseInnerImpl(JSContext context) {
-            return JSFunctionData.createCallOnly(context, new AsyncIteratorUnwrapYieldResumptionRootNode(context, true, true).getCallTarget(), 1, Strings.EMPTY_STRING);
+        protected static JSFunctionData createCreateUnwrapYieldResumptionCloseResumptionImpl(JSContext context) {
+            return JSFunctionData.createCallOnly(context, new AsyncIteratorUnwrapYieldResumptionRootNode<>(context, true).getCallTarget(), 1, Strings.EMPTY_STRING);
+        }
+    }
+
+    protected static class AsyncIteratorFlatMapUnwrapYieldResumptionRootNode
+                    extends AsyncIteratorUnwrapYieldResumptionRootNode<AsyncIteratorFlatMapNode.AsyncIteratorFlatMapArgs> {
+
+        @Child private AsyncIteratorAwaitNode<AsyncIteratorFlatMapNode.AsyncIteratorFlatMapArgs> awaitInnerIteratorReturnResult;
+
+        protected AsyncIteratorFlatMapUnwrapYieldResumptionRootNode(JSContext context, boolean closeResumption) {
+            super(context, closeResumption);
+            this.awaitInnerIteratorReturnResult = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorUnwrapYieldResumptionCloseInnerIteratorResumption,
+                            AsyncIteratorFlatMapUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseResumptionImpl, true);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Object executeBody(VirtualFrame frame) {
+            Object awaitedValue = valueNode.execute(frame);
+            Object generator = getThis(frame);
+
+            ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getGeneratorQueue.getValue(generator);
+            assert !queue.isEmpty();
+            AsyncGeneratorRequest result = queue.peekFirst();
+            if (result.isReturn()) {
+                // 1. Let backupCompletion be Completion(IteratorClose(innerIterator, completion)).
+                // 2. IfAbruptCloseIterator(backupCompletion, iterated).
+                // 3. Return ? IteratorClose(completion, iterated).
+                AsyncIteratorFlatMapNode.AsyncIteratorFlatMapArgs args = getArgs(frame);
+                if (isObjectNode == null) {
+                    assert args.innerIterator != null;
+                    JSDynamicObject iterator = args.innerIterator.getIterator();
+                    Object returnMethod = getReturnNode.executeWithTarget(iterator);
+                    if (returnMethod != Undefined.instance) {
+                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        return awaitInnerIteratorReturnResult.executeThis(returnResult, args, generator);
+                    } else {
+                        args.innerIterator = null;
+                    }
+                    iterator = args.iterated.getIterator();
+                    returnMethod = getReturnNode.executeWithTarget(iterator);
+                    if (returnMethod != Undefined.instance) {
+                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        return awaitReturnResult.executeThis(returnResult, args, generator);
+                    }
+                } else {
+                    if (!isObjectNode.executeBoolean(awaitedValue)) {
+                        throw Errors.createTypeErrorIterResultNotAnObject(awaitedValue, this);
+                    }
+                    assert args.innerIterator != null;
+                    args.innerIterator = null;
+                    JSDynamicObject iterator = args.iterated.getIterator();
+                    Object returnMethod = getReturnNode.executeWithTarget(iterator);
+                    if (returnMethod != Undefined.instance) {
+                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        return awaitReturnResult.executeThis(returnResult, args, generator);
+                    }
+                }
+            }
+            return Undefined.instance;
+        }
+
+        /**
+         * Resumption of UnwrapYieldResumption: Await(resumptionValue.[[Value]]). Continues with
+         * AsyncIteratorClose(iterated, awaitedValue) and either awaits or returns;
+         */
+        protected static JSFunctionData createCreateUnwrapYieldResumptionCloseImpl(JSContext context) {
+            return JSFunctionData.createCallOnly(context, new AsyncIteratorFlatMapUnwrapYieldResumptionRootNode(context, false).getCallTarget(), 1, Strings.EMPTY_STRING);
+        }
+
+        /**
+         * Resumption of AsyncIteratorClose: Await(innerResult.[[Value]]) with normal completion.
+         * Checks that innerResult is an object and returns from the generator.
+         */
+        protected static JSFunctionData createCreateUnwrapYieldResumptionCloseResumptionImpl(JSContext context) {
+            return JSFunctionData.createCallOnly(context, new AsyncIteratorFlatMapUnwrapYieldResumptionRootNode(context, true).getCallTarget(), 1, Strings.EMPTY_STRING);
         }
     }
 
