@@ -83,8 +83,6 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
@@ -122,7 +120,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         filter(1),
         take(1),
         drop(1),
-        indexed(0),
         flatMap(1);
 
         private final int length;
@@ -162,8 +159,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return IteratorPrototypeBuiltinsFactory.IteratorTakeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case drop:
                 return IteratorPrototypeBuiltinsFactory.IteratorDropNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case indexed:
-                return IteratorPrototypeBuiltinsFactory.IteratorIndexedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case flatMap:
                 return IteratorPrototypeBuiltinsFactory.IteratorFlatMapNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
@@ -505,59 +500,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             public static IteratorFilterNextNode create(JSContext context) {
                 return IteratorPrototypeBuiltinsFactory.IteratorFilterNodeGen.IteratorFilterNextNodeGen.create(context);
-            }
-        }
-
-    }
-
-    protected abstract static class IteratorIndexedNode extends IteratorBaseNode<IteratorArgs> {
-
-        protected IteratorIndexedNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, BuiltinFunctionKey.IteratorIndexed, c -> createIteratorImplNextFunction(c, IteratorIndexedNextNode.create(c)));
-        }
-
-        protected static class IteratorIndexedArgs extends IteratorArgs {
-            protected long index;
-
-            protected IteratorIndexedArgs(IteratorRecord iterated) {
-                super(iterated);
-            }
-        }
-
-        @Specialization
-        public JSDynamicObject indexed(Object thisObj) {
-            IteratorRecord iterated = getIteratorDirect(thisObj);
-            return createIterator(thisObj, new IteratorIndexedArgs(iterated));
-        }
-
-        protected abstract static class IteratorIndexedNextNode extends IteratorBaseNode.IteratorImplNode<IteratorIndexedArgs> {
-
-            protected IteratorIndexedNextNode(JSContext context) {
-                super(context);
-            }
-
-            @Specialization
-            public Object next(VirtualFrame frame, Object thisObj) {
-                IteratorIndexedArgs args = getArgs(thisObj);
-                Object next = iteratorStep(args.iterated);
-                if (next == Boolean.FALSE) {
-                    return createResultDone(frame, thisObj);
-                }
-
-                Object value = iteratorValue(next);
-                long index = args.index;
-                JSArrayObject pair = JSArray.createConstant(getContext(), getRealm(), new Object[]{indexToJS(index), value});
-                args.index = index + 1;
-                return createResultContinue(frame, thisObj, pair);
-            }
-
-            @Override
-            public IteratorImplNode<IteratorIndexedArgs> copyUninitialized() {
-                return create(context);
-            }
-
-            public static IteratorIndexedNextNode create(JSContext context) {
-                return IteratorPrototypeBuiltinsFactory.IteratorIndexedNodeGen.IteratorIndexedNextNodeGen.create(context);
             }
         }
 

@@ -86,7 +86,6 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -121,7 +120,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         filter(1),
         take(1),
         drop(1),
-        indexed(0),
         flatMap(1),
 
         reduce(1),
@@ -154,8 +152,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 return AsyncIteratorPrototypeBuiltinsFactory.AsyncIteratorTakeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case drop:
                 return AsyncIteratorPrototypeBuiltinsFactory.AsyncIteratorDropNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case indexed:
-                return AsyncIteratorPrototypeBuiltinsFactory.AsyncIteratorIndexedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case flatMap:
                 return AsyncIteratorPrototypeBuiltinsFactory.AsyncIteratorFlatMapNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case reduce:
@@ -1363,90 +1359,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
     }
 
-    protected abstract static class AsyncIteratorIndexedNode extends IteratorMethodNode {
-
-        @Child private AsyncIteratorAwaitNode<AsyncIteratorIndexedArgs> awaitNode;
-        @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
-
-        public AsyncIteratorIndexedNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-
-            this.createAsyncIteratorHelperNode = AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode.create(context);
-            this.awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorIndexed, AsyncIteratorIndexedNode::createIndexedFunctionImpl, false);
-        }
-
-        @Specialization
-        public JSDynamicObject indexed(Object thisObj) {
-            IteratorRecord record = getIteratorDirect(thisObj);
-            return createAsyncIteratorHelperNode.execute(record, awaitNode.createFunction(new AsyncIteratorIndexedArgs(record, 0)));
-        }
-
-        protected static class AsyncIteratorIndexedArgs extends AsyncIteratorAwaitNode.AsyncIteratorArgs {
-            public long index;
-
-            public AsyncIteratorIndexedArgs(IteratorRecord iterated, long index) {
-                super(iterated);
-                this.index = index;
-            }
-        }
-
-        protected static class AsyncIteratorIndexedRootNode extends AsyncIteratorAwaitNode.AsyncIteratorGeneratorYieldResumptionRootNode<AsyncIteratorIndexedArgs> {
-            @Child private IteratorNextNode iteratorNextNode;
-            @Child private AsyncIteratorAwaitNode<AsyncIteratorIndexedArgs> awaitNode;
-
-            public AsyncIteratorIndexedRootNode(JSContext context) {
-                super(context);
-
-                this.iteratorNextNode = IteratorNextNode.create();
-                this.callNode = JSFunctionCallNode.createCall();
-                this.awaitNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorIndexedWithValue, AsyncIteratorIndexedNode::createIndexedWithValueFunctionImpl,
-                                false);
-            }
-
-            @Override
-            public Object executeBody(VirtualFrame frame) {
-                AsyncIteratorIndexedArgs args = getArgs(frame);
-                Object value = iteratorNextNode.execute(args.iterated);
-                return awaitNode.execute(frame, value, args);
-            }
-        }
-
-        protected static class AsyncIteratorIndexedWithValueRootNode extends AsyncIteratorAwaitNode.AsyncIteratorGeneratorAwaitResumptionWithNextRootNode<AsyncIteratorIndexedArgs> {
-            @Child private AsyncIteratorAwaitNode<AsyncIteratorArgs> yieldNode;
-
-            public AsyncIteratorIndexedWithValueRootNode(JSContext context) {
-                super(context);
-                this.yieldNode = AsyncIteratorAwaitNode.createGeneratorYield(context);
-            }
-
-            @Override
-            public Object executeBody(VirtualFrame frame) {
-                Object next = valueNode.execute(frame);
-                checkNext(next);
-
-                if (iteratorComplete(next)) {
-                    return Undefined.instance;
-                }
-
-                Object value = iteratorValueNode.execute(next);
-                AsyncIteratorIndexedArgs args = getArgs(frame);
-                JSArrayObject pair = JSArray.createConstantObjectArray(context, getRealm(), new Object[]{args.index, value});
-                args.index++;
-                return yieldNode.execute(frame, pair, args);
-            }
-        }
-
-        private static JSFunctionData createIndexedFunctionImpl(JSContext context) {
-            return JSFunctionData.createCallOnly(context, new AsyncIteratorIndexedRootNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
-        }
-
-        private static JSFunctionData createIndexedWithValueFunctionImpl(JSContext context) {
-            return JSFunctionData.createCallOnly(context, new AsyncIteratorIndexedWithValueRootNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
-        }
-    }
-
     protected abstract static class AsyncIteratorFlatMapNode extends IteratorMethodWithCallableNode {
-        public static HiddenKey CURRENT_ID = new HiddenKey("current");
 
         @Child private AsyncIteratorAwaitNode<AsyncIteratorFlatMapArgs> awaitNode;
         @Child private AsyncIteratorHelperPrototypeBuiltins.CreateAsyncIteratorHelperNode createAsyncIteratorHelperNode;
