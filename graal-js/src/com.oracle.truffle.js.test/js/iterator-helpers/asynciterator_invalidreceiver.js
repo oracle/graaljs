@@ -17,7 +17,6 @@ load("iteratorhelper_common.js");
 async function testInvalidReceiver() {
   await helper(it => it.drop(0));
   await helper(it => it.take(1));
-  await helper(it => it.indexed());
   await helper(it => it.map(x => x));
   await helper(it => it.flatMap(x => x));
   await helper(it => it.filter(x => true));
@@ -50,7 +49,6 @@ async function testInvalidReceiver() {
 async function testGeneratorBrandCheck() {
   await helper(it => it.drop(0));
   await helper(it => it.take(1));
-  await helper(it => it.indexed());
   await helper(it => it.map(x => x));
   await helper(it => it.flatMap(x => x));
   await helper(it => it.filter(x => true));

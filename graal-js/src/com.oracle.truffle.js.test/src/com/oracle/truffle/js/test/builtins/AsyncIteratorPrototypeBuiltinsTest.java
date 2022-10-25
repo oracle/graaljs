@@ -248,29 +248,6 @@ public class AsyncIteratorPrototypeBuiltinsTest {
     }
 
     @Test
-    public void testIndexed() {
-        AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
-        Context.Builder builder = newContextBuilder();
-        builder.out(out);
-        try (Context context = builder.build()) {
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([1, 2]).indexed().toArray().then(x => {for (const y of x) console.log(y)})");
-            Assert.assertEquals("0,1\n1,2\n", out.toString());
-            out.reset();
-
-            try {
-                context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.drop.indexed({})");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
-
-            context.eval(JavaScriptLanguage.ID,
-                            "AsyncIterator.prototype.indexed.call({next: () => ({value: 1, done: true})}, 1).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
-            Assert.assertEquals("undefined undefined boolean true\n", out.toString());
-        }
-    }
-
-    @Test
     public void testFlatMap() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = newContextBuilder();
@@ -535,7 +512,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID,
-                            "AsyncIterator.from([4,5,6,7]).indexed().flatMap(x => x).filter(x=>x>1).map(x => x*2).drop(3).take(1).reduce((a, b) => a + b, -1).then(x => console.log(x))");
+                            "AsyncIterator.from([4,5,6,7]).flatMap((x, i) => [i, x]).filter(x=>x>1).map(x => x*2).drop(3).take(1).reduce((a, b) => a + b, -1).then(x => console.log(x))");
             Assert.assertEquals("11\n", out.toString());
         }
     }

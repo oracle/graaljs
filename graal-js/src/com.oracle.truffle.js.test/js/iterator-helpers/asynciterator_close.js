@@ -103,24 +103,6 @@ async function testFilterPromiseValue() {
   assertSame(1, asyncIterator.returnCalls);
 }
 
-async function testIndexedPromiseValue() {
-  let asyncIterator = new AsyncIteratorPromiseValue();
-  let iteratorHelper = asyncIterator.indexed();
-  assertSame(0, asyncIterator.nextCalls);
-
-  let nextResult = await iteratorHelper.next();
-  assertFalse(nextResult.done);
-  assertSame(0, nextResult.value[0]);
-  assertInstanceof(nextResult.value[1], Promise);
-  assertSame(41, await nextResult.value[1]);
-
-  assertIterResult({done: true, value: undefined}, await iteratorHelper.return());
-  assertIterResult({done: true, value: undefined}, await iteratorHelper.next());
-
-  assertSame(1, asyncIterator.nextCalls);
-  assertSame(1, asyncIterator.returnCalls);
-}
-
 async function testDropAbruptNext(n) {
   let asyncIterator = new AsyncIteratorAbruptNext();
   let iteratorHelper = asyncIterator.drop(n);
@@ -493,7 +475,6 @@ async function run(fn, ...args) {
     await run(testMapPromiseValue);
     await run(testFlatMapPromiseValue);
     await run(testFilterPromiseValue);
-    await run(testIndexedPromiseValue);
 
     debugLog("DONE");
   } catch (e) {

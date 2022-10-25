@@ -52,12 +52,17 @@ import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.interop.AsyncInteropTest;
 
 public class IteratorPrototypeBuiltinsTest {
+
+    private static Context.Builder newContextBuilder() {
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        return builder;
+    }
+
     @Test
     public void testObject() {
         String src = "var parent = Object.getPrototypeOf(Iterator.prototype) === Object.prototype; var proto = typeof Iterator.prototype";
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             context.eval(JavaScriptLanguage.ID, src);
             var parent = context.getBindings(JavaScriptLanguage.ID).getMember("parent");
             var proto = context.getBindings(JavaScriptLanguage.ID).getMember("proto");
@@ -70,18 +75,14 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testConstructor() {
         String src = "Iterator.prototype.constructor === Iterator";
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Assert.assertTrue(context.eval(JavaScriptLanguage.ID, src).asBoolean());
         }
     }
 
     @Test
     public void testMapChainIdentity() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[].values().map(x => x).map === Iterator.prototype.map");
             Assert.assertTrue(result.isBoolean());
             Assert.assertTrue(result.asBoolean());
@@ -90,9 +91,7 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testMap() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3].values().map(x => 2*x).toArray()");
             Assert.assertTrue(result.hasMembers());
             Assert.assertTrue(result.hasArrayElements());
@@ -135,9 +134,7 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testFilter() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3, 4].values().filter(x => x%2===0).toArray()");
             Assert.assertTrue(result.hasMembers());
             Assert.assertTrue(result.hasArrayElements());
@@ -179,9 +176,7 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testTake() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3, 4].values().take(2).toArray()");
             Assert.assertTrue(result.hasMembers());
             Assert.assertTrue(result.hasArrayElements());
@@ -233,9 +228,7 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testDrop() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3, 4].values().drop(2).toArray()");
             Assert.assertTrue(result.hasMembers());
             Assert.assertTrue(result.hasArrayElements());
@@ -286,44 +279,8 @@ public class IteratorPrototypeBuiltinsTest {
     }
 
     @Test
-    public void testIndexed() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
-            Value result = context.eval(JavaScriptLanguage.ID, "[1, 2].values().indexed().toArray()");
-            Assert.assertTrue(result.hasMembers());
-            Assert.assertTrue(result.hasArrayElements());
-            Assert.assertEquals(2, result.getArraySize());
-            Assert.assertTrue(result.getArrayElement(0).hasMembers());
-            Assert.assertEquals(2, result.getArrayElement(0).getArraySize());
-            Assert.assertEquals(0, result.getArrayElement(0).getArrayElement(0).asInt());
-            Assert.assertEquals(1, result.getArrayElement(0).getArrayElement(1).asInt());
-            Assert.assertTrue(result.getArrayElement(1).hasMembers());
-            Assert.assertEquals(2, result.getArrayElement(1).getArraySize());
-            Assert.assertEquals(1, result.getArrayElement(1).getArrayElement(0).asInt());
-            Assert.assertEquals(2, result.getArrayElement(1).getArrayElement(1).asInt());
-
-            try {
-                context.eval(JavaScriptLanguage.ID, "Iterator.prototype.drop.indexed({})");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
-
-            result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype.indexed.call({next: () => ({value: 1, done: true})}, 1).next()");
-            Assert.assertTrue(result.hasMembers());
-            Assert.assertTrue(result.hasMember("done"));
-            Assert.assertTrue(result.hasMember("value"));
-            Assert.assertTrue(result.getMember("done").asBoolean());
-            Assert.assertTrue(result.getMember("value").isNull());
-        }
-    }
-
-    @Test
     public void testFlatMap() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2].values().flatMap(x => [0, x]).toArray()");
             Assert.assertTrue(result.hasMembers());
             Assert.assertTrue(result.hasArrayElements());
@@ -367,9 +324,7 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testReduce() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2].values().reduce((a, b) => a + b, 1)");
             Assert.assertEquals(4, result.asInt());
 
@@ -409,9 +364,7 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testToArray() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2].values().toArray()");
             Assert.assertTrue(result.hasMembers());
             Assert.assertTrue(result.hasArrayElements());
@@ -434,8 +387,7 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testToAsync() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        Context.Builder builder = newContextBuilder();
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "[1, 2].values().toAsync().next().then(x => console.log(x.done, x.value))");
@@ -445,9 +397,7 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testForEach() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "var sum = 1; [1, 2].values().forEach(x => sum+=x); sum");
             Assert.assertEquals(4, result.asInt());
 
@@ -481,9 +431,7 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testSome() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3].values().some(x => x > 2)");
             Assert.assertTrue(result.isBoolean());
             Assert.assertTrue(result.asBoolean());
@@ -523,9 +471,7 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testEvery() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3].values().every(x => x < 4)");
             Assert.assertTrue(result.isBoolean());
             Assert.assertTrue(result.asBoolean());
@@ -565,9 +511,7 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testFind() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1, 2, 3].values().find(x => x > 3)");
             Assert.assertTrue(result.isNull());
 
@@ -605,9 +549,7 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testToString() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
+        try (Context context = newContextBuilder().build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Iterator.prototype[Symbol.toStringTag]");
             Assert.assertEquals("Iterator", result.asString());
 
@@ -618,10 +560,8 @@ public class IteratorPrototypeBuiltinsTest {
 
     @Test
     public void testCombined() {
-        Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
-        try (Context context = builder.build()) {
-            Value result = context.eval(JavaScriptLanguage.ID, "[4,5,6,7].values().indexed().flatMap(x => x).filter(x=>x>1).map(x => x*2).drop(3).take(1).reduce((a, b) => a + b, -1)");
+        try (Context context = newContextBuilder().build()) {
+            Value result = context.eval(JavaScriptLanguage.ID, "[4,5,6,7].values().flatMap((x, i) => [i, x]).filter(x=>x>1).map(x => x*2).drop(3).take(1).reduce((a, b) => a + b, -1)");
             Assert.assertEquals(11, result.asInt());
         }
     }

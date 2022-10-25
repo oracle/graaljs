@@ -16,7 +16,6 @@ load("iteratorhelper_common.js");
 function testInvalidReceiver() {
   helper(it => it.drop(0));
   helper(it => it.take(1));
-  helper(it => it.indexed());
   helper(it => it.map(x => x));
   helper(it => it.flatMap(x => x));
   helper(it => it.filter(x => true));
@@ -47,7 +46,6 @@ function testInvalidReceiver() {
 function testGeneratorBrandCheck() {
   helper(it => it.drop(0));
   helper(it => it.take(1));
-  helper(it => it.indexed());
   helper(it => it.map(x => x));
   helper(it => it.flatMap(x => x));
   helper(it => it.filter(x => true));
