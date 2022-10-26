@@ -93,16 +93,6 @@ public class AsyncGeneratorResolveNode extends JavaScriptBaseNode {
         callResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, iteratorResult));
     }
 
-    @SuppressWarnings("unchecked")
-    public void performResolveWithIterResult(JSDynamicObject generator, JSDynamicObject iteratorResult) {
-        ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
-        assert !queue.isEmpty();
-        AsyncGeneratorRequest next = queue.pollFirst();
-        PromiseCapabilityRecord promiseCapability = next.getPromiseCapability();
-        Object resolve = promiseCapability.getResolve();
-        callResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, iteratorResult));
-    }
-
     private JSContext getContext() {
         return getAsyncGeneratorQueueNode.getContext();
     }
