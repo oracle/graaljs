@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -63,8 +65,9 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
 
     public abstract IteratorRecord execute(Object iteratedObject);
 
-    @Specialization(guards = "isJSObject(obj)")
-    protected IteratorRecord get(Object obj) {
+    @Specialization(guards = "isObjectNode.executeBoolean(obj)", limit = "1")
+    protected IteratorRecord get(Object obj,
+                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
         Object nextMethod = getNextMethodNode.getValue(obj);
         if (!isCallableNode.executeBoolean(nextMethod)) {
             errorProfile.enter();
@@ -74,8 +77,9 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
         return IteratorRecord.create((JSDynamicObject) obj, nextMethod, false);
     }
 
-    @Specialization(guards = "!isJSObject(obj)")
-    public IteratorRecord unsupported(Object obj) {
+    @Specialization(guards = "!isObjectNode.executeBoolean(obj)", limit = "1")
+    public IteratorRecord unsupported(Object obj,
+                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
         throw Errors.createTypeErrorNotAnObject(obj, this);
     }
 
