@@ -108,11 +108,6 @@ public final class JSAsyncIterator extends JSNonProxy implements JSConstructorFa
     }
 
     @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return TO_STRING_NAME;
-    }
-
-    @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getAsyncIteratorPrototype();
     }

@@ -107,11 +107,6 @@ public final class JSIterator extends JSNonProxy implements JSConstructorFactory
     }
 
     @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
-    }
-
-    @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getIteratorPrototype();
     }
