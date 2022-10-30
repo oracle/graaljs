@@ -99,7 +99,12 @@ public class WrapForAsyncIteratorPrototypeBuiltinsTest {
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: () => ({value: typeof this, done: false}), return: () => ({done: true})}).return().then(" +
                             "x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
-            Assert.assertEquals("object [object Object] boolean true\n", out.toString());
+            Assert.assertEquals("undefined undefined boolean true\n", out.toString());
+            out.reset();
+
+            context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: () => ({value: typeof this, done: false}), return: () => ({value: 42, done: true})}).return().then(" +
+                            "x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
+            Assert.assertEquals("number 42 boolean true\n", out.toString());
             out.reset();
 
             context.eval(JavaScriptLanguage.ID, "var called = false;" +
@@ -107,8 +112,9 @@ public class WrapForAsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("true\n", out.toString());
             out.reset();
 
-            context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: () => ({value: typeof this, done: true}), return: () => 1}).return().catch(err => console.log(err))");
-            Assert.assertEquals("TypeError: 1 is not an Object\n", out.toString());
+            context.eval(JavaScriptLanguage.ID,
+                            "AsyncIterator.from({next: () => ({value: typeof this, done: true}), return: () => 1}).return().then(x => console.log(typeof x, x)).catch(err => console.log(err))");
+            Assert.assertEquals("number 1\n", out.toString());
             out.reset();
 
             context.eval(JavaScriptLanguage.ID,

@@ -46,10 +46,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
@@ -57,17 +55,12 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
-import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIteratorObject;
@@ -116,7 +109,7 @@ public final class WrapForValidAsyncIteratorPrototypeBuiltins extends JSBuiltins
     public abstract static class WrapForAsyncIteratorNextNode extends JSBuiltinNode {
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private IteratorNextNode iteratorNextNode;
-        @Child private PropertyGetNode getContructorNode;
+        @Child private PropertyGetNode getConstructorNode;
         @Child private JSFunctionCallNode callNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
@@ -125,16 +118,15 @@ public final class WrapForValidAsyncIteratorPrototypeBuiltins extends JSBuiltins
 
             newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             iteratorNextNode = IteratorNextNode.create();
-            getContructorNode = PropertyGetNode.create(JSObject.CONSTRUCTOR, context);
+            getConstructorNode = PropertyGetNode.create(JSObject.CONSTRUCTOR, context);
             callNode = JSFunctionCallNode.createCall();
         }
 
         @Specialization
         protected JSDynamicObject next(JSWrapForValidAsyncIteratorObject thisObj) {
-
             try {
                 Object result = iteratorNextNode.execute(thisObj.getIterated());
-                if (JSPromise.isJSPromise(result) && getContructorNode.getValueOrDefault(result, Undefined.instance) == getRealm().getPromiseConstructor()) {
+                if (JSPromise.isJSPromise(result) && getConstructorNode.getValue(result) == getRealm().getPromiseConstructor()) {
                     return (JSDynamicObject) result;
                 }
 
@@ -170,44 +162,52 @@ public final class WrapForValidAsyncIteratorPrototypeBuiltins extends JSBuiltins
     public abstract static class WrapForAsyncIteratorReturnNode extends JSBuiltinNode {
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private JSFunctionCallNode callNode;
-        @Child private AsyncIteratorCloseNode iteratorCloseNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
-        @Child private PerformPromiseThenNode performPromiseThenNode;
-        @Child private IsObjectNode isObjectNode;
-        @Child private AsyncIteratorCloseResultCheckNode asyncIteratorCloseResultCheckNode;
+        @Child private GetMethodNode getReturnNode;
+        @Child private JSFunctionCallNode returnMethodCallNode;
+        @Child private PropertyGetNode getConstructorNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
         public WrapForAsyncIteratorReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
-            performPromiseThenNode = PerformPromiseThenNode.create(context);
-            newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
-            callNode = JSFunctionCallNode.createCall();
-            iteratorCloseNode = AsyncIteratorCloseNode.create(context);
-            createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-            isObjectNode = IsObjectNode.create();
-            asyncIteratorCloseResultCheckNode = AsyncIteratorCloseResultCheckNode.create(context);
+            this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
+            this.callNode = JSFunctionCallNode.createCall();
+            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
+            this.getReturnNode = GetMethodNode.create(context, Strings.RETURN);
+            this.returnMethodCallNode = JSFunctionCallNode.createCall();
+            this.getConstructorNode = PropertyGetNode.create(JSObject.CONSTRUCTOR, context);
 
         }
 
         @Specialization
-        protected Object performReturn(VirtualFrame frame, JSWrapForValidAsyncIteratorObject thisObj) {
+        protected JSDynamicObject performReturn(VirtualFrame frame, JSWrapForValidAsyncIteratorObject thisObj) {
+            JSRealm realm = getRealm();
             try {
-                Object innerResult = iteratorCloseNode.execute(thisObj.getIterated().getIterator());
-                if (JSPromise.isJSPromise(innerResult)) {
-                    JSFunctionData functionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseReturnWrapper,
-                                    WrapForAsyncIteratorReturnNode::createIteratorCloseResultCheckImpl);
-                    return performPromiseThenNode.execute((JSDynamicObject) innerResult, JSFunction.create(getRealm(), functionData), Undefined.instance, newPromiseCapabilityNode.executeDefault());
+                Object returnMethod = getReturnNode.executeWithTarget(thisObj.getIterated().getIterator());
+                if (returnMethod == Undefined.instance) {
+                    PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(realm.getPromiseConstructor());
+                    callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), createIterResultObjectNode.execute(frame, Undefined.instance, true)));
+                    return promiseCapability.getPromise();
+                } else {
+                    Object result = returnMethodCallNode.executeCall(JSArguments.createZeroArg(thisObj.getIterated().getIterator(), returnMethod));
+                    if (JSPromise.isJSPromise(result)) {
+                        Object otherConstructor = getConstructorNode.getValue(result);
+                        if (otherConstructor == realm.getPromiseConstructor()) {
+                            return (JSDynamicObject) result;
+                        }
+                    }
+                    PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(realm.getPromiseConstructor());
+                    callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), result));
+                    return promiseCapability.getPromise();
                 }
-
-                return asyncIteratorCloseResultCheckNode.execute(frame, innerResult);
             } catch (AbstractTruffleException ex) {
                 if (getErrorObjectNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
                 }
                 Object error = getErrorObjectNode.execute(ex);
-                PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
+                PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(realm.getPromiseConstructor());
                 callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
                 return promiseCapability.getPromise();
             }
@@ -220,84 +220,9 @@ public final class WrapForValidAsyncIteratorPrototypeBuiltins extends JSBuiltins
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
             }
             Object error = getErrorObjectNode.execute(Errors.createTypeErrorIncompatibleReceiver(thisObj));
-            PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(getRealm().getPromiseConstructor());
+            PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
             callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
             return promiseCapability.getPromise();
-        }
-
-        private static JSFunctionData createIteratorCloseResultCheckImpl(JSContext context) {
-            return JSFunctionData.createCallOnly(context, new AsyncIteratorCloseResultCheckNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
-        }
-
-        protected static class AsyncIteratorCloseNode extends JavaScriptBaseNode {
-            @Child private GetMethodNode getReturnNode;
-            @Child private JSFunctionCallNode methodCallNode;
-            @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
-            @Child private JSFunctionCallNode callNode;
-
-            protected AsyncIteratorCloseNode(JSContext context) {
-                this.getReturnNode = GetMethodNode.create(context, Strings.RETURN);
-                this.methodCallNode = JSFunctionCallNode.createCall();
-                this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
-                this.callNode = JSFunctionCallNode.createCall();
-            }
-
-            public static AsyncIteratorCloseNode create(JSContext context) {
-                return new AsyncIteratorCloseNode(context);
-            }
-
-            public final Object execute(JSDynamicObject iterator) {
-                Object returnMethod = getReturnNode.executeWithTarget(iterator);
-                if (returnMethod == Undefined.instance) {
-                    PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(getRealm().getPromiseConstructor());
-                    callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), Undefined.instance));
-                    return promiseCapability.getPromise();
-                }
-
-                return methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-            }
-        }
-
-        protected static class AsyncIteratorCloseResultCheckNode extends JavaScriptRootNode {
-            @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
-            @Child private IsObjectNode isObjectNode;
-            @Child private JSFunctionCallNode callNode;
-            @Child private CreateIterResultObjectNode createIterResultObjectNode;
-            @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-
-            protected AsyncIteratorCloseResultCheckNode(JSContext context) {
-                super(context.getLanguage(), null, null);
-                newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
-                isObjectNode = IsObjectNode.create();
-                callNode = JSFunctionCallNode.createCall();
-                createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-            }
-
-            protected static AsyncIteratorCloseResultCheckNode create(JSContext context) {
-                return new AsyncIteratorCloseResultCheckNode(context);
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object innerResult = JSRuntime.getArgOrUndefined(JSFrameUtil.getArgumentsArray(frame), 0);
-                return execute(frame, innerResult);
-            }
-
-            public final Object execute(VirtualFrame frame, Object innerResult) {
-                PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(getRealm().getPromiseConstructor());
-                if (!isObjectNode.executeBoolean(innerResult)) {
-                    if (getErrorObjectNode == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getLanguage().getJSContext()));
-                    }
-                    Object error = getErrorObjectNode.execute(Errors.createTypeErrorIterResultNotAnObject(innerResult, this));
-                    callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
-                } else {
-                    Object result = this.createIterResultObjectNode.execute(frame, innerResult, true);
-                    callNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), result));
-                }
-                return promiseCapability.getPromise();
-            }
         }
     }
 }

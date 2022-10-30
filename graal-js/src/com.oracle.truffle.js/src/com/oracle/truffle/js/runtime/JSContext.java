@@ -350,7 +350,6 @@ public class JSContext {
         PromiseCatchFinally,
         PromiseValueThunk,
         PromiseThrower,
-        PromiseReturnWrapper,
         ImportModuleDynamically,
         JavaPackageToPrimitive,
         RegExpMultiLine,
