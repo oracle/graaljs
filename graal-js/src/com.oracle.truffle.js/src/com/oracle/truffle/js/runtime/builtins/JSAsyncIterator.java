@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public final class JSAsyncIterator extends JSNonProxy implements JSConstructorFactory.WithFunctionsAndSpecies, PrototypeSupplier {
+public final class JSAsyncIterator extends JSNonProxy implements JSConstructorFactory.WithFunctions, PrototypeSupplier {
 
     public static final TruffleString CLASS_NAME = Strings.constant("AsyncIterator");
     public static final TruffleString TO_STRING_NAME = Strings.constant("Async Iterator");
