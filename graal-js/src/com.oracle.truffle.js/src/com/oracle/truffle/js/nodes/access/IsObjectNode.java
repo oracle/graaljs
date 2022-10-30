@@ -51,7 +51,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Checks whether the argument is of type Object (JS or foreign), i.e., not a primitive value.
@@ -112,9 +112,8 @@ public abstract class IsObjectNode extends JavaScriptBaseNode {
         return false;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSObject(operand)"})
-    protected static boolean doIsObject(JSDynamicObject operand) {
+    @Specialization
+    protected static boolean doJSObject(@SuppressWarnings("unused") JSObject operand) {
         return true;
     }
 
