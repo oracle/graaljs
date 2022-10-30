@@ -43,10 +43,10 @@ package com.oracle.truffle.js.runtime;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -269,7 +269,7 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
-    public static <T> void queueAdd(ArrayDeque<? super T> queue, T request) {
-        queue.addLast(request);
+    public static <T> void queueAdd(Queue<? super T> queue, T request) {
+        queue.add(request);
     }
 }
