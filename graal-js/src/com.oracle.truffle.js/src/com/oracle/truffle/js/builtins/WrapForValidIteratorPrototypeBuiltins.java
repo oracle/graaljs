@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -56,6 +57,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIteratorObject;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -107,7 +109,8 @@ public final class WrapForValidIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         @Specialization
         protected Object next(JSWrapForValidIteratorObject thisObj) {
-            return callNode.executeCall(JSArguments.createZeroArg(thisObj.getIterated().getIterator(), thisObj.getIterated().getNextMethod()));
+            IteratorRecord iterated = thisObj.getIterated();
+            return callNode.executeCall(JSArguments.createZeroArg(iterated.getIterator(), iterated.getNextMethod()));
         }
 
         @Specialization(guards = "!isWrapForIterator(thisObj)")
@@ -116,22 +119,24 @@ public final class WrapForValidIteratorPrototypeBuiltins extends JSBuiltinsConta
         }
     }
 
-    @ImportStatic({JSWrapForValidIterator.class})
+    @ImportStatic({JSWrapForValidIterator.class, Strings.class})
     public abstract static class WrapForIteratorReturnNode extends JSBuiltinNode {
-        @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private CreateIterResultObjectNode createIterResultObjectNode;
 
         public WrapForIteratorReturnNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-
-            iteratorCloseNode = IteratorCloseNode.create(context);
-            createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         }
 
         @Specialization
-        protected Object next(VirtualFrame frame, JSWrapForValidIteratorObject thisObj) {
-            iteratorCloseNode.executeVoid(thisObj.getIterated().getIterator());
-            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+        protected Object doReturn(VirtualFrame frame, JSWrapForValidIteratorObject thisObj,
+                        @Cached("create(getContext(), RETURN)") GetMethodNode getReturnNode,
+                        @Cached("createCall()") JSFunctionCallNode methodCallNode,
+                        @Cached("create(getContext())") CreateIterResultObjectNode createIterResultObjectNode) {
+            Object returnMethod = getReturnNode.executeWithTarget(thisObj.getIterated().getIterator());
+            if (returnMethod == Undefined.instance) {
+                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+            } else {
+                return methodCallNode.executeCall(JSArguments.createZeroArg(thisObj.getIterated().getIterator(), returnMethod));
+            }
         }
 
         @Specialization(guards = "!isWrapForIterator(thisObj)")

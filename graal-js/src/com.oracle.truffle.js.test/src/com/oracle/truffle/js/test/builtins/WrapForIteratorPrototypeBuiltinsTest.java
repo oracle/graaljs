@@ -90,7 +90,7 @@ public class WrapForIteratorPrototypeBuiltinsTest {
             Value result = context.eval(JavaScriptLanguage.ID, "Iterator.from({next: () => ({value: typeof this, done: false}), return: () => ({done: true})}).return()");
             Assert.assertTrue(result.hasMembers());
             Assert.assertTrue(result.hasMember("done"));
-            Assert.assertTrue(result.hasMember("value"));
+            Assert.assertFalse(result.hasMember("value"));
             Assert.assertTrue(result.getMember("done").asBoolean());
 
             result = context.eval(JavaScriptLanguage.ID, "var called = false;" +
@@ -98,12 +98,8 @@ public class WrapForIteratorPrototypeBuiltinsTest {
                             "called");
             Assert.assertTrue(result.asBoolean());
 
-            try {
-                context.eval(JavaScriptLanguage.ID, "Iterator.from({next: () => ({value: typeof this, done: true}), return: () => 1}).return()");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
+            result = context.eval(JavaScriptLanguage.ID, "Iterator.from({next: () => ({value: typeof this, done: true}), return: () => 1}).return()");
+            Assert.assertEquals(1, result.asInt());
 
             try {
                 context.eval(JavaScriptLanguage.ID, "Iterator.from({next: () => ({value: typeof this, done: true}), return: () => ({done: true})}).return.call([].values())");
