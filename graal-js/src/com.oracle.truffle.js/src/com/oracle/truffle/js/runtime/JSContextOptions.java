@@ -715,7 +715,7 @@ public final class JSContextOptions {
         this.webAssembly = readBooleanOption(WEBASSEMBLY);
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
-        this.iteratorHelpers = readBooleanOption(ITERATOR_HELPERS);
+        this.iteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && readBooleanOption(ITERATOR_HELPERS);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = ERROR_CAUSE.hasBeenSet(optionValues) ? readBooleanOption(ERROR_CAUSE) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
