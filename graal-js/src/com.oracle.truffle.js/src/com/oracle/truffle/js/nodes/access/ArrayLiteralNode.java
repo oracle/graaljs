@@ -576,7 +576,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                 if (node instanceof EmptyNode) {
                     evaluatedElements.add(null, growProfile);
                     holeCount++;
-                    if (i == arrayOffset) {
+                    if (lastNonEmptyPlusOne == 0) {
                         arrayOffset++;
                     }
                 } else if (node instanceof SpreadArrayNode) {
