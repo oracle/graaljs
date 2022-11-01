@@ -1831,7 +1831,9 @@ public class JSRealm {
         assert getContext().isOptionNashornCompatibilityMode();
         putGlobalProperty(JSAdapter.CLASS_NAME, jsAdapterConstructor);
         putGlobalProperty(Strings.EXIT, lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, Strings.EXIT));
-        putGlobalProperty(Strings.QUIT, lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, Strings.QUIT));
+        if (!getContext().getContextOptions().isShell()) {
+            putGlobalProperty(Strings.QUIT, lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, Strings.QUIT));
+        } // else 'quit' built-in will be defined together with GLOBAL_SHELL built-ins
         putGlobalProperty(Strings.PARSE_TO_JSON, lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, Strings.PARSE_TO_JSON));
     }
 
