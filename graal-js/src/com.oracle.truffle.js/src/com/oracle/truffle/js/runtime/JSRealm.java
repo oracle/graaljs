@@ -57,6 +57,9 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.js.runtime.builtins.JSFetchHeaders;
+import com.oracle.truffle.js.runtime.builtins.JSFetchRequest;
+import com.oracle.truffle.js.runtime.builtins.JSFetchResponse;
 import com.oracle.truffle.js.runtime.objects.Null;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
@@ -270,6 +273,12 @@ public class JSRealm {
     private final JSDynamicObject localePrototype;
     private final JSFunctionObject dateConstructor;
     private final JSDynamicObject datePrototype;
+    private final JSFunctionObject fetchResponseConstructor;
+    private final JSDynamicObject fetchResponsePrototype;
+    private final JSFunctionObject fetchRequestConstructor;
+    private final JSDynamicObject fetchRequestPrototype;
+    private final JSFunctionObject fetchHeadersConstructor;
+    private final JSDynamicObject fetchHeadersPrototype;
     @CompilationFinal(dimensions = 1) private final JSDynamicObject[] errorConstructors;
     @CompilationFinal(dimensions = 1) private final JSDynamicObject[] errorPrototypes;
     private final JSFunctionObject callSiteConstructor;
@@ -610,6 +619,15 @@ public class JSRealm {
         this.callFunctionObject = JSDynamicObject.getOrNull(getFunctionPrototype(), Strings.CALL);
 
         JSConstructor ctor;
+        ctor = JSFetchResponse.createConstructor(this);
+        this.fetchResponseConstructor = ctor.getFunctionObject();
+        this.fetchResponsePrototype = ctor.getPrototype();
+        ctor = JSFetchRequest.createConstructor(this);
+        this.fetchRequestConstructor = ctor.getFunctionObject();
+        this.fetchRequestPrototype = ctor.getPrototype();
+        ctor = JSFetchHeaders.createConstructor(this);
+        this.fetchHeadersConstructor = ctor.getFunctionObject();
+        this.fetchHeadersPrototype = ctor.getPrototype();
         ctor = JSArray.createConstructor(this);
         this.arrayConstructor = ctor.getFunctionObject();
         this.arrayPrototype = (JSArrayObject) ctor.getPrototype();
@@ -1246,6 +1264,30 @@ public class JSRealm {
         return datePrototype;
     }
 
+    public final JSFunctionObject getFetchResponseConstructor() {
+        return fetchResponseConstructor;
+    }
+
+    public final JSDynamicObject getFetchResponsePrototype() {
+        return fetchResponsePrototype;
+    }
+
+    public final JSFunctionObject getFetchRequestConstructor() {
+        return fetchRequestConstructor;
+    }
+
+    public final JSDynamicObject getFetchRequestPrototype() {
+        return fetchRequestPrototype;
+    }
+
+    public final JSFunctionObject getFetchHeadersConstructor() {
+        return fetchHeadersConstructor;
+    }
+
+    public final JSDynamicObject getFetchHeadersPrototype() {
+        return fetchHeadersPrototype;
+    }
+
     public final JSFunctionObject getSegmenterConstructor() {
         return segmenterConstructor;
     }
@@ -1695,6 +1737,9 @@ public class JSRealm {
         putGlobalProperty(JSArray.CLASS_NAME, getArrayConstructor());
         putGlobalProperty(JSString.CLASS_NAME, getStringConstructor());
         putGlobalProperty(JSDate.CLASS_NAME, getDateConstructor());
+        putGlobalProperty(JSFetchResponse.CLASS_NAME, getFetchResponseConstructor());
+        putGlobalProperty(JSFetchRequest.CLASS_NAME, getFetchRequestConstructor());
+        putGlobalProperty(JSFetchHeaders.CLASS_NAME, getFetchHeadersConstructor());
         putGlobalProperty(JSNumber.CLASS_NAME, getNumberConstructor());
         putGlobalProperty(JSBoolean.CLASS_NAME, getBooleanConstructor());
         putGlobalProperty(JSRegExp.CLASS_NAME, getRegExpConstructor());

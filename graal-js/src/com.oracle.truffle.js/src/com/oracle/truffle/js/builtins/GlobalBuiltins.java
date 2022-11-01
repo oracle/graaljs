@@ -63,6 +63,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -97,7 +98,11 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadBufferNo
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
+import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalFetchNodeGen;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
+import com.oracle.truffle.js.builtins.helper.FetchHttpConnection;
+import com.oracle.truffle.js.builtins.helper.FetchRequest;
+import com.oracle.truffle.js.builtins.helper.FetchResponse;
 import com.oracle.truffle.js.builtins.helper.FloatParserNode;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -110,14 +115,18 @@ import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSTrimWhitespaceNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSLoadNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSConsoleUtil;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -132,7 +141,10 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSFetchRequest;
+import com.oracle.truffle.js.runtime.builtins.JSFetchResponse;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSURLDecoder;
 import com.oracle.truffle.js.runtime.builtins.JSURLEncoder;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -141,6 +153,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -169,6 +182,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         decodeURI(1),
         decodeURIComponent(1),
         eval(1),
+        fetch(2),
 
         // Annex B
         escape(1),
@@ -216,6 +230,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return JSGlobalUnEscapeNodeGen.create(context, builtin, false, args().fixedArgs(1).createArgumentNodes(context));
             case unescape:
                 return JSGlobalUnEscapeNodeGen.create(context, builtin, true, args().fixedArgs(1).createArgumentNodes(context));
+            case fetch:
+                return JSGlobalFetchNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -1318,6 +1334,74 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected TruffleString escape(Object value) {
             TruffleString s = toString1(value);
             return unescape ? StringEscape.unescape(s) : StringEscape.escape(s);
+        }
+    }
+
+    /**
+     * Implementation of the Fetch API.
+     * Reference: https://fetch.spec.whatwg.org/commit-snapshots/9bb2ded94073377ec5d9b5e3cda391df6c769a0a/
+     */
+    public abstract static class JSGlobalFetchNode extends JSBuiltinNode {
+        @Child NewPromiseCapabilityNode newPromiseCapability;
+        @Child JSFunctionCallNode promiseResolutionCallNode;
+        @Child TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
+
+        protected JSGlobalFetchNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
+            this.promiseResolutionCallNode = JSFunctionCallNode.createCall();
+        }
+
+        protected JSDynamicObject toPromise(Object resolution) {
+            JSRealm realm = getRealm();
+            PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(realm.getPromiseConstructor());
+            try {
+                promiseResolutionCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), resolution));
+            } catch (AbstractTruffleException ex) {
+                errorBranch.enter();
+                if (getErrorObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+                }
+                Object error = getErrorObjectNode.execute(ex);
+                promiseResolutionCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
+            }
+            return promiseCapability.getPromise();
+        }
+
+        /**
+         * The fetch method https://fetch.spec.whatwg.org/#fetch-method.
+         * @param input A string or {@linkplain JSFetchRequest} object
+         * @param options A optional ReuestInit object https://fetch.spec.whatwg.org/#requestinit
+         * @return returns a {@linkplain JSFetchResponse} object
+         */
+        @Specialization
+        protected JSDynamicObject fetch(Object input, Object options, @Cached("create()") JSToStringNode toString) {
+            JSObject parsedOptions;
+            if (options == Null.instance || options == Undefined.instance) {
+                parsedOptions = JSOrdinary.create(getContext(), getRealm());
+            } else {
+                parsedOptions = (JSObject) options;
+            }
+
+            FetchRequest request;
+            if (JSFetchRequest.isJSFetchRequest(input)) {
+                request = JSFetchRequest.getInternalData((JSObject) input);
+                request.applyRequestInit(parsedOptions);
+            } else {
+                request = new FetchRequest(toString.executeString(input), parsedOptions);
+            }
+
+            FetchResponse response = null;
+            try {
+                FetchHttpConnection.node = this;
+                response = FetchHttpConnection.connect(request);
+            } catch (IOException e) {
+                throw Errors.createFetchError(e.getMessage(), "system", this);
+            }
+
+            return toPromise(JSFetchResponse.create(getContext(), getRealm(), response));
         }
     }
 

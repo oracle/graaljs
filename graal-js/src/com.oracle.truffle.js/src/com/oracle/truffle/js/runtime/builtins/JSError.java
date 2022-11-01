@@ -84,6 +84,8 @@ public final class JSError extends JSNonProxy {
     public static final TruffleString STACK_NAME = Strings.constant("stack");
     public static final HiddenKey FORMATTED_STACK_NAME = new HiddenKey("FormattedStack");
     public static final TruffleString ERRORS_NAME = Strings.constant("errors");
+    public static final TruffleString ERRORS_TYPE = Strings.constant("type");
+    public static final TruffleString ERRORS_SYSERR = Strings.constant("erroredSysCall");
     public static final int ERRORS_ATTRIBUTES = JSAttributes.getDefaultNotEnumerable();
     public static final TruffleString PREPARE_STACK_TRACE_NAME = Strings.constant("prepareStackTrace");
     public static final TruffleString LINE_NUMBER_PROPERTY_NAME = Strings.constant("lineNumber");

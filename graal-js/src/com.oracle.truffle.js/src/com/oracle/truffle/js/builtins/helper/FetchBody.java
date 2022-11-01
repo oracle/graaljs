@@ -38,65 +38,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.builtins.helper;
 
-import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public enum JSErrorType implements PrototypeSupplier {
-    Error,
+public class FetchBody {
+    protected String body;
+    private boolean bodyUsed;
+    private String contentType = "text/plain;charset=UTF-8";
 
-    /**
-     * Currently not in use, only there for compatibility with previous versions of the
-     * specification ECMA262[15.11.6.1].
-     */
-    EvalError,
-
-    /**
-     * Indicates a numeric value has exceeded the allowable range ECMA262[15.11.6.2].
-     */
-    RangeError,
-
-    /**
-     * Indicate that an invalid reference value has been detected ECMA262[15.11.6.3].
-     */
-    ReferenceError,
-
-    /**
-     * Indicates that a parsing error has occurred ECMA262[15.11.6.4].
-     */
-    SyntaxError,
-
-    /**
-     * Indicates the actual type of an operand is different than the expected type
-     * ECMA262[15.11.6.5].
-     */
-    TypeError,
-
-    /**
-     * Indicates that one of the global URI handling functions was used in a way that is
-     * incompatible with its definition ECMA262[15.11.6.6].
-     */
-    URIError,
-
-    AggregateError,
-
-    // Fetch
-    FetchError,
-
-    // WebAssembly
-    CompileError,
-    LinkError,
-    RuntimeError;
-
-    @Override
-    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getErrorPrototype(this);
+    public void setBody(Object body) {
+        if (body == Undefined.instance || body == Null.instance) {
+            this.body = null;
+        } else {
+            this.body = JSToStringNode.create().executeString(body).toString();
+        }
     }
 
-    public static JSErrorType[] errorTypes() {
-        return VALUES;
+    public void setBody(String body) {
+        this.body = body;
     }
 
-    private static final JSErrorType[] VALUES = JSErrorType.values();
+    public String getBody() {
+        return body;
+    }
+
+    public String consumeBody() {
+        if (!bodyUsed) {
+            bodyUsed = true;
+            return body;
+        } else {
+            throw Errors.createTypeError("Body already used");
+        }
+    }
+
+    public int getBodyBytes() {
+        if (body == null) {
+            return 0;
+        }
+        return body.getBytes().length;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }
+
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
+    }
+
+    public boolean isBodyUsed() {
+        return bodyUsed;
+    }
 }
