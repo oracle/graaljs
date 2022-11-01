@@ -62,6 +62,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.internal.TextListener;
@@ -215,7 +216,10 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
             Source source = Source.newBuilder(ID, testCase.sourceFile.toFile()).name(testCase.sourceName).content(sourceLines).mimeType(mimeType).build();
             engineContext.eval(source);
         } catch (Throwable ex) {
-            notifier.fireTestFailure(new Failure(testCase.testName, ex));
+            boolean isExitWithZeroStatus = ex instanceof PolyglotException && ((PolyglotException) ex).isExit() && ((PolyglotException) ex).getExitStatus() == 0;
+            if (!isExitWithZeroStatus) {
+                notifier.fireTestFailure(new Failure(testCase.testName, ex));
+            }
         } finally {
             notifier.fireTestFinished(testCase.testName);
         }
