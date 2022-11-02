@@ -434,6 +434,20 @@ def prepareNodeCmdLine(args, add_graal_vm_args=True):
         --debug to run in debug mode (provided that you build it)
     '''
     mode, vmArgs, progArgs = setupNodeEnvironment(args, add_graal_vm_args)
+
+    if mx_gate.get_jacoco_agent_args():
+        # The node launcher (i.e., JNI) does not support @argfile vm args, so we have to expand them to ordinary args
+        def expandArgFile(arg):
+            if arg.startswith('@'):
+                with open(arg[1:], 'r') as f:
+                    return f.readlines()
+            assert arg[0] == '-', arg
+            return [arg]
+        def expandArgs(args):
+            return [arg for expandedArg in (expandArgFile(arg) for arg in args) for arg in expandedArg]
+
+        vmArgs += expandArgs(mx_gate.get_jacoco_agent_args())
+
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
     return [join(_suite.dir, 'out', mode, 'node')] + progArgs
 
