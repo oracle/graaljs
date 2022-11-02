@@ -352,6 +352,81 @@ function testTakeForBreakReturnError(n) {
   assertSame(1, iterator.returnCalls);
 }
 
+function* generatorFromIterable(iterable) {
+  for (let i of iterable) {
+    yield i;
+  }
+}
+
+function testSomeCloseOnReturn(n) {
+  let iterator = new CloseableIteratorSequence();
+
+  assertSame(true, iterator.some((x, i) => i == n));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  assertSame(false, iterator.some(_ => true));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  iterator = generatorFromIterable([2, 4, 6]);
+  assertSame(true, iterator.some(_ => true));
+  assertSame(false, iterator.some(_ => true));
+
+  // non-closeable iterator
+  iterator = Iterator.from([2, 4, 6]);
+  assertSame(true, iterator.some(_ => true));
+  assertSame(true, iterator.some(_ => true));
+  assertSame(true, iterator.some(_ => true));
+  assertSame(false, iterator.some(_ => true));
+}
+
+function testEveryCloseOnReturn(n) {
+  let iterator = new CloseableIteratorSequence();
+
+  assertSame(false, iterator.every((x, i) => i != n));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  assertSame(true, iterator.every(_ => false));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  iterator = generatorFromIterable([2, 4, 6]);
+  assertSame(false, iterator.every(_ => false));
+  assertSame(true, iterator.every(_ => false));
+
+  // non-closeable iterator
+  iterator = Iterator.from([2, 4, 6]);
+  assertSame(false, iterator.every(_ => false));
+  assertSame(false, iterator.every(_ => false));
+  assertSame(false, iterator.every(_ => false));
+  assertSame(true, iterator.every(_ => false));
+}
+
+function testFindCloseOnReturn(n) {
+  let iterator = new CloseableIteratorSequence();
+
+  assertSame(41 + n, iterator.find((x, i) => i == n));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  assertSame(undefined, iterator.find(_ => true));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  iterator = generatorFromIterable([2, 4, 6]);
+  assertSame(2, iterator.find(_ => true));
+  assertSame(undefined, iterator.find(_ => true));
+
+  // non-closeable iterator
+  iterator = Iterator.from([2, 4, 6]);
+  assertSame(2, iterator.find(_ => true));
+  assertSame(4, iterator.find(_ => true));
+  assertSame(6, iterator.find(_ => true));
+  assertSame(undefined, iterator.find(_ => true));
+}
+
 function run(fn, ...args) {
   for (let nextArgs of expandArgs(args)) {
     debugLog("**", fn.name, nextArgs.map(a => typeof a == 'function' ? a.name : a));
@@ -379,6 +454,10 @@ function run(fn, ...args) {
     run(testTakeManualReturn, [0, 1, 2]);
     run(testTakeForThrowReturnError, [0, 1, 2]);
     run(testTakeForBreakReturnError, [0, 1, 2]);
+
+    run(testSomeCloseOnReturn, [0, 1, 2]);
+    run(testEveryCloseOnReturn, [0, 1, 2]);
+    run(testFindCloseOnReturn, [0, 1, 2]);
 
     debugLog("DONE");
   } catch (e) {

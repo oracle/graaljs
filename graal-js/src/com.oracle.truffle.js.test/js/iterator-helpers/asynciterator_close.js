@@ -442,6 +442,81 @@ async function testTakeForAwaitBreakReturnError(n, AsyncIteratorClass) {
   assertSame(1, asyncIterator.returnCalls);
 }
 
+async function* asyncGeneratorFromIterable(iterable) {
+  for (let i of iterable) {
+    yield i;
+  }
+}
+
+async function testSomeCloseOnReturn(n) {
+  let iterator = new CloseableAsyncIteratorSequence();
+
+  assertSame(true, await iterator.some((x, i) => i == n));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  assertSame(false, await iterator.some(_ => true));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  iterator = asyncGeneratorFromIterable([2, 4, 6]);
+  assertSame(true, await iterator.some(_ => true));
+  assertSame(false, await iterator.some(_ => true));
+
+  // non-closeable iterator
+  iterator = [2, 4, 6].values();
+  assertSame(true, await iterator.some(_ => true));
+  assertSame(true, await iterator.some(_ => true));
+  assertSame(true, await iterator.some(_ => true));
+  assertSame(false, await iterator.some(_ => true));
+}
+
+async function testEveryCloseOnReturn(n) {
+  let iterator = new CloseableAsyncIteratorSequence();
+
+  assertSame(false, await iterator.every((x, i) => i != n));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  assertSame(true, await iterator.every(_ => false));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  iterator = asyncGeneratorFromIterable([2, 4, 6]);
+  assertSame(false, await iterator.every(_ => false));
+  assertSame(true, await iterator.every(_ => false));
+
+  // non-closeable iterator
+  iterator = AsyncIterator.from([2, 4, 6]);
+  assertSame(false, await iterator.every(_ => false));
+  assertSame(false, await iterator.every(_ => false));
+  assertSame(false, await iterator.every(_ => false));
+  assertSame(true, await iterator.every(_ => false));
+}
+
+async function testFindCloseOnReturn(n) {
+  let iterator = new CloseableAsyncIteratorSequence();
+
+  assertSame(41 + n, await iterator.find((x, i) => i == n));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  assertSame(undefined, await iterator.find(_ => true));
+  assertSame(n + 1, iterator.nextCalls);
+  assertSame(1, iterator.returnCalls);
+
+  iterator = asyncGeneratorFromIterable([2, 4, 6]);
+  assertSame(2, await iterator.find(_ => true));
+  assertSame(undefined, await iterator.find(_ => true));
+
+  // non-closeable iterator
+  iterator = AsyncIterator.from([2, 4, 6]);
+  assertSame(2, await iterator.find(_ => true));
+  assertSame(4, await iterator.find(_ => true));
+  assertSame(6, await iterator.find(_ => true));
+  assertSame(undefined, await iterator.find(_ => true));
+}
+
 async function run(fn, ...args) {
   for (let nextArgs of expandArgs(args)) {
     debugLog("**", fn.name, nextArgs.map(a => typeof a == 'function' ? a.name : a));
@@ -475,6 +550,10 @@ async function run(fn, ...args) {
     await run(testMapPromiseValue);
     await run(testFlatMapPromiseValue);
     await run(testFilterPromiseValue);
+
+    await run(testSomeCloseOnReturn, [0, 1, 2]);
+    await run(testEveryCloseOnReturn, [0, 1, 2]);
+    await run(testFindCloseOnReturn, [0, 1, 2]);
 
     debugLog("DONE");
   } catch (e) {

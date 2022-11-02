@@ -110,14 +110,16 @@ class IteratorSequence extends IteratorCommon {
   }
 }
 
-class IteratorSequenceReturnError extends IteratorCommon {
+class CloseableIteratorSequence extends IteratorSequence {
   next() {
-    this.nextCommon();
-    return {
-      done: false,
-      value: 40 + this.nextCalls
-    };
+    if (this.returnCalls > 0) {
+      return {done: true, value: undefined};
+    }
+    return super.next();
   }
+}
+
+class IteratorSequenceReturnError extends IteratorSequence {
   return() {
     this.returnCommon();
     throw new ExpectedReturnError();
@@ -173,28 +175,23 @@ class AsyncIteratorSequence extends AsyncIteratorCommon {
   }
 }
 
-class AsyncIteratorSequenceReturnError extends AsyncIteratorCommon {
+class CloseableAsyncIteratorSequence extends AsyncIteratorSequence {
   async next() {
-    this.nextCommon();
-    return {
-      done: false,
-      value: 40 + this.nextCalls
-    };
+    if (this.returnCalls > 0) {
+      return {done: true, value: undefined};
+    }
+    return await super.next();
   }
+}
+
+class AsyncIteratorSequenceReturnError extends AsyncIteratorSequence {
   async return() {
     this.returnCommon();
     throw new ExpectedReturnError();
   }
 }
 
-class AsyncIteratorSequenceReturnReject extends AsyncIteratorCommon {
-  async next() {
-    this.nextCommon();
-    return {
-      done: false,
-      value: 40 + this.nextCalls
-    };
-  }
+class AsyncIteratorSequenceReturnReject extends AsyncIteratorSequence {
   async return() {
     this.returnCommon();
     return Promise.reject(new ExpectedReturnError());
