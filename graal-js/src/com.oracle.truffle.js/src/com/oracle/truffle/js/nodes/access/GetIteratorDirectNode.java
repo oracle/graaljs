@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -50,7 +48,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getNextMethodNode;
@@ -60,26 +58,24 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
 
     public GetIteratorDirectNode(JSContext context) {
         isCallableNode = IsCallableNode.create();
-        getNextMethodNode = PropertyGetNode.create(Strings.NEXT, false, context);
+        getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
     }
 
     public abstract IteratorRecord execute(Object iteratedObject);
 
-    @Specialization(guards = "isObjectNode.executeBoolean(obj)", limit = "1")
-    protected IteratorRecord get(Object obj,
-                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+    @Specialization
+    protected IteratorRecord get(JSObject obj) {
         Object nextMethod = getNextMethodNode.getValue(obj);
         if (!isCallableNode.executeBoolean(nextMethod)) {
             errorProfile.enter();
             throw Errors.createTypeErrorCallableExpected();
         }
 
-        return IteratorRecord.create((JSDynamicObject) obj, nextMethod, false);
+        return IteratorRecord.create(obj, nextMethod, false);
     }
 
-    @Specialization(guards = "!isObjectNode.executeBoolean(obj)", limit = "1")
-    public IteratorRecord unsupported(Object obj,
-                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+    @Specialization(guards = "!isJSObject(obj)")
+    public IteratorRecord unsupported(Object obj) {
         throw Errors.createTypeErrorNotAnObject(obj, this);
     }
 
