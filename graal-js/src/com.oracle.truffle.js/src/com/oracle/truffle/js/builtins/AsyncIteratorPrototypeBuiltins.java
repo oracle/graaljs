@@ -1113,7 +1113,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             IteratorRecord record = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
-            if (Double.isNaN(numLimit.doubleValue())) {
+            if (JSRuntime.isNaN(numLimit)) {
                 errorBranch.enter();
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
@@ -1232,7 +1232,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             IteratorRecord record = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
-            if (Double.isNaN(numLimit.doubleValue())) {
+            if (JSRuntime.isNaN(numLimit)) {
                 errorProfile.enter();
                 throw Errors.createRangeError("NaN is not allowed", this);
             }

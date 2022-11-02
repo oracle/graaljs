@@ -528,7 +528,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
-            if (Double.isNaN(numLimit.doubleValue())) {
+            if (JSRuntime.isNaN(numLimit)) {
                 errorProfile.enter();
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
@@ -608,7 +608,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
-            if (Double.isNaN(numLimit.doubleValue())) {
+            if (JSRuntime.isNaN(numLimit)) {
                 errorProfile.enter();
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
