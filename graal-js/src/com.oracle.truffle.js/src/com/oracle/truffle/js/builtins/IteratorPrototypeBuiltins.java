@@ -338,7 +338,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
         }
 
-        protected final JSDynamicObject createIterator(@SuppressWarnings("unused") Object thisObj, T args) {
+        protected final JSDynamicObject createIterator(T args) {
             JSDynamicObject iterator = createObjectNode.execute(getIteratorHelperPrototype());
             setArgsNode.setValue(iterator, args);
             setNextNode.setValue(iterator, JSFunction.create(getRealm(), getContext().getOrCreateBuiltinFunctionData(nextKey, nextFactory)));
@@ -372,11 +372,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isCallable(mapper)")
         public JSDynamicObject map(Object thisObj, Object mapper) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            return createIterator(thisObj, new IteratorMapArgs(iterated, mapper));
+            return createIterator(new IteratorMapArgs(iterated, mapper));
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
+        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
             getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
@@ -441,7 +441,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isCallable(filterer)")
         public JSDynamicObject filter(Object thisObj, Object filterer) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            return createIterator(thisObj, new IteratorFilterArgs(iterated, filterer));
+            return createIterator(new IteratorFilterArgs(iterated, filterer));
         }
 
         @Specialization(guards = "!isCallable(filterer)")
@@ -539,7 +539,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
-            return createIterator(thisObj, new IteratorTakeArgs(iterated, integerLimit));
+            return createIterator(new IteratorTakeArgs(iterated, integerLimit));
         }
 
         protected abstract static class IteratorTakeNextNode extends IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<IteratorTakeArgs> {
@@ -619,7 +619,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
-            return createIterator(thisObj, new IteratorDropArgs(iterated, integerLimit));
+            return createIterator(new IteratorDropArgs(iterated, integerLimit));
         }
 
         protected abstract static class IteratorDropNextNode extends IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<IteratorDropArgs> {
@@ -680,11 +680,11 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isCallable(mapper)")
         public JSDynamicObject flatMap(Object thisObj, Object mapper) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            return createIterator(thisObj, new IteratorFlatMapArgs(iterated, mapper));
+            return createIterator(new IteratorFlatMapArgs(iterated, mapper));
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
+        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
             getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
