@@ -705,31 +705,13 @@
               '-L<(java_home)/lib',
               "-Wl,-rpath='$$ORIGIN/../../../lib/'",
               "-Wl,-rpath='$$ORIGIN/../../../../lib/'",
-              "-Wl,-rpath='$$ORIGIN/../../../../jre/lib/'",
-              "-Wl,-rpath='$$ORIGIN/../../../../jre/languages/R/lib/'",
-            ],
-          }],
-          ['OS=="linux" and target_arch=="x64"', {
-            'libraries': [
-              '-L<(java_home)/jre/lib/amd64/server -L<(java_home)/jre/lib/amd64',
-              "-Wl,-rpath='$$ORIGIN/../../../../lib/amd64/'",
-              "-Wl,-rpath='$$ORIGIN/../../../../jre/lib/amd64/'",
-            ],
-          }],
-          ['OS=="solaris" or (OS=="linux" and target_arch=="sparcv9")', {
-            'libraries': [
-              '-L<(java_home)/jre/lib/sparcv9/server -L<(java_home)/jre/lib/sparcv9',
-              "-Wl,-rpath='$$ORIGIN/../../../../lib/sparcv9/'",
-              "-Wl,-rpath='$$ORIGIN/../../../../jre/lib/sparcv9/'",
             ],
           }],
           ['OS=="mac"', {
             'libraries': [
-              '-L<(java_home)/jre/lib/server -L<(java_home)/jre/lib -L<(java_home)/lib',
+              '-L<(java_home)/lib',
               "-Wl,-rpath,'@loader_path/../../../lib/'",
               "-Wl,-rpath,'@loader_path/../../../../lib/'",
-              "-Wl,-rpath,'@loader_path/../../../../jre/lib/'",
-              "-Wl,-rpath,'@loader_path/../../../../jre/languages/R/lib/'",
             ],
           }],
           ['OS == "win"', {
