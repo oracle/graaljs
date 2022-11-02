@@ -533,7 +533,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
-            double integerLimit = toIntegerOrInfinityNode.executeNumber(limit).doubleValue();
+            double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
             if (integerLimit < 0) {
                 errorProfile.enter();
                 throw Errors.createRangeErrorIndexNegative(this);
@@ -613,7 +613,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
-            double integerLimit = toIntegerOrInfinityNode.executeNumber(limit).doubleValue();
+            double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
             if (integerLimit < 0) {
                 errorProfile.enter();
                 throw Errors.createRangeErrorIndexNegative(this);

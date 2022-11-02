@@ -76,3 +76,12 @@ function testReduce(method, reducer, ...args) {
   assertSame(undefined, testReduce('find',    (x, i) => { ctr++; assertSame(i, expected[i * 2]), assertSame(x, expected[i * 2 + 1]); return i >= 4; }));
   assertSame(ctr, 11); ctr = 0;
 }
+
+{
+  let ctr = 0;
+  Iterator.from([]).take({ valueOf() { ctr++; return 0; } }).toArray();
+  assertSame(ctr, 1); ctr = 0;
+
+  Iterator.from([]).drop({ valueOf() { ctr++; return 0; } }).toArray();
+  assertSame(ctr, 1); ctr = 0;
+}
