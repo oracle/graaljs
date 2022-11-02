@@ -1311,7 +1311,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
                 double remaining = args.remaining;
                 if (remaining > 0) {
-                    if (!Double.isInfinite(remaining)) {
+                    if (remaining != Double.POSITIVE_INFINITY) {
                         args.remaining--;
                     }
                     Object value = iteratorNextNode.execute(args.iterated);

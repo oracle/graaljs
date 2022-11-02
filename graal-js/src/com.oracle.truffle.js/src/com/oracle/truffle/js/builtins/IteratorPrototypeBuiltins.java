@@ -561,7 +561,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 if (remaining == 0) {
                     iteratorCloseNode.executeVoid(args.iterated.getIterator());
                     return createResultDone(frame, thisObj);
-                } else if (finiteProfile.profile(!Double.isInfinite(remaining))) {
+                } else if (finiteProfile.profile(remaining != Double.POSITIVE_INFINITY)) {
                     args.remaining = remaining - 1;
                 }
 
@@ -636,7 +636,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 IteratorDropArgs args = getArgs(thisObj);
                 double remaining = args.remaining;
                 while (remaining > 0) {
-                    if (finiteProfile.profile(!Double.isInfinite(remaining))) {
+                    if (finiteProfile.profile(remaining != Double.POSITIVE_INFINITY)) {
                         args.remaining = remaining -= 1;
                     }
                     Object next = iteratorStep(args.iterated);
