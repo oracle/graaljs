@@ -2133,6 +2133,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Child private IteratorNextNode iteratorNextNode;
             @Child private AsyncIteratorAwaitNode<AsyncIteratorFindArgs> awaitNode;
             @Child private JSToBooleanNode toBooleanNode;
+            @Child private AsyncIteratorCloseNode asyncIteratorCloseNode;
 
             public AsyncIteratorFindWithResultRootNode(JSContext context) {
                 super(context);
@@ -2140,6 +2141,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 this.iteratorNextNode = IteratorNextNode.create();
                 this.callNode = JSFunctionCallNode.createCall();
                 this.toBooleanNode = JSToBooleanNode.create();
+                this.asyncIteratorCloseNode = AsyncIteratorCloseNode.create(context);
                 this.awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorFind, AsyncIteratorFindNode::createFindFunctionImpl, false);
             }
 
@@ -2151,7 +2153,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 assert value != null;
                 args.value = null;
                 if (toBooleanNode.executeBoolean(result)) {
-                    return value;
+                    return asyncIteratorCloseNode.execute(args.iterated.getIterator(), value);
                 }
 
                 Object next = iteratorNextNode.execute(args.iterated);
