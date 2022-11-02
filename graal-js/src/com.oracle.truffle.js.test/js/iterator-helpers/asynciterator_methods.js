@@ -94,6 +94,8 @@ async function testReduce(method, reducer, ...args) {
 
       await AsyncIterator.from([]).drop({ valueOf() { ctr++; return 0; } }).toArray();
       assertSame(ctr, 1); ctr = 0;
+
+      assertSame(undefined, await AsyncIterator.from([]).reduce(() => 42, undefined));
     }
 
     debugLog("DONE");

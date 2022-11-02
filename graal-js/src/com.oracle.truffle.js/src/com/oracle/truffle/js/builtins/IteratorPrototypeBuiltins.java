@@ -980,11 +980,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected Object reduce(Object thisObj, Object reducer, Object[] args) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
-            Object initialValue = JSRuntime.getArgOrUndefined(args, 0);
-
             Object accumulator;
             long counter;
-            if (initialValue == Undefined.instance) {
+            if (args.length == 0) {
                 Object next = iteratorStepNode.execute(iterated);
                 if (next == Boolean.FALSE) {
                     throw Errors.createTypeError("Reduce of empty iterator with no initial value");
@@ -993,7 +991,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 accumulator = iteratorValueNode.execute(next);
                 counter = 1;
             } else {
-                accumulator = initialValue;
+                accumulator = args[0];
                 counter = 0;
             }
 

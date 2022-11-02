@@ -84,4 +84,6 @@ function testReduce(method, reducer, ...args) {
 
   Iterator.from([]).drop({ valueOf() { ctr++; return 0; } }).toArray();
   assertSame(ctr, 1); ctr = 0;
+
+  assertSame(undefined, Iterator.from([]).reduce(() => 42, undefined));
 }

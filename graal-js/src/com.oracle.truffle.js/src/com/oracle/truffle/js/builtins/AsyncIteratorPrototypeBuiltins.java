@@ -1553,10 +1553,10 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             IteratorRecord record = getIteratorDirect(thisObj);
             Object value = iteratorNextNode.execute(record);
 
-            Object initialValue = JSRuntime.getArgOrUndefined(args, 0);
-            if (initialValue == Undefined.instance) {
+            if (args.length == 0) {
                 return initialAwaitNode.executeThis(value, new AsyncIteratorReduceArgs(record, reducer, Undefined.instance), thisObj);
             } else {
+                Object initialValue = args[0];
                 return awaitNode.executeThis(value, new AsyncIteratorReduceArgs(record, reducer, initialValue), thisObj);
             }
         }
