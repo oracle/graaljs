@@ -1,0 +1,257 @@
+<?xml version="1.0"?>
+<!--
+ Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+
+ The Universal Permissive License (UPL), Version 1.0
+
+ Subject to the condition set forth below, permission is hereby granted to any
+ person obtaining a copy of this software, associated documentation and/or
+ data (collectively the "Software"), free of charge and under any and all
+ copyright rights in the Software, and any and all patent rights owned or
+ freely licensable by each licensor hereunder covering either (i) the
+ unmodified Software as contributed to or provided by such licensor, or (ii)
+ the Larger Works (as defined below), to deal in both
+
+ (a) the Software, and
+
+ (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ one is included with the Software each a "Larger Work" to which the Software
+ is contributed by such licensors),
+
+ without restriction, including without limitation the rights to copy, create
+ derivative works of, display, perform, and distribute the Software and make,
+ use, sell, offer for sale, import, export, have made, and have sold the
+ Software and the Larger Work(s), and to sublicense the foregoing rights on
+ either these or other terms.
+
+ This license is subject to the following condition:
+
+ The above copyright notice and either this complete permission notice or at a
+ minimum a reference to the UPL must be included in all copies or substantial
+ portions of the Software.
+
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.mycompany.app</groupId>
+    <artifactId>my-app</artifactId>
+    <packaging>jar</packaging>
+    <version>1.0-SNAPSHOT</version>
+    <name>my-app</name>
+    <url>http://maven.apache.org</url>
+    <properties>
+        <graalvm.version>22.3.0</graalvm.version>
+        <compiler.dir>${project.build.directory}/compiler</compiler.dir>
+    </properties>
+
+    <profiles>
+        <profile>
+            <id>jdk17</id>
+            <activation>
+                <jdk>[17,</jdk>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.graalvm.sdk</groupId>
+                    <artifactId>graal-sdk</artifactId>
+                    <version>${graalvm.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.graalvm.js</groupId>
+                    <artifactId>js</artifactId>
+                    <version>${graalvm.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.graalvm.js</groupId>
+                    <artifactId>js-scriptengine</artifactId>
+                    <version>${graalvm.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.graalvm.tools</groupId>
+                    <artifactId>profiler</artifactId>
+                    <version>${graalvm.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.graalvm.tools</groupId>
+                    <artifactId>chromeinspector</artifactId>
+                    <version>${graalvm.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>2.22.1</version>
+                        <configuration>
+                            <argLine>-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI --module-path=${compiler.dir} --upgrade-module-path=${compiler.dir}/compiler.jar${path.separator}${compiler.dir}/compiler-management.jar</argLine>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>2.10</version>
+                        <executions>
+                            <execution>
+                                <id>copy</id>
+                                <phase>process-test-classes</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>org.graalvm.compiler</groupId>
+                                            <artifactId>compiler</artifactId>
+                                            <version>${graalvm.version}</version>
+                                            <type>jar</type>
+                                            <overWrite>true</overWrite>
+                                            <destFileName>compiler.jar</destFileName>
+                                        </artifactItem>
+                                        <artifactItem>
+                                            <groupId>org.graalvm.compiler</groupId>
+                                            <artifactId>compiler-management</artifactId>
+                                            <version>${graalvm.version}</version>
+                                            <type>jar</type>
+                                            <overWrite>true</overWrite>
+                                            <destFileName>compiler-management.jar</destFileName>
+                                        </artifactItem>
+                                        <artifactItem>
+                                            <groupId>org.graalvm.truffle</groupId>
+                                            <artifactId>truffle-api</artifactId>
+                                            <version>${graalvm.version}</version>
+                                            <type>jar</type>
+                                            <overWrite>true</overWrite>
+                                            <destFileName>truffle-api.jar</destFileName>
+                                        </artifactItem>
+                                        <artifactItem>
+                                            <groupId>org.graalvm.sdk</groupId>
+                                            <artifactId>graal-sdk</artifactId>
+                                            <version>${graalvm.version}</version>
+                                            <type>jar</type>
+                                            <overWrite>true</overWrite>
+                                            <destFileName>graal-sdk.jar</destFileName>
+                                        </artifactItem>
+                                    </artifactItems>
+                                    <outputDirectory>${compiler.dir}</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>default-cli</id>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <arguments>
+                                        <argument>--module-path</argument>
+                                        <!-- automatically creates the modulepath using all project dependencies, also adding the project build directory -->
+                                        <modulepath/>
+                                        <argument>-classpath</argument>
+                                        <!-- automatically creates the classpath using all project dependencies, also adding the project build directory -->
+                                        <classpath/>
+                                        <argument>-XX:+UnlockExperimentalVMOptions</argument>
+                                        <argument>-XX:+EnableJVMCI</argument>
+                                        <argument>--upgrade-module-path=${compiler.dir}/compiler.jar${path.separator}${compiler.dir}/compiler-management.jar</argument>
+                                        <argument>com.mycompany.app.App</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>nograal</id>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <arguments>
+                                        <argument>--module-path</argument>
+                                        <!-- automatically creates the modulepath using all project dependencies, also adding the project build directory -->
+                                        <modulepath/>
+                                        <argument>-classpath</argument>
+                                        <!-- automatically creates the classpath using all project dependencies, also adding the project build directory -->
+                                        <classpath/>
+                                        <argument>com.mycompany.app.App</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <executable>${JAVA_HOME}/bin/java</executable>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.0</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.1</version>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>
+                                <argument>--module-path</argument>
+                                <!-- automatically creates the modulepath using all project dependencies, also adding the project build directory -->
+                                <modulepath/>
+                                <argument>-classpath</argument>
+                                <!-- automatically creates the classpath using all project dependencies, also adding the project build directory -->
+                                <classpath/>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <executable>${JAVA_HOME}/bin/java</executable>
+                    <arguments>
+                        <argument>-classpath</argument>
+                        <!-- automatically creates the classpath using all project dependencies, also adding the project build directory -->
+                        <classpath/>
+                        <argument>com.mycompany.app.App</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.1</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
