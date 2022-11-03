@@ -67,9 +67,14 @@ def _graal_js_gate_runner(args, tasks):
             if mx.checkcopyrights(['--primary']) != 0:
                 t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
 
-    with Task('TestJSCommand', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all]) as t:
+    with Task('TestJSCommand', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage]) as t:
         if t:
-            js(['-Dpolyglot.js.profile-time=true', '-e', '""'])
+            js(['--experimental-options', '--js.profile-time=true', '-e', 'console.log(`hi!`);'])
+            retcode = js(['-e', 'throw new Error(`bye!`);'], nonZeroIsFatal=False)
+            assert retcode > 1, retcode
+
+            with open(os.devnull, 'w') as devnull:
+                js(['--help'], out=devnull)
 
     webassemblyTestSuite = 'com.oracle.truffle.js.test.suite.WebAssemblySimpleTestSuite'
     with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage]) as t:
