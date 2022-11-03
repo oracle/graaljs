@@ -246,8 +246,11 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         if (objIndex instanceof Long) {
             long index = (Long) objIndex;
             result = (index < 0) || (Strings.length(target) <= index);
-        } else {
+        } else if (Strings.isTString(objIndex)) {
             result = !Strings.equals(equalsNode, JSString.LENGTH, (TruffleString) objIndex);
+        } else {
+            assert objIndex instanceof Symbol;
+            result = true;
         }
         if (strict && !result) {
             throw Errors.createTypeError("cannot delete index");
