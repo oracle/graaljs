@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.truffle.api.CompilerAsserts;
+
 public final class AsyncGeneratorRequest {
     private final Completion.Type completionType;
     private final Object completionValue;
@@ -53,6 +55,10 @@ public final class AsyncGeneratorRequest {
 
     public Completion getCompletion() {
         return new Completion(completionType, completionValue);
+    }
+
+    public Completion.Type getCompletionType() {
+        return completionType;
     }
 
     public Object getCompletionValue() {
@@ -81,5 +87,11 @@ public final class AsyncGeneratorRequest {
 
     public static AsyncGeneratorRequest create(Completion completion, PromiseCapabilityRecord promiseCapability) {
         return new AsyncGeneratorRequest(completion.type, completion.value, promiseCapability);
+    }
+
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        return "AsyncGeneratorRequest{" + "completionType=" + completionType + ", completionValue=" + completionValue + ", promise=" + promiseCapability.getPromise() + "}";
     }
 }

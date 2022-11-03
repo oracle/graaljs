@@ -86,6 +86,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -100,6 +101,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
+import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -116,6 +118,8 @@ import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
+import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
@@ -281,6 +285,52 @@ public class JSContext {
         AsyncGeneratorReturnFulfilled,
         AsyncGeneratorReturnRejected,
         AsyncFromSyncIteratorValueUnwrap,
+        AsyncIteratorYield,
+        AsyncIteratorUnwrapYieldResumptionClose,
+        AsyncIteratorUnwrapYieldResumptionCloseResumption,
+        AsyncIteratorUnwrapYieldResumptionCloseInnerIterator,
+        AsyncIteratorUnwrapYieldResumptionCloseInnerIteratorResumption,
+        AsyncIteratorIfAbruptClose,
+        AsyncIteratorIfAbruptReturn,
+        AsyncIteratorGeneratorIfAbruptClose,
+        AsyncIteratorGeneratorIfAbruptReturn,
+        AsyncIteratorGeneratorReturn,
+        AsyncIteratorClose,
+        AsyncIteratorCloseAbrupt,
+        AsyncIteratorMap,
+        AsyncIteratorMapWithValue,
+        AsyncIteratorFilter,
+        AsyncIteratorFilterWithValue,
+        AsyncIteratorFilterWithResult,
+        AsyncIteratorTake,
+        AsyncIteratorTakeWithValue,
+        AsyncIteratorDrop,
+        AsyncIteratorDropWithValueLoop,
+        AsyncIteratorDropWithValue,
+        AsyncIteratorFlatMap,
+        AsyncIteratorFlatMapWithValue,
+        AsyncIteratorFlatMapWithResult,
+        AsyncIteratorFlatMapInnerWithValue,
+        AsyncIteratorReduce,
+        AsyncIteratorReduceWithResult,
+        AsyncIteratorReduceInitial,
+        AsyncIteratorToArray,
+        AsyncIteratorForEach,
+        AsyncIteratorForEachWithResult,
+        AsyncIteratorSome,
+        AsyncIteratorSomeWithResult,
+        AsyncIteratorEvery,
+        AsyncIteratorEveryWithResult,
+        AsyncIteratorFind,
+        AsyncIteratorFindWithResult,
+        AsyncGeneratorAwaitReturnFulfilled,
+        AsyncGeneratorAwaitReturnRejected,
+        IteratorMap,
+        IteratorFilter,
+        IteratorTake,
+        IteratorDrop,
+        IteratorIndexed,
+        IteratorFlatMap,
         CollatorCompare,
         DateTimeFormatFormat,
         NumberFormatFormat,
@@ -437,6 +487,10 @@ public class JSContext {
 
     private final JSObjectFactory ordinaryObjectFactory;
     private final JSObjectFactory arrayFactory;
+    private final JSObjectFactory iteratorFactory;
+    private final JSObjectFactory asyncIteratorFactory;
+    private final JSObjectFactory wrapForIteratorFactory;
+    private final JSObjectFactory wrapForAsyncIteratorFactory;
     private final JSObjectFactory lazyRegexArrayFactory;
     private final JSObjectFactory lazyRegexIndicesArrayFactory;
     private final JSObjectFactory booleanFactory;
@@ -608,6 +662,10 @@ public class JSContext {
 
         this.ordinaryObjectFactory = builder.create(JSOrdinary.INSTANCE);
         this.arrayFactory = builder.create(JSArray.INSTANCE);
+        this.iteratorFactory = builder.create(JSIterator.INSTANCE);
+        this.asyncIteratorFactory = builder.create(JSAsyncIterator.INSTANCE);
+        this.wrapForIteratorFactory = builder.create(JSWrapForValidIterator.INSTANCE);
+        this.wrapForAsyncIteratorFactory = builder.create(JSWrapForValidAsyncIterator.INSTANCE);
         this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE);
         this.lazyRegexIndicesArrayFactory = builder.create(JSArray.INSTANCE);
         this.booleanFactory = builder.create(JSBoolean.INSTANCE);
@@ -919,6 +977,22 @@ public class JSContext {
 
     public final JSObjectFactory getArrayFactory() {
         return arrayFactory;
+    }
+
+    public final JSObjectFactory getIteratorFactory() {
+        return iteratorFactory;
+    }
+
+    public final JSObjectFactory getAsyncIteratorFactory() {
+        return asyncIteratorFactory;
+    }
+
+    public final JSObjectFactory getWrapForIteratorFactory() {
+        return wrapForIteratorFactory;
+    }
+
+    public final JSObjectFactory getWrapForAsyncIteratorFactory() {
+        return wrapForAsyncIteratorFactory;
     }
 
     public final JSObjectFactory getLazyRegexArrayFactory() {

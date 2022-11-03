@@ -522,6 +522,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> TEMPORAL = new OptionKey<>(false);
     @CompilationFinal private boolean temporal;
 
+    public static final String ITERATOR_HELPERS_NAME = JS_OPTION_PREFIX + "iterator-helpers";
+    @Option(name = ITERATOR_HELPERS_NAME, category = OptionCategory.EXPERT, help = "Enable JavaScript Iterator Helpers API.") //
+    public static final OptionKey<Boolean> ITERATOR_HELPERS = new OptionKey<>(false);
+    @CompilationFinal private boolean iteratorHelpers;
+
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
@@ -704,6 +709,7 @@ public final class JSContextOptions {
         this.webAssembly = readBooleanOption(WEBASSEMBLY);
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
+        this.iteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && readBooleanOption(ITERATOR_HELPERS);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = ERROR_CAUSE.hasBeenSet(optionValues) ? readBooleanOption(ERROR_CAUSE) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
@@ -1100,6 +1106,10 @@ public final class JSContextOptions {
         return newSetMethods;
     }
 
+    public boolean isIteratorHelpers() {
+        return iteratorHelpers;
+    }
+
     public boolean isOperatorOverloading() {
         return operatorOverloading;
     }
@@ -1189,6 +1199,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.webAssembly ? 1 : 0);
         hash = 53 * hash + this.unhandledRejectionsMode.ordinal();
         hash = 53 * hash + (this.newSetMethods ? 1 : 0);
+        hash = 53 * hash + (this.iteratorHelpers ? 1 : 0);
         hash = 53 * hash + (this.operatorOverloading ? 1 : 0);
         hash = 53 * hash + (this.errorCause ? 1 : 0);
         hash = 53 * hash + (this.importAssertions ? 1 : 0);
@@ -1361,6 +1372,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.newSetMethods != other.newSetMethods) {
+            return false;
+        }
+        if (this.iteratorHelpers != other.iteratorHelpers) {
             return false;
         }
         if (this.operatorOverloading != other.operatorOverloading) {

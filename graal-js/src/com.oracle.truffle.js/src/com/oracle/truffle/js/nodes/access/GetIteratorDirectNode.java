@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,50 +38,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
-@ValueType
-public final class IteratorRecord {
-    private final JSDynamicObject iterator;
-    private final Object nextMethod;
-    private boolean done;
+public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
+    @Child private PropertyGetNode getNextMethodNode;
+    @Child private IsCallableNode isCallableNode;
 
-    private IteratorRecord(JSDynamicObject iterator, Object nextMethod, boolean done) {
-        this.iterator = iterator;
-        this.nextMethod = nextMethod;
-        this.done = done;
+    private final BranchProfile errorProfile = BranchProfile.create();
+
+    public GetIteratorDirectNode(JSContext context) {
+        isCallableNode = IsCallableNode.create();
+        getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
     }
 
-    public static IteratorRecord create(JSDynamicObject iterator, Object nextMethod, boolean done) {
-        return new IteratorRecord(iterator, nextMethod, done);
+    public abstract IteratorRecord execute(Object iteratedObject);
+
+    @Specialization
+    protected IteratorRecord get(JSObject obj) {
+        Object nextMethod = getNextMethodNode.getValue(obj);
+        if (!isCallableNode.executeBoolean(nextMethod)) {
+            errorProfile.enter();
+            throw Errors.createTypeErrorCallableExpected();
+        }
+
+        return IteratorRecord.create(obj, nextMethod, false);
     }
 
-    public static IteratorRecord create(JSDynamicObject iterator, Object nextMethod) {
-        return create(iterator, nextMethod, false);
+    @Specialization(guards = "!isJSObject(obj)")
+    public IteratorRecord unsupported(Object obj) {
+        throw Errors.createTypeErrorNotAnObject(obj, this);
     }
 
-    public JSDynamicObject getIterator() {
-        return iterator;
-    }
-
-    public Object getNextMethod() {
-        return nextMethod;
-    }
-
-    public boolean isDone() {
-        return done;
-    }
-
-    public void setDone(boolean done) {
-        this.done = done;
-    }
-
-    @Override
-    public String toString() {
-        CompilerAsserts.neverPartOfCompilation();
-        return "IteratorRecord{iterator=" + iterator + ", done=" + done + ", next=" + nextMethod + "}";
+    public static GetIteratorDirectNode create(JSContext context) {
+        return GetIteratorDirectNodeGen.create(context);
     }
 }

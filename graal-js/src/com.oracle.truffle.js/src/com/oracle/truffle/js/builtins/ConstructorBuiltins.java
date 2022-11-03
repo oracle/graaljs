@@ -58,6 +58,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -129,6 +130,8 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAss
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAssemblyTableNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAsyncIteratorNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructIteratorNodeGen;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -198,6 +201,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PromiseHook;
@@ -212,6 +216,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -219,6 +224,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
+import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -335,6 +341,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         FinalizationRegistry(1),
         WeakMap(0),
         WeakSet(0),
+        Iterator(0),
+        AsyncIterator(0),
         GeneratorFunction(1),
         Proxy(2),
         Promise(1),
@@ -401,6 +409,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return 6;
             } else if (EnumSet.of(PlainTime, Calendar, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, TimeZone, ZonedDateTime).contains(this)) {
                 return JSConfig.ECMAScript2022;
+            } else if (EnumSet.of(Iterator, AsyncIterator).contains(this)) {
+                return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -596,6 +606,20 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (construct) {
                     return newTarget ? ConstructWeakSetNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
                                     : ConstructWeakSetNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case Iterator:
+                if (construct) {
+                    return newTarget ? ConstructIteratorNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
+                                    : ConstructIteratorNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case AsyncIterator:
+                if (construct) {
+                    return newTarget ? ConstructAsyncIteratorNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
+                                    : ConstructAsyncIteratorNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -2798,6 +2822,58 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getSetPrototype();
         }
 
+    }
+
+    public abstract static class ConstructIteratorNode extends ConstructWithNewTargetNode {
+        public ConstructIteratorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        protected final boolean isValidTarget(VirtualFrame frame, JSDynamicObject newTarget) {
+            return isNewTargetCase && newTarget != Undefined.instance && newTarget != JSFrameUtil.getFunctionObjectNoCast(frame);
+        }
+
+        @Specialization(guards = {"isValidTarget(frame, newTarget)"})
+        protected JSDynamicObject constructIterator(@SuppressWarnings("unused") VirtualFrame frame, JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+            return swapPrototype(JSIterator.create(getContext(), getRealm()), newTarget);
+        }
+
+        @Specialization(guards = {"!isValidTarget(frame, newTarget)"})
+        protected JSDynamicObject constructIteratorTypeError(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject newTarget,
+                        @SuppressWarnings("unused") Object[] args) {
+            throw Errors.createTypeError("Cannot construct a new Iterator as it is an abstract class.");
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getIteratorPrototype();
+        }
+    }
+
+    public abstract static class ConstructAsyncIteratorNode extends ConstructWithNewTargetNode {
+        public ConstructAsyncIteratorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        protected final boolean isValidTarget(VirtualFrame frame, JSDynamicObject newTarget) {
+            return isNewTargetCase && newTarget != Undefined.instance && newTarget != JSFrameUtil.getFunctionObjectNoCast(frame);
+        }
+
+        @Specialization(guards = {"isValidTarget(frame, newTarget)"})
+        protected JSDynamicObject constructIterator(@SuppressWarnings("unused") VirtualFrame frame, JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+            return swapPrototype(JSAsyncIterator.create(getContext(), getRealm()), newTarget);
+        }
+
+        @Specialization(guards = {"!isValidTarget(frame, newTarget)"})
+        protected JSDynamicObject constructIteratorTypeError(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject newTarget,
+                        @SuppressWarnings("unused") Object[] args) {
+            throw Errors.createTypeError("Cannot construct a new AsyncIterator as it is an abstract class.");
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getAsyncIteratorPrototype();
+        }
     }
 
     public abstract static class ConstructWeakSetNode extends ConstructSetNode {

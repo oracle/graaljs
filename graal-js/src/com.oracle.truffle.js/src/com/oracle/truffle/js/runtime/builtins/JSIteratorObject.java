@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,50 +38,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-@ValueType
-public final class IteratorRecord {
-    private final JSDynamicObject iterator;
-    private final Object nextMethod;
-    private boolean done;
+public final class JSIteratorObject extends JSNonProxyObject {
 
-    private IteratorRecord(JSDynamicObject iterator, Object nextMethod, boolean done) {
-        this.iterator = iterator;
-        this.nextMethod = nextMethod;
-        this.done = done;
-    }
-
-    public static IteratorRecord create(JSDynamicObject iterator, Object nextMethod, boolean done) {
-        return new IteratorRecord(iterator, nextMethod, done);
-    }
-
-    public static IteratorRecord create(JSDynamicObject iterator, Object nextMethod) {
-        return create(iterator, nextMethod, false);
-    }
-
-    public JSDynamicObject getIterator() {
-        return iterator;
-    }
-
-    public Object getNextMethod() {
-        return nextMethod;
-    }
-
-    public boolean isDone() {
-        return done;
-    }
-
-    public void setDone(boolean done) {
-        this.done = done;
+    protected JSIteratorObject(Shape shape) {
+        super(shape);
     }
 
     @Override
-    public String toString() {
-        CompilerAsserts.neverPartOfCompilation();
-        return "IteratorRecord{iterator=" + iterator + ", done=" + done + ", next=" + nextMethod + "}";
+    public TruffleString getClassName() {
+        return JSIterator.CLASS_NAME;
+    }
+
+    public static JSIteratorObject create(JSRealm realm, JSObjectFactory factory) {
+        return factory.initProto(new JSIteratorObject(factory.getShape(realm)), realm);
     }
 }

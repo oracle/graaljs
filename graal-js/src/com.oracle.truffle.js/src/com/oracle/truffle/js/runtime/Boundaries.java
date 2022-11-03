@@ -46,6 +46,7 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -265,5 +266,10 @@ public final class Boundaries {
     @TruffleBoundary
     public static BigInteger bigIntegerMultiply(BigInteger a, BigInteger b) {
         return a.multiply(b);
+    }
+
+    @TruffleBoundary
+    public static <T> void queueAdd(Queue<? super T> queue, T request) {
+        queue.add(request);
     }
 }

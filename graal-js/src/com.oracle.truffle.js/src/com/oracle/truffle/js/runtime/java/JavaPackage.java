@@ -70,7 +70,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JavaPackage extends JSNonProxy {
-    public static final TruffleString TYPE_NAME = Strings.constant("object");
     public static final TruffleString CLASS_NAME = Strings.constant("JavaPackage");
     public static final TruffleString SYMBOL_TO_PRIMITIVE_NAME = Strings.constant("[Symbol.toPrimitive]");
     public static final JavaPackage INSTANCE = new JavaPackage();

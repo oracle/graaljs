@@ -196,6 +196,15 @@ public final class JSRuntime {
         }
     }
 
+    public static Number longToIntOrDouble(long value, BranchProfile toDoubleBranch) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, longIsRepresentableAsInt(value))) {
+            return (int) value;
+        } else {
+            toDoubleBranch.enter();
+            return (double) value;
+        }
+    }
+
     public static boolean isNaN(Object value) {
         if (!(value instanceof Double)) {
             return false;

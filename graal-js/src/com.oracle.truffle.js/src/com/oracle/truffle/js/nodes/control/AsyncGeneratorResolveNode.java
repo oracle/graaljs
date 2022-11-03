@@ -83,7 +83,7 @@ public class AsyncGeneratorResolveNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unchecked")
-    void performResolve(VirtualFrame frame, JSDynamicObject generator, Object value, boolean done) {
+    public void performResolve(VirtualFrame frame, JSDynamicObject generator, Object value, boolean done) {
         ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
         assert !queue.isEmpty();
         AsyncGeneratorRequest next = queue.pollFirst();

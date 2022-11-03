@@ -111,9 +111,10 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private JSGetLengthNode getLengthNode;
         @Child private ReadElementNode readElementNode;
-        private final ConditionProfile intIndexProfile;
-        private final BranchProfile errorBranch;
-        private final ConditionProfile isTypedArrayProfile;
+        private final ConditionProfile intIndexProfile = ConditionProfile.createBinaryProfile();
+        private final BranchProfile errorBranch = BranchProfile.create();
+        private final BranchProfile useAfterCloseBranch = BranchProfile.create();
+        private final ConditionProfile isTypedArrayProfile = ConditionProfile.createBinaryProfile();
 
         public ArrayIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -124,15 +125,13 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
             this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
             this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-            this.intIndexProfile = ConditionProfile.createBinaryProfile();
-            this.isTypedArrayProfile = ConditionProfile.createBinaryProfile();
-            this.errorBranch = BranchProfile.create();
         }
 
         @Specialization(guards = "isArrayIterator(iterator)")
         protected JSDynamicObject doArrayIterator(VirtualFrame frame, JSDynamicObject iterator) {
             Object array = getIteratedObjectNode.getValue(iterator);
             if (array == Undefined.instance) {
+                useAfterCloseBranch.enter();
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 

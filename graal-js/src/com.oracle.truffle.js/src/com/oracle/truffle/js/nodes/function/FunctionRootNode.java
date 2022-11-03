@@ -116,6 +116,9 @@ public final class FunctionRootNode extends JavaScriptRealmBoundaryRootNode impl
     }
 
     public boolean isSplitImmediately() {
+        if (body instanceof JSBuiltinNode && ((JSBuiltinNode) body).isSplitImmediately()) {
+            return true;
+        }
         if (JSConfig.RestrictForceSplittingBuiltins) {
             return false;
         }

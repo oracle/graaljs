@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -62,6 +64,9 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
     @Child @Executed JavaScriptNode iteratorNode;
     @Child private IteratorGetNextValueNode iteratorStepNode;
 
+    @CompilationFinal private int capacity = 0;
+    @CompilationFinal private boolean first = true;
+
     protected IteratorToArrayNode(JSContext context, JavaScriptNode iteratorNode, IteratorGetNextValueNode iteratorStepNode) {
         this.context = context;
         this.iteratorNode = iteratorNode;
@@ -75,12 +80,25 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
 
     @Specialization(guards = "!iteratorRecord.isDone()")
     protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord,
+                    @Cached BranchProfile firstGrowProfile,
                     @Cached BranchProfile growProfile) {
-        SimpleArrayList<Object> elements = new SimpleArrayList<>();
+        SimpleArrayList<Object> elements = new SimpleArrayList<>(capacity);
         Object value;
         while ((value = iteratorStepNode.execute(frame, iteratorRecord)) != null) {
-            elements.add(value, growProfile);
+            elements.add(value, first ? firstGrowProfile : growProfile);
         }
+
+        if (CompilerDirectives.inInterpreter()) {
+            if (first) {
+                capacity = elements.size();
+                first = false;
+            } else if (capacity != elements.size()) {
+                // Capacity is changing even though we are still in interpreter.
+                // Assume fluctuating capacity values.
+                capacity = 0;
+            }
+        }
+
         return JSArray.createZeroBasedObjectArray(context, getRealm(), elements.toArray());
     }
 
