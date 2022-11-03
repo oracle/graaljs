@@ -55,6 +55,7 @@ class GraalJsDefaultTags:
     tck = 'tck'
     all = 'all'
     coverage = 'coverage'
+    webassembly = 'webassembly'
 
 def _graal_js_pre_gate_runner(args, tasks):
     with Task('CI Setup Check', tasks, tags=[Tags.style]) as t:
@@ -62,7 +63,7 @@ def _graal_js_pre_gate_runner(args, tasks):
             mx.command_function('verify-ci')([])
 
 def _graal_js_gate_runner(args, tasks):
-    with Task('CheckCopyrights', tasks, tags=['style']) as t:
+    with Task('CheckCopyrights', tasks, tags=[Tags.style]) as t:
         if t:
             if mx.checkcopyrights(['--primary']) != 0:
                 t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
@@ -84,7 +85,7 @@ def _graal_js_gate_runner(args, tasks):
             unittest(['--regex', noWebAssemblyTestSuite] + commonOptions)
             unittest(['--regex', 'ZoneRulesProviderTest', '-Djava.time.zone.DefaultZoneRulesProvider=com.oracle.truffle.js.test.runtime.SimpleZoneRulesProvider'] + commonOptions)
 
-    with Task('WebAssemblyTests', tasks, tags=['webassembly', GraalJsDefaultTags.all]) as t:
+    with Task('WebAssemblyTests', tasks, tags=[GraalJsDefaultTags.webassembly, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage]) as t:
         if t:
             unittest(['--regex', webassemblyTestSuite, '--enable-timing', '--very-verbose', '--suite', _suite.name])
 
