@@ -378,6 +378,9 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                 case 'r':
                     sb.append('y');
                     break;
+                case 'L':
+                    sb.append('M');
+                    break;
                 default:
                     sb.append(c);
                     break;
