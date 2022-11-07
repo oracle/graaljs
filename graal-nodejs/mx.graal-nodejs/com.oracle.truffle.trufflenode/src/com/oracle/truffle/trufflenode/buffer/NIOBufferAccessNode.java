@@ -53,6 +53,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -102,7 +103,7 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
     protected void outOfBoundsFail() {
         JSException exception = Errors.createRangeError("out of range index");
         JSDynamicObject errorObject = (JSDynamicObject) exception.getErrorObject();
-        JSObject.set(errorObject, "code", "ERR_BUFFER_OUT_OF_BOUNDS");
+        JSObject.set(errorObject, Strings.fromJavaString("code"), Strings.fromJavaString("ERR_BUFFER_OUT_OF_BOUNDS"));
         throw exception;
     }
 
