@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
  * 12.9 The return Statement.
  */
 @NodeInfo(shortName = "return")
-public class ReturnNode extends StatementNode {
+public abstract class ReturnNode extends StatementNode {
 
     @Child protected JavaScriptNode expression;
 
@@ -66,7 +66,7 @@ public class ReturnNode extends StatementNode {
             return new ConstantReturnNode(expression);
         } else {
             assert !(expression instanceof EmptyNode);
-            return new ReturnNode(expression);
+            return new ReturnValueInExceptionNode(expression);
         }
     }
 
@@ -92,14 +92,10 @@ public class ReturnNode extends StatementNode {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        throw new ReturnException(expression.execute(frame));
-    }
+    public abstract Object execute(VirtualFrame frame);
 
     @Override
-    public void executeVoid(VirtualFrame frame) {
-        throw new ReturnException(expression.execute(frame));
-    }
+    public abstract void executeVoid(VirtualFrame frame);
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
@@ -111,6 +107,23 @@ public class ReturnNode extends StatementNode {
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return expression.isResultAlwaysOfType(clazz);
+    }
+
+    private static class ReturnValueInExceptionNode extends ReturnNode {
+
+        protected ReturnValueInExceptionNode(JavaScriptNode expression) {
+            super(expression);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw new ReturnException(expression.execute(frame));
+        }
+
+        @Override
+        public void executeVoid(VirtualFrame frame) {
+            throw new ReturnException(expression.execute(frame));
+        }
     }
 
     private static class ConstantReturnNode extends ReturnNode {
@@ -163,6 +176,11 @@ public class ReturnNode extends StatementNode {
         @Override
         public Object execute(VirtualFrame frame) {
             return expression.execute(frame);
+        }
+
+        @Override
+        public void executeVoid(VirtualFrame frame) {
+            expression.executeVoid(frame);
         }
     }
 
