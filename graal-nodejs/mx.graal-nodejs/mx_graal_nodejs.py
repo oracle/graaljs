@@ -446,6 +446,9 @@ def prepareNodeCmdLine(args, add_graal_vm_args=True):
         def expandArgs(args):
             return [arg for expandedArg in (expandArgFile(arg) for arg in args) for arg in expandedArg]
 
+        # use absolute path for jacoco destfile to allow changing the working directory
+        mx_gate.JACOCO_EXEC = join(_suite.dir, 'jacoco.exec')
+
         vmArgs += expandArgs(mx_gate.get_jacoco_agent_args())
 
     # inherit any NODE_JVM_OPTIONS from the parent process
