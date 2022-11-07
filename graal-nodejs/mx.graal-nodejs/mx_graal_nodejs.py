@@ -448,6 +448,9 @@ def prepareNodeCmdLine(args, add_graal_vm_args=True):
 
         vmArgs += expandArgs(mx_gate.get_jacoco_agent_args())
 
+    # inherit any NODE_JVM_OPTIONS from the parent process
+    vmArgs += [parentVmArg for parentVmArg in os.environ.get('NODE_JVM_OPTIONS', '').split() if not parentVmArg in vmArgs]
+
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
     return [join(_suite.dir, 'out', mode, 'node')] + progArgs
 
