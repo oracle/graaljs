@@ -618,9 +618,6 @@
   }, {
     "filePath" : "mjsunit/div-mod.js",
     "status" : "FAIL",
-    "statusOverrides" : {
-      "AARCH64" : "PASS"
-    },
     "comment" : "needs larger stack, at least 3m is needed"
   }, {
     "filePath" : "mjsunit/dump-counters-quit.js",
