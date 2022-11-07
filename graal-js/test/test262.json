@@ -2748,9 +2748,29 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/timedatestyle-en.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/en-US.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRange/fractionalSecondDigits.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatRange/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/en-US.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/fractionalSecondDigits.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatRangeToParts/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",

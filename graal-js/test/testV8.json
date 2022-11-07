@@ -27,6 +27,30 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "intl/date-format/date_style_time_style_hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
+    "filePath" : "intl/date-format/en-format-range-to-parts.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
+    "filePath" : "intl/date-format/format-range.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
+    "filePath" : "intl/date-format/format_range_hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
+    "filePath" : "intl/date-format/hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
+    "filePath" : "intl/date-format/time_style_hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
     "filePath" : "intl/default_locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
@@ -241,6 +265,10 @@
     "status" : "FAIL",
     "comment" : "Different error message expected, passes otherwise"
   }, {
+    "filePath" : "intl/regress-1074578.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
     "filePath" : "intl/regress-1130489.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -248,6 +276,10 @@
     },
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
+  }, {
+    "filePath" : "intl/regress-527926.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
   }, {
     "filePath" : "intl/regress-7770.js",
     "status" : "FAIL",
@@ -261,6 +293,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "intl/regress-9912.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
+  }, {
     "filePath" : "intl/relative-time-format/default-locale-fr-CA.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -268,6 +304,10 @@
     "filePath" : "intl/relative-time-format/default-locale-pt-BR.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "intl/relative-time-format/format-en.js",
+    "status" : "FAIL",
+    "comment" : "Formatting changes introduced by ICU 72.1/CLDR 42."
   }, {
     "filePath" : "intl/string-localecompare.js",
     "status" : "FAIL",
@@ -578,9 +618,6 @@
   }, {
     "filePath" : "mjsunit/div-mod.js",
     "status" : "FAIL",
-    "statusOverrides" : {
-      "AARCH64" : "PASS"
-    },
     "comment" : "needs larger stack, at least 3m is needed"
   }, {
     "filePath" : "mjsunit/dump-counters-quit.js",
