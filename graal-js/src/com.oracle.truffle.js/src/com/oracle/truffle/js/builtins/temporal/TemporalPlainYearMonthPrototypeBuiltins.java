@@ -52,7 +52,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -227,7 +226,6 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 case inLeapYear:
                     return TemporalUtil.calendarInLeapYear(calendarGetterNode, temporalYM.getCalendar(), temporalYM);
             }
-            CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
         }
 

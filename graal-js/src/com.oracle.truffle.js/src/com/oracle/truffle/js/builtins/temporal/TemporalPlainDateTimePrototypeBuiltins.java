@@ -51,7 +51,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoi;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -335,7 +334,6 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                     return TemporalUtil.calendarInLeapYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
 
             }
-            CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
         }
 

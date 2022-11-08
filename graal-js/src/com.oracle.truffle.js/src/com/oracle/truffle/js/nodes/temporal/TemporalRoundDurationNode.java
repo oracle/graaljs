@@ -170,7 +170,6 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
             case NANOSECOND:
                 return getUnitNanosecond(increment, roundingMode, years, months, weeks, days, hours, minutes, seconds, microseconds, milliseconds, nanoseconds);
         }
-        CompilerDirectives.transferToInterpreter();
         throw Errors.shouldNotReachHere();
     }
 

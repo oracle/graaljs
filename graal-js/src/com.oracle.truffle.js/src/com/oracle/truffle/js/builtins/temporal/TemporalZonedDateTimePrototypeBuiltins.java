@@ -459,7 +459,6 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case inLeapYear:
                     return TemporalUtil.calendarInLeapYear(calendarGetterNode, calendar, tdt);
             }
-            CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
         }
 

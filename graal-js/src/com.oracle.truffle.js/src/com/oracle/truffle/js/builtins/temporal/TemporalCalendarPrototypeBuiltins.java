@@ -248,7 +248,6 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 case id:
                     return toStringNode.executeString(thisObj);
             }
-            CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
         }
 

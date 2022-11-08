@@ -46,7 +46,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.OptionalLong;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -175,7 +174,6 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 case id:
                     return toStringNode.executeString(timeZone);
             }
-            CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
         }
 
