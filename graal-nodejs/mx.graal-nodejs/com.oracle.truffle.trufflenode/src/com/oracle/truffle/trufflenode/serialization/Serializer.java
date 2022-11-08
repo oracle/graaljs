@@ -331,11 +331,11 @@ public class Serializer {
         if (string.getCodeRangeUncached(TruffleString.Encoding.UTF_16).isSubsetOf(TruffleString.CodeRange.LATIN_1)) {
             tag = SerializationTag.ONE_BYTE_STRING;
             bytes = new byte[length];
-            string.switchEncodingUncached(TruffleString.Encoding.ISO_8859_1).copyToByteArrayNodeUncached(0, bytes, 0, length, TruffleString.Encoding.ISO_8859_1);
+            string.switchEncodingUncached(TruffleString.Encoding.ISO_8859_1).copyToByteArrayUncached(0, bytes, 0, length, TruffleString.Encoding.ISO_8859_1);
         } else {
             tag = SerializationTag.TWO_BYTE_STRING;
             bytes = new byte[length << 1];
-            string.copyToByteArrayNodeUncached(0, bytes, 0, length << 1, TruffleString.Encoding.UTF_16);
+            string.copyToByteArrayUncached(0, bytes, 0, length << 1, TruffleString.Encoding.UTF_16);
         }
         writeTag(tag);
         writeVarInt(bytes.length);
