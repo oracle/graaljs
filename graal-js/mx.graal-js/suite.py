@@ -27,7 +27,6 @@ suite = {
            "version" : "631d85e6ca799c28fc0c46a995debe97a39fdcf1",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
-                {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
             ]
         },
     ],

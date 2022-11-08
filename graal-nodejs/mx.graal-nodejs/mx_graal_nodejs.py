@@ -26,11 +26,11 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tarfile, tempfile
+import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tempfile
 
 import mx_graal_nodejs_benchmark
 
-from mx import BinarySuite, TimeStampFile
+from mx import TimeStampFile
 from mx_gate import Task
 from argparse import ArgumentParser
 from os.path import exists, join, isdir, pathsep, sep
@@ -393,13 +393,6 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 
     prevPATH = os.environ['PATH']
     _setEnvVar('PATH', "%s%s%s" % (join(_suite.mxDir, 'fake_launchers'), pathsep, prevPATH))
-
-    if isinstance(_suite, BinarySuite):
-        mx.logv('%s is a binary suite' % _suite.name)
-        tarfilepath = mx.distribution('TRUFFLENODE_GRAALVM_SUPPORT').path
-        with tarfile.open(tarfilepath, 'r:') as tar:
-            mx.logv('Extracting {} to {}'.format(tarfilepath, _suite.dir))
-            tar.extractall(_suite.dir)
 
     return mode, vmArgs, progArgs
 
