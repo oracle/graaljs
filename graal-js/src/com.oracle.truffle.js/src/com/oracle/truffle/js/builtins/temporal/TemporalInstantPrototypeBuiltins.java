@@ -49,7 +49,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 import java.math.BigInteger;
 import java.util.EnumSet;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -207,7 +206,6 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 case epochNanoseconds:
                     return instant.getNanoseconds();
             }
-            CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
         }
 

@@ -53,11 +53,12 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 
@@ -73,13 +74,7 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
         this.getLenNode = ArrayBufferViewGetByteLengthNodeGen.create(context);
     }
 
-    protected static JSArrayBufferObject getArrayBuffer(JSDynamicObject target) {
-        assert JSArrayBufferView.isJSArrayBufferView(target) : "Target object must be a JSArrayBufferView";
-        JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
-        return arrayBuffer;
-    }
-
-    protected static ByteBuffer getDirectByteBuffer(JSDynamicObject arrayBuffer) {
+    protected static ByteBuffer getDirectByteBuffer(JSArrayBufferObject arrayBuffer) {
         if (JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer)) {
             return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         } else if (JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer)) {
@@ -89,28 +84,23 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
         }
     }
 
-    protected int getOffset(JSDynamicObject target) {
-        int byteOffset = JSArrayBufferView.getByteOffset(target, getContext());
-        return byteOffset;
+    protected int getOffset(JSTypedArrayObject target) {
+        return JSArrayBufferView.getByteOffset(target, getContext());
     }
 
-    protected int getLength(JSDynamicObject target) {
+    protected int getLength(JSTypedArrayObject target) {
         return getLenNode.executeInt(target);
     }
 
     @TruffleBoundary
     protected void outOfBoundsFail() {
         JSException exception = Errors.createRangeError("out of range index");
-        JSDynamicObject errorObject = (JSDynamicObject) exception.getErrorObject();
-        JSObject.set(errorObject, "code", "ERR_BUFFER_OUT_OF_BOUNDS");
+        JSObject errorObject = (JSObject) exception.getErrorObject();
+        JSObject.set(errorObject, Strings.fromJavaString("code"), Strings.fromJavaString("ERR_BUFFER_OUT_OF_BOUNDS"));
         throw exception;
     }
 
-    protected static boolean accept(JSDynamicObject target) {
-        return JSArrayBufferView.isJSArrayBufferView(target);
-    }
-
-    protected final ByteBuffer interopArrayBufferGetContents(JSDynamicObject arrayBuffer) {
+    protected final ByteBuffer interopArrayBufferGetContents(JSArrayBufferObject arrayBuffer) {
         if (interopArrayBufferGetContents == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             interopArrayBufferGetContents = insert(ArrayBufferGetContentsNode.create());

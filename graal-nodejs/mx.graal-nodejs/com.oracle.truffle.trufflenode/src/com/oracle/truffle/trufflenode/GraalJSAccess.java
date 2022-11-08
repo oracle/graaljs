@@ -3536,7 +3536,7 @@ public final class GraalJSAccess {
         } else {
             codePointLength = utf8Str.codePointLengthUncached(TruffleString.Encoding.UTF_8);
         }
-        utf8Str.copyToNativeMemoryNodeUncached(0, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength, TruffleString.Encoding.UTF_8);
+        utf8Str.copyToNativeMemoryUncached(0, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength, TruffleString.Encoding.UTF_8);
         return (codePointLength << 32) | copyLength;
     }
 
@@ -3549,14 +3549,14 @@ public final class GraalJSAccess {
         int copyLength = getCopyLength(start, length, Strings.length(tString));
         if (tString.getCodeRangeUncached(TruffleString.Encoding.UTF_16).isSubsetOf(TruffleString.CodeRange.LATIN_1)) {
             TruffleString latin1Str = tString.switchEncodingUncached(TruffleString.Encoding.ISO_8859_1);
-            latin1Str.copyToNativeMemoryNodeUncached(start, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength, TruffleString.Encoding.ISO_8859_1);
+            latin1Str.copyToNativeMemoryUncached(start, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength, TruffleString.Encoding.ISO_8859_1);
         } else {
             byte[] tmp = new byte[copyLength];
             for (int i = 0; i < copyLength; i++) {
                 tmp[i] = (byte) Strings.charAt(tString, start + i);
             }
             TruffleString latin1Str = TruffleString.fromByteArrayUncached(tmp, TruffleString.Encoding.ISO_8859_1);
-            latin1Str.copyToNativeMemoryNodeUncached(0, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength, TruffleString.Encoding.ISO_8859_1);
+            latin1Str.copyToNativeMemoryUncached(0, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength, TruffleString.Encoding.ISO_8859_1);
         }
         return copyLength;
     }
@@ -3564,7 +3564,7 @@ public final class GraalJSAccess {
     public int stringWrite(Object str, long targetNativeBuffer, int start, int length) {
         TruffleString utf16Str = (TruffleString) str;
         int copyLength = getCopyLength(start, length, Strings.length(utf16Str));
-        utf16Str.copyToNativeMemoryNodeUncached(start << 1, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength << 1, TruffleString.Encoding.UTF_16);
+        utf16Str.copyToNativeMemoryUncached(start << 1, NativeBufferWrapper.create(targetNativeBuffer), 0, copyLength << 1, TruffleString.Encoding.UTF_16);
         return copyLength;
     }
 

@@ -49,6 +49,17 @@ local ci = import '../ci.jsonnet';
     timelimit: '30:00',
   },
 
+  local gateCoverage = {
+    coverage_gate_args:: ['--jacoco-omit-excluded', '--jacoco-relativize-paths', '--jacoco-omit-src-gen', '--jacoco-format', 'lcov', '--jacocout', 'coverage'],
+    run+: [
+      ['mx', '--dynamicimports', '/tools,/wasm', 'gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', 'build,coverage'] + self.coverage_gate_args,
+    ],
+    teardown+: [
+      ['mx', 'sversions', '--print-repositories', '--json', '|', 'coverage-uploader.py', '--associated-repos', '-'],
+    ],
+    timelimit: '1:00:00',
+  },
+
   local checkoutNodeJsBenchmarks = {
     setup+: [
       ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/nodejs-benchmarks.git'], '../nodejs-benchmarks'],
@@ -140,5 +151,8 @@ local ci = import '../ci.jsonnet';
 
     graalNodeJs + common.jdk17 + common.postMerge + common.darwin                            + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-postmerge-jdk17-darwin-amd64', timelimit: '55:00'},
     graalNodeJs + common.jdk17 + common.postMerge + common.darwin                            + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-postmerge-substratevm-ce-jdk17-darwin-amd64', timelimit: '55:00'},
+
+    // weekly
+    graalNodeJs + common.jdk17 + common.weekly    + common.linux                             + gateCoverage                                                                         + {name: 'weekly-nodejs-coverage-jdk17-linux-amd64'},
   ],
 }

@@ -281,7 +281,6 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 case inLeapYear:
                     return TemporalUtil.calendarInLeapYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
             }
-            CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
         }
 

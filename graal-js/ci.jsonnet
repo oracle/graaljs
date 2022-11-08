@@ -16,17 +16,15 @@ local ci = import '../ci.jsonnet';
     },
   },
 
-  local gateCoverage = common.eclipse + {
-    coverage_mx_args:: ['--jacoco-whitelist-package', 'com.oracle.js.parser', '--jacoco-whitelist-package', 'com.oracle.truffle.js', '--jacoco-exclude-annotation', '@GeneratedBy'],
-    coverage_gate_args:: ['--jacoco-omit-excluded', '--jacoco-generic-paths', '--jacoco-omit-src-gen', '--jacocout', 'coverage', '--jacoco-format', 'lcov'],
+  local gateCoverage = {
+    coverage_gate_args:: ['--jacoco-omit-excluded', '--jacoco-relativize-paths', '--jacoco-omit-src-gen', '--jacoco-format', 'lcov', '--jacocout', 'coverage'],
     run+: [
-      ['set-export', 'GRAALJS_HOME', ['pwd']],
-      ['mx', '--strict-compliance'] + self.coverage_mx_args + ['gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', 'build,coverage'] + self.coverage_gate_args,
+      ['mx', '--dynamicimports', '/wasm', 'gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', 'build,coverage'] + self.coverage_gate_args,
     ],
     teardown+: [
       ['mx', 'sversions', '--print-repositories', '--json', '|', 'coverage-uploader.py', '--associated-repos', '-'],
     ],
-    timelimit: '30:00',
+    timelimit: '1:00:00',
   },
 
   local checkoutJsBenchmarks = {
@@ -145,9 +143,6 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk19 + common.gate   + common.linux          + downstreamGraal                                                          + {name: 'js-gate-downstream-graal-jdk19-linux-amd64'},
     graalJs + common.jdk17 + common.gate   + common.linux          + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}        + {name: 'js-gate-downstream-substratevm-enterprise-jdk17-linux-amd64'},
 
-    // coverage
-    graalJs + common.jdk17 + common.weekly + common.linux          + gateCoverage                                                             + {name: 'weekly-js-coverage-jdk17-linux-amd64'},
-
     // interop benchmarks
     graalJs + common.jdk17 + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk17-linux-amd64'},
 
@@ -159,5 +154,8 @@ local ci = import '../ci.jsonnet';
 
     // js.zone-rules-based-time-zones
     graalJs + common.jdk17 + common.postMerge + common.linux       + gateTags('zonerulesbasedtimezones')                                      + {name: 'js-postmerge-zonerulesbasedtimezones-jdk17-linux-amd64'},
+
+    // weekly
+    graalJs + common.jdk17 + common.weekly + common.linux          + gateCoverage                                                             + {name: 'weekly-js-coverage-jdk17-linux-amd64'},
   ],
 }

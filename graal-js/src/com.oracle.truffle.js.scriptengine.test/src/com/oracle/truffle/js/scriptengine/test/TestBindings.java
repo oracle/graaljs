@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,6 +120,18 @@ public class TestBindings {
     public void bindingsRemoveGlobal() throws ScriptException {
         ScriptEngine engine = getEngine();
         Bindings bindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        bindings.put(varName, defaultVarValue);
+        boolean result = (boolean) engine.eval(varName + " === '" + defaultVarValue + "';");
+        assertTrue(result);
+        bindings.remove(varName);
+        result = (boolean) engine.eval("typeof " + varName + " === 'undefined';");
+        assertTrue(result);
+    }
+
+    @Test
+    public void bindingsRemoveEngine() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put(varName, defaultVarValue);
         boolean result = (boolean) engine.eval(varName + " === '" + defaultVarValue + "';");
         assertTrue(result);

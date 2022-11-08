@@ -58,7 +58,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.getDouble;
 
 import java.util.EnumSet;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -252,7 +251,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     return sign == 0;
                 }
             }
-            CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
         }
 

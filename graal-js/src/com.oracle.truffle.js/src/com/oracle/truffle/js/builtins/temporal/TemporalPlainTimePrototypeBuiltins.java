@@ -54,7 +54,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
 import java.util.EnumSet;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -236,7 +235,6 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 case nanosecond:
                     return temporalTime.getNanosecond();
             }
-            CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
         }
 

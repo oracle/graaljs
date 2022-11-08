@@ -26,11 +26,11 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tarfile, tempfile
+import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tempfile
 
 import mx_graal_nodejs_benchmark
 
-from mx import BinarySuite, TimeStampFile
+from mx import TimeStampFile
 from mx_gate import Task
 from argparse import ArgumentParser
 from os.path import exists, join, isdir, pathsep, sep
@@ -47,10 +47,11 @@ class GraalNodeJsTags:
     allTests = 'all'
     unitTests = 'unit'
     windows = 'windows'  # we cannot run `node-gyp` in our CI unless we install the "Visual Studio Build Tools" (using the "Visual C++ build tools" workload)
+    coverage = 'coverage'
 
 def _graal_nodejs_post_gate_runner(args, tasks):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
-    with Task('UnitTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.unitTests]) as t:
+    with Task('UnitTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.unitTests, GraalNodeJsTags.coverage]) as t:
         if t:
             _setEnvVar('NODE_JVM_CLASSPATH', mx.distribution('graal-js:TRUFFLE_JS_TESTS').path)
             commonArgs = ['-ea', '-esa']
@@ -84,7 +85,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
         if t:
             npx(['cowsay', 'GraalVM rules!'])
 
-    with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
+    with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows, GraalNodeJsTags.coverage]) as t:
         if t:
             testnodeInstrument([])
 
@@ -336,14 +337,10 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     return mx.run(['python3', join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath():
-    if _java_compliance() < '9' and _current_os not in ['darwin', 'windows']:
-        # On JDK 8, the server directory containing the JVM library is
-        # in an architecture specific directory (except for Darwin and Windows).
-        library_path = join(_jre_dir(), 'lib', _current_arch)
-    elif _current_os == 'windows':
-        library_path = join(_jre_dir(), 'bin')
+    if _current_os == 'windows':
+        library_path = join(_java_home(), 'bin')
     else:
-        library_path = join(_jre_dir(), 'lib')
+        library_path = join(_java_home(), 'lib')
 
     if 'LD_LIBRARY_PATH' in os.environ:
         library_path += pathsep + os.environ['LD_LIBRARY_PATH']
@@ -397,13 +394,6 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     prevPATH = os.environ['PATH']
     _setEnvVar('PATH', "%s%s%s" % (join(_suite.mxDir, 'fake_launchers'), pathsep, prevPATH))
 
-    if isinstance(_suite, BinarySuite):
-        mx.logv('%s is a binary suite' % _suite.name)
-        tarfilepath = mx.distribution('TRUFFLENODE_GRAALVM_SUPPORT').path
-        with tarfile.open(tarfilepath, 'r:') as tar:
-            mx.logv('Extracting {} to {}'.format(tarfilepath, _suite.dir))
-            tar.extractall(_suite.dir)
-
     return mode, vmArgs, progArgs
 
 def makeInNodeEnvironment(args):
@@ -433,6 +423,26 @@ def prepareNodeCmdLine(args, add_graal_vm_args=True):
         --debug to run in debug mode (provided that you build it)
     '''
     mode, vmArgs, progArgs = setupNodeEnvironment(args, add_graal_vm_args)
+
+    if mx_gate.get_jacoco_agent_args():
+        # The node launcher (i.e., JNI) does not support @argfile vm args, so we have to expand them to ordinary args
+        def expandArgFile(arg):
+            if arg.startswith('@'):
+                with open(arg[1:], 'r') as f:
+                    return f.readlines()
+            assert arg[0] == '-', arg
+            return [arg]
+        def expandArgs(args):
+            return [arg for expandedArg in (expandArgFile(arg) for arg in args) for arg in expandedArg]
+
+        # use absolute path for jacoco destfile to allow changing the working directory
+        mx_gate.JACOCO_EXEC = join(_suite.dir, 'jacoco.exec')
+
+        vmArgs += expandArgs(mx_gate.get_jacoco_agent_args())
+
+    # inherit any NODE_JVM_OPTIONS from the parent process
+    vmArgs += [parentVmArg for parentVmArg in os.environ.get('NODE_JVM_OPTIONS', '').split() if not parentVmArg in vmArgs]
+
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
     return [join(_suite.dir, 'out', mode, 'node')] + progArgs
 
@@ -459,14 +469,8 @@ def _setEnvVar(name, val, env=None):
 def _java_home(forBuild=False):
     return get_jdk(forBuild=forBuild).home
 
-def _java_compliance(forBuild=False):
-    return get_jdk(forBuild=forBuild).javaCompliance
-
 def _has_jvmci(forBuild=False):
     return get_jdk(forBuild=forBuild).tag == 'jvmci'
-
-def _jre_dir():
-    return join(_java_home(), 'jre') if _java_compliance() < '1.9' else _java_home()
 
 def _parseArgs(args):
     arguments = list(args)
