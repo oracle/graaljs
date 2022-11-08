@@ -337,14 +337,10 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     return mx.run(['python3', join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath():
-    if _java_compliance() < '9' and _current_os not in ['darwin', 'windows']:
-        # On JDK 8, the server directory containing the JVM library is
-        # in an architecture specific directory (except for Darwin and Windows).
-        library_path = join(_jre_dir(), 'lib', _current_arch)
-    elif _current_os == 'windows':
-        library_path = join(_jre_dir(), 'bin')
+    if _current_os == 'windows':
+        library_path = join(_java_home(), 'bin')
     else:
-        library_path = join(_jre_dir(), 'lib')
+        library_path = join(_java_home(), 'lib')
 
     if 'LD_LIBRARY_PATH' in os.environ:
         library_path += pathsep + os.environ['LD_LIBRARY_PATH']
@@ -480,14 +476,8 @@ def _setEnvVar(name, val, env=None):
 def _java_home(forBuild=False):
     return get_jdk(forBuild=forBuild).home
 
-def _java_compliance(forBuild=False):
-    return get_jdk(forBuild=forBuild).javaCompliance
-
 def _has_jvmci(forBuild=False):
     return get_jdk(forBuild=forBuild).tag == 'jvmci'
-
-def _jre_dir():
-    return join(_java_home(), 'jre') if _java_compliance() < '1.9' else _java_home()
 
 def _parseArgs(args):
     arguments = list(args)
