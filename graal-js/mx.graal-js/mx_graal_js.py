@@ -91,7 +91,7 @@ def _graal_js_gate_runner(args, tasks):
 
     gateTestConfigs = {
         GraalJsDefaultTags.default: ['gate'],
-        GraalJsDefaultTags.coverage: ['gate', 'timeoutoverall=1800', 'nothreads'],
+        GraalJsDefaultTags.coverage: ['-Dpolyglot.js.test-clone-uninitialized=true', 'gate', 'timeoutoverall=1800', 'nothreads'],
         'noic': ['-Dpolyglot.js.property-cache-limit=0', '-Dpolyglot.js.function-cache-limit=0', 'gate'],
         'directbytebuffer': ['-Dpolyglot.js.direct-byte-buffer=true', 'gate'],
         'cloneuninitialized': ['-Dpolyglot.js.test-clone-uninitialized=true', 'gate'],
