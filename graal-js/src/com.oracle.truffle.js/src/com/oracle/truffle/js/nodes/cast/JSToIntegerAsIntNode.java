@@ -94,24 +94,9 @@ public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
         }
     }
 
-    protected static boolean inInt32Range(double value) {
-        return value <= Integer.MAX_VALUE && value >= Integer.MIN_VALUE;
-    }
-
-    @Specialization(guards = "inInt32Range(value)")
-    protected static int doDoubleInt32Range(double value) {
-        return (int) ((long) value & 0xFFFFFFFFL);
-    }
-
-    @Specialization(guards = "!inInt32Range(value)")
-    protected static int doDoubleOther(double value) {
-        if (Double.isNaN(value)) {
-            return 0;
-        } else if (value > 0) {
-            return Integer.MAX_VALUE;
-        } else {
-            return Integer.MIN_VALUE;
-        }
+    @Specialization
+    protected static int doDouble(double value) {
+        return (int) value;
     }
 
     @Specialization(guards = "isUndefined(value)")
