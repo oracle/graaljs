@@ -6,7 +6,9 @@ Changelog may include unreleased versions.
 See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) for release dates.
 
 ## Version 23.0.0
+* Implemented the [Iterator Helpers](https://github.com/tc39/proposal-iterator-helpers) proposal. It is available behind the experimental option `--js.iterator-helpers`.
 * Removed experimental option `v8-legacy-const`.
+* Removed non-standard `SharedArrayBuffer.isView`.
 
 ## Version 22.3.0
 * Implemented the [WebAssembly multi-value](https://github.com/WebAssembly/multi-value) proposal.
