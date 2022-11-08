@@ -94,7 +94,7 @@ public class ZoneRulesProviderTest {
 
     private static void assertResult(Context context, String code, String expectedResult) {
         String actualResult = context.eval(JavaScriptLanguage.ID, code).toString();
-        assertEquals(expectedResult, actualResult);
+        assertEquals(expectedResult, actualResult.replace('\u202F', ' '));
     }
 
 }
