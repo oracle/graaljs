@@ -47,7 +47,6 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.SharedArrayBufferFunctionBuiltins;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -58,7 +57,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
-public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
+public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSConstructorFactory.Default.WithSpecies, PrototypeSupplier {
 
     public static final TruffleString CLASS_NAME = Strings.constant("SharedArrayBuffer");
     public static final TruffleString PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
@@ -99,7 +98,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm, SharedArrayBufferFunctionBuiltins.BUILTINS);
+        return INSTANCE.createConstructorAndPrototype(realm);
     }
 
     @Override
