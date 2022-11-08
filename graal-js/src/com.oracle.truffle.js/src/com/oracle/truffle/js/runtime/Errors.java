@@ -637,6 +637,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotAString(Object value) {
+        return Errors.createTypeError(JSRuntime.safeToString(value) + " is not a String");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorGlobalObjectNotExtensible(Node originatingNode) {
         return Errors.createTypeError("Global object is not extensible", originatingNode);
     }

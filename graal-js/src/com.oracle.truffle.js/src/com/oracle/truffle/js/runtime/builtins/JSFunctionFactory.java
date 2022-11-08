@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
@@ -50,6 +51,7 @@ import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 
 public abstract class JSFunctionFactory {
@@ -100,7 +102,6 @@ public abstract class JSFunctionFactory {
 
     public final JSFunctionObject createBound(JSFunctionData functionData, Object classPrototype, JSRealm realm, JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
         Shape shape = objectFactory.getShape(realm);
-        assert functionData != null;
         assert shape.getDynamicType() == JSFunction.INSTANCE;
         assert functionData.hasStrictFunctionProperties();
         if (context.getEcmaScriptVersion() < 6) {
@@ -121,12 +122,23 @@ public abstract class JSFunctionFactory {
         return obj;
     }
 
-    private static void initES5StrictProperties(JSDynamicObject obj, JSRealm realm) {
+    @TruffleBoundary
+    private static void initES5StrictProperties(JSObject obj, JSRealm realm) {
         int propertyFlags = JSAttributes.notConfigurableNotEnumerable() | JSProperty.ACCESSOR;
         Accessor throwerAccessor = realm.getThrowerAccessor();
         DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
         Properties.putWithFlags(lib, obj, JSFunction.ARGUMENTS, throwerAccessor, propertyFlags);
         Properties.putWithFlags(lib, obj, JSFunction.CALLER, throwerAccessor, propertyFlags);
+    }
+
+    public final JSFunctionObject createWrapped(JSFunctionData functionData, JSRealm realm, Object wrappedTargetFunction) {
+        Shape shape = objectFactory.getShape(realm);
+        assert shape.getDynamicType() == JSFunction.INSTANCE;
+        assert functionData.hasStrictFunctionProperties();
+        JSFunctionObject obj = JSFunctionObject.createWrapped(shape, functionData, realm, wrappedTargetFunction);
+        objectFactory.initProto(obj, realm);
+        initProperties(obj, functionData);
+        return obj;
     }
 
     protected abstract JSDynamicObject getPrototype(JSRealm realm);

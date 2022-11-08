@@ -253,6 +253,10 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
         return new Bound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
     }
 
+    public static JSFunctionObject createWrapped(Shape shape, JSFunctionData functionData, JSRealm realm, Object boundTargetFunction) {
+        return new Wrapped(shape, functionData, realm, boundTargetFunction);
+    }
+
     public static final class Unbound extends JSFunctionObject {
         protected Unbound(Shape shape, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {
             super(shape, functionData, enclosingFrame, realm, classPrototype);
@@ -329,4 +333,19 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
 
     }
 
+    /**
+     * @see JSShadowRealmObject
+     */
+    public static final class Wrapped extends JSFunctionObject {
+        private final Object wrappedTargetFunction;
+
+        protected Wrapped(Shape shape, JSFunctionData functionData, JSRealm realm, Object wrappedTargetFunction) {
+            super(shape, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, JSFunction.CLASS_PROTOTYPE_PLACEHOLDER);
+            this.wrappedTargetFunction = wrappedTargetFunction;
+        }
+
+        public Object getWrappedTargetFunction() {
+            return wrappedTargetFunction;
+        }
+    }
 }

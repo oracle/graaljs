@@ -110,6 +110,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRegExp
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRelativeTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSegmenterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructShadowRealmNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalCalendarNodeGen;
@@ -235,6 +236,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
@@ -360,6 +362,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Memory(1),
         Module(1),
         Table(1),
+
+        ShadowRealm(0),
 
         // Temporal
         PlainTime(0),
@@ -736,6 +740,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (construct) {
                     return newTarget ? ConstructTemporalZonedDateTimeNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
                                     : ConstructTemporalZonedDateTimeNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case ShadowRealm:
+                if (construct) {
+                    return newTarget ? ConstructShadowRealmNodeGen.create(context, builtin, true, args().newTarget().createArgumentNodes(context))
+                                    : ConstructShadowRealmNodeGen.create(context, builtin, false, args().function().createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -3041,6 +3052,29 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = "!isCallable.executeBoolean(executor)")
         protected JSDynamicObject notCallable(JSDynamicObject newTarget, Object executor) {
             throw Errors.createTypeError("cannot create promise: executor not callable");
+        }
+    }
+
+    public abstract static class ConstructShadowRealmNode extends ConstructWithNewTargetNode {
+
+        public ConstructShadowRealmNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        @Specialization
+        protected final JSObject construct(JSDynamicObject newTarget) {
+            JSRealm currentRealm = getRealm();
+            JSRealm shadowRealm = currentRealm.createChildRealm();
+            hostInitializeShadowRealm(shadowRealm);
+            return swapPrototype(JSShadowRealm.create(getContext(), currentRealm, shadowRealm), newTarget);
+        }
+
+        private void hostInitializeShadowRealm(@SuppressWarnings("unused") JSRealm shadowRealm) {
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return getRealm().getShadowRealmPrototype();
         }
     }
 

@@ -151,6 +151,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
@@ -469,6 +470,9 @@ public class JSRealm {
     private final JSDynamicObject webAssemblyTablePrototype;
 
     private final JSWebAssemblyMemoryGrowCallback webAssemblyMemoryGrowCallback;
+
+    private final JSFunctionObject shadowRealmConstructor;
+    private final JSDynamicObject shadowRealmPrototype;
 
     /** Foreign object prototypes. */
     private final JSDynamicObject foreignIterablePrototype;
@@ -1023,6 +1027,15 @@ public class JSRealm {
             this.temporalTimeZonePrototype = null;
             this.temporalZonedDateTimeConstructor = null;
             this.temporalZonedDateTimePrototype = null;
+        }
+
+        if (context.getContextOptions().isShadowRealm()) {
+            ctor = JSShadowRealm.createConstructor(this);
+            this.shadowRealmConstructor = ctor.getFunctionObject();
+            this.shadowRealmPrototype = ctor.getPrototype();
+        } else {
+            this.shadowRealmConstructor = null;
+            this.shadowRealmPrototype = null;
         }
 
         // always create, regardless of context.isOptionForeignObjectPrototype()
@@ -1746,6 +1759,14 @@ public class JSRealm {
         return objectFactories;
     }
 
+    public final JSFunctionObject getShadowRealmConstructor() {
+        return shadowRealmConstructor;
+    }
+
+    public final JSDynamicObject getShadowRealmPrototype() {
+        return shadowRealmPrototype;
+    }
+
     public void setupGlobals() {
         CompilerAsserts.neverPartOfCompilation("do not setup globals from compiled code");
         long time = context.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
@@ -1886,6 +1907,9 @@ public class JSRealm {
         }
         if (context.isOptionTemporal()) {
             addTemporalGlobals();
+        }
+        if (context.getContextOptions().isShadowRealm()) {
+            putGlobalProperty(JSShadowRealm.CLASS_NAME, getShadowRealmConstructor());
         }
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);

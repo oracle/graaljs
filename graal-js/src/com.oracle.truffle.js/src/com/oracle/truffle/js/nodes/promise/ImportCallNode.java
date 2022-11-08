@@ -125,6 +125,10 @@ public class ImportCallNode extends JavaScriptNode {
         return new ImportCallNode(context, specifierRefNode, activeScriptOrModuleNode, optionsRefNode);
     }
 
+    public static ImportCallNode create(JSContext context) {
+        return create(context, null, null);
+    }
+
     @Override
     public Object execute(VirtualFrame frame) {
         Object referencingScriptOrModule = getActiveScriptOrModule(frame);
@@ -218,7 +222,7 @@ public class ImportCallNode extends JavaScriptNode {
         }
     }
 
-    private JSDynamicObject hostImportModuleDynamically(Object referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
+    public final JSDynamicObject hostImportModuleDynamically(Object referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
         JSRealm realm = getRealm();
         if (context.hasImportModuleDynamicallyCallbackBeenSet()) {
             JSDynamicObject promise = context.hostImportModuleDynamically(realm, (ScriptOrModule) referencingScriptOrModule, moduleRequest);

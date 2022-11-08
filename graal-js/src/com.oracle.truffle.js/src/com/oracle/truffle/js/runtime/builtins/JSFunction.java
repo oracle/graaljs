@@ -294,9 +294,13 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static JSFunctionObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
-        assert functionData != null;
         JSFunctionFactory factory = context.getBoundFunctionFactory(functionData);
         return factory.createBound(functionData, CLASS_PROTOTYPE_PLACEHOLDER, realm, boundTargetFunction, boundThis, boundArguments);
+    }
+
+    public static JSFunctionObject createWrapped(JSContext context, JSRealm realm, JSFunctionData functionData, Object wrappedTargetFunction) {
+        JSFunctionFactory factory = context.getWrappedFunctionFactory();
+        return factory.createWrapped(functionData, realm, wrappedTargetFunction);
     }
 
     private static JSFunctionFactory initialFactory(JSFunctionData functionData) {
