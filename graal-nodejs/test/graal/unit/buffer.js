@@ -208,6 +208,52 @@ describe('Buffer.utf8Slice', function() {
             assert.strictEqual(buffer.utf8Slice(), '\ufffd'.repeat(buffer.byteLength), hex);
         }
     });
+    it('should replace valid incomplete UTF-8 sequences with a single replacement character', function() {
+        let incompleteSeqs = [
+            [ // C2..DF: 2-byte sequence with last byte missing
+                ["c080", '\ufffd\ufffd'],
+                ["c0bf", '\ufffd\ufffd'],
+                ["c180", '\ufffd\ufffd'],
+                ["c1bf", '\ufffd\ufffd'],
+                ["c2"],
+                ["df"],
+            ],
+            [ // E0..EF: 3-byte sequence with last byte missing
+                ["e080", '\ufffd\ufffd'],
+                ["e08f", '\ufffd\ufffd'],
+                ["e0a0"], // If byte is 0xE0, set UTF-8 lower boundary to 0xA0.
+                ["e0bf"],
+                ["ed80"],
+                ["ed9f"], // If byte is 0xED, set UTF-8 upper boundary to 0x9F.
+                ["eda0", '\ufffd\ufffd'],
+                ["edbf", '\ufffd\ufffd'],
+            ].concat([..."123456789abcef"].flatMap(x => [
+                [`e${x}80`],
+                [`e${x}bf`],
+            ])),
+            [ // F0..F4: 4-byte sequence with last byte missing
+                ["f08fbf", '\ufffd\ufffd\ufffd'],
+                ["f09080"], // If byte is 0xF0, set UTF-8 lower boundary to 0x90.
+                ["f0bfbf"],
+                ["f18080"],
+                ["f1bfbf"],
+                ["f28080"],
+                ["f2bfbf"],
+                ["f38080"],
+                ["f3bfbf"],
+                ["f48080"],
+                ["f48fbf"], // If byte is 0xF4, set UTF-8 upper boundary to 0x8F.
+                ["f49080", '\ufffd\ufffd\ufffd'],
+            ].flatMap(p => [p, p.map(s => s.substring(0, s.length / 3 * 2))]),
+        ].reduce((a, b) => a.concat(b));
+
+        for (let [utf8Hex, utf16 = '\ufffd'] of incompleteSeqs) {
+            assert.strictEqual(Buffer.from(utf8Hex, "hex").utf8Slice(), utf16, utf8Hex);
+
+            // followed by valid character
+            assert.strictEqual(Buffer.from(utf8Hex + "78", "hex").utf8Slice(), utf16 + "x", utf8Hex + "78");
+        }
+    });
     it('should replace UTF-8 encoded UTF-16 surrogate bytes with replacement characters', function() {
         let singleSurrogateSeqs = [
             "eda080", // U+D800
