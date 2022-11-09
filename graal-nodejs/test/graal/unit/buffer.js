@@ -279,6 +279,23 @@ describe('Buffer.utf8Slice', function() {
             assert.strictEqual(buffer.utf8Slice(), '\ufffd'.repeat(buffer.byteLength), hex);
         }
     });
+    it('should replace overlong UTF-8 sequence bytes with replacement characters', function() {
+        let overlongSeqs = [
+            "c080",     // U+0000
+            "e08080",   // U+0000
+            "f0808080", // U+0000
+            "c0af",     // U+002F
+            "e080af",   // U+002F
+            "f08080af", // U+002F
+            "c1bf",     // U+007F
+            "e09fbf",   // U+07FF
+            "f08fbfbf", // U+FFFF
+        ];
+        for (let hex of overlongSeqs) {
+            let buffer = Buffer.from(hex, "hex");
+            assert.strictEqual(buffer.utf8Slice(), '\ufffd'.repeat(buffer.byteLength), hex);
+        }
+    });
     it('should decode noncharacters', function() {
         let pairs = [
             ["efbfbe", "\ufffe"],
