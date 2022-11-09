@@ -40,7 +40,17 @@
  */
 
 var assert = require('assert');
-var module = require('./_unit');
+
+function expectedErrorValidator(ExpectedError, expectedCode) {
+    return (err) => {
+        assert(err instanceof ExpectedError, `The error is expected to be an instance of ${ExpectedError.name}. Received ${err?.constructor?.name}.`);
+        assert.strictEqual(err.code, expectedCode);
+        return true;
+    };
+}
+
+const RangeErrorOutOfRange = expectedErrorValidator(RangeError, "ERR_OUT_OF_RANGE");
+const RangeErrorBufferOutOfBounds = expectedErrorValidator(RangeError, "ERR_BUFFER_OUT_OF_BOUNDS");
 
 describe('Buffer.utf8Write', function() {
     it('should write if length is >> than input string', function() {
@@ -49,7 +59,7 @@ describe('Buffer.utf8Write', function() {
     it('should fail with negative offset', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Write('abc', -5, 1)
-        }, RangeError);
+        }, RangeErrorOutOfRange);
     });
     it('should use string length as default argument', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('abc'), 3);
@@ -60,7 +70,17 @@ describe('Buffer.utf8Write', function() {
     it('should fail if string len is negative', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Write('abc', 0, -1)
-        }, RangeError);
+        }, RangeErrorOutOfRange);
+    });
+    it('should fail with out of bounds offset', function() {
+        assert.throws(() => {
+            Buffer.alloc(10).utf8Write('abc', 11, 1)
+        }, RangeErrorBufferOutOfBounds);
+    });
+    it('should fail with out of bounds offset #2', function() {
+        assert.throws(() => {
+            Buffer.alloc(10).utf8Write('abc', 11, -1)
+        }, RangeErrorBufferOutOfBounds);
     });
     it('should report tot bytes for utf8 values', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('½½½', 0, 2), 2);
@@ -119,22 +139,22 @@ describe('Buffer.utf8Slice', function() {
     it('should check range', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Slice(-1, 10)
-        }, RangeError);
+        }, RangeErrorOutOfRange);
     });
     it('should check range #2', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Slice(11, 10)
-        }, RangeError);
+        }, RangeErrorOutOfRange);
     });
     it('should check range #3', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Slice(0, -1)
-        }, RangeError);
+        }, RangeErrorOutOfRange);
     });
     it('should check range #4', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Slice(0, 11)
-        }, RangeError);
+        }, RangeErrorOutOfRange);
     });
     it('should slice the full buffer with no arguments', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Slice().length, 10);
