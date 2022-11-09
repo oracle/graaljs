@@ -73,8 +73,11 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     }
 
     @Specialization
-    public Object slice(JSTypedArrayObject target, Object start, Object end,
-                    @Cached JSToIntegerAsIntNode toIntNode) {
+    final Object slice(JSTypedArrayObject target, Object start, Object end,
+                    @Cached JSToIntegerAsIntNode toIntNode,
+                    @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
+                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached TruffleString.IsValidNode isValidNode) {
         JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
         if (rawBuffer == null) {
@@ -126,9 +129,9 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
 
         byte[] data = copySliceToByteArray(rawBuffer, byteOffset, actualStart, actualEnd, length);
 
-        TruffleString utf8String = TruffleString.fromByteArrayUncached(data, TruffleString.Encoding.UTF_8);
-        if (utf8String.isValidUncached(TruffleString.Encoding.UTF_8)) {
-            TruffleString utf16String = utf8String.switchEncodingUncached(TruffleString.Encoding.UTF_16);
+        TruffleString utf8String = fromByteArrayNode.execute(data, TruffleString.Encoding.UTF_8);
+        if (isValidNode.execute(utf8String, TruffleString.Encoding.UTF_8)) {
+            TruffleString utf16String = switchEncodingNode.execute(utf8String, TruffleString.Encoding.UTF_16);
             if (Strings.length(utf16String) > getContext().getStringLengthLimit()) {
                 errorBranch.enter();
                 throw stringTooLong();
@@ -151,7 +154,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isJSArrayBufferView(target)"})
-    public Object sliceNotBuffer(Object target, Object start, Object end) {
+    static Object sliceNotBuffer(Object target, Object start, Object end) {
         throw Errors.createTypeErrorArrayBufferViewExpected();
     }
 

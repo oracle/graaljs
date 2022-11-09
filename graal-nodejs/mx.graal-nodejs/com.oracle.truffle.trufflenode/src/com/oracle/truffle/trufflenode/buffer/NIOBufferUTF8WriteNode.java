@@ -77,8 +77,11 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @Specialization
-    public Object write(JSTypedArrayObject target, TruffleString str, Object destOffset0, Object bytes0,
-                    @Cached JSToIntegerAsIntNode toIntNode) {
+    final Object write(JSTypedArrayObject target, TruffleString str, Object destOffset0, Object bytes0,
+                    @Cached JSToIntegerAsIntNode toIntNode,
+                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
+                    @Cached TruffleString.ReadByteNode readByteNode) {
         JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         int bufferOffset = getOffset(target);
         int bufferLen = getLength(target);
@@ -119,17 +122,17 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             rawBuffer = interopArrayBufferGetContents(arrayBuffer);
         }
 
-        TruffleString utf8Str = str.switchEncodingUncached(TruffleString.Encoding.UTF_8);
+        TruffleString utf8Str = switchEncodingNode.execute(str, TruffleString.Encoding.UTF_8);
         int utf8Length = utf8Str.byteLength(TruffleString.Encoding.UTF_8);
         int copyLength = Math.min(utf8Length, maxLength);
         if (utf8Length > maxLength) {
             // Avoid writing an incomplete UTF-8 sequence.
-            while (copyLength > 0 && isUTF8ContinuationByte(utf8Str, copyLength)) {
+            while (copyLength > 0 && isUTF8ContinuationByte(readByteNode.execute(utf8Str, copyLength, TruffleString.Encoding.UTF_8))) {
                 copyLength--;
             }
         }
 
-        InternalByteArray byteArray = utf8Str.getInternalByteArrayUncached(TruffleString.Encoding.UTF_8);
+        InternalByteArray byteArray = getInternalByteArrayNode.execute(utf8Str, TruffleString.Encoding.UTF_8);
         assert copyLength <= byteArray.getLength();
         Boundaries.byteBufferPutArray(rawBuffer, bufferOffset + destOffset, byteArray.getArray(), byteArray.getOffset(), copyLength);
 
@@ -147,18 +150,18 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         return copyLength;
     }
 
-    private static boolean isUTF8ContinuationByte(TruffleString utf8Str, int byteIndex) {
-        return (utf8Str.readByteUncached(byteIndex, TruffleString.Encoding.UTF_8) & 0xc0) == 0x80;
+    private static boolean isUTF8ContinuationByte(int b) {
+        return (b & 0xc0) == 0x80;
     }
 
     @Specialization(guards = "!isString(str)")
-    public Object writeFallback(JSTypedArrayObject target, Object str, Object destOffset, Object bytes) {
+    final Object writeFallback(JSTypedArrayObject target, Object str, Object destOffset, Object bytes) {
         return JSFunction.call(getNativeUtf8Write(), target, new Object[]{str, destOffset, bytes});
     }
 
     @Specialization(guards = {"!isJSArrayBufferView(target)"})
     @SuppressWarnings("unused")
-    public Object writeAbort(Object target, Object str, Object destOffset, Object bytes) {
+    static Object writeAbort(Object target, Object str, Object destOffset, Object bytes) {
         throw Errors.createTypeErrorArrayBufferViewExpected();
     }
 }
