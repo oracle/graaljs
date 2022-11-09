@@ -96,25 +96,24 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
 
     @TruffleBoundary
     protected static JSException indexOutOfRange() {
-        throw throwRangeError(ERR_OUT_OF_RANGE, "Index out of range");
+        throw setErrorCode(Errors.createRangeError("Index out of range"), ERR_OUT_OF_RANGE);
     }
 
     @TruffleBoundary
     protected static JSException offsetOutOfBounds() {
-        throw throwRangeError(ERR_BUFFER_OUT_OF_BOUNDS, "\"offset\" is outside of buffer bounds");
+        throw setErrorCode(Errors.createRangeError("\"offset\" is outside of buffer bounds"), ERR_BUFFER_OUT_OF_BOUNDS);
     }
 
     @TruffleBoundary
     protected final JSException stringTooLong() {
-        throw throwRangeError(ERR_STRING_TOO_LONG, String.format("Cannot create a string longer than 0x%x characters", getContext().getStringLengthLimit()));
+        throw setErrorCode(Errors.createError(String.format("Cannot create a string longer than 0x%x characters", getContext().getStringLengthLimit())), ERR_STRING_TOO_LONG);
     }
 
     @TruffleBoundary
-    protected static JSException throwRangeError(TruffleString errorCode, String errorMessage) {
-        JSException exception = Errors.createRangeError(errorMessage);
+    private static JSException setErrorCode(JSException exception, TruffleString errorCode) {
         JSObject errorObject = (JSObject) exception.getErrorObject();
         JSObject.set(errorObject, CODE, errorCode);
-        throw exception;
+        return exception;
     }
 
     protected final ByteBuffer interopArrayBufferGetContents(JSArrayBufferObject arrayBuffer) {
