@@ -174,7 +174,6 @@ test-net-connect-memleak: FAIL
 test-promise-hook-exceptions: FAIL
 test-promise-hook-on-resolve: FAIL
 test-repl: FAIL
-test-string-decoder: FAIL
 test-tls-connect-memleak: FAIL
 test-ttywrap-stack: FAIL
 test-vm-break-on-sigint: FAIL
