@@ -45,6 +45,7 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
@@ -128,6 +129,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         }
 
         byte[] data = copySliceToByteArray(rawBuffer, byteOffset, actualStart, actualEnd, length);
+        LoopNode.reportLoopCount(this, length);
 
         TruffleString utf8String = fromByteArrayNode.execute(data, TruffleString.Encoding.UTF_8);
         if (isValidNode.execute(utf8String, TruffleString.Encoding.UTF_8)) {
