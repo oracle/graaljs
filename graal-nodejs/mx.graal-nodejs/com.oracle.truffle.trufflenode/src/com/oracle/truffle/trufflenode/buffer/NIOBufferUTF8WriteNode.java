@@ -46,6 +46,7 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -138,7 +139,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
         if (destOffset > bufferLen || bytes < 0 || destOffset < 0) {
             errorBranch.enter();
-            outOfBoundsFail();
+            throw offsetOutOfBounds();
         }
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
         boolean interopBuffer = false;
@@ -169,7 +170,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     @TruffleBoundary
     private static CoderResult doEncode(TruffleString str, ByteBuffer buffer) throws CharacterCodingException {
-        CharsetEncoder encoder = utf8.newEncoder();
+        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
         encoder.onMalformedInput(CodingErrorAction.REPORT);
         encoder.onUnmappableCharacter(CodingErrorAction.REPORT);
         CharBuffer cb = CharBuffer.wrap(Strings.toJavaString(str));
@@ -190,7 +191,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     @TruffleBoundary
     private static byte[] getBytes(TruffleString str) {
-        return Strings.toJavaString(str).getBytes(utf8);
+        return Strings.toJavaString(str).getBytes(StandardCharsets.UTF_8);
     }
 
 }

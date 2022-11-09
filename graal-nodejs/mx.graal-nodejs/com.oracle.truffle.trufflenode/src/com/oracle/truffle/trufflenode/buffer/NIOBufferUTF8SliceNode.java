@@ -41,17 +41,14 @@
 package com.oracle.truffle.trufflenode.buffer;
 
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CodingErrorAction;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
@@ -60,6 +57,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
@@ -75,31 +73,85 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     }
 
     @Specialization
-    public Object slice(JSTypedArrayObject target, int start, int end) {
-        try {
-            return doSlice(target, start, end);
-        } catch (CharacterCodingException e) {
-            return doNativeFallback(target, start, end);
+    public Object slice(JSTypedArrayObject target, Object start, Object end,
+                    @Cached JSToIntegerAsIntNode toIntNode) {
+        JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
+        ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
+        if (rawBuffer == null) {
+            rawBuffer = interopArrayBufferGetContents(arrayBuffer);
         }
+
+        int bufferLength = getLength(target);
+        if (bufferLength == 0) {
+            // By default, an empty buffer returns an empty string
+            return Strings.EMPTY_STRING;
+        }
+        int byteOffset = getOffset(target);
+
+        int actualStart;
+        if (start == Undefined.instance) {
+            actualStart = 0;
+        } else {
+            actualStart = toIntNode.executeInt(start);
+            if (actualStart < 0) {
+                errorBranch.enter();
+                throw indexOutOfRange();
+            }
+        }
+        int actualEnd;
+        if (end == Undefined.instance) {
+            actualEnd = bufferLength;
+        } else {
+            actualEnd = toIntNode.executeInt(end);
+            if (actualEnd < 0) {
+                errorBranch.enter();
+                throw indexOutOfRange();
+            }
+        }
+
+        if (actualEnd < actualStart) {
+            actualEnd = actualStart;
+        }
+
+        if (actualEnd > bufferLength) {
+            errorBranch.enter();
+            throw indexOutOfRange();
+        }
+
+        int length = actualEnd - actualStart;
+        if (length > getContext().getStringLengthLimit()) {
+            errorBranch.enter();
+            throw stringTooLong();
+        }
+
+        byte[] data = copySliceToByteArray(rawBuffer, byteOffset, actualStart, actualEnd, length);
+
+        TruffleString utf8String = TruffleString.fromByteArrayUncached(data, TruffleString.Encoding.UTF_8);
+        if (utf8String.isValidUncached(TruffleString.Encoding.UTF_8)) {
+            TruffleString utf16String = utf8String.switchEncodingUncached(TruffleString.Encoding.UTF_16);
+            if (Strings.length(utf16String) > getContext().getStringLengthLimit()) {
+                errorBranch.enter();
+                throw stringTooLong();
+            }
+            return utf16String;
+        }
+
+        // TruffleString handles incomplete UTF-8 sequences wrongly, hence the fallback to native.
+        // Note: Not passing the original start, end arguments to avoid repeating any side effects.
+        return doNativeFallback(target, actualStart, actualEnd);
     }
 
-    @Specialization
-    public Object slice(JSTypedArrayObject target, double start, double end) {
-        try {
-            return doSlice(target, (int) start, (int) end);
-        } catch (CharacterCodingException e) {
-            return doNativeFallback(target, start, end);
-        }
-    }
-
-    @Specialization
-    public Object sliceDefault(JSTypedArrayObject target, Object start, Object end) {
-        return JSFunction.call(getNativeUtf8Slice(), target, new Object[]{start, end});
+    @TruffleBoundary
+    private static byte[] copySliceToByteArray(ByteBuffer sourceBuffer, int byteOffset, int start, int end, int length) {
+        assert start >= 0 && end >= 0 && length <= sourceBuffer.capacity() - byteOffset;
+        ByteBuffer data = sourceBuffer.duplicate().position(byteOffset + start).limit(byteOffset + end).slice();
+        assert data.remaining() == length;
+        return ByteBuffer.allocate(length).put(data).array();
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isJSArrayBufferView(target)"})
-    public Object sliceAbort(Object target, Object start, Object end) {
+    public Object sliceNotBuffer(Object target, Object start, Object end) {
         throw Errors.createTypeErrorArrayBufferViewExpected();
     }
 
@@ -107,50 +159,4 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         nativePath.enter();
         return JSFunction.call(getNativeUtf8Slice(), target, new Object[]{start, end});
     }
-
-    private Object doSlice(JSTypedArrayObject target, int start, int end) throws CharacterCodingException {
-        JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
-        ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
-        if (rawBuffer == null) {
-            rawBuffer = interopArrayBufferGetContents(arrayBuffer);
-        }
-        int byteOffset = getOffset(target);
-        int actualEnd = end;
-        if (end < start) {
-            actualEnd = start;
-        }
-        if (rawBuffer.capacity() == 0) {
-            // By default, an empty buffer returns an empty string
-            return Strings.EMPTY_STRING;
-        }
-        if (actualEnd > rawBuffer.capacity() || !oobCheck(start, end)) {
-            errorBranch.enter();
-            outOfBoundsFail();
-        }
-        int length = actualEnd - start;
-        if (length > getContext().getStringLengthLimit()) {
-            return doNativeFallback(target, start, end);
-        }
-        int bufferLen = getLength(target);
-        if (length > bufferLen) {
-            errorBranch.enter();
-            outOfBoundsFail();
-        }
-        ByteBuffer data = Boundaries.byteBufferSlice(rawBuffer, byteOffset + start, byteOffset + end);
-        return doDecode(data);
-    }
-
-    @TruffleBoundary
-    private static TruffleString doDecode(ByteBuffer data) throws CharacterCodingException {
-        CharsetDecoder decoder = utf8.newDecoder();
-        decoder.onMalformedInput(CodingErrorAction.REPORT);
-        decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
-        CharBuffer decoded = decoder.decode(data);
-        return Strings.fromJavaString(decoded.toString());
-    }
-
-    private static boolean oobCheck(int start, int end) {
-        return start <= end && start >= 0;
-    }
-
 }
