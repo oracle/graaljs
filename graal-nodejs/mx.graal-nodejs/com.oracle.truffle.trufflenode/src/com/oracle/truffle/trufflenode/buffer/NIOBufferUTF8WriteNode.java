@@ -41,29 +41,25 @@
 package com.oracle.truffle.trufflenode.buffer;
 
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetEncoder;
-import java.nio.charset.CoderResult;
-import java.nio.charset.CodingErrorAction;
-import java.nio.charset.StandardCharsets;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.InternalByteArray;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
@@ -81,72 +77,38 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     @Specialization
-    public Object write(JSTypedArrayObject target, TruffleString str, int destOffset, int bytes) {
-        try {
-            return doWrite(target, str, destOffset, bytes);
-        } catch (CharacterCodingException e) {
-            return doNativeFallback(target, str, destOffset, bytes);
-        }
-    }
-
-    @Specialization(guards = {"isUndefined(bytes)"})
-    public Object writeDefaultOffset(JSTypedArrayObject target, TruffleString str, int destOffset, Object bytes) {
-        try {
-            return doWrite(target, str, destOffset, getBytes(str).length);
-        } catch (CharacterCodingException e) {
-            return doNativeFallback(target, str, destOffset, bytes);
-        }
-    }
-
-    @Specialization(guards = {"isUndefined(destOffset)", "isUndefined(bytes)"})
-    public Object writeDefaultValues(JSTypedArrayObject target, TruffleString str, Object destOffset, Object bytes) {
-        try {
-            return doWrite(target, str, 0, getBytes(str).length);
-        } catch (CharacterCodingException e) {
-            return doNativeFallback(target, str, destOffset, bytes);
-        }
-    }
-
-    @Specialization
-    public Object write(JSTypedArrayObject target, TruffleString str, double destOffset, double bytes) {
-        try {
-            return doWrite(target, str, (int) destOffset, (int) bytes);
-        } catch (CharacterCodingException e) {
-            return doNativeFallback(target, str, destOffset, bytes);
-        }
-    }
-
-    @Specialization
-    public Object writeDefault(JSTypedArrayObject target, Object str, Object destOffset, Object bytes) {
-        return JSFunction.call(getNativeUtf8Write(), target, new Object[]{str, destOffset, bytes});
-    }
-
-    @Specialization(guards = {"!isJSArrayBufferView(target)"})
-    @SuppressWarnings("unused")
-    public Object writeAbort(Object target, Object str, Object destOffset, Object bytes) {
-        throw Errors.createTypeErrorArrayBufferViewExpected();
-    }
-
-    private Object doNativeFallback(JSTypedArrayObject target, TruffleString str, Object destOffset, Object bytes) {
-        nativePath.enter();
-        return JSFunction.call(getNativeUtf8Write(), target, new Object[]{str, destOffset, bytes});
-    }
-
-    private int doWrite(JSTypedArrayObject target, TruffleString str, int destOffset, int bytes) throws CharacterCodingException {
+    public Object write(JSTypedArrayObject target, TruffleString str, Object destOffset0, Object bytes0,
+                    @Cached JSToIntegerAsIntNode toIntNode) {
         JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         int bufferOffset = getOffset(target);
         int bufferLen = getLength(target);
 
-        if (destOffset < 0) {
-            errorBranch.enter();
-            throw indexOutOfRange();
-        } else if (destOffset > bufferLen) {
-            errorBranch.enter();
-            throw offsetOutOfBounds();
+        int destOffset;
+        if (destOffset0 == Undefined.instance) {
+            destOffset = 0;
+        } else {
+            destOffset = toIntNode.executeInt(destOffset0);
+            if (destOffset < 0) {
+                errorBranch.enter();
+                throw indexOutOfRange();
+            } else if (destOffset > bufferLen) {
+                errorBranch.enter();
+                throw offsetOutOfBounds();
+            }
         }
-        if (bytes < 0) {
-            errorBranch.enter();
-            throw indexOutOfRange();
+        int maxLength;
+        if (bytes0 == Undefined.instance) {
+            maxLength = bufferLen - destOffset;
+        } else {
+            maxLength = toIntNode.executeInt(bytes0);
+            if (maxLength < 0) {
+                errorBranch.enter();
+                throw indexOutOfRange();
+            }
+            maxLength = Math.min(bufferLen - destOffset, maxLength);
+        }
+        if (maxLength == 0) {
+            return 0;
         }
 
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
@@ -156,50 +118,47 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             interopBuffer = true;
             rawBuffer = interopArrayBufferGetContents(arrayBuffer);
         }
-        int destLimit = destOffset + bytes;
-        if (destLimit > bufferLen || destLimit < 0) {
-            destLimit = bufferLen;
+
+        TruffleString utf8Str = str.switchEncodingUncached(TruffleString.Encoding.UTF_8);
+        int utf8Length = utf8Str.byteLength(TruffleString.Encoding.UTF_8);
+        int copyLength = Math.min(utf8Length, maxLength);
+        if (utf8Length > maxLength) {
+            // Avoid writing an incomplete UTF-8 sequence.
+            while (copyLength > 0 && isUTF8ContinuationByte(utf8Str, copyLength)) {
+                copyLength--;
+            }
         }
-        ByteBuffer buffer = Boundaries.byteBufferSlice(rawBuffer, bufferOffset + destOffset, bufferOffset + destLimit);
-        doEncode(str, buffer);
+
+        InternalByteArray byteArray = utf8Str.getInternalByteArrayUncached(TruffleString.Encoding.UTF_8);
+        assert copyLength <= byteArray.getLength();
+        Boundaries.byteBufferPutArray(rawBuffer, bufferOffset + destOffset, byteArray.getArray(), byteArray.getOffset(), copyLength);
+
         if (interopBuffer) {
             // Write the data to the original interop buffer
             InteropLibrary interop = InteropLibrary.getUncached(arrayBuffer);
             try {
-                for (int i = 0; i < buffer.position(); i++) {
-                    interop.writeBufferByte(arrayBuffer, bufferOffset + destOffset + i, buffer.get(i));
+                for (int i = 0; i < copyLength; i++) {
+                    interop.writeBufferByte(arrayBuffer, bufferOffset + destOffset + i, rawBuffer.get(bufferOffset + destOffset + i));
                 }
             } catch (InteropException iex) {
                 throw Errors.shouldNotReachHere(iex);
             }
         }
-        return buffer.position();
+        return copyLength;
     }
 
-    @TruffleBoundary
-    private static CoderResult doEncode(TruffleString str, ByteBuffer buffer) throws CharacterCodingException {
-        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
-        encoder.onMalformedInput(CodingErrorAction.REPORT);
-        encoder.onUnmappableCharacter(CodingErrorAction.REPORT);
-        CharBuffer cb = CharBuffer.wrap(Strings.toJavaString(str));
-        CoderResult res = encoder.encode(cb, buffer, true);
-
-        if (res.isUnderflow()) {
-            encoder.encode(cb, buffer, true);
-            res = encoder.flush(buffer);
-        }
-
-        assert res.isError() == (res.isMalformed() || res.isUnmappable());
-        if (res.isError()) {
-            res.throwException();
-        }
-
-        return res;
+    private static boolean isUTF8ContinuationByte(TruffleString utf8Str, int byteIndex) {
+        return (utf8Str.readByteUncached(byteIndex, TruffleString.Encoding.UTF_8) & 0xc0) == 0x80;
     }
 
-    @TruffleBoundary
-    private static byte[] getBytes(TruffleString str) {
-        return Strings.toJavaString(str).getBytes(StandardCharsets.UTF_8);
+    @Specialization(guards = "!isString(str)")
+    public Object writeFallback(JSTypedArrayObject target, Object str, Object destOffset, Object bytes) {
+        return JSFunction.call(getNativeUtf8Write(), target, new Object[]{str, destOffset, bytes});
     }
 
+    @Specialization(guards = {"!isJSArrayBufferView(target)"})
+    @SuppressWarnings("unused")
+    public Object writeAbort(Object target, Object str, Object destOffset, Object bytes) {
+        throw Errors.createTypeErrorArrayBufferViewExpected();
+    }
 }
