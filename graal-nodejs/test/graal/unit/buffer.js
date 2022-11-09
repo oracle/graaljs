@@ -162,6 +162,9 @@ describe('Buffer.utf8Slice', function() {
     it('should slice using the proper default value', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Slice(5).length, 5);
     });
+    it('should allow end < start', function() {
+        assert.strictEqual(Buffer.alloc(10).utf8Slice(5, 4), '');
+    });
     it('should return an empty string', function() {
         assert.strictEqual(Buffer.alloc(0).utf8Slice(-5, -10), '');
     });
@@ -174,6 +177,10 @@ describe('Buffer.utf8Slice', function() {
     it('should return an empty string #4', function() {
         assert.strictEqual(Buffer.alloc(0).utf8Slice(true, false), '');
     });
+    it('should return an empty string #5', function() {
+        let badValue = {valueOf() { throw new TypeError("valueOf() should not be called"); }};
+        assert.strictEqual(Buffer.alloc(0).utf8Slice(badValue, badValue), '');
+    });
     it('should check buffer type', function() {
         assert.throws(() => {
             Buffer.prototype.utf8Slice.call(1)
@@ -181,6 +188,60 @@ describe('Buffer.utf8Slice', function() {
     });
     it('length is zero', function() {
         assert.strictEqual(Buffer.alloc(0).utf8Slice.length, 0);
+    });
+    it('should replace invalid UTF-8 bytes with replacement characters', function() {
+        let invalid = [
+            // Impossible bytes (0xc0, 0xc1, and 0xf5..0xff)
+            "fe",
+            "ff",
+            "c0c1",
+            "f5f6f7f8f9fafbfcfdfeff",
+            // Unexpected continuation bytes
+            "80",
+            "bf",
+            "80bf",
+            "80bf80",
+            "80bf80bf",
+        ];
+        for (let hex of invalid) {
+            let buffer = Buffer.from(hex, "hex");
+            assert.strictEqual(buffer.utf8Slice(), '\ufffd'.repeat(buffer.byteLength), hex);
+        }
+    });
+    it('should replace UTF-8 encoded UTF-16 surrogate bytes with replacement characters', function() {
+        let singleSurrogateSeqs = [
+            "eda080", // U+D800
+            "edadbf", // U+DB7F
+            "edae80", // U+DB80
+            "edafbf", // U+DBFF
+            "edb080", // U+DC00
+            "edbe80", // U+DF80
+            "edbfbf", // U+DFFF
+        ];
+        let pairedSurrogateSeqs = [
+            "eda080edb080", // U+D800 U+DC00
+            "eda080edbfbf", // U+D800 U+DFFF
+            "edadbfedb080", // U+DB7F U+DC00
+            "edadbfedbfbf", // U+DB7F U+DFFF
+            "edae80edb080", // U+DB80 U+DC00
+            "edae80edbfbf", // U+DB80 U+DFFF
+            "edafbfedb080", // U+DBFF U+DC00
+            "edafbfedbfbf", // U+DBFF U+DFFF
+        ];
+        for (let hex of singleSurrogateSeqs.concat(pairedSurrogateSeqs)) {
+            let buffer = Buffer.from(hex, "hex");
+            assert.strictEqual(buffer.utf8Slice(), '\ufffd'.repeat(buffer.byteLength), hex);
+        }
+    });
+    it('should decode noncharacters', function() {
+        let pairs = [
+            ["efbfbe", "\ufffe"],
+            ["efbfbf", "\uffff"],
+        ];
+        for (let [utf8Hex, utf16] of pairs) {
+            let buffer = Buffer.from(utf8Hex, "hex");
+            assert.strictEqual(buffer.utf8Slice(), utf16, utf8Hex);
+        }
     });
     if (typeof java !== "undefined") {
         it('should accept interop buffer', function() {
