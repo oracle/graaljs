@@ -102,6 +102,7 @@ const {
   uvExceptionWithHostPort,
 } = require('internal/errors');
 const { isUint8Array } = require('internal/util/types');
+const { queueMicrotask } = require('internal/process/task_queues');
 const {
   validateAbortSignal,
   validateFunction,
@@ -133,6 +134,11 @@ const isWindows = process.platform === 'win32';
 const noop = () => {};
 
 const kPerfHooksNetConnectContext = Symbol('kPerfHooksNetConnectContext');
+
+const dc = require('diagnostics_channel');
+const netClientSocketChannel = dc.channel('net.client.socket');
+const netServerSocketChannel = dc.channel('net.server.socket');
+
 const {
   hasObserver,
   startPerf,
@@ -204,7 +210,11 @@ function connect(...args) {
   const options = normalized[0];
   debug('createConnection', normalized);
   const socket = new Socket(options);
-
+  if (netClientSocketChannel.hasSubscribers) {
+    netClientSocketChannel.publish({
+      socket,
+    });
+  }
   if (options.timeout) {
     socket.setTimeout(options.timeout);
   }
@@ -284,6 +294,19 @@ function initSocketHandle(self) {
   }
 }
 
+function closeSocketHandle(self, isException, isCleanupPending = false) {
+  if (self._handle) {
+    self._handle.close(() => {
+      debug('emit close');
+      self.emit('close', isException);
+      if (isCleanupPending) {
+        self._handle.onread = noop;
+        self._handle = null;
+        self._sockname = null;
+      }
+    });
+  }
+}
 
 const kBytesRead = Symbol('kBytesRead');
 const kBytesWritten = Symbol('kBytesWritten');
@@ -332,6 +355,7 @@ function Socket(options) {
   this[kBuffer] = null;
   this[kBufferCb] = null;
   this[kBufferGen] = null;
+  this._closeAfterHandlingError = false;
 
   if (typeof options === 'number')
     options = { fd: options }; // Legacy interface.
@@ -751,15 +775,19 @@ Socket.prototype._destroy = function(exception, cb) {
       });
       if (err)
         this.emit('error', errnoException(err, 'reset'));
+    } else if (this._closeAfterHandlingError) {
+      // Enqueue closing the socket as a microtask, so that the socket can be
+      // accessible when an `error` event is handled in the `next tick queue`.
+      queueMicrotask(() => closeSocketHandle(this, isException, true));
     } else {
-      this._handle.close(() => {
-        debug('emit close');
-        this.emit('close', isException);
-      });
+      closeSocketHandle(this, isException);
     }
-    this._handle.onread = noop;
-    this._handle = null;
-    this._sockname = null;
+
+    if (!this._closeAfterHandlingError) {
+      this._handle.onread = noop;
+      this._handle = null;
+      this._sockname = null;
+    }
     cb(exception);
   } else {
     cb(exception);
@@ -840,6 +868,9 @@ protoGetter('localPort', function localPort() {
   return this._getsockname().port;
 });
 
+protoGetter('localFamily', function localFamily() {
+  return this._getsockname().family;
+});
 
 Socket.prototype[kAfterAsyncWrite] = function() {
   this[kLastWriteQueueSize] = 0;
@@ -996,7 +1027,7 @@ function internalConnect(
     req.address = address;
     req.oncomplete = afterConnect;
 
-    err = self._handle.connect(req, address, afterConnect);
+    err = self._handle.connect(req, address);
   }
 
   if (err) {
@@ -1674,6 +1705,7 @@ function onconnection(err, clientHandle) {
         clientHandle.getsockname(localInfo);
         data.localAddress = localInfo.address;
         data.localPort = localInfo.port;
+        data.localFamily = localInfo.family;
       }
       if (clientHandle.getpeername) {
         const remoteInfo = ObjectCreate(null);
@@ -1714,6 +1746,11 @@ function onconnection(err, clientHandle) {
 
   DTRACE_NET_SERVER_CONNECTION(socket);
   self.emit('connection', socket);
+  if (netServerSocketChannel.hasSubscribers) {
+    netServerSocketChannel.publish({
+      socket,
+    });
+  }
 }
 
 /**

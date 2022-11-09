@@ -24,10 +24,6 @@
 
 'use strict';
 
-// When using FSReqCallback, make sure to create the object only *after* all
-// parameter validation has happened, so that the objects are not kept in memory
-// in case they are created but never used due to an exception.
-
 const {
   ArrayPrototypePush,
   BigIntPrototypeToString,
@@ -37,7 +33,6 @@ const {
   ObjectDefineProperty,
   Promise,
   ReflectApply,
-  RegExpPrototypeExec,
   SafeMap,
   SafeSet,
   String,
@@ -89,6 +84,7 @@ const {
   promisify: {
     custom: kCustomPromisifiedSymbol,
   },
+  SideEffectFreeRegExpPrototypeExec,
 } = require('internal/util');
 const {
   constants: {
@@ -1533,11 +1529,10 @@ function hasNoEntryError(ctx) {
  * @param {number} fd
  * @param {{
  *   bigint?: boolean;
- *   throwIfNoEntry?: boolean;
  *   }} [options]
  * @returns {Stats}
  */
-function fstatSync(fd, options = { bigint: false, throwIfNoEntry: true }) {
+function fstatSync(fd, options = { bigint: false }) {
   fd = getValidatedFd(fd);
   const ctx = { fd };
   const stats = binding.fstat(fd, options.bigint, undefined, ctx);
@@ -2410,7 +2405,7 @@ if (isWindows) {
   // slash.
   const splitRootRe = /^(?:[a-zA-Z]:|[\\/]{2}[^\\/]+[\\/][^\\/]+)?[\\/]*/;
   splitRoot = function splitRoot(str) {
-    return RegExpPrototypeExec(splitRootRe, str)[0];
+    return SideEffectFreeRegExpPrototypeExec(splitRootRe, str)[0];
   };
 } else {
   splitRoot = function splitRoot(str) {
@@ -2598,7 +2593,7 @@ realpathSync.native = (path, options) => {
   options = getOptions(options);
   path = getValidatedPath(path);
   const ctx = { path };
-  const result = binding.realpath(path, options.encoding, undefined, ctx);
+  const result = binding.realpath(pathModule.toNamespacedPath(path), options.encoding, undefined, ctx);
   handleErrorFromBinding(ctx);
   return result;
 };
@@ -2758,7 +2753,7 @@ realpath.native = (path, options, callback) => {
   path = getValidatedPath(path);
   const req = new FSReqCallback();
   req.oncomplete = callback;
-  return binding.realpath(path, options.encoding, req);
+  return binding.realpath(pathModule.toNamespacedPath(path), options.encoding, req);
 };
 
 /**

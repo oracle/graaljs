@@ -45,7 +45,7 @@ from utils import SearchFiles
 parser = argparse.ArgumentParser()
 
 valid_os = ('win', 'mac', 'solaris', 'freebsd', 'openbsd', 'linux',
-            'android', 'aix', 'cloudabi')
+            'android', 'aix', 'cloudabi', 'ios')
 valid_arch = ('arm', 'arm64', 'ia32', 'mips', 'mipsel', 'mips64el', 'ppc',
               'ppc64', 'x64', 'x86', 'x86_64', 's390x', 'riscv64', 'loong64')
 valid_arm_float_abi = ('soft', 'softfp', 'hard')
@@ -759,6 +759,14 @@ parser.add_argument('--shared',
     help='compile shared library for embedding node in another project. ' +
          '(This mode is not officially supported for regular applications)')
 
+parser.add_argument('--libdir',
+    action='store',
+    dest='libdir',
+    default='lib',
+    help='a directory to install the shared library into relative to the '
+         'prefix. This is a no-op if --shared is not specified. ' +
+         '(This mode is not officially supported for regular applications)')
+
 parser.add_argument('--without-v8-platform',
     action='store_true',
     dest='without_v8_platform',
@@ -1261,6 +1269,10 @@ def configure_node(o):
 
   o['variables']['want_separate_host_toolset'] = int(cross_compiling)
 
+  # Enable branch protection for arm64
+  if target_arch == 'arm64':
+    o['cflags']+=['-msign-return-address=all']
+
   if options.node_snapshot_main is not None:
     if options.shared:
       # This should be possible to fix, but we will need to refactor the
@@ -1413,6 +1425,7 @@ def configure_node(o):
   o['variables']['node_no_browser_globals'] = b(options.no_browser_globals)
 
   o['variables']['node_shared'] = b(options.shared)
+  o['variables']['libdir'] = options.libdir
   node_module_version = getmoduleversion.get_version()
 
   if options.dest_os == 'android':
@@ -2119,7 +2132,7 @@ write('config.mk', do_not_edit + config_str)
 gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
 
 if options.use_ninja:
-  gyp_args += ['-f', 'ninja']
+  gyp_args += ['-f', 'ninja-' + flavor]
 elif flavor == 'win' and sys.platform != 'msys':
   gyp_args += ['-f', 'msvs', '-G', 'msvs_version=auto']
 else:

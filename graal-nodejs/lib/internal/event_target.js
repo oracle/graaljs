@@ -11,6 +11,8 @@ const {
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
   ObjectGetOwnPropertyDescriptors,
+  ObjectSetPrototypeOf,
+  ObjectValues,
   ReflectApply,
   SafeArrayIterator,
   SafeFinalizationRegistry,
@@ -394,6 +396,13 @@ function weakListeners() {
   return { registry: weakListenersState, map: objectToWeakListenerMap };
 }
 
+const kFlagOnce = 1 << 0;
+const kFlagCapture = 1 << 1;
+const kFlagPassive = 1 << 2;
+const kFlagNodeStyle = 1 << 3;
+const kFlagWeak = 1 << 4;
+const kFlagRemoved = 1 << 5;
+
 // The listeners for an EventTarget are maintained as a linked list.
 // Unfortunately, the way EventTarget is defined, listeners are accounted
 // using the tuple [handler,capture], and even if we don't actually make
@@ -409,13 +418,21 @@ class Listener {
       previous.next = this;
     this.previous = previous;
     this.listener = listener;
-    // TODO(benjamingr) these 4 can be 'flags' to save 3 slots
-    this.once = once;
-    this.capture = capture;
-    this.passive = passive;
-    this.isNodeStyleListener = isNodeStyleListener;
+
+    let flags = 0b0;
+    if (once)
+      flags |= kFlagOnce;
+    if (capture)
+      flags |= kFlagCapture;
+    if (passive)
+      flags |= kFlagPassive;
+    if (isNodeStyleListener)
+      flags |= kFlagNodeStyle;
+    if (weak)
+      flags |= kFlagWeak;
+    this.flags = flags;
+
     this.removed = false;
-    this.weak = Boolean(weak); // Don't retain the object
 
     if (this.weak) {
       this.callback = new SafeWeakRef(listener);
@@ -433,6 +450,31 @@ class Listener {
       };
       this.listener = listener;
     }
+  }
+
+  get once() {
+    return Boolean(this.flags & kFlagOnce);
+  }
+  get capture() {
+    return Boolean(this.flags & kFlagCapture);
+  }
+  get passive() {
+    return Boolean(this.flags & kFlagPassive);
+  }
+  get isNodeStyleListener() {
+    return Boolean(this.flags & kFlagNodeStyle);
+  }
+  get weak() {
+    return Boolean(this.flags & kFlagWeak);
+  }
+  get removed() {
+    return Boolean(this.flags & kFlagRemoved);
+  }
+  set removed(value) {
+    if (value)
+      this.flags |= kFlagRemoved;
+    else
+      this.flags &= ~kFlagRemoved;
   }
 
   same(listener, capture) {
@@ -1027,6 +1069,12 @@ const EventEmitterMixin = (Superclass) => {
   }
   const protoProps = ObjectGetOwnPropertyDescriptors(EventEmitter.prototype);
   delete protoProps.constructor;
+  const propertiesValues = ObjectValues(protoProps);
+  for (let i = 0; i < propertiesValues.length; i++) {
+    // We want to use null-prototype objects to not rely on globally mutable
+    // %Object.prototype%.
+    ObjectSetPrototypeOf(propertiesValues[i], null);
+  }
   ObjectDefineProperties(MixedEventEmitter.prototype, protoProps);
   return MixedEventEmitter;
 };

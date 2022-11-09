@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2008 the V8 project authors. All rights reserved.
 # Redistribution and use in source and binary forms, with or without
@@ -227,7 +227,7 @@ class ProgressIndicator(object):
           if self.measure_flakiness:
             outputs = [case.Run() for _ in range(self.measure_flakiness)]
             # +1s are there because the test already failed once at this point.
-            print(f" failed {len([i for i in outputs if i.UnexpectedOutput()]) + 1} out of {self.measure_flakiness + 1}")
+            print(" failed %d out of %d" % (len([i for i in outputs if i.UnexpectedOutput()]) + 1, self.measure_flakiness + 1))
       else:
         self.succeeded += 1
       self.remaining -= 1
@@ -959,6 +959,12 @@ class Context(object):
     timeout = self.timeout * TIMEOUT_SCALEFACTOR[ARCH_GUESS or 'ia32'][mode]
     if section == 'pummel' or section == 'benchmark':
       timeout = timeout * 6
+    # We run all WPT from one subset in the same process using workers.
+    # As the number of the tests grow, it can take longer to run some of the
+    # subsets, but it's still overall faster than running them in different
+    # processes.
+    elif section == 'wpt':
+      timeout = timeout * 12
     return timeout
 
 def RunTestCases(cases_to_run, progress, tasks, flaky_tests_mode, measure_flakiness):

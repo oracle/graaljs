@@ -25,6 +25,7 @@ const {
   Array,
   ArrayIsArray,
   ArrayPrototypeJoin,
+  MathAbs,
   MathFloor,
   NumberPrototypeToString,
   ObjectCreate,
@@ -57,6 +58,7 @@ const {
 } = require('internal/async_hooks');
 const {
   codes: {
+    ERR_HTTP_CONTENT_LENGTH_MISMATCH,
     ERR_HTTP_HEADERS_SENT,
     ERR_HTTP_INVALID_HEADER_VALUE,
     ERR_HTTP_TRAILER_INVALID,
@@ -84,6 +86,8 @@ const HIGH_WATER_MARK = getDefaultHighWaterMark();
 
 const kCorked = Symbol('corked');
 const kUniqueHeaders = Symbol('kUniqueHeaders');
+const kBytesWritten = Symbol('kBytesWritten');
+const kEndCalled = Symbol('kEndCalled');
 
 const nop = () => {};
 
@@ -123,6 +127,9 @@ function OutgoingMessage() {
   this._removedContLen = false;
   this._removedTE = false;
 
+  this.strictContentLength = false;
+  this[kBytesWritten] = 0;
+  this[kEndCalled] = false;
   this._contentLength = null;
   this._hasBody = true;
   this._trailer = '';
@@ -330,7 +337,9 @@ OutgoingMessage.prototype._send = function _send(data, encoding, callback) {
   // This is a shameful hack to get the headers and first body chunk onto
   // the same packet. Future versions of Node are going to take care of
   // this at a lower level and in a more general way.
-  if (!this._headerSent) {
+  if (!this._headerSent && this._header !== null) {
+    // `this._header` can be null if OutgoingMessage is used without a proper Socket
+    // See: /test/parallel/test-http-outgoing-message-inheritance.js
     if (typeof data === 'string' &&
         (encoding === 'utf8' || encoding === 'latin1' || !encoding)) {
       data = this._header + data;
@@ -349,6 +358,14 @@ OutgoingMessage.prototype._send = function _send(data, encoding, callback) {
   return this._writeRaw(data, encoding, callback);
 };
 
+function _getMessageBodySize(chunk, headers, encoding) {
+  if (Buffer.isBuffer(chunk)) return chunk.length;
+  const chunkLength = chunk ? Buffer.byteLength(chunk, encoding) : 0;
+  const headerLength = headers ? headers.length : 0;
+  if (headerLength === chunkLength) return 0;
+  if (headerLength < chunkLength) return MathAbs(chunkLength - headerLength);
+  return chunkLength;
+}
 
 OutgoingMessage.prototype._writeRaw = _writeRaw;
 function _writeRaw(data, encoding, callback) {
@@ -362,6 +379,25 @@ function _writeRaw(data, encoding, callback) {
   if (typeof encoding === 'function') {
     callback = encoding;
     encoding = null;
+  }
+
+  // TODO(sidwebworks): flip the `strictContentLength` default to `true` in a future PR
+  if (this.strictContentLength && conn && conn.writable && !this._removedContLen && this._hasBody) {
+    const skip = conn._httpMessage.statusCode === 304 || (this.hasHeader('transfer-encoding') || this.chunkedEncoding);
+
+    if (typeof this._contentLength === 'number' && !skip) {
+      const size = _getMessageBodySize(data, conn._httpMessage._header, encoding);
+
+      if ((size + this[kBytesWritten]) > this._contentLength) {
+        throw new ERR_HTTP_CONTENT_LENGTH_MISMATCH(size + this[kBytesWritten], this._contentLength);
+      }
+
+      if (this[kEndCalled] && (size + this[kBytesWritten]) !== this._contentLength) {
+        throw new ERR_HTTP_CONTENT_LENGTH_MISMATCH(size + this[kBytesWritten], this._contentLength);
+      }
+
+      this[kBytesWritten] += size;
+    }
   }
 
   if (conn && conn._httpMessage === this && conn.writable) {
@@ -463,7 +499,11 @@ function _storeHeader(firstLine, headers) {
       header += 'Connection: keep-alive\r\n';
       if (this._keepAliveTimeout && this._defaultKeepAlive) {
         const timeoutSeconds = MathFloor(this._keepAliveTimeout / 1000);
-        header += `Keep-Alive: timeout=${timeoutSeconds}\r\n`;
+        let max = '';
+        if (~~this._maxRequestsPerSocket > 0) {
+          max = `, max=${this._maxRequestsPerSocket}`;
+        }
+        header += `Keep-Alive: timeout=${timeoutSeconds}${max}\r\n`;
       }
     } else {
       this._last = true;
@@ -555,6 +595,7 @@ function matchHeader(self, state, field, value) {
       break;
     case 'content-length':
       state.contLen = true;
+      self._contentLength = value;
       self._removedContLen = false;
       break;
     case 'date':
@@ -919,6 +960,8 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
     encoding = null;
   }
 
+  this[kEndCalled] = true;
+
   if (chunk) {
     if (this.finished) {
       onError(this,
@@ -985,6 +1028,8 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
 };
 
 
+// This function is called once all user data are flushed to the socket.
+// Note that it has a chance that the socket is not drained.
 OutgoingMessage.prototype._finish = function _finish() {
   assert(this.socket);
   this.emit('prefinish');
@@ -1008,7 +1053,7 @@ OutgoingMessage.prototype._finish = function _finish() {
 // the socket yet. Thus the outgoing messages need to be prepared to queue
 // up data internally before sending it on further to the socket's queue.
 //
-// This function, outgoingFlush(), is called by both the Server and Client
+// This function, _flush(), is called by both the Server and Client
 // to attempt to flush any pending messages out to the socket.
 OutgoingMessage.prototype._flush = function _flush() {
   const socket = this.socket;
