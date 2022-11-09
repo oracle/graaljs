@@ -137,10 +137,18 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         int bufferOffset = getOffset(target);
         int bufferLen = getLength(target);
 
-        if (destOffset > bufferLen || bytes < 0 || destOffset < 0) {
+        if (destOffset < 0) {
+            errorBranch.enter();
+            throw indexOutOfRange();
+        } else if (destOffset > bufferLen) {
             errorBranch.enter();
             throw offsetOutOfBounds();
         }
+        if (bytes < 0) {
+            errorBranch.enter();
+            throw indexOutOfRange();
+        }
+
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
         boolean interopBuffer = false;
         if (rawBuffer == null) {
