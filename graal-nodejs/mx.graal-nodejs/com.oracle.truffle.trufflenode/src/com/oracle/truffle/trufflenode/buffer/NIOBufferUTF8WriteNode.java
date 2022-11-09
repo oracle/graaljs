@@ -138,16 +138,20 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
         if (interopBuffer) {
             // Write the data to the original interop buffer
-            InteropLibrary interop = InteropLibrary.getUncached(arrayBuffer);
-            try {
-                for (int i = 0; i < copyLength; i++) {
-                    interop.writeBufferByte(arrayBuffer, bufferOffset + destOffset + i, rawBuffer.get(bufferOffset + destOffset + i));
-                }
-            } catch (InteropException iex) {
-                throw Errors.shouldNotReachHere(iex);
-            }
+            interopBufferWriteBack(arrayBuffer, rawBuffer, bufferOffset, destOffset, copyLength);
         }
         return copyLength;
+    }
+
+    private static void interopBufferWriteBack(JSArrayBufferObject arrayBuffer, ByteBuffer rawBuffer, int bufferOffset, int destOffset, int copyLength) {
+        InteropLibrary interop = InteropLibrary.getUncached(arrayBuffer);
+        try {
+            for (int i = 0; i < copyLength; i++) {
+                interop.writeBufferByte(arrayBuffer, bufferOffset + destOffset + i, rawBuffer.get(bufferOffset + destOffset + i));
+            }
+        } catch (InteropException iex) {
+            throw Errors.shouldNotReachHere(iex);
+        }
     }
 
     private static boolean isUTF8ContinuationByte(int b) {
