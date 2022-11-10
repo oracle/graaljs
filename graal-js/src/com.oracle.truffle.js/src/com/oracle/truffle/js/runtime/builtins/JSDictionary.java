@@ -40,14 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.AbstractMap;
+import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.nonConfigurableMessage;
+import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.nonWritableMessage;
+import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.notExtensibleMessage;
+import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.reject;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -76,7 +78,6 @@ import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
-import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
@@ -128,7 +129,7 @@ public final class JSDictionary extends JSNonProxy {
 
     public static Object getValue(PropertyDescriptor property, Object receiver, Node encapsulatingNode) {
         if (property.isAccessorDescriptor()) {
-            JSDynamicObject getter = (JSDynamicObject) property.getGet();
+            Object getter = property.getGet();
             if (getter != Undefined.instance) {
                 return JSRuntime.call(getter, receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY, encapsulatingNode);
             } else {
@@ -222,7 +223,7 @@ public final class JSDictionary extends JSNonProxy {
 
     private static boolean setValue(Object key, PropertyDescriptor property, JSDynamicObject store, Object thisObj, Object value, boolean isStrict, Node encapsulatingNode) {
         if (property.isAccessorDescriptor()) {
-            JSDynamicObject setter = (JSDynamicObject) property.getSet();
+            Object setter = property.getSet();
             if (setter != Undefined.instance) {
                 JSRuntime.call(setter, thisObj, new Object[]{value}, encapsulatingNode);
                 return true;
@@ -260,15 +261,122 @@ public final class JSDictionary extends JSNonProxy {
     @Override
     public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key);
-        if (!hasOwnProperty(thisObj, key) && JSObject.isExtensible(thisObj)) {
-            getHashMap(thisObj).put(key, desc);
+        PropertyDescriptor current = getHashMap(thisObj).get(key);
+        if (current == null) {
+            current = super.getOwnProperty(thisObj, key);
+            boolean extensible = JSObject.isExtensible(thisObj);
+            if (current == null) {
+                if (!extensible) {
+                    return reject(doThrow, notExtensibleMessage(key, doThrow));
+                }
+                validateAndPutDesc(thisObj, key, makeFullyPopulatedPropertyDescriptor(desc));
+                return true;
+            } else {
+                return DefinePropertyUtil.validateAndApplyPropertyDescriptor(thisObj, key, extensible, desc, current, doThrow);
+            }
+        } else {
+            return validateAndApplyPropertyDescriptorExisting(thisObj, key, desc, current, doThrow);
+        }
+    }
+
+    private static PropertyDescriptor validateAndPutDesc(JSDynamicObject thisObj, Object key, PropertyDescriptor newDesc) {
+        assert newDesc.isFullyPopulatedPropertyDescriptor();
+        return getHashMap(thisObj).put(key, newDesc);
+    }
+
+    /**
+     * Returns a fully populated property descriptor that is either an accessor property descriptor
+     * or a data property descriptor that has all of the corresponding fields. Missing fields are
+     * filled with default values.
+     */
+    private static PropertyDescriptor makeFullyPopulatedPropertyDescriptor(PropertyDescriptor desc) {
+        if (desc.isAccessorDescriptor()) {
+            if (desc.hasGet() && desc.hasSet() && desc.hasEnumerable() && desc.hasConfigurable()) {
+                return desc;
+            } else {
+                return PropertyDescriptor.createAccessor(desc.getGet(), desc.getSet(), desc.getEnumerable(), desc.getConfigurable());
+            }
+        } else if (desc.isDataDescriptor()) {
+            if (desc.hasValue() && desc.hasWritable() && desc.hasEnumerable() && desc.hasConfigurable()) {
+                return desc;
+            } else {
+                Object value = desc.hasValue() ? desc.getValue() : Undefined.instance;
+                return PropertyDescriptor.createData(value, desc.getEnumerable(), desc.getWritable(), desc.getConfigurable());
+            }
+        } else {
+            assert desc.isGenericDescriptor();
+            return PropertyDescriptor.createData(Undefined.instance, desc.getEnumerable(), desc.getWritable(), desc.getConfigurable());
+        }
+    }
+
+    private static boolean validateAndApplyPropertyDescriptorExisting(JSDynamicObject thisObj, Object key, PropertyDescriptor descriptor, PropertyDescriptor currentDesc, boolean doThrow) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert currentDesc.isFullyPopulatedPropertyDescriptor();
+        if (descriptor.hasNoFields()) {
             return true;
         }
 
-        // defineProperty is currently not supported on dictionary objects,
-        // so we need to convert back to a normal shape-based object.
-        makeOrdinaryObject(thisObj, "defineOwnProperty");
-        return super.defineOwnProperty(thisObj, key, desc, doThrow);
+        if (!currentDesc.getConfigurable()) {
+            if ((descriptor.hasConfigurable() && descriptor.getConfigurable()) ||
+                            (descriptor.hasEnumerable() && (descriptor.getEnumerable() != currentDesc.getEnumerable()))) {
+                return reject(doThrow, nonConfigurableMessage(key, doThrow));
+            }
+            if (!descriptor.isGenericDescriptor() && descriptor.isAccessorDescriptor() != currentDesc.isAccessorDescriptor()) {
+                return reject(doThrow, nonConfigurableMessage(key, doThrow));
+            }
+            if (currentDesc.isAccessorDescriptor()) {
+                if ((descriptor.hasGet() && !JSRuntime.isSameValue(descriptor.getGet(), currentDesc.getGet())) ||
+                                (descriptor.hasSet() && !JSRuntime.isSameValue(descriptor.getSet(), currentDesc.getSet()))) {
+                    return reject(doThrow, nonConfigurableMessage(key, doThrow));
+                }
+            } else {
+                assert currentDesc.isDataDescriptor();
+                if (!currentDesc.getWritable()) {
+                    if (descriptor.hasWritable() && descriptor.getWritable()) {
+                        return reject(doThrow, nonConfigurableMessage(key, doThrow));
+                    }
+                    if (descriptor.hasValue() && !JSRuntime.isSameValue(descriptor.getValue(), currentDesc.getValue())) {
+                        return reject(doThrow, nonWritableMessage(key, doThrow));
+                    }
+                }
+            }
+        }
+
+        if (currentDesc.isDataDescriptor() && descriptor.isAccessorDescriptor()) {
+            PropertyDescriptor newDesc = PropertyDescriptor.createAccessor(descriptor.getGet(), descriptor.getSet(),
+                            descriptor.getIfHasEnumerable(currentDesc.getEnumerable()),
+                            descriptor.getIfHasConfigurable(currentDesc.getConfigurable()));
+            validateAndPutDesc(thisObj, key, newDesc);
+            return true;
+        } else if (currentDesc.isAccessorDescriptor() && descriptor.isDataDescriptor()) {
+            Object value = descriptor.hasValue() ? descriptor.getValue() : Undefined.instance;
+            PropertyDescriptor newDesc = PropertyDescriptor.createData(value,
+                            descriptor.getIfHasEnumerable(currentDesc.getEnumerable()),
+                            descriptor.getIfHasConfigurable(currentDesc.getConfigurable()),
+                            descriptor.getWritable());
+            validateAndPutDesc(thisObj, key, newDesc);
+            return true;
+        } else {
+            if (descriptor.hasConfigurable()) {
+                currentDesc.setConfigurable(descriptor.getConfigurable());
+            }
+            if (descriptor.hasEnumerable()) {
+                currentDesc.setEnumerable(descriptor.getEnumerable());
+            }
+            if (descriptor.hasWritable()) {
+                currentDesc.setWritable(descriptor.getWritable());
+            }
+            if (descriptor.hasValue()) {
+                currentDesc.setValue(descriptor.getValue());
+            }
+            if (descriptor.hasGet()) {
+                currentDesc.setGet(descriptor.getGet());
+            }
+            if (descriptor.hasSet()) {
+                currentDesc.setSet(descriptor.getSet());
+            }
+            return true;
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -355,63 +463,6 @@ public final class JSDictionary extends JSNonProxy {
             desc = PropertyDescriptor.createData(value, JSProperty.isEnumerable(p), JSProperty.isWritable(p), JSProperty.isConfigurable(p));
         }
         return desc;
-    }
-
-    private static void makeOrdinaryObject(JSDynamicObject obj, String reason) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (JSConfig.TraceDictionaryObject) {
-            System.out.printf("transitioning from dictionary object to ordinary object: %s\n", reason);
-        }
-
-        EconomicMap<Object, PropertyDescriptor> hashMap = getHashMap(obj);
-        Shape oldShape = obj.getShape();
-        JSContext context = JSObject.getJSContext(obj);
-        Shape newRootShape = makeEmptyShapeForNewType(context, oldShape, JSOrdinary.INSTANCE, obj);
-
-        DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
-
-        List<Property> allProperties = oldShape.getPropertyListInternal(true);
-        List<Map.Entry<Property, Object>> archive = new ArrayList<>(allProperties.size());
-        for (Property prop : allProperties) {
-            Object key = prop.getKey();
-            Object value = Properties.getOrDefault(lib, obj, key, null);
-            if (HASHMAP_PROPERTY_NAME.equals(key)) {
-                continue;
-            }
-            archive.add(new AbstractMap.SimpleImmutableEntry<>(prop, value));
-        }
-
-        lib.resetShape(obj, newRootShape);
-
-        for (int i = 0; i < archive.size(); i++) {
-            Map.Entry<Property, Object> e = archive.get(i);
-            Property p = e.getKey();
-            Object key = p.getKey();
-            if (!newRootShape.hasProperty(key)) {
-                Object value = e.getValue();
-                if (p.getLocation().isConstant()) {
-                    Properties.putConstant(lib, obj, key, value, p.getFlags());
-                } else {
-                    Properties.putWithFlags(lib, obj, key, value, p.getFlags());
-                }
-            }
-        }
-
-        MapCursor<Object, PropertyDescriptor> cursor = hashMap.getEntries();
-        while (cursor.advance()) {
-            Object key = cursor.getKey();
-            assert JSRuntime.isPropertyKey(key);
-            PropertyDescriptor desc = cursor.getValue();
-            if (desc.isDataDescriptor()) {
-                Object value = desc.getValue();
-                assert !(value instanceof Accessor || value instanceof PropertyProxy);
-                JSObjectUtil.defineDataProperty(obj, key, value, desc.getFlags());
-            } else {
-                JSObjectUtil.defineAccessorProperty(obj, key, new Accessor(desc.getGet(), desc.getSet()), desc.getFlags());
-            }
-        }
-
-        assert JSOrdinary.isJSOrdinaryObject(obj) && obj.getShape().getProperty(HASHMAP_PROPERTY_NAME) == null;
     }
 
     public static Shape makeDictionaryShape(JSContext context, JSDynamicObject prototype) {

@@ -422,7 +422,7 @@ public abstract class JSNonProxy extends JSClass {
     protected static boolean invokeAccessorPropertySetter(PropertyDescriptor desc, JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         CompilerAsserts.neverPartOfCompilation();
         assert desc.isAccessorDescriptor();
-        JSDynamicObject setter = (JSDynamicObject) desc.getSet();
+        Object setter = desc.getSet();
         if (setter != Undefined.instance) {
             JSRuntime.call(setter, receiver, new Object[]{value}, encapsulatingNode);
             return true;
