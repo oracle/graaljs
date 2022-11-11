@@ -44,9 +44,8 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
-import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -59,8 +58,8 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 
+@ImportStatic(JSArrayBuffer.class)
 public abstract class NIOBufferAccessNode extends JSBuiltinNode {
 
     private static final TruffleString CODE = Strings.constant("code");
@@ -68,12 +67,8 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
     private static final TruffleString ERR_BUFFER_OUT_OF_BOUNDS = Strings.constant("ERR_BUFFER_OUT_OF_BOUNDS");
     private static final TruffleString ERR_STRING_TOO_LONG = Strings.constant("ERR_STRING_TOO_LONG");
 
-    @Child protected ArrayBufferViewGetByteLengthNode getLenNode;
-    @Child private ArrayBufferGetContentsNode interopArrayBufferGetContents;
-
-    public NIOBufferAccessNode(JSContext context, JSBuiltin builtin) {
+    protected NIOBufferAccessNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
-        this.getLenNode = ArrayBufferViewGetByteLengthNodeGen.create(context);
     }
 
     protected static ByteBuffer getDirectByteBuffer(JSArrayBufferObject arrayBuffer) {
@@ -82,16 +77,12 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
         } else if (JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer)) {
             return JSSharedArrayBuffer.getDirectByteBuffer(arrayBuffer);
         } else {
-            return null;
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     protected final int getOffset(JSTypedArrayObject target) {
         return JSArrayBufferView.getByteOffset(target, getContext());
-    }
-
-    protected final int getLength(JSTypedArrayObject target) {
-        return getLenNode.executeInt(target);
     }
 
     @TruffleBoundary
@@ -114,13 +105,5 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
         JSObject errorObject = (JSObject) exception.getErrorObject();
         JSObject.set(errorObject, CODE, errorCode);
         return exception;
-    }
-
-    protected final ByteBuffer interopArrayBufferGetContents(JSArrayBufferObject arrayBuffer) {
-        if (interopArrayBufferGetContents == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            interopArrayBufferGetContents = insert(ArrayBufferGetContentsNode.create());
-        }
-        return interopArrayBufferGetContents.execute(arrayBuffer);
     }
 }

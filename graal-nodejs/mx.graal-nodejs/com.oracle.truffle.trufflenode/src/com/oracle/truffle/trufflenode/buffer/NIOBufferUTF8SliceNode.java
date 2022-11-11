@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
@@ -60,6 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
+import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 
 public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     protected final BranchProfile nativePath = BranchProfile.create();
@@ -73,19 +75,42 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         return GraalJSAccess.getRealmEmbedderData(getRealm()).getNativeUtf8Slice();
     }
 
-    @Specialization
-    final Object slice(JSTypedArrayObject target, Object start, Object end,
+    @Specialization(guards = "isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
+    final Object sliceDirect(JSTypedArrayObject target, Object start, Object end,
                     @Cached JSToIntegerAsIntNode toIntNode,
+                    @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getLengthNode,
                     @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
                     @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
                     @Cached TruffleString.IsValidNode isValidNode) {
         JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
-        if (rawBuffer == null) {
-            rawBuffer = interopArrayBufferGetContents(arrayBuffer);
-        }
 
-        int bufferLength = getLength(target);
+        return slice(target, start, end, rawBuffer,
+                        toIntNode, getLengthNode, fromByteArrayNode, switchEncodingNode, isValidNode);
+    }
+
+    @Specialization(guards = "!isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
+    final Object sliceInterop(JSTypedArrayObject target, Object start, Object end,
+                    @Cached JSToIntegerAsIntNode toIntNode,
+                    @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
+                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached TruffleString.IsValidNode isValidNode,
+                    @Cached ArrayBufferGetContentsNode arrayBufferGetContentsNode) {
+        JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
+        ByteBuffer rawBuffer = arrayBufferGetContentsNode.execute(arrayBuffer);
+
+        return slice(target, start, end, rawBuffer,
+                        toIntNode, getLengthNode, fromByteArrayNode, switchEncodingNode, isValidNode);
+    }
+
+    private Object slice(JSTypedArrayObject target, Object start, Object end, ByteBuffer rawBuffer,
+                    JSToIntegerAsIntNode toIntNode,
+                    ArrayBufferViewGetByteLengthNode getLengthNode,
+                    TruffleString.FromByteArrayNode fromByteArrayNode,
+                    TruffleString.SwitchEncodingNode switchEncodingNode,
+                    TruffleString.IsValidNode isValidNode) {
+        int bufferLength = getLengthNode.executeInt(target);
         if (bufferLength == 0) {
             // By default, an empty buffer returns an empty string
             return Strings.EMPTY_STRING;

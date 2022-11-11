@@ -43,17 +43,21 @@ package com.oracle.truffle.trufflenode.buffer;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.InternalByteArray;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -62,12 +66,12 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
+import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 
+@ImportStatic(JSConfig.class)
 public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
-    protected final BranchProfile nativePath = BranchProfile.create();
     protected final BranchProfile errorBranch = BranchProfile.create();
-    protected final BranchProfile interopBranch = BranchProfile.create();
 
     public NIOBufferUTF8WriteNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
@@ -77,15 +81,44 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         return GraalJSAccess.getRealmEmbedderData(getRealm()).getNativeUtf8Write();
     }
 
-    @Specialization
-    final Object write(JSTypedArrayObject target, TruffleString str, Object destOffset0, Object bytes0,
+    @Specialization(guards = "isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
+    final Object writeDirect(JSTypedArrayObject target, TruffleString str, Object destOffset, Object bytes,
                     @Cached JSToIntegerAsIntNode toIntNode,
+                    @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getLengthNode,
                     @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
                     @Cached TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
                     @Cached TruffleString.ReadByteNode readByteNode) {
         JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
+        ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
+
+        return write(target, str, destOffset, bytes, rawBuffer,
+                        toIntNode, getLengthNode, switchEncodingNode, getInternalByteArrayNode, readByteNode, null);
+    }
+
+    @Specialization(guards = "!isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
+    final Object writeInterop(JSTypedArrayObject target, TruffleString str, Object destOffset, Object bytes,
+                    @Cached JSToIntegerAsIntNode toIntNode,
+                    @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
+                    @Cached TruffleString.ReadByteNode readByteNode,
+                    @Cached ArrayBufferGetContentsNode arrayBufferGetContentsNode,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+        ByteBuffer rawBuffer = arrayBufferGetContentsNode.execute(target.getArrayBuffer());
+
+        return write(target, str, destOffset, bytes, rawBuffer,
+                        toIntNode, getLengthNode, switchEncodingNode, getInternalByteArrayNode, readByteNode, interop);
+    }
+
+    private int write(JSTypedArrayObject target, TruffleString str, Object destOffset0, Object bytes, ByteBuffer rawBuffer,
+                    JSToIntegerAsIntNode toIntNode,
+                    ArrayBufferViewGetByteLengthNode getLengthNode,
+                    TruffleString.SwitchEncodingNode switchEncodingNode,
+                    TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
+                    TruffleString.ReadByteNode readByteNode,
+                    InteropLibrary interop) {
         int bufferOffset = getOffset(target);
-        int bufferLen = getLength(target);
+        int bufferLen = getLengthNode.executeInt(target);
 
         int destOffset;
         if (destOffset0 == Undefined.instance) {
@@ -101,10 +134,10 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             }
         }
         int maxLength;
-        if (bytes0 == Undefined.instance) {
+        if (bytes == Undefined.instance) {
             maxLength = bufferLen - destOffset;
         } else {
-            maxLength = toIntNode.executeInt(bytes0);
+            maxLength = toIntNode.executeInt(bytes);
             if (maxLength < 0) {
                 errorBranch.enter();
                 throw indexOutOfRange();
@@ -113,14 +146,6 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         }
         if (maxLength == 0) {
             return 0;
-        }
-
-        ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
-        boolean interopBuffer = false;
-        if (rawBuffer == null) {
-            interopBranch.enter();
-            interopBuffer = true;
-            rawBuffer = interopArrayBufferGetContents(arrayBuffer);
         }
 
         TruffleString utf8Str = switchEncodingNode.execute(str, TruffleString.Encoding.UTF_8);
@@ -138,15 +163,14 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         Boundaries.byteBufferPutArray(rawBuffer, bufferOffset + destOffset, byteArray.getArray(), byteArray.getOffset(), copyLength);
         LoopNode.reportLoopCount(this, copyLength);
 
-        if (interopBuffer) {
+        if (interop != null) {
             // Write the data to the original interop buffer
-            interopBufferWriteBack(arrayBuffer, rawBuffer, bufferOffset, destOffset, copyLength);
+            interopBufferWriteBack(target.getArrayBuffer(), rawBuffer, bufferOffset, destOffset, copyLength, interop);
         }
         return copyLength;
     }
 
-    private static void interopBufferWriteBack(JSArrayBufferObject arrayBuffer, ByteBuffer rawBuffer, int bufferOffset, int destOffset, int copyLength) {
-        InteropLibrary interop = InteropLibrary.getUncached(arrayBuffer);
+    private static void interopBufferWriteBack(JSArrayBufferObject arrayBuffer, ByteBuffer rawBuffer, int bufferOffset, int destOffset, int copyLength, InteropLibrary interop) {
         try {
             for (int i = 0; i < copyLength; i++) {
                 interop.writeBufferByte(arrayBuffer, bufferOffset + destOffset + i, rawBuffer.get(bufferOffset + destOffset + i));
