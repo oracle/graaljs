@@ -41,18 +41,21 @@
 
 var assert = require('assert');
 
-function expectedErrorValidator(ExpectedError, expectedCode) {
+function expectedErrorValidator(ExpectedError, expectedCode, expectedMessage) {
     return (err) => {
         assert(err instanceof ExpectedError, `The error is expected to be an instance of ${ExpectedError.name}. Received ${err?.constructor?.name}.`);
         assert.strictEqual(err.code, expectedCode);
+        if (expectedMessage !== undefined) {
+            assert.strictEqual(err.message, expectedMessage);
+        }
         return true;
     };
 }
 
-const RangeErrorOutOfRange = expectedErrorValidator(RangeError, "ERR_OUT_OF_RANGE");
-const RangeErrorBufferOutOfBounds = expectedErrorValidator(RangeError, "ERR_BUFFER_OUT_OF_BOUNDS");
-const TypeErrorNotBuffer = expectedErrorValidator(TypeError, "ERR_INVALID_ARG_TYPE");
-const TypeErrorNotString = expectedErrorValidator(TypeError, "ERR_INVALID_ARG_TYPE");
+const RangeErrorOutOfRange = expectedErrorValidator(RangeError, "ERR_OUT_OF_RANGE", "Index out of range");
+const RangeErrorBufferOutOfBounds = expectedErrorValidator(RangeError, "ERR_BUFFER_OUT_OF_BOUNDS", '"offset" is outside of buffer bounds');
+const TypeErrorNotBuffer = expectedErrorValidator(TypeError, "ERR_INVALID_ARG_TYPE", "argument must be a buffer");
+const TypeErrorNotString = expectedErrorValidator(TypeError, "ERR_INVALID_ARG_TYPE", "argument must be a string");
 
 const TypedArrays = [
     Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array,
