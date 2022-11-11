@@ -51,7 +51,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
@@ -182,7 +181,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isJSArrayBufferView(target)"})
     static Object sliceNotBuffer(Object target, Object start, Object end) {
-        throw Errors.createTypeErrorArrayBufferViewExpected();
+        throw notBuffer();
     }
 
     private Object doNativeFallback(JSTypedArrayObject target, Object start, Object end) {

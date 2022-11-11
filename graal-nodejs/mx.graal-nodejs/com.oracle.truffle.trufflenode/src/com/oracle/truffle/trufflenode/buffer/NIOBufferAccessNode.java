@@ -66,6 +66,7 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
     private static final TruffleString ERR_OUT_OF_RANGE = Strings.constant("ERR_OUT_OF_RANGE");
     private static final TruffleString ERR_BUFFER_OUT_OF_BOUNDS = Strings.constant("ERR_BUFFER_OUT_OF_BOUNDS");
     private static final TruffleString ERR_STRING_TOO_LONG = Strings.constant("ERR_STRING_TOO_LONG");
+    private static final TruffleString ERR_INVALID_ARG_TYPE = Strings.constant("ERR_INVALID_ARG_TYPE");
 
     protected NIOBufferAccessNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
@@ -98,6 +99,11 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
     @TruffleBoundary
     protected final JSException stringTooLong() {
         throw setErrorCode(Errors.createError(String.format("Cannot create a string longer than 0x%x characters", getContext().getStringLengthLimit())), ERR_STRING_TOO_LONG);
+    }
+
+    @TruffleBoundary
+    protected static JSException notBuffer() {
+        throw setErrorCode(Errors.createTypeError("argument must be a buffer"), ERR_INVALID_ARG_TYPE);
     }
 
     @TruffleBoundary

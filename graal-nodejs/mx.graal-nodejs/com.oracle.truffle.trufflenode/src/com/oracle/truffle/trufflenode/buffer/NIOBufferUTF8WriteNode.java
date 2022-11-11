@@ -42,6 +42,7 @@ package com.oracle.truffle.trufflenode.buffer;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -56,7 +57,6 @@ import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
@@ -176,7 +176,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
                 interop.writeBufferByte(arrayBuffer, bufferOffset + destOffset + i, rawBuffer.get(bufferOffset + destOffset + i));
             }
         } catch (InteropException iex) {
-            throw Errors.shouldNotReachHere(iex);
+            throw CompilerDirectives.shouldNotReachHere(iex);
         }
     }
 
@@ -191,7 +191,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     @Specialization(guards = {"!isJSArrayBufferView(target)"})
     @SuppressWarnings("unused")
-    static Object writeAbort(Object target, Object str, Object destOffset, Object bytes) {
-        throw Errors.createTypeErrorArrayBufferViewExpected();
+    static Object writeNotBuffer(Object target, Object str, Object destOffset, Object bytes) {
+        throw notBuffer();
     }
 }

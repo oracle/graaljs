@@ -51,6 +51,13 @@ function expectedErrorValidator(ExpectedError, expectedCode) {
 
 const RangeErrorOutOfRange = expectedErrorValidator(RangeError, "ERR_OUT_OF_RANGE");
 const RangeErrorBufferOutOfBounds = expectedErrorValidator(RangeError, "ERR_BUFFER_OUT_OF_BOUNDS");
+const TypeErrorNotBuffer = expectedErrorValidator(TypeError, "ERR_INVALID_ARG_TYPE");
+const TypeErrorNotString = expectedErrorValidator(TypeError, "ERR_INVALID_ARG_TYPE");
+
+const TypedArrays = [
+    Int8Array, Uint8Array, Uint8ClampedArray, Int16Array, Uint16Array, Int32Array, Uint32Array,
+    Float32Array, Float64Array, BigInt64Array, BigUint64Array
+];
 
 describe('Buffer.utf8Write', function() {
     it('should write if length is >> than input string', function() {
@@ -88,7 +95,7 @@ describe('Buffer.utf8Write', function() {
     it('should fail if argument is not a string', function() {
         assert.throws(() => {
             Buffer.alloc(10).utf8Write(1)
-        }, TypeError);
+        }, TypeErrorNotString);
     });
     it('should accept zero range', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('abc', 0, 0), 0);
@@ -102,7 +109,8 @@ describe('Buffer.utf8Write', function() {
     it('should expect typed arrays', function() {
         assert.throws(() => {
             Buffer.prototype.utf8Write.call('buffer', 'text to write')
-        }, TypeError);
+        }, TypeErrorNotBuffer);
+        TypedArrays.forEach(TypedArray => Buffer.prototype.utf8Write.call(new TypedArray(13), 'text to write'));
     });
     it('should deal with utf8 inputs', function() {
         assert.strictEqual(Buffer.alloc(10).utf8Write('½½', 0, 3), 2);
@@ -184,7 +192,8 @@ describe('Buffer.utf8Slice', function() {
     it('should check buffer type', function() {
         assert.throws(() => {
             Buffer.prototype.utf8Slice.call(1)
-        }, TypeError);
+        }, TypeErrorNotBuffer);
+        TypedArrays.forEach(TypedArray => Buffer.prototype.utf8Slice.call(new TypedArray()));
     });
     it('length is zero', function() {
         assert.strictEqual(Buffer.alloc(0).utf8Slice.length, 0);
