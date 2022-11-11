@@ -634,8 +634,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(replaces = "definePropertyJSObjectTString")
         protected JSDynamicObject definePropertyGeneric(Object thisObj, Object property, Object attributes) {
             JSDynamicObject object = asJSObject(thisObj);
-            PropertyDescriptor desc = toPropertyDescriptor(attributes);
             Object propertyKey = toPropertyKeyNode.execute(property);
+            PropertyDescriptor desc = toPropertyDescriptor(attributes);
             JSRuntime.definePropertyOrThrow(object, propertyKey, desc);
             return object;
         }
