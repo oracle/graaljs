@@ -155,7 +155,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         byte[] data = copySliceToByteArray(rawBuffer, byteOffset, actualStart, actualEnd, length);
         LoopNode.reportLoopCount(this, length);
 
-        TruffleString utf8String = fromByteArrayNode.execute(data, TruffleString.Encoding.UTF_8);
+        TruffleString utf8String = fromByteArrayNode.execute(data, TruffleString.Encoding.UTF_8, false);
         if (isValidNode.execute(utf8String, TruffleString.Encoding.UTF_8)) {
             TruffleString utf16String = switchEncodingNode.execute(utf8String, TruffleString.Encoding.UTF_16);
             if (Strings.length(utf16String) > getContext().getStringLengthLimit()) {
