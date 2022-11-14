@@ -248,6 +248,13 @@ public final class Boundaries {
         return buffer.duplicate();
     }
 
+    @TruffleBoundary(allowInlining = true)
+    public static void byteBufferPutArray(ByteBuffer dst, int dstPos, byte[] src, int srcPos, int srcLength) {
+        ByteBuffer dstDup = dst.duplicate();
+        dstDup.position(dstPos);
+        dstDup.put(src, srcPos, srcLength);
+    }
+
     @TruffleBoundary
     public static boolean setContains(Set<?> set, Object element) {
         return set.contains(element);

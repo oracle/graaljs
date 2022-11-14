@@ -41,13 +41,11 @@
 package com.oracle.truffle.trufflenode.buffer;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
-import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNodeGen;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -60,18 +58,18 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 
+@ImportStatic(JSArrayBuffer.class)
 public abstract class NIOBufferAccessNode extends JSBuiltinNode {
 
-    protected static final Charset utf8 = StandardCharsets.UTF_8;
+    private static final TruffleString CODE = Strings.constant("code");
+    private static final TruffleString ERR_OUT_OF_RANGE = Strings.constant("ERR_OUT_OF_RANGE");
+    private static final TruffleString ERR_BUFFER_OUT_OF_BOUNDS = Strings.constant("ERR_BUFFER_OUT_OF_BOUNDS");
+    private static final TruffleString ERR_STRING_TOO_LONG = Strings.constant("ERR_STRING_TOO_LONG");
+    private static final TruffleString ERR_INVALID_ARG_TYPE = Strings.constant("ERR_INVALID_ARG_TYPE");
 
-    @Child protected ArrayBufferViewGetByteLengthNode getLenNode;
-    @Child private ArrayBufferGetContentsNode interopArrayBufferGetContents;
-
-    public NIOBufferAccessNode(JSContext context, JSBuiltin builtin) {
+    protected NIOBufferAccessNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
-        this.getLenNode = ArrayBufferViewGetByteLengthNodeGen.create(context);
     }
 
     protected static ByteBuffer getDirectByteBuffer(JSArrayBufferObject arrayBuffer) {
@@ -80,31 +78,38 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
         } else if (JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer)) {
             return JSSharedArrayBuffer.getDirectByteBuffer(arrayBuffer);
         } else {
-            return null;
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
-    protected int getOffset(JSTypedArrayObject target) {
+    protected final int getOffset(JSTypedArrayObject target) {
         return JSArrayBufferView.getByteOffset(target, getContext());
     }
 
-    protected int getLength(JSTypedArrayObject target) {
-        return getLenNode.executeInt(target);
+    @TruffleBoundary
+    protected static JSException indexOutOfRange() {
+        throw setErrorCode(Errors.createRangeError("Index out of range"), ERR_OUT_OF_RANGE);
     }
 
     @TruffleBoundary
-    protected void outOfBoundsFail() {
-        JSException exception = Errors.createRangeError("out of range index");
-        JSObject errorObject = (JSObject) exception.getErrorObject();
-        JSObject.set(errorObject, Strings.fromJavaString("code"), Strings.fromJavaString("ERR_BUFFER_OUT_OF_BOUNDS"));
-        throw exception;
+    protected static JSException offsetOutOfBounds() {
+        throw setErrorCode(Errors.createRangeError("\"offset\" is outside of buffer bounds"), ERR_BUFFER_OUT_OF_BOUNDS);
     }
 
-    protected final ByteBuffer interopArrayBufferGetContents(JSArrayBufferObject arrayBuffer) {
-        if (interopArrayBufferGetContents == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            interopArrayBufferGetContents = insert(ArrayBufferGetContentsNode.create());
-        }
-        return interopArrayBufferGetContents.execute(arrayBuffer);
+    @TruffleBoundary
+    protected final JSException stringTooLong() {
+        throw setErrorCode(Errors.createError(String.format("Cannot create a string longer than 0x%x characters", getContext().getStringLengthLimit())), ERR_STRING_TOO_LONG);
+    }
+
+    @TruffleBoundary
+    protected static JSException notBuffer() {
+        throw setErrorCode(Errors.createTypeError("argument must be a buffer"), ERR_INVALID_ARG_TYPE);
+    }
+
+    @TruffleBoundary
+    private static JSException setErrorCode(JSException exception, TruffleString errorCode) {
+        JSObject errorObject = (JSObject) exception.getErrorObject();
+        JSObject.set(errorObject, CODE, errorCode);
+        return exception;
     }
 }

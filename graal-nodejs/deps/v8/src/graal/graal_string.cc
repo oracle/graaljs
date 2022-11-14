@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,10 @@
 
 #include "graal_string-inl.h"
 
+#include "../third_party/utf8-decoder/utf8-decoder.h"
+
+const jchar REPLACEMENT_CHAR = 0xFFFD;
+
 GraalHandleContent* GraalString::CopyImpl(jobject java_object_copy) {
     return GraalString::Allocate(Isolate(), java_object_copy);
 }
@@ -86,155 +90,91 @@ v8::Local<v8::String> GraalString::NewFromOneByte(v8::Isolate* isolate, unsigned
 }
 
 int GraalString::Utf16Length(const unsigned char* input, int length) {
-    int result = 0;
-    int position = 0;
-    while (position < length) {
-        const unsigned char c = input[position++];
-        if (c & 0x80) { // else 0xxxxxxx
-            if (c & 0x40) { // else continuation byte on the first position => invalid
-                if ((c & 0x20) == 0) { // 110xxxxx
-                    // one continuation byte should follow
-                    if (position != length) {
-                        const unsigned char c2 = input[position];
-                        if (IsContinuationByte(c2) && (c & 0x1E) != 0) {
-                            position++;
-                        } // else invalid
-                    }
-                } else {
-                    if ((c & 0x10) == 0) { // 1110xxxx
-                        // two continuation bytes should follow
-                        if (position != length) {
-                            const unsigned char c2 = input[position];
-                            if (IsContinuationByte(c2)) {
-                                position++;
-                                if (position != length) {
-                                    const unsigned char c3 = input[position];
-                                    if (IsContinuationByte(c3)) {
-                                        // if (!overlong encoding && !code point for a surrogate) {
-                                        if (((c & 0x0F) | (c2 & 0x20)) != 0 && ((c & 0x0F) != 0x0D || (c2 & 0x20) == 0)) {
-                                            position++;
-                                        } else {
-                                            position--;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        if ((c & 0x08) == 0) { // 11110xxx
-                            // three continuation bytes should follow
-                            if (position != length) {
-                                const unsigned char c2 = input[position];
-                                if (IsContinuationByte(c2)) {
-                                    position++;
-                                    if (position != length) {
-                                        const unsigned char c3 = input[position];
-                                        if (IsContinuationByte(c3)) {
-                                            position++;
-                                            if (position != length) {
-                                                const unsigned char c4 = input[position];
-                                                if (IsContinuationByte(c4)) {
-                                                    position++;
-                                                    if (((c & 7) | (c2 & 0x30)) != 0) {
-                                                        // corresponds to a pair of UTF16 surrogates
-                                                        result++;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+    Utf8DfaDecoder::State state = Utf8DfaDecoder::State::kAccept;
+    uint32_t code_point = 0;
+    int utf16Chars = 0;
+    int pos = 0;
+    while (pos < length) {
+        Utf8DfaDecoder::State prev_state = state;
+        Utf8DfaDecoder::Decode(input[pos++], &state, &code_point);
+
+        switch (state) {
+            case Utf8DfaDecoder::State::kAccept: {
+                utf16Chars++;
+                // If codepoint is >= U+FFFF, it is represented as a surrogate pair in UTF-16.
+                if ((code_point >> 16) != 0) {
+                    utf16Chars++;
                 }
+                code_point = 0;
+                break;
             }
+
+            case Utf8DfaDecoder::State::kReject:
+                // The byte is invalid, replace it and restart.
+                utf16Chars++;
+                state = Utf8DfaDecoder::State::kAccept;
+                code_point = 0;
+
+                // If we were trying to continue a sequence, we need to reprocess
+                // this same byte after resetting to the initial state.
+                if (prev_state != Utf8DfaDecoder::State::kAccept) {
+                    pos--;
+                }
+                break;
+
+            default:
+                // Incomplete sequence.
+                break;
         }
-        result++;
     }
-    return result;
+    if (state != Utf8DfaDecoder::State::kAccept) {
+        // Incomplete sequence at the end. Add a replacement character.
+        utf16Chars++;
+    }
+    return utf16Chars;
 }
 
 void GraalString::Utf16Write(const unsigned char* input, jchar* output, int length) {
-    int position = 0;
-    while (position < length) {
-        const unsigned char c = input[position++];
-        if ((c & 0x80) == 0) { // 0xxxxxxx
-            *output++ = c;
-        } else {
-            bool invalid = true;
-            if ((c & 0x40) != 0) { // else 10xxxxxx i.e. continuation byte on the first position => invalid
-                if ((c & 0x20) == 0) { // 110xxxxx
-                    // one continuation byte should follow
-                    if (position != length) {
-                        const unsigned char c2 = input[position];
-                        if (IsContinuationByte(c2) && (c & 0x1E) != 0) {
-                            *output++ = ((c & 0x1F) << 6) | (c2 & 0x3F);
-                            position++;
-                            invalid = false;
-                        }
-                    }
-                } else {
-                    if ((c & 0x10) == 0) { // 1110xxxx
-                        // two continuation bytes should follow
-                        if (position != length) {
-                            const unsigned char c2 = input[position];
-                            if (IsContinuationByte(c2)) {
-                                position++;
-                                if (position != length) {
-                                    const unsigned char c3 = input[position];
-                                    if (IsContinuationByte(c3)) {
-                                        // if (!overlong encoding && !code point for a surrogate) {
-                                        if (((c & 0x0F) | (c2 & 0x20)) != 0 && ((c & 0x0F) != 0x0D || (c2 & 0x20) == 0)) {
-                                            *output++ = ((c & 0x0F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F);
-                                            invalid = false;
-                                            position++;
-                                        } else {
-                                            position--;
-                                        }
-                                    }
-                                }
-                            }
-                        }
+    Utf8DfaDecoder::State state = Utf8DfaDecoder::State::kAccept;
+    uint32_t code_point = 0;
+    int pos = 0;
+    while (pos < length) {
+        Utf8DfaDecoder::State prev_state = state;
+        Utf8DfaDecoder::Decode(input[pos++], &state, &code_point);
 
-                    } else {
-                        if ((c & 0x08) == 0) { // 11110xxx
-                            // three continuation bytes should follow
-                            if (position != length) {
-                                const unsigned char c2 = input[position];
-                                if (IsContinuationByte(c2)) {
-                                    position++;
-                                    if (position != length) {
-                                        const unsigned char c3 = input[position];
-                                        if (IsContinuationByte(c3)) {
-                                            position++;
-                                            if (position != length) {
-                                                const unsigned char c4 = input[position];
-                                                if (IsContinuationByte(c4)) {
-                                                    position++;
-                                                    if (((c & 7) | (c2 & 0x30)) != 0) {
-                                                        // corresponds to a pair of UTF16 surrogates that are encoded
-                                                        // using 4 bytes in UTF8 encoding
-                                                        int code_point = ((c & 0x07) << 18) + ((c2 & 0x3F) << 12) + ((c3 & 0x3F) << 6) + (c4 & 0x3F);
-                                                        *output++ = ((code_point - 0x10000) >> 10) | 0xD800;
-                                                        *output++ = (code_point & 0x3FF) | 0xDC00;
-                                                        invalid = false;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+        switch (state) {
+            case Utf8DfaDecoder::State::kAccept:
+                // If codepoint is >= U+FFFF, it is represented as a surrogate pair in UTF-16.
+                if ((code_point >> 16) == 0) {
+                    *output++ = static_cast<jchar>(code_point);
+                } else {
+                    *output++ = static_cast<jchar>(((code_point - 0x10000) >> 10) | 0xD800);
+                    *output++ = static_cast<jchar>((code_point & 0x3FF) | 0xDC00);
                 }
-            }
-            if (invalid) {
-                // replacement character
-                *output++ = 0xFFFD;
-            }
+                code_point = 0;
+                break;
+
+            case Utf8DfaDecoder::State::kReject:
+                // The byte is invalid, replace it and restart.
+                *output++ = REPLACEMENT_CHAR;
+                state = Utf8DfaDecoder::State::kAccept;
+                code_point = 0;
+
+                // If we were trying to continue a sequence, we need to reprocess
+                // this same byte after resetting to the initial state.
+                if (prev_state != Utf8DfaDecoder::State::kAccept) {
+                    pos--;
+                }
+                break;
+
+            default:
+                // Incomplete sequence.
+                break;
         }
+    }
+    if (state != Utf8DfaDecoder::State::kAccept) {
+        // Incomplete sequence at the end.
+        *output++ = REPLACEMENT_CHAR;
     }
 }
 
