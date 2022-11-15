@@ -92,6 +92,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealmObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Contains built-in functions of the {@code %ShadowRealm.prototype%}.
@@ -179,11 +180,12 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 JSRealm callerRealm = functionObject.getRealm();
                 JSRealm targetRealm = JSRuntime.getFunctionRealm(target, callerRealm);
                 int argCount = JSArguments.getUserArgumentCount(args);
-                Object wrappedThisArgument = getWrappedValue.execute(context, targetRealm, JSArguments.getThisObject(args));
-                Object[] wrappedArgs = JSArguments.createInitial(wrappedThisArgument, target, argCount);
+                Object[] wrappedArgs = JSArguments.createInitial(Undefined.instance, target, argCount);
                 for (int i = 0; i < argCount; i++) {
                     JSArguments.setUserArgument(wrappedArgs, i, getWrappedValue.execute(context, targetRealm, JSArguments.getUserArgument(args, i)));
                 }
+                Object wrappedThisArgument = getWrappedValue.execute(context, targetRealm, JSArguments.getThisObject(args));
+                JSArguments.setThisObject(wrappedArgs, wrappedThisArgument);
                 Object result;
                 try {
                     JSRealm mainRealm = JSRealm.getMain(this);
