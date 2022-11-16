@@ -386,7 +386,7 @@ public class JSRealm {
     private final JSFunctionObject asyncGeneratorFunctionConstructor;
     private final JSDynamicObject asyncGeneratorFunctionPrototype;
 
-    private final JSFunctionObject throwerFunction;
+    private final JSFunctionObject throwTypeErrorFunction;
     private final Accessor throwerAccessor;
 
     private final JSFunctionObject promiseConstructor;
@@ -600,7 +600,8 @@ public class JSRealm {
 
         this.objectFactories = context.newObjectFactoryRealmData();
 
-        this.throwerFunction = createThrowerFunction();
+        this.throwTypeErrorFunction = createThrowTypeErrorFunction(false);
+        JSFunctionObject throwerFunction = createThrowTypeErrorFunction(true);
         this.throwerAccessor = new Accessor(throwerFunction, throwerFunction);
 
         if (context.isOptionAnnexB()) {
@@ -1658,9 +1659,9 @@ public class JSRealm {
         JSObjectUtil.putBuiltinAccessorProperty(realm.getObjectPrototype(), JSObject.PROTO, getProto, setProto);
     }
 
-    public final JSFunctionObject getThrowerFunction() {
-        assert throwerFunction != null;
-        return throwerFunction;
+    public final JSFunctionObject getThrowTypeErrorFunction() {
+        assert throwTypeErrorFunction != null;
+        return throwTypeErrorFunction;
     }
 
     public final Accessor getThrowerAccessor() {
@@ -1738,9 +1739,9 @@ public class JSRealm {
      * setters for restricted (i.e. deprecated) function and arguments object properties (namely,
      * 'caller', 'callee', 'arguments') that may not be accessed in strict mode.
      */
-    private JSFunctionObject createThrowerFunction() {
+    private JSFunctionObject createThrowTypeErrorFunction(boolean restrictedProperty) {
         CompilerAsserts.neverPartOfCompilation();
-        JSFunctionObject thrower = JSFunction.create(this, context.throwerFunctionData);
+        JSFunctionObject thrower = JSFunction.create(this, restrictedProperty ? context.throwTypeErrorRestrictedPropertyFunctionData : context.throwTypeErrorFunctionData);
         JSObject.preventExtensions(thrower);
         JSObject.setIntegrityLevel(thrower, true);
         return thrower;

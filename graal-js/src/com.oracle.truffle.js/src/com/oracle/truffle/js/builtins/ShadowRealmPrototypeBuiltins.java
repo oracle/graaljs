@@ -302,7 +302,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
             var onFulfilled = JSFunction.create(callerRealm, functionData);
             setExportNameStringNode.setValue(onFulfilled, exportNameString);
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
-            return performPromiseThenNode.execute(innerCapability.getPromise(), onFulfilled, callerRealm.getThrowerFunction(), promiseCapability);
+            return performPromiseThenNode.execute(innerCapability.getPromise(), onFulfilled, callerRealm.getThrowTypeErrorFunction(), promiseCapability);
         }
 
         private static JSFunctionData createExportGetterImpl(JSContext context) {

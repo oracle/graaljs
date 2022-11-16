@@ -75,6 +75,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.ThrowTypeErrorRootNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.promise.BuiltinPromiseRejectionTracker;
@@ -448,7 +449,8 @@ public class JSContext {
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
 
-    final JSFunctionData throwerFunctionData;
+    final JSFunctionData throwTypeErrorFunctionData;
+    final JSFunctionData throwTypeErrorRestrictedPropertyFunctionData;
     final JSFunctionData protoGetterFunctionData;
     final JSFunctionData protoSetterFunctionData;
 
@@ -643,7 +645,8 @@ public class JSContext {
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
 
-        this.throwerFunctionData = throwTypeErrorFunction();
+        this.throwTypeErrorFunctionData = throwTypeErrorFunction(false);
+        this.throwTypeErrorRestrictedPropertyFunctionData = throwTypeErrorFunction(true);
         boolean annexB = isOptionAnnexB();
         this.protoGetterFunctionData = annexB ? protoGetterFunction() : null;
         this.protoSetterFunctionData = annexB ? protoSetterFunction() : null;
@@ -1827,13 +1830,8 @@ public class JSContext {
         }
     }
 
-    private JSFunctionData throwTypeErrorFunction() {
-        CallTarget throwTypeErrorCallTarget = new JavaScriptRootNode(getLanguage(), null, null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                throw Errors.createTypeError("'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them");
-            }
-        }.getCallTarget();
+    private JSFunctionData throwTypeErrorFunction(boolean restrictedProperty) {
+        CallTarget throwTypeErrorCallTarget = new ThrowTypeErrorRootNode(getLanguage(), restrictedProperty).getCallTarget();
         return JSFunctionData.create(this, throwTypeErrorCallTarget, throwTypeErrorCallTarget, 0, Strings.EMPTY_STRING, false, false, false, true);
     }
 
