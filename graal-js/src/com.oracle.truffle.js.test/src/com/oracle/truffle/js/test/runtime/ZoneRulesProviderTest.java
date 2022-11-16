@@ -78,9 +78,9 @@ public class ZoneRulesProviderTest {
         try (Context context = newContext(true)) {
             context.eval(JavaScriptLanguage.ID, "date = new Date(Date.UTC(2020, 3, 25, 12, 13, 14))");
             // SimpleZoneRulesProvider uses +7 offset for all time-zones
-            assertResult(context, "date.toLocaleString()", "4/25/2020, 7:13:14 PM");
-            assertResult(context, "date.toLocaleTimeString()", "7:13:14 PM");
-            assertResult(context, "new Intl.DateTimeFormat('en', { dateStyle: 'long', timeStyle: 'long' }).format(date)", "April 25, 2020 at 7:13:14 PM GMT+7");
+            assertResult(context, "date.toLocaleString()", "4/25/2020, 7:13:14\u202fPM");
+            assertResult(context, "date.toLocaleTimeString()", "7:13:14\u202fPM");
+            assertResult(context, "new Intl.DateTimeFormat('en', { dateStyle: 'long', timeStyle: 'long' }).format(date)", "April 25, 2020 at 7:13:14\u202fPM GMT+7");
         }
     }
 
@@ -94,7 +94,7 @@ public class ZoneRulesProviderTest {
 
     private static void assertResult(Context context, String code, String expectedResult) {
         String actualResult = context.eval(JavaScriptLanguage.ID, code).toString();
-        assertEquals(expectedResult, actualResult.replace('\u202F', ' '));
+        assertEquals(expectedResult, actualResult);
     }
 
 }
