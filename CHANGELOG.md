@@ -7,6 +7,7 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 
 ## Version 23.0.0
 * Implemented the [Iterator Helpers](https://github.com/tc39/proposal-iterator-helpers) proposal. It is available behind the experimental option `--js.iterator-helpers`.
+* Implemented the [ShadowRealm](https://github.com/tc39/proposal-shadowrealm) proposal. It is available behind the experimental option `--js.shadow-realm`.
 * Removed experimental option `v8-legacy-const`.
 * Removed non-standard `SharedArrayBuffer.isView`.
 
