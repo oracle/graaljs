@@ -189,7 +189,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     value = JSWebAssemblyMemory.create(context, realm, externval);
                 } else {
                     assert Strings.TABLE.equals(externtype);
-                    value = JSWebAssemblyTable.create(context, realm, externval);
+                    TruffleString type = asTString(exportInterop.readMember(exportInfo, "type"));
+                    value = JSWebAssemblyTable.create(context, realm, externval, type);
                 }
 
                 JSObject.set(exports, name, value);

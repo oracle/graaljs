@@ -742,8 +742,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return ConstructJavaImporterNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
             case Global:
                 return construct ? (newTarget
-                                ? ConstructWebAssemblyGlobalNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : ConstructWebAssemblyGlobalNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                                ? ConstructWebAssemblyGlobalNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).varArgs().createArgumentNodes(context))
+                                : ConstructWebAssemblyGlobalNodeGen.create(context, builtin, false, args().function().fixedArgs(1).varArgs().createArgumentNodes(context)))
                                 : createCallRequiresNew(context, builtin);
             case Instance:
                 return construct ? (newTarget
@@ -762,8 +762,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 : createCallRequiresNew(context, builtin);
             case Table:
                 return construct ? (newTarget
-                                ? ConstructWebAssemblyTableNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                : ConstructWebAssemblyTableNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
+                                ? ConstructWebAssemblyTableNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).varArgs().createArgumentNodes(context))
+                                : ConstructWebAssemblyTableNodeGen.create(context, builtin, false, args().function().fixedArgs(1).varArgs().createArgumentNodes(context)))
                                 : createCallRequiresNew(context, builtin);
         }
         return null;
@@ -3204,6 +3204,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child JSToStringNode toStringNode;
         @Child ToWebAssemblyIndexOrSizeNode toInitialSizeNode;
         @Child ToWebAssemblyIndexOrSizeNode toMaximumSizeNode;
+        @Child ToWebAssemblyValueNode toWebAssemblyValueNode;
         @Child InteropLibrary tableAllocLib;
 
         public ConstructWebAssemblyTableNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
@@ -3215,18 +3216,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.toStringNode = JSToStringNode.create();
             this.toInitialSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table(): Property 'initial'");
             this.toMaximumSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table(): Property 'maximum'");
+            this.toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             this.tableAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
-        protected JSDynamicObject constructTable(JSDynamicObject newTarget, Object descriptor,
-                        @Cached TruffleString.EqualNode stringEqualsNode) {
+        protected JSDynamicObject constructTable(JSDynamicObject newTarget, Object descriptor, Object[] args) {
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Table(): Argument 0 must be a table descriptor", this);
             }
-            TruffleString element = toStringNode.executeString(getElementNode.getValue(descriptor));
-            if (!Strings.equals(stringEqualsNode, Strings.ANYFUNC, element)) {
-                throw Errors.createTypeError("WebAssembly.Table(): Descriptor property 'element' must be 'anyfunc'", this);
+            TruffleString elementKind = toStringNode.executeString(getElementNode.getValue(descriptor));
+            if (!JSWebAssemblyValueTypes.isReferenceType(elementKind)) {
+                throw Errors.createTypeError("WebAssembly.Table(): Descriptor property 'element' must be 'anyfunc' or 'externref'", this);
             }
             Object initial = getInitialNode.getValue(descriptor);
             if (initial == Undefined.instance) {
@@ -3249,15 +3250,21 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     throw Errors.createRangeErrorFormat("WebAssembly.Table(): Property 'maximum': value %d is above the upper bound %d", this, maximumInt, JSWebAssemblyTable.MAX_TABLE_SIZE);
                 }
             }
-            JSRealm realm = getRealm();
+            final JSRealm realm = getRealm();
+            Object wasmValue;
+            if (args.length == 0) {
+                wasmValue = JSWebAssemblyValueTypes.getDefaultValue(realm, elementKind);
+            } else {
+                wasmValue = toWebAssemblyValueNode.execute(args[0], elementKind);
+            }
             Object wasmTable;
             try {
                 Object createTable = realm.getWASMTableAlloc();
-                wasmTable = tableAllocLib.execute(createTable, initialInt, maximumInt);
+                wasmTable = tableAllocLib.execute(createTable, initialInt, maximumInt, elementKind, wasmValue);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
-            return swapPrototype(JSWebAssemblyTable.create(getContext(), realm, wasmTable), newTarget);
+            return swapPrototype(JSWebAssemblyTable.create(getContext(), realm, wasmTable, elementKind), newTarget);
         }
 
         @Override
@@ -3288,25 +3295,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected JSDynamicObject constructGlobal(JSDynamicObject newTarget, Object descriptor, Object value) {
+        protected JSDynamicObject constructGlobal(JSDynamicObject newTarget, Object descriptor, Object[] args) {
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Global(): Argument 0 must be a global descriptor", this);
             }
             boolean mutable = toBooleanNode.executeBoolean(getMutableNode.getValue(descriptor));
             TruffleString valueType = toStringNode.executeString(getValueNode.getValue(descriptor));
             if (!JSWebAssemblyValueTypes.isValueType(valueType)) {
-                throw Errors.createTypeError("WebAssembly.Global(): Descriptor property 'value' must be a WebAssembly type (i32, i64, f32, f64)", this);
+                throw Errors.createTypeError("WebAssembly.Global(): Descriptor property 'value' must be a WebAssembly type (i32, i64, f32, f64, anyfunc, externref)", this);
             }
+            final JSRealm realm = getRealm();
             Object webAssemblyValue;
-            if (value == Undefined.instance) {
-                webAssemblyValue = 0;
+            // According to the spec only missing values should produce a default value.
+            // According to the tests also undefined should use the default value.
+            if (args.length == 0 || args[0] == Undefined.instance) {
+                webAssemblyValue = JSWebAssemblyValueTypes.getDefaultValue(realm, valueType);
             } else {
                 if (!getContext().getContextOptions().isWasmBigInt() && JSWebAssemblyValueTypes.isI64(valueType)) {
                     throw Errors.createTypeError("WebAssembly.Global(): Can't set the value of i64 WebAssembly.Global", this);
                 }
-                webAssemblyValue = toWebAssemblyValueNode.execute(value, valueType);
+                webAssemblyValue = toWebAssemblyValueNode.execute(args[0], valueType);
             }
-            JSRealm realm = getRealm();
             Object wasmGlobal;
             try {
                 Object createGlobal = realm.getWASMGlobalAlloc();

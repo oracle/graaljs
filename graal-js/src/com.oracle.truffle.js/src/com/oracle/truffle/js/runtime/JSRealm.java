@@ -440,6 +440,7 @@ public class JSRealm {
     private final Object wasmTableWrite;
     private final Object wasmTableLength;
     private final Object wasmFuncType;
+    private final Object wasmIsFunc;
     private final Object wasmMemAlloc;
     private final Object wasmMemGrow;
     private final Object wasmMemAsByteBuffer;
@@ -455,6 +456,7 @@ public class JSRealm {
     private final Object wasmInstanceExport;
     private final Object wasmEmbedderDataGet;
     private final Object wasmEmbedderDataSet;
+    private final Object wasmRefNull;
 
     private final JSDynamicObject webAssemblyObject;
     private final JSFunctionObject webAssemblyGlobalConstructor;
@@ -885,6 +887,7 @@ public class JSRealm {
                 wasmTableWrite = wasmInterop.readMember(wasmObject, "table_write");
                 wasmTableLength = wasmInterop.readMember(wasmObject, "table_size");
                 wasmFuncType = wasmInterop.readMember(wasmObject, "func_type");
+                wasmIsFunc = wasmInterop.readMember(wasmObject, "is_func");
                 wasmMemAlloc = wasmInterop.readMember(wasmObject, "mem_alloc");
                 wasmMemGrow = wasmInterop.readMember(wasmObject, "mem_grow");
                 wasmGlobalAlloc = wasmInterop.readMember(wasmObject, "global_alloc");
@@ -901,6 +904,7 @@ public class JSRealm {
                 wasmEmbedderDataGet = wasmInterop.readMember(wasmObject, "embedder_data_get");
                 wasmEmbedderDataSet = wasmInterop.readMember(wasmObject, "embedder_data_set");
                 wasmMemAsByteBuffer = wasmInterop.readMember(wasmObject, "mem_as_byte_buffer");
+                wasmRefNull = wasmInterop.readMember(wasmObject, "ref_null");
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -930,6 +934,7 @@ public class JSRealm {
             this.wasmTableWrite = null;
             this.wasmTableLength = null;
             this.wasmFuncType = null;
+            this.wasmIsFunc = null;
             this.wasmMemAlloc = null;
             this.wasmMemGrow = null;
             this.wasmMemAsByteBuffer = null;
@@ -945,6 +950,7 @@ public class JSRealm {
             this.wasmInstanceExport = null;
             this.wasmEmbedderDataGet = null;
             this.wasmEmbedderDataSet = null;
+            this.wasmRefNull = null;
 
             this.webAssemblyObject = null;
             this.webAssemblyGlobalConstructor = null;
@@ -2986,6 +2992,10 @@ public class JSRealm {
         return wasmFuncType;
     }
 
+    public Object getWASMIsFunc() {
+        return wasmIsFunc;
+    }
+
     public Object getWASMMemAlloc() {
         return wasmMemAlloc;
     }
@@ -3020,6 +3030,10 @@ public class JSRealm {
 
     public Object getWASMMemAsByteBuffer() {
         return wasmMemAsByteBuffer;
+    }
+
+    public Object getWasmRefNull() {
+        return wasmRefNull;
     }
 
     public JSDynamicObject getWebAssemblyModulePrototype() {
