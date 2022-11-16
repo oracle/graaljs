@@ -624,8 +624,8 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static void addRestrictedFunctionProperties(JSRealm realm, JSDynamicObject obj) {
-        JSObjectUtil.putBuiltinAccessorProperty(obj, CALLER, realm.getThrowerFunction(), realm.getThrowerFunction());
-        JSObjectUtil.putBuiltinAccessorProperty(obj, ARGUMENTS, realm.getThrowerFunction(), realm.getThrowerFunction());
+        JSObjectUtil.putBuiltinAccessorProperty(obj, CALLER, realm.getThrowerAccessor());
+        JSObjectUtil.putBuiltinAccessorProperty(obj, ARGUMENTS, realm.getThrowerAccessor());
     }
 
     public static JSFunctionData createNamedEmptyFunctionData(JSContext context, TruffleString name) {

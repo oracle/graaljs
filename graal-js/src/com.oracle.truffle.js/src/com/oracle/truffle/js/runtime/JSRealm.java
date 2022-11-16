@@ -386,7 +386,7 @@ public class JSRealm {
     private final JSFunctionObject asyncGeneratorFunctionConstructor;
     private final JSDynamicObject asyncGeneratorFunctionPrototype;
 
-    private final JSDynamicObject throwerFunction;
+    private final JSFunctionObject throwerFunction;
     private final Accessor throwerAccessor;
 
     private final JSFunctionObject promiseConstructor;
@@ -1658,7 +1658,7 @@ public class JSRealm {
         JSObjectUtil.putBuiltinAccessorProperty(realm.getObjectPrototype(), JSObject.PROTO, getProto, setProto);
     }
 
-    public final JSDynamicObject getThrowerFunction() {
+    public final JSFunctionObject getThrowerFunction() {
         assert throwerFunction != null;
         return throwerFunction;
     }
@@ -1733,15 +1733,14 @@ public class JSRealm {
     }
 
     /**
-     * This function is used whenever a function is required that throws a TypeError. It is used by
-     * some of the builtins that provide accessor functions that should not be called (e.g., as a
-     * method of deprecation). In the specification, this is often referred to as
-     * "[[ThrowTypeError]] function Object (13.2.3)".
-     *
+     * Creates the %ThrowTypeError% function object (https://tc39.es/ecma262/#sec-%throwtypeerror%).
+     * It is used where a function is needed that always throws a TypeError, including getters and
+     * setters for restricted (i.e. deprecated) function and arguments object properties (namely,
+     * 'caller', 'callee', 'arguments') that may not be accessed in strict mode.
      */
-    private JSDynamicObject createThrowerFunction() {
+    private JSFunctionObject createThrowerFunction() {
         CompilerAsserts.neverPartOfCompilation();
-        JSDynamicObject thrower = JSFunction.create(this, context.throwerFunctionData);
+        JSFunctionObject thrower = JSFunction.create(this, context.throwerFunctionData);
         JSObject.preventExtensions(thrower);
         JSObject.setIntegrityLevel(thrower, true);
         return thrower;
