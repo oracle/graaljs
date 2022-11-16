@@ -51,6 +51,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ShadowRealmPrototypeBuiltinsFactory.GetWrappedValueNodeGen;
@@ -61,16 +62,19 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.nodes.promise.ImportCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
@@ -79,6 +83,8 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
+import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -132,20 +138,55 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
         return null;
     }
 
+    @ImportStatic(JSFunction.class)
     abstract static class GetWrappedValueNode extends JavaScriptBaseNode {
 
         abstract Object execute(JSContext context, JSRealm callerRealm, Object value);
 
         @Specialization(guards = "isCallable.executeBoolean(value)", limit = "1")
         protected final Object objectCallable(JSContext context, JSRealm callerRealm, Object value,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
-            return wrappedFunctionCreate(context, callerRealm, value);
+                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
+                        @Cached("create(LENGTH, context, true)") HasPropertyCacheNode hasOwnPropertyLength,
+                        @Cached("create(LENGTH, context)") PropertyGetNode getFunctionLength,
+                        @Cached("create(NAME, context)") PropertyGetNode getFunctionName,
+                        @Cached SetFunctionNameNode setFunctionName,
+                        @Cached JSToIntegerOrInfinityNode toIntegerOrInfinity,
+                        @Cached ConditionProfile hasIntegerLengthProfile) {
+            CompilerAsserts.partialEvaluationConstant(context);
+            JSFunctionData wrappedFunctionCall = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.OrdinaryWrappedFunctionCall, ShadowRealmPrototypeBuiltins::createWrappedFunctionImpl);
+            JSFunctionObject wrapped = JSFunction.createWrapped(context, callerRealm, wrappedFunctionCall, value);
+            try {
+                copyNameAndLength(wrapped, value, hasOwnPropertyLength, getFunctionLength, getFunctionName, setFunctionName, toIntegerOrInfinity, hasIntegerLengthProfile);
+            } catch (AbstractTruffleException ex) {
+                throw toTypeError(ex, callerRealm);
+            }
+            return wrapped;
         }
 
-        private Object wrappedFunctionCreate(JSContext context, JSRealm callerRealm, Object target) {
-            CompilerAsserts.partialEvaluationConstant(context);
-            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.OrdinaryWrappedFunctionCall, ShadowRealmPrototypeBuiltins::createWrappedFunctionImpl);
-            return JSFunction.createWrapped(context, callerRealm, functionData, target);
+        private static void copyNameAndLength(JSFunctionObject wrapped, Object target,
+                        HasPropertyCacheNode hasOwnPropertyLength, PropertyGetNode getFunctionLength, PropertyGetNode getFunctionName, SetFunctionNameNode setFunctionName,
+                        JSToIntegerOrInfinityNode toIntegerOrInfinity, ConditionProfile hasIntegerLengthProfile) {
+            Number length = 0;
+            if (hasOwnPropertyLength.hasProperty(target)) {
+                Object targetLen = getFunctionLength.getValue(target);
+                if (hasIntegerLengthProfile.profile(targetLen instanceof Integer)) {
+                    int targetLenAsInt = (Integer) targetLen;
+                    length = Math.max(targetLenAsInt, 0);
+                } else if (JSRuntime.isNumber(targetLen)) {
+                    double targetLenAsInt = Math.max(JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(targetLen)), 0);
+                    if (targetLenAsInt == Double.POSITIVE_INFINITY) {
+                        length = Double.POSITIVE_INFINITY;
+                    } else {
+                        length = JSRuntime.doubleToNarrowestNumber(targetLenAsInt);
+                    }
+                }
+            }
+            JSFunction.setFunctionLength(wrapped, length);
+            Object targetName = getFunctionName.getValue(target);
+            if (!JSGuards.isString(targetName)) {
+                targetName = Strings.EMPTY_STRING;
+            }
+            setFunctionName.execute(wrapped, targetName);
         }
 
         @Specialization(guards = {"isObject.executeBoolean(value)", "!isCallable.executeBoolean(value)"}, limit = "1")
@@ -159,6 +200,17 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected static Object primitive(@SuppressWarnings("unused") JSContext context, @SuppressWarnings("unused") JSRealm callerRealm, Object value,
                         @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObject) {
             return value;
+        }
+
+        @TruffleBoundary
+        private AbstractTruffleException toTypeError(AbstractTruffleException exception, JSRealm callerRealm) {
+            if (exception instanceof JSException) {
+                var jsException = (JSException) exception;
+                if (jsException.getErrorType() == JSErrorType.TypeError && jsException.getRealm() == callerRealm) {
+                    return jsException;
+                }
+            }
+            return Errors.createTypeError(exception, this);
         }
 
         public static GetWrappedValueNode create() {
@@ -298,7 +350,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 mainRealm.leaveRealm(this, prevRealm);
             }
 
-            JSFunctionData functionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.ExportGetter, ShadowRealmImportValueNode::createExportGetterImpl);
+            JSFunctionData functionData = getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ExportGetter, ShadowRealmImportValueNode::createExportGetterImpl);
             var onFulfilled = JSFunction.create(callerRealm, functionData);
             setExportNameStringNode.setValue(onFulfilled, exportNameString);
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
