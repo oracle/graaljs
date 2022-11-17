@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -426,7 +426,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private Object toFixedIntl(double value, int digits) {
-            if (0 > digits || digits > ((getContext().getEcmaScriptVersion() >= 9) ? 100 : 20)) {
+            if (0 > digits || digits > ((getContext().getEcmaScriptVersion() >= JSConfig.ECMAScript2018) ? 100 : 20)) {
                 digitsErrorBranch.enter();
                 throw Errors.createRangeError("toFixed() fraction digits need to be in range 0-100");
             }
@@ -532,7 +532,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private void checkDigits(int digits, BranchProfile digitsErrorBranch) {
-            final int maxDigits = getContext().getEcmaScriptVersion() >= 9 ? 100 : 20;
+            final int maxDigits = getContext().getEcmaScriptVersion() >= JSConfig.ECMAScript2018 ? 100 : 20;
             if (0 > digits || digits > maxDigits) {
                 digitsErrorBranch.enter();
                 throw digitsRangeError(maxDigits);
@@ -617,7 +617,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private void checkPrecision(long precision) {
-            if (1 > precision || precision > ((getContext().getEcmaScriptVersion() >= 9) ? 100 : 20)) {
+            if (1 > precision || precision > ((getContext().getEcmaScriptVersion() >= JSConfig.ECMAScript2018) ? 100 : 20)) {
                 precisionErrorBranch.enter();
                 throw Errors.createRangeError("precision not in range");
             }

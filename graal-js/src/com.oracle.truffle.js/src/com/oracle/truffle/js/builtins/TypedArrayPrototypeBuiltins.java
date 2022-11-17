@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -202,7 +202,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case findLastIndex:
                 return JSArrayFindIndexNodeGen.create(context, builtin, true, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case fill:
-                return context.getEcmaScriptVersion() >= 9 ? JSArrayBufferViewFillNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context))
+                return context.getEcmaScriptVersion() >= JSConfig.ECMAScript2018
+                                ? JSArrayBufferViewFillNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context))
                                 : JSArrayFillNodeGen.create(context, builtin, true, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case reduce:
                 return JSArrayReduceNodeGen.create(context, builtin, true, true, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));

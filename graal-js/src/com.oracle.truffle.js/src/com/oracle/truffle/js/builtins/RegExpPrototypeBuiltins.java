@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1737,7 +1737,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.getGlobal = PropertyGetNode.create(JSRegExp.GLOBAL, context);
             this.getIgnoreCase = PropertyGetNode.create(JSRegExp.IGNORE_CASE, context);
             this.getMultiline = PropertyGetNode.create(JSRegExp.MULTILINE, context);
-            if (context.getEcmaScriptVersion() >= 9) {
+            if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2018) {
                 this.getDotAll = PropertyGetNode.create(JSRegExp.DOT_ALL, context);
             }
             this.getUnicode = PropertyGetNode.create(JSRegExp.UNICODE, context);
