@@ -238,8 +238,7 @@ public class AsyncInteropTest {
 
     /**
      * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"throw"</code>, an
-     * exception is raised when a promise rejection is not handled. A further warning is printed
-     * when a reaction is registered later on.
+     * exception is raised when a promise rejection is not handled.
      */
     @Test
     public void testJSHandledRejectionThrowAsyncRegisterThen() {
@@ -258,7 +257,7 @@ public class AsyncInteropTest {
             context.eval("js", "rejectedPromise.catch(x => console.log(`Async handled: ${x}`));");
         }
         assertEquals("Async handled: 42\n", out.toString());
-        assertEquals("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: 42" + LF, err.toString());
+        assertEquals("", err.toString());
     }
 
     /**

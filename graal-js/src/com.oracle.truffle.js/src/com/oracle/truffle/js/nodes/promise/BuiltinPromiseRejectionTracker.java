@@ -116,9 +116,11 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
 
         while (!asyncHandledRejections.isEmpty()) {
             PromiseChainInfoRecord info = asyncHandledRejections.removeFirst();
-            PrintWriter out = realm.getErrorWriter();
-            out.println("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: " + formatError(info.reason));
-            out.flush();
+            if (mode == JSContextOptions.UnhandledRejectionsTrackingMode.WARN) {
+                PrintWriter out = realm.getErrorWriter();
+                out.println("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: " + formatError(info.reason));
+                out.flush();
+            }
         }
 
         // Take one at a time as the rejection handler could queue up more rejections.
