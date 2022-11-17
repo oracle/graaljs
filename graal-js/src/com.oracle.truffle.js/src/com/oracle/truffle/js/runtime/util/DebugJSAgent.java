@@ -102,8 +102,10 @@ public class DebugJSAgent extends JSAgent {
     public void startNewAgent(String sourceText) {
         final Source agentSource = Source.newBuilder(JavaScriptLanguage.ID, sourceText, "agent").build();
         final TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
-        final TruffleContext agentContext = env.newContextBuilder().build();
+        final TruffleContext agentContext = env.newInnerContextBuilder().inheritAllAccess(true).build();
         final CountDownLatch barrier = new CountDownLatch(1);
+
+        agentContext.initializePublic(null, JavaScriptLanguage.ID);
 
         Thread thread = env.createThread(new Runnable() {
             @Override
