@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.test.builtins;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
 
 import java.io.File;
 import java.io.IOException;
@@ -69,6 +71,7 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -150,10 +153,10 @@ public class ImportWithCustomFsTest {
         CommonJsTracingTestFs fs = new CommonJsTracingTestFs(expectedSpecifier, moduleBody);
 
         final Map<String, String> options = new HashMap<>();
-        options.put("js.commonjs-require", "true");
-        options.put("js.commonjs-require-cwd", "/some/user/folder");
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, "/some/user/folder");
 
-        Context cx = JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).allowIO(true).fileSystem(fs).allowExperimentalOptions(true).options(options).build();
+        Context cx = JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).allowIO(IOAccess.newBuilder().fileSystem(fs).build()).allowExperimentalOptions(true).options(options).build();
         Value v = cx.eval(Source.newBuilder(ID, testSrc, "test.mjs").build());
         Assert.assertEquals(43, v.asInt());
         Assert.assertTrue(fs.stringSpecifiers.contains(expectedSpecifier));
@@ -176,7 +179,7 @@ public class ImportWithCustomFsTest {
                 // Clear stale entries from the cache
                 System.gc();
 
-                try (Context cx = JSTest.newContextBuilder().engine(engine).allowIO(true).fileSystem(fs).build()) {
+                try (Context cx = JSTest.newContextBuilder().engine(engine).allowIO(IOAccess.newBuilder().fileSystem(fs).build()).build()) {
                     cx.eval(src);
 
                     cx.enter();
@@ -205,12 +208,12 @@ public class ImportWithCustomFsTest {
     }
 
     private static Value assertFsLoads(TestFS fs, File file) throws IOException {
-        Context cx = JSTest.newContextBuilder().allowIO(true).fileSystem(fs).build();
+        Context cx = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().fileSystem(fs).build()).build();
         return cx.eval(Source.newBuilder(ID, file).build());
     }
 
     private static Value assertFsLoads(TestFS fs, String testSrc) throws IOException {
-        Context cx = JSTest.newContextBuilder().allowIO(true).fileSystem(fs).build();
+        Context cx = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().fileSystem(fs).build()).build();
         return cx.eval(Source.newBuilder(ID, testSrc, "test.mjs").build());
     }
 

@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.test.regress;
 
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -52,11 +55,11 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
+import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.attribute.FileAttribute;
 import java.util.HashMap;
 import java.util.Map;
@@ -64,6 +67,7 @@ import java.util.Set;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -76,8 +80,11 @@ public class GH594 {
         files.put(Paths.get("/a/b/esm-module.mjs").toAbsolutePath(), "export const foo = 'foo';");
         String root = System.getProperty("user.home");
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Context context = Context.newBuilder("js").fileSystem(new TestFileSystem(files, root)).allowAllAccess(true).allowExperimentalOptions(true).out(out).err(out).option("js.commonjs-require",
-                        "true").option("js.commonjs-require-cwd", root).build();
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new TestFileSystem(files, root)).build();
+        Context context = Context.newBuilder("js").allowIO(ioAccess).allowAllAccess(true).allowExperimentalOptions(true).out(out).err(out).//
+                        option(COMMONJS_REQUIRE_NAME, "true").//
+                        option(COMMONJS_REQUIRE_CWD_NAME, root).//
+                        build();
         context.eval("js", "require('/a/b/cjs-module.cjs').fooPromise.then(console.log);");
         out.flush();
         Assert.assertEquals("foo\n", out.toString());

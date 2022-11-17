@@ -63,10 +63,12 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Assume;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
 
@@ -157,7 +159,8 @@ public class MLEBuiltinTest {
 
     private static Context getTestContext(TestEsmLookup importCallback, Map<String, String> virtualModules) {
         FileSystem testFs = new TestFileSystem(virtualModules);
-        Context context = JSTest.newContextBuilder().option("js.mle-mode", "true").option("engine.WarnInterpreterOnly", "false").fileSystem(testFs).allowAllAccess(true).build();
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(testFs).build();
+        Context context = JSTest.newContextBuilder().option(JSContextOptions.MLE_MODE_NAME, "true").option("engine.WarnInterpreterOnly", "false").allowIO(ioAccess).allowAllAccess(true).build();
         context.getBindings("js").putMember("lambda", importCallback);
         context.eval("js", "MLE.registerESMLookup(lambda);");
         context.getBindings("js").removeMember("lambda");

@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.test.regress;
 
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
+
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
@@ -53,12 +56,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
 
 public class GR36103 {
 
@@ -90,18 +95,18 @@ public class GR36103 {
 
     static Context createDefaultContext(Context.Builder builder, String moduleBody, String packageJson) {
         Map<String, String> options = new HashMap<>();
-        options.put("js.commonjs-require", "true");
-        options.put("js.commonjs-require-cwd", "node/npm");
-        builder.options(options).fileSystem(new TestFilesystem(moduleBody, packageJson));
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, "node/npm");
+        builder.options(options).allowIO(IOAccess.newBuilder().fileSystem(new TestFileSystem(moduleBody, packageJson)).build());
         return builder.build();
     }
 
-    public static class TestFilesystem implements FileSystem {
+    public static class TestFileSystem implements FileSystem {
 
         private final String moduleBody;
         private final String packageJson;
 
-        public TestFilesystem(String moduleBody, String packageJson) {
+        public TestFileSystem(String moduleBody, String packageJson) {
             this.moduleBody = moduleBody;
             this.packageJson = packageJson;
         }

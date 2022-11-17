@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,22 @@
  */
 package com.oracle.truffle.js.test.regress;
 
-import com.oracle.truffle.js.test.JSTest;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.junit.Test;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.io.IOAccess;
+import org.junit.Test;
+
+import com.oracle.truffle.js.test.JSTest;
 
 public class GR35738 {
 
     @Test
     public void testEmptyWithUrl() throws IOException {
-        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build()).build()) {
             File tmpFile = File.createTempFile("empty", ".mjs");
             tmpFile.deleteOnExit();
             URL url = tmpFile.toURI().toURL();

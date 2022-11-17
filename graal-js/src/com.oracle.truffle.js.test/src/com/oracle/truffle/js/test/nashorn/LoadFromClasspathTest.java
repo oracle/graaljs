@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
@@ -77,7 +78,7 @@ public class LoadFromClasspathTest {
 
     @Test
     public void testLoadFromClasspathDenied() {
-        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
             context.eval(Source.newBuilder(ID, "load('classpath:" + SCRIPT_PATH + "');", "load-from-classpath.js").buildLiteral());
             fail("did not throw");
         } catch (PolyglotException e) {

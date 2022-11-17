@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.test.regress;
 
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -52,11 +55,11 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
+import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.attribute.FileAttribute;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,6 +70,7 @@ import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -107,11 +111,11 @@ public class GH597 {
         files.put("/no-ext-cjs-module", "module.exports.foo = 42");
         files.put("/cjs-module.js", "module.exports.boo = 43;");
         return Context.newBuilder("js").//
-                        fileSystem(new TestFileSystem(files)).//
+                        allowIO(IOAccess.newBuilder().fileSystem(new TestFileSystem(files)).build()).//
                         allowAllAccess(true).//
                         allowExperimentalOptions(true).//
-                        option("js.commonjs-require", "true").//
-                        option("js.commonjs-require-cwd", fsRoot).//
+                        option(COMMONJS_REQUIRE_NAME, "true").//
+                        option(COMMONJS_REQUIRE_CWD_NAME, fsRoot).//
                         build();
     }
 

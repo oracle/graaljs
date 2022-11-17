@@ -75,6 +75,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
 /**
@@ -205,7 +206,8 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
         @Override
         public Builder setOption(Builder builder, Object value) {
-            return builder.allowIO(toBoolean(this, value));
+            boolean enabled = toBoolean(this, value);
+            return builder.allowIO(enabled ? IOAccess.ALL : IOAccess.NONE);
         }
     }, new MagicBindingsOptionSetter() {
 
