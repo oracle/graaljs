@@ -333,8 +333,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         try {
             state.dateIntervalFormat = DateIntervalFormat.getInstance(skeleton, intervalFormatLocale);
         } catch (IllegalArgumentException iaex) {
-            // workaround for ICU-21939
-            state.dateIntervalFormat = DateIntervalFormat.getInstance(patchSkeletonToAvoidICU21939(skeleton), intervalFormatLocale);
+            // workaround for ICU-22202
+            state.dateIntervalFormat = DateIntervalFormat.getInstance(patchSkeletonToAvoidICU22202(skeleton), intervalFormatLocale);
         }
 
         if (state.calendar == null) {
@@ -361,10 +361,10 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         state.initialized = true;
     }
 
-    // workaround for ICU-21939, replaces less common year-related parts
+    // workaround for ICU-22202, replaces less common year-related parts
     // of the skeleton by the most common pattern symbol for year
     // and removes day-period-related pattern symbols
-    private static String patchSkeletonToAvoidICU21939(String skeleton) {
+    private static String patchSkeletonToAvoidICU22202(String skeleton) {
         StringBuilder sb = new StringBuilder();
         for (char c : skeleton.toCharArray()) {
             switch (c) {
