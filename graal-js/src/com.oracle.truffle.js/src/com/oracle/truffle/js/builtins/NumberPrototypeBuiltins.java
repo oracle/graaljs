@@ -617,10 +617,16 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private void checkPrecision(long precision) {
-            if (1 > precision || precision > ((getContext().getEcmaScriptVersion() >= JSConfig.ECMAScript2018) ? 100 : 20)) {
+            int maxPrecision = (getContext().getEcmaScriptVersion() >= JSConfig.ECMAScript2018) ? 100 : 20;
+            if (precision < 1 || precision > maxPrecision) {
                 precisionErrorBranch.enter();
-                throw Errors.createRangeError("precision not in range");
+                throw precisionRangeError(maxPrecision);
             }
+        }
+
+        @TruffleBoundary
+        private static JSException precisionRangeError(int maxPrecision) {
+            return Errors.createRangeError("toPrecision() argument must be between 1 and " + maxPrecision);
         }
     }
 }
