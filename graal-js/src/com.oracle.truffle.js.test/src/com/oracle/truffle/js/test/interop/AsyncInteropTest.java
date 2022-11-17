@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -66,7 +65,13 @@ import com.oracle.truffle.js.test.JSTest;
 
 public class AsyncInteropTest {
 
-    private static final String LF = System.getProperty("line.separator");
+    private static Context.Builder newContextBuilder() {
+        Context.Builder b = JSTest.newContextBuilder();
+        b.allowHostAccess(HostAccess.ALL);
+        b.option(JSContextOptions.CONSOLE_NAME, "true");
+        b.option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false");
+        return b;
+    }
 
     /**
      * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"none"</code> (or not
@@ -75,9 +80,7 @@ public class AsyncInteropTest {
     @Test
     public void testJavaUnhandledRejectionNone() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
-                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
-                        "none").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+        try (Context context = newContextBuilder().out(out).err(out).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "none").build()) {
             Value asyncFn = context.eval(ID, "" +
                             "(async function () {" +
                             "  throw 'failed!!';" +
@@ -95,16 +98,14 @@ public class AsyncInteropTest {
     @Test
     public void testJavaUnhandledRejectionWarn() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
-                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
-                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+        try (Context context = newContextBuilder().out(out).err(out).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "warn").build()) {
             Value asyncFn = context.eval(ID, "" +
                             "(async function () {" +
                             "  throw 'failed!!';" +
                             "  console.log(x);" +
                             "})");
             asyncFn.executeVoid();
-            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!" + LF, out.toString());
+            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!\n", out.toString());
         }
     }
 
@@ -117,9 +118,7 @@ public class AsyncInteropTest {
     public void testJavaHandledRejection() {
         TestOutput out = new TestOutput();
         TestOutput err = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(err).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
-                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
-                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+        try (Context context = newContextBuilder().err(err).out(out).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "warn").build()) {
             Value asyncFn = context.eval(ID, "" +
                             "(async function () {" +
                             "  throw 'failed!!';" +
@@ -129,8 +128,8 @@ public class AsyncInteropTest {
             Consumer<Object> javaThen = (v) -> out.write("Got exception: " + v.toString());
             asyncPromise.invokeMember("catch", javaThen);
         }
-        assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!" + LF +
-                        "[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: failed!!" + LF, err.toString());
+        assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!\n" +
+                        "[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: failed!!\n", err.toString());
         assertEquals("Got exception: failed!!", out.toString());
     }
 
@@ -143,16 +142,14 @@ public class AsyncInteropTest {
     public void testJavaHandledRejectionStep() {
         TestOutput out = new TestOutput();
         TestOutput err = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(err).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
-                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
-                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+        try (Context context = newContextBuilder().err(err).out(out).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "warn").build()) {
             Value promise = context.eval(ID, "Promise.reject(42);");
-            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: 42" + LF, err.toString());
+            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: 42\n", err.toString());
             err.reset();
             Consumer<Object> javaThen = (v) -> out.write("Promise rejected: " + v.toString());
             promise.invokeMember("catch", javaThen);
         }
-        assertEquals("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: 42" + LF, err.toString());
+        assertEquals("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: 42\n", err.toString());
         assertEquals("Promise rejected: 42", out.toString());
     }
 
@@ -163,9 +160,7 @@ public class AsyncInteropTest {
     @Test
     public void testJSHandledRejection() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(out).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
-                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
-                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+        try (Context context = newContextBuilder().err(out).out(out).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "warn").build()) {
             context.eval(ID, "" +
                             "(async function foo() {" +
                             "  throw 'failed!!';" +
@@ -182,9 +177,7 @@ public class AsyncInteropTest {
     @Test
     public void testJSHandledRejectionLater() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(out).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
-                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
-                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+        try (Context context = newContextBuilder().err(out).out(out).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "warn").build()) {
             context.eval(ID, "" +
                             "const promise = (async function foo() {" +
                             "  throw 'failed!!';" +
@@ -203,9 +196,7 @@ public class AsyncInteropTest {
     @Test
     public void testJavaUnhandledRejectionThrow() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
-                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
-                        "throw").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+        try (Context context = newContextBuilder().out(out).err(out).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
             try {
                 context.eval(ID, "Promise.reject(42);");
                 assert false;
@@ -224,9 +215,7 @@ public class AsyncInteropTest {
     @Test
     public void testJSHandledRejectionThrow() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(out).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
-                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
-                        "throw").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+        try (Context context = newContextBuilder().err(out).out(out).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
             context.eval(ID, "" +
                             "(async function foo() {" +
                             "  throw 'failed!!';" +
@@ -244,9 +233,7 @@ public class AsyncInteropTest {
     public void testJSHandledRejectionThrowAsyncRegisterThen() {
         TestOutput out = new TestOutput();
         TestOutput err = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(err).option(JSContextOptions.CONSOLE_NAME, "true").option(
-                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
-                        "throw").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+        try (Context context = newContextBuilder().out(out).err(err).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
             try {
                 context.eval(ID, "const rejectedPromise = Promise.reject(42);");
                 assert false;
@@ -266,8 +253,7 @@ public class AsyncInteropTest {
     @Test
     public void testJavaThenable() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             Thenable then2 = (resolve, reject) -> resolve.executeVoid(42);
             Thenable then1 = (resolve, reject) -> resolve.executeVoid(then2);
             context.getBindings(ID).putMember("myJavaThenable", then1);
@@ -288,8 +274,7 @@ public class AsyncInteropTest {
     @Test
     public void testJavaExecutor() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             Executable javaExecutable = (resolve, reject) -> resolve.execute(42);
             context.getBindings(ID).putMember("javaExecutable", javaExecutable);
             Value asyncFn = context.eval(ID, "new Promise(javaExecutable).then(x => console.log(x));");
@@ -305,8 +290,7 @@ public class AsyncInteropTest {
     @Test
     public void testPromiseJavaThen() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             Value jsPromise = context.eval(ID, "Promise.resolve(42);");
             Consumer<Object> javaThen = (value) -> out.write("Resolved from JavaScript: " + value);
             jsPromise.invokeMember("then", javaThen);
@@ -320,8 +304,7 @@ public class AsyncInteropTest {
     @Test
     public void testPromiseJavaThenAsync() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             Value asyncFn = context.eval(ID, "" +
                             "(async function () {" +
                             "  return await 42;" +
@@ -340,8 +323,7 @@ public class AsyncInteropTest {
     @Test
     public void testPromiseJavaCatch() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             Value asyncFn = context.eval(ID, "" +
                             "(async function () {" +
                             "  throw 42;" +
@@ -360,8 +342,7 @@ public class AsyncInteropTest {
     @Test
     public void testJavaCompletableFutureToPromise() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             CompletableFuture<String> javaFuture = new CompletableFuture<>();
             // Wrap Java future in a JS Promise
             Value jsPromise = wrapPromise(context, javaFuture);
@@ -386,8 +367,7 @@ public class AsyncInteropTest {
     @Test
     public void testChainReactions() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             Function<Integer, Integer> incJava = i -> i + 1;
             Consumer<Object> print = (value) -> out.write("Final result: " + value);
             context.getBindings(ID).putMember("incJava", incJava);
@@ -407,8 +387,7 @@ public class AsyncInteropTest {
      */
     @Test
     public void testChainCompletableFuturePromises() throws ExecutionException, InterruptedException {
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().build()) {
             CompletableFuture<String> javaFuture = CompletableFuture.supplyAsync(() -> {
                 try {
                     TimeUnit.SECONDS.sleep(1);
@@ -426,8 +405,7 @@ public class AsyncInteropTest {
     @Test
     public void orderedSwitchAsyncJava() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             Value func = context.eval("js", "async function doStuff(value, callback) {" //
                             + "  async function somethingAsync(v) {" //
                             + "    console.log(`From JS ${value} ${v}`);" //
@@ -466,8 +444,7 @@ public class AsyncInteropTest {
     @Test
     public void orderedSwitchAsyncJS() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             context.eval("js", "async function doStuff(value, callback) {" //
                             + "  async function somethingAsync(x) {" //
                             + "    console.log(`From JS ${value} ${x}`);" //
@@ -505,8 +482,7 @@ public class AsyncInteropTest {
     @Test
     public void unOrderedSwitchAsyncJS() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             context.eval("js", "async function doStuff(value, callback) {" //
                             + "  async function somethingAsync(x) {" //
                             + "    console.log(`From JS ${value} ${x}`);" //
@@ -548,8 +524,7 @@ public class AsyncInteropTest {
     @Test
     public void unOrderedSwitchAsyncJSDefault() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             context.eval("js", "async function doStuff(value, callback) {" //
                             + "  async function somethingAsync(x) {" //
                             + "    console.log(`From JS ${value} ${x}`);" //
@@ -585,8 +560,7 @@ public class AsyncInteropTest {
     @Test
     public void asyncCaseSwitch() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
-                        "false").build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             context.eval("js", "async function f(x) {" //
                             + "  switch (x) {" //
                             + "    case 0:" //
@@ -611,7 +585,7 @@ public class AsyncInteropTest {
     @Test
     public void testAwaitInSwitchInLoop() {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().out(out).build()) {
+        try (Context context = newContextBuilder().out(out).build()) {
             context.eval("js", "" //
                             + "(async function () {" //
                             + "  for (o of ['a', 'b']) {" //
@@ -673,16 +647,13 @@ public class AsyncInteropTest {
     public static class TestOutput extends ByteArrayOutputStream {
 
         void write(String text) {
-            try {
-                this.write(text.getBytes());
-            } catch (IOException e) {
-                assert false;
-            }
+            byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+            write(bytes, 0, bytes.length);
         }
 
         @Override
         public synchronized String toString() {
-            return new String(this.toByteArray(), StandardCharsets.UTF_8);
+            return new String(toByteArray(), StandardCharsets.UTF_8).replace("\r\n", "\n");
         }
     }
 }
