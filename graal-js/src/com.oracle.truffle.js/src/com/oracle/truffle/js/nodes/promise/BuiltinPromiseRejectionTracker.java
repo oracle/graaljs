@@ -48,6 +48,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
@@ -74,6 +77,7 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
 
     @Override
     public void promiseRejected(JSDynamicObject promise, Object reason) {
+        CompilerAsserts.neverPartOfCompilation();
         maybeUnhandledPromises.put(promise, new PromiseChainInfoRecord(reason, false));
         pendingUnhandledRejections.add(promise);
         context.getLanguage().getPromiseJobsQueueEmptyAssumption().invalidate("Potential unhandled rejection");
@@ -81,6 +85,7 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
 
     @Override
     public void promiseRejectionHandled(JSDynamicObject promise) {
+        CompilerAsserts.neverPartOfCompilation();
         PromiseChainInfoRecord promiseInfo = maybeUnhandledPromises.get(promise);
         if (promiseInfo != null) {
             maybeUnhandledPromises.remove(promise);
@@ -101,6 +106,7 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
 
     @Override
     public void promiseReactionJobsProcessed() {
+        CompilerAsserts.neverPartOfCompilation();
         JSRealm realm = JSRealm.get(null);
         assert realm.getContext() == context;
 
@@ -113,10 +119,10 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
 
         // Take one at a time as the rejection handler could queue up more rejections.
         while (!pendingUnhandledRejections.isEmpty()) {
-            JSDynamicObject unhandled = pendingUnhandledRejections.iterator().next();
-            pendingUnhandledRejections.remove(unhandled);
+            JSDynamicObject unhandledPromise = pendingUnhandledRejections.iterator().next();
+            pendingUnhandledRejections.remove(unhandledPromise);
 
-            PromiseChainInfoRecord info = maybeUnhandledPromises.get(unhandled);
+            PromiseChainInfoRecord info = maybeUnhandledPromises.get(unhandledPromise);
             if (info == null) {
                 continue;
             }
@@ -124,7 +130,7 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
             if (mode == JSContextOptions.UnhandledRejectionsTrackingMode.HANDLER) {
                 Object handler = realm.getUnhandledPromiseRejectionHandler();
                 if (handler != null) {
-                    JSRuntime.call(handler, Undefined.instance, new Object[]{info.reason, unhandled});
+                    JSRuntime.call(handler, Undefined.instance, new Object[]{info.reason, unhandledPromise});
                 }
             } else if (mode == JSContextOptions.UnhandledRejectionsTrackingMode.WARN) {
                 PrintWriter out = realm.getErrorWriter();
@@ -132,6 +138,14 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
                 out.flush();
             } else {
                 assert mode == JSContextOptions.UnhandledRejectionsTrackingMode.THROW;
+                // Rethrow original exception, if possible.
+                InteropLibrary interop = InteropLibrary.getUncached(info.reason);
+                if (interop.isException(info.reason)) {
+                    try {
+                        interop.throwException(info.reason);
+                    } catch (UnsupportedMessageException e) {
+                    }
+                }
                 throw Errors.createError("Unhandled promise rejection: " + JSRuntime.safeToString(info.reason));
             }
         }
