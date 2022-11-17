@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -150,7 +150,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             Object unfiltered = parseIntl(toString(text));
             JSObject root = JSOrdinary.create(getContext(), getRealm());
-            JSObjectUtil.putDataProperty(getContext(), root, Strings.EMPTY_STRING, unfiltered, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(root, Strings.EMPTY_STRING, unfiltered, JSAttributes.getDefault());
             return walk(reviver, root, Strings.EMPTY_STRING);
         }
 

@@ -145,7 +145,6 @@ public final class JSError extends JSNonProxy {
     }
 
     public static void setMessage(JSDynamicObject obj, TruffleString message) {
-        assert !JSDynamicObject.hasProperty(obj, MESSAGE);
         JSObjectUtil.putDataProperty(obj, MESSAGE, message, MESSAGE_ATTRIBUTES);
     }
 
@@ -197,7 +196,7 @@ public final class JSError extends JSNonProxy {
             errorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, proto);
         }
 
-        JSObjectUtil.putDataProperty(ctx, errorPrototype, MESSAGE, Strings.EMPTY_STRING, MESSAGE_ATTRIBUTES);
+        JSObjectUtil.putDataProperty(errorPrototype, MESSAGE, Strings.EMPTY_STRING, MESSAGE_ATTRIBUTES);
 
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, ErrorPrototypeBuiltins.BUILTINS);
@@ -209,19 +208,18 @@ public final class JSError extends JSNonProxy {
     }
 
     public static JSConstructor createErrorConstructor(JSRealm realm, JSErrorType errorType) {
-        JSContext context = realm.getContext();
         TruffleString name = Strings.fromJavaString(errorType.toString());
         JSFunctionObject errorConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, name); // (Type)Error
         JSDynamicObject classPrototype = JSError.createErrorPrototype(realm, errorType); // (Type)Error.prototype
         if (errorType != JSErrorType.Error) {
             JSObject.setPrototype(errorConstructor, realm.getErrorConstructor(JSErrorType.Error));
         }
-        JSObjectUtil.putConstructorProperty(context, classPrototype, errorConstructor);
-        JSObjectUtil.putDataProperty(context, classPrototype, NAME, name, MESSAGE_ATTRIBUTES);
-        JSObjectUtil.putConstructorPrototypeProperty(context, errorConstructor, classPrototype);
+        JSObjectUtil.putConstructorProperty(classPrototype, errorConstructor);
+        JSObjectUtil.putDataProperty(classPrototype, NAME, name, MESSAGE_ATTRIBUTES);
+        JSObjectUtil.putConstructorPrototypeProperty(errorConstructor, classPrototype);
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorConstructor, ErrorFunctionBuiltins.BUILTINS);
-            JSObjectUtil.putDataProperty(context, errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, JSContextOptions.STACK_TRACE_LIMIT.getValue(realm.getOptions()), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, JSContextOptions.STACK_TRACE_LIMIT.getValue(realm.getOptions()), JSAttributes.getDefault());
         }
 
         return new JSConstructor(errorConstructor, classPrototype);
@@ -239,11 +237,10 @@ public final class JSError extends JSNonProxy {
     }
 
     public static JSConstructor createCallSiteConstructor(JSRealm realm) {
-        JSContext context = realm.getContext();
         JSFunctionObject constructor = JSFunction.createNamedEmptyFunction(realm, CALL_SITE_CLASS_NAME);
         JSDynamicObject prototype = createCallSitePrototype(realm);
-        JSObjectUtil.putConstructorProperty(context, prototype, constructor);
-        JSObjectUtil.putConstructorPrototypeProperty(context, constructor, prototype);
+        JSObjectUtil.putConstructorProperty(prototype, constructor);
+        JSObjectUtil.putConstructorPrototypeProperty(constructor, prototype);
         return new JSConstructor(constructor, prototype);
     }
 

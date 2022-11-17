@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -374,8 +374,8 @@ public final class JSArrayBufferView extends JSNonProxy {
         JSObject prototype = context.getEcmaScriptVersion() >= 6
                         ? JSObjectUtil.createOrdinaryPrototypeObject(realm, taPrototype)
                         : createLegacyArrayBufferViewPrototype(realm, factory, taPrototype);
-        JSObjectUtil.putDataProperty(context, prototype, BYTES_PER_ELEMENT, bytesPerElement, JSAttributes.notConfigurableNotEnumerableNotWritable());
-        JSObjectUtil.putConstructorProperty(context, prototype, ctor);
+        JSObjectUtil.putDataProperty(prototype, BYTES_PER_ELEMENT, bytesPerElement, JSAttributes.notConfigurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         return prototype;
     }
 
@@ -421,20 +421,19 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     public static JSConstructor createConstructor(JSRealm realm, TypedArrayFactory factory, JSConstructor taConstructor) {
-        JSContext ctx = realm.getContext();
         JSFunctionObject arrayBufferViewConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, factory.getName());
         JSObject.setPrototype(arrayBufferViewConstructor, taConstructor.getFunctionObject());
 
         JSObject arrayBufferViewPrototype = createArrayBufferViewPrototype(realm, arrayBufferViewConstructor, factory.getBytesPerElement(), factory, taConstructor.getPrototype());
-        JSObjectUtil.putConstructorPrototypeProperty(ctx, arrayBufferViewConstructor, arrayBufferViewPrototype);
-        JSObjectUtil.putDataProperty(ctx, arrayBufferViewConstructor, BYTES_PER_ELEMENT, factory.getBytesPerElement(), JSAttributes.notConfigurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstructorPrototypeProperty(arrayBufferViewConstructor, arrayBufferViewPrototype);
+        JSObjectUtil.putDataProperty(arrayBufferViewConstructor, BYTES_PER_ELEMENT, factory.getBytesPerElement(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         return new JSConstructor(arrayBufferViewConstructor, arrayBufferViewPrototype);
     }
 
     private static JSObject createTypedArrayPrototype(final JSRealm realm, JSDynamicObject ctor) {
         JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TypedArrayPrototypeBuiltins.BUILTINS);
         putArrayBufferViewPrototypeGetter(realm, prototype, LENGTH, BuiltinFunctionKey.ArrayBufferViewLength, new ArrayBufferViewGetter() {
             private final ConditionProfile detachedBufferProfile = ConditionProfile.create();
@@ -482,18 +481,17 @@ public final class JSArrayBufferView extends JSNonProxy {
         // The initial value of the @@iterator property is the same function object as the initial
         // value of the %TypedArray%.prototype.values property.
         Object valuesFunction = JSDynamicObject.getOrNull(prototype, Strings.VALUES);
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, valuesFunction, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(prototype, Symbol.SYMBOL_ITERATOR, valuesFunction, JSAttributes.getDefaultNotEnumerable());
         // %TypedArray%.prototype.toString is the same function object as Array.prototype.toString
         Object toStringFunction = JSDynamicObject.getOrNull(realm.getArrayPrototype(), Strings.TO_STRING);
-        JSObjectUtil.putDataProperty(ctx, prototype, Strings.TO_STRING, toStringFunction, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(prototype, Strings.TO_STRING, toStringFunction, JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
 
     public static JSConstructor createTypedArrayConstructor(JSRealm realm) {
-        JSContext ctx = realm.getContext();
         JSFunctionObject taConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, CLASS_NAME);
         JSObject taPrototype = createTypedArrayPrototype(realm, taConstructor);
-        JSObjectUtil.putConstructorPrototypeProperty(ctx, taConstructor, taPrototype);
+        JSObjectUtil.putConstructorPrototypeProperty(taConstructor, taPrototype);
         JSObjectUtil.putFunctionsFromContainer(realm, taConstructor, TypedArrayFunctionBuiltins.BUILTINS);
         putConstructorSpeciesGetter(realm, taConstructor);
         return new JSConstructor(taConstructor, taPrototype);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -131,6 +132,7 @@ public final class JSSlowArray extends JSAbstractArray {
      */
     @Override
     protected boolean defineOwnPropertyIndex(JSDynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, boolean doThrow) {
+        CompilerAsserts.neverPartOfCompilation();
         assert Strings.isTString(name);
         long index = JSRuntime.toUInt32(name);
         if (index >= getLength(thisObj)) {
@@ -146,9 +148,8 @@ public final class JSSlowArray extends JSAbstractArray {
         ScriptArray arrayType = arrayGetArrayType(thisObj);
         if (arrayType.hasElement(thisObj, index) && !JSOrdinary.INSTANCE.hasOwnProperty(thisObj, name)) {
             // replace with a regular property first
-            JSContext context = JSObject.getJSContext(thisObj);
             boolean wasNotExtensible = !JSShape.isExtensible(thisObj.getShape());
-            JSObjectUtil.putDataProperty(context, thisObj, name, get(thisObj, index), JSAttributes.fromConfigurableEnumerableWritable(!arrayType.isSealed(), true, !arrayType.isFrozen()));
+            JSObjectUtil.defineDataProperty(thisObj, name, get(thisObj, index), JSAttributes.fromConfigurableEnumerableWritable(!arrayType.isSealed(), true, !arrayType.isFrozen()));
             if (wasNotExtensible) {
                 assert !JSShape.isExtensible(thisObj.getShape());
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -170,9 +170,8 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject segmenterPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, segmenterPrototype, ctor);
+        JSObjectUtil.putConstructorProperty(segmenterPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, segmenterPrototype, SegmenterPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(segmenterPrototype, TO_STRING_TAG);
         return segmenterPrototype;
@@ -250,8 +249,8 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
 
         JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             JSDynamicObject result = JSOrdinary.create(context, realm);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_GRANULARITY, Strings.fromJavaString(granularity.getName()), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_GRANULARITY, Strings.fromJavaString(granularity.getName()), JSAttributes.getDefault());
             return result;
         }
     }

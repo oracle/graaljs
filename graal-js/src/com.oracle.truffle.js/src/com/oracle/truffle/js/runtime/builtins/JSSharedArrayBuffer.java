@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,9 +82,8 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext context = realm.getContext();
         JSObject arrayBufferPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        putConstructorProperty(context, arrayBufferPrototype, ctor);
+        putConstructorProperty(arrayBufferPrototype, ctor);
         putFunctionsFromContainer(realm, arrayBufferPrototype, SharedArrayBufferPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putBuiltinAccessorProperty(arrayBufferPrototype, BYTE_LENGTH, realm.lookupAccessor(SharedArrayBufferPrototypeBuiltins.BUILTINS, BYTE_LENGTH));
         JSObjectUtil.putToStringTag(arrayBufferPrototype, CLASS_NAME);

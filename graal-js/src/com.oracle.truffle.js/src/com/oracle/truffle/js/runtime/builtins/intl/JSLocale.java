@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,7 +91,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
         JSObject localePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, localePrototype, ctor);
+        JSObjectUtil.putConstructorProperty(localePrototype, ctor);
         JSObjectUtil.putToStringTag(localePrototype, TO_STRING_TAG);
         JSObjectUtil.putFunctionsFromContainer(realm, localePrototype, LocalePrototypeBuiltins.BUILTINS);
         putLocalePropertyAccessor(realm, localePrototype, IntlUtil.KEY_BASE_NAME);

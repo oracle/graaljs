@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -293,7 +293,7 @@ public final class DefinePropertyUtil {
             assert !doThrow; // should have thrown
             return false;
         }
-        JSObjectUtil.putAccessorProperty(context, thisObj, key, accessor, JSAttributes.fromConfigurableEnumerable(configurable, enumerable));
+        JSObjectUtil.defineAccessorProperty(context, thisObj, key, accessor, JSAttributes.fromConfigurableEnumerable(configurable, enumerable));
         return true;
     }
 
@@ -302,9 +302,9 @@ public final class DefinePropertyUtil {
 
         int attributes = JSAttributes.fromConfigurableEnumerableWritable(configurable, enumerable, writable);
         if (descriptor.hasValue()) {
-            JSObjectUtil.putDataProperty(context, thisObj, key, descriptor.getValue(), attributes);
+            JSObjectUtil.defineDataProperty(context, thisObj, key, descriptor.getValue(), attributes);
         } else {
-            JSObjectUtil.putDeclaredDataProperty(context, thisObj, key, Undefined.instance, attributes);
+            JSObjectUtil.defineConstantDataProperty(context, thisObj, key, Undefined.instance, attributes);
         }
         return true;
     }

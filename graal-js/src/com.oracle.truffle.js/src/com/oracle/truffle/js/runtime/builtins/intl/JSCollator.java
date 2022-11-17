@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,11 +112,10 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject collatorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, collatorPrototype, ctor);
+        JSObjectUtil.putConstructorProperty(collatorPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, collatorPrototype, CollatorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putBuiltinAccessorProperty(collatorPrototype, Strings.COMPARE, createCompareFunctionGetter(realm, ctx), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(collatorPrototype, Strings.COMPARE, createCompareFunctionGetter(realm), Undefined.instance);
         JSObjectUtil.putToStringTag(collatorPrototype, TO_STRING_TAG);
         return collatorPrototype;
     }
@@ -267,13 +266,13 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
 
         JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             JSObject result = JSOrdinary.create(context, realm);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_USAGE, Strings.fromJavaString(usage), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_SENSITIVITY, Strings.fromJavaString(sensitivity), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_IGNORE_PUNCTUATION, ignorePunctuation, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_COLLATION, Strings.fromJavaString(collation), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_NUMERIC, numeric, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_CASE_FIRST, Strings.fromJavaString(caseFirst), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_USAGE, Strings.fromJavaString(usage), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_SENSITIVITY, Strings.fromJavaString(sensitivity), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_IGNORE_PUNCTUATION, ignorePunctuation, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_COLLATION, Strings.fromJavaString(collation), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_NUMERIC, numeric, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_CASE_FIRST, Strings.fromJavaString(caseFirst), JSAttributes.getDefault());
             return result;
         }
     }
@@ -343,10 +342,10 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         }.getCallTarget(), 2, Strings.EMPTY_STRING);
     }
 
-    private static JSDynamicObject createCompareFunctionGetter(JSRealm realm, JSContext context) {
-        JSFunctionData fd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.CollatorGetCompare, (c) -> {
-            CallTarget ct = createGetCompareCallTarget(context);
-            return JSFunctionData.create(context, ct, ct, 0, GET_COMPARE_NAME, false, false, false, true);
+    private static JSDynamicObject createCompareFunctionGetter(JSRealm realm) {
+        JSFunctionData fd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.CollatorGetCompare, (ctx) -> {
+            CallTarget ct = createGetCompareCallTarget(ctx);
+            return JSFunctionData.create(ctx, ct, ct, 0, GET_COMPARE_NAME, false, false, false, true);
         });
         return JSFunction.create(realm, fd);
     }

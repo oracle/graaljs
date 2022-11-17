@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -623,7 +623,7 @@ public class JSRealm {
         this.topScope = createTopScope();
 
         this.objectConstructor = createObjectConstructor(this, objectPrototype);
-        JSObjectUtil.putDataProperty(context, this.objectPrototype, JSObject.CONSTRUCTOR, objectConstructor, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(this.objectPrototype, JSObject.CONSTRUCTOR, objectConstructor, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putFunctionsFromContainer(this, this.objectPrototype, JSObjectPrototype.BUILTINS);
         this.functionConstructor = JSFunction.createFunctionConstructor(this);
         JSFunction.fillFunctionPrototype(this);
@@ -1151,7 +1151,7 @@ public class JSRealm {
     public static JSFunctionObject createObjectConstructor(JSRealm realm, JSDynamicObject objectPrototype) {
         JSContext context = realm.getContext();
         JSFunctionObject objectConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, JSOrdinary.CLASS_NAME);
-        JSObjectUtil.putConstructorPrototypeProperty(context, objectConstructor, objectPrototype);
+        JSObjectUtil.putConstructorPrototypeProperty(objectConstructor, objectPrototype);
         JSObjectUtil.putFunctionsFromContainer(realm, objectConstructor, ObjectFunctionBuiltins.BUILTINS);
         if (context.isOptionNashornCompatibilityMode()) {
             JSObjectUtil.putFunctionsFromContainer(realm, objectConstructor, ObjectFunctionBuiltins.BUILTINS_NASHORN_COMPAT);
@@ -1792,9 +1792,9 @@ public class JSRealm {
         putGlobalProperty(JSMath.CLASS_NAME, mathObject);
         putGlobalProperty(JSON.CLASS_NAME, JSON.create(this));
 
-        JSObjectUtil.putDataProperty(context, global, Strings.NAN, Double.NaN);
-        JSObjectUtil.putDataProperty(context, global, Strings.INFINITY, Double.POSITIVE_INFINITY);
-        JSObjectUtil.putDataProperty(context, global, Undefined.NAME, Undefined.instance);
+        JSObjectUtil.putDataProperty(global, Strings.NAN, Double.NaN);
+        JSObjectUtil.putDataProperty(global, Strings.INFINITY, Double.POSITIVE_INFINITY);
+        JSObjectUtil.putDataProperty(global, Undefined.NAME, Undefined.instance);
 
         JSObjectUtil.putFunctionsFromContainer(this, global, GlobalBuiltins.GLOBAL_FUNCTIONS);
 
@@ -1809,7 +1809,7 @@ public class JSRealm {
                 case LinkError:
                 case RuntimeError:
                     if (webassembly) {
-                        JSObjectUtil.putDataProperty(context, webAssemblyObject, Strings.fromJavaString(type.name()), getErrorConstructor(type), JSAttributes.getDefaultNotEnumerable());
+                        JSObjectUtil.putDataProperty(webAssemblyObject, Strings.fromJavaString(type.name()), getErrorConstructor(type), JSAttributes.getDefaultNotEnumerable());
                     }
                     break;
                 case AggregateError:
@@ -1839,8 +1839,8 @@ public class JSRealm {
         }
         if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
             TruffleString builtin = Strings.IMPORT_SCRIPT_ENGINE_GLOBAL_BINDINGS;
-            JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), builtin,
-                            lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, builtin), JSAttributes.notConfigurableNotEnumerableNotWritable());
+            JSObjectUtil.putDataProperty(getScriptEngineImportScope(), builtin, lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, builtin),
+                            JSAttributes.notConfigurableNotEnumerableNotWritable());
         }
         if (context.getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed() || getEnv().isPolyglotBindingsAccessAllowed())) {
             setupPolyglot();
@@ -1905,11 +1905,11 @@ public class JSRealm {
         }
         if (webassembly) {
             putGlobalProperty(JSWebAssembly.CLASS_NAME, webAssemblyObject);
-            JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyGlobalConstructor), webAssemblyGlobalConstructor, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyInstanceConstructor), webAssemblyInstanceConstructor, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyMemoryConstructor), webAssemblyMemoryConstructor, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyModuleConstructor), webAssemblyModuleConstructor, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyTableConstructor), webAssemblyTableConstructor, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(webAssemblyObject, JSFunction.getName(webAssemblyGlobalConstructor), webAssemblyGlobalConstructor, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(webAssemblyObject, JSFunction.getName(webAssemblyInstanceConstructor), webAssemblyInstanceConstructor, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(webAssemblyObject, JSFunction.getName(webAssemblyMemoryConstructor), webAssemblyMemoryConstructor, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(webAssemblyObject, JSFunction.getName(webAssemblyModuleConstructor), webAssemblyModuleConstructor, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(webAssemblyObject, JSFunction.getName(webAssemblyTableConstructor), webAssemblyTableConstructor, JSAttributes.getDefaultNotEnumerable());
         }
         if (context.getContextOptions().isOperatorOverloading()) {
             JSObjectUtil.putFunctionsFromContainer(this, global, OperatorsBuiltins.BUILTINS);
@@ -2039,20 +2039,20 @@ public class JSRealm {
         JSObjectUtil.putToStringTag(temporalObject, TemporalConstants.TEMPORAL);
 
         int flags = JSAttributes.configurableNotEnumerableWritable();
-        JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_PLAIN_TIME, getTemporalPlainTimeConstructor(), flags);
-        JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_PLAIN_DATE, getTemporalPlainDateConstructor(), flags);
-        JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_PLAIN_DATE_TIME, getTemporalPlainDateTimeConstructor(), flags);
-        JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_DURATION, getTemporalDurationConstructor(), flags);
-        JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_CALENDAR, getTemporalCalendarConstructor(), flags);
-        JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_PLAIN_YEAR_MONTH, getTemporalPlainYearMonthConstructor(), flags);
-        JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_PLAIN_MONTH_DAY, getTemporalPlainMonthDayConstructor(), flags);
-        JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_INSTANT, getTemporalInstantConstructor(), flags);
-        JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_TIME_ZONE, getTemporalTimeZoneConstructor(), flags);
-        JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.GLOBAL_ZONED_DATE_TIME, getTemporalZonedDateTimeConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_PLAIN_TIME, getTemporalPlainTimeConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_PLAIN_DATE, getTemporalPlainDateConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_PLAIN_DATE_TIME, getTemporalPlainDateTimeConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_DURATION, getTemporalDurationConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_CALENDAR, getTemporalCalendarConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_PLAIN_YEAR_MONTH, getTemporalPlainYearMonthConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_PLAIN_MONTH_DAY, getTemporalPlainMonthDayConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_INSTANT, getTemporalInstantConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_TIME_ZONE, getTemporalTimeZoneConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_ZONED_DATE_TIME, getTemporalZonedDateTimeConstructor(), flags);
 
         JSObject nowObject = JSOrdinary.createInit(this);
 
-        JSObjectUtil.putDataProperty(context, temporalObject, TemporalConstants.NOW, nowObject, flags);
+        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.NOW, nowObject, flags);
         JSObjectUtil.putFunctionsFromContainer(this, nowObject, TemporalNowBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(nowObject, TemporalConstants.GLOBAL_TEMPORAL_NOW);
 
@@ -2070,15 +2070,15 @@ public class JSRealm {
         JSFunctionObject segmenterFn = getSegmenterConstructor();
         JSFunctionObject displayNamesFn = getDisplayNamesConstructor();
         JSFunctionObject localeFn = getLocaleConstructor();
-        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(segmenterFn), segmenterFn, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(displayNamesFn), displayNamesFn, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(localeFn), localeFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(segmenterFn), segmenterFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(displayNamesFn), displayNamesFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(intlObject, JSFunction.getName(localeFn), localeFn, JSAttributes.getDefaultNotEnumerable());
         return intlObject;
     }
 
@@ -2088,14 +2088,14 @@ public class JSRealm {
         JSContextOptions options = getContext().getContextOptions();
         int esVersion = options.getEcmaScriptVersion();
         esVersion = (esVersion > JSConfig.ECMAScript6 ? esVersion + JSConfig.ECMAScriptVersionYearDelta : esVersion);
-        JSObjectUtil.putDataProperty(context, graalObject, Strings.LANGUAGE, Strings.fromJavaString(JavaScriptLanguage.NAME), flags);
+        JSObjectUtil.putDataProperty(graalObject, Strings.LANGUAGE, Strings.fromJavaString(JavaScriptLanguage.NAME), flags);
         assert GRAALVM_VERSION != null;
-        JSObjectUtil.putDataProperty(context, graalObject, Strings.VERSION_GRAAL_VM, GRAALVM_VERSION, flags);
-        JSObjectUtil.putDataProperty(context, graalObject, Strings.VERSION_ECMA_SCRIPT, esVersion, flags);
-        JSObjectUtil.putDataProperty(context, graalObject, Strings.IS_GRAAL_RUNTIME, JSFunction.create(this, isGraalRuntimeFunction(context)), flags);
+        JSObjectUtil.putDataProperty(graalObject, Strings.VERSION_GRAAL_VM, GRAALVM_VERSION, flags);
+        JSObjectUtil.putDataProperty(graalObject, Strings.VERSION_ECMA_SCRIPT, esVersion, flags);
+        JSObjectUtil.putDataProperty(graalObject, Strings.IS_GRAAL_RUNTIME, JSFunction.create(this, isGraalRuntimeFunction(context)), flags);
         if (options.getUnhandledRejectionsMode() == JSContextOptions.UnhandledRejectionsTrackingMode.HANDLER) {
             JSFunctionObject registerFunction = JSFunction.create(this, setUnhandledPromiseRejectionHandlerFunction(context));
-            JSObjectUtil.putDataProperty(context, graalObject, Strings.SET_UNHANDLED_PROMISE_REJECTION_HANDLER, registerFunction, flags);
+            JSObjectUtil.putDataProperty(graalObject, Strings.SET_UNHANDLED_PROMISE_REJECTION_HANDLER, registerFunction, flags);
         }
         putGlobalProperty(Strings.GRAAL, graalObject);
     }
@@ -2146,11 +2146,11 @@ public class JSRealm {
     }
 
     private void putGlobalProperty(Object key, Object value, int attributes) {
-        JSObjectUtil.putDataProperty(getContext(), getGlobalObject(), key, value, attributes);
+        JSObjectUtil.putDataProperty(getGlobalObject(), key, value, attributes);
     }
 
-    private void putProperty(JSDynamicObject receiver, Object key, Object value) {
-        JSObjectUtil.putDataProperty(getContext(), receiver, key, value, JSAttributes.getDefaultNotEnumerable());
+    private static void putProperty(JSDynamicObject receiver, Object key, Object value) {
+        JSObjectUtil.putDataProperty(receiver, key, value, JSAttributes.getDefaultNotEnumerable());
     }
 
     private static void setupPredefinedSymbols(JSDynamicObject symbolFunction) {
@@ -2217,7 +2217,7 @@ public class JSRealm {
             JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.INTERNAL_BUILTINS);
         } else if (getContext().getContextOptions().isPolyglotEvalFile()) {
             // already loaded above when `debug-builtin` is true
-            JSObjectUtil.putDataProperty(context, polyglotObject, Strings.EVAL_FILE, lookupFunction(PolyglotBuiltins.INTERNAL_BUILTINS, Strings.EVAL_FILE), JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(polyglotObject, Strings.EVAL_FILE, lookupFunction(PolyglotBuiltins.INTERNAL_BUILTINS, Strings.EVAL_FILE), JSAttributes.getDefaultNotEnumerable());
         }
         putGlobalProperty(POLYGLOT_CLASS_NAME, polyglotObject);
     }
@@ -2245,7 +2245,7 @@ public class JSRealm {
      */
     private JSDynamicObject createIteratorPrototype() {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
-        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
 
@@ -2377,12 +2377,12 @@ public class JSRealm {
             // $OPTIONS
             String timezone = getLocalTimeZoneId().getId();
             JSDynamicObject timezoneObj = JSOrdinary.create(context, this);
-            JSObjectUtil.putDataProperty(context, timezoneObj, Strings.CAPS_ID, Strings.fromJavaString(timezone), JSAttributes.configurableEnumerableWritable());
+            JSObjectUtil.putDataProperty(timezoneObj, Strings.CAPS_ID, Strings.fromJavaString(timezone), JSAttributes.configurableEnumerableWritable());
 
             JSDynamicObject optionsObj = JSOrdinary.create(context, this);
-            JSObjectUtil.putDataProperty(context, optionsObj, Strings._TIMEZONE, timezoneObj, JSAttributes.configurableEnumerableWritable());
-            JSObjectUtil.putDataProperty(context, optionsObj, Strings._SCRIPTING, true, JSAttributes.configurableEnumerableWritable());
-            JSObjectUtil.putDataProperty(context, optionsObj, Strings._COMPILE_ONLY, false, JSAttributes.configurableEnumerableWritable());
+            JSObjectUtil.putDataProperty(optionsObj, Strings._TIMEZONE, timezoneObj, JSAttributes.configurableEnumerableWritable());
+            JSObjectUtil.putDataProperty(optionsObj, Strings._SCRIPTING, true, JSAttributes.configurableEnumerableWritable());
+            JSObjectUtil.putDataProperty(optionsObj, Strings._COMPILE_ONLY, false, JSAttributes.configurableEnumerableWritable());
 
             putGlobalProperty(Strings.$_OPTIONS, optionsObj, JSAttributes.configurableNotEnumerableWritable());
 
@@ -2395,7 +2395,7 @@ public class JSRealm {
             JSDynamicObject envObj = JSOrdinary.create(context, this);
             Map<String, String> sysenv = getEnv().getEnvironment();
             for (Map.Entry<String, String> entry : sysenv.entrySet()) {
-                JSObjectUtil.putDataProperty(context, envObj, Strings.fromJavaString(entry.getKey()), Strings.fromJavaString(entry.getValue()), JSAttributes.configurableEnumerableWritable());
+                JSObjectUtil.defineDataProperty(context, envObj, Strings.fromJavaString(entry.getKey()), Strings.fromJavaString(entry.getValue()), JSAttributes.configurableEnumerableWritable());
             }
 
             putGlobalProperty(Strings.DOLLAR_ENV, envObj, JSAttributes.configurableNotEnumerableWritable());

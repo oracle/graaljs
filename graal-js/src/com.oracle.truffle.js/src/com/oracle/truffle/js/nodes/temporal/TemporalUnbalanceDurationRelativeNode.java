@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -213,7 +213,7 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
             JSDynamicObject newRelativeTo = calendarDateAdd(calendar, relativeTo, oneYear, addOptions, dateAdd);
 
             JSDynamicObject untilOptions = JSOrdinary.createWithNullPrototype(ctx);
-            JSObjectUtil.putDataProperty(ctx, untilOptions, LARGEST_UNIT, MONTH);
+            JSObjectUtil.putDataProperty(untilOptions, LARGEST_UNIT, MONTH);
             JSTemporalDurationObject untilResult = calendarDateUntil(calendar, relativeTo, newRelativeTo, untilOptions, dateUntil);
             long oneYearMonths = dtol(untilResult.getMonths());
             relativeTo = newRelativeTo;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,11 +91,10 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
+        JSObjectUtil.putConstructorProperty(prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WebAssemblyMemoryPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putAccessorProperty(ctx, prototype, BUFFER, createBufferGetterFunction(realm), null, JSAttributes.configurableEnumerableWritable());
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, BUFFER, createBufferGetterFunction(realm), null, JSAttributes.configurableEnumerableWritable());
         JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_MEMORY);
         return prototype;
     }
@@ -137,7 +136,7 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
                 public Object execute(VirtualFrame frame) {
                     Object thiz = JSFrameUtil.getThisObj(frame);
                     if (isJSWebAssemblyMemory(thiz)) {
-                        return ((JSWebAssemblyMemoryObject) thiz).getBufferObject(context, realm);
+                        return ((JSWebAssemblyMemoryObject) thiz).getBufferObject(c, realm);
                     } else {
                         errorBranch.enter();
                         throw Errors.createTypeError("WebAssembly.Memory.buffer: Receiver is not a WebAssembly.Memory", this);
