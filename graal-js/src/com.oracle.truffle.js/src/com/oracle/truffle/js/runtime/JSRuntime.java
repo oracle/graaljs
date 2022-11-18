@@ -1666,43 +1666,42 @@ public final class JSRuntime {
     @TruffleBoundary
     public static PropertyDescriptor toPropertyDescriptor(Object property) {
         // 1.
-        if (!isObject(property)) {
+        if (!isObject(property) && !isForeignObject(property)) {
             throw Errors.createTypeErrorNotAnObject(property);
         }
-        JSDynamicObject obj = (JSDynamicObject) property;
         PropertyDescriptor desc = PropertyDescriptor.createEmpty();
 
         // 3.
-        if (JSObject.hasProperty(obj, JSAttributes.ENUMERABLE)) {
-            desc.setEnumerable(toBoolean(JSObject.get(obj, JSAttributes.ENUMERABLE)));
+        if (hasProperty(property, JSAttributes.ENUMERABLE)) {
+            desc.setEnumerable(toBoolean(get(property, JSAttributes.ENUMERABLE)));
         }
         // 4.
-        if (JSObject.hasProperty(obj, JSAttributes.CONFIGURABLE)) {
-            desc.setConfigurable(toBoolean(JSObject.get(obj, JSAttributes.CONFIGURABLE)));
+        if (hasProperty(property, JSAttributes.CONFIGURABLE)) {
+            desc.setConfigurable(toBoolean(get(property, JSAttributes.CONFIGURABLE)));
         }
         // 5.
-        boolean hasValue = JSObject.hasProperty(obj, JSAttributes.VALUE);
+        boolean hasValue = hasProperty(property, JSAttributes.VALUE);
         if (hasValue) {
-            desc.setValue(JSObject.get(obj, JSAttributes.VALUE));
+            desc.setValue(get(property, JSAttributes.VALUE));
         }
         // 6.
-        boolean hasWritable = JSObject.hasProperty(obj, JSAttributes.WRITABLE);
+        boolean hasWritable = hasProperty(property, JSAttributes.WRITABLE);
         if (hasWritable) {
-            desc.setWritable(toBoolean(JSObject.get(obj, JSAttributes.WRITABLE)));
+            desc.setWritable(toBoolean(get(property, JSAttributes.WRITABLE)));
         }
         // 7.
-        boolean hasGet = JSObject.hasProperty(obj, JSAttributes.GET);
+        boolean hasGet = hasProperty(property, JSAttributes.GET);
         if (hasGet) {
-            Object getter = JSObject.get(obj, JSAttributes.GET);
+            Object getter = get(property, JSAttributes.GET);
             if (!JSRuntime.isCallable(getter) && getter != Undefined.instance) {
                 throw Errors.createTypeError("Getter must be a function");
             }
             desc.setGet(getter);
         }
         // 8.
-        boolean hasSet = JSObject.hasProperty(obj, JSAttributes.SET);
+        boolean hasSet = hasProperty(property, JSAttributes.SET);
         if (hasSet) {
-            Object setter = JSObject.get(obj, JSAttributes.SET);
+            Object setter = get(property, JSAttributes.SET);
             if (!JSRuntime.isCallable(setter) && setter != Undefined.instance) {
                 throw Errors.createTypeError("Setter must be a function");
             }
@@ -2921,6 +2920,15 @@ public final class JSRuntime {
             return JSObject.get((JSDynamicObject) obj, index);
         } else {
             return JSInteropUtil.readArrayElementOrDefault(obj, index, Undefined.instance);
+        }
+    }
+
+    @TruffleBoundary
+    public static boolean hasProperty(Object obj, Object key) {
+        if (JSDynamicObject.isJSDynamicObject(obj)) {
+            return JSObject.hasProperty((JSDynamicObject) obj, key);
+        } else {
+            return JSInteropUtil.hasProperty(obj, key);
         }
     }
 
