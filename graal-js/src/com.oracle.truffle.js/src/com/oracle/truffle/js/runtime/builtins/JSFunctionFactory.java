@@ -100,7 +100,7 @@ public abstract class JSFunctionFactory {
 
     protected abstract void initProperties(JSFunctionObject obj, JSFunctionData functionData);
 
-    public final JSFunctionObject createBound(JSFunctionData functionData, Object classPrototype, JSRealm realm, JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+    public final JSFunctionObject createBound(JSFunctionData functionData, Object classPrototype, JSRealm realm, JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
         Shape shape = objectFactory.getShape(realm);
         assert shape.getDynamicType() == JSFunction.INSTANCE;
         assert functionData.hasStrictFunctionProperties();
@@ -114,7 +114,7 @@ public abstract class JSFunctionFactory {
     }
 
     private JSFunctionObject createBoundES5(Shape shape, JSFunctionData functionData, Object classPrototype, JSRealm realm,
-                    JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+                    JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
         JSFunctionObject obj = JSFunctionObject.createBound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
         objectFactory.initProto(obj, realm);
         initProperties(obj, functionData);

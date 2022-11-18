@@ -280,7 +280,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 JSContext context = getLanguage().getJSContext();
                 if (cachedCount < context.getFunctionCacheLimit() && !generic) {
                     if (JSFunction.isJSFunction(function)) {
-                        c = specializeDirectCall((JSDynamicObject) function, currentHead);
+                        c = specializeDirectCall((JSFunctionObject) function, currentHead);
                     }
                 }
                 if (c == null) {
@@ -341,8 +341,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return count;
     }
 
-    private AbstractCacheNode specializeDirectCall(JSDynamicObject functionObj, AbstractCacheNode head) {
-        assert JSFunction.isJSFunction(functionObj);
+    private AbstractCacheNode specializeDirectCall(JSFunctionObject functionObj, AbstractCacheNode head) {
         final JSFunctionData functionData = JSFunction.getFunctionData(functionObj);
         if (JSConfig.FunctionCacheOnInstance && !functionData.getContext().isMultiContext()) {
             return specializeDirectCallInstance(functionObj, functionData, head);
@@ -351,7 +350,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private JSFunctionCacheNode specializeDirectCallInstance(JSDynamicObject functionObj, JSFunctionData functionData, AbstractCacheNode head) {
+    private JSFunctionCacheNode specializeDirectCallInstance(JSFunctionObject functionObj, JSFunctionData functionData, AbstractCacheNode head) {
         JSFunctionCacheNode obsoleteNode = null;
         AbstractCacheNode previousNode = null;
         for (AbstractCacheNode p = null, c = head; c != null; p = c, c = c.nextNode) {
@@ -378,8 +377,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 DirectCallNode callNode = ((FunctionInstanceCacheNode) obsoleteNode).callNode;
                 if (functionData.isBound()) {
                     newNode = new BoundFunctionDataCacheNode(functionData, callNode);
-                } else {
+                } else if (functionObj instanceof JSFunctionObject.Unbound) {
                     newNode = new UnboundFunctionDataCacheNode(functionData, callNode);
+                } else {
+                    newNode = new AnyFunctionDataCacheNode(functionData, callNode);
                 }
             } else {
                 newNode = createCallableNode(functionObj, functionData, isNew(flags), isNewTarget(flags), false);
@@ -388,7 +389,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private JSFunctionCacheNode specializeDirectCallShared(JSDynamicObject functionObj, JSFunctionData functionData, AbstractCacheNode head) {
+    private JSFunctionCacheNode specializeDirectCallShared(JSFunctionObject functionObj, JSFunctionData functionData, AbstractCacheNode head) {
         final JSFunctionCacheNode directCall = createCallableNode(functionObj, functionData, isNew(flags), isNewTarget(flags), false);
         return insertAtFront(directCall, head);
     }
@@ -954,7 +955,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    protected static JSFunctionCacheNode createCallableNode(JSDynamicObject function, JSFunctionData functionData, boolean isNew, boolean isNewTarget, boolean cacheOnInstance) {
+    protected static JSFunctionCacheNode createCallableNode(JSFunctionObject function, JSFunctionData functionData, boolean isNew, boolean isNewTarget, boolean cacheOnInstance) {
         CallTarget callTarget = getCallTarget(functionData, isNew, isNewTarget);
         assert callTarget != null;
         if (JSFunction.isBoundFunction(function) && isBoundFunctionNestingDepthWithinLimits(function)) {
@@ -974,14 +975,16 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             } else if (JSFunction.isBoundFunction(function)) {
                 // used in the case of a deeply nested bound function
                 return new BoundFunctionDataCacheNode(functionData, callTarget);
-            } else {
+            } else if (function instanceof JSFunctionObject.Unbound) {
                 return new UnboundFunctionDataCacheNode(functionData, callTarget);
+            } else {
+                return new AnyFunctionDataCacheNode(functionData, callTarget);
             }
         }
     }
 
-    private static boolean isBoundFunctionNestingDepthWithinLimits(JSDynamicObject function) {
-        JSDynamicObject boundFunction = function;
+    private static boolean isBoundFunctionNestingDepthWithinLimits(JSFunctionObject function) {
+        JSFunctionObject boundFunction = function;
         for (int i = 0; i < JSConfig.BoundFunctionUnpackLimit; i++) {
             boundFunction = JSFunction.getBoundTargetFunction(boundFunction);
             if (!JSFunction.isBoundFunction(boundFunction)) {
@@ -1001,7 +1004,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private static JSFunctionCacheNode tryInlineBuiltinFunctionCall(JSDynamicObject function, JSFunctionData functionData, CallTarget callTarget, boolean cacheOnInstance) {
+    private static JSFunctionCacheNode tryInlineBuiltinFunctionCall(JSFunctionObject function, JSFunctionData functionData, CallTarget callTarget, boolean cacheOnInstance) {
         if (!JSConfig.InlineTrivialBuiltins) {
             return null;
         }
@@ -1031,13 +1034,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return null;
     }
 
-    private static final class FunctionInstanceCacheNode extends UnboundJSFunctionCacheNode {
+    private static final class FunctionInstanceCacheNode extends DirectJSFunctionCacheNode {
 
-        private final JSDynamicObject functionObj;
+        private final JSFunctionObject functionObj;
 
-        FunctionInstanceCacheNode(JSDynamicObject functionObj, CallTarget callTarget) {
+        FunctionInstanceCacheNode(JSFunctionObject functionObj, CallTarget callTarget) {
             super(callTarget);
-            assert JSFunction.isJSFunction(functionObj);
             this.functionObj = functionObj;
         }
 
@@ -1057,7 +1059,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private static final class UnboundFunctionDataCacheNode extends UnboundJSFunctionCacheNode {
+    private static final class UnboundFunctionDataCacheNode extends DirectJSFunctionCacheNode {
         private final JSFunctionData functionData;
 
         UnboundFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
@@ -1082,7 +1084,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private static final class BoundFunctionDataCacheNode extends UnboundJSFunctionCacheNode {
+    private static final class BoundFunctionDataCacheNode extends DirectJSFunctionCacheNode {
         private final JSFunctionData functionData;
 
         BoundFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
@@ -1099,6 +1101,30 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         protected boolean accept(Object function) {
             return function instanceof JSFunctionObject.Bound && JSFunction.getFunctionData((JSFunctionObject.Bound) function) == functionData;
+        }
+
+        @Override
+        protected JSFunctionData getFunctionData() {
+            return functionData;
+        }
+    }
+
+    private static final class AnyFunctionDataCacheNode extends DirectJSFunctionCacheNode {
+        private final JSFunctionData functionData;
+
+        AnyFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
+            super(callTarget);
+            this.functionData = functionData;
+        }
+
+        AnyFunctionDataCacheNode(JSFunctionData functionData, DirectCallNode directCallNode) {
+            super(directCallNode);
+            this.functionData = functionData;
+        }
+
+        @Override
+        protected boolean accept(Object function) {
+            return function instanceof JSFunctionObject && JSFunction.getFunctionData((JSFunctionObject) function) == functionData;
         }
 
         @Override
@@ -1140,19 +1166,18 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static final class BoundFunctionInstanceCallNode extends JSFunctionCacheNode {
         @Child private AbstractCacheNode boundNode;
 
-        private final JSDynamicObject boundFunctionObj;
+        private final JSFunctionObject boundFunctionObj;
         private final Object boundThis;
-        private final JSDynamicObject targetFunctionObj;
+        private final JSFunctionObject targetFunctionObj;
         private final Object[] addArguments;
         private final boolean useDynamicThis;
         private final boolean isNewTarget;
 
-        BoundFunctionInstanceCallNode(JSDynamicObject function, boolean isNew, boolean isNewTarget) {
-            super();
+        BoundFunctionInstanceCallNode(JSFunctionObject function, boolean isNew, boolean isNewTarget) {
             assert JSFunction.isBoundFunction(function);
             this.boundFunctionObj = function;
             Object lastReceiver;
-            JSDynamicObject lastFunction = function;
+            JSFunctionObject lastFunction = function;
             List<Object> prefixArguments = new ArrayList<>();
             do {
                 Object[] extraArguments = JSFunction.getBoundArguments(lastFunction);
@@ -1204,7 +1229,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private boolean checkTargetFunction(Object[] arguments) {
-            JSDynamicObject targetFunction = (JSDynamicObject) JSArguments.getFunctionObject(arguments);
+            JSFunctionObject targetFunction = (JSFunctionObject) JSArguments.getFunctionObject(arguments);
             while (JSFunction.isBoundFunction(targetFunction)) {
                 targetFunction = JSFunction.getBoundTargetFunction(targetFunction);
                 if (isNewTarget) {
@@ -1252,11 +1277,11 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private Object[] bindExtraArguments(Object[] origArgs) {
-            JSDynamicObject function = (JSDynamicObject) JSArguments.getFunctionObject(origArgs);
+            JSFunctionObject function = (JSFunctionObject) JSArguments.getFunctionObject(origArgs);
             if (!JSFunction.isBoundFunction(function)) {
                 throw Errors.shouldNotReachHere();
             }
-            JSDynamicObject boundTargetFunction = JSFunction.getBoundTargetFunction(function);
+            JSFunctionObject boundTargetFunction = JSFunction.getBoundTargetFunction(function);
             Object boundThis = useDynamicThis ? JSArguments.getThisObject(origArgs) : JSFunction.getBoundThis(function);
             Object[] boundArguments = JSFunction.getBoundArguments(function);
             int skip = isNewTarget ? 1 : 0;
@@ -1277,7 +1302,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected boolean accept(Object function) {
-            return JSFunction.isJSFunction(function) && boundFunctionData == JSFunction.getFunctionData((JSDynamicObject) function);
+            return JSFunction.isJSFunction(function) && boundFunctionData == JSFunction.getFunctionData((JSFunctionObject) function);
         }
 
         @Override
@@ -1286,11 +1311,11 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private abstract static class UnboundJSFunctionCacheNode extends JSFunctionCacheNode {
+    private abstract static class DirectJSFunctionCacheNode extends JSFunctionCacheNode {
 
         @Child DirectCallNode callNode;
 
-        UnboundJSFunctionCacheNode(CallTarget callTarget) {
+        DirectJSFunctionCacheNode(CallTarget callTarget) {
             this.callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
 
             if (callTarget instanceof RootCallTarget) {
@@ -1305,7 +1330,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
         }
 
-        UnboundJSFunctionCacheNode(DirectCallNode callNode) {
+        DirectJSFunctionCacheNode(DirectCallNode callNode) {
             this.callNode = callNode;
         }
 
@@ -1344,11 +1369,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private static final class InlinedBuiltinFunctionInstanceCacheNode extends InlinedBuiltinCallNode {
-        private final JSDynamicObject functionObj;
+        private final JSFunctionObject functionObj;
 
-        InlinedBuiltinFunctionInstanceCacheNode(JSDynamicObject functionObj, CallTarget callTarget, JSBuiltinNode.Inlined builtinNode) {
+        InlinedBuiltinFunctionInstanceCacheNode(JSFunctionObject functionObj, CallTarget callTarget, JSBuiltinNode.Inlined builtinNode) {
             super(callTarget, builtinNode);
-            assert JSFunction.isJSFunction(functionObj);
             this.functionObj = functionObj;
         }
 
@@ -1378,7 +1402,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected boolean accept(Object function) {
-            return JSFunction.isJSFunction(function) && functionData == JSFunction.getFunctionData((JSDynamicObject) function);
+            return JSFunction.isJSFunction(function) && functionData == JSFunction.getFunctionData((JSFunctionObject) function);
         }
 
         @Override
@@ -1415,11 +1439,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private static final class CallerSensitiveBuiltinFunctionInstanceCacheNode extends CallerSensitiveBuiltinCallNode {
-        private final JSDynamicObject functionObj;
+        private final JSFunctionObject functionObj;
 
-        CallerSensitiveBuiltinFunctionInstanceCacheNode(JSDynamicObject functionObj, JSFunctionData functionData, CallTarget callTarget) {
+        CallerSensitiveBuiltinFunctionInstanceCacheNode(JSFunctionObject functionObj, JSFunctionData functionData, CallTarget callTarget) {
             super(functionData, callTarget);
-            assert JSFunction.isJSFunction(functionObj);
             this.functionObj = functionObj;
         }
 
@@ -1442,7 +1465,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected boolean accept(Object function) {
-            return JSFunction.isJSFunction(function) && functionData == JSFunction.getFunctionData((JSDynamicObject) function);
+            return JSFunction.isJSFunction(function) && functionData == JSFunction.getFunctionData((JSFunctionObject) function);
         }
     }
 
@@ -1658,7 +1681,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         public Object executeCall(Object[] arguments) {
             Object function = JSArguments.getFunctionObject(arguments);
-            JSDynamicObject functionObject = (JSDynamicObject) function;
+            JSFunctionObject functionObject = (JSFunctionObject) function;
             JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
             if (isNewTarget(flags)) {
                 return indirectCallNode.call(functionData.getConstructNewTarget(initBranch), arguments);

@@ -249,7 +249,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     }
 
     public static JSFunctionObject createBound(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
-                    JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+                    JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
         return new Bound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
     }
 
@@ -265,7 +265,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
 
     public static final class Bound extends JSFunctionObject {
         protected Bound(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
-                        JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+                        JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
             super(shape, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, classPrototype);
             this.boundTargetFunction = boundTargetFunction;
             this.boundThis = boundThis;
@@ -273,13 +273,13 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             this.boundLength = calculateBoundLength();
         }
 
-        private final JSDynamicObject boundTargetFunction;
+        private final JSFunctionObject boundTargetFunction;
         private final Object boundThis;
         private final Object[] boundArguments;
         private final int boundLength;
         private TruffleString boundName;
 
-        public JSDynamicObject getBoundTargetFunction() {
+        public JSFunctionObject getBoundTargetFunction() {
             return boundTargetFunction;
         }
 

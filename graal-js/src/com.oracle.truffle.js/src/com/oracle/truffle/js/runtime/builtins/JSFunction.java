@@ -293,7 +293,7 @@ public final class JSFunction extends JSNonProxy {
         return factory.createWithPrototype(functionData, enclosingFrame, classPrototype, realm, prototype);
     }
 
-    public static JSFunctionObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+    public static JSFunctionObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
         JSFunctionFactory factory = context.getBoundFunctionFactory(functionData);
         return factory.createBound(functionData, CLASS_PROTOTYPE_PLACEHOLDER, realm, boundTargetFunction, boundThis, boundArguments);
     }
@@ -445,7 +445,7 @@ public final class JSFunction extends JSNonProxy {
         return ((JSFunctionObject.Bound) function).getBoundThis();
     }
 
-    public static JSDynamicObject getBoundTargetFunction(JSDynamicObject function) {
+    public static JSFunctionObject getBoundTargetFunction(JSDynamicObject function) {
         assert isBoundFunction(function);
         return ((JSFunctionObject.Bound) function).getBoundTargetFunction();
     }
