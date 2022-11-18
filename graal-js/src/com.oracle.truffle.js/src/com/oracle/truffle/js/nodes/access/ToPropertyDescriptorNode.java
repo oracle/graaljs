@@ -48,7 +48,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -245,14 +244,8 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "!isJSObject(obj)")
     protected Object doNonObject(Object obj,
-                    @Cached JSToStringNode toStringNode,
                     @Cached TruffleString.ConcatNode concatNode) {
-        final String message;
-        if (context.isOptionV8CompatibilityMode()) {
-            message = Strings.toJavaString(Strings.concat(concatNode, Strings.PROPERTY_DESCRIPTION_MUST_BE_AN_OBJECT, toStringNode.executeString(obj)));
-        } else {
-            message = "must be an object";
-        }
+        final String message = Strings.toJavaString(Strings.concat(concatNode, Strings.PROPERTY_DESCRIPTION_MUST_BE_AN_OBJECT, JSRuntime.safeToString(obj)));
         throw Errors.createTypeError(message);
     }
 }
