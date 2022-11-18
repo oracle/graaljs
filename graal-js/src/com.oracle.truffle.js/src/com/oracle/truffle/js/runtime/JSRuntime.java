@@ -2905,4 +2905,23 @@ public final class JSRuntime {
         return arg - JSRuntime.truncateDouble(arg) == 0.0;
     }
 
+    @TruffleBoundary
+    public static Object get(Object obj, Object key) {
+        assert JSRuntime.isPropertyKey(key);
+        if (JSDynamicObject.isJSDynamicObject(obj)) {
+            return JSObject.get((JSDynamicObject) obj, key);
+        } else {
+            return JSInteropUtil.readMemberOrDefault(obj, key, Undefined.instance);
+        }
+    }
+
+    @TruffleBoundary
+    public static Object get(Object obj, long index) {
+        if (JSDynamicObject.isJSDynamicObject(obj)) {
+            return JSObject.get((JSDynamicObject) obj, index);
+        } else {
+            return JSInteropUtil.readArrayElementOrDefault(obj, index, Undefined.instance);
+        }
+    }
+
 }

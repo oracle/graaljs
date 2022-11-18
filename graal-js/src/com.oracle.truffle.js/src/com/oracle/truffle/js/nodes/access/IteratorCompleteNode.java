@@ -46,7 +46,6 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 
 /**
  * ES6 7.4.3 IteratorComplete(iterResult).
@@ -90,7 +89,7 @@ public abstract class IteratorCompleteNode extends JavaScriptBaseNode {
 
         @Override
         public boolean execute(Object iterResult) {
-            return JSRuntime.toBoolean(JSInteropUtil.get(iterResult, Strings.DONE));
+            return JSRuntime.toBoolean(JSRuntime.get(iterResult, Strings.DONE));
         }
 
         @Override

@@ -911,7 +911,7 @@ public final class GraalJSAccess {
             } else {
                 truffleObject = JSRuntime.toObject(mainJSContext, object);
             }
-            value = JSInteropUtil.get(truffleObject, propertyKey);
+            value = JSInteropUtil.readMemberOrDefault(truffleObject, propertyKey, Undefined.instance);
         }
         return processReturnValue(value);
     }
