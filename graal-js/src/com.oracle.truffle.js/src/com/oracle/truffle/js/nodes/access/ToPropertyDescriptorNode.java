@@ -43,19 +43,18 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -116,7 +115,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     }
 
     // DSL would not re-read the value if we queried the variable!
-    protected boolean wasExecuted(@SuppressWarnings("unused") JSDynamicObject obj) {
+    protected boolean wasExecuted(@SuppressWarnings("unused") Object obj) {
         return wasExecuted;
     }
 
@@ -124,15 +123,17 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
      * If this node is executed only once, there is no need to create all the specializing child
      * nodes.
      */
-    @Specialization(guards = {"!wasExecuted(obj)", "isJSObject(obj)"})
-    protected Object nonSpecialized(JSDynamicObject obj) {
+    @Specialization(guards = {"!wasExecuted(obj)", "isObjectNode.executeBoolean(obj)"}, limit = "1")
+    protected Object nonSpecialized(Object obj,
+                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         wasExecuted = true;
         return JSRuntime.toPropertyDescriptor(obj);
     }
 
-    @Specialization(guards = {"wasExecuted(obj)", "isJSObject(obj)"})
-    protected Object doDefault(JSDynamicObject obj,
+    @Specialization(guards = {"wasExecuted(obj)", "isObjectNode.executeBoolean(obj)"}, limit = "1")
+    protected Object doDefault(Object obj,
+                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode,
                     @Cached("create()") BranchProfile hasGetBranch,
                     @Cached("create()") BranchProfile hasSetBranch,
                     @Cached("create()") BranchProfile hasEnumerableBranch,
@@ -195,7 +196,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return desc;
     }
 
-    private Object getSet(JSDynamicObject obj) {
+    private Object getSet(Object obj) {
         if (getSetNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getSetNode = insert(PropertyGetNode.create(JSAttributes.SET, false, context));
@@ -203,7 +204,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return getSetNode.getValue(obj);
     }
 
-    private Object getGet(JSDynamicObject obj) {
+    private Object getGet(Object obj) {
         if (getGetNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getGetNode = insert(PropertyGetNode.create(JSAttributes.GET, false, context));
@@ -211,7 +212,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return getGetNode.getValue(obj);
     }
 
-    private Object getValue(JSDynamicObject obj) {
+    private Object getValue(Object obj) {
         if (getValueNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getValueNode = insert(PropertyGetNode.create(JSAttributes.VALUE, false, context));
@@ -219,7 +220,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return getValueNode.getValue(obj);
     }
 
-    private boolean getWritableValue(JSDynamicObject obj) {
+    private boolean getWritableValue(Object obj) {
         if (getWritableNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getWritableNode = insert(PropertyGetNode.create(JSAttributes.WRITABLE, false, context));
@@ -227,7 +228,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return toBoolean(getWritableNode.getValue(obj));
     }
 
-    private boolean getConfigurableValue(JSDynamicObject obj) {
+    private boolean getConfigurableValue(Object obj) {
         if (getConfigurableNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getConfigurableNode = insert(PropertyGetNode.create(JSAttributes.CONFIGURABLE, false, context));
@@ -235,7 +236,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return toBoolean(getConfigurableNode.getValue(obj));
     }
 
-    private boolean getEnumerableValue(JSDynamicObject obj) {
+    private boolean getEnumerableValue(Object obj) {
         if (getEnumerableNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getEnumerableNode = insert(PropertyGetNode.create(JSAttributes.ENUMERABLE, false, context));
@@ -243,16 +244,11 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return toBoolean(getEnumerableNode.getValue(obj));
     }
 
-    @Specialization(guards = "!isJSObject(obj)")
+    @Specialization(guards = "!isObjectNode.executeBoolean(obj)", limit = "1")
     protected Object doNonObject(Object obj,
-                    @Cached JSToStringNode toStringNode,
+                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode,
                     @Cached TruffleString.ConcatNode concatNode) {
-        final String message;
-        if (context.isOptionV8CompatibilityMode()) {
-            message = Strings.toJavaString(Strings.concat(concatNode, Strings.PROPERTY_DESCRIPTION_MUST_BE_AN_OBJECT, toStringNode.executeString(obj)));
-        } else {
-            message = "must be an object";
-        }
+        final String message = Strings.toJavaString(Strings.concat(concatNode, Strings.PROPERTY_DESCRIPTION_MUST_BE_AN_OBJECT, JSRuntime.safeToString(obj)));
         throw Errors.createTypeError(message);
     }
 }

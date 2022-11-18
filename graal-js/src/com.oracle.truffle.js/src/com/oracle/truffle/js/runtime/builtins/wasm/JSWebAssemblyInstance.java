@@ -75,7 +75,6 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -304,14 +303,14 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 InteropLibrary descriptorInterop = InteropLibrary.getUncached(descriptor);
 
                 TruffleString module = asTString(descriptorInterop.readMember(descriptor, "module"));
-                Object moduleImportObject = JSInteropUtil.get(importObject, module);
+                Object moduleImportObject = JSRuntime.get(importObject, module);
                 InteropLibrary moduleImportObjectInterop = InteropLibrary.getUncached(moduleImportObject);
                 if (!moduleImportObjectInterop.hasMembers(moduleImportObject)) {
                     throw Errors.createTypeErrorNotAnObject(moduleImportObject);
                 }
 
                 TruffleString name = asTString(descriptorInterop.readMember(descriptor, "name"));
-                Object value = JSInteropUtil.get(moduleImportObject, name);
+                Object value = JSRuntime.get(moduleImportObject, name);
                 TruffleString externType = asTString(descriptorInterop.readMember(descriptor, "kind"));
                 Object wasmValue;
 
