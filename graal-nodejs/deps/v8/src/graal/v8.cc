@@ -75,6 +75,7 @@
 #include "v8.h"
 #include "v8-fast-api-calls.h"
 #include "v8-profiler.h"
+#include "v8-unwinder-state.h"
 #include "v8-version-string.h"
 #ifdef __POSIX__
 #include "v8-wasm-trap-handler-posix.h"
@@ -579,6 +580,23 @@ namespace v8 {
 
     void Isolate::TerminateExecution() {
         reinterpret_cast<GraalIsolate*> (this)->TerminateExecution();
+    }
+
+    bool Isolate::IsExecutionTerminating() {
+        TRACE
+        return false;
+    }
+
+    void Isolate::DumpAndResetStats() {
+        TRACE
+    }
+
+    void Isolate::GetStackSample(const RegisterState& state, void** frames, size_t frames_limit, SampleInfo* sample_info) {
+        TRACE
+    }
+
+    void Isolate::SetOOMErrorHandler(OOMErrorCallback that) {
+        TRACE
     }
 
     Local<Value> Isolate::ThrowException(Local<Value> exception) {
@@ -3832,6 +3850,14 @@ namespace v8 {
     }
 
     void TracedReferenceBase::CheckValue() const {
+    }
+
+    RegisterState::RegisterState() {
+        TRACE
+    }
+
+    RegisterState::~RegisterState() {
+        TRACE
     }
 
     void AccessorSignature::CheckCast(class v8::Data* that) {}
