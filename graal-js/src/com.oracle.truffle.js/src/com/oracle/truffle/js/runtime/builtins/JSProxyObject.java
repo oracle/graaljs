@@ -168,7 +168,7 @@ public final class JSProxyObject extends JSClassObject {
         @ExportMessage
         public Object execute(@SuppressWarnings("unused") Object[] args) throws UnsupportedMessageException {
             if (isExecutable()) {
-                throw Errors.createTypeErrorProxyRevoked();
+                throw Errors.createTypeErrorProxyRevoked(JSProxy.APPLY, null);
             } else {
                 throw UnsupportedMessageException.create();
             }
@@ -182,7 +182,7 @@ public final class JSProxyObject extends JSClassObject {
         @ExportMessage
         public Object instantiate(@SuppressWarnings("unused") Object[] args) throws UnsupportedMessageException {
             if (isInstantiable()) {
-                throw Errors.createTypeErrorProxyRevoked();
+                throw Errors.createTypeErrorProxyRevoked(JSProxy.CONSTRUCT, null);
             } else {
                 throw UnsupportedMessageException.create();
             }

@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandlerObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -95,7 +96,11 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         assert JSProxy.isJSProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKeyNode.execute(key);
-        JSDynamicObject handler = JSProxy.getHandlerChecked(proxy, errorBranch);
+        JSDynamicObject handler = JSProxy.getHandler(proxy);
+        if (handler == Null.instance) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorProxyRevoked(JSProxy.GET, this);
+        }
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {

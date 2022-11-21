@@ -770,8 +770,13 @@ public final class Errors {
         return createTypeErrorFormat("'ownKeys' on proxy: trap result did not include '%s'", propertyKey);
     }
 
+    @TruffleBoundary
+    public static JSException createTypeErrorProxyRevoked(TruffleString trap, Node originatingNode) {
+        return createTypeError(trap != null ? "Cannot perform '" + trap + "' on a proxy that has been revoked" : "proxy has been revoked", originatingNode);
+    }
+
     public static JSException createTypeErrorProxyRevoked() {
-        return createTypeError("proxy has been revoked");
+        return createTypeErrorProxyRevoked(null, null);
     }
 
     public static JSException createTypeErrorProxyTargetNotExtensible() {
