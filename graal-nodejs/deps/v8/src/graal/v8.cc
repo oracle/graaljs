@@ -1344,7 +1344,7 @@ namespace v8 {
     }
 
     void V8::ToLocalEmpty() {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (GraalIsolate::GetCurrent())->ReportAPIFailure("v8::ToLocalChecked", "Empty MaybeLocal.");
     }
 
     bool Value::IsExternal() const {
