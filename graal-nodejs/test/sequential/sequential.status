@@ -23,6 +23,10 @@ test-vm-timeout-escape-promise-module-2: FAIL
 # Profiling is not supported
 test-worker-prof: FAIL
 
+# Unclassified
+test-vm-break-on-sigint: FAIL
+test-worker-http2-stream-terminate: SKIP
+
 [$system==solaris]
 
 # Needs too many system resources (starts 80 child processes)
