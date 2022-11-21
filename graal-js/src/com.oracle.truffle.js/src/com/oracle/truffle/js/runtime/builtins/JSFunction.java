@@ -94,9 +94,8 @@ import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 
 public final class JSFunction extends JSNonProxy {
 
-    public static final TruffleString TYPE_NAME = Strings.constant("function");
+    public static final TruffleString TYPE_NAME = Strings.FUNCTION;
     public static final TruffleString CLASS_NAME = Strings.constant("Function");
-    public static final TruffleString CLASS_NAME_NASHORN_COMPAT = Strings.constant("FunctionNashornCompat");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Function.prototype");
     public static final TruffleString GENERATOR_FUNCTION_NAME = Strings.constant("GeneratorFunction");
     public static final TruffleString GENERATOR_NAME = Strings.constant("Generator");
@@ -108,9 +107,9 @@ public final class JSFunction extends JSNonProxy {
     public static final TruffleString ENUMERATE_ITERATOR_PROTOTYPE_NAME = Strings.constant("[[Enumerate]].prototype");
     public static final TruffleString FOR_IN_ITERATOR_PROTOYPE_NAME = Strings.constant("%ForInIteratorPrototype%");
     public static final TruffleString CALLER = Strings.constant("caller");
-    public static final TruffleString ARGUMENTS = Strings.constant("arguments");
-    public static final TruffleString LENGTH = Strings.constant("length");
-    public static final TruffleString NAME = Strings.constant("name");
+    public static final TruffleString ARGUMENTS = Strings.ARGUMENTS;
+    public static final TruffleString LENGTH = Strings.LENGTH;
+    public static final TruffleString NAME = Strings.NAME;
     public static final TruffleString ORDINARY_HAS_INSTANCE = Strings.constant("OrdinaryHasInstance");
     public static final String PROGRAM_FUNCTION_NAME = ":program";
 

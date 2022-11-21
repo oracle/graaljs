@@ -90,15 +90,14 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public static final TruffleString IS_EXTENSIBLE = Strings.constant("isExtensible");
     public static final TruffleString PREVENT_EXTENSIONS = Strings.constant("preventExtensions");
     public static final TruffleString GET_OWN_PROPERTY_DESCRIPTOR = Strings.constant("getOwnPropertyDescriptor");
-    public static final TruffleString HAS = Strings.constant("has");
-    public static final TruffleString GET = Strings.constant("get");
-    public static final TruffleString SET = Strings.constant("set");
+    public static final TruffleString HAS = Strings.HAS;
+    public static final TruffleString GET = Strings.GET;
+    public static final TruffleString SET = Strings.SET;
     public static final TruffleString DELETE_PROPERTY = Strings.constant("deleteProperty");
     public static final TruffleString DEFINE_PROPERTY = Strings.constant("defineProperty");
     public static final TruffleString OWN_KEYS = Strings.constant("ownKeys");
-    public static final TruffleString APPLY = Strings.constant("apply");
-    public static final TruffleString CONSTRUCT = Strings.constant("construct");
-    public static final TruffleString FOREIGN = Strings.constant("Foreign");
+    public static final TruffleString APPLY = Strings.APPLY;
+    public static final TruffleString CONSTRUCT = Strings.CONSTRUCT;
     public static final TruffleString PROXY_CALL = Strings.constant("ProxyCall");
 
     public static final HiddenKey REVOCABLE_PROXY = new HiddenKey("RevocableProxy");

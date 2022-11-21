@@ -75,10 +75,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSError extends JSNonProxy {
 
-    public static final TruffleString MESSAGE = Strings.constant("message");
+    public static final TruffleString MESSAGE = Strings.MESSAGE;
     public static final int MESSAGE_ATTRIBUTES = JSAttributes.getDefaultNotEnumerable();
-    public static final TruffleString NAME = Strings.constant("name");
-    public static final TruffleString CLASS_NAME = Strings.constant("Error");
+    public static final TruffleString NAME = Strings.NAME;
+    public static final TruffleString CLASS_NAME = Strings.UC_ERROR;
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Error.prototype");
     public static final HiddenKey EXCEPTION_PROPERTY_NAME = new HiddenKey("Exception");
     public static final TruffleString STACK_NAME = Strings.constant("stack");
