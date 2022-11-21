@@ -214,22 +214,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(targetFunction))) {
                 if (!JSProperty.isProxy(functionLengthLib.getPropertyFlagsOrDefault(targetFunction, Strings.LENGTH, 0))) {
                     // The Get node serves as an implicit branch profile.
-                    Object targetLen = getFunctionLengthNode.getValue(targetFunction);
-                    if (hasIntegerFunctionLengthProfile.profile(targetLen instanceof Integer)) {
-                        int targetLenAsInt = (int) targetLen;
-                        // inner Math.max() avoids potential underflow during the subtraction
-                        int length = Math.max(0, Math.max(0, targetLenAsInt) - argCount);
-                        ((JSFunctionObject.BoundOrWrapped) boundFunction).setBoundLength(length);
-                    } else if (JSRuntime.isNumber(targetLen)) {
-                        Number length;
-                        double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
-                        if (targetLenAsInt != Double.NEGATIVE_INFINITY) {
-                            length = JSRuntime.doubleToNarrowestNumber(Math.max(0, targetLenAsInt - argCount));
-                        } else {
-                            length = 0;
-                        }
-                        JSFunction.setFunctionLength(boundFunction, length);
-                    }
+                    copyLength(boundFunction, targetFunction, argCount);
                 } else {
                     int targetLen = targetFunction instanceof JSFunctionObject.BoundOrWrapped
                                     ? ((JSFunctionObject.BoundOrWrapped) targetFunction).getBoundLength()
@@ -243,11 +228,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             // If the target has name proxy property, the name can be lazily computed.
             if (!JSProperty.isProxy(functionNameLib.getPropertyFlagsOrDefault(targetFunction, Strings.NAME, 0))) {
                 // The Get node serves as an implicit branch profile.
-                Object targetName = getFunctionNameNode.getValue(targetFunction);
-                if (!JSGuards.isString(targetName)) {
-                    targetName = Strings.EMPTY_STRING;
-                }
-                ((JSFunctionObject.BoundOrWrapped) boundFunction).setBoundName((TruffleString) targetName, prefix);
+                copyName(boundFunction, targetFunction, prefix);
             }
         }
 
@@ -256,25 +237,34 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 execute(boundFunction, (JSFunctionObject) target, prefix, argCount);
                 return;
             }
+
             if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(target))) {
-                Object targetLen = getFunctionLengthNode.getValue(target);
-                if (hasIntegerFunctionLengthProfile.profile(targetLen instanceof Integer)) {
-                    int targetLenAsInt = (int) targetLen;
-                    // inner Math.max() avoids potential underflow during the subtraction
-                    int lengthAsInt = Math.max(0, Math.max(0, targetLenAsInt) - argCount);
-                    ((JSFunctionObject.BoundOrWrapped) boundFunction).setBoundLength(lengthAsInt);
-                } else if (JSRuntime.isNumber(targetLen)) {
-                    Number length;
-                    double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
-                    if (targetLenAsInt != Double.NEGATIVE_INFINITY) {
-                        length = JSRuntime.doubleToNarrowestNumber(Math.max(0, targetLenAsInt - argCount));
-                    } else {
-                        length = 0;
-                    }
-                    JSFunction.setFunctionLength(boundFunction, length);
-                }
+                copyLength(boundFunction, target, argCount);
             }
 
+            copyName(boundFunction, target, prefix);
+        }
+
+        private void copyLength(JSFunctionObject boundFunction, Object target, int argCount) {
+            Object targetLen = getFunctionLengthNode.getValue(target);
+            if (hasIntegerFunctionLengthProfile.profile(targetLen instanceof Integer)) {
+                int targetLenAsInt = (int) targetLen;
+                // inner Math.max() avoids potential underflow during the subtraction
+                int lengthAsInt = Math.max(0, Math.max(0, targetLenAsInt) - argCount);
+                ((JSFunctionObject.BoundOrWrapped) boundFunction).setBoundLength(lengthAsInt);
+            } else if (JSRuntime.isNumber(targetLen)) {
+                Number length;
+                double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
+                if (targetLenAsInt != Double.NEGATIVE_INFINITY) {
+                    length = JSRuntime.doubleToNarrowestNumber(Math.max(0, targetLenAsInt - argCount));
+                } else {
+                    length = 0;
+                }
+                JSFunction.setFunctionLength(boundFunction, length);
+            }
+        }
+
+        private void copyName(JSFunctionObject boundFunction, Object target, TruffleString prefix) {
             Object targetName = getFunctionNameNode.getValue(target);
             if (!JSGuards.isString(targetName)) {
                 targetName = Strings.EMPTY_STRING;
