@@ -554,7 +554,7 @@ public:
     }
 
     inline v8::Local<v8::Context> GetCurrentContext() {
-        return contexts.back();
+        return ContextEntered() ? contexts.back() : nullptr;
     }
 
     inline bool ContextEntered() {
