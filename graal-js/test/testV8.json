@@ -897,6 +897,18 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
+    "filePath" : "mjsunit/harmony/shadowrealm-evaluate.js",
+    "status" : "FAIL",
+    "comment" : "Different error messages."
+  }, {
+    "filePath" : "mjsunit/harmony/shadowrealm-importvalue.js",
+    "status" : "FAIL",
+    "comment" : "Different error messages"
+  }, {
+    "filePath" : "mjsunit/harmony/shadowrealm-wrapped-function-props.js",
+    "status" : "FAIL",
+    "comment" : "Fails because of %HasFastProperties in code evaluated in ShadowRealm."
+  }, {
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
