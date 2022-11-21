@@ -376,6 +376,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         private final TruffleString name;
 
         public NativeFunctionRootNode(JSContext context, FunctionTemplate template, boolean isNew, boolean isNewTarget) {
+            super(null, createSourceSection(), null);
             this.context = context;
             this.isNew = isNew;
             this.isNewTarget = isNewTarget;
