@@ -90,6 +90,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -194,6 +195,10 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
             @Child private JSFunctionCallNode callWrappedTargetFunction = JSFunctionCallNode.createCall();
             @Child private GetWrappedValueNode getWrappedValue = GetWrappedValueNode.create();
 
+            protected WrappedFunctionRootNode(JavaScriptLanguage lang) {
+                super(lang, null, null);
+            }
+
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
@@ -202,26 +207,33 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 assert JSRuntime.isCallable(target) : target;
                 JSRealm callerRealm = functionObject.getRealm();
                 JSRealm targetRealm = JSRuntime.getFunctionRealm(target, callerRealm);
-                int argCount = JSArguments.getUserArgumentCount(args);
-                Object[] wrappedArgs = JSArguments.createInitial(Undefined.instance, target, argCount);
-                for (int i = 0; i < argCount; i++) {
-                    JSArguments.setUserArgument(wrappedArgs, i, getWrappedValue.execute(context, targetRealm, JSArguments.getUserArgument(args, i)));
-                }
-                Object wrappedThisArgument = getWrappedValue.execute(context, targetRealm, JSArguments.getThisObject(args));
-                JSArguments.setThisObject(wrappedArgs, wrappedThisArgument);
-                Object result;
+                JSRealm mainRealm = JSRealm.getMain(this);
+                JSRealm prevRealm = mainRealm.enterRealm(this, callerRealm);
+                assert getRealm() == callerRealm;
                 try {
-                    JSRealm mainRealm = JSRealm.getMain(this);
-                    JSRealm prevRealm = mainRealm.enterRealm(this, targetRealm);
-                    try {
-                        result = callWrappedTargetFunction.executeCall(wrappedArgs);
-                    } finally {
-                        mainRealm.leaveRealm(this, prevRealm);
+                    int argCount = JSArguments.getUserArgumentCount(args);
+                    Object[] wrappedArgs = JSArguments.createInitial(Undefined.instance, target, argCount);
+                    for (int i = 0; i < argCount; i++) {
+                        JSArguments.setUserArgument(wrappedArgs, i, getWrappedValue.execute(context, targetRealm, JSArguments.getUserArgument(args, i)));
                     }
-                } catch (AbstractTruffleException ex) {
-                    throw wrapErrorFromShadowRealm(ex);
+                    Object wrappedThisArgument = getWrappedValue.execute(context, targetRealm, JSArguments.getThisObject(args));
+                    JSArguments.setThisObject(wrappedArgs, wrappedThisArgument);
+                    Object result;
+                    try {
+                        JSRealm prevCallerRealm = mainRealm.enterRealm(this, targetRealm);
+                        assert prevCallerRealm == callerRealm;
+                        try {
+                            result = callWrappedTargetFunction.executeCall(wrappedArgs);
+                        } finally {
+                            mainRealm.leaveRealm(this, callerRealm);
+                        }
+                    } catch (AbstractTruffleException ex) {
+                        throw wrapErrorFromShadowRealm(ex);
+                    }
+                    return getWrappedValue.execute(context, callerRealm, result);
+                } finally {
+                    mainRealm.leaveRealm(this, prevRealm);
                 }
-                return getWrappedValue.execute(context, callerRealm, result);
             }
 
             @TruffleBoundary
@@ -229,7 +241,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return Errors.createTypeError(String.format("Wrapped function call failed with: %s", ex.getMessage()), ex, this);
             }
         }
-        return JSFunctionData.createCallOnly(context, new WrappedFunctionRootNode().getCallTarget(), 0, Strings.EMPTY_STRING);
+        return JSFunctionData.createCallOnly(context, new WrappedFunctionRootNode(context.getLanguage()).getCallTarget(), 0, Strings.EMPTY_STRING);
     }
 
     @ImportStatic(JSShadowRealm.class)
@@ -332,26 +344,32 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         private static JSFunctionData createExportGetterImpl(JSContext context) {
-            final class ExportGetterRootNode extends JavaScriptRootNode {
+            final class ExportGetterRootNode extends JavaScriptRealmBoundaryRootNode {
                 @Child private JavaScriptNode argumentNode = AccessIndexedArgumentNode.create(0);
                 @Child private PropertyGetNode getExportNameString = PropertyGetNode.createGetHidden(EXPORT_NAME_STRING, context);
                 @Child private JSHasPropertyNode hasOwnProperty = JSHasPropertyNode.create(true);
                 @Child private ReadElementNode getExport = ReadElementNode.create(context);
                 @Child private GetWrappedValueNode getWrappedValue = GetWrappedValueNode.create();
 
+                protected ExportGetterRootNode(JavaScriptLanguage lang) {
+                    super(lang);
+                }
+
                 @Override
-                public Object execute(VirtualFrame frame) {
+                public Object executeInRealm(VirtualFrame frame) {
                     JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
                     TruffleString exportNameString = (TruffleString) getExportNameString.getValue(functionObject);
                     Object exports = argumentNode.execute(frame);
+                    JSRealm callerRealm = functionObject.getRealm();
+                    assert getRealm() == callerRealm;
                     if (!hasOwnProperty.executeBoolean(exports, exportNameString)) {
                         throw Errors.createTypeErrorCannotGetProperty(context, exportNameString, exports, false, this);
                     }
                     Object value = getExport.executeWithTargetAndIndex(exports, exportNameString);
-                    return getWrappedValue.execute(context, functionObject.getRealm(), value);
+                    return getWrappedValue.execute(context, callerRealm, value);
                 }
             }
-            return JSFunctionData.createCallOnly(context, new ExportGetterRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
+            return JSFunctionData.createCallOnly(context, new ExportGetterRootNode(context.getLanguage()).getCallTarget(), 1, Strings.EMPTY_STRING);
         }
 
         @TruffleBoundary
