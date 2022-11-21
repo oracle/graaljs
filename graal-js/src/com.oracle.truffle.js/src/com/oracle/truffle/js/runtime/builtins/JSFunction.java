@@ -126,17 +126,17 @@ public final class JSFunction extends JSNonProxy {
         @Override
         public Object get(JSDynamicObject store) {
             assert JSFunction.isJSFunction(store);
-            if (JSFunction.isBoundFunction(store)) {
-                return ((JSFunctionObject.Bound) store).getBoundLength();
+            if (store instanceof JSFunctionObject.BoundOrWrapped) {
+                return ((JSFunctionObject.BoundOrWrapped) store).getBoundLength();
             }
             return JSFunction.getLength(store);
         }
 
         public static int getProfiled(JSDynamicObject store, BranchProfile isBoundBranch) {
             assert JSFunction.isJSFunction(store);
-            if (JSFunction.isBoundFunction(store)) {
+            if (store instanceof JSFunctionObject.BoundOrWrapped) {
                 isBoundBranch.enter();
-                return ((JSFunctionObject.Bound) store).getBoundLength();
+                return ((JSFunctionObject.BoundOrWrapped) store).getBoundLength();
             }
             return JSFunction.getLength(store);
         }
@@ -149,17 +149,17 @@ public final class JSFunction extends JSNonProxy {
         @Override
         public TruffleString get(JSDynamicObject store) {
             assert JSFunction.isJSFunction(store);
-            if (store instanceof JSFunctionObject.LazyName) {
-                return ((JSFunctionObject.LazyName) store).getBoundName();
+            if (store instanceof JSFunctionObject.BoundOrWrapped) {
+                return ((JSFunctionObject.BoundOrWrapped) store).getBoundName();
             }
             return JSFunction.getName(store);
         }
 
         public static Object getProfiled(JSDynamicObject store, BranchProfile isBoundBranch) {
             assert JSFunction.isJSFunction(store);
-            if (store instanceof JSFunctionObject.LazyName) {
+            if (store instanceof JSFunctionObject.BoundOrWrapped) {
                 isBoundBranch.enter();
-                return ((JSFunctionObject.LazyName) store).getBoundName();
+                return ((JSFunctionObject.BoundOrWrapped) store).getBoundName();
             }
             return JSFunction.getName(store);
         }

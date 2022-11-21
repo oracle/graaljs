@@ -264,10 +264,16 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
         }
     }
 
-    public abstract static class LazyName extends JSFunctionObject {
+    /**
+     * Bound or wrapped function exotic object.
+     */
+    public abstract static class BoundOrWrapped extends JSFunctionObject {
+
+        private int boundLength;
+
         private TruffleString boundName;
 
-        protected LazyName(Shape shape, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {
+        protected BoundOrWrapped(Shape shape, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {
             super(shape, functionData, enclosingFrame, realm, classPrototype);
         }
 
@@ -291,20 +297,31 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
 
         @TruffleBoundary
         protected static TruffleString getFunctionName(JSFunctionObject function) {
-            if (function instanceof JSFunctionObject.LazyName) {
-                return ((JSFunctionObject.LazyName) function).getBoundName();
+            if (function instanceof BoundOrWrapped) {
+                return ((BoundOrWrapped) function).getBoundName();
             } else {
                 return JSFunction.getName(function);
             }
         }
+
+        public final int getBoundLength() {
+            return boundLength;
+        }
+
+        public final void setBoundLength(int length) {
+            assert this.boundLength == 0;
+            this.boundLength = length;
+        }
     }
 
-    public static final class Bound extends LazyName {
+    /**
+     * Bound function exotic object.
+     */
+    public static final class Bound extends BoundOrWrapped {
 
         private final JSFunctionObject boundTargetFunction;
         private final Object boundThis;
         private final Object[] boundArguments;
-        private final int boundLength;
 
         protected Bound(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
                         JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
@@ -312,7 +329,6 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             this.boundTargetFunction = boundTargetFunction;
             this.boundThis = boundThis;
             this.boundArguments = boundArguments;
-            this.boundLength = calculateBoundLength(boundTargetFunction, boundArguments.length);
         }
 
         public JSFunctionObject getBoundTargetFunction() {
@@ -327,22 +343,6 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             return boundArguments;
         }
 
-        public int getBoundLength() {
-            return boundLength;
-        }
-
-        private static int calculateBoundLength(JSFunctionObject boundTargetFunction, int boundArgCount) {
-            return Math.max(0, getBoundFunctionLength(boundTargetFunction) - boundArgCount);
-        }
-
-        private static int getBoundFunctionLength(JSFunctionObject function) {
-            if (JSFunction.isBoundFunction(function)) {
-                return ((JSFunctionObject.Bound) function).getBoundLength();
-            } else {
-                return JSFunction.getLength(function);
-            }
-        }
-
         @Override
         protected void initializeName() {
             setBoundName(getFunctionName(getBoundTargetFunction()), Strings.BOUND_SPC);
@@ -350,9 +350,11 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     }
 
     /**
+     * Wrapped function exotic object.
+     *
      * @see JSShadowRealmObject
      */
-    public static final class Wrapped extends LazyName {
+    public static final class Wrapped extends BoundOrWrapped {
         private final Object wrappedTargetFunction;
 
         protected Wrapped(Shape shape, JSFunctionData functionData, JSRealm realm, Object wrappedTargetFunction) {
