@@ -43,6 +43,8 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -50,9 +52,11 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ShadowRealmPrototypeBuiltinsFactory.GetWrappedValueNodeGen;
 import com.oracle.truffle.js.builtins.ShadowRealmPrototypeBuiltinsFactory.ShadowRealmEvaluateNodeGen;
@@ -98,6 +102,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealmObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -345,7 +350,10 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSRealm mainRealm = JSRealm.getMain(this);
             JSRealm prevRealm = mainRealm.enterRealm(this, evalRealm);
             try {
-                importNode.hostImportModuleDynamically(null, ModuleRequest.create(specifierString), innerCapability);
+                // Off-spec: Provide a caller source that allow relative paths to be resolved.
+                Source callerSource = (Strings.startsWith(specifierString, Strings.DOT_SLASH) || Strings.startsWith(specifierString, Strings.DOT_DOT_SLASH)) ? retrieveCallerSource() : null;
+                ScriptOrModule activeScriptOrModule = callerSource == null ? null : new ScriptOrModule(getContext(), callerSource);
+                importNode.hostImportModuleDynamically(activeScriptOrModule, ModuleRequest.create(specifierString), innerCapability);
             } finally {
                 mainRealm.leaveRealm(this, prevRealm);
             }
@@ -384,6 +392,25 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = "!isJSShadowRealm(thisObj)")
         protected Object invalidReceiver(Object thisObj, @SuppressWarnings("unused") Object specifier, @SuppressWarnings("unused") Object exportName) {
             throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
+        }
+
+        @TruffleBoundary
+        private static Source retrieveCallerSource() {
+            Source callerSource = Truffle.getRuntime().iterateFrames(frameInstance -> {
+                if (!(frameInstance.getCallTarget() instanceof RootCallTarget)) {
+                    return null;
+                }
+                RootNode root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+                if (root.isInternal()) {
+                    return null;
+                }
+                SourceSection sourceSection = root.getSourceSection();
+                if (sourceSection != null && sourceSection.isAvailable()) {
+                    return sourceSection.getSource();
+                }
+                return null;
+            });
+            return callerSource;
         }
     }
 }
