@@ -50,6 +50,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -59,6 +60,7 @@ import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSBindNod
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSCallNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSFunctionToStringNodeGen;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -74,7 +76,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -82,6 +83,8 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 
 /**
  * Contains builtins for {@linkplain JSFunction Function}.prototype.
@@ -185,15 +188,108 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
-    public abstract static class JSBindNode extends JSBuiltinNode {
-        @Child private GetPrototypeNode getPrototypeNode;
+    public static final class CopyFunctionNameAndLengthNode extends JavaScriptBaseNode {
         @Child private HasPropertyCacheNode hasFunctionLengthNode;
         @Child private PropertyGetNode getFunctionLengthNode;
         @Child private PropertyGetNode getFunctionNameNode;
+        @Child private DynamicObjectLibrary functionLengthLib;
+        @Child private DynamicObjectLibrary functionNameLib;
         private final ConditionProfile mustSetLengthProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile setNameProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile hasFunctionLengthProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile hasIntegerFunctionLengthProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isJSFunctionProfile = ConditionProfile.createBinaryProfile();
+
+        public CopyFunctionNameAndLengthNode(JSContext context) {
+            this.hasFunctionLengthNode = HasPropertyCacheNode.create(JSFunction.LENGTH, context, true);
+            this.getFunctionLengthNode = PropertyGetNode.create(JSFunction.LENGTH, false, context);
+            this.getFunctionNameNode = PropertyGetNode.create(JSFunction.NAME, false, context);
+            this.functionLengthLib = JSObjectUtil.createDispatched(JSFunction.LENGTH);
+            this.functionNameLib = JSObjectUtil.createDispatched(JSFunction.NAME);
+        }
+
+        public static CopyFunctionNameAndLengthNode create(JSContext context) {
+            return new CopyFunctionNameAndLengthNode(context);
+        }
+
+        public void execute(JSFunctionObject boundFunction, JSFunctionObject targetFunction, TruffleString prefix, int argCount) {
+            Number length = 0;
+            if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(targetFunction))) {
+                if (!(boundFunction instanceof JSFunctionObject.Bound) || !JSProperty.isProxy(functionLengthLib.getPropertyFlagsOrDefault(targetFunction, Strings.LENGTH, 0))) {
+                    // The Get node serves as an implicit branch profile.
+                    boolean mustSetLength = true;
+                    Object targetLen = getFunctionLengthNode.getValue(targetFunction);
+                    if (hasIntegerFunctionLengthProfile.profile(targetLen instanceof Integer)) {
+                        int targetLenAsInt = (int) targetLen;
+                        if (boundFunction instanceof JSFunctionObject.Bound && targetLenAsInt == JSFunction.getLength(targetFunction)) {
+                            mustSetLength = false;
+                        } else {
+                            // inner Math.max() avoids potential underflow during the subtraction
+                            length = Math.max(0, Math.max(0, targetLenAsInt) - argCount);
+                        }
+                    } else if (JSRuntime.isNumber(targetLen)) {
+                        double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
+                        if (targetLenAsInt != Double.NEGATIVE_INFINITY) {
+                            length = JSRuntime.doubleToNarrowestNumber(Math.max(0, targetLenAsInt - argCount));
+                        } // else length = 0
+                    }
+                    if (mustSetLengthProfile.profile(mustSetLength)) {
+                        JSFunction.setFunctionLength(boundFunction, length);
+                    }
+                }
+            }
+
+            // If the target has name proxy property, the name can be lazily computed.
+            if (!JSProperty.isProxy(functionNameLib.getPropertyFlagsOrDefault(targetFunction, Strings.NAME, 0))) {
+                // The Get node serves as an implicit branch profile.
+                Object targetName = getFunctionNameNode.getValue(targetFunction);
+                if (!JSGuards.isString(targetName)) {
+                    targetName = Strings.EMPTY_STRING;
+                }
+                ((JSFunctionObject.LazyName) boundFunction).setBoundName((TruffleString) targetName, prefix);
+            }
+        }
+
+        public void execute(JSFunctionObject boundFunction, Object target, TruffleString prefix, int argCount) {
+            if (isJSFunctionProfile.profile(target instanceof JSFunctionObject)) {
+                execute(boundFunction, (JSFunctionObject) target, prefix, argCount);
+                return;
+            }
+            Number length = 0;
+            if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(target))) {
+                Object targetLen = getFunctionLengthNode.getValue(target);
+                if (hasIntegerFunctionLengthProfile.profile(targetLen instanceof Integer)) {
+                    int targetLenAsInt = (int) targetLen;
+                    // inner Math.max() avoids potential underflow during the subtraction
+                    length = Math.max(0, Math.max(0, targetLenAsInt) - argCount);
+                } else if (JSRuntime.isNumber(targetLen)) {
+                    double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
+                    if (targetLenAsInt != Double.NEGATIVE_INFINITY) {
+                        length = JSRuntime.doubleToNarrowestNumber(Math.max(0, targetLenAsInt - argCount));
+                    } // else length = 0
+                }
+            }
+            JSFunction.setFunctionLength(boundFunction, length);
+
+            Object targetName = getFunctionNameNode.getValue(target);
+            if (!JSGuards.isString(targetName)) {
+                targetName = Strings.EMPTY_STRING;
+            }
+            ((JSFunctionObject.LazyName) boundFunction).setBoundName((TruffleString) targetName, prefix);
+        }
+
+        private static double toIntegerOrInfinity(Number number) {
+            if (number instanceof Double) {
+                double doubleValue = (Double) number;
+                return Double.isNaN(doubleValue) ? 0 : JSRuntime.truncateDouble(doubleValue);
+            } else {
+                return JSRuntime.doubleValue(number);
+            }
+        }
+    }
+
+    public abstract static class JSBindNode extends JSBuiltinNode {
+        @Child private GetPrototypeNode getPrototypeNode;
+        @Child private CopyFunctionNameAndLengthNode copyNameAndLengthNode;
         private final ConditionProfile isConstructorProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
@@ -201,49 +297,17 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public JSBindNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getPrototypeNode = GetPrototypeNode.create();
-            this.hasFunctionLengthNode = HasPropertyCacheNode.create(JSFunction.LENGTH, context, true);
-            this.getFunctionLengthNode = PropertyGetNode.create(JSFunction.LENGTH, false, context);
-            this.getFunctionNameNode = PropertyGetNode.create(JSFunction.NAME, false, context);
+            this.copyNameAndLengthNode = CopyFunctionNameAndLengthNode.create(context);
         }
 
-        @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "fast path")
         @Specialization
         protected JSDynamicObject bindFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args) {
             JSDynamicObject proto = getPrototypeNode.execute(thisFnObj);
 
-            JSDynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto,
+            JSFunctionObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto,
                             isConstructorProfile, isAsyncProfile, setProtoProfile, this);
 
-            Number length = 0;
-            boolean mustSetLength = true;
-            if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(thisFnObj))) {
-                Object targetLen = getFunctionLengthNode.getValue(thisFnObj);
-                if (hasIntegerFunctionLengthProfile.profile(targetLen instanceof Integer)) {
-                    int targetLenAsInt = (Integer) targetLen;
-                    if (targetLenAsInt == JSFunction.getLength(thisFnObj)) {
-                        mustSetLength = false;
-                    } else {
-                        // inner Math.max() avoids potential underflow during the subtraction
-                        length = Math.max(0, Math.max(0, targetLenAsInt) - args.length);
-                    }
-                } else if (JSRuntime.isNumber(targetLen)) {
-                    double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
-                    if (targetLenAsInt != Double.NEGATIVE_INFINITY) {
-                        length = JSRuntime.doubleToNarrowestNumber(Math.max(0, targetLenAsInt - args.length));
-                    } // else length = 0
-                }
-            }
-            if (mustSetLengthProfile.profile(mustSetLength)) {
-                JSFunction.setFunctionLength(boundFunction, length);
-            }
-
-            Object targetName = getFunctionNameNode.getValue(thisFnObj);
-            if (!JSGuards.isString(targetName)) {
-                targetName = Strings.EMPTY_STRING;
-            }
-            if (setNameProfile.profile(targetName != JSFunction.getName(thisFnObj))) {
-                ((JSFunctionObject.Bound) boundFunction).setTargetName((TruffleString) targetName);
-            }
+            copyNameAndLengthNode.execute(boundFunction, thisFnObj, Strings.BOUND_SPC, args.length);
 
             return boundFunction;
         }
@@ -266,27 +330,10 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
             assert JSFunction.isJSFunction(innerFunction);
 
-            JSDynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (JSFunctionObject) innerFunction, thisArg, args, proto,
+            JSFunctionObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (JSFunctionObject) innerFunction, thisArg, args, proto,
                             isConstructorProfile, isAsyncProfile, setProtoProfile, this);
 
-            Number length = 0;
-            boolean targetHasLength = JSObject.hasOwnProperty(thisObj, JSFunction.LENGTH);
-            if (targetHasLength) {
-                Object targetLen = JSObject.get(thisObj, JSFunction.LENGTH);
-                if (JSRuntime.isNumber(targetLen)) {
-                    double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
-                    if (targetLenAsInt != Double.NEGATIVE_INFINITY) {
-                        length = JSRuntime.doubleToNarrowestNumber(Math.max(0, targetLenAsInt - args.length));
-                    } // else length = 0
-                }
-            }
-            JSFunction.setFunctionLength(boundFunction, length);
-
-            Object targetName = JSObject.get(thisObj, JSFunction.NAME);
-            if (!Strings.isTString(targetName)) {
-                targetName = Strings.EMPTY_STRING;
-            }
-            JSFunction.setBoundFunctionName(boundFunction, (TruffleString) targetName);
+            copyNameAndLengthNode.execute(boundFunction, thisObj, Strings.BOUND_SPC, args.length);
 
             return boundFunction;
         }
@@ -296,16 +343,6 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected JSDynamicObject bindError(Object thisObj, Object thisArg, Object[] arg) {
             throw Errors.createTypeErrorNotAFunction(thisObj);
         }
-
-        private static double toIntegerOrInfinity(Number number) {
-            if (number instanceof Double) {
-                double doubleValue = (Double) number;
-                return Double.isNaN(doubleValue) ? 0 : JSRuntime.truncateDouble(doubleValue);
-            } else {
-                return JSRuntime.doubleValue(number);
-            }
-        }
-
     }
 
     public abstract static class JSFunctionToStringNode extends JSBuiltinNode {

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
@@ -263,21 +264,56 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
         }
     }
 
-    public static final class Bound extends JSFunctionObject {
+    public abstract static class LazyName extends JSFunctionObject {
+        private TruffleString boundName;
+
+        protected LazyName(Shape shape, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {
+            super(shape, functionData, enclosingFrame, realm, classPrototype);
+        }
+
+        public final TruffleString getBoundName() {
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, boundName == null)) {
+                initializeName();
+            }
+            return boundName;
+        }
+
+        public final void setBoundName(TruffleString targetName, TruffleString prefix) {
+            boundName = Strings.isEmpty(prefix) ? targetName : concat(prefix, targetName);
+        }
+
+        @TruffleBoundary
+        private static TruffleString concat(TruffleString first, TruffleString second) {
+            return Strings.concat(first, second);
+        }
+
+        protected abstract void initializeName();
+
+        @TruffleBoundary
+        protected static TruffleString getFunctionName(JSFunctionObject function) {
+            if (function instanceof JSFunctionObject.LazyName) {
+                return ((JSFunctionObject.LazyName) function).getBoundName();
+            } else {
+                return JSFunction.getName(function);
+            }
+        }
+    }
+
+    public static final class Bound extends LazyName {
+
+        private final JSFunctionObject boundTargetFunction;
+        private final Object boundThis;
+        private final Object[] boundArguments;
+        private final int boundLength;
+
         protected Bound(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
                         JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
             super(shape, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, classPrototype);
             this.boundTargetFunction = boundTargetFunction;
             this.boundThis = boundThis;
             this.boundArguments = boundArguments;
-            this.boundLength = calculateBoundLength();
+            this.boundLength = calculateBoundLength(boundTargetFunction, boundArguments.length);
         }
-
-        private final JSFunctionObject boundTargetFunction;
-        private final Object boundThis;
-        private final Object[] boundArguments;
-        private final int boundLength;
-        private TruffleString boundName;
 
         public JSFunctionObject getBoundTargetFunction() {
             return boundTargetFunction;
@@ -291,39 +327,15 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             return boundArguments;
         }
 
-        public TruffleString getBoundName() {
-            if (boundName == null) {
-                initializeBoundName();
-            }
-            return boundName;
-        }
-
-        public void setTargetName(TruffleString targetName) {
-            boundName = Strings.concat(Strings.BOUND_SPC, targetName);
-        }
-
-        @TruffleBoundary
-        private void initializeBoundName() {
-            setTargetName(getFunctionName(boundTargetFunction));
-        }
-
-        private static TruffleString getFunctionName(JSDynamicObject function) {
-            if (JSFunction.isBoundFunction(function)) {
-                return ((JSFunctionObject.Bound) function).getBoundName();
-            } else {
-                return JSFunction.getName(function);
-            }
-        }
-
         public int getBoundLength() {
             return boundLength;
         }
 
-        private int calculateBoundLength() {
-            return Math.max(0, getBoundFunctionLength(boundTargetFunction) - boundArguments.length);
+        private static int calculateBoundLength(JSFunctionObject boundTargetFunction, int boundArgCount) {
+            return Math.max(0, getBoundFunctionLength(boundTargetFunction) - boundArgCount);
         }
 
-        private static int getBoundFunctionLength(JSDynamicObject function) {
+        private static int getBoundFunctionLength(JSFunctionObject function) {
             if (JSFunction.isBoundFunction(function)) {
                 return ((JSFunctionObject.Bound) function).getBoundLength();
             } else {
@@ -331,12 +343,16 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             }
         }
 
+        @Override
+        protected void initializeName() {
+            setBoundName(getFunctionName(getBoundTargetFunction()), Strings.BOUND_SPC);
+        }
     }
 
     /**
      * @see JSShadowRealmObject
      */
-    public static final class Wrapped extends JSFunctionObject {
+    public static final class Wrapped extends LazyName {
         private final Object wrappedTargetFunction;
 
         protected Wrapped(Shape shape, JSFunctionData functionData, JSRealm realm, Object wrappedTargetFunction) {
@@ -346,6 +362,12 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
 
         public Object getWrappedTargetFunction() {
             return wrappedTargetFunction;
+        }
+
+        @Override
+        protected void initializeName() {
+            // This method should not be called if the wrapped target function is not a JS function.
+            setBoundName(getFunctionName((JSFunctionObject) getWrappedTargetFunction()), Strings.EMPTY_STRING);
         }
     }
 }

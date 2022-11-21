@@ -54,10 +54,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltins.CopyFunctionNameAndLengthNode;
 import com.oracle.truffle.js.builtins.ShadowRealmPrototypeBuiltinsFactory.GetWrappedValueNodeGen;
 import com.oracle.truffle.js.builtins.ShadowRealmPrototypeBuiltinsFactory.ShadowRealmEvaluateNodeGen;
 import com.oracle.truffle.js.builtins.ShadowRealmPrototypeBuiltinsFactory.ShadowRealmImportValueNodeGen;
@@ -66,19 +66,16 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.nodes.promise.ImportCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
@@ -151,47 +148,16 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = "isCallable.executeBoolean(value)", limit = "1")
         protected final Object objectCallable(JSContext context, JSRealm callerRealm, Object value,
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
-                        @Cached("create(LENGTH, context, true)") HasPropertyCacheNode hasOwnPropertyLength,
-                        @Cached("create(LENGTH, context)") PropertyGetNode getFunctionLength,
-                        @Cached("create(NAME, context)") PropertyGetNode getFunctionName,
-                        @Cached SetFunctionNameNode setFunctionName,
-                        @Cached JSToIntegerOrInfinityNode toIntegerOrInfinity,
-                        @Cached ConditionProfile hasIntegerLengthProfile) {
+                        @Cached("create(context)") CopyFunctionNameAndLengthNode copyNameAndLengthNode) {
             CompilerAsserts.partialEvaluationConstant(context);
             JSFunctionData wrappedFunctionCall = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.OrdinaryWrappedFunctionCall, ShadowRealmPrototypeBuiltins::createWrappedFunctionImpl);
             JSFunctionObject wrapped = JSFunction.createWrapped(context, callerRealm, wrappedFunctionCall, value);
             try {
-                copyNameAndLength(wrapped, value, hasOwnPropertyLength, getFunctionLength, getFunctionName, setFunctionName, toIntegerOrInfinity, hasIntegerLengthProfile);
+                copyNameAndLengthNode.execute(wrapped, value, Strings.EMPTY_STRING, 0);
             } catch (AbstractTruffleException ex) {
                 throw toTypeError(ex, callerRealm);
             }
             return wrapped;
-        }
-
-        private static void copyNameAndLength(JSFunctionObject wrapped, Object target,
-                        HasPropertyCacheNode hasOwnPropertyLength, PropertyGetNode getFunctionLength, PropertyGetNode getFunctionName, SetFunctionNameNode setFunctionName,
-                        JSToIntegerOrInfinityNode toIntegerOrInfinity, ConditionProfile hasIntegerLengthProfile) {
-            Number length = 0;
-            if (hasOwnPropertyLength.hasProperty(target)) {
-                Object targetLen = getFunctionLength.getValue(target);
-                if (hasIntegerLengthProfile.profile(targetLen instanceof Integer)) {
-                    int targetLenAsInt = (Integer) targetLen;
-                    length = Math.max(targetLenAsInt, 0);
-                } else if (JSRuntime.isNumber(targetLen)) {
-                    double targetLenAsInt = Math.max(JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(targetLen)), 0);
-                    if (targetLenAsInt == Double.POSITIVE_INFINITY) {
-                        length = Double.POSITIVE_INFINITY;
-                    } else {
-                        length = JSRuntime.doubleToNarrowestNumber(targetLenAsInt);
-                    }
-                }
-            }
-            JSFunction.setFunctionLength(wrapped, length);
-            Object targetName = getFunctionName.getValue(target);
-            if (!JSGuards.isString(targetName)) {
-                targetName = Strings.EMPTY_STRING;
-            }
-            setFunctionName.execute(wrapped, targetName);
         }
 
         @Specialization(guards = {"isObject.executeBoolean(value)", "!isCallable.executeBoolean(value)"}, limit = "1")

@@ -150,17 +150,17 @@ public final class JSFunction extends JSNonProxy {
         @Override
         public TruffleString get(JSDynamicObject store) {
             assert JSFunction.isJSFunction(store);
-            if (JSFunction.isBoundFunction(store)) {
-                return ((JSFunctionObject.Bound) store).getBoundName();
+            if (store instanceof JSFunctionObject.LazyName) {
+                return ((JSFunctionObject.LazyName) store).getBoundName();
             }
             return JSFunction.getName(store);
         }
 
         public static Object getProfiled(JSDynamicObject store, BranchProfile isBoundBranch) {
             assert JSFunction.isJSFunction(store);
-            if (JSFunction.isBoundFunction(store)) {
+            if (store instanceof JSFunctionObject.LazyName) {
                 isBoundBranch.enter();
-                return ((JSFunctionObject.Bound) store).getBoundName();
+                return ((JSFunctionObject.LazyName) store).getBoundName();
             }
             return JSFunction.getName(store);
         }
@@ -331,11 +331,11 @@ public final class JSFunction extends JSNonProxy {
     }
 
     @TruffleBoundary
-    public static JSDynamicObject bind(JSRealm realm, JSFunctionObject thisFnObj, Object thisArg, Object[] boundArguments) {
+    public static JSFunctionObject bind(JSRealm realm, JSFunctionObject thisFnObj, Object thisArg, Object[] boundArguments) {
         assert JSFunction.isJSFunction(thisFnObj);
         JSContext context = realm.getContext();
         JSDynamicObject proto = JSObject.getPrototype(thisFnObj);
-        JSDynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto,
+        JSFunctionObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto,
                         ConditionProfile.getUncached(), ConditionProfile.getUncached(), ConditionProfile.getUncached(), null);
 
         long length = 0;
@@ -362,7 +362,7 @@ public final class JSFunction extends JSNonProxy {
         return boundFunction;
     }
 
-    public static JSDynamicObject boundFunctionCreate(JSContext context, JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments, JSDynamicObject proto,
+    public static JSFunctionObject boundFunctionCreate(JSContext context, JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments, JSDynamicObject proto,
                     ConditionProfile isConstructorProfile, ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile, Node node) {
         CompilerAsserts.partialEvaluationConstant(context);
 
@@ -371,7 +371,7 @@ public final class JSFunction extends JSNonProxy {
         boolean isAsync = isAsyncProfile.profile(targetFunctionData.isAsync());
         JSFunctionData boundFunctionData = context.getBoundFunctionData(constructor, isAsync);
         JSRealm realm = getRealm(boundTargetFunction, context, node);
-        JSDynamicObject boundFunction = JSFunction.createBound(context, realm, boundFunctionData, boundTargetFunction, boundThis, boundArguments);
+        JSFunctionObject boundFunction = JSFunction.createBound(context, realm, boundFunctionData, boundTargetFunction, boundThis, boundArguments);
         boolean needSetProto = proto != realm.getFunctionPrototype();
         if (setProtoProfile.profile(needSetProto)) {
             JSObject.setPrototype(boundFunction, proto);
