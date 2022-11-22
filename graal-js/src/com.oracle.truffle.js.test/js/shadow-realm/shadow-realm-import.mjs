@@ -71,3 +71,23 @@ await (async function testNonExistentModule() {
         assertInstanceof(e, TypeError);
     }
 })();
+
+await (async function testDynamicImportInTwoRealms() {
+    const shadowRealm1 = new ShadowRealm();
+    const shadowRealm2 = new ShadowRealm();
+
+    // Each ShadowRealm has its own module graph.
+    shadowRealm1.evaluate(`
+    void import('${baseUrl}imported-module2.mjs').then(ns => {
+        ns.foo.bar = 42;
+        ns.setLocal(42);
+        ns.setGlobal(42);
+    });`);
+    shadowRealm2.evaluate(`
+    void import('${baseUrl}imported-module2.mjs').then(ns => {
+        if (ns.foo.bar) throw new Error(ns.foo.bar);
+        if (ns.getLocal()) throw new Error(ns.getLocal());
+        if (ns.getGlobal()) throw new Error(ns.getGlobal());
+    });
+    `);
+})();
