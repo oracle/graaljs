@@ -59,6 +59,14 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
         super(lang, sourceSection, frameDescriptor);
     }
 
+    protected JavaScriptRealmBoundaryRootNode(JavaScriptLanguage lang, SourceSection sourceSection) {
+        super(lang, sourceSection);
+    }
+
+    protected JavaScriptRealmBoundaryRootNode(JavaScriptLanguage lang) {
+        super(lang);
+    }
+
     @Override
     public final Object execute(VirtualFrame frame) {
         final JSContext context = getLanguage().getJSContext();

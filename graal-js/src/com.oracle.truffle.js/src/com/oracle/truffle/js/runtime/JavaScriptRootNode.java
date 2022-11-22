@@ -60,6 +60,14 @@ public abstract class JavaScriptRootNode extends RootNode {
         this(null, null, null);
     }
 
+    protected JavaScriptRootNode(JavaScriptLanguage lang) {
+        this(lang, null, null);
+    }
+
+    protected JavaScriptRootNode(JavaScriptLanguage lang, SourceSection sourceSection) {
+        this(lang, sourceSection, null);
+    }
+
     protected JavaScriptRootNode(JavaScriptLanguage lang, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
         super(lang, substituteNullWithSharedEmptyFrameDescriptor(frameDescriptor));
         this.sourceSection = (sourceSection == null) ? JSFunction.BUILTIN_SOURCE_SECTION : sourceSection;
