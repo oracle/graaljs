@@ -51,6 +51,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -68,6 +69,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -295,12 +297,16 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     private static JSFunctionData createImportModuleDynamicallyHandlerImpl(JSContext context) {
-        class ImportModuleDynamicallyRootNode extends JavaScriptRootNode {
+        class ImportModuleDynamicallyRootNode extends JavaScriptRealmBoundaryRootNode {
             @Child protected JavaScriptNode argumentNode = AccessIndexedArgumentNode.create(0);
+
+            protected ImportModuleDynamicallyRootNode(JavaScriptLanguage lang) {
+                super(lang);
+            }
 
             @SuppressWarnings("unchecked")
             @Override
-            public Object execute(VirtualFrame frame) {
+            public Object executeInRealm(VirtualFrame frame) {
                 Pair<ScriptOrModule, ModuleRequest> request = (Pair<ScriptOrModule, ModuleRequest>) argumentNode.execute(frame);
                 ScriptOrModule referencingScriptOrModule = request.getFirst();
                 ModuleRequest moduleRequest = request.getSecond();
@@ -329,16 +335,21 @@ public class ImportCallNode extends JavaScriptNode {
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
             @Child private PropertySetNode setModuleRecord;
 
+            protected TopLevelAwaitImportModuleDynamicallyRootNode(JavaScriptLanguage lang) {
+                super(lang);
+            }
+
             @SuppressWarnings("unchecked")
             @Override
-            public Object execute(VirtualFrame frame) {
+            public Object executeInRealm(VirtualFrame frame) {
                 Triple<ScriptOrModule, ModuleRequest, PromiseCapabilityRecord> request = (Triple<ScriptOrModule, ModuleRequest, PromiseCapabilityRecord>) argumentNode.execute(frame);
                 ScriptOrModule referencingScriptOrModule = request.getFirst();
                 ModuleRequest moduleRequest = request.getSecond();
                 PromiseCapabilityRecord moduleLoadedCapability = request.getThird();
                 try {
+                    JSRealm realm = getRealm();
+                    assert realm == JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
                     JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
-                    JSRealm realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
                     if (moduleRecord.hasTLA()) {
                         context.getEvaluator().moduleLinking(realm, moduleRecord);
                         Object innerPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
@@ -390,7 +401,9 @@ public class ImportCallNode extends JavaScriptNode {
             }
         }
 
-        JavaScriptRootNode root = context.isOptionTopLevelAwait() ? new TopLevelAwaitImportModuleDynamicallyRootNode() : new ImportModuleDynamicallyRootNode();
+        JavaScriptRootNode root = context.isOptionTopLevelAwait()
+                        ? new TopLevelAwaitImportModuleDynamicallyRootNode(context.getLanguage())
+                        : new ImportModuleDynamicallyRootNode(context.getLanguage());
         return JSFunctionData.createCallOnly(context, root.getCallTarget(), 0, Strings.EMPTY_STRING);
     }
 
