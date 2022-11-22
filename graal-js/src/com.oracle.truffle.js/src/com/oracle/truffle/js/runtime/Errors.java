@@ -278,6 +278,14 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorClassConstructorRequiresNew(TruffleString className, Node originatingNode) {
+        if (className != null && !Strings.isEmpty(className)) {
+            return createTypeError("Class constructor " + className + " cannot be invoked without 'new'", originatingNode);
+        }
+        return createTypeError("Class constructors cannot be invoked without 'new'", originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode) {
         JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
         return createTypeErrorNotObjectCoercible(value, originatingNode, language.getJSContext());
