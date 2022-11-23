@@ -40,13 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 
 /**
@@ -59,12 +55,6 @@ public final class JSModuleData extends ScriptOrModule {
 
     private final JSFunctionData functionData;
     private final FrameDescriptor frameDescriptor;
-
-    /**
-     * Cache of imported module sources to keep alive sources referenced by this module in order to
-     * prevent premature code cache GC of this module's dependencies.
-     */
-    private final Map<TruffleString, Source> importSourceCache = new ConcurrentHashMap<>();
 
     public JSModuleData(Module module, Source source, JSFunctionData functionData, FrameDescriptor frameDescriptor) {
         super(functionData.getContext(), source);
@@ -87,15 +77,6 @@ public final class JSModuleData extends ScriptOrModule {
 
     public boolean isTopLevelAsync() {
         return functionData.isAsync();
-    }
-
-    /**
-     * Keep a link from the referencing module to the imported module's Source, so that the latter
-     * is kept alive for the lifetime of the former.
-     */
-    public void rememberImportedModuleSource(TruffleString moduleSpecifier, Source moduleSource) {
-        // Note: the source might change, so we only remember the last source.
-        importSourceCache.put(moduleSpecifier, moduleSource);
     }
 
 }
