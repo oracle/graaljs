@@ -84,6 +84,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTypedArrayN
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAggregateErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAsyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBigIntNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBooleanNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructCollatorNodeGen;
@@ -94,6 +95,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDispla
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFinalizationRegistryNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFunctionNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructIteratorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSAdapterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSProxyNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaImporterNodeGen;
@@ -108,6 +110,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRegExp
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRelativeTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSegmenterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructShadowRealmNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalCalendarNodeGen;
@@ -130,8 +133,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAss
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAssemblyTableNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAsyncIteratorNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructIteratorNodeGen;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -216,6 +217,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
@@ -224,6 +226,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -231,7 +234,9 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
@@ -357,6 +362,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Memory(1),
         Module(1),
         Table(1),
+
+        ShadowRealm(0),
 
         // Temporal
         PlainTime(0),
@@ -736,6 +743,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
+            case ShadowRealm:
+                if (construct) {
+                    return newTarget ? ConstructShadowRealmNodeGen.create(context, builtin, true, args().newTarget().createArgumentNodes(context))
+                                    : ConstructShadowRealmNodeGen.create(context, builtin, false, args().function().createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
             case JSAdapter:
                 return ConstructJSAdapterNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
             case JavaImporter:
@@ -791,14 +805,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         protected abstract JSDynamicObject getIntrinsicDefaultProto(JSRealm realm);
 
-        protected JSDynamicObject swapPrototype(JSDynamicObject resultObj, JSDynamicObject newTarget) {
+        protected JSObject swapPrototype(JSObject resultObj, JSDynamicObject newTarget) {
             if (isNewTargetCase) {
                 return setPrototypeFromNewTarget(resultObj, newTarget);
             }
             return resultObj;
         }
 
-        protected JSDynamicObject setPrototypeFromNewTarget(JSDynamicObject resultObj, JSDynamicObject newTarget) {
+        protected JSObject setPrototypeFromNewTarget(JSObject resultObj, JSDynamicObject newTarget) {
             Object prototype = JSObject.get(newTarget, JSObject.PROTOTYPE);
             if (!JSRuntime.isObject(prototype)) {
                 prototype = getIntrinsicDefaultProto(getRealmFromNewTarget(newTarget));
@@ -830,12 +844,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"args.length == 0"})
-        protected JSDynamicObject constructArray0(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+        protected JSObject constructArray0(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             return swapPrototype(JSArray.createConstantEmptyArray(getContext(), getRealm(), arrayAllocationSite), newTarget);
         }
 
         @Specialization(guards = "isOneIntegerArg(args)")
-        protected JSDynamicObject constructArrayWithIntLength(JSDynamicObject newTarget, Object[] args) {
+        protected JSObject constructArrayWithIntLength(JSDynamicObject newTarget, Object[] args) {
             int length = (int) args[0];
             JSRealm realm = getRealm();
             if (JSConfig.TrackArrayAllocationSites && arrayAllocationSite != null && arrayAllocationSite.isTyped()) {
@@ -849,11 +863,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"args.length == 1", "toArrayLengthNode.isTypeNumber(len)"}, replaces = "constructArrayWithIntLength")
-        protected JSDynamicObject constructWithLength(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args,
+        protected JSObject constructWithLength(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args,
                         @Cached @SuppressWarnings("unused") ToArrayLengthNode toArrayLengthNode,
                         @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
                         @Bind("toArrayLengthNode.executeLong(firstArg(args))") long len) {
-            JSDynamicObject array = arrayCreateNode.execute(len);
+            JSArrayObject array = arrayCreateNode.execute(len);
             return swapPrototype(array, newTarget);
         }
 
@@ -862,7 +876,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = "isOneForeignArg(args)", limit = "InteropLibraryLimit")
-        protected JSDynamicObject constructWithForeignArg(JSDynamicObject newTarget, Object[] args,
+        protected JSObject constructWithForeignArg(JSDynamicObject newTarget, Object[] args,
                         @CachedLibrary("firstArg(args)") InteropLibrary interop,
                         @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
                         @Cached("createBinaryProfile()") ConditionProfile isNumber,
@@ -873,7 +887,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     try {
                         long length = interop.asLong(len);
                         if (JSRuntime.isArrayIndex(length)) {
-                            JSDynamicObject array = arrayCreateNode.execute(length);
+                            JSArrayObject array = arrayCreateNode.execute(length);
                             return swapPrototype(array, newTarget);
                         }
                     } catch (UnsupportedMessageException umex) {
@@ -889,7 +903,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"!isOneNumberArg(args)", "!isOneForeignArg(args)"})
-        protected JSDynamicObject constructArrayVarargs(JSDynamicObject newTarget, Object[] args,
+        protected JSObject constructArrayVarargs(JSDynamicObject newTarget, Object[] args,
                         @Cached("create()") BranchProfile isIntegerCase,
                         @Cached("create()") BranchProfile isDoubleCase,
                         @Cached("create()") BranchProfile isObjectCase,
@@ -1445,7 +1459,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         }
 
-        protected JSDynamicObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol, boolean legacyFeaturesEnabled) {
+        protected JSRegExpObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol, boolean legacyFeaturesEnabled) {
             Object p;
             Object f;
             boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);
@@ -1481,7 +1495,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             TruffleString patternStr = getPatternToStringNode().executeString(p);
             Object flagsStr = flagsToString(f);
             Object compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
-            JSDynamicObject regExp = getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
+            JSRegExpObject regExp = getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
             if (getContext().getContextOptions().isTestV8Mode()) {
                 // workaround for the reference equality check at the end of mjsunit/regexp.js
                 // TODO: remove this as soon as option maps are available for TRegex Sources
@@ -2120,7 +2134,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.context = context;
         }
 
-        protected abstract JSDynamicObject executeFunction(String paramList, String body, String sourceName);
+        protected abstract JSFunctionObject executeFunction(String paramList, String body, String sourceName);
 
         protected static boolean equals(String a, String b) {
             return a.equals(b);
@@ -2132,7 +2146,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"equals(cachedParamList, paramList)", "equals(cachedBody, body)", "equals(cachedSourceName, sourceName)"}, limit = "1")
-        protected final JSDynamicObject doCached(String paramList, String body, String sourceName,
+        protected final JSFunctionObject doCached(String paramList, String body, String sourceName,
                         @Cached("paramList") String cachedParamList,
                         @Cached("body") String cachedBody,
                         @Cached("sourceName") String cachedSourceName,
@@ -2147,7 +2161,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(replaces = "doCached")
-        protected final JSDynamicObject doUncached(String paramList, String body, String sourceName,
+        protected final JSFunctionObject doUncached(String paramList, String body, String sourceName,
                         @Cached("createCache()") LRUCache<CachedSourceKey, ScriptNode> cache,
                         @Cached("createCountingProfile()") ConditionProfile cacheHit) {
             ScriptNode cached = cacheLookup(cache, new CachedSourceKey(paramList, body, sourceName));
@@ -2173,12 +2187,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private static JSDynamicObject evalParsedFunction(JSRealm realm, ScriptNode parsedFunction) {
-            return (JSDynamicObject) parsedFunction.run(realm);
+        private static JSFunctionObject evalParsedFunction(JSRealm realm, ScriptNode parsedFunction) {
+            return (JSFunctionObject) parsedFunction.run(realm);
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private JSDynamicObject parseAndEvalFunction(LRUCache<CachedSourceKey, ScriptNode> cache, JSRealm realm, String paramList, String body, String sourceName) {
+        private JSFunctionObject parseAndEvalFunction(LRUCache<CachedSourceKey, ScriptNode> cache, JSRealm realm, String paramList, String body, String sourceName) {
             ScriptNode parsedBody = parseFunction(paramList, body, sourceName);
             synchronized (cache) {
                 cache.put(new CachedSourceKey(paramList, body, sourceName), parsedBody);
@@ -2716,18 +2730,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = "isNullOrUndefined(iterable)")
-        protected JSDynamicObject constructEmptyMap(JSDynamicObject newTarget, @SuppressWarnings("unused") Object iterable) {
-            JSDynamicObject mapObj = newMapObject();
+        protected JSObject constructEmptyMap(JSDynamicObject newTarget, @SuppressWarnings("unused") Object iterable) {
+            JSObject mapObj = newMapObject();
             swapPrototype(mapObj, newTarget);
             return mapObj;
         }
 
         @Specialization(guards = "!isNullOrUndefined(iterable)")
-        protected JSDynamicObject constructMapFromIterable(JSDynamicObject newTarget, Object iterable,
+        protected JSObject constructMapFromIterable(JSDynamicObject newTarget, Object iterable,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
                         @Cached IsObjectNode isObjectNode,
                         @Cached IsCallableNode isCallableNode) {
-            JSDynamicObject mapObj = newMapObject();
+            JSObject mapObj = newMapObject();
             swapPrototype(mapObj, newTarget);
 
             Object adder = getAdderFn(mapObj, Strings.SET);
@@ -2760,7 +2774,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return mapObj;
         }
 
-        protected JSDynamicObject newMapObject() {
+        protected JSObject newMapObject() {
             return JSMap.create(getContext(), getRealm());
         }
 
@@ -2777,16 +2791,16 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = "isNullOrUndefined(iterable)")
-        protected JSDynamicObject constructEmptySet(JSDynamicObject newTarget, @SuppressWarnings("unused") Object iterable) {
-            JSDynamicObject setObj = newSetObject();
+        protected JSObject constructEmptySet(JSDynamicObject newTarget, @SuppressWarnings("unused") Object iterable) {
+            JSObject setObj = newSetObject();
             swapPrototype(setObj, newTarget);
             return setObj;
         }
 
         @Specialization(guards = "!isNullOrUndefined(iterable)")
-        protected JSDynamicObject constructSetFromIterable(JSDynamicObject newTarget, Object iterable,
+        protected JSObject constructSetFromIterable(JSDynamicObject newTarget, Object iterable,
                         @Cached IsCallableNode isCallableNode) {
-            JSDynamicObject setObj = newSetObject();
+            JSObject setObj = newSetObject();
             swapPrototype(setObj, newTarget);
 
             Object adder = getAdderFn(setObj, Strings.ADD);
@@ -2813,7 +2827,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return setObj;
         }
 
-        protected JSDynamicObject newSetObject() {
+        protected JSObject newSetObject() {
             return JSSet.create(getContext(), getRealm());
         }
 
@@ -2882,7 +2896,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Override
-        protected JSDynamicObject newSetObject() {
+        protected JSObject newSetObject() {
             return JSWeakSet.create(getContext(), getRealm());
         }
 
@@ -2899,7 +2913,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Override
-        protected JSDynamicObject newMapObject() {
+        protected JSObject newMapObject() {
             return JSWeakMap.create(getContext(), getRealm());
         }
 
@@ -3038,6 +3052,29 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = "!isCallable.executeBoolean(executor)")
         protected JSDynamicObject notCallable(JSDynamicObject newTarget, Object executor) {
             throw Errors.createTypeError("cannot create promise: executor not callable");
+        }
+    }
+
+    public abstract static class ConstructShadowRealmNode extends ConstructWithNewTargetNode {
+
+        public ConstructShadowRealmNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        @Specialization
+        protected final JSObject construct(JSDynamicObject newTarget) {
+            JSRealm currentRealm = getRealm();
+            JSRealm shadowRealm = currentRealm.createChildRealm();
+            hostInitializeShadowRealm(shadowRealm);
+            return swapPrototype(JSShadowRealm.create(getContext(), currentRealm, shadowRealm), newTarget);
+        }
+
+        private void hostInitializeShadowRealm(@SuppressWarnings("unused") JSRealm shadowRealm) {
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return getRealm().getShadowRealmPrototype();
         }
     }
 

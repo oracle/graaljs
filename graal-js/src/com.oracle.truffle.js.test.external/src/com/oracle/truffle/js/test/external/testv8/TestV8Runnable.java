@@ -79,6 +79,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
     private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
     private static final String HARMONY_TEMPORAL = "--harmony-temporal";
+    private static final String HARMONY_SHADOW_REALM = "--harmony-shadow-realm";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
@@ -97,7 +98,6 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-threads",
                     "--experimental-wasm-typed-funcref",
                     "--experimental-wasm-type-reflection",
-                    "--harmony-shadow-realm",
                     "--wasm-staging"
     }));
     private static final Set<String> ES2023_FLAGS = new HashSet<>(Arrays.asList(new String[]{
@@ -108,6 +108,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony_intl_locale_info",
                     "--harmony_intl_more_timezone",
                     "--harmony-intl-number-format-v3",
+                    "--harmony-shadow-realm",
     }));
 
     private static final String FLAGS_PREFIX = "// Flags: ";
@@ -187,6 +188,9 @@ public class TestV8Runnable extends TestRunnable {
         }
         if (flags.contains(HARMONY_TEMPORAL)) {
             extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");
+        }
+        if (flags.contains(HARMONY_SHADOW_REALM)) {
+            extraOptions.put(JSContextOptions.SHADOW_REALM_NAME, "true");
         }
 
         if (supported) {

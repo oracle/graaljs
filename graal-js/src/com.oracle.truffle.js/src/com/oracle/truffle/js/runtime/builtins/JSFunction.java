@@ -94,9 +94,8 @@ import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 
 public final class JSFunction extends JSNonProxy {
 
-    public static final TruffleString TYPE_NAME = Strings.constant("function");
+    public static final TruffleString TYPE_NAME = Strings.FUNCTION;
     public static final TruffleString CLASS_NAME = Strings.constant("Function");
-    public static final TruffleString CLASS_NAME_NASHORN_COMPAT = Strings.constant("FunctionNashornCompat");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Function.prototype");
     public static final TruffleString GENERATOR_FUNCTION_NAME = Strings.constant("GeneratorFunction");
     public static final TruffleString GENERATOR_NAME = Strings.constant("Generator");
@@ -108,9 +107,9 @@ public final class JSFunction extends JSNonProxy {
     public static final TruffleString ENUMERATE_ITERATOR_PROTOTYPE_NAME = Strings.constant("[[Enumerate]].prototype");
     public static final TruffleString FOR_IN_ITERATOR_PROTOYPE_NAME = Strings.constant("%ForInIteratorPrototype%");
     public static final TruffleString CALLER = Strings.constant("caller");
-    public static final TruffleString ARGUMENTS = Strings.constant("arguments");
-    public static final TruffleString LENGTH = Strings.constant("length");
-    public static final TruffleString NAME = Strings.constant("name");
+    public static final TruffleString ARGUMENTS = Strings.ARGUMENTS;
+    public static final TruffleString LENGTH = Strings.LENGTH;
+    public static final TruffleString NAME = Strings.NAME;
     public static final TruffleString ORDINARY_HAS_INSTANCE = Strings.constant("OrdinaryHasInstance");
     public static final String PROGRAM_FUNCTION_NAME = ":program";
 
@@ -127,17 +126,17 @@ public final class JSFunction extends JSNonProxy {
         @Override
         public Object get(JSDynamicObject store) {
             assert JSFunction.isJSFunction(store);
-            if (JSFunction.isBoundFunction(store)) {
-                return ((JSFunctionObject.Bound) store).getBoundLength();
+            if (store instanceof JSFunctionObject.BoundOrWrapped) {
+                return ((JSFunctionObject.BoundOrWrapped) store).getBoundLength();
             }
             return JSFunction.getLength(store);
         }
 
         public static int getProfiled(JSDynamicObject store, BranchProfile isBoundBranch) {
             assert JSFunction.isJSFunction(store);
-            if (JSFunction.isBoundFunction(store)) {
+            if (store instanceof JSFunctionObject.BoundOrWrapped) {
                 isBoundBranch.enter();
-                return ((JSFunctionObject.Bound) store).getBoundLength();
+                return ((JSFunctionObject.BoundOrWrapped) store).getBoundLength();
             }
             return JSFunction.getLength(store);
         }
@@ -150,17 +149,17 @@ public final class JSFunction extends JSNonProxy {
         @Override
         public TruffleString get(JSDynamicObject store) {
             assert JSFunction.isJSFunction(store);
-            if (JSFunction.isBoundFunction(store)) {
-                return ((JSFunctionObject.Bound) store).getBoundName();
+            if (store instanceof JSFunctionObject.BoundOrWrapped) {
+                return ((JSFunctionObject.BoundOrWrapped) store).getBoundName();
             }
             return JSFunction.getName(store);
         }
 
         public static Object getProfiled(JSDynamicObject store, BranchProfile isBoundBranch) {
             assert JSFunction.isJSFunction(store);
-            if (JSFunction.isBoundFunction(store)) {
+            if (store instanceof JSFunctionObject.BoundOrWrapped) {
                 isBoundBranch.enter();
-                return ((JSFunctionObject.Bound) store).getBoundName();
+                return ((JSFunctionObject.BoundOrWrapped) store).getBoundName();
             }
             return JSFunction.getName(store);
         }
@@ -293,10 +292,14 @@ public final class JSFunction extends JSNonProxy {
         return factory.createWithPrototype(functionData, enclosingFrame, classPrototype, realm, prototype);
     }
 
-    public static JSFunctionObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, JSDynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
-        assert functionData != null;
+    public static JSFunctionObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
         JSFunctionFactory factory = context.getBoundFunctionFactory(functionData);
         return factory.createBound(functionData, CLASS_PROTOTYPE_PLACEHOLDER, realm, boundTargetFunction, boundThis, boundArguments);
+    }
+
+    public static JSFunctionObject createWrapped(JSContext context, JSRealm realm, JSFunctionData functionData, Object wrappedTargetFunction) {
+        JSFunctionFactory factory = context.getWrappedFunctionFactory();
+        return factory.createWrapped(functionData, realm, wrappedTargetFunction);
     }
 
     private static JSFunctionFactory initialFactory(JSFunctionData functionData) {
@@ -327,11 +330,11 @@ public final class JSFunction extends JSNonProxy {
     }
 
     @TruffleBoundary
-    public static JSDynamicObject bind(JSRealm realm, JSFunctionObject thisFnObj, Object thisArg, Object[] boundArguments) {
+    public static JSFunctionObject bind(JSRealm realm, JSFunctionObject thisFnObj, Object thisArg, Object[] boundArguments) {
         assert JSFunction.isJSFunction(thisFnObj);
         JSContext context = realm.getContext();
         JSDynamicObject proto = JSObject.getPrototype(thisFnObj);
-        JSDynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto,
+        JSFunctionObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto,
                         ConditionProfile.getUncached(), ConditionProfile.getUncached(), ConditionProfile.getUncached(), null);
 
         long length = 0;
@@ -358,7 +361,7 @@ public final class JSFunction extends JSNonProxy {
         return boundFunction;
     }
 
-    public static JSDynamicObject boundFunctionCreate(JSContext context, JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments, JSDynamicObject proto,
+    public static JSFunctionObject boundFunctionCreate(JSContext context, JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments, JSDynamicObject proto,
                     ConditionProfile isConstructorProfile, ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile, Node node) {
         CompilerAsserts.partialEvaluationConstant(context);
 
@@ -367,7 +370,7 @@ public final class JSFunction extends JSNonProxy {
         boolean isAsync = isAsyncProfile.profile(targetFunctionData.isAsync());
         JSFunctionData boundFunctionData = context.getBoundFunctionData(constructor, isAsync);
         JSRealm realm = getRealm(boundTargetFunction, context, node);
-        JSDynamicObject boundFunction = JSFunction.createBound(context, realm, boundFunctionData, boundTargetFunction, boundThis, boundArguments);
+        JSFunctionObject boundFunction = JSFunction.createBound(context, realm, boundFunctionData, boundTargetFunction, boundThis, boundArguments);
         boolean needSetProto = proto != realm.getFunctionPrototype();
         if (setProtoProfile.profile(needSetProto)) {
             JSObject.setPrototype(boundFunction, proto);
@@ -441,7 +444,7 @@ public final class JSFunction extends JSNonProxy {
         return ((JSFunctionObject.Bound) function).getBoundThis();
     }
 
-    public static JSDynamicObject getBoundTargetFunction(JSDynamicObject function) {
+    public static JSFunctionObject getBoundTargetFunction(JSDynamicObject function) {
         assert isBoundFunction(function);
         return ((JSFunctionObject.Bound) function).getBoundTargetFunction();
     }
@@ -620,8 +623,8 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static void addRestrictedFunctionProperties(JSRealm realm, JSDynamicObject obj) {
-        JSObjectUtil.putBuiltinAccessorProperty(obj, CALLER, realm.getThrowerFunction(), realm.getThrowerFunction());
-        JSObjectUtil.putBuiltinAccessorProperty(obj, ARGUMENTS, realm.getThrowerFunction(), realm.getThrowerFunction());
+        JSObjectUtil.putBuiltinAccessorProperty(obj, CALLER, realm.getThrowerAccessor());
+        JSObjectUtil.putBuiltinAccessorProperty(obj, ARGUMENTS, realm.getThrowerAccessor());
     }
 
     public static JSFunctionData createNamedEmptyFunctionData(JSContext context, TruffleString name) {

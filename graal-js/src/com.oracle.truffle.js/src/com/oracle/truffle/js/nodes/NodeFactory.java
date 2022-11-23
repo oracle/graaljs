@@ -231,12 +231,14 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
@@ -1151,12 +1153,12 @@ public class NodeFactory {
     }
 
     public JavaScriptRootNode createConstructorRequiresNewRoot(JSFunctionData functionData, SourceSection sourceSection) {
-        JSContext context = functionData.getContext();
-        String message = "Class constructor " + functionData.getName() + " cannot be invoked without 'new'";
-        return new JavaScriptRealmBoundaryRootNode(context.getLanguage(), sourceSection, null) {
+        return new JavaScriptRealmBoundaryRootNode(functionData.getContext().getLanguage(), sourceSection) {
             @Override
             protected Object executeInRealm(VirtualFrame frame) {
-                throw Errors.createTypeError(message);
+                JSFunctionObject constructor = JSFrameUtil.getFunctionObject(frame);
+                TruffleString className = JSFunction.getFunctionData(constructor).getName();
+                throw Errors.createTypeErrorClassConstructorRequiresNew(className, this);
             }
         };
     }

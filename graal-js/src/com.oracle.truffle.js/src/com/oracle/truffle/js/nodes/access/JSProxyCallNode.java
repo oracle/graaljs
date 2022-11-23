@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @NodeInfo(cost = NodeCost.NONE)
@@ -105,7 +106,11 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
             errorBranch.enter();
             throw Errors.createTypeErrorNotAFunction(function, this);
         } else {
-            JSDynamicObject pxHandler = JSProxy.getHandlerChecked(proxy, errorBranch);
+            JSDynamicObject pxHandler = JSProxy.getHandler(proxy);
+            if (pxHandler == Null.instance) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorProxyRevoked(JSProxy.APPLY, this);
+            }
             Object pxTarget = JSProxy.getTarget(proxy);
             Object pxTrapFun = trapGetter.executeWithTarget(pxHandler);
             Object[] proxyArguments = JSArguments.extractUserArguments(arguments);
@@ -130,7 +135,11 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
             errorBranch.enter();
             throw Errors.createTypeErrorNotAFunction(function, this);
         } else {
-            JSDynamicObject pxHandler = JSProxy.getHandlerChecked(proxy, errorBranch);
+            JSDynamicObject pxHandler = JSProxy.getHandler(proxy);
+            if (pxHandler == Null.instance) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorProxyRevoked(JSProxy.CONSTRUCT, this);
+            }
             Object pxTarget = JSProxy.getTarget(proxy);
             Object pxTrapFun = trapGetter.executeWithTarget(pxHandler);
             Object newTarget = isNewTarget ? JSArguments.getNewTarget(arguments) : proxy;

@@ -527,6 +527,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> ITERATOR_HELPERS = new OptionKey<>(false);
     @CompilationFinal private boolean iteratorHelpers;
 
+    public static final String SHADOW_REALM_NAME = JS_OPTION_PREFIX + "shadow-realm";
+    @Option(name = SHADOW_REALM_NAME, category = OptionCategory.EXPERT, help = "Enable ShadowRealm API.") //
+    public static final OptionKey<Boolean> SHADOW_REALM = new OptionKey<>(false);
+    @CompilationFinal private boolean shadowRealm;
+
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
@@ -710,6 +715,7 @@ public final class JSContextOptions {
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
         this.iteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && readBooleanOption(ITERATOR_HELPERS);
+        this.shadowRealm = getEcmaScriptVersion() >= JSConfig.ECMAScript2015 && readBooleanOption(SHADOW_REALM);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = ERROR_CAUSE.hasBeenSet(optionValues) ? readBooleanOption(ERROR_CAUSE) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
@@ -1110,6 +1116,10 @@ public final class JSContextOptions {
         return iteratorHelpers;
     }
 
+    public boolean isShadowRealm() {
+        return shadowRealm;
+    }
+
     public boolean isOperatorOverloading() {
         return operatorOverloading;
     }
@@ -1200,6 +1210,7 @@ public final class JSContextOptions {
         hash = 53 * hash + this.unhandledRejectionsMode.ordinal();
         hash = 53 * hash + (this.newSetMethods ? 1 : 0);
         hash = 53 * hash + (this.iteratorHelpers ? 1 : 0);
+        hash = 53 * hash + (this.shadowRealm ? 1 : 0);
         hash = 53 * hash + (this.operatorOverloading ? 1 : 0);
         hash = 53 * hash + (this.errorCause ? 1 : 0);
         hash = 53 * hash + (this.importAssertions ? 1 : 0);
@@ -1375,6 +1386,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.iteratorHelpers != other.iteratorHelpers) {
+            return false;
+        }
+        if (this.shadowRealm != other.shadowRealm) {
             return false;
         }
         if (this.operatorOverloading != other.operatorOverloading) {

@@ -278,6 +278,14 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorClassConstructorRequiresNew(TruffleString className, Node originatingNode) {
+        if (className != null && !Strings.isEmpty(className)) {
+            return createTypeError("Class constructor " + className + " cannot be invoked without 'new'", originatingNode);
+        }
+        return createTypeError("Class constructors cannot be invoked without 'new'", originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode) {
         JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
         return createTypeErrorNotObjectCoercible(value, originatingNode, language.getJSContext());
@@ -637,6 +645,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotAString(Object value) {
+        return Errors.createTypeError(JSRuntime.safeToString(value) + " is not a String");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorGlobalObjectNotExtensible(Node originatingNode) {
         return Errors.createTypeError("Global object is not extensible", originatingNode);
     }
@@ -765,8 +778,13 @@ public final class Errors {
         return createTypeErrorFormat("'ownKeys' on proxy: trap result did not include '%s'", propertyKey);
     }
 
+    @TruffleBoundary
+    public static JSException createTypeErrorProxyRevoked(TruffleString trap, Node originatingNode) {
+        return createTypeError(trap != null ? "Cannot perform '" + trap + "' on a proxy that has been revoked" : "proxy has been revoked", originatingNode);
+    }
+
     public static JSException createTypeErrorProxyRevoked() {
-        return createTypeError("proxy has been revoked");
+        return createTypeErrorProxyRevoked(null, null);
     }
 
     public static JSException createTypeErrorProxyTargetNotExtensible() {

@@ -157,6 +157,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalYearMonthDayRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
@@ -1275,7 +1276,7 @@ public final class TemporalUtil {
         return createTemporalTimeZone(ctx, parseResult.getOffsetString());
     }
 
-    public static JSDynamicObject createTemporalTimeZone(JSContext ctx, TruffleString identifier) {
+    public static JSTemporalTimeZoneObject createTemporalTimeZone(JSContext ctx, TruffleString identifier) {
         BigInt offsetNs;
         TruffleString newIdentifier = identifier;
         try {

@@ -75,6 +75,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.ThrowTypeErrorRootNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.promise.BuiltinPromiseRejectionTracker;
@@ -111,6 +112,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
@@ -440,12 +442,15 @@ public class JSContext {
         TemporalDateDaysInMonth,
         TemporalDateDaysInYear,
         TemporalDateMonthsInYear,
-        TemporalDateInLeapYear
+        TemporalDateInLeapYear,
+        ExportGetter,
+        OrdinaryWrappedFunctionCall,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
 
-    final JSFunctionData throwerFunctionData;
+    final JSFunctionData throwTypeErrorFunctionData;
+    final JSFunctionData throwTypeErrorRestrictedPropertyFunctionData;
     final JSFunctionData protoGetterFunctionData;
     final JSFunctionData protoSetterFunctionData;
 
@@ -479,6 +484,7 @@ public class JSContext {
     private final JSFunctionFactory asyncGeneratorFunctionFactory;
 
     private final JSFunctionFactory boundFunctionFactory;
+    private final JSFunctionFactory wrappedFunctionFactory;
 
     static final PrototypeSupplier functionPrototypeSupplier = JSRealm::getFunctionPrototype;
     static final PrototypeSupplier asyncFunctionPrototypeSupplier = JSRealm::getAsyncFunctionPrototype;
@@ -563,6 +569,8 @@ public class JSContext {
     private final JSObjectFactory webAssemblyTableFactory;
     private final JSObjectFactory webAssemblyGlobalFactory;
 
+    private final JSObjectFactory shadowRealmFactory;
+
     private final int factoryCount;
 
     @CompilationFinal private Locale locale;
@@ -637,7 +645,8 @@ public class JSContext {
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
 
-        this.throwerFunctionData = throwTypeErrorFunction();
+        this.throwTypeErrorFunctionData = throwTypeErrorFunction(false);
+        this.throwTypeErrorRestrictedPropertyFunctionData = throwTypeErrorFunction(true);
         boolean annexB = isOptionAnnexB();
         this.protoGetterFunctionData = annexB ? protoGetterFunction() : null;
         this.protoSetterFunctionData = annexB ? protoSetterFunction() : null;
@@ -659,6 +668,7 @@ public class JSContext {
         this.asyncGeneratorFunctionFactory = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, false, true, false, true);
 
         this.boundFunctionFactory = builder.function(functionPrototypeSupplier, true, false, false, true, false);
+        this.wrappedFunctionFactory = builder.function(functionPrototypeSupplier, true, false, false, true, false);
 
         this.ordinaryObjectFactory = builder.create(JSOrdinary.INSTANCE);
         this.arrayFactory = builder.create(JSArray.INSTANCE);
@@ -747,6 +757,8 @@ public class JSContext {
         this.webAssemblyMemoryFactory = builder.create(JSWebAssemblyMemory.INSTANCE);
         this.webAssemblyTableFactory = builder.create(JSWebAssemblyTable.INSTANCE);
         this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
+
+        this.shadowRealmFactory = builder.create(JSShadowRealm.INSTANCE);
 
         this.factoryCount = builder.finish();
 
@@ -1256,6 +1268,10 @@ public class JSContext {
         return webAssemblyGlobalFactory;
     }
 
+    public final JSObjectFactory getShadowRealmFactory() {
+        return shadowRealmFactory;
+    }
+
     private static final String REGEX_OPTION_REGRESSION_TEST_MODE = "RegressionTestMode";
     private static final String REGEX_OPTION_DUMP_AUTOMATA = "DumpAutomata";
     private static final String REGEX_OPTION_STEP_EXECUTION = "StepExecution";
@@ -1550,10 +1566,6 @@ public class JSContext {
         return contextOptions.isParseOnly();
     }
 
-    public boolean isOptionDisableEval() {
-        return contextOptions.isDisableEval();
-    }
-
     public boolean isOptionDisableWith() {
         return contextOptions.isDisableWith();
     }
@@ -1806,6 +1818,10 @@ public class JSContext {
         return boundFunctionFactory;
     }
 
+    public JSFunctionFactory getWrappedFunctionFactory() {
+        return wrappedFunctionFactory;
+    }
+
     JSObjectFactory.RealmData newObjectFactoryRealmData() {
         if (isMultiContext()) {
             return null; // unused
@@ -1814,13 +1830,8 @@ public class JSContext {
         }
     }
 
-    private JSFunctionData throwTypeErrorFunction() {
-        CallTarget throwTypeErrorCallTarget = new JavaScriptRootNode(getLanguage(), null, null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                throw Errors.createTypeError("'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them");
-            }
-        }.getCallTarget();
+    private JSFunctionData throwTypeErrorFunction(boolean restrictedProperty) {
+        CallTarget throwTypeErrorCallTarget = new ThrowTypeErrorRootNode(getLanguage(), restrictedProperty).getCallTarget();
         return JSFunctionData.create(this, throwTypeErrorCallTarget, throwTypeErrorCallTarget, 0, Strings.EMPTY_STRING, false, false, false, true);
     }
 
@@ -1868,7 +1879,7 @@ public class JSContext {
     }
 
     public void checkEvalAllowed() {
-        if (isOptionDisableEval()) {
+        if (contextOptions.isDisableEval()) {
             throw Errors.createEvalDisabled();
         }
     }

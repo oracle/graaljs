@@ -151,6 +151,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
@@ -385,7 +386,7 @@ public class JSRealm {
     private final JSFunctionObject asyncGeneratorFunctionConstructor;
     private final JSDynamicObject asyncGeneratorFunctionPrototype;
 
-    private final JSDynamicObject throwerFunction;
+    private final JSFunctionObject throwTypeErrorFunction;
     private final Accessor throwerAccessor;
 
     private final JSFunctionObject promiseConstructor;
@@ -471,6 +472,9 @@ public class JSRealm {
     private final JSDynamicObject webAssemblyTablePrototype;
 
     private final JSWebAssemblyMemoryGrowCallback webAssemblyMemoryGrowCallback;
+
+    private final JSFunctionObject shadowRealmConstructor;
+    private final JSDynamicObject shadowRealmPrototype;
 
     /** Foreign object prototypes. */
     private final JSDynamicObject foreignIterablePrototype;
@@ -598,7 +602,8 @@ public class JSRealm {
 
         this.objectFactories = context.newObjectFactoryRealmData();
 
-        this.throwerFunction = createThrowerFunction();
+        this.throwTypeErrorFunction = createThrowTypeErrorFunction(false);
+        JSFunctionObject throwerFunction = createThrowTypeErrorFunction(true);
         this.throwerAccessor = new Accessor(throwerFunction, throwerFunction);
 
         if (context.isOptionAnnexB()) {
@@ -1029,6 +1034,15 @@ public class JSRealm {
             this.temporalTimeZonePrototype = null;
             this.temporalZonedDateTimeConstructor = null;
             this.temporalZonedDateTimePrototype = null;
+        }
+
+        if (context.getContextOptions().isShadowRealm()) {
+            ctor = JSShadowRealm.createConstructor(this);
+            this.shadowRealmConstructor = ctor.getFunctionObject();
+            this.shadowRealmPrototype = ctor.getPrototype();
+        } else {
+            this.shadowRealmConstructor = null;
+            this.shadowRealmPrototype = null;
         }
 
         // always create, regardless of context.isOptionForeignObjectPrototype()
@@ -1651,9 +1665,9 @@ public class JSRealm {
         JSObjectUtil.putBuiltinAccessorProperty(realm.getObjectPrototype(), JSObject.PROTO, getProto, setProto);
     }
 
-    public final JSDynamicObject getThrowerFunction() {
-        assert throwerFunction != null;
-        return throwerFunction;
+    public final JSFunctionObject getThrowTypeErrorFunction() {
+        assert throwTypeErrorFunction != null;
+        return throwTypeErrorFunction;
     }
 
     public final Accessor getThrowerAccessor() {
@@ -1726,15 +1740,14 @@ public class JSRealm {
     }
 
     /**
-     * This function is used whenever a function is required that throws a TypeError. It is used by
-     * some of the builtins that provide accessor functions that should not be called (e.g., as a
-     * method of deprecation). In the specification, this is often referred to as
-     * "[[ThrowTypeError]] function Object (13.2.3)".
-     *
+     * Creates the %ThrowTypeError% function object (https://tc39.es/ecma262/#sec-%throwtypeerror%).
+     * It is used where a function is needed that always throws a TypeError, including getters and
+     * setters for restricted (i.e. deprecated) function and arguments object properties (namely,
+     * 'caller', 'callee', 'arguments') that may not be accessed in strict mode.
      */
-    private JSDynamicObject createThrowerFunction() {
+    private JSFunctionObject createThrowTypeErrorFunction(boolean restrictedProperty) {
         CompilerAsserts.neverPartOfCompilation();
-        JSDynamicObject thrower = JSFunction.create(this, context.throwerFunctionData);
+        JSFunctionObject thrower = JSFunction.create(this, restrictedProperty ? context.throwTypeErrorRestrictedPropertyFunctionData : context.throwTypeErrorFunctionData);
         JSObject.preventExtensions(thrower);
         JSObject.setIntegrityLevel(thrower, true);
         return thrower;
@@ -1750,6 +1763,14 @@ public class JSRealm {
 
     public final JSObjectFactory.RealmData getObjectFactories() {
         return objectFactories;
+    }
+
+    public final JSFunctionObject getShadowRealmConstructor() {
+        return shadowRealmConstructor;
+    }
+
+    public final JSDynamicObject getShadowRealmPrototype() {
+        return shadowRealmPrototype;
     }
 
     public void setupGlobals() {
@@ -1892,6 +1913,9 @@ public class JSRealm {
         }
         if (context.isOptionTemporal()) {
             addTemporalGlobals();
+        }
+        if (context.getContextOptions().isShadowRealm()) {
+            putGlobalProperty(JSShadowRealm.CLASS_NAME, getShadowRealmConstructor());
         }
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);

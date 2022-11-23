@@ -142,6 +142,7 @@ public class Test262Runnable extends TestRunnable {
                     "Reflect.set",
                     "Reflect.setPrototypeOf",
                     "Set",
+                    "ShadowRealm",
                     "SharedArrayBuffer",
                     "String.fromCodePoint",
                     "String.prototype.at",
@@ -245,7 +246,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
-                    "ShadowRealm",
                     "arbitrary-module-namespace-names",
                     "regexp-v-flag",
                     "resizable-arraybuffer",
@@ -260,6 +260,7 @@ public class Test262Runnable extends TestRunnable {
                     "array-find-from-last",
                     "array-grouping",
                     "decorators",
+                    "ShadowRealm",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
@@ -294,6 +295,9 @@ public class Test262Runnable extends TestRunnable {
         }
         if (features.contains("Temporal")) {
             extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");
+        }
+        if (features.contains("ShadowRealm")) {
+            extraOptions.put(JSContextOptions.SHADOW_REALM_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();

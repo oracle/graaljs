@@ -136,11 +136,11 @@ public class InitFunctionNode extends JavaScriptBaseNode {
     public final JSFunctionObject execute(JSFunctionObject function, int length, TruffleString name) {
         // setLengthNode.putWithFlags(function, JSFunction.LENGTH, length, lengthFlags);
         Properties.putConstant(setLengthNode, function, JSFunction.LENGTH, JSFunction.LENGTH_PROXY, lengthFlags);
-        assert JSFunction.getFunctionData(function).isBound() || length == (int) JSFunction.LENGTH_PROXY.get(function);
+        assert function instanceof JSFunctionObject.BoundOrWrapped || length == (int) JSFunction.LENGTH_PROXY.get(function);
 
         // setNameNode.putWithFlags(function, JSFunction.NAME, name, nameFlags);
         Properties.putConstant(setNameNode, function, JSFunction.NAME, JSFunction.NAME_PROXY, nameFlags);
-        assert JSFunction.getFunctionData(function).isBound() || Strings.equals(name, (TruffleString) JSFunction.NAME_PROXY.get(function));
+        assert function instanceof JSFunctionObject.BoundOrWrapped || Strings.equals(name, (TruffleString) JSFunction.NAME_PROXY.get(function));
 
         if (setPrototypeNode != null) {
             Properties.putConstant(setPrototypeNode, function, JSObject.PROTOTYPE, JSFunction.PROTOTYPE_PROXY, prototypeFlags);
