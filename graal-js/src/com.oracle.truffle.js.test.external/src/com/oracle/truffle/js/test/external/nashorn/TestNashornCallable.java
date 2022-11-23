@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import java.util.Locale;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
@@ -92,7 +93,7 @@ public class TestNashornCallable extends TestCallable {
         contextBuilder.err(err);
         contextBuilder.allowHostAccess(HostAccess.ALL);
         contextBuilder.allowHostClassLookup((className) -> true);
-        contextBuilder.allowIO(true);
+        contextBuilder.allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build());
         contextBuilder.allowExperimentalOptions(true);
 
         contextBuilder.option("engine.WarnInterpreterOnly", Boolean.toString(false));

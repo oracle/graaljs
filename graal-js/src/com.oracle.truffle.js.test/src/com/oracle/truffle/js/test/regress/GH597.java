@@ -40,23 +40,22 @@
  */
 package com.oracle.truffle.js.test.regress;
 
-import java.io.ByteArrayInputStream;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
+import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.attribute.FileAttribute;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,8 +66,11 @@ import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
 
 public class GH597 {
 
@@ -107,11 +109,11 @@ public class GH597 {
         files.put("/no-ext-cjs-module", "module.exports.foo = 42");
         files.put("/cjs-module.js", "module.exports.boo = 43;");
         return Context.newBuilder("js").//
-                        fileSystem(new TestFileSystem(files)).//
+                        allowIO(IOAccess.newBuilder().fileSystem(new TestFileSystem(files)).build()).//
                         allowAllAccess(true).//
                         allowExperimentalOptions(true).//
-                        option("js.commonjs-require", "true").//
-                        option("js.commonjs-require-cwd", fsRoot).//
+                        option(COMMONJS_REQUIRE_NAME, "true").//
+                        option(COMMONJS_REQUIRE_CWD_NAME, fsRoot).//
                         build();
     }
 
@@ -171,50 +173,7 @@ public class GH597 {
             String filepath = path.toString().replace(File.separator, "/");
             String contents = files.get(filepath);
             byte[] bytes = contents.getBytes(StandardCharsets.UTF_8);
-            long size = bytes.length;
-            ReadableByteChannel channel = Channels.newChannel(new ByteArrayInputStream(bytes));
-            return new SeekableByteChannel() {
-
-                @Override
-                public boolean isOpen() {
-                    return channel.isOpen();
-                }
-
-                @Override
-                public void close() throws IOException {
-                    channel.close();
-                }
-
-                @Override
-                public int write(ByteBuffer src) {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public SeekableByteChannel truncate(long sizeParam) {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public long size() {
-                    return size;
-                }
-
-                @Override
-                public int read(ByteBuffer dst) throws IOException {
-                    return channel.read(dst);
-                }
-
-                @Override
-                public SeekableByteChannel position(long newPosition) {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public long position() {
-                    throw new UnsupportedOperationException();
-                }
-            };
+            return new ReadOnlySeekableByteArrayChannel(bytes);
         }
 
         @Override

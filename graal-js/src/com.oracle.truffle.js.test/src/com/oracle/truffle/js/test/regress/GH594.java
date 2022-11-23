@@ -40,23 +40,22 @@
  */
 package com.oracle.truffle.js.test.regress;
 
-import java.io.ByteArrayInputStream;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
+import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.attribute.FileAttribute;
 import java.util.HashMap;
 import java.util.Map;
@@ -64,8 +63,11 @@ import java.util.Set;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
 
 public class GH594 {
 
@@ -76,8 +78,11 @@ public class GH594 {
         files.put(Paths.get("/a/b/esm-module.mjs").toAbsolutePath(), "export const foo = 'foo';");
         String root = System.getProperty("user.home");
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Context context = Context.newBuilder("js").fileSystem(new TestFileSystem(files, root)).allowAllAccess(true).allowExperimentalOptions(true).out(out).err(out).option("js.commonjs-require",
-                        "true").option("js.commonjs-require-cwd", root).build();
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new TestFileSystem(files, root)).build();
+        Context context = Context.newBuilder("js").allowIO(ioAccess).allowAllAccess(true).allowExperimentalOptions(true).out(out).err(out).//
+                        option(COMMONJS_REQUIRE_NAME, "true").//
+                        option(COMMONJS_REQUIRE_CWD_NAME, root).//
+                        build();
         context.eval("js", "require('/a/b/cjs-module.cjs').fooPromise.then(console.log);");
         out.flush();
         Assert.assertEquals("foo\n", out.toString());
@@ -138,50 +143,7 @@ public class GH594 {
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) {
             String contents = files.get(path);
             byte[] bytes = contents.getBytes(StandardCharsets.UTF_8);
-            long size = bytes.length;
-            ReadableByteChannel channel = Channels.newChannel(new ByteArrayInputStream(bytes));
-            return new SeekableByteChannel() {
-
-                @Override
-                public boolean isOpen() {
-                    return channel.isOpen();
-                }
-
-                @Override
-                public void close() throws IOException {
-                    channel.close();
-                }
-
-                @Override
-                public int write(ByteBuffer src) {
-                    throw new AssertionError();
-                }
-
-                @Override
-                public SeekableByteChannel truncate(long sizeParam) {
-                    throw new AssertionError();
-                }
-
-                @Override
-                public long size() {
-                    return size;
-                }
-
-                @Override
-                public int read(ByteBuffer dst) throws IOException {
-                    return channel.read(dst);
-                }
-
-                @Override
-                public SeekableByteChannel position(long newPosition) {
-                    throw new AssertionError();
-                }
-
-                @Override
-                public long position() {
-                    throw new AssertionError();
-                }
-            };
+            return new ReadOnlySeekableByteArrayChannel(bytes);
         }
 
         @Override

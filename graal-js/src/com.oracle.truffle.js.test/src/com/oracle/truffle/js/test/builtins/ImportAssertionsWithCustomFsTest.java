@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,16 +41,6 @@
 
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.FileSystem;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -68,6 +58,18 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
+
 public class ImportAssertionsWithCustomFsTest {
 
     private static void executeTest(TestTuple source) throws IOException {
@@ -80,18 +82,24 @@ public class ImportAssertionsWithCustomFsTest {
         if (source.additionalModuleName != null) {
             fs.add(source.additionalModuleName, source.additionalModuleBody);
         }
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(fs).build();
         if (source.isAsync) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            try (Context context = JSTest.newContextBuilder().allowIO(true).fileSystem(fs).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
-                            JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").option(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true").option(JSContextOptions.JSON_MODULES_NAME,
-                                            "true").build()) {
+            try (Context context = JSTest.newContextBuilder().allowIO(ioAccess).out(out).//
+                            option(JSContextOptions.CONSOLE_NAME, "true").//
+                            option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").//
+                            option(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true").//
+                            option(JSContextOptions.JSON_MODULES_NAME, "true").//
+                            build()) {
                 Value asyncFn = context.eval(JavaScriptLanguage.ID, source.statement);
                 asyncFn.executeVoid();
             }
             Assert.assertEquals(source.expectedValue + "\n", out.toString());
         } else {
-            try (Context context = JSTest.newContextBuilder().allowIO(true).fileSystem(fs).option(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true").option(JSContextOptions.JSON_MODULES_NAME,
-                            "true").build()) {
+            try (Context context = JSTest.newContextBuilder().allowIO(ioAccess).//
+                            option(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true").//
+                            option(JSContextOptions.JSON_MODULES_NAME, "true").//
+                            build()) {
                 Value v = context.eval(Source.newBuilder(JavaScriptLanguage.ID, source.statement, "exec.mjs").build());
                 Assert.assertEquals(source.expectedValue, v.asString());
             }

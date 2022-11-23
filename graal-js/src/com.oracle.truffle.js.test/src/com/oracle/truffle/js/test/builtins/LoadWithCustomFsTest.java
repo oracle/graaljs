@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,20 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+
+import java.io.IOException;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
-
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class LoadWithCustomFsTest extends ImportWithCustomFsTest {
 
@@ -61,7 +63,8 @@ public class LoadWithCustomFsTest extends ImportWithCustomFsTest {
         final String expectedSpecifier = "https://abc:8443/xyz.js";
         final String testSrc = "load('https://abc:8443/xyz.js'); foo;";
         TestFS fs = new TestFS(expectedSpecifier, moduleBody);
-        try (Context cx = JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).allowIO(true).fileSystem(fs).option(JSContextOptions.LOAD_FROM_URL_NAME, "true").build()) {
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(fs).build();
+        try (Context cx = JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).allowIO(ioAccess).option(JSContextOptions.LOAD_FROM_URL_NAME, "true").build()) {
             Value v = cx.eval(Source.newBuilder(ID, testSrc, "test.js").build());
 
             Assert.assertEquals(41, v.asInt());

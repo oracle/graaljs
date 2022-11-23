@@ -40,17 +40,20 @@
  */
 package com.oracle.truffle.js.test.regress;
 
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
+import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +62,7 @@ import java.util.Set;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -89,11 +93,11 @@ public class GH596 {
     private static Context getTextContext(List<String> accesses) {
         String fsRoot = System.getProperty("os.name").contains("indows") ? "C:/" : "/";
         return Context.newBuilder("js").//
-                        fileSystem(new TestFileSystem(accesses)).//
+                        allowIO(IOAccess.newBuilder().fileSystem(new TestFileSystem(accesses)).build()).//
                         allowAllAccess(true).//
                         allowExperimentalOptions(true).//
-                        option("js.commonjs-require", "true").//
-                        option("js.commonjs-require-cwd", fsRoot).//
+                        option(COMMONJS_REQUIRE_NAME, "true").//
+                        option(COMMONJS_REQUIRE_CWD_NAME, fsRoot).//
                         build();
     }
 

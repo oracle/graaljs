@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,9 +83,10 @@ public class InnerContextTest {
                     @TruffleBoundary
                     private Object innerJS() {
                         TruffleLanguage.Env env = TestLanguage.getCurrentContext().getEnv();
-                        TruffleContext innerContext = env.newContextBuilder().build();
+                        TruffleContext innerContext = env.newInnerContextBuilder(TestLanguage.ID, JavaScriptLanguage.ID).allowPolyglotAccess(true).build();
                         Object prev = innerContext.enter(this);
                         try {
+                            innerContext.initializePublic(this, TestLanguage.ID);
                             TruffleLanguage.Env innerEnv = TestLanguage.getCurrentContext().getEnv();
                             CallTarget answer = innerEnv.parsePublic(com.oracle.truffle.api.source.Source.newBuilder(JavaScriptLanguage.ID, "42", "test.js").build());
                             return answer.call();
@@ -122,9 +123,10 @@ public class InnerContextTest {
                     @TruffleBoundary
                     private Object innerJS() {
                         TruffleLanguage.Env env = TestLanguage.getCurrentContext().getEnv();
-                        TruffleContext innerContext = env.newContextBuilder().build();
+                        TruffleContext innerContext = env.newInnerContextBuilder(TestLanguage.ID, JavaScriptLanguage.ID).allowPolyglotAccess(true).build();
                         Object prev = innerContext.enter(this);
                         try {
+                            innerContext.initializePublic(this, TestLanguage.ID);
                             TruffleLanguage.Env innerEnv = TestLanguage.getCurrentContext().getEnv();
                             String jsCode = "b + s + i + l + f + d + c + str";
                             com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(

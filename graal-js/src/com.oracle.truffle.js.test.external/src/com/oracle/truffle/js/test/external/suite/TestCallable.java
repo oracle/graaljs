@@ -52,6 +52,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -93,7 +94,7 @@ public class TestCallable extends AbstractTestCallable {
         } else {
             this.contextBuilder = Context.newBuilder(JavaScriptLanguage.ID);
         }
-        contextBuilder.allowIO(true);
+        contextBuilder.allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build());
         contextBuilder.allowExperimentalOptions(true);
         contextBuilder.allowCreateThread(true);
         contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, ecmaScriptVersionToOptionString(ecmaScriptVersion));

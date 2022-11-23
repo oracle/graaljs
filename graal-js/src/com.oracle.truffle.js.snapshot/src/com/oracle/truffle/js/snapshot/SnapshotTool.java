@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -89,8 +90,10 @@ public class SnapshotTool {
 
         SnapshotTool snapshotTool = new SnapshotTool();
         if (!srcFiles.isEmpty() && outDir != null) {
-            try (Context polyglotContext = Context.newBuilder(JavaScriptLanguage.ID).allowIO(true).allowExperimentalOptions(true).option(JSContextOptions.CLASS_FIELDS_NAME, "true").option(
-                            JSContextOptions.LAZY_TRANSLATION_NAME, "false").build()) {
+            try (Context polyglotContext = Context.newBuilder(JavaScriptLanguage.ID).allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build()).allowExperimentalOptions(true).//
+                            option(JSContextOptions.CLASS_FIELDS_NAME, "true").//
+                            option(JSContextOptions.LAZY_TRANSLATION_NAME, "false").//
+                            build()) {
                 polyglotContext.initialize(JavaScriptLanguage.ID);
                 polyglotContext.enter();
                 for (String srcFile : srcFiles) {

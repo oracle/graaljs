@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,6 +73,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -224,7 +225,7 @@ public class ESModuleTest {
     @Test
     public void testFunctionExport() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
             allFilesArray = prepareTestFileAndModules("resources/functionexporttest.js", "resources" +
                             "/functionexportmodule.js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
@@ -242,7 +243,7 @@ public class ESModuleTest {
     @Test
     public void testFunctionExportNoMimeType() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
             allFilesArray = prepareTestFileAndModules("resources/functionexporttest.js", "resources" +
                             "/functionexportmodule.js");
             String mainFilePath = allFilesArray[0].getAbsolutePath();
@@ -264,7 +265,7 @@ public class ESModuleTest {
     @Test
     public void testDefaultFunctionExport() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
             allFilesArray = prepareTestFileAndModules("resources/defaultfunctionexporttest.js", "resources/diagmodule" +
                             ".js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
@@ -281,7 +282,7 @@ public class ESModuleTest {
     @Test
     public void testRenamedExport() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
 
             allFilesArray = prepareTestFileAndModules("resources/renamedexporttest.js", "resources" +
                             "/renamedexportmodule.js");
@@ -299,7 +300,7 @@ public class ESModuleTest {
     @Test
     public void testClassExport() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
             allFilesArray = prepareTestFileAndModules("resources/classexporttest.js", "resources/classexportmodule.js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
@@ -315,7 +316,7 @@ public class ESModuleTest {
     @Test
     public void testDefaultClassExport() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).build()) {
             allFilesArray = prepareTestFileAndModules("resources/defaultclassexporttest.js", "resources/mymathmodule" +
                             ".js");
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
@@ -398,7 +399,7 @@ public class ESModuleTest {
             }
         };
 
-        try (Context context = JSTest.newContextBuilder().allowIO(true).fileSystem(fileSystem).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build()).build()) {
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
@@ -467,7 +468,7 @@ public class ESModuleTest {
     @Test
     public void testNestedImportNamespace() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").allowIO(IOAccess.ALL).build()) {
             allFilesArray = prepareTestFileAndModules("resources/importexport.js", "resources/mymathmodule.js");
             Source source = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value exports = context.eval(source);
@@ -502,7 +503,7 @@ public class ESModuleTest {
     @Test
     public void testTopLevelAwaitImports() throws IOException {
         File[] allFilesArray = null;
-        try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").allowIO(true).build()) {
+        try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").allowIO(IOAccess.ALL).build()) {
             allFilesArray = prepareTestFileAndModules("resources/importexporttlawait.js", "resources/classexportmodule.js");
             Source source = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value exports = context.eval(source);
@@ -583,7 +584,7 @@ public class ESModuleTest {
             }
         };
 
-        try (Context context = JSTest.newContextBuilder().allowIO(true).fileSystem(fileSystem).build()) {
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build()).build()) {
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             assertTrue(v.isString());

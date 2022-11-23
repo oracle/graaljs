@@ -40,15 +40,10 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.test.interop.AsyncInteropTest.Thenable;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.FileSystem;
-import org.junit.Assert;
-import org.junit.Test;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -68,10 +63,17 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
-import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.truffle.js.test.interop.AsyncInteropTest.Thenable;
 
 public class CommonJSWithCustomFsTest {
 
@@ -139,7 +141,7 @@ public class CommonJSWithCustomFsTest {
         Context.Builder contextBuilder = Context.newBuilder("js").allowAllAccess(true).out(out).err(out).allowHostAccess(HostAccess.ALL);
         FileSystem fs = FileSystem.newDefaultFileSystem();
         fs.setCurrentWorkingDirectory(testPath);
-        contextBuilder.fileSystem(fs);
+        contextBuilder.allowIO(IOAccess.newBuilder().fileSystem(fs).build());
         contextBuilder.option(COMMONJS_REQUIRE_NAME, "true");
         contextBuilder.option(COMMONJS_REQUIRE_CWD_NAME, testPath.toAbsolutePath().toString());
         Context context = contextBuilder.build();
@@ -293,9 +295,9 @@ public class CommonJSWithCustomFsTest {
 
     private static Context createTestContext(FileSystem fs, String cwd) {
         final Map<String, String> options = new HashMap<>();
-        options.put("js.commonjs-require", "true");
-        options.put("js.commonjs-require-cwd", cwd);
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, cwd);
 
-        return Context.newBuilder("js").allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).options(options).allowIO(true).fileSystem(fs).build();
+        return Context.newBuilder("js").allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).options(options).allowIO(IOAccess.newBuilder().fileSystem(fs).build()).build();
     }
 }

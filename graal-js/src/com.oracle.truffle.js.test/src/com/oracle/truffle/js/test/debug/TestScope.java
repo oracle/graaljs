@@ -61,6 +61,7 @@ import java.util.stream.Collectors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -106,7 +107,7 @@ public class TestScope {
         contextBuilder.allowHostAccess(HostAccess.ALL);
         contextBuilder.allowHostClassLookup(s -> true);
         contextBuilder.option(JSContextOptions.SCOPE_OPTIMIZATION_NAME, Boolean.toString(closureOpt));
-        contextBuilder.allowIO(true).fileSystem(new MockFileSystem(moduleFiles));
+        contextBuilder.allowIO(IOAccess.newBuilder().fileSystem(new MockFileSystem(moduleFiles)).build());
         tester = new DebuggerTester(contextBuilder);
     }
 
