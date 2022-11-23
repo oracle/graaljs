@@ -723,6 +723,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_get_heap_statistics, "isolateGetHeapStatistics", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_terminate_execution, "isolateTerminateExecution", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_cancel_terminate_execution, "isolateCancelTerminateExecution", "()V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_is_execution_terminating, "isolateIsExecutionTerminating", "()Z")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_int_placeholder, "isolateGetIntPlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_safe_int_placeholder, "isolateGetSafeIntPlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_double_placeholder, "isolateGetDoublePlaceholder", "()Ljava/lang/Object;")
@@ -1260,6 +1261,11 @@ void GraalIsolate::CancelTerminateExecution() {
     if (current_isolate == nullptr) {
         jvm_->DetachCurrentThread();
     }
+}
+
+bool GraalIsolate::IsExecutionTerminating() {
+    JNI_CALL(jboolean, terminating, this, GraalAccessMethod::isolate_is_execution_terminating, Boolean);
+    return terminating;
 }
 
 void GraalIsolate::SetFunctionTemplateData(unsigned id, GraalValue* data) {

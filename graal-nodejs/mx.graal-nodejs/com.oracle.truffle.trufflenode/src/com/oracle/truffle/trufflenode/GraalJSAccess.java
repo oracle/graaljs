@@ -3179,6 +3179,10 @@ public final class GraalJSAccess {
 
     private boolean terminateExecution;
 
+    public synchronized boolean isolateIsExecutionTerminating() {
+        return terminateExecution;
+    }
+
     public synchronized void isolateCancelTerminateExecution() {
         terminateExecution = false;
         if (Thread.currentThread() == agent.getThread()) {
