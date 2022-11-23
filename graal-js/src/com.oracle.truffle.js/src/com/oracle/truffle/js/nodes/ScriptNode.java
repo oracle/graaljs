@@ -46,7 +46,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -55,22 +54,20 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 
 public final class ScriptNode {
 
-    private final JSContext context;
     private final JSFunctionData functionData;
     private final RootCallTarget callTarget;
 
-    private ScriptNode(JSContext context, JSFunctionData functionData, RootCallTarget callTarget) {
-        this.context = context;
+    private ScriptNode(JSFunctionData functionData, RootCallTarget callTarget) {
         this.functionData = functionData;
         this.callTarget = callTarget;
     }
 
-    public static ScriptNode fromFunctionRoot(JSContext context, FunctionRootNode root) {
-        return fromFunctionData(context, root.getFunctionData());
+    public static ScriptNode fromFunctionRoot(FunctionRootNode root) {
+        return fromFunctionData(root.getFunctionData());
     }
 
-    public static ScriptNode fromFunctionData(JSContext context, JSFunctionData functionData) {
-        return new ScriptNode(context, functionData, (RootCallTarget) functionData.getCallTarget());
+    public static ScriptNode fromFunctionData(JSFunctionData functionData) {
+        return new ScriptNode(functionData, (RootCallTarget) functionData.getCallTarget());
     }
 
     public Object run(JSRealm realm) {
@@ -106,10 +103,6 @@ public final class ScriptNode {
 
     public Object run(Object[] args) {
         return callTarget.call(args);
-    }
-
-    public JSContext getContext() {
-        return context;
     }
 
     public RootNode getRootNode() {

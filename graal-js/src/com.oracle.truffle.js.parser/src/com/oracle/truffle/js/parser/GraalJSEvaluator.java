@@ -259,7 +259,7 @@ public final class GraalJSEvaluator implements JSParser {
         JSModuleData parsedModule = parseModule(context, source);
         RootNode rootNode = new ModuleScriptRoot(context, parsedModule, source);
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, rootNode.getCallTarget(), 0, Strings.EMPTY_STRING);
-        return ScriptNode.fromFunctionData(context, functionData);
+        return ScriptNode.fromFunctionData(functionData);
     }
 
     private final class ModuleScriptRoot extends JavaScriptRootNode {
@@ -976,12 +976,12 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public ScriptNode parseScript(JSContext context, Source source, ByteBuffer binary) {
-        return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) new BinarySnapshotProvider(binary).apply(NodeFactory.getInstance(context), context, source));
+        return ScriptNode.fromFunctionRoot((FunctionRootNode) new BinarySnapshotProvider(binary).apply(NodeFactory.getInstance(context), context, source));
     }
 
     @Override
     public ScriptNode parseScript(JSContext context, Source source, SnapshotProvider snapshotProvider) {
-        return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) snapshotProvider.apply(NodeFactory.getInstance(context), context, source));
+        return ScriptNode.fromFunctionRoot((FunctionRootNode) snapshotProvider.apply(NodeFactory.getInstance(context), context, source));
     }
 
     @Override
