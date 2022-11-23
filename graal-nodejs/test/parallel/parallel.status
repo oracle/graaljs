@@ -25,6 +25,8 @@ test-ttywrap-stack: SKIP
 test-blob: SKIP
 
 # Different error message
+# object is not extensible versus Cannot add new property ... to non-extensible ...
+test-assert-calltracker-getCalls: FAIL
 # Unexpected end of input versus Expected an operand but found eof
 test-cli-eval: FAIL
 # Unexpected identifier versus Expected ; but found bar
@@ -64,6 +66,7 @@ test-v8-flags: FAIL
 
 # heapsnapshot/heapdump/EmbedderGraph is not supported
 test-heapdump-async-hooks-init-promise: SKIP
+test-heapsnapshot-near-heap-limit-by-api-in-worker: SKIP
 test-heapsnapshot-near-heap-limit-worker: SKIP
 test-http2-ping-settings-heapdump: SKIP
 test-v8-getheapsnapshot-twice: SKIP
@@ -135,7 +138,9 @@ test-trace-events-category-used: SKIP
 test-trace-events-console: SKIP
 test-trace-events-environment: SKIP
 test-trace-events-file-pattern: SKIP
+test-trace-events-fs-async: SKIP
 test-trace-events-fs-sync: SKIP
+test-trace-events-http: SKIP
 test-trace-events-metadata: SKIP
 test-trace-events-net: SKIP
 test-trace-events-none: SKIP
