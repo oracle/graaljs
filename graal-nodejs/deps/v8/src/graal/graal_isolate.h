@@ -206,6 +206,7 @@ enum GraalAccessMethod {
     isolate_terminate_execution,
     isolate_cancel_terminate_execution,
     isolate_is_execution_terminating,
+    isolate_request_interrupt,
     isolate_get_int_placeholder,
     isolate_get_safe_int_placeholder,
     isolate_get_double_placeholder,
@@ -475,6 +476,7 @@ public:
     void TerminateExecution();
     void CancelTerminateExecution();
     bool IsExecutionTerminating();
+    void RequestInterrupt(v8::InterruptCallback callback, void* data);
 
     inline JNIEnv* GetJNIEnv() {
         return jni_env_;
