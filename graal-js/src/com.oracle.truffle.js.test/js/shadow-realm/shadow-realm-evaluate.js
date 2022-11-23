@@ -87,3 +87,18 @@ void function testWrappedFunctionProperties() {
     // Wrapped function exotic objects do not have a [[Construct]] internal method.
     assertThrows(() => new foo(), TypeError);
 }();
+
+void function testNestedWrappedFunctionCallErrorMessage() {
+    const shadowRealm = new ShadowRealm();
+
+    let wrapped = shadowRealm.evaluate('(function shadowRecursive(fn, n) { fn(shadowRecursive, n-1); })');
+    function recursive(fn, n) { return (n < 0) ? foo : fn(recursive, n-2); }
+    try {
+        recursive(wrapped, 10);
+        fail("should have thrown");
+    } catch (e) {
+        assertTrue(e instanceof TypeError);
+        assertTrue(e.message.includes('ReferenceError'));
+        assertFalse(e.message.includes('TypeError'));
+    }
+}();

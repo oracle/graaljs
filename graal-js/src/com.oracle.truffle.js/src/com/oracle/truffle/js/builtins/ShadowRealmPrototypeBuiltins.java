@@ -238,7 +238,19 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
             @TruffleBoundary
             private JSException wrapErrorFromShadowRealm(AbstractTruffleException ex) {
-                return Errors.createTypeError(String.format("Wrapped function call failed with: %s", ex.getMessage()), ex, this);
+                String message = ex.getMessage();
+                if (message == null || message.isEmpty()) {
+                    message = "Wrapped function call failed";
+                } else {
+                    String typeErrorPrefix = "TypeError: ";
+                    String messagePrefix = "Wrapped function call failed with: ";
+                    if (message.startsWith(typeErrorPrefix) && message.startsWith(messagePrefix, typeErrorPrefix.length())) {
+                        message = message.substring(typeErrorPrefix.length());
+                    } else {
+                        message = messagePrefix + message;
+                    }
+                }
+                return Errors.createTypeError(message, ex, this);
             }
         }
         return JSFunctionData.createCallOnly(context, new WrappedFunctionRootNode(context.getLanguage()).getCallTarget(), 0, Strings.EMPTY_STRING);
@@ -275,9 +287,9 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return getWrappedValue.execute(getContext(), callerRealm, result);
         }
 
+        @TruffleBoundary
         private JSException wrapErrorFromShadowRealm(AbstractTruffleException ex) {
-            CompilerAsserts.neverPartOfCompilation();
-            return Errors.createTypeError(String.format("ShadowRealm.prototype.evaluate failed with: %s", ex.getMessage()), ex, this);
+            return Errors.createTypeError("ShadowRealm.prototype.evaluate failed with: " + ex.getMessage(), ex, this);
         }
 
         private ScriptNode parseScript(String sourceCode) {
