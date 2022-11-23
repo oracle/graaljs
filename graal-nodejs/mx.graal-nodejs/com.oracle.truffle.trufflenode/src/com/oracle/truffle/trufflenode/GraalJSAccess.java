@@ -3215,6 +3215,14 @@ public final class GraalJSAccess {
         }
     }
 
+    public void isolateRequestInterrupt(long callback, long data) {
+        Debugger debugger = lookupInstrument("debugger", Debugger.class);
+        debugger.startSession(se -> {
+            se.getSession().close();
+            NativeAccess.executeInterruptCallback(callback, data);
+        }).suspendNextExecution();
+    }
+
     static final class GraalJSKillException extends ThreadDeath {
         private static final long serialVersionUID = 3930431622452607906L;
     }

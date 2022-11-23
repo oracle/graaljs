@@ -724,6 +724,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_terminate_execution, "isolateTerminateExecution", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_cancel_terminate_execution, "isolateCancelTerminateExecution", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_is_execution_terminating, "isolateIsExecutionTerminating", "()Z")
+    ACCESS_METHOD(GraalAccessMethod::isolate_request_interrupt, "isolateRequestInterrupt", "(JJ)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_int_placeholder, "isolateGetIntPlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_safe_int_placeholder, "isolateGetSafeIntPlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_double_placeholder, "isolateGetDoublePlaceholder", "()Ljava/lang/Object;")
@@ -1498,4 +1499,22 @@ v8::ArrayBuffer::Allocator* GraalIsolate::GetArrayBufferAllocator() {
 
 void GraalIsolate::SchedulePauseOnNextStatement() {
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_schedule_pause_on_next_statement);
+}
+
+void GraalIsolate::RequestInterrupt(v8::InterruptCallback callback, void* data) {
+    // We cannot use GetJNIEnv()/JNI_CALL_VOID because RequestInterrupt()
+    // can be called from a thread that does not correspond to this isolate
+    GraalIsolate* current_isolate = CurrentIsolate();
+    JNIEnv* env;
+    if (current_isolate == nullptr) {
+        // the thread does not belong to any isolate (i.e. is not attached to JVM)
+        jvm_->AttachCurrentThread((void**) &env, nullptr);
+    } else {
+        env = current_isolate->GetJNIEnv();
+    }
+    jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_request_interrupt);
+    env->functions->CallVoidMethod(env, access_, method_id, (jlong) callback, (jlong) data);
+    if (current_isolate == nullptr) {
+        jvm_->DetachCurrentThread();
+    }
 }

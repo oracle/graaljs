@@ -3523,7 +3523,7 @@ namespace v8 {
     }
 
     void Isolate::RequestInterrupt(InterruptCallback callback, void* data) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->RequestInterrupt(callback, data);
     }
 
     void Isolate::ClearKeptObjects() {
