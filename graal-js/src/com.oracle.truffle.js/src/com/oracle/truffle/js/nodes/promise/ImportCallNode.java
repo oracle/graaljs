@@ -211,11 +211,7 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     private Object getActiveScriptOrModule(VirtualFrame frame) {
-        if (activeScriptOrModuleNode != null) {
-            return activeScriptOrModuleNode.execute(frame);
-        } else {
-            return new ScriptOrModule(context, getEncapsulatingSourceSection().getSource());
-        }
+        return activeScriptOrModuleNode.execute(frame);
     }
 
     private JSDynamicObject hostImportModuleDynamically(Object referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
