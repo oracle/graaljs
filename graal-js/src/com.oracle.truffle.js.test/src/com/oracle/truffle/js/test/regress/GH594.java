@@ -43,14 +43,10 @@ package com.oracle.truffle.js.test.regress;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
 import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
@@ -70,6 +66,8 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
 
 public class GH594 {
 
@@ -145,50 +143,7 @@ public class GH594 {
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) {
             String contents = files.get(path);
             byte[] bytes = contents.getBytes(StandardCharsets.UTF_8);
-            long size = bytes.length;
-            ReadableByteChannel channel = Channels.newChannel(new ByteArrayInputStream(bytes));
-            return new SeekableByteChannel() {
-
-                @Override
-                public boolean isOpen() {
-                    return channel.isOpen();
-                }
-
-                @Override
-                public void close() throws IOException {
-                    channel.close();
-                }
-
-                @Override
-                public int write(ByteBuffer src) {
-                    throw new AssertionError();
-                }
-
-                @Override
-                public SeekableByteChannel truncate(long sizeParam) {
-                    throw new AssertionError();
-                }
-
-                @Override
-                public long size() {
-                    return size;
-                }
-
-                @Override
-                public int read(ByteBuffer dst) throws IOException {
-                    return channel.read(dst);
-                }
-
-                @Override
-                public SeekableByteChannel position(long newPosition) {
-                    throw new AssertionError();
-                }
-
-                @Override
-                public long position() {
-                    throw new AssertionError();
-                }
-            };
+            return new ReadOnlySeekableByteArrayChannel(bytes);
         }
 
         @Override
