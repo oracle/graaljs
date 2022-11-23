@@ -583,8 +583,7 @@ namespace v8 {
     }
 
     bool Isolate::IsExecutionTerminating() {
-        TRACE
-        return false;
+        return reinterpret_cast<GraalIsolate*> (this)->IsExecutionTerminating();
     }
 
     void Isolate::DumpAndResetStats() {
