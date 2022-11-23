@@ -521,15 +521,6 @@ public abstract class Environment {
 
     public VarRef findTempVar(JSFrameSlot var) {
         return new VarRef(var.getIdentifier()) {
-            @Override
-            public boolean isGlobal() {
-                return false;
-            }
-
-            @Override
-            public boolean isFunctionLocal() {
-                return false;
-            }
 
             @Override
             public JSFrameSlot getFrameSlot() {
@@ -657,13 +648,17 @@ public abstract class Environment {
 
         public abstract JavaScriptNode createWriteNode(JavaScriptNode rhs);
 
-        public abstract boolean isFunctionLocal();
+        public boolean isFunctionLocal() {
+            return false;
+        }
 
         public boolean isFrameVar() {
             return getFrameSlot() != null;
         }
 
-        public abstract boolean isGlobal();
+        public boolean isGlobal() {
+            return false;
+        }
 
         public boolean isConst() {
             return false;
@@ -953,11 +948,6 @@ public abstract class Environment {
         }
 
         @Override
-        public boolean isFunctionLocal() {
-            return false;
-        }
-
-        @Override
         public JSFrameSlot getFrameSlot() {
             return null;
         }
@@ -1168,14 +1158,30 @@ public abstract class Environment {
             return factory.createConstantBoolean(false);
         }
 
-        @Override
-        public boolean isFunctionLocal() {
-            return false;
+    }
+
+    static final class ActiveScriptOrModuleRef extends VarRef {
+
+        private final FunctionEnvironment resolvedEnv;
+
+        ActiveScriptOrModuleRef(FunctionEnvironment resolvedEnv) {
+            super(null);
+            this.resolvedEnv = resolvedEnv;
         }
 
         @Override
-        public boolean isGlobal() {
-            return false;
+        public JavaScriptNode createReadNode() {
+            return resolvedEnv.getActiveScriptOrModule();
+        }
+
+        @Override
+        public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
+            throw Errors.shouldNotReachHere();
+        }
+
+        @Override
+        public JavaScriptNode createDeleteNode() {
+            throw Errors.shouldNotReachHere();
         }
     }
 
@@ -1196,13 +1202,25 @@ public abstract class Environment {
     }
 
     public VarRef findActiveModule() {
+        return findActiveScriptOrModule(true);
+    }
+
+    public VarRef findActiveScriptOrModule() {
+        return findActiveScriptOrModule(false);
+    }
+
+    private VarRef findActiveScriptOrModule(boolean sourceTextModule) {
         Environment current = this;
         int frameLevel = 0;
         int scopeLevel = 0;
         while (current.getParent() != null) {
             if (current instanceof FunctionEnvironment) {
-                assert !((FunctionEnvironment) current).isModule();
-                ((FunctionEnvironment) current).setNeedsParentFrame(true);
+                if (((FunctionEnvironment) current).isScriptOrModule()) {
+                    break;
+                }
+                if (sourceTextModule) {
+                    ((FunctionEnvironment) current).setNeedsParentFrame(true);
+                }
                 frameLevel++;
                 scopeLevel = 0;
             } else if (current instanceof BlockEnvironment && current.hasScopeFrame()) {
@@ -1210,8 +1228,9 @@ public abstract class Environment {
             }
             current = current.getParent();
         }
-        assert current instanceof FunctionEnvironment && ((FunctionEnvironment) current).isModule();
-        return new ActiveModuleRef(scopeLevel, frameLevel, current);
+        FunctionEnvironment scriptOrModuleEnv = (FunctionEnvironment) current;
+        assert !sourceTextModule || scriptOrModuleEnv.isModule();
+        return sourceTextModule ? new ActiveModuleRef(scopeLevel, frameLevel, scriptOrModuleEnv) : new ActiveScriptOrModuleRef(scriptOrModuleEnv);
     }
 
     protected String toStringImpl(@SuppressWarnings("unused") Map<String, Integer> state) {
