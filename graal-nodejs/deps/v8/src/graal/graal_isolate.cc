@@ -1518,3 +1518,11 @@ void GraalIsolate::RequestInterrupt(v8::InterruptCallback callback, void* data) 
         jvm_->DetachCurrentThread();
     }
 }
+
+void GraalIsolate::JSExecutionViolation(JSExecutionAction action) {
+    if (action == kJSExecutionThrow) {
+        ThrowException(v8::String::NewFromUtf8(reinterpret_cast<v8::Isolate*> (this), "Illegal operation.").ToLocalChecked());
+    } else {
+        ReportAPIFailure("DisallowJavascriptExecutionScope", "Illegal operation.");
+    }
+}

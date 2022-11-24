@@ -2885,20 +2885,27 @@ namespace v8 {
 
     Isolate::DisallowJavascriptExecutionScope::DisallowJavascriptExecutionScope(Isolate* isolate, OnFailure on_failure) {
         isolate_ = isolate;
-        was_execution_allowed_throws_ = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAllowed(false);
+        GraalIsolate::JSExecutionAction newAction = (on_failure == THROW_ON_FAILURE) ? GraalIsolate::kJSExecutionThrow : GraalIsolate::kJSExecutionCrash;
+        GraalIsolate::JSExecutionAction oldAction = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAction(newAction);
+        was_execution_allowed_throws_ = (oldAction == GraalIsolate::kJSExecutionThrow);
+        was_execution_allowed_assert_ = (oldAction == GraalIsolate::kJSExecutionCrash);
     }
 
     Isolate::DisallowJavascriptExecutionScope::~DisallowJavascriptExecutionScope() {
-        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAllowed(was_execution_allowed_throws_);
+        GraalIsolate::JSExecutionAction action = was_execution_allowed_throws_ ? GraalIsolate::kJSExecutionThrow : (was_execution_allowed_assert_ ? GraalIsolate::kJSExecutionCrash : GraalIsolate::kJSExecutionAllowed);
+        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAction(action);
     }
 
     Isolate::AllowJavascriptExecutionScope::AllowJavascriptExecutionScope(Isolate* isolate) {
         isolate_ = isolate;
-        was_execution_allowed_throws_ = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAllowed(true);
+        GraalIsolate::JSExecutionAction oldAction = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAction(GraalIsolate::kJSExecutionAllowed);
+        was_execution_allowed_throws_ = (oldAction == GraalIsolate::kJSExecutionThrow);
+        was_execution_allowed_assert_ = (oldAction == GraalIsolate::kJSExecutionCrash);
     }
 
     Isolate::AllowJavascriptExecutionScope::~AllowJavascriptExecutionScope() {
-        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAllowed(was_execution_allowed_throws_);
+        GraalIsolate::JSExecutionAction action = was_execution_allowed_throws_ ? GraalIsolate::kJSExecutionThrow : (was_execution_allowed_assert_ ? GraalIsolate::kJSExecutionCrash : GraalIsolate::kJSExecutionAllowed);
+        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAction(action);
     }
 
     void HeapProfiler::RemoveBuildEmbedderGraphCallback(BuildEmbedderGraphCallback callback, void* data) {
