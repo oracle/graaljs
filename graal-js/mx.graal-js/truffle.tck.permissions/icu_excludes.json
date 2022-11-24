@@ -15,6 +15,15 @@
     ]
   },
   {
+    "name" : "com.ibm.icu.impl.ICUResourceBundle$2",
+    "methods" : [
+        { "name" : "run",
+          "justification" : "The ICUResourceBundle#addBundleBaseNamesFromClassLoader loads resources using class loader, dynamic classloading is not supported by SVM.",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
     "name" : "com.ibm.icu.impl.ResourceBundleWrapper$2",
     "methods" : [
         { "name" : "load",
