@@ -9,6 +9,7 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 * Implemented the [Iterator Helpers](https://github.com/tc39/proposal-iterator-helpers) proposal. It is available behind the experimental option `--js.iterator-helpers`.
 * Removed experimental option `v8-legacy-const`.
 * Removed non-standard `SharedArrayBuffer.isView`.
+* Updated Node.js to version 16.18.1.
 
 ## Version 22.3.0
 * Implemented the [WebAssembly multi-value](https://github.com/WebAssembly/multi-value) proposal.
