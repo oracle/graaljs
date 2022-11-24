@@ -548,8 +548,14 @@ namespace v8 {
         heap_statistics->total_available_size_ = graal_isolate->ReadInt64FromSharedBuffer();
         heap_statistics->used_heap_size_ = graal_isolate->ReadInt64FromSharedBuffer();
         heap_statistics->heap_size_limit_ = 0;
-        heap_statistics->does_zap_garbage_ = false;
+        heap_statistics->malloced_memory_ = 0;
         heap_statistics->external_memory_ = 4096; // dummy value
+        heap_statistics->peak_malloced_memory_ = 0;
+        heap_statistics->does_zap_garbage_ = false;
+        heap_statistics->number_of_native_contexts_ = 0;
+        heap_statistics->number_of_detached_contexts_ = 0;
+        heap_statistics->total_global_handles_size_ = 0;
+        heap_statistics->used_global_handles_size_ = 0;
     }
 
     Isolate::CreateParams::CreateParams() {
