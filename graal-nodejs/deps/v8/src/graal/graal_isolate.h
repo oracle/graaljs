@@ -705,15 +705,28 @@ public:
         return &microtask_queue_;
     }
 
-    inline bool SetJSExecutionAllowed(bool allowed) {
-        bool old = js_execution_allowed_;
-        js_execution_allowed_ = allowed;
+    enum JSExecutionAction {
+        kJSExecutionAllowed,
+        kJSExecutionThrow,
+        kJSExecutionCrash,
+    };
+
+    inline JSExecutionAction SetJSExecutionAction(JSExecutionAction action) {
+        JSExecutionAction old = js_execution_action_;
+        js_execution_action_ = action;
         return old;
     }
 
-    inline bool GetJSExecutionAllowed() {
-        return js_execution_allowed_;
+    inline bool CheckJSExecutionAllowed() {
+        if (js_execution_action_ == kJSExecutionAllowed) {
+            return true;
+        } else {
+            JSExecutionViolation(js_execution_action_);
+            return false;
+        }
     }
+
+    void JSExecutionViolation(JSExecutionAction action);
 
     static void SetFlags(int argc, char** argv) {
         char** old_argv = GraalIsolate::argv;
@@ -795,7 +808,7 @@ private:
     intptr_t stack_bottom_;
     size_t stack_size_limit_;
     bool main_;
-    bool js_execution_allowed_ = true;
+    JSExecutionAction js_execution_action_ = kJSExecutionAllowed;
     double return_value_;
     static bool abort_on_uncaught_exception_;
     static bool internal_error_check_;

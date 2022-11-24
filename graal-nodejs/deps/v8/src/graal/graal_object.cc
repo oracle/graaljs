@@ -70,9 +70,13 @@ v8::Local<v8::Object> GraalObject::New(v8::Isolate* isolate) {
 }
 
 bool GraalObject::Set(v8::Local<v8::Value> key, v8::Local<v8::Value> value) {
+    GraalIsolate* graal_isolate = Isolate();
+    if (!graal_isolate->CheckJSExecutionAllowed()) {
+        return false;
+    }
     jobject java_key = reinterpret_cast<GraalValue*> (*key)->GetJavaObject();
     jobject java_value = reinterpret_cast<GraalValue*> (*value)->GetJavaObject();
-    JNI_CALL(bool, success, Isolate(), GraalAccessMethod::object_set, Boolean, GetJavaObject(), java_key, java_value);
+    JNI_CALL(bool, success, graal_isolate, GraalAccessMethod::object_set, Boolean, GetJavaObject(), java_key, java_value);
     return success;
 }
 
