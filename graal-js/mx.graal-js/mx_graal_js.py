@@ -42,6 +42,12 @@ TEST262_REPO = "https://" + "github.com/tc39/test262.git"
 # Git revision of Test262 to checkout
 TEST262_REV = "033b79fde0fbb59b3454fc76eaf4b4c517768b3b"
 
+# Git repository of V8
+TESTV8_REPO = "https://" + "github.com/v8/v8.git"
+
+# Git revision of V8 to checkout
+TESTV8_REV = "6cad3a0bcdede40926039f9c1b47f944b166947b"
+
 def get_jdk(forBuild=False):
     # Graal.nodejs requires a JDK at build time, to be passed as argument to `./configure`.
     # GraalJVMCIJDKConfig (`tag='jvmci'`) is not available until all required jars are built.
@@ -297,9 +303,8 @@ def testnashorn(args, nonZeroIsFatal=True):
 
 def testv8(args, nonZeroIsFatal=True):
     """run the testV8 conformance suite"""
-    _location = join(_suite.dir, 'lib', 'testv8')
+    _fetch_testv8()
     _stack_size = '3m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
-    _fetch_test_suite(_location, ['TESTV8'])
     _run_test_suite(
         custom_args=args,
         default_vm_args=[],
@@ -309,6 +314,28 @@ def testv8(args, nonZeroIsFatal=True):
         nonZeroIsFatal=nonZeroIsFatal,
         cwd=_suite.dir
     )
+
+def _fetch_testv8():
+    """clones/updates testv8 test-suite"""
+    _location = join(_suite.dir, 'lib', 'testv8')
+    _clone = False
+    if not mx.isdir(_location):
+        _clone = True
+    else:
+        if not mx.isdir(join(_location, '.git')):
+            # Not a git repository, an old version of the test-suite extracted from an archive most likely.
+            shutil.rmtree(_location)
+            _clone = True
+    _git_config = NoCRLFGitConfig()
+    if _clone:
+        _git_config.init(_location)
+        _git_config.git_command(_location, ['remote', 'add', 'origin', mx_urlrewrites.rewriteurl(TESTV8_REPO)])
+        _git_config.git_command(_location, ['sparse-checkout', 'set', 'test/mjsunit', 'test/intl'])
+    _success = _git_config.git_command(_location, ['checkout', TESTV8_REV], abortOnError=False)
+    if _success is None:
+        # fetch the changeset and try to checkout again
+        _git_config.git_command(_location, ['fetch', 'origin', TESTV8_REV, '--depth=1'])
+        _git_config.git_command(_location, ['checkout', TESTV8_REV])
 
 def deploy_binary_if_master(args):
     """If the active branch is 'master', deploy binaries for the primary suite to remote maven repository."""
