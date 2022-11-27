@@ -64,6 +64,11 @@ var isBaseline = function () { //used by mjsunit/baseline/* tests
 
 // ---------------------- d8 global object ---------------------- //
 
+load = (function() {
+    let originalLoad = load;
+    return path => originalLoad(path.startsWith('test/') ? ('lib/testv8/' + path) : path);
+})();
+
 var d8 = {
     file: {
         execute: function(path) {
