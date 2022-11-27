@@ -3997,7 +3997,7 @@ public class Parser extends AbstractParser {
             case TEMPLATE_HEAD:
                 return templateLiteral(yield, await);
             case MOD:
-                if (lookaheadIsIdentAndLParen()) {
+                if (isV8Intrinsics() && lookaheadIsIdentAndLParen()) {
                     long v8IntrinsicToken = Token.recast(token, TokenType.IDENT);
                     next();
                     IdentNode ident = getIdent();
@@ -4056,6 +4056,10 @@ public class Parser extends AbstractParser {
                     return false;
             }
         }
+    }
+
+    private boolean isV8Intrinsics() {
+        return env.v8Intrinsics;
     }
 
     private boolean isPrivateFieldsIn() {
