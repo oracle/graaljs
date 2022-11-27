@@ -4,15 +4,13 @@
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
  */
+
 /**
- * This script provides compatibility functions so we (Graal.js, but also
- * Nashorn, ...) can execute the V8 test suite. Note that the functions have
- * been renamed from e.g. %DeoptimizeFunction to v8DeoptimizeFunction, as "%" is
- * no valid part of a function name.
+ * This script provides functions for the execution of the V8 test suite.
  */
 
 // v8IgnoreResult is a special value returned by methods that we cannot
-// mock-up properly (like v8HasFastProperties()). This value is accepted
+// mock-up properly (like %HasFastProperties()). This value is accepted
 // by both assertTrue() and assertFalse()
 var v8IgnoreResult = {};
 
@@ -81,144 +79,144 @@ var d8 = {
 
 // ---------------------- other mockup functions ---------------- //
 
-function v8OptimizeFunctionOnNextCall(f) {
+globalThis['%OptimizeFunctionOnNextCall'] = function(f) {
     f._optimized = true;
     return undefined;
 }
 
-function v8DeoptimizeFunction() {
+globalThis['%DeoptimizeFunction'] = function() {
     return undefined;
 }
 
-function v8NeverOptimizeFunction() {
+globalThis['%NeverOptimizeFunction'] = function() {
     return undefined;
 }
 
-function v8ClearFunctionTypeFeedback() {
+globalThis['%ClearFunctionTypeFeedback'] = function() {
     return undefined;
 }
 
-function v8PerformMicrotaskCheckpoint() {
+globalThis['%PerformMicrotaskCheckpoint'] = function() {
     return TestV8.runMicrotasks();
 }
 
-function v8EnqueueMicrotask(a) {
+globalThis['%EnqueueMicrotask'] = function(a) {
     return undefined;
 }
 
-function v8DebugPrint() {
+globalThis['%DebugPrint'] = function() {
     for (var i in arguments) {
         print(arguments[i]);
     }
     return undefined;
 }
 
-function v8DebugPrintScopes() {
+globalThis['%DebugPrintScopes'] = function() {
     return undefined;
 }
 
-function v8ArgumentsLength(arg) {
+globalThis['%ArgumentsLength'] = function(arg) {
     return arg.length;
 }
 
-function v8Arguments(arg,i) {
+globalThis['%Arguments'] = function(arg,i) {
     return arg[i];
 }
 
-function v8NotifyContextDisposed() {
+globalThis['%NotifyContextDisposed'] = function() {
     return true;
 }
 
-function v8IsConcurrentRecompilationSupported() {
+globalThis['%IsConcurrentRecompilationSupported'] = function() {
     return true;
 }
 
-function v8GetOptimizationStatus(f) {
+globalThis['%GetOptimizationStatus'] = function(f) {
     var all_flags = 0xFFFFF;
     return f._optimized ? all_flags : (all_flags & ~V8OptimizationStatus.kTopmostFrameIsTurboFanned);
 }
 
-function v8ToFastProperties(obj) {
+globalThis['%ToFastProperties'] = function(obj) {
     return obj;
 }
 
-function v8FlattenString(str) {
+globalThis['%FlattenString'] = function(str) {
     return str;
 }
 
-function v8IsValidSmi(value) {
+globalThis['%IsValidSmi'] = function(value) {
     return TestV8.class(value) === "java.lang.Integer";
 }
 
-function v8HasFastElements() {
+globalThis['%HasFastElements'] = function() {
     return v8IgnoreResult;
 }
 
-function v8HasFastPackedElements() {
+globalThis['%HasFastPackedElements'] = function() {
     return v8IgnoreResult;
 }
 
-function v8HasFastObjectElements() {
+globalThis['%HasFastObjectElements'] = function() {
     return v8IgnoreResult;
 }
 
-function v8HasFastSmiOrObjectElements() {
+globalThis['%HasFastSmiOrObjectElements'] = function() {
     return v8IgnoreResult;
 }
 
-function v8HasFastSmiElements(array) {
+globalThis['%HasFastSmiElements'] = function(array) {
     return v8IgnoreResult;
 }
 
-function v8HasFastDoubleElements(array) {
+globalThis['%HasFastDoubleElements'] = function(array) {
     return v8IgnoreResult;
 }
 
-function v8HasFastHoleyElements(obj) {
+globalThis['%HasFastHoleyElements'] = function(obj) {
     return v8IgnoreResult;
 }
 
-function v8HasFastProperties() {
+globalThis['%HasFastProperties'] = function() {
     return v8IgnoreResult;
 }
 
-function v8HasDictionaryElements() {
+globalThis['%HasDictionaryElements'] = function() {
     return v8IgnoreResult;
 }
 
-function v8HaveSameMap(obj1, obj2) {
+globalThis['%HaveSameMap'] = function(obj1, obj2) {
     return v8IgnoreResult;
 }
 
-function v8HasFixedUint8Elements(ob) {
+globalThis['%HasFixedUint8Elements'] = function(ob) {
     return true;
 }
 
-function v8HasFixedInt16Elements(ob) {
+globalThis['%HasFixedInt16Elements'] = function(ob) {
     return true;
 }
 
-function v8HasFixedUint16Elements(ob) {
+globalThis['%HasFixedUint16Elements'] = function(ob) {
     return true;
 }
 
-function v8HasFixedInt32Elements(ob) {
+globalThis['%HasFixedInt32Elements'] = function(ob) {
     return true;
 }
 
-function v8HasFixedUint32Elements(ob) {
+globalThis['%HasFixedUint32Elements'] = function(ob) {
     return true;
 }
 
-function v8HasFixedFloat32Elements(ob) {
+globalThis['%HasFixedFloat32Elements'] = function(ob) {
     return true;
 }
 
-function v8HasFixedFloat64Elements(ob) {
+globalThis['%HasFixedFloat64Elements'] = function(ob) {
     return true;
 }
 
-function v8HasFixedUint8ClampedElements(ob) {
+globalThis['%HasFixedUint8ClampedElements'] = function(ob) {
     return true;
 }
 
@@ -227,7 +225,7 @@ function gc() {
     TestV8.gc();
 }
 
-function v8IsMinusZero(a) {
+globalThis['%IsMinusZero'] = function(a) {
     if (a === 0 && typeof(a) === "number") {
         return (1/a) === -Infinity;
     } else {
@@ -235,47 +233,47 @@ function v8IsMinusZero(a) {
     }
 }
 
-function v8RunningInSimulator() {
+globalThis['%RunningInSimulator'] = function() {
     return false;
 }
 
-function v8UnblockConcurrentRecompilation() {
+globalThis['%UnblockConcurrentRecompilation'] = function() {
     return undefined;
 }
 
-function v8IsObject(obj) {
+globalThis['%IsObject'] = function(obj) {
     return typeof(obj) === "object" || typeof(obj) === "undefined";
 }
 
-function v8GetOptimizationCount(obj) {
+globalThis['%GetOptimizationCount'] = function(obj) {
     return 1;
 }
 
-function v8MaxSmi() {
+globalThis['%MaxSmi'] = function() {
     return 2147483647;
 }
 
-function v8DebugDisassembleFunction() {
+globalThis['%DebugDisassembleFunction'] = function() {
     return undefined;
 }
 
-function v8SetProperty(obj, name, value) {
+globalThis['%SetProperty'] = function(obj, name, value) {
     obj[name] = value;
 }
 
-function v8SetAllocationTimeout() {
+globalThis['%SetAllocationTimeout'] = function() {
     return undefined;
 }
 
-function v8OptimizeObjectForAddingMultipleProperties(obj) {
+globalThis['%OptimizeObjectForAddingMultipleProperties'] = function(obj) {
     return obj;
 }
 
-function v8TryMigrateInstance(obj) {
+globalThis['%TryMigrateInstance'] = function(obj) {
     return obj;
 }
 
-function v8StringParseInt(str, rad) {
+globalThis['%StringParseInt'] = function(str, rad) {
     return parseInt(str,rad);
 }
 
@@ -283,7 +281,7 @@ function externalizeString(str) {
     return str;
 }
 
-function v8CallFunction() {
+globalThis['%CallFunction'] = function() {
     var thisObj = arguments[0];
     var func = arguments[arguments.length-1];
     var newArgs = [];
@@ -293,7 +291,7 @@ function v8CallFunction() {
     return func.call(thisObj,...newArgs);
 }
 
-function v8Call() {
+globalThis['%Call'] = function() {
     var func = arguments[0];
     var thisObj = arguments[1];
     var newArgs = [];
@@ -303,7 +301,7 @@ function v8Call() {
     return func.call(thisObj,...newArgs);
 }
 
-function v8Apply() {
+globalThis['%Apply'] = function() {
     var thisObj = arguments[0];
     var func = arguments[1];
     var newArgs = [];
@@ -314,96 +312,96 @@ function v8Apply() {
 }
 
 
-function v8GlobalParseInt(value, radix) {
+globalThis['%GlobalParseInt'] = function(value, radix) {
     return parseInt(value, radix);
 }
 
-function v8SetFlags(flags) {
+globalThis['%SetFlags'] = function(flags) {
     return undefined;
 }
 
-function v8Break() {
+globalThis['%Break'] = function() {
     return undefined;
 }
 
-function v8DebugBreak() {
+globalThis['%DebugBreak'] = function() {
     return undefined;
 }
 
-function v8NewString(len, flag) {
+globalThis['%NewString'] = function(len, flag) {
     return new String(len);
 }
 
-function v8ValueOf(obj) {
+globalThis['%ValueOf'] = function(obj) {
     return obj.valueOf();
 }
 
-function v8ClassOf(obj) {
+globalThis['%ClassOf'] = function(obj) {
     return TestV8.className(obj);
 }
 
-function v8ObjectFreeze(obj) {
+globalThis['%ObjectFreeze'] = function(obj) {
     return obj.freeze();
 }
 
-function v8SmiLexicographicCompare(a, b) {
+globalThis['%SmiLexicographicCompare'] = function(a, b) {
     return TestV8.stringCompare(a+"",b+"");
 }
 
-function v8StringCompare(a, b) {
+globalThis['%StringCompare'] = function(a, b) {
     return TestV8.stringCompare(a+"",b+"");
 }
 
-function v8HasFixedInt8Elements() {
+globalThis['%HasFixedInt8Elements'] = function() {
     return false;
 }
 
-function v8MakeReferenceError(message) {
+globalThis['%MakeReferenceError'] = function(message) {
     return new ReferenceError(message);
 }
 
-function v8AbortJS(message) {
+globalThis['%AbortJS'] = function(message) {
     printErr(message);
     quit(1);
 }
 
-function v8HomeObjectSymbol() {
+globalThis['%HomeObjectSymbol'] = function() {
     return Symbol("__home__");
 }
 
-function v8PreventExtensions(obj) {
+globalThis['%PreventExtensions'] = function(obj) {
     return Object.preventExtensions(obj);
 }
 
-function v8GetPropertyNames(obj) {
+globalThis['%GetPropertyNames'] = function(obj) {
     return Object.keys(obj);
 }
 
-function v8NormalizeElements(arr) {
+globalThis['%NormalizeElements'] = function(arr) {
     return arr;
 }
 
-function v8SymbolIsPrivate(sym) {
+globalThis['%SymbolIsPrivate'] = function(sym) {
     return false;
 }
 
-function v8CreatePrivateSymbol(sym) {
+globalThis['%CreatePrivateSymbol'] = function(sym) {
     return Symbol(sym);
 }
 
-function v8CreatePrivateOwnSymbol(sym) {
+globalThis['%CreatePrivateOwnSymbol'] = function(sym) {
     return Symbol(sym);
 }
 
-function v8ArrayBufferDetach(arr) {
+globalThis['%ArrayBufferDetach'] = function(arr) {
     TestV8.typedArrayDetachBuffer(arr);
 }
 
-function v8GetScript(name) {
+globalThis['%GetScript'] = function(name) {
     return undefined;
 }
 
-function v8AddNamedProperty(object, name, valueParam, prop) {
+globalThis['%AddNamedProperty'] = function(object, name, valueParam, prop) {
     var isWritable = !(prop & 1);
     var isEnumerable = !(prop & 2);
     var isConfigurable = !(prop & 4); 
@@ -413,313 +411,313 @@ function v8AddNamedProperty(object, name, valueParam, prop) {
     return Object.defineProperty(object, name, propDesc);
 }
 
-function v8SetValueOf(a,b) {
+globalThis['%SetValueOf'] = function(a,b) {
     return a;
 }
 
-function v8OneByteSeqStringSetChar() {
+globalThis['%OneByteSeqStringSetChar'] = function() {
 }
 
-function v8TwoByteSeqStringSetChar() {
+globalThis['%TwoByteSeqStringSetChar'] = function() {
 }
 
-function v8IsRegExp(obj) {
+globalThis['%IsRegExp'] = function(obj) {
     return Object.prototype.toString.call(obj) == "[object RegExp]";
 }
 
-function v8IsArray(obj) {
+globalThis['%IsArray'] = function(obj) {
     return Object.prototype.toString.call(obj) == "[object Array]";
 }
 
-function v8IsFunction(obj) {
+globalThis['%IsFunction'] = function(obj) {
     return Object.prototype.toString.call(obj) == "[object Function]";
 }
 
-function v8IsSpecObject(obj) {
+globalThis['%IsSpecObject'] = function(obj) {
     return Object.prototype.toString.call(obj) == "[object Date]";
 }
 
-function v8FunctionGetScript(scr) {
+globalThis['%FunctionGetScript'] = function(scr) {
 }
 
-function v8ConstructDouble(hi,lo) {
+globalThis['%ConstructDouble'] = function(hi,lo) {
     return TestV8.constructDouble(hi,lo);
 }
 
-function v8DoubleHi(value) {
+globalThis['%DoubleHi'] = function(value) {
     return TestV8.doubleHi(value);
 }
 
-function v8DoubleLo(value) {
+globalThis['%DoubleLo'] = function(value) {
     return TestV8.doubleLo(value);
 }
 
-function v8HasSloppyArgumentsElements(a) {
+globalThis['%HasSloppyArgumentsElements'] = function(a) {
     return true;
 }
 
-function v8MakeError(i,msg) {
+globalThis['%MakeError'] = function(i,msg) {
     return new Error(msg);
 }
 
-function v8AllocateHeapNumber() {
+globalThis['%AllocateHeapNumber'] = function() {
     return 0;
 }
 
-function v8DeoptimizeNow() {
+globalThis['%DeoptimizeNow'] = globalThis['%_DeoptimizeNow'] = function() {
     TestV8.deoptimize();
 }
 
-function v8OptimizeOsr() {
+globalThis['%OptimizeOsr'] = function() {
     return undefined;
 }
 
-function v8DisassembleFunction(f) {
+globalThis['%DisassembleFunction'] = function(f) {
     TestV8.deoptimize(); // not what is expected
     return undefined;
 }
 
-function v8GetUndetectable() {
+globalThis['%GetUndetectable'] = function() {
     return undefined;
 }
 
-function v8FixedArrayGet(vector, slot) {
+globalThis['%FixedArrayGet'] = function(vector, slot) {
     return vector[slot];
 }
 
-function v8GetTypeFeedbackVector(vector) {
+globalThis['%GetTypeFeedbackVector'] = function(vector) {
     return undefined;
 }
 
-function v8DebugGetLoadedScripts() {
+globalThis['%DebugGetLoadedScripts'] = function() {
     return undefined;
 }
 
-function v8IsSmi(value){
-    return typeof(value)==="number" && Math.floor(value) === value && !v8IsMinusZero(value) && TestV8.class(value) === "java.lang.Integer" && value != 2147483648;
+globalThis['%IsSmi'] = function(value){
+    return typeof(value) === "number" && Math.floor(value) === value && !globalThis['%IsMinusZero'](value) && TestV8.class(value) === "java.lang.Integer" && value != 2147483648;
 }
 
-function v8FunctionGetInferredName(a) {
+globalThis['%FunctionGetInferredName'] = function(a) {
     return a.name;
 }
 
-function v8TruncateString(string, index) {
+globalThis['%TruncateString'] = function(string, index) {
     return string.substring(0,index);
 }
 
-function v8MathClz32(a) {
+globalThis['%MathClz32'] = function(a) {
     return Math.clz32(a);
 }
 
-function v8ScheduleBreak() {
+globalThis['%ScheduleBreak'] = function() {
     return undefined;
 }
 
-function v8FormatMessageString(i, m, o, p) {
+globalThis['%FormatMessageString'] = function(i, m, o, p) {
     if (i < 0) { throw new TypeError("out of bounds"); }
     return new Error(m+o+p);
 }
 
-function v8ToMethod(f, o) {
+globalThis['%ToMethod'] = function(f, o) {
     return f.toMethod(o);
 }
 
-function v8RegExpConstructResult() {
+globalThis['%RegExpConstructResult'] = function() {
     return undefined;
 }
 
-function v8DefineAccessorPropertyUnchecked() {
+globalThis['%DefineAccessorPropertyUnchecked'] = function() {
     throw new Error("illegal access");
 }
 
-function v8DefineDataPropertyUnchecked() {
+globalThis['%DefineDataPropertyUnchecked'] = function() {
     throw new Error("illegal access");
 }
 
-function v8NewObjectFromBound(obj) {
+globalThis['%NewObjectFromBound'] = function(obj) {
     return undefined;
 }
 
-function v8IsConstructCall(obj) {
+globalThis['%IsConstructCall'] = function(obj) {
     return false;
 }
 
-function v8DeoptimizeNow() {
+globalThis['%DeoptimizeNow'] = function() {
     return undefined;
 }
 
-function v8AtomicsFutexNumWaitersForTesting(a, b) {
+globalThis['%AtomicsFutexNumWaitersForTesting'] = function(a, b) {
     return 0;
 }
 
-function v8ToLength(a) {
+globalThis['%ToLength'] = function(a) {
     return TestV8.toLength(a);
 }
 
-function v8ToName(a) {
+globalThis['%ToName'] = function(a) {
     return TestV8.toName(a);
 }
 
-function v8ToStringRT(a) {
+globalThis['%ToStringRT'] = function(a) {
     return TestV8.toStringConv(a);
 }
 
-function v8ToPrimitive(a) {
+globalThis['%ToPrimitive'] = function(a) {
     return TestV8.toPrimitive(a);
 }
 
-function v8ToPrimitive_Number(a) {
+globalThis['%ToPrimitive_Number'] = function(a) {
     return TestV8.toPrimitiveNumber(a);
 }
 
-function v8ToPrimitive_String(a) {
+globalThis['%ToPrimitive_String'] = function(a) {
     return TestV8.toPrimitiveString(a);
 }
 
-function v8ToNumber(a) {
+globalThis['%ToNumber'] = function(a) {
     return TestV8.toNumber(a);
 }
 
-function v8GetHoleNaNUpper() {
+globalThis['%GetHoleNaNUpper'] = function() {
     return 0;
 }
 
-function v8GetHoleNaNLower() {
+globalThis['%GetHoleNaNLower'] = function() {
     return 2146959360;
 }
 
-function v8TailCall() {
+globalThis['%TailCall'] = function() {
     return undefined;
 }
 
-function v8IsJSReceiver(a) {
+globalThis['%IsJSReceiver'] = function(a) {
     return typeof(a) === "object";
 }
 
-function v8FunctionGetSourceCode() {
+globalThis['%FunctionGetSourceCode'] = function() {
 }
 
-function v8SetForceInlineFlag() {
+globalThis['%SetForceInlineFlag'] = function() {
 }
 
-function v8MathSqrt(a) {
+globalThis['%MathSqrt'] = function(a) {
     return Math.sqrt(a);
 }
 
-function v8IsAsmWasmCode() {
+globalThis['%IsAsmWasmCode'] = function() {
     return v8IgnoreResult;
 }
 
-function v8IsNotAsmWasmCode() {
+globalThis['%IsNotAsmWasmCode'] = function() {
     return v8IgnoreResult;
 }
 
-function v8ExecuteInDebugContext() {
+globalThis['%ExecuteInDebugContext'] = function() {
     return undefined;
 }
 
-function v8SpeciesProtector() {
+globalThis['%SpeciesProtector'] = function() {
     return v8IgnoreResult;
 }
 
-function v8GeneratorGetFunction() {
+globalThis['%GeneratorGetFunction'] = function() {
     return undefined;
 }
 
-function v8BaselineFunctionOnNextCall() {
+globalThis['%BaselineFunctionOnNextCall'] = function() {
     return undefined;
 }
 
-function v8InterpretFunctionOnNextCall() {
+globalThis['%InterpretFunctionOnNextCall'] = function() {
     return undefined;
 }
 
-function v8CreateDataProperty(obj, key, val) {
+globalThis['%CreateDataProperty'] = globalThis['%_CreateDataProperty'] = function(obj, key, val) {
     "use strict";
     obj[key] = val;
 }
 
-function v8ClearFunctionFeedback(obj) {
+globalThis['%ClearFunctionFeedback'] = function(obj) {
 }
 
-function v8HasDoubleElements(obj) {
+globalThis['%HasDoubleElements'] = function(obj) {
     return v8IgnoreResult;
 }
 
-function v8HasSmiElements(obj) {
+globalThis['%HasSmiElements'] = function(obj) {
     return v8IgnoreResult;
 }
 
-function v8HasSmiOrObjectElements(obj) {
+globalThis['%HasSmiOrObjectElements'] = function(obj) {
     return v8IgnoreResult;
 }
 
-function v8HasObjectElements(obj) {
+globalThis['%HasObjectElements'] = function(obj) {
     return v8IgnoreResult;
 }
 
-function v8HasHoleyElements(obj) {
+globalThis['%HasHoleyElements'] = function(obj) {
     return v8IgnoreResult;
 }
 
-function v8HeapObjectVerify(obj) {
+globalThis['%HeapObjectVerify'] = function(obj) {
     return v8IgnoreResult;
 }
 
-function v8DebugCollectCoverage(obj) {
+globalThis['%DebugCollectCoverage'] = function(obj) {
     return [];
 }
 
-function v8GetDeoptCount() {
+globalThis['%GetDeoptCount'] = function() {
     return v8IgnoreResult;
 }
 
-function v8CreateAsyncFromSyncIterator(obj) {
+globalThis['%CreateAsyncFromSyncIterator'] = function(obj) {
     return TestV8.createAsyncFromSyncIterator(obj);
 }
 
-function v8InNewSpace(obj) {
+globalThis['%InNewSpace'] = function(obj) {
     return obj;
 }
 
-function v8WasmNumInterpretedCalls() {
+globalThis['%WasmNumInterpretedCalls'] = function() {
     return undefined;
 }
 
-function v8RedirectToWasmInterpreter() {
+globalThis['%RedirectToWasmInterpreter'] = function() {
 }
 
-function v8SetWasmCompileControls() {
+globalThis['%SetWasmCompileControls'] = function() {
 }
 
-function v8TypeProfile() {
+globalThis['%TypeProfile'] = function() {
 }
 
-function v8IsWasmCode() {
+globalThis['%IsWasmCode'] = function() {
     return v8IgnoreResult;
 }
 
-function v8CollectGarbage() {
+globalThis['%CollectGarbage'] = function() {
 }
 
-function v8SetWasmInstantiateControls() {
+globalThis['%SetWasmInstantiateControls'] = function() {
 }
 
-function v8ConstructConsString(s1, s2) {
+globalThis['%ConstructConsString'] = function(s1, s2) {
     return s1 + s2;
 }
 
-function v8IsJSReceiver() {
+globalThis['%IsJSReceiver'] = function() {
     return v8IgnoreResult;
 }
 
-function v8InternalizeString(str) {
+globalThis['%InternalizeString'] = function(str) {
     return str;
 }
 
-function v8DebugToggleBlockCoverage() {}
+globalThis['%DebugToggleBlockCoverage'] = function() {}
 
-function v8StringMaxLength() {
+globalThis['%StringMaxLength'] = function() {
   return TestV8.stringMaxLength;
 }
 
@@ -727,201 +725,195 @@ function isOneByteString() {
     return v8IgnoreResult;
 }
 
-// new mockups from 2018-10-29 update
-
-function v8GetCallable() {
+globalThis['%GetCallable'] = function() {
     throw new Error("v8 internal method not implemented");
 }
 
-function v8GetDefaultICULocale() {
+globalThis['%GetDefaultICULocale'] = function() {
     throw new Error("v8 internal method not implemented");
 }
 
-function v8SetForceSlowPath() {
+globalThis['%SetForceSlowPath'] = function() {
 }
 
-function v8SetKeyedProperty(object, key, value, language_mode) {
+globalThis['%SetKeyedProperty'] = function(object, key, value, language_mode) {
     object[key] = value;
 }
 
-function v8DebugGetLoadedScriptIds() {
+globalThis['%DebugGetLoadedScriptIds'] = function() {
 }
 
-function v8DebugTogglePreciseCoverage() {
+globalThis['%DebugTogglePreciseCoverage'] = function() {
 }
 
-function v8DebugTrace() {
+globalThis['%DebugTrace'] = function() {
     throw new Error("v8 internal method not implemented");
 }
 
-function v8DisallowCodegenFromStrings() {
+globalThis['%DisallowCodegenFromStrings'] = function() {
 }
 
-function v8DisallowWasmCodegen() {
+globalThis['%DisallowWasmCodegen'] = function() {
 }
 
-function v8ICsAreEnabled() {
+globalThis['%ICsAreEnabled'] = function() {
     return true;
 }
 
-function v8IsLiftoffFunction() {
+globalThis['%IsLiftoffFunction'] = function() {
     return v8IgnoreResult;
 }
 
-function v8regexp_internal_match(regexp, string) {
+globalThis['%regexp_internal_match'] = function(regexp, string) {
     return regexp.exec(string);
 }
 
-function v8Typeof(object) {
+globalThis['%Typeof'] = function(object) {
     return typeof(object);
 }
 
-function v8CompleteInobjectSlackTracking(object) {
+globalThis['%CompleteInobjectSlackTracking'] = function(object) {
 }
 
-function v8ArraySpeciesProtector() {
+globalThis['%ArraySpeciesProtector'] = function() {
     return v8IgnoreResult;
 }
 
-function v8MapIteratorProtector() {
+globalThis['%MapIteratorProtector'] = function() {
     return v8IgnoreResult;
 }
 
-function v8SetIteratorProtector() {
+globalThis['%SetIteratorProtector'] = function() {
     return v8IgnoreResult;
 }
 
-function v8StringIteratorProtector() {
+globalThis['%StringIteratorProtector'] = function() {
     return v8IgnoreResult;
 }
 
-function v8CreateIterResultObject(value, done) {
+globalThis['%CreateIterResultObject'] = function(value, done) {
     return { value: value, done: !!done };
 }
 
-function v8ConstructSlicedString(string, index) {
+globalThis['%ConstructSlicedString'] = function(string, index) {
     return string.substring(index);
 }
 
-function v8StrictEqual(x, y) {
+globalThis['%StrictEqual'] = function(x, y) {
     return x === y;
 }
 
-function v8StrictNotEqual(x, y) {
+globalThis['%StrictNotEqual'] = function(x, y) {
     return x !== y;
 }
 
-function v8Equal(x, y) {
+globalThis['%Equal'] = function(x, y) {
     return x == y;
 }
 
-function v8NotEqual(x, y) {
+globalThis['%NotEqual'] = function(x, y) {
     return x != y;
 }
 
-function v8LessThan(x, y) {
+globalThis['%LessThan'] = function(x, y) {
     return x < y;
 }
 
-function v8LessThanOrEqual(x, y) {
+globalThis['%LessThanOrEqual'] = function(x, y) {
     return x <= y;
 }
 
-function v8GreaterThan(x, y) {
+globalThis['%GreaterThan'] = function(x, y) {
     return x > y;
 }
 
-function v8GreaterThanOrEqual(x, y) {
+globalThis['%GreaterThanOrEqual'] = function(x, y) {
     return x >= y;
 }
 
-function v8StringLessThan(x, y) {
+globalThis['%StringLessThan'] = function(x, y) {
     return x < y;
 }
 
-function v8SetAllowAtomicsWait(allow) {
+globalThis['%SetAllowAtomicsWait'] = function(allow) {
     TestV8.setAllowAtomicsWait(allow);
 }
 
-function v8AtomicsNumWaitersForTesting(array, index) {
+globalThis['%AtomicsNumWaitersForTesting'] = function(array, index) {
     return TestV8.atomicsNumWaitersForTesting(array, index);
 }
 
-function v8AtomicsNumUnresolvedAsyncPromisesForTesting(array, index) {
+globalThis['%AtomicsNumUnresolvedAsyncPromisesForTesting'] = function(array, index) {
     return TestV8.atomicsNumUnresolvedAsyncPromisesForTesting(array, index);
 }
 
-function v8SerializeWasmModule() {
+globalThis['%SerializeWasmModule'] = function() {
     throw new Error("v8 internal method not implemented");
 }
 
-function v8DeserializeWasmModule() {
+globalThis['%DeserializeWasmModule'] = function() {
     throw new Error("v8 internal method not implemented");
 }
 
-function v8WasmGetNumberOfInstances() {
+globalThis['%WasmGetNumberOfInstances'] = function() {
     return v8IgnoreResult;
 }
 
-function v8GetWasmExceptionId() {
+globalThis['%GetWasmExceptionId'] = function() {
     throw new Error("v8 internal method not implemented");
 }
 
-function v8GetWasmExceptionValues() {
+globalThis['%GetWasmExceptionValues'] = function() {
     throw new Error("v8 internal method not implemented");
 }
 
-function v8FreezeWasmLazyCompilation() {
+globalThis['%FreezeWasmLazyCompilation'] = function() {
 }
 
-function v8GetWasmRecoveredTrapCount() {
+globalThis['%GetWasmRecoveredTrapCount'] = function() {
     return v8IgnoreResult;
 }
 
-function v8IsWasmTrapHandlerEnabled() {
+globalThis['%IsWasmTrapHandlerEnabled'] = function() {
     return false;
 }
 
-function v8WasmMemoryHasFullGuardRegion() {
+globalThis['%WasmMemoryHasFullGuardRegion'] = function() {
     return v8IgnoreResult;
 }
 
-function v8SetWasmThreadsEnabled() {
+globalThis['%SetWasmThreadsEnabled'] = function() {
     throw new Error("v8 internal method not implemented");
 }
 
-function v8WasmTierUpFunction() {
+globalThis['%WasmTierUpFunction'] = function() {
 }
 
-function v8HandleDebuggerStatement() {
+globalThis['%HandleDebuggerStatement'] = function() {
 }
 
-// new mockups from 2019-01-15 update
-
-function v8IsThreadInWasm() {
+globalThis['%IsThreadInWasm'] = function() {
     return v8IgnoreResult;
 }
 
-// new mockups from 2019-05-12 update
-
-function v8EnsureFeedbackVectorForFunction() {
+globalThis['%EnsureFeedbackVectorForFunction'] = function() {
 }
 
-function v8PrepareFunctionForOptimization() {
+globalThis['%PrepareFunctionForOptimization'] = function() {
 }
 
-function v8HasPackedElements() {
+globalThis['%HasPackedElements'] = function() {
     return v8IgnoreResult;
 }
 
-function v8GetProperty(receiver, key) {
+globalThis['%GetProperty'] = function(receiver, key) {
     return receiver[key];
 }
 
-function v8EnableCodeLoggingForTesting() {
+globalThis['%EnableCodeLoggingForTesting'] = function() {
 }
 
-function v8TurbofanStaticAssert() {
+globalThis['%TurbofanStaticAssert'] = function() {
 }
 
 function setTimeout(callback) {
@@ -947,153 +939,148 @@ var testRunner = (function() {
     };
 })();
 
-// new mockups from 2019-10-15
-
-function v8HasElementsInALargeObjectSpace(array) {
+globalThis['%HasElementsInALargeObjectSpace'] = function(array) {
     return v8IgnoreResult;
 }
 
-function v8WasmNumCodeSpaces(argument) {
+globalThis['%WasmNumCodeSpaces'] = function(argument) {
 }
 
-function v8SimulateNewspaceFull() {
+globalThis['%SimulateNewspaceFull'] = function() {
 }
 
-function v8RegexpHasBytecode(regexp, is_latin1) {
+globalThis['%RegexpHasBytecode'] = function(regexp, is_latin1) {
     return v8IgnoreResult;
 }
 
-function v8RegexpHasNativeCode(regexp, is_latin1) {
+globalThis['%RegexpHasNativeCode'] =  function(regexp, is_latin1) {
     return v8IgnoreResult;
 }
 
-// new mockups from 2020-04-24
-function v8NewRegExpWithBacktrackLimit(regex, flags, limit) {
+globalThis['%NewRegExpWithBacktrackLimit'] = function(regex, flags, limit) {
     return new RegExp(regex, flags); //limit missing
 }
 
-function v8WasmTierDownModule() {
-    //TODO
+globalThis['%WasmTierDownModule'] = function() {
 }
 
-function v8WasmTierUpModule() {
-    //TODO
+globalThis['%WasmTierUpModule'] = function() {
 }
 
-function v8IsBeingInterpreted() {
+globalThis['%IsBeingInterpreted'] = function() {
     return v8IgnoreResult;
 }
 
-function v8ArrayBufferMaxByteLength() {
+globalThis['%ArrayBufferMaxByteLength'] = function() {
     return 0x3fff_ffff;
 }
 
-function v8TypedArrayMaxLength() {
+globalThis['%TypedArrayMaxLength'] = function() {
     return 0x3fff_ffff;
 }
 
-function v8MinSMI() {
+globalThis['%MinSMI'] = function() {
     return -2147483648;
 }
 
-function v8ReferenceEqual(a, b) {
+globalThis['%ReferenceEqual'] = function(a, b) {
     return TestV8.referenceEqual(a, b);
 }
 
-function v8CollectTypeProfile() {
+globalThis['%CollectTypeProfile'] = function() {
 }
 
-function v8CompileBaseline() {
+globalThis['%CompileBaseline'] = function() {
 }
 
-function v8IsDictPropertyConstTrackingEnabled() {
+globalThis['%IsDictPropertyConstTrackingEnabled'] = function() {
     return v8IgnoreResult;
 }
 
-function v8HasOwnConstDataProperty() {
+globalThis['%HasOwnConstDataProperty'] = function() {
     return v8IgnoreResult;
 }
 
-function v8RegexpIsUnmodified() {
+globalThis['%RegexpIsUnmodified'] = function() {
     return v8IgnoreResult;
 }
 
-function v8PromiseSpeciesProtector() {
+globalThis['%PromiseSpeciesProtector'] = function() {
     return v8IgnoreResult;
 }
 
-function v8RegExpSpeciesProtector() {
+globalThis['%RegExpSpeciesProtector'] = function() {
     return v8IgnoreResult;
 }
 
-function v8TypedArraySpeciesProtector() {
+globalThis['%TypedArraySpeciesProtector'] = function() {
     return v8IgnoreResult;
 }
 
-function v8ArrayIteratorProtector() {
+globalThis['%ArrayIteratorProtector'] = function() {
     return v8IgnoreResult;
 }
 
-function v8ToString(a) {
+globalThis['%ToString'] = function(a) {
     return TestV8.toStringConv(a);
 }
 
-function v8ScheduleGCInStackCheck(){
+globalThis['%ScheduleGCInStackCheck'] = function() {
 }
 
-function v8DynamicCheckMapsEnabled() {
+globalThis['%DynamicCheckMapsEnabled'] = function() {
     return v8IgnoreResult;
 }
 
-function v8TierupFunctionOnNextCall() {
+globalThis['%TierupFunctionOnNextCall'] = function() {
 }
 
-function v8IsTopTierTurboprop() {
+globalThis['%IsTopTierTurboprop'] = function() {
 }
 
-function v8WasmTierUp() {
+globalThis['%WasmTierUp'] = function() {
 }
 
-function v8WasmTierDown() {
+globalThis['%WasmTierDown'] = function() {
 }
 
-function v8RegexpTypeTag() {
+globalThis['%RegexpTypeTag'] = function() {
     return v8IgnoreResult;
 }
 
-function v8BaselineOsr() {
-    v8OptimizeFunctionOnNextCall(v8BaselineOsr.caller);
+globalThis['%BaselineOsr'] = function() {
+    globalThis['%OptimizeFunctionOnNextCall'](globalThis['%BaselineOsr'].caller);
 }
 
-function v8GetAndResetRuntimeCallStats() {
+globalThis['%GetAndResetRuntimeCallStats'] = function() {
     return v8IgnoreResult;
 }
 
-function v8IsConcatSpreadableProtector() {
+globalThis['%IsConcatSpreadableProtector'] = function() {
     return v8IgnoreResult;
 }
 
-function v8InLargeObjectSpace() {
+globalThis['%InLargeObjectSpace'] = function() {
     return v8IgnoreResult;
 }
 
-function v8Is64Bit() {
+globalThis['%Is64Bit'] = function() {
     return v8IgnoreResult;
 }
 
-function v8IsAtomicsWaitAllowed() {
+globalThis['%IsAtomicsWaitAllowed'] = function() {
     return v8IgnoreResult;
 }
 
-function v8ThrowStackOverflow() {
+globalThis['%ThrowStackOverflow'] = function() {
     throw new RangeError("stack exceeded");
 }
 
-function v8VerifyType() {
+globalThis['%VerifyType'] = function() {
     return v8IgnoreResult;
 }
 
-function v8PretenureAllocationSite() {
+globalThis['%PretenureAllocationSite'] = function() {
     return v8IgnoreResult;
 }
 
@@ -1101,52 +1088,52 @@ function version() {
     return Graal.versionGraalVM;
 }
 
-function v8CreatePrivateNameSymbol(name) {
+globalThis['%CreatePrivateNameSymbol'] = function(name) {
     return Symbol(name);
 }
 
-function v8ConstructInternalizedString(string) {
+globalThis['%ConstructInternalizedString'] = function(string) {
     return string;
 }
 
-function v8ActiveTierIsMaglev(fun) {
+globalThis['%ActiveTierIsMaglev'] = function(fun) {
     return v8IgnoreResult;
 }
 
-function v8OptimizeMaglevOnNextCall(fun) {
+globalThis['%OptimizeMaglevOnNextCall'] = function(fun) {
 }
 
-function v8DisableOptimizationFinalization() {
+globalThis['%DisableOptimizationFinalization'] = function() {
 }
 
-function v8WaitForBackgroundOptimization() {
+globalThis['%WaitForBackgroundOptimization'] = function() {
 }
 
-function v8FinalizeOptimization() {
+globalThis['%FinalizeOptimization'] = function() {
 }
 
-function v8SystemBreak() {
+globalThis['%SystemBreak'] = function() {
 }
 
-function v8IsSameHeapObject(obj1, obj2) {
+globalThis['%IsSameHeapObject'] = function(obj1, obj2) {
     return Object.is(obj1, obj2);
 }
 
-function v8IsSharedString(obj) {
+globalThis['%IsSharedString'] = function(obj) {
     return typeof(obj) === "string" && v8IgnoreResult;
 }
 
-function v8IsInternalizedString(obj) {
+globalThis['%IsInternalizedString'] = function(obj) {
     return typeof(obj) === "string" && v8IgnoreResult;
 }
 
-function v8SharedGC() {
+globalThis['%SharedGC'] = function() {
 }
 
-function v8GetWasmExceptionTagId(exception, instance) {
+globalThis['%GetWasmExceptionTagId'] = function(exception, instance) {
     throw new Error("v8 internal method not implemented");
 }
 
-function v8IsTurboFanFunction(fun) {
+globalThis['%IsTurboFanFunction'] = function(fun) {
     return v8IgnoreResult;
 }
