@@ -3996,6 +3996,18 @@ public class Parser extends AbstractParser {
             case TEMPLATE:
             case TEMPLATE_HEAD:
                 return templateLiteral(yield, await);
+            case MOD:
+                if (lookaheadIsIdentAndLParen()) {
+                    long v8IntrinsicToken = Token.recast(token, TokenType.IDENT);
+                    next();
+                    IdentNode ident = getIdent();
+                    if (isV8Intrinsic(ident.getName())) {
+                        String v8IntrinsicName = "%" + ident.getName();
+                        addIdentifierReference(v8IntrinsicName);
+                        TruffleString v8IntrinsicNameTS = lexer.stringIntern(v8IntrinsicName);
+                        return createIdentNode(v8IntrinsicToken, ident.getFinish(), v8IntrinsicNameTS);
+                    }
+                }
 
             default:
                 // In this context some operator tokens mark the start of a literal.
@@ -4010,6 +4022,40 @@ public class Parser extends AbstractParser {
         }
 
         throw error(AbstractParser.message(MSG_EXPECTED_OPERAND, type.getNameOrType()));
+    }
+
+    // We don't (want to) pass the list of V8 intrinsics to the parser.
+    // So, we use a simple heuristics instead.
+    private static boolean isV8Intrinsic(String name) {
+        for (char c : name.toCharArray()) {
+            if (c >= 128) {
+                return false;
+            }
+        }
+        return name.length() > 2;
+    }
+
+    private boolean lookaheadIsIdentAndLParen() {
+        boolean seenIdent = false;
+        for (int i = 1;; i++) {
+            long currentToken = getToken(k + i);
+            TokenType t = Token.descType(currentToken);
+            switch (t) {
+                case COMMENT:
+                    continue;
+                case IDENT:
+                    if (seenIdent) {
+                        return false;
+                    } else {
+                        seenIdent = true;
+                    }
+                    continue;
+                case LPAREN:
+                    return seenIdent;
+                default:
+                    return false;
+            }
+        }
     }
 
     private boolean isPrivateFieldsIn() {
