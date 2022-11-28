@@ -82,7 +82,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 
     with Task('TestNpx', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
-            npx(['cowsay', 'GraalVM rules!'])
+            npx(['--package=cowsay', '--yes', 'cowsay', 'GraalVM rules!'])
 
     with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:

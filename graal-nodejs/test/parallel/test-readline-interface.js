@@ -71,6 +71,19 @@ function assertCursorRowsAndCols(rli, rows, cols) {
   assert(rl instanceof readline.Interface);
 }
 
+{
+  const fi = new FakeInput();
+  const rli = new readline.Interface(
+    fi,
+    fi,
+    common.mustCall((line) => [[], line]),
+    true,
+  );
+  assert(rli instanceof readline.Interface);
+  fi.emit('data', 'a\t');
+  rli.close();
+}
+
 [
   undefined,
   50,
@@ -131,11 +144,7 @@ function assertCursorRowsAndCols(rli, rows, cols) {
       input,
       tabSize: 0
     }),
-    {
-      message: 'The value of "tabSize" is out of range. ' +
-                'It must be >= 1 && < 4294967296. Received 0',
-      code: 'ERR_OUT_OF_RANGE'
-    }
+    { code: 'ERR_OUT_OF_RANGE' }
   );
 
   assert.throws(

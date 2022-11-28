@@ -23,6 +23,10 @@ test-vm-timeout-escape-promise-module-2: FAIL
 # Profiling is not supported
 test-worker-prof: FAIL
 
+# Unclassified
+test-vm-break-on-sigint: FAIL
+test-worker-http2-stream-terminate: SKIP
+
 [$system==solaris]
 
 # Needs too many system resources (starts 80 child processes)
@@ -62,8 +66,6 @@ test-tls-psk-client: PASS, FLAKY
 test-tls-securepair-client: PASS, FLAKY
 
 [$arch==arm]
-# https://github.com/nodejs/node/issues/43638
-test-gc-http-client-timeout: PASS,FLAKY
 
 [$arch==s390x]
 # https://github.com/nodejs/node/issues/41286

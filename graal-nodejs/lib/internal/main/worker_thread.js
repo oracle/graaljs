@@ -8,7 +8,8 @@ const {
   ArrayPrototypePushApply,
   ArrayPrototypeSplice,
   ObjectDefineProperty,
-  PromisePrototypeCatch,
+  PromisePrototypeThen,
+  RegExpPrototypeExec,
   globalThis: { Atomics },
 } = primordials;
 
@@ -194,7 +195,7 @@ port.on('message', (message) => {
       evalScript(name, filename);
     } else if (doEval === 'module') {
       const { evalModule } = require('internal/process/execution');
-      PromisePrototypeCatch(evalModule(filename), (e) => {
+      PromisePrototypeThen(evalModule(filename), undefined, (e) => {
         workerOnGlobalUncaughtException(e, true);
       });
     } else {
@@ -274,5 +275,8 @@ function workerOnGlobalUncaughtException(error, fromPromise) {
 process._fatalException = workerOnGlobalUncaughtException;
 
 markBootstrapComplete();
+
+// Necessary to reset RegExp statics before user code runs.
+RegExpPrototypeExec(/^/, '');
 
 port.start();

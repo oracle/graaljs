@@ -64,7 +64,14 @@ const Agent = require('_http_agent');
 const { Buffer } = require('buffer');
 const { defaultTriggerAsyncIdScope } = require('internal/async_hooks');
 const { URL, urlToHttpOptions, searchParamsSymbol } = require('internal/url');
-const { kOutHeaders, kNeedDrain } = require('internal/http');
+const {
+  kOutHeaders,
+  kNeedDrain,
+  isTraceHTTPEnabled,
+  traceBegin,
+  traceEnd,
+  getNextTraceEventId,
+} = require('internal/http');
 const { connResetException, codes } = require('internal/errors');
 const {
   ERR_HTTP_HEADERS_SENT,
@@ -105,6 +112,8 @@ const kError = Symbol('kError');
 
 const kLenientAll = HTTPParser.kLenientAll | 0;
 const kLenientNone = HTTPParser.kLenientNone | 0;
+
+const HTTP_CLIENT_TRACE_EVENT_NAME = 'http.client.request';
 
 function validateHost(host, name) {
   if (host !== null && host !== undefined && typeof host !== 'string') {
@@ -375,6 +384,10 @@ ClientRequest.prototype._finish = function _finish() {
     onClientRequestStartChannel.publish({
       request: this,
     });
+  }
+  if (isTraceHTTPEnabled()) {
+    this._traceEventId = getNextTraceEventId();
+    traceBegin(HTTP_CLIENT_TRACE_EVENT_NAME, this._traceEventId);
   }
 };
 
@@ -660,12 +673,18 @@ function parserOnIncomingClient(res, shouldKeepAlive) {
       response: res,
     });
   }
+  if (isTraceHTTPEnabled() && typeof req._traceEventId === 'number') {
+    traceEnd(HTTP_CLIENT_TRACE_EVENT_NAME, req._traceEventId, {
+      path: req.path,
+      statusCode: res.statusCode,
+    });
+  }
   req.res = res;
   res.req = req;
 
   // Add our listener first, so that we guarantee socket cleanup
   res.on('end', responseOnEnd);
-  req.on('prefinish', requestOnPrefinish);
+  req.on('finish', requestOnFinish);
   socket.on('timeout', responseOnTimeout);
 
   // If the user did not listen for the 'response' event, then they
@@ -737,12 +756,16 @@ function responseOnEnd() {
         socket.end();
     }
     assert(!socket.writable);
-  } else if (req.finished && !this.aborted) {
+  } else if (req.writableFinished && !this.aborted) {
+    assert(req.finished);
     // We can assume `req.finished` means all data has been written since:
     // - `'responseOnEnd'` means we have been assigned a socket.
     // - when we have a socket we write directly to it without buffering.
     // - `req.finished` means `end()` has been called and no further data.
     //   can be written
+    // In addition, `req.writableFinished` means all data written has been
+    // accepted by the kernel. (i.e. the `req.socket` is drained).Without
+    // this constraint, we may assign a non drained socket to a request.
     responseKeepAlive(req);
   }
 }
@@ -755,7 +778,9 @@ function responseOnTimeout() {
   res.emit('timeout');
 }
 
-function requestOnPrefinish() {
+// This function is necessary in the case where we receive the entire reponse
+// from server before we finish sending out the request
+function requestOnFinish() {
   const req = this;
 
   if (req.shouldKeepAlive && req._ended)

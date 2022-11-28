@@ -226,7 +226,7 @@ added:
 -->
 
 The class `Channel` represents an individual named channel within the data
-pipeline. It is use to track subscribers and to publish messages when there
+pipeline. It is used to track subscribers and to publish messages when there
 are subscribers present. It exists as a separate object to avoid channel
 lookups at publish time, enabling very fast publish speeds and allowing
 for heavy use while incurring very minimal cost. Channels are created with
@@ -425,7 +425,54 @@ Emitted when server receives a request.
 
 Emitted when server sends a response.
 
+#### NET
+
+`net.client.socket`
+
+* `socket` {net.Socket}
+
+Emitted when a new TCP or pipe client socket is created.
+
+`net.server.socket`
+
+* `socket` {net.Socket}
+
+Emitted when a new TCP or pipe connection is received.
+
+#### UDP
+
+`udp.socket`
+
+* `socket` {dgram.Socket}
+
+Emitted when a new UDP socket is created.
+
+#### Process
+
+<!-- YAML
+added: v16.18.0
+-->
+
+`child_process`
+
+* `process` {ChildProcess}
+
+Emitted when a new process is created.
+
+#### Worker Thread
+
+<!-- YAML
+added: v16.18.0
+-->
+
+`worker_threads`
+
+* `worker` [`Worker`][]
+
+Emitted when a new thread is created.
+
 [`'uncaughtException'`]: process.md#event-uncaughtexception
+[`Worker`]: worker_threads.md#class-worker
 [`channel.subscribe(onMessage)`]: #channelsubscribeonmessage
 [`diagnostics_channel.channel(name)`]: #diagnostics_channelchannelname
 [`diagnostics_channel.subscribe(name, onMessage)`]: #diagnostics_channelsubscribename-onmessage

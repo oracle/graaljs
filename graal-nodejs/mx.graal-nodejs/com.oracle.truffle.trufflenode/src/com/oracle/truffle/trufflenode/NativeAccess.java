@@ -164,4 +164,6 @@ public final class NativeAccess {
 
     public static native Object syntheticModuleEvaluationSteps(long callback, Object context, Object module);
 
+    public static native void executeInterruptCallback(long callback, long data);
+
 }

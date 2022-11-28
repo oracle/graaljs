@@ -322,6 +322,47 @@ function func() {}
 const callsfunc = tracker.calls(func);
 ```
 
+### `tracker.getCalls(fn)`
+
+<!-- YAML
+added: v16.18.0
+-->
+
+* `fn` {Function}.
+
+* Returns: {Array} with all the calls to a tracked function.
+
+* Object {Object}
+  * `thisArg` {Object}
+  * `arguments` {Array} the arguments passed to the tracked function
+
+```mjs
+import assert from 'node:assert';
+
+const tracker = new assert.CallTracker();
+
+function func() {}
+const callsfunc = tracker.calls(func);
+callsfunc(1, 2, 3);
+
+assert.deepStrictEqual(tracker.getCalls(callsfunc),
+                       [{ thisArg: this, arguments: [1, 2, 3 ] }]);
+```
+
+```cjs
+const assert = require('node:assert');
+
+// Creates call tracker.
+const tracker = new assert.CallTracker();
+
+function func() {}
+const callsfunc = tracker.calls(func);
+callsfunc(1, 2, 3);
+
+assert.deepStrictEqual(tracker.getCalls(callsfunc),
+                       [{ thisArg: this, arguments: [1, 2, 3 ] }]);
+```
+
 ### `tracker.report()`
 
 <!-- YAML
@@ -351,8 +392,6 @@ const tracker = new assert.CallTracker();
 
 function func() {}
 
-function foo() {}
-
 // Returns a function that wraps func() that must be called exact times
 // before tracker.verify().
 const callsfunc = tracker.calls(func, 2);
@@ -379,8 +418,6 @@ const tracker = new assert.CallTracker();
 
 function func() {}
 
-function foo() {}
-
 // Returns a function that wraps func() that must be called exact times
 // before tracker.verify().
 const callsfunc = tracker.calls(func, 2);
@@ -397,6 +434,48 @@ tracker.report();
 //    stack: stack trace
 //  }
 // ]
+```
+
+### `tracker.reset([fn])`
+
+<!-- YAML
+added: v16.18.0
+-->
+
+* `fn` {Function} a tracked function to reset.
+
+reset calls of the call tracker.
+if a tracked function is passed as an argument, the calls will be reset for it.
+if no arguments are passed, all tracked functions will be reset
+
+```mjs
+import assert from 'node:assert';
+
+const tracker = new assert.CallTracker();
+
+function func() {}
+const callsfunc = tracker.calls(func);
+
+callsfunc();
+// Tracker was called once
+tracker.getCalls(callsfunc).length === 1;
+
+tracker.reset(callsfunc);
+tracker.getCalls(callsfunc).length === 0;
+```
+
+```cjs
+const assert = require('node:assert');
+
+function func() {}
+const callsfunc = tracker.calls(func);
+
+callsfunc();
+// Tracker was called once
+tracker.getCalls(callsfunc).length === 1;
+
+tracker.reset(callsfunc);
+tracker.getCalls(callsfunc).length === 0;
 ```
 
 ### `tracker.verify()`

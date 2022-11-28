@@ -1306,6 +1306,12 @@ When using [`fs.cp()`][], `src` or `dest` pointed to an invalid path.
 
 <a id="ERR_FS_CP_FIFO_PIPE"></a>
 
+### `ERR_HTTP_CONTENT_LENGTH_MISMATCH`
+
+Response body size doesn't match with the specified content-length header value.
+
+<a id="ERR_HTTP_CONTENT_LENGTH_MISMATCH"></a>
+
 ### `ERR_FS_CP_FIFO_PIPE`
 
 <!--
@@ -3529,7 +3535,7 @@ The native call from `process.cpuUsage` could not be processed.
 [domains]: domain.md
 [event emitter-based]: events.md#class-eventemitter
 [file descriptors]: https://en.wikipedia.org/wiki/File_descriptor
-[policy]: policy.md
+[policy]: permissions.md#policies
 [self-reference a package using its name]: packages.md#self-referencing-a-package-using-its-name
 [stream-based]: stream.md
 [syscall]: https://man7.org/linux/man-pages/man2/syscalls.2.html

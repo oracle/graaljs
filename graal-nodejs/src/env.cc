@@ -61,9 +61,9 @@ using v8::WeakCallbackInfo;
 using v8::WeakCallbackType;
 using worker::Worker;
 
-int const Environment::kNodeContextTag = 0x6e6f64;
-void* const Environment::kNodeContextTagPtr = const_cast<void*>(
-    static_cast<const void*>(&Environment::kNodeContextTag));
+int const ContextEmbedderTag::kNodeContextTag = 0x6e6f64;
+void* const ContextEmbedderTag::kNodeContextTagPtr = const_cast<void*>(
+    static_cast<const void*>(&ContextEmbedderTag::kNodeContextTag));
 
 void AsyncHooks::SetJSPromiseHooks(Local<Function> init,
                                    Local<Function> before,
@@ -162,14 +162,17 @@ bool AsyncHooks::pop_async_context(double async_id) {
 }
 
 void AsyncHooks::clear_async_id_stack() {
-  Isolate* isolate = env()->isolate();
-  HandleScope handle_scope(isolate);
-  if (!js_execution_async_resources_.IsEmpty()) {
-    USE(PersistentToLocal::Strong(js_execution_async_resources_)
-            ->Set(env()->context(),
-                  env()->length_string(),
-                  Integer::NewFromUnsigned(isolate, 0)));
+  if (env()->can_call_into_js()) {
+    Isolate* isolate = env()->isolate();
+    HandleScope handle_scope(isolate);
+    if (!js_execution_async_resources_.IsEmpty()) {
+      USE(PersistentToLocal::Strong(js_execution_async_resources_)
+              ->Set(env()->context(),
+                    env()->length_string(),
+                    Integer::NewFromUnsigned(isolate, 0)));
+    }
   }
+
   native_execution_async_resources_.clear();
   native_execution_async_resources_.shrink_to_fit();
 
@@ -431,11 +434,9 @@ void TrackingTraceStateObserver::UpdateTraceCategoryState() {
 
 void Environment::AssignToContext(Local<v8::Context> context,
                                   const ContextInfo& info) {
+  ContextEmbedderTag::TagNodeContext(context);
   context->SetAlignedPointerInEmbedderData(ContextEmbedderIndex::kEnvironment,
                                            this);
-  // Used by Environment::GetCurrent to know that we are on a node context.
-  context->SetAlignedPointerInEmbedderData(ContextEmbedderIndex::kContextTag,
-                                           Environment::kNodeContextTagPtr);
   // Used to retrieve bindings
   context->SetAlignedPointerInEmbedderData(
       ContextEmbedderIndex::kBindingListIndex, &(this->bindings_));
@@ -736,6 +737,7 @@ Environment::Environment(IsolateData* isolate_data,
       exec_argv_(exec_args),
       argv_(args),
       exec_path_(GetExecPath(args)),
+      exiting_(isolate_, 1, MAYBE_FIELD_PTR(env_info, exiting)),
       should_abort_on_uncaught_toggle_(
           isolate_,
           1,
@@ -770,6 +772,9 @@ Environment::Environment(IsolateData* isolate_data,
       *isolate_data->options()->per_env);
   inspector_host_port_ = std::make_shared<ExclusiveAccess<HostPort>>(
       options_->debug_options().host_port);
+
+  heap_snapshot_near_heap_limit_ =
+      static_cast<uint32_t>(options_->heap_snapshot_near_heap_limit);
 
   if (!(flags_ & EnvironmentFlags::kOwnsProcessState)) {
     set_abort_on_uncaught_exception(false);
@@ -842,6 +847,9 @@ void Environment::InitializeMainContext(Local<Context> context,
   // By default, always abort when --abort-on-uncaught-exception was passed.
   should_abort_on_uncaught_toggle_[0] = 1;
 
+  // The process is not exiting by default.
+  set_exiting(false);
+
   performance_state_->Mark(performance::NODE_PERFORMANCE_MILESTONE_ENVIRONMENT,
                            environment_start_time_);
   performance_state_->Mark(performance::NODE_PERFORMANCE_MILESTONE_NODE_START,
@@ -882,9 +890,8 @@ Environment::~Environment() {
   // FreeEnvironment() should have set this.
   CHECK(is_stopping());
 
-  if (options_->heap_snapshot_near_heap_limit > heap_limit_snapshot_taken_) {
-    isolate_->RemoveNearHeapLimitCallback(Environment::NearHeapLimitCallback,
-                                          0);
+  if (heapsnapshot_near_heap_limit_callback_added_) {
+    RemoveHeapSnapshotNearHeapLimitCallback(0);
   }
 
   isolate()->GetHeapProfiler()->RemoveBuildEmbedderGraphCallback(
@@ -1153,7 +1160,13 @@ void Environment::RunAndClearNativeImmediates(bool only_refed) {
   TRACE_EVENT0(TRACING_CATEGORY_NODE1(environment),
                "RunAndClearNativeImmediates");
   HandleScope handle_scope(isolate_);
-  InternalCallbackScope cb_scope(this, Object::New(isolate_), { 0, 0 });
+  // In case the Isolate is no longer accessible just use an empty Local. This
+  // is not an issue for InternalCallbackScope as this case is already handled
+  // in its constructor but we avoid calls into v8 which can crash the process
+  // in debug builds.
+  Local<Object> obj =
+      can_call_into_js() ? Object::New(isolate_) : Local<Object>();
+  InternalCallbackScope cb_scope(this, obj, {0, 0});
 
   size_t ref_count = 0;
 
@@ -1743,6 +1756,7 @@ EnvSerializeInfo Environment::Serialize(SnapshotCreator* creator) {
   info.immediate_info = immediate_info_.Serialize(ctx, creator);
   info.tick_info = tick_info_.Serialize(ctx, creator);
   info.performance_state = performance_state_->Serialize(ctx, creator);
+  info.exiting = exiting_.Serialize(ctx, creator);
   info.stream_base_state = stream_base_state_.Serialize(ctx, creator);
   info.should_abort_on_uncaught_toggle =
       should_abort_on_uncaught_toggle_.Serialize(ctx, creator);
@@ -1814,6 +1828,7 @@ std::ostream& operator<<(std::ostream& output, const EnvSerializeInfo& i) {
          << "// -- performance_state begins --\n"
          << i.performance_state << ",\n"
          << "// -- performance_state ends --\n"
+         << i.exiting << ",  // exiting\n"
          << i.stream_base_state << ",  // stream_base_state\n"
          << i.should_abort_on_uncaught_toggle
          << ",  // should_abort_on_uncaught_toggle\n"
@@ -1832,6 +1847,7 @@ void Environment::EnqueueDeserializeRequest(DeserializeRequestCallback cb,
                                             Local<Object> holder,
                                             int index,
                                             InternalFieldInfo* info) {
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
   DeserializeRequest request{cb, {isolate(), holder}, index, info};
   deserialize_requests_.push_back(std::move(request));
 }
@@ -1860,6 +1876,7 @@ void Environment::DeserializeProperties(const EnvSerializeInfo* info) {
   immediate_info_.Deserialize(ctx);
   tick_info_.Deserialize(ctx);
   performance_state_->Deserialize(ctx);
+  exiting_.Deserialize(ctx);
   stream_base_state_.Deserialize(ctx);
   should_abort_on_uncaught_toggle_.Deserialize(ctx);
 
@@ -1954,7 +1971,7 @@ size_t Environment::NearHeapLimitCallback(void* data,
         "Invoked NearHeapLimitCallback, processing=%d, "
         "current_limit=%" PRIu64 ", "
         "initial_limit=%" PRIu64 "\n",
-        env->is_processing_heap_limit_callback_,
+        env->is_in_heapsnapshot_heap_limit_callback_,
         static_cast<uint64_t>(current_heap_limit),
         static_cast<uint64_t>(initial_heap_limit));
 
@@ -2006,8 +2023,8 @@ size_t Environment::NearHeapLimitCallback(void* data,
   // new limit, so in a heap with unbounded growth the isolate
   // may eventually crash with this new limit - effectively raising
   // the heap limit to the new one.
-  if (env->is_processing_heap_limit_callback_) {
-    size_t new_limit = current_heap_limit + max_young_gen_size;
+  size_t new_limit = current_heap_limit + max_young_gen_size;
+  if (env->is_in_heapsnapshot_heap_limit_callback_) {
     Debug(env,
           DebugCategory::DIAGNOSTICS,
           "Not generating snapshots in nested callback. "
@@ -2023,15 +2040,14 @@ size_t Environment::NearHeapLimitCallback(void* data,
     Debug(env,
           DebugCategory::DIAGNOSTICS,
           "Not generating snapshots because it's too risky.\n");
-    env->isolate()->RemoveNearHeapLimitCallback(NearHeapLimitCallback,
-                                                initial_heap_limit);
+    env->RemoveHeapSnapshotNearHeapLimitCallback(0);
     // The new limit must be higher than current_heap_limit or V8 might
     // crash.
-    return current_heap_limit + 1;
+    return new_limit;
   }
 
   // Take the snapshot synchronously.
-  env->is_processing_heap_limit_callback_ = true;
+  env->is_in_heapsnapshot_heap_limit_callback_ = true;
 
   std::string dir = env->options()->diagnostic_dir;
   if (dir.empty()) {
@@ -2042,19 +2058,21 @@ size_t Environment::NearHeapLimitCallback(void* data,
 
   Debug(env, DebugCategory::DIAGNOSTICS, "Start generating %s...\n", *name);
 
-  // Remove the callback first in case it's triggered when generating
-  // the snapshot.
-  env->isolate()->RemoveNearHeapLimitCallback(NearHeapLimitCallback,
-                                              initial_heap_limit);
-
   heap::WriteSnapshot(env->isolate(), filename.c_str());
   env->heap_limit_snapshot_taken_ += 1;
 
-  // Don't take more snapshots than the number specified by
-  // --heapsnapshot-near-heap-limit.
-  if (env->heap_limit_snapshot_taken_ <
-      env->options_->heap_snapshot_near_heap_limit) {
-    env->isolate()->AddNearHeapLimitCallback(NearHeapLimitCallback, env);
+  Debug(env,
+        DebugCategory::DIAGNOSTICS,
+        "%" PRIu32 "/%" PRIu32 " snapshots taken.\n",
+        env->heap_limit_snapshot_taken_,
+        env->heap_snapshot_near_heap_limit_);
+
+  // Don't take more snapshots than the limit specified.
+  if (env->heap_limit_snapshot_taken_ == env->heap_snapshot_near_heap_limit_) {
+    Debug(env,
+          DebugCategory::DIAGNOSTICS,
+          "Removing the near heap limit callback");
+    env->RemoveHeapSnapshotNearHeapLimitCallback(0);
   }
 
   FPrintF(stderr, "Wrote snapshot to %s\n", filename.c_str());
@@ -2062,11 +2080,11 @@ size_t Environment::NearHeapLimitCallback(void* data,
   // 95% of the initial limit.
   env->isolate()->AutomaticallyRestoreInitialHeapLimit(0.95);
 
-  env->is_processing_heap_limit_callback_ = false;
+  env->is_in_heapsnapshot_heap_limit_callback_ = false;
 
   // The new limit must be higher than current_heap_limit or V8 might
   // crash.
-  return current_heap_limit + 1;
+  return new_limit;
 }
 
 inline size_t Environment::SelfSize() const {
@@ -2090,6 +2108,7 @@ void Environment::MemoryInfo(MemoryTracker* tracker) const {
                       native_modules_without_cache);
   tracker->TrackField("destroy_async_id_list", destroy_async_id_list_);
   tracker->TrackField("exec_argv", exec_argv_);
+  tracker->TrackField("exiting", exiting_);
   tracker->TrackField("should_abort_on_uncaught_toggle",
                       should_abort_on_uncaught_toggle_);
   tracker->TrackField("stream_base_state", stream_base_state_);
@@ -2123,7 +2142,9 @@ void Environment::RunWeakRefCleanup() {
 BaseObject::BaseObject(Environment* env, Local<Object> object)
     : persistent_handle_(env->isolate(), object), env_(env) {
   CHECK_EQ(false, object.IsEmpty());
-  CHECK_GT(object->InternalFieldCount(), 0);
+  CHECK_GE(object->InternalFieldCount(), BaseObject::kInternalFieldCount);
+  object->SetAlignedPointerInInternalField(BaseObject::kEmbedderType,
+                                           &kNodeEmbedderId);
   object->SetAlignedPointerInInternalField(BaseObject::kSlot,
                                            static_cast<void*>(this));
   env->AddCleanupHook(DeleteMe, static_cast<void*>(this));
@@ -2174,10 +2195,19 @@ void BaseObject::MakeWeak() {
       WeakCallbackType::kParameter);
 }
 
+// This just has to be different from the Chromium ones:
+// https://source.chromium.org/chromium/chromium/src/+/main:gin/public/gin_embedders.h;l=18-23;drc=5a758a97032f0b656c3c36a3497560762495501a
+// Otherwise, when Node is loaded in an isolate which uses cppgc, cppgc will
+// misinterpret the data stored in the embedder fields and try to garbage
+// collect them.
+uint16_t kNodeEmbedderId = 0x90de;
+
 void BaseObject::LazilyInitializedJSTemplateConstructor(
     const FunctionCallbackInfo<Value>& args) {
   DCHECK(args.IsConstructCall());
-  DCHECK_GT(args.This()->InternalFieldCount(), 0);
+  CHECK_GE(args.This()->InternalFieldCount(), BaseObject::kInternalFieldCount);
+  args.This()->SetAlignedPointerInInternalField(BaseObject::kEmbedderType,
+                                                &kNodeEmbedderId);
   args.This()->SetAlignedPointerInInternalField(BaseObject::kSlot, nullptr);
 }
 

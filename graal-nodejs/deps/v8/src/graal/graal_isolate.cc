@@ -723,6 +723,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_get_heap_statistics, "isolateGetHeapStatistics", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_terminate_execution, "isolateTerminateExecution", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_cancel_terminate_execution, "isolateCancelTerminateExecution", "()V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_is_execution_terminating, "isolateIsExecutionTerminating", "()Z")
+    ACCESS_METHOD(GraalAccessMethod::isolate_request_interrupt, "isolateRequestInterrupt", "(JJ)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_int_placeholder, "isolateGetIntPlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_safe_int_placeholder, "isolateGetSafeIntPlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_double_placeholder, "isolateGetDoublePlaceholder", "()Ljava/lang/Object;")
@@ -1262,6 +1264,11 @@ void GraalIsolate::CancelTerminateExecution() {
     }
 }
 
+bool GraalIsolate::IsExecutionTerminating() {
+    JNI_CALL(jboolean, terminating, this, GraalAccessMethod::isolate_is_execution_terminating, Boolean);
+    return terminating;
+}
+
 void GraalIsolate::SetFunctionTemplateData(unsigned id, GraalValue* data) {
     while (function_template_data.size() <= id) function_template_data.push_back(nullptr);
     data->ReferenceAdded();
@@ -1492,4 +1499,30 @@ v8::ArrayBuffer::Allocator* GraalIsolate::GetArrayBufferAllocator() {
 
 void GraalIsolate::SchedulePauseOnNextStatement() {
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_schedule_pause_on_next_statement);
+}
+
+void GraalIsolate::RequestInterrupt(v8::InterruptCallback callback, void* data) {
+    // We cannot use GetJNIEnv()/JNI_CALL_VOID because RequestInterrupt()
+    // can be called from a thread that does not correspond to this isolate
+    GraalIsolate* current_isolate = CurrentIsolate();
+    JNIEnv* env;
+    if (current_isolate == nullptr) {
+        // the thread does not belong to any isolate (i.e. is not attached to JVM)
+        jvm_->AttachCurrentThread((void**) &env, nullptr);
+    } else {
+        env = current_isolate->GetJNIEnv();
+    }
+    jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_request_interrupt);
+    env->functions->CallVoidMethod(env, access_, method_id, (jlong) callback, (jlong) data);
+    if (current_isolate == nullptr) {
+        jvm_->DetachCurrentThread();
+    }
+}
+
+void GraalIsolate::JSExecutionViolation(JSExecutionAction action) {
+    if (action == kJSExecutionThrow) {
+        ThrowException(v8::String::NewFromUtf8(reinterpret_cast<v8::Isolate*> (this), "Illegal operation.").ToLocalChecked());
+    } else {
+        ReportAPIFailure("DisallowJavascriptExecutionScope", "Illegal operation.");
+    }
 }

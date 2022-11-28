@@ -3179,6 +3179,10 @@ public final class GraalJSAccess {
 
     private boolean terminateExecution;
 
+    public synchronized boolean isolateIsExecutionTerminating() {
+        return terminateExecution;
+    }
+
     public synchronized void isolateCancelTerminateExecution() {
         terminateExecution = false;
         if (Thread.currentThread() == agent.getThread()) {
@@ -3209,6 +3213,14 @@ public final class GraalJSAccess {
         if (thread != null) {
             thread.interrupt();
         }
+    }
+
+    public void isolateRequestInterrupt(long callback, long data) {
+        Debugger debugger = lookupInstrument("debugger", Debugger.class);
+        debugger.startSession(se -> {
+            se.getSession().close();
+            NativeAccess.executeInterruptCallback(callback, data);
+        }).suspendNextExecution();
     }
 
     static final class GraalJSKillException extends ThreadDeath {
