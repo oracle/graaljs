@@ -47,7 +47,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.js.runtime.Strings;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
@@ -55,6 +54,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.parser.JSParser;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.snapshot.Recording;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -179,6 +179,25 @@ public class RecordingTest extends JSTest {
         ScriptNode script = ((JSParser) context.getEvaluator()).parseScript(context, source, ByteBuffer.wrap(snapshot));
         Object result = script.run(testHelper.getRealm());
         assertEquals(Strings.fromJavaString("\ud834"), result);
+    }
+
+    @Test
+    public void testImport() throws IOException {
+        JSContext context = testHelper.getJSContext();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, "import('test.mjs');", "test.js").build();
+        Recording rec = Recording.recordSource(source, context, false, "", "");
+
+        byte[] snapshot;
+        try (ByteArrayOutputStream outs = new ByteArrayOutputStream()) {
+            rec.saveToStream(source.getName(), outs, true);
+            snapshot = outs.toByteArray();
+        }
+        try (ByteArrayOutputStream outs = new ByteArrayOutputStream()) {
+            rec.saveToStream(source.getName(), outs, false);
+        }
+
+        ScriptNode script = ((JSParser) context.getEvaluator()).parseScript(context, source, ByteBuffer.wrap(snapshot));
+        script.run(testHelper.getRealm());
     }
 
 }
