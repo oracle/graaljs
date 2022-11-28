@@ -2813,6 +2813,9 @@ Filename where the report is written. If set to the empty string, the output
 filename will be comprised of a timestamp, PID, and sequence number. The default
 value is the empty string.
 
+If the value of `process.report.filename` is set to `'stdout'` or `'stderr'`,
+the report is written to the stdout or stderr of the process respectively.
+
 ```mjs
 import { report } from 'node:process';
 
@@ -3006,6 +3009,9 @@ changes:
 Writes a diagnostic report to a file. If `filename` is not provided, the default
 filename includes the date, time, PID, and a sequence number. The report's
 JavaScript stack trace is taken from `err`, if present.
+
+If the value of `filename` is set to `'stdout'` or `'stderr'`, the report is
+written to the stdout or stderr of the process respectively.
 
 ```mjs
 import { report } from 'node:process';
@@ -3628,7 +3634,6 @@ changes:
     - v12.19.0
     pr-url: https://github.com/nodejs/node/pull/32499
     description: Calling `process.umask()` with no arguments is deprecated.
-
 -->
 
 > Stability: 0 - Deprecated. Calling `process.umask()` with no argument causes
@@ -3851,7 +3856,7 @@ cases:
 [`process.config`]: #processconfig
 [`process.execPath`]: #processexecpath
 [`process.exit()`]: #processexitcode
-[`process.exitCode`]: #processexitcode
+[`process.exitCode`]: #processexitcode_1
 [`process.hrtime()`]: #processhrtimetime
 [`process.hrtime.bigint()`]: #processhrtimebigint
 [`process.kill()`]: #processkillpid-signal

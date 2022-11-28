@@ -419,8 +419,12 @@ the data is read it will consume memory that can eventually lead to a
 For backward compatibility, `res` will only emit `'error'` if there is an
 `'error'` listener registered.
 
-Node.js does not check whether Content-Length and the length of the
-body which has been transmitted are equal or not.
+Set `Content-Length` header to limit the response body size. Mismatching the
+`Content-Length` header value will result in an \[`Error`]\[] being thrown,
+identified by `code:` [`'ERR_HTTP_CONTENT_LENGTH_MISMATCH'`][].
+
+`Content-Length` value should be in bytes, not characters. Use
+[`Buffer.byteLength()`][] to determine the length of the body in bytes.
 
 ### Event: `'abort'`
 
@@ -883,7 +887,7 @@ header-related http module methods. The keys of the returned object are the
 header names and the values are the respective header values. All header names
 are lowercase.
 
-The object returned by the `response.getHeaders()` method _does not_
+The object returned by the `request.getHeaders()` method _does not_
 prototypically inherit from the JavaScript `Object`. This means that typical
 `Object` methods such as `obj.toString()`, `obj.hasOwnProperty()`, and others
 are not defined and _will not work_.
@@ -892,7 +896,7 @@ are not defined and _will not work_.
 request.setHeader('Foo', 'bar');
 request.setHeader('Cookie', ['foo=bar', 'bar=baz']);
 
-const headers = response.getHeaders();
+const headers = request.getHeaders();
 // headers === { foo: 'bar', 'cookie': ['foo=bar', 'bar=baz'] }
 ```
 
@@ -2169,13 +2173,13 @@ const server = http.createServer((req, res) => {
 });
 ```
 
-`Content-Length` is given in bytes, not characters. Use
+`Content-Length` is read in bytes, not characters. Use
 [`Buffer.byteLength()`][] to determine the length of the body in bytes. Node.js
-does not check whether `Content-Length` and the length of the body which has
+will check whether `Content-Length` and the length of the body which has
 been transmitted are equal or not.
 
 Attempting to set a header field name or value that contains invalid characters
-will result in a [`TypeError`][] being thrown.
+will result in a \[`Error`]\[] being thrown.
 
 ### `response.writeProcessing()`
 
@@ -2336,7 +2340,7 @@ Key-value pairs of header names and values. Header names are lower-cased.
 // { 'user-agent': 'curl/7.22.0',
 //   host: '127.0.0.1:8000',
 //   accept: '*/*' }
-console.log(request.getHeaders());
+console.log(request.headers);
 ```
 
 Duplicates in raw headers are handled in the following ways, depending on the
@@ -2535,15 +2539,15 @@ Accept: text/plain
 To parse the URL into its parts:
 
 ```js
-new URL(request.url, `http://${request.getHeaders().host}`);
+new URL(request.url, `http://${request.headers.host}`);
 ```
 
-When `request.url` is `'/status?name=ryan'` and
-`request.getHeaders().host` is `'localhost:3000'`:
+When `request.url` is `'/status?name=ryan'` and `request.headers.host` is
+`'localhost:3000'`:
 
 ```console
 $ node
-> new URL(request.url, `http://${request.getHeaders().host}`)
+> new URL(request.url, `http://${request.headers.host}`)
 URL {
   href: 'http://localhost:3000/status?name=ryan',
   origin: 'http://localhost:3000',
@@ -3557,7 +3561,18 @@ try {
 }
 ```
 
+## `http.setMaxIdleHTTPParsers`
+
+<!-- YAML
+added: v16.18.0
+-->
+
+* {number}
+
+Set the maximum number of idle HTTP parsers. **Default:** `1000`.
+
 [RFC 8187]: https://www.rfc-editor.org/rfc/rfc8187.txt
+[`'ERR_HTTP_CONTENT_LENGTH_MISMATCH'`]: errors.md#err_http_content_length_mismatch
 [`'checkContinue'`]: #event-checkcontinue
 [`'finish'`]: #event-finish
 [`'request'`]: #event-request

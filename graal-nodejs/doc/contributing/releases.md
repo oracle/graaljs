@@ -166,6 +166,13 @@ When landing the PR add the `Backport-PR-URL:` line to each commit. Close the
 backport PR with `Landed in ...`. Update the label on the original PR from
 `backport-requested-vN.x` to `backported-to-vN.x`.
 
+You can add the `Backport-PR-URL` metadata by using `--backport` with
+`git node land`
+
+```console
+$ git node land --backport $PR-NUMBER
+```
+
 To determine the relevant commits, use
 [`branch-diff`](https://github.com/nodejs/branch-diff). The tool is available on
 npm and should be installed globally or run with `npx`. It depends on our commit
@@ -262,6 +269,19 @@ branch.
 ```console
 $ git checkout -b v1.2.3-proposal upstream/v1.x-staging
 ```
+
+<details>
+<summary>Security release</summary>
+
+When performing Security Releases, the `vN.x.x-proposal` branch should be
+branched off of `vN.x`.
+
+```console
+$ git checkout -b v1.2.3-proposal upstream/v1.x
+git cherry-pick  ...  # cherry-pick nodejs-private PR commits directly into the proposal
+```
+
+</details>
 
 ### 3. Update `src/node_version.h`
 
@@ -458,6 +478,9 @@ Notable changes:
 PR-URL: TBD
 ```
 
+**Note**: Ensure to push the proposal branch to the nodejs-private repository.
+Otherwise, you will leak the commits before the security release.
+
 </details>
 
 ### 6. Propose release on GitHub
@@ -617,6 +640,8 @@ Create a tag using the following command:
 $ git secure-tag <vx.y.z> <commit-sha> -sm "YYYY-MM-DD Node.js vx.y.z (<release-type>) Release"
 ```
 
+<sup>The commit-sha is the release commit. You can get it easily by running `git rev-parse HEAD`</sup>
+
 `release-type` is either "Current" or "LTS". For LTS releases, you should also
 include the release code name.
 
@@ -683,25 +708,36 @@ repository.
 
 ```console
 $ git checkout main
+$ git pull upstream main
 $ git cherry-pick v1.x^
 ```
 
-Git should stop to let you fix conflicts. Revert all changes that were made to
-`src/node_version.h`:
+Git should stop to let you fix conflicts.
+
+Revert all changes that were made to `src/node_version.h`:
 
 ```console
 $ git checkout --ours HEAD -- src/node_version.h
 ```
+
+Even if there are no conflicts, ensure that you revert all the changes that were
+made to `src/node_version.h`.
 
 If there are conflicts in `doc` due to updated `REPLACEME`
 placeholders (that happens when a change previously landed on another release
 branch), keep both version numbers. Convert the YAML field to an array if it is
 not already one.
 
+[It's possible that the `cherry-pick` step will end up adding and/or
+changing unwanted lines](https://github.com/nodejs/Release/issues/771),
+please validate the changes in `doc/` folder files before confirming/continuing
+the cherry-pick step.
+
 Then finish cherry-picking and push the commit upstream:
 
 ```console
 $ git add src/node_version.h doc
+$ git diff --staged src doc # read output to validate that changes shows up as expected
 $ git cherry-pick --continue
 $ make lint
 $ git push upstream main
@@ -737,7 +773,7 @@ haven't pushed your tag first, then build promotion won't work properly.
 Push the tag using the following command:
 
 ```console
-$ git push <remote> <vx.y.z>
+$ git push upstream v1.2.3
 ```
 
 _Note_: Please do not push the tag unless you are ready to complete the

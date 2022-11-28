@@ -123,7 +123,7 @@ void BindingData::Deserialize(Local<Context> context,
                               Local<Object> holder,
                               int index,
                               InternalFieldInfo* info) {
-  DCHECK_EQ(index, BaseObject::kSlot);
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
   HandleScope scope(context->GetIsolate());
   Environment* env = Environment::GetCurrent(context);
   BindingData* binding = env->AddBindingData<BindingData>(context, holder);
@@ -131,7 +131,7 @@ void BindingData::Deserialize(Local<Context> context,
 }
 
 InternalFieldInfo* BindingData::Serialize(int index) {
-  DCHECK_EQ(index, BaseObject::kSlot);
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
   InternalFieldInfo* info = InternalFieldInfo::New(type());
   return info;
 }
@@ -153,6 +153,15 @@ void CachedDataVersionTag(const FunctionCallbackInfo<Value>& args) {
       Integer::NewFromUnsigned(env->isolate(),
                                ScriptCompiler::CachedDataVersionTag());
   args.GetReturnValue().Set(result);
+}
+
+void SetHeapSnapshotNearHeapLimit(const FunctionCallbackInfo<Value>& args) {
+  CHECK(args[0]->IsUint32());
+  Environment* env = Environment::GetCurrent(args);
+  uint32_t limit = args[0].As<v8::Uint32>()->Value();
+  CHECK_GT(limit, 0);
+  env->AddHeapSnapshotNearHeapLimitCallback();
+  env->set_heap_snapshot_near_heap_limit(limit);
 }
 
 void UpdateHeapStatisticsBuffer(const FunctionCallbackInfo<Value>& args) {
@@ -212,6 +221,8 @@ void Initialize(Local<Object> target,
                              CachedDataVersionTag);
   env->SetMethod(
       target, "updateHeapStatisticsBuffer", UpdateHeapStatisticsBuffer);
+  env->SetMethodNoSideEffect(target, "setHeapSnapshotNearHeapLimit",
+                             SetHeapSnapshotNearHeapLimit);
 
   env->SetMethod(
       target, "updateHeapCodeStatisticsBuffer", UpdateHeapCodeStatisticsBuffer);
@@ -259,6 +270,7 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(UpdateHeapCodeStatisticsBuffer);
   registry->Register(UpdateHeapSpaceStatisticsBuffer);
   registry->Register(SetFlagsFromString);
+  registry->Register(SetHeapSnapshotNearHeapLimit);
 }
 
 }  // namespace v8_utils

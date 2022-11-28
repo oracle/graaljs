@@ -225,8 +225,6 @@ test-domain-error-types: PASS,FLAKY
 [$system==macos]
 # https://github.com/nodejs/node/issues/43465
 test-http-server-request-timeouts-mixed: PASS,FLAKY
-# https://github.com/nodejs/node/issues/43680
-test-http-client-response-timeout: PASS,FLAKY
 
 # Graal.js-specific
 test-error-reporting: FAIL
@@ -290,6 +288,7 @@ test-crypto-secure-heap: SKIP
 test-dgram-connect: PASS, FLAKY
 test-http-client-parse-error: PASS, FLAKY
 test-http-multi-line-headers: PASS, FLAKY
+test-http-pipeline-requests-connection-leak: PASS, FLAKY
 test-http-server-unconsume: PASS, FLAKY
 test-http-upgrade-advertise: PASS, FLAKY
 test-tls-client-mindhsize: PASS, FLAKY

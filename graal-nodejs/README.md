@@ -1,6 +1,6 @@
 # Node.js
 
-Node.js is an open-source, cross-platform, JavaScript runtime environment.
+Node.js is an open-source, cross-platform JavaScript runtime environment.
 
 For information on using Node.js, see the [Node.js website][].
 
@@ -178,6 +178,8 @@ For information about the governance of the Node.js project, see
   **James M Snell** <<jasnell@gmail.com>> (he/him)
 * [joyeecheung](https://github.com/joyeecheung) -
   **Joyee Cheung** <<joyeec9h3@gmail.com>> (she/her)
+* [legendecas](https://github.com/legendecas) -
+  **Chengzhong Wu** <<legendecas@gmail.com>> (he/him)
 * [mcollina](https://github.com/mcollina) -
   **Matteo Collina** <<matteo.collina@gmail.com>> (he/him)
 * [mhdawson](https://github.com/mhdawson) -
@@ -296,6 +298,10 @@ For information about the governance of the Node.js project, see
   **Colin Ihrig** <<cjihrig@gmail.com>> (he/him)
 * [codebytere](https://github.com/codebytere) -
   **Shelley Vohr** <<shelley.vohr@gmail.com>> (she/her)
+* [cola119](https://github.com/cola119) -
+  **Kohei Ueno** <<kohei.ueno119@gmail.com>> (he/him)
+* [daeyeon](https://github.com/daeyeon) -
+  **Daeyeon Jeong** <<daeyeon.dev@gmail.com>> (he/him)
 * [danbev](https://github.com/danbev) -
   **Daniel Bevenius** <<daniel.bevenius@gmail.com>> (he/him)
 * [danielleadams](https://github.com/danielleadams) -
@@ -306,10 +312,10 @@ For information about the governance of the Node.js project, see
   **Gus Caplan** <<me@gus.host>> (they/them)
 * [dmabupt](https://github.com/dmabupt) -
   **Xu Meng** <<dmabupt@gmail.com>> (he/him)
-* [dnlup](https://github.com/dnlup)
-  **Daniele Belardi** <<dwon.dnl@gmail.com>> (he/him)
 * [edsadr](https://github.com/edsadr) -
   **Adrian Estrada** <<edsadr@gmail.com>> (he/him)
+* [erickwendel](https://github.com/erickwendel) -
+  **Erick Wendel** <<erick.workspace@gmail.com>> (he/him)
 * [evanlucas](https://github.com/evanlucas) -
   **Evan Lucas** <<evanlucas@me.com>> (he/him)
 * [fhinkel](https://github.com/fhinkel) -
@@ -380,6 +386,8 @@ For information about the governance of the Node.js project, see
   **Milad Fa** <<mfarazma@redhat.com>> (he/him)
 * [mildsunrise](https://github.com/mildsunrise) -
   **Alba Mendez** <<me@alba.sh>> (she/her)
+* [MoLow](https://github.com/MoLow) -
+  **Moshe Atlow** <<moshe@atlow.co.il>> (he/him)
 * [mscdex](https://github.com/mscdex) -
   **Brian White** <<mscdex@mscdex.net>>
 * [MylesBorins](https://github.com/MylesBorins) -
@@ -405,7 +413,7 @@ For information about the governance of the Node.js project, see
 * [ronag](https://github.com/ronag) -
   **Robert Nagy** <<ronagy@icloud.com>>
 * [ruyadorno](https://github.com/ruyadorno) -
-  **Ruy Adorno** <<ruyadorno@github.com>> (he/him)
+  **Ruy Adorno** <<ruyadorno@google.com>> (he/him)
 * [rvagg](https://github.com/rvagg) -
   **Rod Vagg** <<rod@vagg.org>>
 * [ryzokuken](https://github.com/ryzokuken) -
@@ -424,6 +432,8 @@ For information about the governance of the Node.js project, see
   **Stewart X Addison** <<sxa@redhat.com>> (he/him)
 * [targos](https://github.com/targos) -
   **Michaël Zasso** <<targos@protonmail.com>> (he/him)
+* [theanarkh](https://github.com/theanarkh) -
+  **theanarkh** <<theratliter@gmail.com>> (he/him)
 * [TimothyGu](https://github.com/TimothyGu) -
   **Tiancheng "Timothy" Gu** <<timothygu99@gmail.com>> (he/him)
 * [tniessen](https://github.com/tniessen) -
@@ -484,6 +494,8 @@ For information about the governance of the Node.js project, see
   **Jamie Davis** <<davisjam@vt.edu>> (he/him)
 * [digitalinfinity](https://github.com/digitalinfinity) -
   **Hitesh Kanwathirtha** <<digitalinfinity@gmail.com>> (he/him)
+* [dnlup](https://github.com/dnlup)
+  **dnlup** <<dnlup.dev@gmail.com>>
 * [eljefedelrodeodeljefe](https://github.com/eljefedelrodeodeljefe) -
   **Robert Jefe Lindstaedt** <<robert.lindstaedt@gmail.com>>
 * [estliberitas](https://github.com/estliberitas) -
@@ -658,6 +670,8 @@ maintaining the Node.js project.
   **Himadri Ganguly** <<himadri.tech@gmail.com>> (he/him)
 * [iam-frankqiu](https://github.com/iam-frankqiu) -
   **Frank Qiu** <<iam.frankqiu@gmail.com>> (he/him)
+* [kvakil](https://github.com/kvakil) -
+  **Keyhan Vakil** <<kvakil@sylph.kvakil.me>> (they/them)
 * [marsonya](https://github.com/marsonya) -
   **Akhil Marsonya** <<akhil.marsonya27@gmail.com>> (he/him)
 * [meixg](https://github.com/meixg) -

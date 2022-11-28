@@ -237,6 +237,7 @@ void SetIsolateErrorHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
   auto* fatal_error_cb = s.fatal_error_callback ?
       s.fatal_error_callback : OnFatalError;
   isolate->SetFatalErrorHandler(fatal_error_cb);
+  isolate->SetOOMErrorHandler(OOMErrorHandler);
 
   if ((s.flags & SHOULD_NOT_SET_PREPARE_STACK_TRACE_CALLBACK) == 0) {
     auto* prepare_stack_trace_cb = s.prepare_stack_trace_callback ?
@@ -763,6 +764,7 @@ ThreadId AllocateEnvironmentThreadId() {
 void DefaultProcessExitHandler(Environment* env, int exit_code) {
   env->set_can_call_into_js(false);
   env->stop_sub_worker_contexts();
+  env->isolate()->DumpAndResetStats();
   DisposePlatform();
   uv_library_shutdown();
   exit(exit_code);

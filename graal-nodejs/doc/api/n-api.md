@@ -1187,7 +1187,7 @@ added: v16.14.0
 
 > Stability: 1 - Experimental
 
-````c
+```c
 NAPI_EXTERN napi_status node_api_throw_syntax_error(napi_env env,
                                                     const char* code,
                                                     const char* msg);
@@ -1212,7 +1212,7 @@ napiVersion: 1
 NAPI_EXTERN napi_status napi_is_error(napi_env env,
                                       napi_value value,
                                       bool* result);
-````
+```
 
 * `[in] env`: The environment that the API is invoked under.
 * `[in] value`: The `napi_value` to be checked.
@@ -4727,8 +4727,8 @@ napi_status napi_get_cb_info(napi_env env,
   provided than claimed, the rest of `argv` is filled with `napi_value` values
   that represent `undefined`. `argv` can optionally be ignored by
   passing `NULL`.
-* `[out] this`: Receives the JavaScript `this` argument for the call. `this`
-  can optionally be ignored by passing `NULL`.
+* `[out] thisArg`: Receives the JavaScript `this` argument for the call.
+  `thisArg` can optionally be ignored by passing `NULL`.
 * `[out] data`: Receives the data pointer for the callback. `data` can
   optionally be ignored by passing `NULL`.
 
