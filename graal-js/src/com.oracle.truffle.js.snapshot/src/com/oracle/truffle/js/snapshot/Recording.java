@@ -82,11 +82,11 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.codec.BinaryEncoder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
@@ -1317,6 +1317,8 @@ public class Recording {
             enc = dumpFunctionData((JSFunctionData) arg);
         } else if (arg instanceof SourceSection) {
             enc = dumpSourceSection((SourceSection) arg);
+        } else if (arg instanceof Source) {
+            enc = dumpSource((Source) arg);
         } else if (arg instanceof Environment) {
             enc = dumpPlaceholder(arg);
         } else if (arg instanceof JSFrameDescriptor || arg instanceof InternalSlotId) {
