@@ -91,6 +91,7 @@ import com.oracle.truffle.js.codec.BinaryEncoder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
+import com.oracle.truffle.js.nodes.JSNodeDecoder;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -509,7 +510,7 @@ public class Recording {
 
         @Override
         public void encodeTo(JSNodeEncoder encoder) {
-            encoder.encodeLoadArg(getId(), -2);
+            encoder.encodeLoadArg(getId(), JSNodeDecoder.SOURCE_ARG);
         }
     }
 
@@ -530,7 +531,7 @@ public class Recording {
 
         @Override
         public void encodeTo(JSNodeEncoder encoder) {
-            encoder.encodeLoadArg(getId(), -1);
+            encoder.encodeLoadArg(getId(), JSNodeDecoder.CONTEXT_ARG);
         }
     }
 
