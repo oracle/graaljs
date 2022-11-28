@@ -92,7 +92,7 @@ v8::Local<v8::Value> GraalFunction::Call(v8::Local<v8::Value> recv, int argc, v8
         reinterpret_cast<GraalIsolate*> (GraalIsolate::GetCurrent())->ReportAPIFailure(
                 "v8::Function::Call", "Function to be called is a null pointer");
     }
-    if (!Isolate()->GetJSExecutionAllowed()) {
+    if (!Isolate()->CheckJSExecutionAllowed()) {
         return nullptr;
     }
     jobject java_receiver = reinterpret_cast<GraalValue*> (*recv)->GetJavaObject();

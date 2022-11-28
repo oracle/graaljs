@@ -1,6 +1,7 @@
 'use strict';
 
 const {
+  RegExpPrototypeExec,
   globalThis,
 } = primordials;
 
@@ -45,6 +46,7 @@ function evalModule(source, print) {
   }
   const { loadESM } = require('internal/process/esm_loader');
   const { handleMainPromise } = require('internal/modules/run_main');
+  RegExpPrototypeExec(/^/, ''); // Necessary to reset RegExp statics before user code runs.
   return handleMainPromise(loadESM((loader) => loader.eval(source)));
 }
 
@@ -72,6 +74,7 @@ function evalScript(name, body, breakFirstLine, print) {
     return (main) => main();
   `;
   globalThis.__filename = name;
+  RegExpPrototypeExec(/^/, ''); // Necessary to reset RegExp statics before user code runs.
   const result = module._compile(script, `${name}-wrapper`)(() =>
     require('vm').runInThisContext(body, {
       filename: name,
@@ -138,27 +141,6 @@ function createOnGlobalUncaughtException() {
     // It's possible that defaultTriggerAsyncId was set for a constructor
     // call that threw and was never cleared. So clear it now.
     clearDefaultTriggerAsyncId();
-
-    // If diagnostic reporting is enabled, call into its handler to see
-    // whether it is interested in handling the situation.
-    // Ignore if the error is scoped inside a domain.
-    // use == in the checks as we want to allow for null and undefined
-    if (er == null || er.domain == null) {
-      try {
-        const report = internalBinding('report');
-        if (report != null && report.shouldReportOnUncaughtException()) {
-          report.writeReport(
-            typeof er?.message === 'string' ?
-              er.message :
-              'Exception',
-            'Exception',
-            null,
-            er ?? {});
-        }
-      } catch {
-        // Ignore the exception. Diagnostic reporting is unavailable.
-      }
-    }
 
     const type = fromPromise ? 'unhandledRejection' : 'uncaughtException';
     process.emit('uncaughtExceptionMonitor', er, type);

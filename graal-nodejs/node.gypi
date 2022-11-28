@@ -151,7 +151,7 @@
             },
           },
           'conditions': [
-            ['OS!="aix" and node_shared=="false"', {
+            ['OS!="aix" and OS!="ios" and node_shared=="false"', {
               'ldflags': [
                 '-Wl,--whole-archive',
                 '<(obj_dir)/deps/zlib/<(STATIC_LIB_PREFIX)zlib<(STATIC_LIB_SUFFIX)',
@@ -190,7 +190,7 @@
             },
           },
           'conditions': [
-            ['OS!="aix" and node_shared=="false"', {
+            ['OS!="aix" and OS!="ios" and node_shared=="false"', {
               'ldflags': [
                 '-Wl,--whole-archive',
                 '<(obj_dir)/deps/uv/<(STATIC_LIB_PREFIX)uv<(STATIC_LIB_SUFFIX)',

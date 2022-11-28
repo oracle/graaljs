@@ -16,6 +16,7 @@
 #include "util-inl.h"
 
 #include <atomic>
+#include <cstring>
 #include <memory>
 
 node_napi_env__::node_napi_env__(v8::Local<v8::Context> context,
@@ -24,9 +25,9 @@ node_napi_env__::node_napi_env__(v8::Local<v8::Context> context,
   CHECK_NOT_NULL(node_env());
 }
 
-node_napi_env__::~node_napi_env__() {
+void node_napi_env__::DeleteMe() {
   destructing = true;
-  FinalizeAll();
+  napi_env__::DeleteMe();
 }
 
 bool node_napi_env__::can_call_into_js() const {
@@ -89,7 +90,7 @@ void node_napi_env__::CallbackIntoModule(T&& call) {
           "Uncaught N-API callback exception detected, please run node "
           "with option --force-node-api-uncaught-exceptions-policy=true"
           "to handle those exceptions properly.",
-          "DEP0XXX");
+          "DEP0168");
       return;
     }
     // If there was an unhandled exception in the complete callback,
@@ -124,8 +125,8 @@ class BufferFinalizer : private Finalizer {
   };
 };
 
-static inline napi_env NewEnv(v8::Local<v8::Context> context,
-                              const std::string& module_filename) {
+inline napi_env NewEnv(v8::Local<v8::Context> context,
+                       const std::string& module_filename) {
   node_napi_env result;
 
   result = new node_napi_env__(context, module_filename);

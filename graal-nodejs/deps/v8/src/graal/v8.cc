@@ -75,6 +75,7 @@
 #include "v8.h"
 #include "v8-fast-api-calls.h"
 #include "v8-profiler.h"
+#include "v8-unwinder-state.h"
 #include "v8-version-string.h"
 #ifdef __POSIX__
 #include "v8-wasm-trap-handler-posix.h"
@@ -547,8 +548,14 @@ namespace v8 {
         heap_statistics->total_available_size_ = graal_isolate->ReadInt64FromSharedBuffer();
         heap_statistics->used_heap_size_ = graal_isolate->ReadInt64FromSharedBuffer();
         heap_statistics->heap_size_limit_ = 0;
-        heap_statistics->does_zap_garbage_ = false;
+        heap_statistics->malloced_memory_ = 0;
         heap_statistics->external_memory_ = 4096; // dummy value
+        heap_statistics->peak_malloced_memory_ = 0;
+        heap_statistics->does_zap_garbage_ = false;
+        heap_statistics->number_of_native_contexts_ = 0;
+        heap_statistics->number_of_detached_contexts_ = 0;
+        heap_statistics->total_global_handles_size_ = 0;
+        heap_statistics->used_global_handles_size_ = 0;
     }
 
     Isolate::CreateParams::CreateParams() {
@@ -579,6 +586,22 @@ namespace v8 {
 
     void Isolate::TerminateExecution() {
         reinterpret_cast<GraalIsolate*> (this)->TerminateExecution();
+    }
+
+    bool Isolate::IsExecutionTerminating() {
+        return reinterpret_cast<GraalIsolate*> (this)->IsExecutionTerminating();
+    }
+
+    void Isolate::DumpAndResetStats() {
+        TRACE
+    }
+
+    void Isolate::GetStackSample(const RegisterState& state, void** frames, size_t frames_limit, SampleInfo* sample_info) {
+        TRACE
+    }
+
+    void Isolate::SetOOMErrorHandler(OOMErrorCallback that) {
+        TRACE
     }
 
     Local<Value> Isolate::ThrowException(Local<Value> exception) {
@@ -1326,7 +1349,7 @@ namespace v8 {
     }
 
     void V8::ToLocalEmpty() {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (GraalIsolate::GetCurrent())->ReportAPIFailure("v8::ToLocalChecked", "Empty MaybeLocal.");
     }
 
     bool Value::IsExternal() const {
@@ -2868,20 +2891,27 @@ namespace v8 {
 
     Isolate::DisallowJavascriptExecutionScope::DisallowJavascriptExecutionScope(Isolate* isolate, OnFailure on_failure) {
         isolate_ = isolate;
-        was_execution_allowed_throws_ = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAllowed(false);
+        GraalIsolate::JSExecutionAction newAction = (on_failure == THROW_ON_FAILURE) ? GraalIsolate::kJSExecutionThrow : GraalIsolate::kJSExecutionCrash;
+        GraalIsolate::JSExecutionAction oldAction = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAction(newAction);
+        was_execution_allowed_throws_ = (oldAction == GraalIsolate::kJSExecutionThrow);
+        was_execution_allowed_assert_ = (oldAction == GraalIsolate::kJSExecutionCrash);
     }
 
     Isolate::DisallowJavascriptExecutionScope::~DisallowJavascriptExecutionScope() {
-        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAllowed(was_execution_allowed_throws_);
+        GraalIsolate::JSExecutionAction action = was_execution_allowed_throws_ ? GraalIsolate::kJSExecutionThrow : (was_execution_allowed_assert_ ? GraalIsolate::kJSExecutionCrash : GraalIsolate::kJSExecutionAllowed);
+        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAction(action);
     }
 
     Isolate::AllowJavascriptExecutionScope::AllowJavascriptExecutionScope(Isolate* isolate) {
         isolate_ = isolate;
-        was_execution_allowed_throws_ = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAllowed(true);
+        GraalIsolate::JSExecutionAction oldAction = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAction(GraalIsolate::kJSExecutionAllowed);
+        was_execution_allowed_throws_ = (oldAction == GraalIsolate::kJSExecutionThrow);
+        was_execution_allowed_assert_ = (oldAction == GraalIsolate::kJSExecutionCrash);
     }
 
     Isolate::AllowJavascriptExecutionScope::~AllowJavascriptExecutionScope() {
-        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAllowed(was_execution_allowed_throws_);
+        GraalIsolate::JSExecutionAction action = was_execution_allowed_throws_ ? GraalIsolate::kJSExecutionThrow : (was_execution_allowed_assert_ ? GraalIsolate::kJSExecutionCrash : GraalIsolate::kJSExecutionAllowed);
+        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAction(action);
     }
 
     void HeapProfiler::RemoveBuildEmbedderGraphCallback(BuildEmbedderGraphCallback callback, void* data) {
@@ -3506,7 +3536,7 @@ namespace v8 {
     }
 
     void Isolate::RequestInterrupt(InterruptCallback callback, void* data) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->RequestInterrupt(callback, data);
     }
 
     void Isolate::ClearKeptObjects() {
@@ -3832,6 +3862,14 @@ namespace v8 {
     }
 
     void TracedReferenceBase::CheckValue() const {
+    }
+
+    RegisterState::RegisterState() {
+        TRACE
+    }
+
+    RegisterState::~RegisterState() {
+        TRACE
     }
 
     void AccessorSignature::CheckCast(class v8::Data* that) {}

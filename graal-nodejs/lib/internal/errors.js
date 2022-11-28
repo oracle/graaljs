@@ -392,8 +392,9 @@ function makeNodeErrorWithCode(Base, key) {
 
 /**
  * This function removes unnecessary frames from Node.js core errors.
- * @template {(...args: any[]) => any} T
- * @type {(fn: T) => T}
+ * @template {(...args: unknown[]) => unknown} T
+ * @param {T} fn
+ * @returns {T}
  */
 function hideStackFrames(fn) {
   // We rename the functions that will be hidden to cut off the stacktrace
@@ -1133,6 +1134,8 @@ E('ERR_HTTP2_TRAILERS_NOT_READY',
   'Trailing headers cannot be sent until after the wantTrailers event is ' +
   'emitted', Error);
 E('ERR_HTTP2_UNSUPPORTED_PROTOCOL', 'protocol "%s" is unsupported.', Error);
+E('ERR_HTTP_CONTENT_LENGTH_MISMATCH',
+  'Response body\'s content-length of %s byte(s) does not match the content-length of %s byte(s) set in header', Error);
 E('ERR_HTTP_HEADERS_SENT',
   'Cannot %s headers after they are sent to the client', Error);
 E('ERR_HTTP_INVALID_HEADER_VALUE',
@@ -1337,7 +1340,7 @@ E('ERR_INVALID_RETURN_PROPERTY', (input, name, prop, value) => {
 }, TypeError);
 E('ERR_INVALID_RETURN_PROPERTY_VALUE', (input, name, prop, value) => {
   let type;
-  if (value && value.constructor && value.constructor.name) {
+  if (value?.constructor?.name) {
     type = `instance of ${value.constructor.name}`;
   } else {
     type = `type ${typeof value}`;

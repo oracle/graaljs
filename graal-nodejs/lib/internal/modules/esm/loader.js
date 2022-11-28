@@ -8,15 +8,13 @@ const {
   ArrayIsArray,
   ArrayPrototypeJoin,
   ArrayPrototypePush,
-  FunctionPrototypeBind,
   FunctionPrototypeCall,
   ObjectAssign,
   ObjectCreate,
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
-  PromiseAll,
   RegExpPrototypeExec,
-  SafeArrayIterator,
+  SafePromiseAll,
   SafeWeakMap,
   StringPrototypeSlice,
   StringPrototypeToUpperCase,
@@ -181,39 +179,38 @@ function nextHookFactory(chain, meta, { validateArgs, validateOutput }) {
  * the main module and everything in its dependency graph.
  */
 class ESMLoader {
-  /**
-   * Prior to ESM loading. These are called once before any modules are started.
-   * @private
-   * @property {KeyedHook[]} globalPreloaders Last-in-first-out
-   *  list of preload hooks.
-   */
-  #globalPreloaders = [];
+  #hooks = {
+    /**
+     * Prior to ESM loading. These are called once before any modules are started.
+     * @private
+     * @property {KeyedHook[]} globalPreload Last-in-first-out list of preload hooks.
+     */
+    globalPreload: [],
 
-  /**
-   * Phase 2 of 2 in ESM loading.
-   * @private
-   * @property {KeyedHook[]} loaders Last-in-first-out
-   *  collection of loader hooks.
-   */
-  #loaders = [
-    {
-      fn: defaultLoad,
-      url: 'node:internal/modules/esm/load',
-    },
-  ];
+    /**
+     * Phase 2 of 2 in ESM loading (phase 1 is below).
+     * @private
+     * @property {KeyedHook[]} load Last-in-first-out collection of loader hooks.
+     */
+    load: [
+      {
+        fn: defaultLoad,
+        url: 'node:internal/modules/esm/load',
+      },
+    ],
 
-  /**
-   * Phase 1 of 2 in ESM loading.
-   * @private
-   * @property {KeyedHook[]} resolvers Last-in-first-out
-   *  collection of resolver hooks.
-   */
-  #resolvers = [
-    {
-      fn: defaultResolve,
-      url: 'node:internal/modules/esm/resolve',
-    },
-  ];
+    /**
+     * Phase 1 of 2 in ESM loading.
+     * @private
+     * @property {KeyedHook[]} resolve Last-in-first-out collection of resolve hooks.
+     */
+    resolve: [
+      {
+        fn: defaultResolve,
+        url: 'node:internal/modules/esm/resolve',
+      },
+    ],
+  };
 
   #importMetaInitializer = initializeImportMeta;
 
@@ -306,16 +303,14 @@ class ESMLoader {
       'DeprecationWarning',
     );
 
-    // Use .bind() to avoid giving access to the Loader instance when called.
     if (globalPreload) {
-      acceptedHooks.globalPreloader =
-        FunctionPrototypeBind(globalPreload, null);
+      acceptedHooks.globalPreload = globalPreload;
     }
     if (resolve) {
-      acceptedHooks.resolver = FunctionPrototypeBind(resolve, null);
+      acceptedHooks.resolve = resolve;
     }
     if (load) {
-      acceptedHooks.loader = FunctionPrototypeBind(load, null);
+      acceptedHooks.load = load;
     }
 
     return acceptedHooks;
@@ -337,41 +332,39 @@ class ESMLoader {
         url,
       } = customLoaders[i];
       const {
-        globalPreloader,
-        resolver,
-        loader,
+        globalPreload,
+        resolve,
+        load,
       } = ESMLoader.pluckHooks(exports);
 
-      if (globalPreloader) {
+      if (globalPreload) {
         ArrayPrototypePush(
-          this.#globalPreloaders,
+          this.#hooks.globalPreload,
           {
-            fn: FunctionPrototypeBind(globalPreloader), // [1]
+            fn: globalPreload,
             url,
           },
         );
       }
-      if (resolver) {
+      if (resolve) {
         ArrayPrototypePush(
-          this.#resolvers,
+          this.#hooks.resolve,
           {
-            fn: FunctionPrototypeBind(resolver), // [1]
+            fn: resolve,
             url,
           },
         );
       }
-      if (loader) {
+      if (load) {
         ArrayPrototypePush(
-          this.#loaders,
+          this.#hooks.load,
           {
-            fn: FunctionPrototypeBind(loader), // [1]
+            fn: load,
             url,
           },
         );
       }
     }
-
-    // [1] ensure hook function is not bound to ESMLoader instance
 
     this.preload();
   }
@@ -417,14 +410,14 @@ class ESMLoader {
   async getModuleJob(specifier, parentURL, importAssertions) {
     let importAssertionsForResolve;
 
-    // By default, `this.#loaders` contains just the Node default load hook
-    if (this.#loaders.length !== 1) {
+    // By default, `this.#hooks.load` contains just the Node default load hook
+    if (this.#hooks.load.length !== 1) {
       // We can skip cloning if there are no user-provided loaders because
       // the Node.js default resolve hook does not use import assertions.
-      importAssertionsForResolve = ObjectAssign(
-        ObjectCreate(null),
-        importAssertions,
-      );
+      importAssertionsForResolve = {
+        __proto__: null,
+        ...importAssertions,
+      };
     }
 
     const { format, url } =
@@ -530,16 +523,16 @@ class ESMLoader {
         .then(({ module }) => module.getNamespace());
     }
 
-    const namespaces = await PromiseAll(new SafeArrayIterator(jobs));
+    const namespaces = await SafePromiseAll(jobs);
 
     if (!wasArr) { return namespaces[0]; } // We can skip the pairing below
 
     for (let i = 0; i < count; i++) {
-      const namespace = ObjectCreate(null);
-      namespace.url = specifiers[i];
-      namespace.exports = namespaces[i];
-
-      namespaces[i] = namespace;
+      namespaces[i] = {
+        __proto__: null,
+        url: specifiers[i],
+        exports: namespaces[i],
+      };
     }
 
     return namespaces;
@@ -557,7 +550,7 @@ class ESMLoader {
    * @returns {{ format: ModuleFormat, source: ModuleSource }}
    */
   async load(url, context = {}) {
-    const chain = this.#loaders;
+    const chain = this.#hooks.load;
     const meta = {
       chainFinished: null,
       context,
@@ -686,7 +679,7 @@ class ESMLoader {
   }
 
   preload() {
-    for (let i = this.#globalPreloaders.length - 1; i >= 0; i--) {
+    for (let i = this.#hooks.globalPreload.length - 1; i >= 0; i--) {
       const channel = new MessageChannel();
       const {
         port1: insidePreload,
@@ -697,19 +690,19 @@ class ESMLoader {
       insideLoader.unref();
 
       const {
-        fn: preloader,
+        fn: preload,
         url: specifier,
-      } = this.#globalPreloaders[i];
+      } = this.#hooks.globalPreload[i];
 
-      const preload = preloader({
+      const preloaded = preload({
         port: insideLoader,
       });
 
-      if (preload == null) { return; }
+      if (preloaded == null) { return; }
 
       const hookErrIdentifier = `${specifier} globalPreload`;
 
-      if (typeof preload !== 'string') { // [2]
+      if (typeof preloaded !== 'string') { // [2]
         throw new ERR_INVALID_RETURN_VALUE(
           'a string',
           hookErrIdentifier,
@@ -718,7 +711,7 @@ class ESMLoader {
       }
       const { compileFunction } = require('vm');
       const preloadInit = compileFunction(
-        preload,
+        preloaded,
         ['getBuiltin', 'port', 'setImportMetaCallback'],
         {
           filename: '<preload>',
@@ -791,7 +784,7 @@ class ESMLoader {
   async resolve(
     originalSpecifier,
     parentURL,
-    importAssertions = ObjectCreate(null)
+    importAssertions = ObjectCreate(null),
   ) {
     const isMain = parentURL === undefined;
 
@@ -806,7 +799,7 @@ class ESMLoader {
         parentURL,
       );
     }
-    const chain = this.#resolvers;
+    const chain = this.#hooks.resolve;
     const context = {
       conditions: DEFAULT_CONDITIONS,
       importAssertions,

@@ -272,6 +272,11 @@ effort to report stack traces relative to the original source file.
 Overriding `Error.prepareStackTrace` prevents `--enable-source-maps` from
 modifying the stack trace.
 
+Note, enabling source maps can introduce latency to your application
+when `Error.stack` is accessed. If you access `Error.stack` frequently
+in your application, take into account the performance implications
+of `--enable-source-maps`.
+
 ### `--experimental-fetch`
 
 <!-- YAML
@@ -954,6 +959,9 @@ changes:
 
 Name of the file to which the report will be written.
 
+If the filename is set to `'stdout'` or `'stderr'`, the report is written to
+the stdout or stderr of the process respectively.
+
 ### `--report-on-fatalerror`
 
 <!-- YAML
@@ -1021,6 +1029,9 @@ Default signal is `SIGUSR2`.
 <!-- YAML
 added: v11.8.0
 changes:
+  - version: v16.18.0
+    pr-url: https://github.com/nodejs/node/pull/44208
+    description: Report is not generated if the uncaught exception is handled.
   - version:
      - v13.12.0
      - v12.17.0
@@ -1032,9 +1043,9 @@ changes:
                  `--report-uncaught-exception`.
 -->
 
-Enables report to be generated on uncaught exceptions. Useful when inspecting
-the JavaScript stack in conjunction with native stack and other runtime
-environment data.
+Enables report to be generated when the process exits due to an uncaught
+exception. Useful when inspecting the JavaScript stack in conjunction with
+native stack and other runtime environment data.
 
 ### `--secure-heap=n`
 
@@ -1195,7 +1206,10 @@ for TLSv1.2, which is not as secure as TLSv1.3.
 
 <!-- YAML
 added: v14.3.0
+deprecated: v16.18.0
 -->
+
+> Stability: 0 - Deprecated
 
 Print short summaries of calls to [`Atomics.wait()`][] to stderr.
 The output could look like this:

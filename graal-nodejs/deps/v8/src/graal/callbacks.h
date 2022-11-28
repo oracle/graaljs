@@ -156,4 +156,6 @@ jobject GraalExecutePrepareStackTraceCallback(JNIEnv* env, jclass nativeAccess, 
 
 jobject GraalSyntheticModuleEvaluationSteps(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_module);
 
+void GraalExecuteInterruptCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong data);
+
 #endif /* CALLBACKS_H_ */

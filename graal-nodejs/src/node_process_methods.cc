@@ -537,7 +537,7 @@ void BindingData::PrepareForSerialization(Local<Context> context,
 }
 
 InternalFieldInfo* BindingData::Serialize(int index) {
-  DCHECK_EQ(index, BaseObject::kSlot);
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
   InternalFieldInfo* info = InternalFieldInfo::New(type());
   return info;
 }
@@ -546,7 +546,7 @@ void BindingData::Deserialize(Local<Context> context,
                               Local<Object> holder,
                               int index,
                               InternalFieldInfo* info) {
-  DCHECK_EQ(index, BaseObject::kSlot);
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
   v8::HandleScope scope(context->GetIsolate());
   Environment* env = Environment::GetCurrent(context);
   // Recreate the buffer in the constructor.
@@ -567,7 +567,6 @@ static void Initialize(Local<Object> target,
   // define various internal methods
   if (env->owns_process_state()) {
     env->SetMethod(target, "_debugProcess", DebugProcess);
-    env->SetMethod(target, "_debugEnd", DebugEnd);
     env->SetMethod(target, "abort", Abort);
     env->SetMethod(target, "causeSegfault", CauseSegfault);
     env->SetMethod(target, "chdir", Chdir);
@@ -580,6 +579,7 @@ static void Initialize(Local<Object> target,
   env->SetMethod(target, "cpuUsage", CPUUsage);
   env->SetMethod(target, "resourceUsage", ResourceUsage);
 
+  env->SetMethod(target, "_debugEnd", DebugEnd);
   env->SetMethod(target, "_getActiveRequests", GetActiveRequests);
   env->SetMethod(target, "_getActiveRequestsInfo", GetActiveRequestsInfo);
   env->SetMethod(target, "_getActiveHandles", GetActiveHandles);

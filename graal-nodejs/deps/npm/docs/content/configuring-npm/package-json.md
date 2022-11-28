@@ -632,7 +632,7 @@ commit. If the commit-ish has the format `#semver:<semver>`, `<semver>` can
 be any valid semver range or exact version, and npm will look for any tags
 or refs matching that range in the remote repository, much as it would for
 a registry dependency. If neither `#<commit-ish>` or `#semver:<semver>` is
-specified, then `master` is used.
+specified, then the default branch is used.
 
 Examples:
 
@@ -873,7 +873,7 @@ be found or fails to install, then you may put it in the
 `optionalDependencies` object.  This is a map of package name to version or
 url, just like the `dependencies` object.  The difference is that build
 failures do not cause installation to fail.  Running `npm install
---no-optional` will prevent these dependencies from being installed.
+--omit=optional` will prevent these dependencies from being installed.
 
 It is still your program's responsibility to handle the lack of the
 dependency.  For example, something like this:

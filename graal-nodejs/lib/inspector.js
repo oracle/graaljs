@@ -22,10 +22,13 @@ const EventEmitter = require('events');
 const { queueMicrotask } = require('internal/process/task_queues');
 const {
   validateCallback,
+  isUint32,
+  validateInt32,
   validateObject,
   validateString,
 } = require('internal/validators');
 const { isMainThread } = require('worker_threads');
+const { _debugEnd } = internalBinding('process_methods');
 
 const {
   Connection,
@@ -163,6 +166,13 @@ function inspectorOpen(port, host, wait) {
   if (isEnabled()) {
     throw new ERR_INSPECTOR_ALREADY_ACTIVATED();
   }
+  // inspectorOpen() currently does not typecheck its arguments and adding
+  // such checks would be a potentially breaking change. However, the native
+  // open() function requires the port to fit into a 16-bit unsigned integer,
+  // causing an integer overflow otherwise, so we at least need to prevent that.
+  if (isUint32(port)) {
+    validateInt32(port, 'port', 0, 65535);
+  }
   open(port, host);
   if (wait)
     waitForDebugger();
@@ -181,7 +191,7 @@ function inspectorWaitForDebugger() {
 
 module.exports = {
   open: inspectorOpen,
-  close: process._debugEnd,
+  close: _debugEnd,
   url,
   waitForDebugger: inspectorWaitForDebugger,
   // This is dynamically added during bootstrap,
