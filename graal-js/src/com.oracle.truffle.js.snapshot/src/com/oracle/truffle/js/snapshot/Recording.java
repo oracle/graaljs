@@ -112,6 +112,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
@@ -1322,10 +1323,10 @@ public class Recording {
             enc = dumpSource((Source) arg);
         } else if (arg instanceof Environment) {
             enc = dumpPlaceholder(arg);
-        } else if (arg instanceof JSFrameDescriptor || arg instanceof InternalSlotId) {
+        } else if (arg instanceof JSFrameDescriptor || arg instanceof InternalSlotId || arg instanceof ScriptOrModule) {
             enc = dumpRecorded(arg);
         } else {
-            throw new RuntimeException("Unrecognized argument: " + arg);
+            throw new IllegalArgumentException(String.format("Unrecognized argument or return type: %s (%s)", arg.getClass().getTypeName(), arg));
         }
         return enc.asVar();
     }
