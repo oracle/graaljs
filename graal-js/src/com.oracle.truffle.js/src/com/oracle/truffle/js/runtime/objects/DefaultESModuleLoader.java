@@ -40,6 +40,14 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.FileSystemException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
@@ -51,15 +59,6 @@ import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
-
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.FileSystemException;
-import java.nio.file.InvalidPathException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
 
 public class DefaultESModuleLoader implements JSModuleLoader {
 
@@ -147,7 +146,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 // Use the original message when it doesn't seem useless
                 throw Errors.createErrorFromException(fsex);
             }
-        } catch (IOException | UnsupportedOperationException | SecurityException | InvalidPathException e) {
+        } catch (IOException | SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
             throw Errors.createErrorFromException(e);
         }
     }
@@ -254,7 +253,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                     // Source with a non-existing path but with a content.
                     canonicalPath = path;
                 }
-            } catch (IOException | SecurityException e) {
+            } catch (IOException | SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
                 throw Errors.createErrorFromException(e);
             }
         }

@@ -42,11 +42,15 @@ package com.oracle.truffle.js.builtins.commonjs;
 
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -54,19 +58,38 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
-public abstract class CommonJSGlobalModuleGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
+public abstract class CommonJSModuleGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
-    CommonJSGlobalModuleGetterBuiltin(JSContext context, JSBuiltin builtin) {
+    private final GlobalCommonJSRequireBuiltins.GlobalRequire getter;
+
+    CommonJSModuleGetterBuiltin(JSContext context, JSBuiltin builtin, GlobalCommonJSRequireBuiltins.GlobalRequire getter) {
         super(context, builtin);
-    }
-
-    @Specialization
-    protected Object getObject() {
-        return getOrCreateModuleObject(getContext(), getRealm());
+        this.getter = getter;
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static JSDynamicObject getOrCreateModuleObject(JSContext context, JSRealm realm) {
+    @Specialization
+    protected Object getObject() {
+        try {
+            switch (getter) {
+                case globalModuleGetter:
+                    return getOrCreateModuleObject(getContext(), getRealm());
+                case globalExportsGetter:
+                    return JSObject.get(getOrCreateModuleObject(getContext(), getRealm()), Strings.EXPORTS_PROPERTY_NAME);
+                case filenameGetter:
+                    return getCurrentFileName();
+                case dirnameGetter:
+                    return getCurrentFolderName();
+                default:
+                    throw Errors.shouldNotReachHere();
+            }
+        } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException ex) {
+            throw Errors.createErrorFromException(ex);
+        }
+    }
+
+    private static JSDynamicObject getOrCreateModuleObject(JSContext context, JSRealm realm) {
+        CompilerAsserts.neverPartOfCompilation();
         String filePath = CommonJSResolution.getCurrentFileNameFromStack();
         if (filePath != null) {
             TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(filePath);
@@ -90,6 +113,29 @@ public abstract class CommonJSGlobalModuleGetterBuiltin extends GlobalBuiltins.J
         JSObject exportsObject = JSOrdinary.create(context, realm);
         JSObject.set(moduleObject, Strings.EXPORTS_PROPERTY_NAME, exportsObject);
         return moduleObject;
+    }
+
+    private TruffleString getCurrentFileName() {
+        CompilerAsserts.neverPartOfCompilation();
+        String filePath = CommonJSResolution.getCurrentFileNameFromStack();
+        if (filePath != null) {
+            TruffleFile truffleFile = getRealm().getEnv().getPublicTruffleFile(filePath);
+            assert truffleFile.isRegularFile();
+            return Strings.fromJavaString(truffleFile.normalize().toString());
+        }
+        return Strings.UNKNOWN;
+    }
+
+    private TruffleString getCurrentFolderName() {
+        CompilerAsserts.neverPartOfCompilation();
+        String filePath = CommonJSResolution.getCurrentFileNameFromStack();
+        TruffleLanguage.Env env = getRealm().getEnv();
+        if (filePath != null) {
+            TruffleFile truffleFile = env.getPublicTruffleFile(filePath);
+            assert truffleFile.isRegularFile() && truffleFile.getParent().isDirectory();
+            return Strings.fromJavaString(truffleFile.getParent().normalize().toString());
+        }
+        return Strings.fromJavaString(CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext(), env).getAbsoluteFile().toString());
     }
 
 }

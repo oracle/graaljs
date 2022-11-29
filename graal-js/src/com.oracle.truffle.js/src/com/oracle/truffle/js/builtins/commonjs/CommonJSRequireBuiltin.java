@@ -40,6 +40,13 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.CJS_EXT;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.JSON_EXT;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.JS_EXT;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.MJS_EXT;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.NODE_EXT;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.hasCoreModuleReplacement;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.Stack;
@@ -48,6 +55,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -68,13 +76,6 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.CJS_EXT;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.JSON_EXT;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.JS_EXT;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.MJS_EXT;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.NODE_EXT;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.hasCoreModuleReplacement;
 
 public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
@@ -147,12 +148,23 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         super(context, builtin);
     }
 
+    @TruffleBoundary
     @Specialization
     protected Object require(JSDynamicObject currentRequire, TruffleString moduleIdentifier) {
         JSRealm realm = getRealm();
         TruffleLanguage.Env env = realm.getEnv();
-        TruffleFile resolutionEntryPath = getModuleResolutionEntryPath(currentRequire, env);
-        return requireImpl(moduleIdentifier.toJavaStringUncached(), resolutionEntryPath, realm);
+        String moduleIdentifierJavaString = moduleIdentifier.toJavaStringUncached();
+        try {
+            TruffleFile resolutionEntryPath = getModuleResolutionEntryPath(currentRequire, env);
+            return requireImpl(moduleIdentifierJavaString, resolutionEntryPath, realm);
+        } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
+            throw fail(moduleIdentifierJavaString, e.getMessage());
+        }
+    }
+
+    @Fallback
+    protected static Object fallback(@SuppressWarnings("unused") Object function, Object moduleIdentifier) {
+        throw Errors.createTypeErrorNotAString(moduleIdentifier);
     }
 
     @TruffleBoundary
@@ -166,7 +178,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             }
             // no core module replacement alias was found: continue and search in the FS.
         }
-        TruffleFile maybeModule = null;
+        TruffleFile maybeModule;
         try {
             maybeModule = CommonJSResolution.resolve(realm, moduleIdentifier, entryPath);
         } catch (SecurityException | IllegalArgumentException | UnsupportedOperationException e) {
@@ -280,7 +292,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
                 }
             }
             throw fail(jsonFile.toString());
-        } catch (SecurityException e) {
+        } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
             throw Errors.createErrorFromException(e);
         }
     }

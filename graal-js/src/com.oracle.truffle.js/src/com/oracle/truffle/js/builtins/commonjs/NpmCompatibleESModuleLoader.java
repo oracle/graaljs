@@ -150,7 +150,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             }
             // Really could not load as ESM.
             throw fail(MODULE_NOT_FOUND, specifier);
-        } catch (IOException e) {
+        } catch (IOException | SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
             log("IMPORT resolve ", specifier, " FAILED ", e.getMessage());
             throw Errors.createErrorFromException(e);
         }

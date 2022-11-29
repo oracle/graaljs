@@ -1950,12 +1950,12 @@ public class JSRealm {
     private void addCommonJSGlobals() {
         if (getContext().getContextOptions().isCommonJSRequire()) {
             String cwdOption = getContext().getContextOptions().getRequireCwd();
-            TruffleFile cwdFile = getEnv().getPublicTruffleFile(cwdOption);
             try {
+                TruffleFile cwdFile = getEnv().getPublicTruffleFile(cwdOption);
                 if (cwdOption != null && !cwdFile.exists()) {
                     throw Errors.createError("Invalid CommonJS root folder: " + cwdOption);
                 }
-            } catch (SecurityException se) {
+            } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException se) {
                 throw Errors.createError("Access denied to CommonJS root folder: " + cwdOption);
             }
             // Define `require` and other globals in global scope.

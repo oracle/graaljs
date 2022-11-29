@@ -110,7 +110,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.file.InvalidPathException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
@@ -2260,7 +2259,7 @@ public final class GraalJSAccess {
                 try {
                     TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceNameJavaString);
                     source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(bodyJavaString).name(sourceNameJavaString).build();
-                } catch (InvalidPathException e) {
+                } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
                     if (VERBOSE) {
                         System.err.println("INVALID PATH: " + sourceName);
                     }

@@ -830,12 +830,16 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             Source source;
             try {
                 source = Source.newBuilder(languageId, env.getPublicTruffleFile(Strings.toJavaString(fileName))).mimeType(mimeType).build();
-            } catch (AccessDeniedException e) {
-                throw Errors.createError("Cannot evaluate file " + fileName + ": permission denied");
-            } catch (NoSuchFileException e) {
-                throw Errors.createError("Cannot evaluate file " + fileName + ": no such file");
-            } catch (IOException | SecurityException e) {
-                throw Errors.createError("Cannot evaluate file: " + e.getMessage());
+            } catch (IOException | SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
+                String reason;
+                if (e instanceof AccessDeniedException) {
+                    reason = "access denied";
+                } else if (e instanceof NoSuchFileException) {
+                    reason = "no such file";
+                } else {
+                    reason = e.getMessage();
+                }
+                throw Errors.createError("Cannot evaluate file " + fileName + ": " + reason, e);
             }
 
             try {
