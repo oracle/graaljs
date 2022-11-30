@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -61,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
@@ -69,6 +68,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -111,11 +111,12 @@ public final class JSModuleNamespace extends JSNonProxy {
     public static JSModuleNamespaceObject create(JSContext context, JSRealm realm, JSModuleRecord module, List<Map.Entry<TruffleString, ExportResolution>> sortedExports) {
         CompilerAsserts.neverPartOfCompilation();
         EconomicMap<TruffleString, ExportResolution> exportResolutionMap = EconomicMap.create(sortedExports.size());
-        for (Map.Entry<TruffleString, ExportResolution> entry : sortedExports) {
-            exportResolutionMap.put(entry.getKey(), entry.getValue());
-        }
         JSObjectFactory factory = context.getModuleNamespaceFactory();
         JSModuleNamespaceObject obj = JSModuleNamespaceObject.create(realm, factory, module, exportResolutionMap);
+        for (Map.Entry<TruffleString, ExportResolution> entry : sortedExports) {
+            Properties.putWithFlagsUncached(obj, entry.getKey(), entry.getValue(), JSProperty.MODULE_NAMESPACE_EXPORT | JSAttributes.notConfigurableEnumerableWritable());
+            exportResolutionMap.put(entry.getKey(), entry.getValue());
+        }
         assert !JSObject.isExtensible(obj);
         return context.trackAllocation(obj);
     }
@@ -265,28 +266,6 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     public static boolean isJSModuleNamespace(Object obj) {
         return obj instanceof JSModuleNamespaceObject;
-    }
-
-    @TruffleBoundary
-    @Override
-    public List<Object> getOwnPropertyKeys(JSDynamicObject thisObj, boolean strings, boolean symbols) {
-        List<Object> symbolKeys = symbols ? symbolKeys(thisObj) : Collections.emptyList();
-        if (!strings) {
-            return symbolKeys;
-        }
-        UnmodifiableEconomicMap<TruffleString, ExportResolution> exports = getExports(thisObj);
-        List<Object> keys = new ArrayList<>(exports.size() + symbolKeys.size());
-        // TODO: convert these keys earlier
-        for (TruffleString k : exports.getKeys()) {
-            keys.add(k);
-        }
-        keys.addAll(symbolKeys);
-        return keys;
-    }
-
-    private static List<Object> symbolKeys(JSDynamicObject thisObj) {
-        // Module Namespace objects only have symbol keys in their shapes.
-        return thisObj.getShape().getKeyList();
     }
 
     @Override

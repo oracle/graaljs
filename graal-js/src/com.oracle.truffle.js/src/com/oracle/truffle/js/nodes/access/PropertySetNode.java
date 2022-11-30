@@ -1042,7 +1042,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     private SetCacheNode createCachedDataPropertyNodeJSObject(JSDynamicObject thisObj, int depth, Object value, AbstractShapeCheckNode shapeCheck, Property property) {
         assert !JSProperty.isConst(property) || (depth == 0 && isGlobal() && property.getLocation().isConstant() && property.getLocation().getConstantValue() == Dead.instance()) : "const assignment";
-        if (!JSProperty.isWritable(property)) {
+        if (!JSProperty.isWritable(property) || JSProperty.isModuleNamespaceExport(property)) {
             return new ReadOnlyPropertySetNode(shapeCheck, isStrict());
         } else if (superProperty) {
             // define the property on the receiver; currently not handled, rewrite to generic
@@ -1058,7 +1058,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
             return new PropertyProxySetNode(property, shapeCheck, isStrict());
         } else {
-            assert JSProperty.isWritable(property) && depth == 0 && !JSProperty.isProxy(property);
+            assert JSProperty.isWritable(property) && !JSProperty.isModuleNamespaceExport(property) && depth == 0 && !JSProperty.isProxy(property);
             if (property.getLocation().isConstant() || !property.getLocation().canStore(value)) {
                 return createRedefinePropertyNode(key, shapeCheck, shapeCheck.getShape(), property);
             }
