@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.arguments;
 
+import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -61,8 +62,7 @@ public final class GetActiveScriptOrModuleNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        assert scriptOrModule != null : "unresolved";
-        return scriptOrModule;
+        return Objects.requireNonNull(scriptOrModule);
     }
 
     @Override
