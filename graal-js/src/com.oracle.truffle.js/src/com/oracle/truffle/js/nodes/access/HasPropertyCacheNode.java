@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
-import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
@@ -329,8 +328,6 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
                 return new JSAdapterHasPropertyCacheNode(key, createJSClassCheck(thisObj, depth));
             } else if (JSProxy.isJSProxy(store)) {
                 return new JSProxyDispatcherPropertyHasNode(context, key, createJSClassCheck(thisObj, depth), isOwnProperty());
-            } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
-                return new UnspecializedHasPropertyCacheNode(createJSClassCheck(thisObj, depth));
             } else {
                 return new AbsentHasPropertyCacheNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false));
             }

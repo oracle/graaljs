@@ -80,6 +80,7 @@ import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -98,7 +99,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -108,6 +109,7 @@ import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -1179,6 +1181,26 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
+    public static final class ModuleNamespacePropertyGetNode extends LinkedPropertyGetNode {
+
+        private final Location location;
+        @Child ReadImportBindingNode readBindingNode;
+
+        public ModuleNamespacePropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
+            assert JSProperty.isModuleNamespaceExport(property);
+            this.location = property.getLocation();
+            this.readBindingNode = ReadImportBindingNode.create();
+        }
+
+        @Override
+        protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
+            JSModuleNamespaceObject store = (JSModuleNamespaceObject) receiverCheck.getStore(thisObj);
+            ExportResolution.Resolved exportResolution = (ExportResolution.Resolved) location.get(store, guard);
+            return readBindingNode.execute(exportResolution);
+        }
+    }
+
     public static final class UnspecializedPropertyGetNode extends LinkedPropertyGetNode {
         public UnspecializedPropertyGetNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
@@ -1916,37 +1938,37 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     private static GetCacheNode createSpecializationFromDataProperty(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
-        Property dataProperty = property;
-
         if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {
-            return new IntPropertyGetNode(dataProperty, receiverCheck);
+            return new IntPropertyGetNode(property, receiverCheck);
         } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
-            return new DoublePropertyGetNode(dataProperty, receiverCheck);
+            return new DoublePropertyGetNode(property, receiverCheck);
         } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
-            return new BooleanPropertyGetNode(dataProperty, receiverCheck);
+            return new BooleanPropertyGetNode(property, receiverCheck);
         } else if (property.getLocation() instanceof com.oracle.truffle.api.object.LongLocation) {
-            return new LongPropertyGetNode(dataProperty, receiverCheck);
+            return new LongPropertyGetNode(property, receiverCheck);
+        } else if (JSProperty.isModuleNamespaceExport(property)) {
+            return new ModuleNamespacePropertyGetNode(property, receiverCheck);
         } else if (JSProperty.isProxy(property)) {
             if (isArrayLengthProperty(property)) {
-                return new ArrayLengthPropertyGetNode(dataProperty, receiverCheck);
+                return new ArrayLengthPropertyGetNode(property, receiverCheck);
             } else if (isFunctionLengthProperty(property)) {
-                return new FunctionLengthPropertyGetNode(dataProperty, receiverCheck);
+                return new FunctionLengthPropertyGetNode(property, receiverCheck);
             } else if (isFunctionNameProperty(property)) {
-                return new FunctionNamePropertyGetNode(dataProperty, receiverCheck);
+                return new FunctionNamePropertyGetNode(property, receiverCheck);
             } else if (isClassPrototypeProperty(property)) {
-                return new ClassPrototypePropertyGetNode(dataProperty, receiverCheck, context);
+                return new ClassPrototypePropertyGetNode(property, receiverCheck, context);
             } else if (isStringLengthProperty(property)) {
-                return new StringObjectLengthPropertyGetNode(dataProperty, receiverCheck);
+                return new StringObjectLengthPropertyGetNode(property, receiverCheck);
             } else if (isLazyRegexResultIndexProperty(property)) {
-                return new LazyRegexResultIndexPropertyGetNode(dataProperty, receiverCheck);
+                return new LazyRegexResultIndexPropertyGetNode(property, receiverCheck);
             } else if (isLazyNamedCaptureGroupProperty(property)) {
                 int groupIndex = ((JSRegExp.LazyNamedCaptureGroupProperty) JSProperty.getConstantProxy(property)).getGroupIndex();
-                return new LazyNamedCaptureGroupPropertyGetNode(dataProperty, receiverCheck, groupIndex, context);
+                return new LazyNamedCaptureGroupPropertyGetNode(property, receiverCheck, groupIndex, context);
             } else {
-                return new ProxyPropertyGetNode(dataProperty, receiverCheck);
+                return new ProxyPropertyGetNode(property, receiverCheck);
             }
         } else {
-            return new ObjectPropertyGetNode(dataProperty, receiverCheck);
+            return new ObjectPropertyGetNode(property, receiverCheck);
         }
     }
 
@@ -2018,8 +2040,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return new JSAdapterPropertyGetNode(createJSClassCheck(thisObj, depth));
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
                 return createJSProxyCache(createJSClassCheck(thisObj, depth));
-            } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
-                return new UnspecializedPropertyGetNode(createJSClassCheck(thisObj, depth));
             } else {
                 return createUndefinedJSObjectPropertyNode(jsobject, depth);
             }

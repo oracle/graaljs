@@ -67,6 +67,8 @@ public class JSProperty {
 
     public static final int CONST = 1 << 5;
 
+    public static final int MODULE_NAMESPACE_EXPORT = 1 << 6 | PROXY;
+
     @TruffleBoundary
     public String toString(Property property) {
         return "\"" + property.getKey() + "\"" + getAttributeString(property) + ":" + property.getLocation();
@@ -189,6 +191,10 @@ public class JSProperty {
         return (property.getFlags() & CONST) != 0;
     }
 
+    public static boolean isModuleNamespaceExport(Property property) {
+        return isModuleNamespaceExport(property.getFlags());
+    }
+
     public static boolean isConfigurable(int flags) {
         return (flags & NOT_CONFIGURABLE) == 0;
     }
@@ -214,7 +220,11 @@ public class JSProperty {
     }
 
     public static boolean isConst(int flags) {
-        return (flags & CONST) == 0;
+        return (flags & CONST) != 0;
+    }
+
+    public static boolean isModuleNamespaceExport(int flags) {
+        return (flags & MODULE_NAMESPACE_EXPORT) == MODULE_NAMESPACE_EXPORT;
     }
 
     public static PropertyProxy getConstantProxy(Property proxyProperty) {
