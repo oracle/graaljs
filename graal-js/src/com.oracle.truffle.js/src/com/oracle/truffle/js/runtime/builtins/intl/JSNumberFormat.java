@@ -408,6 +408,9 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             case "meter":
                 measureUnit = MeasureUnit.METER;
                 break;
+            case "microsecond":
+                measureUnit = MeasureUnit.MICROSECOND;
+                break;
             case "mile":
                 measureUnit = MeasureUnit.MILE;
                 break;
@@ -428,6 +431,9 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                 break;
             case "month":
                 measureUnit = MeasureUnit.MONTH;
+                break;
+            case "nanosecond":
+                measureUnit = MeasureUnit.NANOSECOND;
                 break;
             case "ounce":
                 measureUnit = MeasureUnit.OUNCE;

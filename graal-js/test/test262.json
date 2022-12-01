@@ -6316,18 +6316,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/Intl/supportedValuesOf/units-accepted-by-NumberFormat.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/NumberFormat/constructor-unit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/format/units.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
     "filePath" : "intl402/NumberFormat/test-option-useGrouping.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
