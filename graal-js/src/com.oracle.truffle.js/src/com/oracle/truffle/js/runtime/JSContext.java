@@ -47,7 +47,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.charset.Charset;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
@@ -212,7 +211,7 @@ public class JSContext {
      */
     private final Assumption globalObjectPristineAssumption;
 
-    private volatile Map<TruffleString, Symbol> symbolRegistry;
+    private final Map<TruffleString, Symbol> symbolRegistry = new ConcurrentHashMap<>();
 
     // 0 = Number, 1 = BigInt, 2 = String
     private int operatorCounter = 3;
@@ -826,17 +825,7 @@ public class JSContext {
     }
 
     public final Map<TruffleString, Symbol> getSymbolRegistry() {
-        if (symbolRegistry == null) {
-            createSymbolRegistry();
-        }
         return symbolRegistry;
-    }
-
-    @TruffleBoundary
-    private synchronized void createSymbolRegistry() {
-        if (symbolRegistry == null) {
-            symbolRegistry = new HashMap<>();
-        }
     }
 
     public int getOperatorCounter() {
@@ -1224,10 +1213,6 @@ public class JSContext {
 
     public Shape getRegExpGroupsEmptyShape() {
         return regExpGroupsEmptyShape;
-    }
-
-    public void setSymbolRegistry(Map<TruffleString, Symbol> newSymbolRegistry) {
-        this.symbolRegistry = newSymbolRegistry;
     }
 
     public Map<Shape, JSShapeData> getShapeDataMap() {
