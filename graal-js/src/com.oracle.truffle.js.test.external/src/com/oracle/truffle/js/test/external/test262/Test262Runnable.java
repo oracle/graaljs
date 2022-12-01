@@ -247,8 +247,11 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
                     "arbitrary-module-namespace-names",
+                    "change-array-by-copy",
+                    "regexp-duplicate-named-groups",
                     "regexp-v-flag",
                     "resizable-arraybuffer",
+                    "symbols-as-weakmap-keys",
                     "tail-call-optimization",
     }));
     private static final Set<String> ES2023_FEATURES = new HashSet<>(Arrays.asList(new String[]{
