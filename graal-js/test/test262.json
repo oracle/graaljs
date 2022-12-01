@@ -7144,38 +7144,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "language/identifiers/part-unicode-15.0.0-class-escaped.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "language/identifiers/part-unicode-15.0.0-class.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "language/identifiers/part-unicode-15.0.0-escaped.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "language/identifiers/part-unicode-15.0.0.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "language/identifiers/start-unicode-15.0.0-class-escaped.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "language/identifiers/start-unicode-15.0.0-class.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "language/identifiers/start-unicode-15.0.0-escaped.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "language/identifiers/start-unicode-15.0.0.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
     "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
     "status" : "PASS",
     "statusOverrides" : {
