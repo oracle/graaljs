@@ -432,7 +432,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private WriteElementNode writeNode;
         @Child private ReadElementNode readNode;
         @Child private ArraySpeciesConstructorNode arraySpeciesCreateNode;
-        @Child private JSToBooleanNode toBooleanNode;
         @Child private TruffleString.ReadCharUTF16Node stringReadNode;
         private final ConditionProfile advanceIndexLengthProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile advanceIndexFirstProfile = ConditionProfile.createBinaryProfile();
@@ -522,21 +521,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return regexExecIntlNode.execute(regex, input);
         }
 
-        protected final boolean getFlag(JSDynamicObject re, PropertyGetNode getNode) {
-            boolean flag;
-            if (toBooleanNode == null) {
-                try {
-                    flag = getNode.getValueBoolean(re);
-                } catch (UnexpectedResultException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    this.toBooleanNode = insert(JSToBooleanNode.create());
-                    flag = toBooleanNode.executeBoolean(e.getResult());
-                }
-            } else {
-                flag = toBooleanNode.executeBoolean(getNode.getValue(re));
-            }
-            return flag;
-        }
     }
 
     /**
@@ -903,8 +887,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * This implements the RegExp.prototype.[@@replace] method.
      */
     public abstract static class JSRegExpReplaceNode extends RegExpPrototypeSymbolOperation implements ReplaceStringConsumerTRegex.ParentNode {
-        @Child private PropertyGetNode getGlobalNode;
-        @Child private PropertyGetNode getUnicodeNode;
+        @Child private PropertyGetNode getFlagsNode;
+        @Child private JSToStringNode toStringNodeForFlags;
+        @Child TruffleString.ByteIndexOfCodePointNode stringIndexOfNode;
         @Child private PropertyGetNode getLengthNode;
         @Child private PropertyGetNode getIndexNode;
         @Child private PropertyGetNode getGroupsNode;
@@ -948,7 +933,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         JSRegExpReplaceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getGlobalNode = PropertyGetNode.create(JSRegExp.GLOBAL, false, context);
             this.getIndexNode = PropertyGetNode.create(JSRegExp.INDEX, false, context);
             this.toIntegerNode = JSToIntegerAsIntNode.create();
             this.isObjectNode = IsJSObjectNode.create();
@@ -1094,10 +1078,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 replaceString = (TruffleString) replaceValue;
             }
-            boolean global = globalProfile.profile(getFlag(rx, getGlobalNode));
+            TruffleString flags = getToStringNodeForFlags().executeString(getGetFlagsNode().getValue(rx));
+            boolean global = globalProfile.profile(Strings.indexOf(getStringIndexOfNode(), flags, 'g') != -1);
             boolean fullUnicode = false;
             if (global) {
-                fullUnicode = unicodeProfile.profile(getFlag(rx, getGetUnicodeNode()));
+                fullUnicode = unicodeProfile.profile(Strings.indexOf(getStringIndexOfNode(), flags, 'u') != -1);
                 setLastIndex(rx, 0);
             }
             SimpleArrayList<JSDynamicObject> results = null;
@@ -1245,12 +1230,28 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return readLazyLengthNode.captureGroupLength(JSAbstractArray.arrayGetRegexResult(obj, lazyRegexResultNode), 0);
         }
 
-        private PropertyGetNode getGetUnicodeNode() {
-            if (getUnicodeNode == null) {
+        private PropertyGetNode getGetFlagsNode() {
+            if (getFlagsNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getUnicodeNode = insert(PropertyGetNode.create(JSRegExp.UNICODE, false, getContext()));
+                getFlagsNode = insert(PropertyGetNode.create(JSRegExp.FLAGS, getContext()));
             }
-            return getUnicodeNode;
+            return getFlagsNode;
+        }
+
+        private JSToStringNode getToStringNodeForFlags() {
+            if (toStringNodeForFlags == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toStringNodeForFlags = insert(JSToStringNode.create());
+            }
+            return toStringNodeForFlags;
+        }
+
+        private TruffleString.ByteIndexOfCodePointNode getStringIndexOfNode() {
+            if (stringIndexOfNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                stringIndexOfNode = insert(TruffleString.ByteIndexOfCodePointNode.create());
+            }
+            return stringIndexOfNode;
         }
 
         private boolean isPristine(JSDynamicObject rx) {
@@ -1511,9 +1512,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     /**
      * This implements the RegExp.prototype.[@@match] method.
      */
+    @ImportStatic(JSRegExp.class)
     public abstract static class JSRegExpMatchNode extends RegExpPrototypeSymbolOperation {
-        @Child private PropertyGetNode getUnicodeNode;
-        @Child private PropertyGetNode getGlobalNode;
         @Child private JSToLengthNode toLengthNode;
 
         private final ConditionProfile isGlobalProfile = ConditionProfile.createBinaryProfile();
@@ -1521,20 +1521,22 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected JSRegExpMatchNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getUnicodeNode = PropertyGetNode.create(JSRegExp.UNICODE, false, context);
-            this.getGlobalNode = PropertyGetNode.create(JSRegExp.GLOBAL, false, context);
         }
 
         @Specialization(guards = "isObjectNode.executeBoolean(rx)", limit = "1")
         protected Object match(JSDynamicObject rx, Object param,
                         @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
+                        @Cached("create(FLAGS, getContext())") PropertyGetNode getFlagsNode,
+                        @Cached JSToStringNode toStringNodeForFlags,
+                        @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode,
                         @Cached JSToStringNode toString1Node,
                         @Cached JSToStringNode toString2Node) {
             TruffleString s = toString1Node.executeString(param);
-            if (isGlobalProfile.profile(!getFlag(rx, getGlobalNode))) {
+            TruffleString flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(rx));
+            if (isGlobalProfile.profile(Strings.indexOf(stringIndexOfNode, flags, 'g') == -1)) {
                 return regexExecIntl(rx, s);
             } else {
-                boolean fullUnicode = getFlag(rx, getUnicodeNode);
+                boolean fullUnicode = (Strings.indexOf(stringIndexOfNode, flags, 'u') != -1);
                 setLastIndex(rx, 0);
                 JSDynamicObject array = JSArray.createEmptyZeroLength(getContext(), getRealm());
                 int n = 0;

@@ -1798,30 +1798,6 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
-    "filePath" : "built-ins/RegExp/prototype/Symbol.match/flags-tostring-error.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/Symbol.match/get-flags-err.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/Symbol.match/get-unicode-error.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/Symbol.replace/flags-tostring-error.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/Symbol.replace/get-flags-err.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/Symbol.replace/get-unicode-error.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
