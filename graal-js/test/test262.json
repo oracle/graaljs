@@ -6316,10 +6316,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/NumberFormat/test-option-useGrouping.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
     "filePath" : "intl402/Temporal/Calendar/calendar-case-insensitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"

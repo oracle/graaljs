@@ -47,6 +47,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
@@ -99,13 +100,20 @@ public abstract class GetStringOrBooleanOptionNode extends JavaScriptBaseNode {
         if (!valueBoolean) {
             return falsyValue;
         }
-        String stringValue = Strings.toJavaString(toStringNode.executeString(value));
-        return isValid(stringValue) ? stringValue : fallback;
+        TruffleString valueTS = toStringNode.executeString(value);
+        if (Strings.equals(Strings.TRUE, valueTS) || Strings.equals(Strings.FALSE, valueTS)) {
+            return fallback;
+        }
+        String stringValue = Strings.toJavaString(valueTS);
+        checkIfAllowed(stringValue);
+        return stringValue;
     }
 
     @TruffleBoundary
-    private boolean isValid(String value) {
-        return values.contains(value);
+    private void checkIfAllowed(String value) {
+        if (!values.contains(value)) {
+            throw Errors.createRangeError(String.format("invalid option %s", value));
+        }
     }
 
 }
