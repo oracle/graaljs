@@ -46,8 +46,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSNonProxy.GET_SYMBOL_SPECI
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.charset.Charset;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -696,10 +694,7 @@ public class JSContext {
         this.regexOptions = createRegexOptions(contextOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
-        this.supportedImportAssertions = contextOptions.isImportAssertions() ? new HashSet<>() : Collections.emptySet();
-        if (contextOptions.isImportAssertions()) {
-            supportedImportAssertions.add(TYPE_IMPORT_ASSERTION);
-        }
+        this.supportedImportAssertions = contextOptions.isImportAssertions() ? Set.of(TYPE_IMPORT_ASSERTION) : Set.of();
 
         if (contextOptions.getUnhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
             setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, contextOptions.getUnhandledRejectionsMode()));
