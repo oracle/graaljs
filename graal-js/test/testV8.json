@@ -1110,10 +1110,6 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/regress/asm/regress-crbug-934138.js",
-    "status" : "FAIL",
-    "comment" : "update 2021-07-07"
-  }, {
     "filePath" : "mjsunit/regress/cross-script-vars.js",
     "status" : "FAIL"
   }, {
@@ -4485,5 +4481,9 @@
       "POLYGLOT" : "FAIL"
     },
     "comment" : "Uses Worker"
+  }, {
+    "filePath" : "mjsunit/web-snapshot/web-snapshot-helpers.js",
+    "status" : "FAIL",
+    "comment" : "Helper file that uses %HeapObjectVerify() but does not enable V8 intrinsics on its own."
   } ]
 }

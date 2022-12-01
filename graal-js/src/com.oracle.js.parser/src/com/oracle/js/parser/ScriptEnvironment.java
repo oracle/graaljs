@@ -119,8 +119,11 @@ public final class ScriptEnvironment {
     /** Is top-level await enabled? */
     final boolean topLevelAwait;
 
+    /** Are V8 intrinsics supported? */
+    final boolean v8Intrinsics;
+
     private ScriptEnvironment(boolean strict, int ecmaScriptVersion, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
-                    boolean constAsVar, boolean allowBigInt, boolean annexB, boolean classFields, boolean importAssertions, boolean privateFieldsIn, boolean topLevelAwait,
+                    boolean constAsVar, boolean allowBigInt, boolean annexB, boolean classFields, boolean importAssertions, boolean privateFieldsIn, boolean topLevelAwait, boolean v8Intrinsics,
                     FunctionStatementBehavior functionStatementBehavior,
                     PrintWriter dumpOnError) {
         this.err = dumpOnError;
@@ -140,6 +143,7 @@ public final class ScriptEnvironment {
         this.importAssertions = importAssertions;
         this.privateFieldsIn = privateFieldsIn;
         this.topLevelAwait = topLevelAwait;
+        this.v8Intrinsics = v8Intrinsics;
     }
 
     /**
@@ -174,6 +178,7 @@ public final class ScriptEnvironment {
         private boolean importAssertions = false;
         private boolean privateFieldsIn = false;
         private boolean topLevelAwait = false;
+        private boolean v8Intrinsics = false;
         private FunctionStatementBehavior functionStatementBehavior = FunctionStatementBehavior.ERROR;
         private PrintWriter dumpOnError;
 
@@ -245,6 +250,11 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public Builder v8Intrinsics(boolean v8Intrinsics) {
+            this.v8Intrinsics = v8Intrinsics;
+            return this;
+        }
+
         public Builder functionStatementBehavior(FunctionStatementBehavior functionStatementBehavior) {
             this.functionStatementBehavior = functionStatementBehavior;
             return this;
@@ -257,7 +267,7 @@ public final class ScriptEnvironment {
 
         public ScriptEnvironment build() {
             return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, functionStatementBehavior, dumpOnError);
+                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior, dumpOnError);
         }
     }
 }

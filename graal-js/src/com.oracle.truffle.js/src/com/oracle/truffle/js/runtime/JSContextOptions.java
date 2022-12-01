@@ -532,6 +532,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SHADOW_REALM = new OptionKey<>(false);
     @CompilationFinal private boolean shadowRealm;
 
+    public static final String V8_INTRINSICS_NAME = JS_OPTION_PREFIX + "v8-intrinsics";
+    @Option(name = V8_INTRINSICS_NAME, category = OptionCategory.INTERNAL, help = "Enable parsing of V8 intrinsics.") //
+    public static final OptionKey<Boolean> V8_INTRINSICS = new OptionKey<>(false);
+    @CompilationFinal private boolean v8Intrinsics;
+
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
@@ -730,6 +735,7 @@ public final class JSContextOptions {
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
         this.scopeOptimization = readBooleanOption(SCOPE_OPTIMIZATION);
+        this.v8Intrinsics = readBooleanOption(V8_INTRINSICS);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -1223,6 +1229,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.esmBareSpecifierRelativeLookup ? 1 : 0);
         hash = 53 * hash + (this.temporal ? 1 : 0);
         hash = 53 * hash + (this.scopeOptimization ? 1 : 0);
+        hash = 53 * hash + (this.v8Intrinsics ? 1 : 0);
         return hash;
     }
 
@@ -1425,6 +1432,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.scopeOptimization != other.scopeOptimization) {
+            return false;
+        }
+        if (this.v8Intrinsics != other.v8Intrinsics) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
