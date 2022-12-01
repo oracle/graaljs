@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.Map;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -66,9 +66,9 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
      * object. The list is ordered as if an Array of those String values had been sorted using
      * Array.prototype.sort using SortCompare as comparefn.
      */
-    private final Map<TruffleString, ExportResolution> exports;
+    private final UnmodifiableEconomicMap<TruffleString, ExportResolution> exports;
 
-    protected JSModuleNamespaceObject(Shape shape, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
+    protected JSModuleNamespaceObject(Shape shape, JSModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports) {
         super(shape);
         this.module = module;
         this.exports = exports;
@@ -78,11 +78,11 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
         return module;
     }
 
-    public Map<TruffleString, ExportResolution> getExports() {
+    public UnmodifiableEconomicMap<TruffleString, ExportResolution> getExports() {
         return exports;
     }
 
-    public static JSModuleNamespaceObject create(JSRealm realm, JSObjectFactory factory, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
+    public static JSModuleNamespaceObject create(JSRealm realm, JSObjectFactory factory, JSModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports) {
         return factory.initProto(new JSModuleNamespaceObject(factory.getShape(realm), module, exports), realm);
     }
 
