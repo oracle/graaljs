@@ -211,9 +211,6 @@ public class JSContext {
 
     private final Map<TruffleString, Symbol> symbolRegistry = new ConcurrentHashMap<>();
 
-    // 0 = Number, 1 = BigInt, 2 = String
-    private int operatorCounter = 3;
-
     private final Object nodeFactory;
 
     private final TimeProfiler timeProfiler;
@@ -821,14 +818,6 @@ public class JSContext {
 
     public final Map<TruffleString, Symbol> getSymbolRegistry() {
         return symbolRegistry;
-    }
-
-    public int getOperatorCounter() {
-        return operatorCounter;
-    }
-
-    public int incOperatorCounter() {
-        return operatorCounter++;
     }
 
     /**

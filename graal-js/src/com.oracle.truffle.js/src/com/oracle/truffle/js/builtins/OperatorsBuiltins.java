@@ -270,8 +270,9 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
         @Specialization
         protected OperatorSet construct(Object table, Object[] extraTables) {
-
-            int operatorCounter = getContext().getOperatorCounter();
+            JSRealm realm = getRealm();
+            JSRealm mainRealm = JSRealm.getMain(this);
+            int operatorCounter = mainRealm.getOperatorCounter();
 
             if (!tableIsObject(table)) {
                 throw Errors.createTypeErrorNotAnObject(table, this);
@@ -318,7 +319,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     if (!isJSConstructor(leftType)) {
                         throw Errors.createTypeError("the left: value must be an ECMAScript constructor", this);
                     }
-                    OperatorSet leftSet = getOperatorSetOfClass(getRealm(), (JSDynamicObject) leftType);
+                    OperatorSet leftSet = getOperatorSetOfClass(realm, (JSDynamicObject) leftType);
                     if (leftSet == null) {
                         throw Errors.createTypeError(Boundaries.stringFormat("the left: value %s must be a class with operators overloaded", getClassName(leftType)), this);
                     }
@@ -345,7 +346,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     if (!isJSConstructor(rightType)) {
                         throw Errors.createTypeError("the right: value must be an ECMAScript constructor", this);
                     }
-                    OperatorSet rightSet = getOperatorSetOfClass(getRealm(), (JSDynamicObject) rightType);
+                    OperatorSet rightSet = getOperatorSetOfClass(realm, (JSDynamicObject) rightType);
                     if (rightSet == null) {
                         throw Errors.createTypeError(Boundaries.stringFormat("the right: value %s must be a class with operators overloaded", getClassName(rightType)), this);
                     }
@@ -368,7 +369,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             }
 
             // Only bump the operator counter if we actually return an OperatorSet.
-            getContext().incOperatorCounter();
+            mainRealm.incOperatorCounter();
             return new OperatorSet(operatorCounter, selfOperatorDefinitions, leftOperatorDefinitions, rightOperatorDefinitions, openOperators);
         }
 
