@@ -191,11 +191,10 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         final int loopBegin = 1;
         final int normalOrThrowAwaitInnerResult = 2;
         final int returnAwaitInnerReturnResult = 3;
-        final int asyncGeneratorYieldInnerResult = 4;
-        final int asyncGeneratorYieldInnerResultSuspendedYield = 5;
-        final int asyncGeneratorYieldInnerResultReturn = 6;
-        final int returnAwaitReceivedValue = 7;
-        final int throwAwaitReturnResult = 8;
+        final int asyncGeneratorYieldInnerResultSuspendedYield = 4;
+        final int asyncGeneratorYieldInnerResultReturn = 5;
+        final int returnAwaitReceivedValue = 6;
+        final int throwAwaitReturnResult = 7;
 
         IteratorRecord iteratorRecord;
         if (state == 0) {
@@ -268,7 +267,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                         return iteratorValueNode.execute(innerResult);
                     }
                     Object iteratorValue = iteratorValueNode.execute(innerResult);
-                    awaitWithNext(frame, iteratorValue, asyncGeneratorYieldInnerResult);
+                    yieldWithNext(frame, iteratorValue, asyncGeneratorYieldInnerResultSuspendedYield);
                     break;
                 }
                 // received.[[Type]] is return
@@ -281,17 +280,11 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                         return returnValue(frame, iteratorValueNode.execute(innerReturnResult));
                     }
                     Object iteratorValue = iteratorValueNode.execute(innerReturnResult);
-                    awaitWithNext(frame, iteratorValue, asyncGeneratorYieldInnerResult);
+                    yieldWithNext(frame, iteratorValue, asyncGeneratorYieldInnerResultSuspendedYield);
                     break;
                 }
 
                 // received.[[Type]] is normal, throw, or return
-                // AsyncGeneratorYield, then repeat
-                case asyncGeneratorYieldInnerResult: {
-                    Object awaited = resumeAwait(frame);
-                    yieldWithNext(frame, awaited, asyncGeneratorYieldInnerResultSuspendedYield);
-                    break;
-                }
                 case asyncGeneratorYieldInnerResultSuspendedYield: {
                     Completion resumptionValue = resumeYield(frame);
                     if (!resumptionValue.isReturn()) {
