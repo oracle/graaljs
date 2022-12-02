@@ -355,6 +355,69 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/asm/embenchen/box2d.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "SKIP"
+    },
+    "comment" : "Time-consuming when instrumented"
+  }, {
+    "filePath" : "mjsunit/asm/embenchen/copy.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "SKIP"
+    },
+    "comment" : "Time-consuming when instrumented"
+  }, {
+    "filePath" : "mjsunit/asm/embenchen/corrections.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "SKIP"
+    },
+    "comment" : "Time-consuming when instrumented"
+  }, {
+    "filePath" : "mjsunit/asm/embenchen/fannkuch.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "SKIP"
+    },
+    "comment" : "Time-consuming when instrumented"
+  }, {
+    "filePath" : "mjsunit/asm/embenchen/fasta.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "SKIP"
+    },
+    "comment" : "Time-consuming when instrumented"
+  }, {
+    "filePath" : "mjsunit/asm/embenchen/lua_binarytrees.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "SKIP"
+    },
+    "comment" : "Time-consuming when instrumented"
+  }, {
+    "filePath" : "mjsunit/asm/embenchen/memops.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "SKIP"
+    },
+    "comment" : "Time-consuming when instrumented"
+  }, {
+    "filePath" : "mjsunit/asm/embenchen/primes.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "SKIP"
+    },
+    "comment" : "Time-consuming when instrumented"
+  }, {
+    "filePath" : "mjsunit/asm/embenchen/zlib.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "SKIP"
+    },
+    "comment" : "Time-consuming when instrumented"
+  }, {
     "filePath" : "mjsunit/async-hooks/api-methods.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
