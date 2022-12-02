@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,10 +94,15 @@ public class StringPrototypeTest {
     @Test
     public void testReplaceAllRedefinedFlags() {
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, String.valueOf(2021)).build()) {
-            String code = "var re = /a/; Object.defineProperty(re, 'flags', {value: 'g'}); 'a'.replaceAll(re, 'b');";
+            // Checks that String.prototype.replaceAll does not refuse the regexp
+            // as non-global one. There is no match intentionally. There would be
+            // an infinite loop if there was a match (because RegExpBuiltinExec
+            // checks [[OriginalFlags]], not flags property i.e. thinks that
+            // the regexp is not global and does not set lastIndex when a match is found).
+            String code = "var re = /a/; Object.defineProperty(re, 'flags', {value: 'g'}); 'c'.replaceAll(re, 'b');";
             Value result = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(result.isString());
-            assertEquals("b", result.asString());
+            assertEquals("c", result.asString());
         }
     }
 
