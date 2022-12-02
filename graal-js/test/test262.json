@@ -7114,13 +7114,5 @@
     "filePath" : "language/module-code/eval-gtbndng-indirect-faux-assertion.js",
     "status" : "FAIL",
     "comment" : "Tries to redefine the assert property on the globalThis object, which is not allowed in this context"
-  }, {
-    "filePath" : "language/statements/async-generator/yield-star-promise-not-unwrapped.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "language/statements/async-generator/yield-star-return-then-getter-ticks.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
   } ]
 }
