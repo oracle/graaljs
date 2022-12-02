@@ -664,7 +664,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             try {
                 TruffleFile file = env.getPublicTruffleFile(Strings.toJavaString(fileName));
                 env.addToHostClassPath(file);
-            } catch (SecurityException e) {
+            } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
                 throw Errors.createErrorFromException(e);
             }
             return Undefined.instance;

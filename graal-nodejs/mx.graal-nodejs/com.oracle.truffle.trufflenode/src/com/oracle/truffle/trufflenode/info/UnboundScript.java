@@ -41,7 +41,6 @@
 package com.oracle.truffle.trufflenode.info;
 
 import java.nio.ByteBuffer;
-import java.nio.file.InvalidPathException;
 
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.truffle.api.TruffleFile;
@@ -90,7 +89,7 @@ public final class UnboundScript {
             try {
                 TruffleFile truffleFile = JavaScriptLanguage.getCurrentEnv().getPublicTruffleFile(nameJavaString);
                 source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(codeJavaString).name(nameJavaString).build();
-            } catch (InvalidPathException ex) {
+            } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException ex) {
                 source = Source.newBuilder(JavaScriptLanguage.ID, codeJavaString, nameJavaString).build();
             }
         }

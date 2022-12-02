@@ -478,7 +478,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 if (exitCode == 0) {
                     exitCode = process.exitValue();
                 }
-            } catch (IOException | SecurityException e) {
+            } catch (IOException | SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
                 throw Errors.createError(e.getMessage());
             }
 
@@ -522,7 +522,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 if (file.isRegularFile()) {
                     source = sourceFromTruffleFile(file);
                 }
-            } catch (SecurityException e) {
+            } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
                 throw Errors.createErrorFromException(e);
             }
             if (source == null) {
@@ -621,7 +621,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected final Source sourceFromFileName(String fileName, JSRealm realm) {
             try {
                 return Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getPublicTruffleFile(fileName)).name(fileName).build();
-            } catch (IOException | SecurityException e) {
+            } catch (IOException | SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
@@ -643,7 +643,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 if (file.isRegularFile()) {
                     source = sourceFromTruffleFile(file);
                 }
-            } catch (SecurityException e) {
+            } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
                 throw Errors.createErrorFromException(e);
             }
 
@@ -687,7 +687,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                             try {
                                 TruffleFile file = env.getPublicTruffleFile(path);
                                 return sourceFromTruffleFile(file);
-                            } catch (SecurityException e) {
+                            } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
                                 throw Errors.createErrorFromException(e);
                             }
                         }
@@ -1587,7 +1587,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 throw Errors.createNotAFileError(path);
             }
             return file;
-        } catch (SecurityException e) {
+        } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
             throw Errors.createErrorFromException(e);
         }
     }
