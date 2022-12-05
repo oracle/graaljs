@@ -66,7 +66,7 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
         HolesDoubleArray arrayType = createHolesDoubleArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         arraySetHoleCount(object, holeCount);
-        assert holeCount == arrayType.countHoles(object);
+        assert arrayType.assertHoleCount(object);
         return arrayType;
     }
 
