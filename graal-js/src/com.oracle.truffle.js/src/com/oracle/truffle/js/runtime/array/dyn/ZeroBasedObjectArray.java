@@ -167,7 +167,9 @@ public final class ZeroBasedObjectArray extends AbstractObjectArray {
     public ScriptArray shiftRangeImpl(JSDynamicObject object, long from) {
         int usedLength = getUsedLength(object);
         if (from < usedLength) {
-            return ContiguousObjectArray.makeContiguousObjectArray(object, lengthInt(object) - from, getArray(object), -from, (int) from, (int) (usedLength - from), integrityLevel);
+            Object[] array = getArray(object);
+            Arrays.fill(array, 0, (int) from, null);
+            return ContiguousObjectArray.makeContiguousObjectArray(object, lengthInt(object) - from, array, -from, (int) from, (int) (usedLength - from), integrityLevel);
         } else {
             return removeRangeImpl(object, 0, from);
         }
