@@ -64,7 +64,7 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
         HolesJSObjectArray arrayType = createHolesJSObjectArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         arraySetHoleCount(object, holeCount);
-        assert holeCount == arrayType.countHoles(object);
+        assert arrayType.assertHoleCount(object);
         return arrayType;
     }
 
