@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
+
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -52,12 +54,12 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
@@ -66,6 +68,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -100,14 +103,20 @@ public final class JSModuleNamespace extends JSNonProxy {
      * object. The list is ordered as if an Array of those String values had been sorted using
      * Array.prototype.sort using SortCompare as comparefn.
      */
-    public static Map<TruffleString, ExportResolution> getExports(JSDynamicObject obj) {
+    public static UnmodifiableEconomicMap<TruffleString, ExportResolution> getExports(JSDynamicObject obj) {
         assert isJSModuleNamespace(obj);
         return ((JSModuleNamespaceObject) obj).getExports();
     }
 
-    public static JSModuleNamespaceObject create(JSContext context, JSRealm realm, JSModuleRecord module, Map<TruffleString, ExportResolution> exports) {
+    public static JSModuleNamespaceObject create(JSContext context, JSRealm realm, JSModuleRecord module, List<Map.Entry<TruffleString, ExportResolution>> sortedExports) {
+        CompilerAsserts.neverPartOfCompilation();
+        EconomicMap<TruffleString, ExportResolution> exportResolutionMap = EconomicMap.create(sortedExports.size());
         JSObjectFactory factory = context.getModuleNamespaceFactory();
-        JSModuleNamespaceObject obj = JSModuleNamespaceObject.create(realm, factory, module, exports);
+        JSModuleNamespaceObject obj = JSModuleNamespaceObject.create(realm, factory, module, exportResolutionMap);
+        for (Map.Entry<TruffleString, ExportResolution> entry : sortedExports) {
+            Properties.putWithFlagsUncached(obj, entry.getKey(), entry.getValue(), JSProperty.MODULE_NAMESPACE_EXPORT | JSAttributes.notConfigurableEnumerableWritable());
+            exportResolutionMap.put(entry.getKey(), entry.getValue());
+        }
         assert !JSObject.isExtensible(obj);
         return context.trackAllocation(obj);
     }
@@ -145,8 +154,7 @@ public final class JSModuleNamespace extends JSNonProxy {
         if (!Strings.isTString(key)) {
             return super.getOwnHelper(store, thisObj, key, encapsulatingNode);
         }
-        Map<TruffleString, ExportResolution> exports = getExports(store);
-        ExportResolution binding = exports.get(key);
+        ExportResolution binding = getExports(store).get((TruffleString) key);
         if (binding != null) {
             return getBindingValue(binding);
         } else {
@@ -155,6 +163,7 @@ public final class JSModuleNamespace extends JSNonProxy {
     }
 
     static Object getBindingValue(ExportResolution binding) {
+        CompilerAsserts.neverPartOfCompilation();
         TruffleString bindingName = binding.getBindingName();
         JSModuleRecord targetModule = binding.getModule();
         MaterializedFrame targetEnv = targetModule.getEnvironment();
@@ -174,13 +183,13 @@ public final class JSModuleNamespace extends JSNonProxy {
         return targetEnv.getValue(slot);
     }
 
+    @TruffleBoundary
     @Override
     public boolean hasProperty(JSDynamicObject thisObj, Object key) {
         if (!Strings.isTString(key)) {
             return super.hasProperty(thisObj, key);
         }
-        Map<TruffleString, ExportResolution> exports = getExports(thisObj);
-        return Boundaries.mapContainsKey(exports, (TruffleString) key);
+        return getExports(thisObj).containsKey((TruffleString) key);
     }
 
     @Override
@@ -189,8 +198,7 @@ public final class JSModuleNamespace extends JSNonProxy {
         if (!Strings.isTString(key)) {
             return super.hasOwnProperty(thisObj, key);
         }
-        Map<TruffleString, ExportResolution> exports = getExports(thisObj);
-        ExportResolution binding = exports.get(key);
+        ExportResolution binding = getExports(thisObj).get((TruffleString) key);
         if (binding != null) {
             // checks for uninitialized bindings
             getBindingValue(binding);
@@ -205,12 +213,13 @@ public final class JSModuleNamespace extends JSNonProxy {
         return true;
     }
 
+    @TruffleBoundary
     @Override
     public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
         if (!Strings.isTString(key)) {
             return super.delete(thisObj, key, isStrict);
         }
-        if (Boundaries.mapContainsKey(getExports(thisObj), (TruffleString) key)) {
+        if (getExports(thisObj).containsKey((TruffleString) key)) {
             if (isStrict) {
                 throw Errors.createTypeErrorNotConfigurableProperty(key);
             } else {
@@ -226,6 +235,7 @@ public final class JSModuleNamespace extends JSNonProxy {
         return newPrototype == Null.instance;
     }
 
+    @TruffleBoundary
     @Override
     public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         if (!Strings.isTString(key)) {
@@ -245,8 +255,7 @@ public final class JSModuleNamespace extends JSNonProxy {
         if (!Strings.isTString(key)) {
             return super.getOwnProperty(thisObj, key);
         }
-        Map<TruffleString, ExportResolution> exports = getExports(thisObj);
-        ExportResolution binding = exports.get(key);
+        ExportResolution binding = getExports(thisObj).get((TruffleString) key);
         if (binding != null) {
             Object value = getBindingValue(binding);
             return PropertyDescriptor.createData(value, true, true, false);
@@ -259,44 +268,28 @@ public final class JSModuleNamespace extends JSNonProxy {
         return obj instanceof JSModuleNamespaceObject;
     }
 
-    @TruffleBoundary
-    @Override
-    public List<Object> getOwnPropertyKeys(JSDynamicObject thisObj, boolean strings, boolean symbols) {
-        List<Object> symbolKeys = symbols ? symbolKeys(thisObj) : Collections.emptyList();
-        if (!strings) {
-            return symbolKeys;
-        }
-        Map<TruffleString, ExportResolution> exports = getExports(thisObj);
-        List<Object> keys = new ArrayList<>(exports.size() + symbolKeys.size());
-        // TODO: convert these keys earlier
-        keys.addAll(exports.keySet());
-        keys.addAll(symbolKeys);
-        return keys;
-    }
-
-    private static List<Object> symbolKeys(JSDynamicObject thisObj) {
-        // Module Namespace objects only have symbol keys in their shapes.
-        return thisObj.getShape().getKeyList();
-    }
-
     @Override
     @TruffleBoundary
     public boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze, boolean doThrow) {
-        if (freeze) {
-            Map<TruffleString, ExportResolution> exports = getExports(obj);
-            if (!exports.isEmpty()) {
-                ExportResolution firstBinding = exports.values().iterator().next();
-                // Throw ReferenceError if the first binding is uninitialized,
-                // throw TypeError otherwise
-                // checks for an uninitialized binding
-                getBindingValue(firstBinding);
+        for (ExportResolution binding : getExports(obj).getValues()) {
+            // Check for uninitialized binding (throws ReferenceError)
+            getBindingValue(binding);
+            if (freeze) {
+                // ReferenceError if the first binding is uninitialized, TypeError otherwise
                 throw Errors.createTypeError("not allowed to freeze a namespace object");
             }
-        } else {
-            // Check for uninitialized bindings
-            for (ExportResolution binding : getExports(obj).values()) {
-                // can throw ReferenceError
-                getBindingValue(binding);
+        }
+        return true;
+    }
+
+    @TruffleBoundary
+    @Override
+    public boolean testIntegrityLevel(JSDynamicObject obj, boolean frozen) {
+        for (ExportResolution binding : getExports(obj).getValues()) {
+            // Check for uninitialized binding (throws ReferenceError)
+            getBindingValue(binding);
+            if (frozen) {
+                return false;
             }
         }
         return true;

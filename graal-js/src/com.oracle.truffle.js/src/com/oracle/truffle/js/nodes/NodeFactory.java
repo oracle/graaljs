@@ -55,6 +55,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.annotations.GenerateDecoder;
@@ -126,6 +127,7 @@ import com.oracle.truffle.js.nodes.arguments.AccessRestArgumentsNode;
 import com.oracle.truffle.js.nodes.arguments.AccessThisNode;
 import com.oracle.truffle.js.nodes.arguments.AccessVarArgsNode;
 import com.oracle.truffle.js.nodes.arguments.ArgumentsObjectNode;
+import com.oracle.truffle.js.nodes.arguments.GetActiveScriptOrModuleNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
 import com.oracle.truffle.js.nodes.binary.InNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode;
@@ -239,6 +241,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
@@ -1352,6 +1355,19 @@ public class NodeFactory {
 
     public JavaScriptNode createPrivateFieldIn(JavaScriptNode left, JavaScriptNode right) {
         return PrivateFieldInNode.create(left, right);
+    }
+
+    public ScriptOrModule createScriptOrModule(JSContext context, Source source) {
+        return new ScriptOrModule(context, source);
+    }
+
+    public GetActiveScriptOrModuleNode createGetActiveScriptOrModule() {
+        return GetActiveScriptOrModuleNode.create();
+    }
+
+    public GetActiveScriptOrModuleNode fixGetActiveScriptOrModule(GetActiveScriptOrModuleNode node, ScriptOrModule scriptOrModule) {
+        node.setScriptOrModule(scriptOrModule);
+        return node;
     }
 
     // #####

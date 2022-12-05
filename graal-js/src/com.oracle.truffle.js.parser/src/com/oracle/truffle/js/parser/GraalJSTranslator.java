@@ -49,6 +49,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -114,7 +115,6 @@ import com.oracle.truffle.js.nodes.NodeFactory.BinaryOperation;
 import com.oracle.truffle.js.nodes.NodeFactory.UnaryOperation;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
-import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.DeclareEvalVariableNode;
@@ -185,6 +185,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -222,6 +223,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     protected final int sourceLength;
     protected final int prologLength;
     private final boolean isParentStrict;
+    private Consumer<ScriptOrModule> scriptOrModuleResolver;
 
     protected GraalJSTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, List<String> argumentNames, int prologLength, Environment environment,
                     boolean isParentStrict) {
@@ -309,19 +311,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    protected final ScriptNode translateScript(FunctionNode functionNode) {
-        if (!functionNode.isScript()) {
-            throw new IllegalArgumentException("root function node is not a script");
-        }
-        JSFunctionExpressionNode functionExpression = (JSFunctionExpressionNode) transformFunction(functionNode);
-        return ScriptNode.fromFunctionData(context, functionExpression.getFunctionData());
-    }
-
     protected final JavaScriptNode transformFunction(FunctionNode functionNode) {
         return transform(functionNode);
     }
 
     protected abstract GraalJSTranslator newTranslator(Environment env, LexicalContext savedLC);
+
+    protected final void resolveScriptOrModule(ScriptOrModule scriptOrModule) {
+        if (scriptOrModuleResolver != null) {
+            scriptOrModuleResolver.accept(scriptOrModule);
+        }
+    }
 
     // ---
 
@@ -515,6 +515,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         FunctionRootNode functionRoot = factory.createFunctionRootNode(functionBody, environment.getFunctionFrameDescriptor().toFrameDescriptor(), functionData, functionSourceSection,
                         currentFunction.getInternalFunctionName());
 
+        if (currentFunction.isScriptOrModule()) {
+            scriptOrModuleResolver = currentFunction.getScriptOrModuleResolver();
+        }
+
         if (JSConfig.PrintAst) {
             printAST(functionRoot);
         }
@@ -529,6 +533,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      * @see #splitModuleBodyAtYield
      */
     private FunctionRootNode createModuleRoot(FunctionNode functionNode, JSFunctionData functionData, FunctionEnvironment currentFunction, JavaScriptNode body) {
+        scriptOrModuleResolver = currentFunction.getScriptOrModuleResolver();
+
         if (JSConfig.PrintAst) {
             printAST(body);
         }
@@ -1861,10 +1867,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode getActiveScriptOrModule() {
-        if (lc.inModule()) {
-            return getActiveModule();
-        }
-        return null;
+        return environment.findActiveScriptOrModule().createReadNode();
     }
 
     private VarRef findScopeVar(TruffleString name, boolean skipWith) {
@@ -2635,9 +2638,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode createCallEvalNode(JavaScriptNode function, JavaScriptNode[] args) {
         assert (currentFunction().isGlobal() || currentFunction().isStrictMode() || currentFunction().isDirectEval()) || currentFunction().isDynamicallyScoped();
-        for (FunctionEnvironment func = currentFunction(); func.getParentFunction() != null; func = func.getParentFunction()) {
-            func.setNeedsParentFrame(true);
-        }
+        currentFunction().prepareForDirectEval();
         return EvalNode.create(context, function, args, createThisNodeUnchecked(), new DirectEvalContext(lc.getCurrentScope(), environment, lc.getCurrentClass()),
                         environment.getCurrentBlockScopeSlot());
     }
@@ -2657,10 +2658,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
         assert args.length == 1 || (context.getContextOptions().isImportAssertions() && args.length == 2);
+        JavaScriptNode activeScriptOrModule = getActiveScriptOrModule();
         if (context.getContextOptions().isImportAssertions() && args.length == 2) {
-            return factory.createImportCall(context, args[0], getActiveScriptOrModule(), args[1]);
+            return factory.createImportCall(context, args[0], activeScriptOrModule, args[1]);
         }
-        return factory.createImportCall(context, args[0], getActiveScriptOrModule());
+        return factory.createImportCall(context, args[0], activeScriptOrModule);
     }
 
     @Override

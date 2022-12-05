@@ -52,7 +52,6 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -259,7 +258,7 @@ public final class GraalJSEvaluator implements JSParser {
         JSModuleData parsedModule = parseModule(context, source);
         RootNode rootNode = new ModuleScriptRoot(context, parsedModule, source);
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, rootNode.getCallTarget(), 0, Strings.EMPTY_STRING);
-        return ScriptNode.fromFunctionData(context, functionData);
+        return ScriptNode.fromFunctionData(functionData);
     }
 
     private final class ModuleScriptRoot extends JavaScriptRootNode {
@@ -584,18 +583,17 @@ public final class GraalJSEvaluator implements JSParser {
 
         assert moduleRecord.getStatus() != Status.Unlinked;
         Collection<TruffleString> exportedNames = getExportedNames(moduleRecord);
-        List<Pair<TruffleString, ExportResolution>> unambiguousNames = new ArrayList<>();
+        List<Map.Entry<TruffleString, ExportResolution>> unambiguousNames = new ArrayList<>();
         for (TruffleString exportedName : exportedNames) {
             ExportResolution resolution = resolveExport(moduleRecord, exportedName);
             if (resolution.isNull()) {
                 throw Errors.createSyntaxError("Could not resolve export");
             } else if (!resolution.isAmbiguous()) {
-                unambiguousNames.add(new Pair<>(exportedName, resolution));
+                unambiguousNames.add(Map.entry(exportedName, resolution));
             }
         }
-        Map<TruffleString, ExportResolution> sortedNames = new LinkedHashMap<>();
-        unambiguousNames.stream().sorted((a, b) -> a.getFirst().compareCharsUTF16Uncached(b.getFirst())).forEachOrdered(p -> sortedNames.put(p.getFirst(), p.getSecond()));
-        JSModuleNamespaceObject namespace = JSModuleNamespace.create(moduleRecord.getContext(), JSRealm.get(null), moduleRecord, sortedNames);
+        unambiguousNames.sort((a, b) -> a.getKey().compareCharsUTF16Uncached(b.getKey()));
+        JSModuleNamespaceObject namespace = JSModuleNamespace.create(moduleRecord.getContext(), JSRealm.get(null), moduleRecord, unambiguousNames);
         moduleRecord.setNamespace(namespace);
         return namespace;
     }
@@ -976,12 +974,12 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public ScriptNode parseScript(JSContext context, Source source, ByteBuffer binary) {
-        return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) new BinarySnapshotProvider(binary).apply(NodeFactory.getInstance(context), context, source));
+        return ScriptNode.fromFunctionRoot((FunctionRootNode) new BinarySnapshotProvider(binary).apply(NodeFactory.getInstance(context), context, source));
     }
 
     @Override
     public ScriptNode parseScript(JSContext context, Source source, SnapshotProvider snapshotProvider) {
-        return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) snapshotProvider.apply(NodeFactory.getInstance(context), context, source));
+        return ScriptNode.fromFunctionRoot((FunctionRootNode) snapshotProvider.apply(NodeFactory.getInstance(context), context, source));
     }
 
     @Override

@@ -46,6 +46,8 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -320,6 +322,11 @@ public class JSModuleRecord extends ScriptOrModule {
 
     public JSModuleRecord getCycleRoot() {
         return cycleRoot;
+    }
+
+    @Override
+    public void rememberImportedModuleSource(TruffleString moduleSpecifier, Source moduleSource) {
+        parsedModule.rememberImportedModuleSource(moduleSpecifier, moduleSource);
     }
 
 }

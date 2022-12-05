@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,14 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 
 /**
@@ -49,6 +56,12 @@ import com.oracle.truffle.js.runtime.JSContext;
 public class ScriptOrModule {
     protected final JSContext context;
     protected final Source source;
+
+    /**
+     * Cache of imported module sources to keep alive sources referenced by this module in order to
+     * prevent premature code cache GC of this module's dependencies.
+     */
+    private volatile Map<TruffleString, Source> importSourceCache;
 
     public ScriptOrModule(JSContext context, Source source) {
         this.context = context;
@@ -61,5 +74,35 @@ public class ScriptOrModule {
 
     public final Source getSource() {
         return source;
+    }
+
+    /**
+     * Keep a link from the referencing module or script to the imported module's {@link Source}, so
+     * that the latter is kept alive for the lifetime of the former.
+     */
+    public void rememberImportedModuleSource(TruffleString moduleSpecifier, Source moduleSource) {
+        // Note: the source might change, so we only remember the last source.
+        getImportSourceCache().put(moduleSpecifier, moduleSource);
+    }
+
+    private Map<TruffleString, Source> getImportSourceCache() {
+        Map<TruffleString, Source> cache = importSourceCache;
+        if (cache == null) {
+            cache = new ConcurrentHashMap<>();
+            if (!IMPORT_SOURCE_CACHE_HANDLE.compareAndSet(this, (Map<TruffleString, Source>) null, cache)) {
+                cache = importSourceCache;
+            }
+        }
+        return cache;
+    }
+
+    private static final VarHandle IMPORT_SOURCE_CACHE_HANDLE;
+
+    static {
+        try {
+            IMPORT_SOURCE_CACHE_HANDLE = MethodHandles.lookup().findVarHandle(ScriptOrModule.class, "importSourceCache", Map.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 }

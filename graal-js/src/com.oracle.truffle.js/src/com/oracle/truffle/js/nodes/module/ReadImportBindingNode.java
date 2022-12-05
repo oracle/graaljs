@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.module;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
@@ -52,6 +53,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -80,7 +82,15 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
         return ReadImportBindingNodeGen.create(resolutionNode);
     }
 
-    @Specialization(guards = {"frameDescriptor == resolution.getModule().getFrameDescriptor()", "equals(equalNode, bindingName, resolution.getBindingName())"}, limit = "1")
+    public static ReadImportBindingNode create() {
+        return ReadImportBindingNodeGen.create(null);
+    }
+
+    public abstract Object execute(ExportResolution resolution);
+
+    @Specialization(guards = {"!resolution.isNamespace()",
+                    "frameDescriptor == resolution.getModule().getFrameDescriptor()",
+                    "equals(equalNode, bindingName, resolution.getBindingName())"}, limit = "1")
     static Object doCached(ExportResolution.Resolved resolution,
                     @Cached("resolution.getModule().getFrameDescriptor()") @SuppressWarnings("unused") FrameDescriptor frameDescriptor,
                     @Cached("resolution.getBindingName()") @SuppressWarnings("unused") TruffleString bindingName,
@@ -95,7 +105,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    @Specialization(replaces = {"doCached"})
+    @Specialization(guards = {"!resolution.isNamespace()"}, replaces = {"doCached"})
     final Object doUncached(ExportResolution.Resolved resolution) {
         JSModuleRecord module = resolution.getModule();
         assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
@@ -115,6 +125,19 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
 
     static int findImportedSlotIndex(TruffleString bindingName, JSModuleRecord module) {
         return JSFrameUtil.findRequiredFrameSlotIndex(module.getFrameDescriptor(), bindingName);
+    }
+
+    @Specialization(guards = {"resolution.isNamespace()"})
+    final Object doGetNamespace(ExportResolution.Resolved resolution,
+                    @Cached BranchProfile slowPath) {
+        JSModuleRecord module = resolution.getModule();
+        assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, module.getNamespace() != null)) {
+            return module.getNamespace();
+        } else {
+            slowPath.enter();
+            return getLanguage().getJSContext().getEvaluator().getModuleNamespace(module);
+        }
     }
 
     @Specialization

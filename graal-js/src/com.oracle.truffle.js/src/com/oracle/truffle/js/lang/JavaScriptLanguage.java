@@ -266,7 +266,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @TruffleBoundary
     private static ScriptNode createEmptyScript(JSContext context) {
-        return ScriptNode.fromFunctionData(context, JSFunction.createEmptyFunctionData(context));
+        return ScriptNode.fromFunctionData(JSFunction.createEmptyFunctionData(context));
     }
 
     @Override
