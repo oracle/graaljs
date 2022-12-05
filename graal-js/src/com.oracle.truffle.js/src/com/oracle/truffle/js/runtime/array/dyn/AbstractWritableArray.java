@@ -354,6 +354,27 @@ public abstract class AbstractWritableArray extends DynamicArray {
         }
     }
 
+    protected final boolean checkFillHoles(JSDynamicObject object, int internalIndex, int grown) {
+        int start;
+        int end;
+        if (grown > 1) {
+            start = internalIndex - grown + 1;
+            end = internalIndex;
+        } else if (grown < -1) {
+            start = internalIndex + 1;
+            end = internalIndex - grown;
+        } else {
+            return true;
+        }
+
+        for (int i = start; i < end; i++) {
+            if (!isHolePrepared(object, i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public abstract AbstractWritableArray toDouble(JSDynamicObject object, long index, double value);
 
     public abstract AbstractWritableArray toObject(JSDynamicObject object, long index, Object value);
