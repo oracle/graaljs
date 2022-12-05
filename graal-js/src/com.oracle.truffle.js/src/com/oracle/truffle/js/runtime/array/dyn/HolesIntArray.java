@@ -162,11 +162,6 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
     }
 
     @Override
-    protected void incrementHolesCount(JSDynamicObject object, int offset) {
-        arraySetHoleCount(object, arrayGetHoleCount(object) + offset);
-    }
-
-    @Override
     public HolesIntArray toHoles(JSDynamicObject object, long index, Object value) {
         return this;
     }

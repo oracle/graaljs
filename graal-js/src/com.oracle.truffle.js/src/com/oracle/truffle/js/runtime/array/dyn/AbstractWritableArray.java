@@ -204,8 +204,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     @SuppressWarnings("unused")
-    protected void incrementHolesCount(JSDynamicObject object, int offset) {
-        throw Errors.shouldNotReachHere();
+    protected final void incrementHolesCount(JSDynamicObject object, int offset) {
+        assert isHolesType();
+        arraySetHoleCount(object, arrayGetHoleCount(object) + offset);
     }
 
     protected abstract void setHoleValue(JSDynamicObject object, int index);
