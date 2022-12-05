@@ -155,11 +155,6 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
     }
 
     @Override
-    protected void incrementHolesCount(JSDynamicObject object, int offset) {
-        arraySetHoleCount(object, arrayGetHoleCount(object) + offset);
-    }
-
-    @Override
     public int prepareInBounds(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
         return prepareInBoundsHoles(object, index, node, profile);
     }
