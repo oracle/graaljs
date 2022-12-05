@@ -526,7 +526,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             if (profile.contiguousShrinkUsed(node, newUsedLength < oldUsed)) {
                 if (isHolesType()) {
                     incrementHolesCount(object, -countHolesPrepared(object, arrayOffset + newUsedLength, arrayOffset + oldUsed));
-                    assert arrayGetHoleCount(object) == countHoles(object);
+                    assert assertHoleCount(object);
                 }
 
                 // use old arrayOffset
@@ -620,7 +620,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 }
             }
         }
-        assert arrayGetHoleCount(object) == countHoles(object);
+        assert assertHoleCount(object);
         return this;
     }
 
@@ -813,6 +813,14 @@ public abstract class AbstractWritableArray extends DynamicArray {
             }
         }
         return holeCount;
+    }
+
+    protected final boolean assertHoleCount(JSDynamicObject object) {
+        assert isHolesType();
+        int holeCount = arrayGetHoleCount(object);
+        int countedHoles = countHoles(object);
+        assert holeCount == countedHoles : String.format("holeCount, %d, differs from the actual count, %d", holeCount, countedHoles);
+        return true;
     }
 
     /**
