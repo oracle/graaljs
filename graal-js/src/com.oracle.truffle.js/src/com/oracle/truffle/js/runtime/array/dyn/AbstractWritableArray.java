@@ -846,6 +846,20 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return removeRangeImpl(object, 0, from);
     }
 
+    protected static boolean unusedElementsAreHoles(Object[] array, int usedStart, int usedLength) {
+        for (int i = 0; i < usedStart; i++) {
+            if (array[i] != null) {
+                return false;
+            }
+        }
+        for (int i = usedStart + usedLength; i < array.length; i++) {
+            if (array[i] != null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static class SetSupportedProfileAccess implements InlinedProfileBag {
 
         private final InlinedConditionProfile ensureCapacityGrow;
