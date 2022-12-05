@@ -51,6 +51,7 @@ public final class ContiguousObjectArray extends AbstractContiguousObjectArray {
     public static ContiguousObjectArray makeContiguousObjectArray(JSDynamicObject object, long length, Object[] array, long indexOffset, int arrayOffset, int usedLength, int integrityLevel) {
         ContiguousObjectArray arrayType = createContiguousObjectArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
+        assert unusedElementsAreHoles(array, arrayOffset, usedLength);
         return arrayType;
     }
 

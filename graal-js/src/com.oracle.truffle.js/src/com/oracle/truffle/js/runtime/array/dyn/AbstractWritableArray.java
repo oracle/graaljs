@@ -838,6 +838,20 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return removeRangeImpl(object, 0, from);
     }
 
+    protected static boolean unusedElementsAreHoles(Object[] array, int usedStart, int usedLength) {
+        for (int i = 0; i < usedStart; i++) {
+            if (array[i] != null) {
+                return false;
+            }
+        }
+        for (int i = usedStart + usedLength; i < array.length; i++) {
+            if (array[i] != null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     protected interface SetSupportedProfileAccess extends ProfileAccess {
         default boolean ensureCapacityGrow(ProfileHolder profile, boolean condition) {
             return profile.profile(this, 0, condition);

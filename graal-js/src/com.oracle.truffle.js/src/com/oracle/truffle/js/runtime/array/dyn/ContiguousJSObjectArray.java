@@ -52,6 +52,7 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
                     int integrityLevel) {
         ContiguousJSObjectArray arrayType = createContiguousJSObjectArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
+        assert unusedElementsAreHoles(array, arrayOffset, usedLength);
         return arrayType;
     }
 
