@@ -143,11 +143,6 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     @Override
-    protected void incrementHolesCount(JSDynamicObject object, int offset) {
-        arraySetHoleCount(object, arrayGetHoleCount(object) + offset);
-    }
-
-    @Override
     public boolean isSupported(JSDynamicObject object, long index) {
         return isSupportedHoles(object, index);
     }
