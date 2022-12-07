@@ -14,22 +14,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
 
   specVersion: "3",
 
-  local deployBinary = {
-    setup+: [
-      ['mx', '-p', 'graal-nodejs', 'sversions'],
-      ['mx', '-p', 'graal-nodejs', 'build', '--force-javac'],
-    ],
-    run+: [
-      ['mx', '-p', 'graal-js', 'deploy-binary-if-master', '--skip-existing', 'graaljs-lafo'],
-      ['mx', '-p', 'graal-nodejs', 'deploy-binary-if-master', '--skip-existing', 'graalnodejs-lafo'],
-    ],
-    timelimit: '30:00',
-  },
-
-  builds: graalJs.builds + graalNodeJs.builds + [
-    common.jdk11 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'js-deploybinary-ol65-amd64'},
-    common.jdk11 + deployBinary + common.deploy + common.postMerge + common.darwin + {name: 'js-deploybinary-darwin-amd64', timelimit: '45:00'},
-  ],
+  builds: graalJs.builds + graalNodeJs.builds,
 
   // Set this flag to false to switch off the use of artifacts (pipelined builds).
   useArtifacts:: useOverlay,
