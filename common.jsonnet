@@ -22,10 +22,10 @@ local common_json = (import "common.json");
     },
   },
 
-  jdk19: {
-    jdk:: 'jdk19',
+  jdk20: {
+    jdk:: 'jdk20',
     downloads+: {
-      JAVA_HOME: common_json.jdks["labsjdk-ce-19"],
+      JAVA_HOME: common_json.jdks["labsjdk-ce-20"],
     },
   },
 
@@ -121,7 +121,14 @@ local common_json = (import "common.json");
     ],
   },
 
- windows_jdk11: self.windows + {
+  windows_jdk20: self.windows + {
+    packages+: common_json.devkits["windows-jdk20"].packages,
+    setup+: [
+      ['set-export', 'DEVKIT_VERSION', '2022'],
+    ],
+  },
+
+  windows_jdk11: self.windows + {
     packages+: common_json.devkits["windows-jdk11"].packages,
     setup+: [
       ['set-export', 'DEVKIT_VERSION', '2017'],
