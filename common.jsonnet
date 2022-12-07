@@ -98,19 +98,10 @@ local common_json = (import "common.json");
     os:: 'windows',
     arch:: 'amd64',
     capabilities: ['windows', 'amd64'],
-  },
-
-  windows_jdk17: self.windows + {
-    packages+: common_json.devkits["windows-jdk17"].packages,
+    packages+: common_json.devkits["windows-" + self.jdk].packages,
+    devkit_version:: std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(self.packages))[0],
     setup+: [
-      ['set-export', 'DEVKIT_VERSION', '2019'],
-    ],
-  },
-
-  windows_jdk20: self.windows + {
-    packages+: common_json.devkits["windows-jdk20"].packages,
-    setup+: [
-      ['set-export', 'DEVKIT_VERSION', '2022'],
+      ['set-export', 'DEVKIT_VERSION', self.devkit_version],
     ],
   },
 
