@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,9 +104,9 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Child private PropertyGetNode getIterationKindNode;
         @Child private PropertySetNode setIteratedObjectNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
-        private final ConditionProfile detachedProf = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile doneProf = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile iterKindProf = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile detachedProf = ConditionProfile.create();
+        private final ConditionProfile doneProf = ConditionProfile.create();
+        private final ConditionProfile iterKindProf = ConditionProfile.create();
 
         public SetIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

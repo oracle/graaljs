@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,7 +73,7 @@ public abstract class ToTemporalCalendarWithISODefaultNode extends JavaScriptBas
     public JSDynamicObject toTemporalCalendarWithISODefault(Object calendar,
                     @Cached BranchProfile errorBranch,
                     @Cached("create(ctx)") ToTemporalCalendarNode toTemporalCalendarNode,
-                    @Cached("createBinaryProfile()") ConditionProfile calendarAvailable) {
+                    @Cached ConditionProfile calendarAvailable) {
         if (calendarAvailable.profile(calendar == null || calendar == Undefined.instance)) {
             return JSTemporalCalendar.create(ctx, getRealm(), ISO8601, errorBranch);
         } else {

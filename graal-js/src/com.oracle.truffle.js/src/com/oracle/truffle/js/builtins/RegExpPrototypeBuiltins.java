@@ -229,7 +229,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected JSRegExpObject compile(JSRegExpObject thisRegExp, Object patternObj, Object flagsObj,
                         @Cached("create(getContext())") CompileRegexNode compileRegexNode,
                         @Cached("createUndefinedToEmpty()") JSToStringNode toStringNode,
-                        @Cached("createBinaryProfile()") ConditionProfile isRegExpProfile,
+                        @Cached ConditionProfile isRegExpProfile,
                         @Cached TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
                         @Cached TRegexUtil.TRegexFlagsAccessor flagsAccessor) {
             Object pattern;
@@ -433,9 +433,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private ReadElementNode readNode;
         @Child private ArraySpeciesConstructorNode arraySpeciesCreateNode;
         @Child private TruffleString.ReadCharUTF16Node stringReadNode;
-        private final ConditionProfile advanceIndexLengthProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile advanceIndexFirstProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile advanceIndexSecondProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile advanceIndexLengthProfile = ConditionProfile.create();
+        private final ConditionProfile advanceIndexFirstProfile = ConditionProfile.create();
+        private final ConditionProfile advanceIndexSecondProfile = ConditionProfile.create();
 
         public RegExpPrototypeSymbolOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -543,14 +543,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private TruffleString.ConcatNode stringConcatNode;
         @Child private TruffleString.SubstringByteIndexNode substringNode;
         @Child private TruffleString.ByteIndexOfCodePointNode stringIndexOfNode;
-        private final ConditionProfile sizeZeroProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile sameMatchEnd = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile resultIsNull = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isUnicode = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile limitProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile sizeZeroProfile = ConditionProfile.create();
+        private final ConditionProfile sameMatchEnd = ConditionProfile.create();
+        private final ConditionProfile resultIsNull = ConditionProfile.create();
+        private final ConditionProfile isUnicode = ConditionProfile.create();
+        private final ConditionProfile limitProfile = ConditionProfile.create();
         private final BranchProfile prematureReturnBranch = BranchProfile.create();
-        private final ConditionProfile emptyFlags = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile stickyFlagSet = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile emptyFlags = ConditionProfile.create();
+        private final ConditionProfile stickyFlagSet = ConditionProfile.create();
         private final ValueProfile compiledRegexProfile = ValueProfile.createIdentityProfile();
 
         JSRegExpSplitNode(JSContext context, JSBuiltin builtin) {
@@ -917,14 +917,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private TruffleStringBuilder.AppendSubstringByteIndexNode appendSubStringNode;
         @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
 
-        private final ConditionProfile unicodeProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile globalProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile stickyProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile functionalReplaceProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile lazyResultArrayProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile noMatchProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile validPositionProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile hasNamedCaptureGroupsProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile unicodeProfile = ConditionProfile.create();
+        private final ConditionProfile globalProfile = ConditionProfile.create();
+        private final ConditionProfile stickyProfile = ConditionProfile.create();
+        private final ConditionProfile functionalReplaceProfile = ConditionProfile.create();
+        private final ConditionProfile lazyResultArrayProfile = ConditionProfile.create();
+        private final ConditionProfile noMatchProfile = ConditionProfile.create();
+        private final ConditionProfile validPositionProfile = ConditionProfile.create();
+        private final ConditionProfile hasNamedCaptureGroupsProfile = ConditionProfile.create();
         private final BranchProfile dollarProfile = BranchProfile.create();
         final StringBuilderProfile stringBuilderProfile;
         final BranchProfile invalidGroupNumberProfile = BranchProfile.create();
@@ -1516,8 +1516,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     public abstract static class JSRegExpMatchNode extends RegExpPrototypeSymbolOperation {
         @Child private JSToLengthNode toLengthNode;
 
-        private final ConditionProfile isGlobalProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile unicodeProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isGlobalProfile = ConditionProfile.create();
+        private final ConditionProfile unicodeProfile = ConditionProfile.create();
 
         protected JSRegExpMatchNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

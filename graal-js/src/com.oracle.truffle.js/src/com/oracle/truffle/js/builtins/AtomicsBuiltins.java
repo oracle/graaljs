@@ -1128,11 +1128,11 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
     }
 
     public abstract static class AtomicsWaitBaseNode extends AtomicsOperationNode {
-        private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile timeoutNaNProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isAsyncProfile = ConditionProfile.create();
+        private final ConditionProfile timeoutNaNProfile = ConditionProfile.create();
         private final BranchProfile valuesNotEqualBranch = BranchProfile.create();
         private final BranchProfile asyncImmediateTimeoutBranch = BranchProfile.create();
-        private final ConditionProfile awokenProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile awokenProfile = ConditionProfile.create();
         private final BranchProfile errorBranch = BranchProfile.create();
         private final BranchProfile notSharedArrayBuffer = BranchProfile.create();
 

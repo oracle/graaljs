@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -484,7 +484,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile arraySpeciesGetSymbol = BranchProfile.create();
         private final BranchProfile differentRealm = BranchProfile.create();
         private final BranchProfile defaultConstructorBranch = BranchProfile.create();
-        private final ConditionProfile arraySpeciesEmpty = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile arraySpeciesEmpty = ConditionProfile.create();
         private final BranchProfile notAJSObjectBranch = BranchProfile.create();
         private final JSContext context;
 
@@ -886,7 +886,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object popGeneric(Object thisObj,
                         @Cached("create(getContext())") DeleteAndSetLengthNode deleteAndSetLength,
-                        @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
+                        @Cached ConditionProfile lengthIsZero) {
             final Object thisObject = toObject(thisObj);
             final long length = getLength(thisObject);
             if (lengthIsZero.profile(length > 0)) {
@@ -950,7 +950,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected static void setLength(JSDynamicObject object, long longLength,
                         @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
                         @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty,
-                        @Cached("createBinaryProfile()") ConditionProfile indexInIntRangeCondition) {
+                        @Cached ConditionProfile indexInIntRangeCondition) {
             Object boxedLength = JSRuntime.boxIndex(longLength, indexInIntRangeCondition);
             deletePropertyNode.executeEvaluated(object, boxedLength);
             setLengthProperty.executeWithValue(object, boxedLength);
@@ -973,9 +973,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin, isTypedArrayImplementation);
         }
 
-        private final ConditionProfile sizeIsZero = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile offsetProfile1 = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile offsetProfile2 = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile sizeIsZero = ConditionProfile.create();
+        private final ConditionProfile offsetProfile1 = ConditionProfile.create();
+        private final ConditionProfile offsetProfile2 = ConditionProfile.create();
 
         @Specialization
         protected Object sliceGeneric(Object thisObj, Object begin, Object end,
@@ -1048,8 +1048,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
                         @Shared("isSealed") @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile,
-                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero,
-                        @Cached("createBinaryProfile()") ConditionProfile lengthLargerOne) {
+                        @Shared("lengthIsZero") @Cached ConditionProfile lengthIsZero,
+                        @Cached ConditionProfile lengthLargerOne) {
             long len = getLength(thisObj);
 
             if (lengthIsZero.profile(len == 0)) {
@@ -1077,7 +1077,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
                         @Shared("isSealed") @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
-                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
+                        @Shared("lengthIsZero") @Cached ConditionProfile lengthIsZero) {
             long len = getLength(thisObj);
             if (lengthIsZero.profile(len > 0)) {
                 Object firstElement = read(thisObj, 0);
@@ -1103,7 +1103,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object shiftSparse(JSDynamicObject thisObj,
                         @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
-                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero,
+                        @Shared("lengthIsZero") @Cached ConditionProfile lengthIsZero,
                         @Cached("create(getContext())") JSArrayFirstElementIndexNode firstElementIndexNode,
                         @Cached("create(getContext())") JSArrayLastElementIndexNode lastElementIndexNode) {
             long len = getLength(thisObj);
@@ -1131,7 +1131,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"!isJSArray(thisObj)", "!isForeignObject(thisObj)"})
         protected Object shiftGeneric(Object thisObj,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deleteNode,
-                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
+                        @Shared("lengthIsZero") @Cached ConditionProfile lengthIsZero) {
             Object thisJSObj = toObject(thisObj);
             long len = getLength(thisJSObj);
 
@@ -1157,7 +1157,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isForeignObject(thisObj)"})
         protected Object shiftForeign(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary arrays,
-                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
+                        @Shared("lengthIsZero") @Cached ConditionProfile lengthIsZero) {
             long len = JSInteropUtil.getArraySize(thisObj, arrays, this);
             if (lengthIsZero.profile(len == 0)) {
                 return Undefined.instance;
@@ -1270,7 +1270,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private InteropLibrary interopLibrary;
         @Child private ImportValueNode importValueNode;
 
-        private final ConditionProfile isJSObjectProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isJSObjectProfile = ConditionProfile.create();
 
         public JSArrayToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1418,16 +1418,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private PropertyGetNode getSpreadableNode;
         @Child private JSIsArrayNode isArrayNode;
 
-        private final ConditionProfile isFirstSpreadable = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile hasFirstElements = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isSecondSpreadable = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile hasSecondElements = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile lengthErrorProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile hasMultipleArgs = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile hasOneArg = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile optimizationsObservable = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile hasFirstOneElement = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile hasSecondOneElement = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isFirstSpreadable = ConditionProfile.create();
+        private final ConditionProfile hasFirstElements = ConditionProfile.create();
+        private final ConditionProfile isSecondSpreadable = ConditionProfile.create();
+        private final ConditionProfile hasSecondElements = ConditionProfile.create();
+        private final ConditionProfile lengthErrorProfile = ConditionProfile.create();
+        private final ConditionProfile hasMultipleArgs = ConditionProfile.create();
+        private final ConditionProfile hasOneArg = ConditionProfile.create();
+        private final ConditionProfile optimizationsObservable = ConditionProfile.create();
+        private final ConditionProfile hasFirstOneElement = ConditionProfile.create();
+        private final ConditionProfile hasSecondOneElement = ConditionProfile.create();
 
         protected boolean toBoolean(Object target) {
             if (toBooleanNode == null) {
@@ -1637,7 +1637,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final MaybeResultNode makeMaybeResultNode() {
             return new ForEachIndexCallNode.MaybeResultNode() {
                 @Child private JSIdenticalNode doIdenticalNode = JSIdenticalNode.createStrictEqualityComparison();
-                private final ConditionProfile indexInIntRangeCondition = ConditionProfile.createBinaryProfile();
+                private final ConditionProfile indexInIntRangeCondition = ConditionProfile.create();
 
                 @Override
                 public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
@@ -1658,11 +1658,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSToStringNode elementToStringNode;
         @Child private TruffleString.ConcatNode stringConcatNode;
         @Child private InteropLibrary interopLibrary;
-        private final ConditionProfile separatorNotEmpty = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isZero = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isOne = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isTwo = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isSparse = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile separatorNotEmpty = ConditionProfile.create();
+        private final ConditionProfile isZero = ConditionProfile.create();
+        private final ConditionProfile isOne = ConditionProfile.create();
+        private final ConditionProfile isTwo = ConditionProfile.create();
+        private final ConditionProfile isSparse = ConditionProfile.create();
         private final BranchProfile growProfile = BranchProfile.create();
         private final BranchProfile stackGrowProfile = BranchProfile.create();
         private final StringBuilderProfile stringBuilderProfile;
@@ -1960,9 +1960,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile branchB = BranchProfile.create();
         private final BranchProfile branchDelete = BranchProfile.create();
         private final BranchProfile objectBranch = BranchProfile.create();
-        private final ConditionProfile argsLength0Profile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile argsLength1Profile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile offsetProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile argsLength0Profile = ConditionProfile.create();
+        private final ConditionProfile argsLength1Profile = ConditionProfile.create();
+        private final ConditionProfile offsetProfile = ConditionProfile.create();
         private final BranchProfile needMoveDeleteBranch = BranchProfile.create();
         private final BranchProfile needInsertBranch = BranchProfile.create();
         @Child private InteropLibrary arrayInterop;
@@ -2237,7 +2237,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected static class DefaultCallbackNode extends ForEachIndexCallNode.CallbackNode {
             @Child protected JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
-            protected final ConditionProfile indexInIntRangeCondition = ConditionProfile.createBinaryProfile();
+            protected final ConditionProfile indexInIntRangeCondition = ConditionProfile.create();
 
             @Override
             public Object apply(long index, Object value, Object target, Object callback, Object callbackThisArg, Object currentResult) {
@@ -2770,7 +2770,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object sort(Object thisObj, final Object comparefn,
-                        @Cached("createBinaryProfile()") ConditionProfile isJSObject) {
+                        @Cached ConditionProfile isJSObject) {
             checkCompareFunction(comparefn);
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             if (isJSObject.profile(JSDynamicObject.isJSDynamicObject(thisJSObj))) {
@@ -3072,8 +3072,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayFillNode extends JSArrayOperationWithToInt {
-        private final ConditionProfile offsetProfile1 = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile offsetProfile2 = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile offsetProfile1 = ConditionProfile.create();
+        private final ConditionProfile offsetProfile2 = ConditionProfile.create();
 
         public JSArrayFillNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -3098,9 +3098,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayCopyWithinNode extends JSArrayOperationWithToInt {
 
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
-        private final ConditionProfile offsetProfile1 = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile offsetProfile2 = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile offsetProfile3 = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile offsetProfile1 = ConditionProfile.create();
+        private final ConditionProfile offsetProfile2 = ConditionProfile.create();
+        private final ConditionProfile offsetProfile3 = ConditionProfile.create();
 
         public JSArrayCopyWithinNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -3203,9 +3203,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayReverseNode extends JSArrayOperation {
         @Child private TestArrayNode hasHolesNode;
         @Child private DeletePropertyNode deletePropertyNode;
-        private final ConditionProfile bothExistProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile onlyUpperExistsProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile onlyLowerExistsProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile bothExistProfile = ConditionProfile.create();
+        private final ConditionProfile onlyUpperExistsProfile = ConditionProfile.create();
+        private final ConditionProfile onlyLowerExistsProfile = ConditionProfile.create();
 
         public JSArrayReverseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

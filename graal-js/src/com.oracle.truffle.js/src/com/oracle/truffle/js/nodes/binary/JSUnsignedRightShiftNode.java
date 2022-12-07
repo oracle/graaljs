@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,7 +118,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
 
     @Specialization(guards = "!rvalZero(b)")
     protected Number doDouble(double a, int b,
-                    @Cached("createBinaryProfile()") ConditionProfile returnType) {
+                    @Cached ConditionProfile returnType) {
 
         long lnum = toUInt32(a);
         int shiftCount = b & 0x1F;
@@ -131,7 +131,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     @Specialization
     protected Number doIntDouble(int a, double b,
                     @Cached("create()") JSToUInt32Node rvalToUint32Node,
-                    @Cached("createBinaryProfile()") ConditionProfile returnType) {
+                    @Cached ConditionProfile returnType) {
 
         long lnum = toUInt32(a);
         int shiftCount = (int) rvalToUint32Node.executeLong(b) & 0x1F;

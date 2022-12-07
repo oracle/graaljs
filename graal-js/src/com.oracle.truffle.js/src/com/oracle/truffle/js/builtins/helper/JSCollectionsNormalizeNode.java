@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -108,7 +108,7 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
     public Object doForeignObject(Object object,
                     @CachedLibrary("object") InteropLibrary interop,
-                    @Cached("createBinaryProfile()") ConditionProfile primitiveProfile,
+                    @Cached ConditionProfile primitiveProfile,
                     @Cached("create()") JSCollectionsNormalizeNode nestedNormalizeNode) {
         Object primitive = JSInteropUtil.toPrimitiveOrDefault(object, null, interop, this);
         return primitiveProfile.profile(primitive == null) ? object : nestedNormalizeNode.execute(primitive);

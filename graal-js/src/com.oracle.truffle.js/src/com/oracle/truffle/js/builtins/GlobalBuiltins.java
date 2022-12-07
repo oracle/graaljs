@@ -827,7 +827,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected double parseFloatDouble(double value, @Cached("createBinaryProfile()") ConditionProfile negativeZero) {
+        protected double parseFloatDouble(double value, @Cached ConditionProfile negativeZero) {
             if (negativeZero.profile(JSRuntime.isNegativeZero(value))) {
                 return 0;
             }
@@ -1344,7 +1344,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     public abstract static class JSGlobalPrintNode extends JSGlobalOperation {
 
-        private final ConditionProfile argumentsCount = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile argumentsCount = ConditionProfile.create();
         private final BranchProfile consoleIndentation = BranchProfile.create();
         private final boolean useErr;
         private final boolean noNewLine;

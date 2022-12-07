@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -194,9 +194,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private PropertyGetNode getFunctionNameNode;
         @Child private DynamicObjectLibrary functionLengthLib;
         @Child private DynamicObjectLibrary functionNameLib;
-        private final ConditionProfile hasFunctionLengthProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile hasIntegerFunctionLengthProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isJSFunctionProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile hasFunctionLengthProfile = ConditionProfile.create();
+        private final ConditionProfile hasIntegerFunctionLengthProfile = ConditionProfile.create();
+        private final ConditionProfile isJSFunctionProfile = ConditionProfile.create();
 
         public CopyFunctionNameAndLengthNode(JSContext context) {
             this.hasFunctionLengthNode = HasPropertyCacheNode.create(JSFunction.LENGTH, context, true);
@@ -285,9 +285,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     public abstract static class JSBindNode extends JSBuiltinNode {
         @Child private GetPrototypeNode getPrototypeNode;
         @Child private CopyFunctionNameAndLengthNode copyNameAndLengthNode;
-        private final ConditionProfile isConstructorProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isConstructorProfile = ConditionProfile.create();
+        private final ConditionProfile isAsyncProfile = ConditionProfile.create();
+        private final ConditionProfile setProtoProfile = ConditionProfile.create();
 
         public JSBindNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

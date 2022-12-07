@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,7 +80,7 @@ public abstract class RoundNode extends MathOperation {
         return value;
     }
 
-    private final ConditionProfile shiftProfile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile shiftProfile = ConditionProfile.create();
     private final BranchProfile negativeLongBitsProfile = BranchProfile.create();
 
     // Copied from sun.misc.DoubleConsts
@@ -131,8 +131,8 @@ public abstract class RoundNode extends MathOperation {
 
     @Specialization(guards = {"!isCornercase(value)"}, replaces = "roundDoubleInt")
     protected double roundDouble(double value,
-                    @Cached("createBinaryProfile()") ConditionProfile profileA,
-                    @Cached("createBinaryProfile()") ConditionProfile profileB) {
+                    @Cached ConditionProfile profileA,
+                    @Cached ConditionProfile profileB) {
         long longValue = round(value);
         if (profileA.profile(longValue == Long.MIN_VALUE || longValue == Long.MAX_VALUE)) {
             // The value is too large to have a fractional part (i.e. is rounded already)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,7 @@ public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNod
     private static final int RESUME_RIGHT = 1;
     private static final int RESUME_UNEXECUTED = 0;
 
-    protected final ConditionProfile canShortCircuit = ConditionProfile.createBinaryProfile();
+    protected final ConditionProfile canShortCircuit = ConditionProfile.create();
 
     protected JSLogicalNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);

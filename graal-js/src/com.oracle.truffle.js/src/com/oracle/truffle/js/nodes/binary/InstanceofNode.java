@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,7 +123,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
                     @Cached("create()") JSToBooleanNode toBooleanNode,
                     @Cached("createCall()") JSFunctionCallNode callHasInstanceNode,
                     @Cached("create()") IsCallableNode isCallableNode,
-                    @Cached("createBinaryProfile()") ConditionProfile hasInstanceProfile,
+                    @Cached ConditionProfile hasInstanceProfile,
                     @Cached("create()") BranchProfile errorBranch) {
         Object hasInstance = getMethodHasInstanceNode.executeWithTarget(target);
         if (hasInstanceProfile.profile(hasInstance == Undefined.instance)) {

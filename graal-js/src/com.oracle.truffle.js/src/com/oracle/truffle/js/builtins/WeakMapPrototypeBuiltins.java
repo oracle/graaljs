@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -148,7 +148,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization
         protected static boolean delete(JSWeakMapObject thisObj, JSObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
-                        @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
+                        @Cached ConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(inverted != null)) {
@@ -184,7 +184,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization
         protected Object get(JSWeakMapObject thisObj, JSObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
-                        @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
+                        @Cached ConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(inverted != null)) {
@@ -229,7 +229,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         protected Object set(JSWeakMapObject thisObj, JSObject key, Object value,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedSetter,
-                        @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
+                        @Cached ConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(inverted != null)) {
@@ -273,7 +273,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization
         protected boolean has(JSWeakMapObject thisObj, JSObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
-                        @Cached("createBinaryProfile()") ConditionProfile hasInvertedProfile) {
+                        @Cached ConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(inverted != null)) {

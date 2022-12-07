@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -171,7 +171,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Child private JSToObjectNode toObjectNode;
 
-        private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isObject = ConditionProfile.create();
         private final BranchProfile notAJSObjectBranch = BranchProfile.create();
 
         /**
@@ -449,7 +449,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
         @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
-        private final ConditionProfile descNull = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile descNull = ConditionProfile.create();
 
         @Specialization
         protected boolean propertyIsEnumerable(Object obj, Object key) {
@@ -550,8 +550,8 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final ConditionProfile argIsNull = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile firstPrototypeFits = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile argIsNull = ConditionProfile.create();
+        private final ConditionProfile firstPrototypeFits = ConditionProfile.create();
 
         @Specialization(guards = "isJSObject(arg)")
         protected boolean isPrototypeOf(Object thisObj, JSDynamicObject arg) {

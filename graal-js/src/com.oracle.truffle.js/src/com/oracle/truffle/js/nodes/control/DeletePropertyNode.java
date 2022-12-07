@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -191,9 +191,9 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"!isJSOrdinaryObject(targetObject)"})
     protected final boolean doJSObject(JSDynamicObject targetObject, Object key,
                     @Cached("createIsFastArray()") IsArrayNode isArrayNode,
-                    @Cached("createBinaryProfile()") ConditionProfile arrayProfile,
+                    @Cached ConditionProfile arrayProfile,
                     @Cached ToArrayIndexNode toArrayIndexNode,
-                    @Cached("createBinaryProfile()") ConditionProfile arrayIndexProfile,
+                    @Cached ConditionProfile arrayIndexProfile,
                     @Cached("create(context, strict)") JSArrayDeleteIndexNode deleteArrayIndexNode,
                     @Cached JSClassProfile jsclassProfile,
                     @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode) {

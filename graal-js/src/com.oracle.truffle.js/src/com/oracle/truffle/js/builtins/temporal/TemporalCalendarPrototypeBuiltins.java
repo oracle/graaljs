@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -446,7 +446,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     // 12.4.7
     public abstract static class JSTemporalCalendarDateAdd extends JSTemporalCalendarOperation {
 
-        protected final ConditionProfile needConstrain = ConditionProfile.createBinaryProfile();
+        protected final ConditionProfile needConstrain = ConditionProfile.create();
 
         protected JSTemporalCalendarDateAdd(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

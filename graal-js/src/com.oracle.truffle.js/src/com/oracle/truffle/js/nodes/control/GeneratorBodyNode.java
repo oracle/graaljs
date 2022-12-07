@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         @Child private JSWriteFrameSlotNode writeYieldValue;
         @Child private JSReadFrameSlotNode readYieldResult;
         private final BranchProfile errorBranch = BranchProfile.create();
-        private final ConditionProfile returnOrExceptionProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile returnOrExceptionProfile = ConditionProfile.create();
         private final String functionName;
 
         GeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection,

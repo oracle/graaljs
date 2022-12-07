@@ -318,9 +318,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
         protected JSTypedArrayObject subarray(JSDynamicObject thisObj, Object begin0, Object end0,
                         @Cached("createIdentityProfile()") ValueProfile arrayTypeProfile,
-                        @Cached("createBinaryProfile()") ConditionProfile negativeBegin,
-                        @Cached("createBinaryProfile()") ConditionProfile negativeEnd,
-                        @Cached("createBinaryProfile()") ConditionProfile smallerEnd) {
+                        @Cached ConditionProfile negativeBegin,
+                        @Cached ConditionProfile negativeEnd,
+                        @Cached ConditionProfile smallerEnd) {
             TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj));
             long len = array.length(thisObj);
             long relativeBegin = toInteger(begin0);
@@ -362,15 +362,15 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         private final BranchProfile needErrorBranch = BranchProfile.create();
-        private final ConditionProfile sameBufferProf = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile sameBufferProf = ConditionProfile.create();
         private final ValueProfile sourceArrayProf = ValueProfile.createIdentityProfile();
         private final ValueProfile targetArrayProf = ValueProfile.createIdentityProfile();
         private final JSClassProfile sourceArrayClassProfile = JSClassProfile.create();
 
-        private final ConditionProfile srcIsJSObject = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile arrayIsFastArray = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile arrayIsArrayBufferView = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isDirectProf = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile srcIsJSObject = ConditionProfile.create();
+        private final ConditionProfile arrayIsFastArray = ConditionProfile.create();
+        private final ConditionProfile arrayIsArrayBufferView = ConditionProfile.create();
+        private final ConditionProfile isDirectProf = ConditionProfile.create();
         private final BranchProfile intToIntBranch = BranchProfile.create();
         private final BranchProfile floatToFloatBranch = BranchProfile.create();
         private final BranchProfile bigIntToBigIntBranch = BranchProfile.create();
@@ -742,8 +742,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public abstract static class JSArrayBufferViewFillNode extends JSArrayOperationWithToInt {
-        private final ConditionProfile offsetProfile1 = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile offsetProfile2 = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile offsetProfile1 = ConditionProfile.create();
+        private final ConditionProfile offsetProfile2 = ConditionProfile.create();
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToBigIntNode toBigIntNode;
 

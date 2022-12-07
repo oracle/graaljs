@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,7 +97,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
 
     @Specialization
     protected boolean doGeneric(JSDynamicObject proxy, Object receiver, Object value, Object key,
-                    @Cached("createBinaryProfile()") ConditionProfile hasTrap,
+                    @Cached ConditionProfile hasTrap,
                     @Cached JSClassProfile targetClassProfile) {
         assert JSProxy.isJSProxy(proxy);
         assert !(key instanceof HiddenKey);

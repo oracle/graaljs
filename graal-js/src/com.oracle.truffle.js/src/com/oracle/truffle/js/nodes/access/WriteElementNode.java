@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -537,8 +537,8 @@ public class WriteElementNode extends JSTargetableNode {
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private ArrayWriteElementCacheNode arrayWriteElementNode;
         @Child private IsJSDynamicObjectNode isObjectNode;
-        private final ConditionProfile intOrStringIndexProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile arrayProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile intOrStringIndexProfile = ConditionProfile.create();
+        private final ConditionProfile arrayProfile = ConditionProfile.create();
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
         @Child private CachedSetPropertyNode setPropertyCachedNode;
 
@@ -909,7 +909,7 @@ public class WriteElementNode extends JSTargetableNode {
 
     private static class LazyRegexResultArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsProfile = ConditionProfile.create();
 
         @Child private TRegexUtil.TRegexMaterializeResultNode materializeResultNode = TRegexUtil.TRegexMaterializeResultNode.create();
 
@@ -932,7 +932,7 @@ public class WriteElementNode extends JSTargetableNode {
 
     private static class LazyRegexResultIndicesArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsProfile = ConditionProfile.create();
 
         @Child private TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.create();
 
@@ -954,7 +954,7 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class ConstantArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
-        private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsProfile = ConditionProfile.create();
         private final BranchProfile inBoundsIntBranch = BranchProfile.create();
         private final BranchProfile inBoundsDoubleBranch = BranchProfile.create();
         private final BranchProfile inBoundsJSObjectBranch = BranchProfile.create();
@@ -992,7 +992,7 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class WritableArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
-        private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsProfile = ConditionProfile.create();
 
         WritableArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1014,12 +1014,12 @@ public class WriteElementNode extends JSTargetableNode {
         private final BranchProfile intValueBranch = BranchProfile.create();
         private final BranchProfile toDoubleBranch = BranchProfile.create();
         private final BranchProfile toObjectBranch = BranchProfile.create();
-        private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedNonZeroCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedZeroCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedContiguousCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedHolesCondition = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsFastCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsCondition = ConditionProfile.create();
+        private final ConditionProfile supportedNonZeroCondition = ConditionProfile.create();
+        private final ConditionProfile supportedZeroCondition = ConditionProfile.create();
+        private final ConditionProfile supportedContiguousCondition = ConditionProfile.create();
+        private final ConditionProfile supportedHolesCondition = ConditionProfile.create();
         private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         IntArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1082,11 +1082,11 @@ public class WriteElementNode extends JSTargetableNode {
         private final BranchProfile intValueBranch = BranchProfile.create();
         private final BranchProfile doubleValueBranch = BranchProfile.create();
         private final BranchProfile toObjectBranch = BranchProfile.create();
-        private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedContiguousCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedHolesCondition = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsFastCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsCondition = ConditionProfile.create();
+        private final ConditionProfile supportedCondition = ConditionProfile.create();
+        private final ConditionProfile supportedContiguousCondition = ConditionProfile.create();
+        private final ConditionProfile supportedHolesCondition = ConditionProfile.create();
         private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         DoubleArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1141,11 +1141,11 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class ObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
-        private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedContiguousCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedHolesCondition = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsFastCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsCondition = ConditionProfile.create();
+        private final ConditionProfile supportedCondition = ConditionProfile.create();
+        private final ConditionProfile supportedContiguousCondition = ConditionProfile.create();
+        private final ConditionProfile supportedHolesCondition = ConditionProfile.create();
         private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         ObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1185,12 +1185,12 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class JSObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
-        private final ConditionProfile objectType = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedContiguousCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedHolesCondition = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile objectType = ConditionProfile.create();
+        private final ConditionProfile inBoundsFastCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsCondition = ConditionProfile.create();
+        private final ConditionProfile supportedCondition = ConditionProfile.create();
+        private final ConditionProfile supportedContiguousCondition = ConditionProfile.create();
+        private final ConditionProfile supportedHolesCondition = ConditionProfile.create();
         private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         JSObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1242,13 +1242,13 @@ public class WriteElementNode extends JSTargetableNode {
         private final BranchProfile intValueBranch = BranchProfile.create();
         private final BranchProfile toDoubleBranch = BranchProfile.create();
         private final BranchProfile toObjectBranch = BranchProfile.create();
-        private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedContainsHolesCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedNotContainsHolesCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile hasExplicitHolesProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile containsHolesProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsFastCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsCondition = ConditionProfile.create();
+        private final ConditionProfile supportedContainsHolesCondition = ConditionProfile.create();
+        private final ConditionProfile supportedNotContainsHolesCondition = ConditionProfile.create();
+        private final ConditionProfile hasExplicitHolesProfile = ConditionProfile.create();
+        private final ConditionProfile containsHolesProfile = ConditionProfile.create();
         private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         HolesIntArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1312,13 +1312,13 @@ public class WriteElementNode extends JSTargetableNode {
         private final BranchProfile doubleValueBranch = BranchProfile.create();
         private final BranchProfile intValueBranch = BranchProfile.create();
         private final BranchProfile toObjectBranch = BranchProfile.create();
-        private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedContainsHolesCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedNotContainsHolesCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile hasExplicitHolesProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile containsHolesProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsFastCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsCondition = ConditionProfile.create();
+        private final ConditionProfile supportedContainsHolesCondition = ConditionProfile.create();
+        private final ConditionProfile supportedNotContainsHolesCondition = ConditionProfile.create();
+        private final ConditionProfile hasExplicitHolesProfile = ConditionProfile.create();
+        private final ConditionProfile containsHolesProfile = ConditionProfile.create();
         private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         HolesDoubleArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1380,14 +1380,14 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class HolesJSObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
-        private final ConditionProfile objectType = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedContainsHolesCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedNotContainsHolesCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile hasExplicitHolesProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile containsHolesProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile objectType = ConditionProfile.create();
+        private final ConditionProfile inBoundsFastCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsCondition = ConditionProfile.create();
+        private final ConditionProfile supportedContainsHolesCondition = ConditionProfile.create();
+        private final ConditionProfile supportedNotContainsHolesCondition = ConditionProfile.create();
+        private final ConditionProfile hasExplicitHolesProfile = ConditionProfile.create();
+        private final ConditionProfile containsHolesProfile = ConditionProfile.create();
         private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         HolesJSObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1444,10 +1444,10 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class HolesObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
-        private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile supportedCondition = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsFastCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.create();
+        private final ConditionProfile inBoundsCondition = ConditionProfile.create();
+        private final ConditionProfile supportedCondition = ConditionProfile.create();
         private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         HolesObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1495,7 +1495,7 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private abstract static class AbstractTypedIntArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
-        private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsProfile = ConditionProfile.create();
 
         AbstractTypedIntArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1533,7 +1533,7 @@ public class WriteElementNode extends JSTargetableNode {
     private static class TypedBigIntArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
 
         @Child private JSToBigIntNode toBigIntNode;
-        private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsProfile = ConditionProfile.create();
 
         TypedBigIntArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1552,7 +1552,7 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class Uint8ClampedArrayWriteElementCacheNode extends AbstractTypedIntArrayWriteElementCacheNode {
-        private final ConditionProfile toIntProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile toIntProfile = ConditionProfile.create();
         @Child private JSToDoubleNode toDoubleNode;
 
         Uint8ClampedArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1579,7 +1579,7 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class Uint32ArrayWriteElementCacheNode extends AbstractTypedIntArrayWriteElementCacheNode {
-        private final ConditionProfile toIntProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile toIntProfile = ConditionProfile.create();
         @Child private JSToNumberNode toNumberNode;
 
         Uint32ArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1605,7 +1605,7 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class TypedFloatArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
-        private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile inBoundsProfile = ConditionProfile.create();
         @Child private JSToDoubleNode toDoubleNode;
 
         TypedFloatArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1653,8 +1653,8 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class StringWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
-        private final ConditionProfile isIndexProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isImmutable = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isIndexProfile = ConditionProfile.create();
+        private final ConditionProfile isImmutable = ConditionProfile.create();
         @Child private ToArrayIndexNode toArrayIndexNode;
 
         StringWriteElementTypeCacheNode(WriteElementTypeCacheNode next) {

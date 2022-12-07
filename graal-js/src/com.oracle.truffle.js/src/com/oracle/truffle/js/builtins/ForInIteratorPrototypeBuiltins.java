@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -124,8 +124,8 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private JSGetOwnPropertyNode getOwnPropertyNode;
         private final BranchProfile errorBranch = BranchProfile.create();
         private final BranchProfile growProfile = BranchProfile.create();
-        private final ConditionProfile fastOwnKeysProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile sameShapeProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile fastOwnKeysProfile = ConditionProfile.create();
+        private final ConditionProfile sameShapeProfile = ConditionProfile.create();
 
         private static final Object DONE = null;
         private static final int MAX_PROTO_DEPTH = 1000;

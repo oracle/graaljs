@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,8 +79,8 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
 
     protected final JSContext ctx;
     private final BranchProfile errorBranch = BranchProfile.create();
-    private final ConditionProfile hasRelativeTo = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile unitYMWD = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile hasRelativeTo = ConditionProfile.create();
+    private final ConditionProfile unitYMWD = ConditionProfile.create();
     private final ValueProfile unitValueProfile = ValueProfile.createIdentityProfile();
     @Child private TemporalMoveRelativeDateNode moveRelativeDateNode;
     @Child EnumerableOwnPropertyNamesNode namesNode;

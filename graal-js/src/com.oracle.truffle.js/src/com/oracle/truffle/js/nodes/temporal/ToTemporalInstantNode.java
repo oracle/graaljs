@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,7 +75,7 @@ public abstract class ToTemporalInstantNode extends JavaScriptBaseNode {
     public JSTemporalInstantObject toTemporalDateTime(Object item,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("createBinaryProfile()") ConditionProfile isObjectProfile) {
+                    @Cached ConditionProfile isObjectProfile) {
         if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
             if (TemporalUtil.isTemporalInstant(item)) {
                 return (JSTemporalInstantObject) item;

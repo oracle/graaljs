@@ -301,7 +301,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "!isJSObject(object)")
         protected JSDynamicObject getPrototypeOfNonObject(Object object,
-                        @Cached("createBinaryProfile()") ConditionProfile isForeignProfile) {
+                        @Cached ConditionProfile isForeignProfile) {
             if (getContext().getEcmaScriptVersion() < 6) {
                 if (JSRuntime.isJSPrimitive(object)) {
                     throw Errors.createTypeErrorNotAnObject(object);
@@ -572,7 +572,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"}, limit = "InteropLibraryLimit")
         protected JSDynamicObject createForeignNullOrInvalidPrototype(Object prototype, Object properties,
                         @CachedLibrary("prototype") InteropLibrary interop,
-                        @Cached("createBinaryProfile()") ConditionProfile isNull) {
+                        @Cached ConditionProfile isNull) {
             assert prototype != null;
             if (isNull.profile(prototype != Undefined.instance && interop.isNull(prototype))) {
                 return createPrototypeNull(Null.instance, properties);
@@ -710,7 +710,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
      */
     public abstract static class ObjectTestIntegrityLevelNode extends ObjectOperation {
         private final boolean frozen;
-        private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isObject = ConditionProfile.create();
 
         public ObjectTestIntegrityLevelNode(JSContext context, JSBuiltin builtin, boolean frozen) {
             super(context, builtin);
@@ -736,7 +736,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
      */
     public abstract static class ObjectSetIntegrityLevelNode extends ObjectOperation {
         private final boolean freeze;
-        private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isObject = ConditionProfile.create();
 
         public ObjectSetIntegrityLevelNode(JSContext context, JSBuiltin builtin, boolean freeze) {
             super(context, builtin);
@@ -759,7 +759,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     @ImportStatic(JSConfig.class)
     public abstract static class ObjectKeysNode extends ObjectOperation {
         @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
-        private final ConditionProfile hasElements = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile hasElements = ConditionProfile.create();
 
         public ObjectKeysNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -989,7 +989,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final boolean entries;
 
         @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
-        private final ConditionProfile hasElements = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile hasElements = ConditionProfile.create();
 
         public ObjectValuesOrEntriesNode(JSContext context, JSBuiltin builtin, boolean entries) {
             super(context, builtin);

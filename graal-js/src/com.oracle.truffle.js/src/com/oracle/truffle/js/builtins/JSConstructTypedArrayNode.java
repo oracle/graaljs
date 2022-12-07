@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -172,7 +172,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSHeapArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doArrayBuffer(JSDynamicObject newTarget, JSDynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
+                    @Cached @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
         byte[] byteArray = JSArrayBuffer.getByteArray(arrayBuffer);
         int arrayBufferLength = byteArray.length;
@@ -181,7 +181,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSDirectArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doDirectArrayBuffer(JSDynamicObject newTarget, JSDynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
+                    @Cached @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
         ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         int arrayBufferLength = byteBuffer.limit();
@@ -228,7 +228,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSSharedArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doSharedArrayBuffer(JSDynamicObject newTarget, JSDynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
+                    @Cached @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
         return doDirectArrayBuffer(newTarget, arrayBuffer, byteOffset0, length0, lengthIsUndefined);
     }
 
@@ -242,7 +242,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSInteropArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doInteropArrayBuffer(JSDynamicObject newTarget, JSDynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined,
+                    @Cached @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         Object buffer = JSArrayBuffer.getInteropBuffer(arrayBuffer);
         long arrayBufferLength = getBufferSizeSafe(buffer, interop);
@@ -321,7 +321,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSObject(object)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)"})
     protected JSDynamicObject doObject(JSDynamicObject newTarget, JSDynamicObject object, Object byteOffset0, Object length0,
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
-                    @Cached("createBinaryProfile()") ConditionProfile isIterableProfile,
+                    @Cached ConditionProfile isIterableProfile,
                     @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
                     @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
                     @Cached IsJSObjectNode isObjectNode,
@@ -366,7 +366,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @CachedLibrary("object") InteropLibrary interop,
                     @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
                     @Cached ImportValueNode importValue,
-                    @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
+                    @Cached ConditionProfile lengthIsUndefined) {
         if (interop.hasBufferElements(object)) {
             JSDynamicObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), object);
             long bufferByteLength = getBufferSizeSafe(object, interop);

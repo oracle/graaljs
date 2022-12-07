@@ -76,7 +76,7 @@ public class ThrowNode extends StatementNode {
     @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
     private final JSContext context;
 
-    private final ConditionProfile isError = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile isError = ConditionProfile.create();
 
     protected ThrowNode(JavaScriptNode exceptionNode, JSContext context) {
         this.exceptionNode = exceptionNode;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1375,8 +1375,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Child private JSToObjectNode toObjectNode;
         @Child private ForeignPropertyGetNode foreignGetNode;
         @Child private GetPropertyFromJSObjectNode getFromJSObjectNode;
-        private final ConditionProfile isJSObject = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isForeignObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isJSObject = ConditionProfile.create();
+        private final ConditionProfile isForeignObject = ConditionProfile.create();
         private final BranchProfile notAJSObjectBranch = BranchProfile.create();
         private final BranchProfile fallbackBranch = BranchProfile.create();
 
@@ -1806,7 +1806,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         private final int groupIndex;
         @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
         @Child private TRegexResultAccessor resultAccessor = TRegexResultAccessor.create();
-        private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isIndicesObject = ConditionProfile.create();
 
         public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, int groupIndex, JSContext context) {
             super(receiverCheck);

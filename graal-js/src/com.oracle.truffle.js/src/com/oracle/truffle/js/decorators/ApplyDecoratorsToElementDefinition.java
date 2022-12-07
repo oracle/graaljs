@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -137,7 +137,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
                     @Cached("createCall()") JSFunctionCallNode callNode,
                     @Cached("create()") IsCallableNode isCallableNode,
-                    @Cached("createBinaryProfile()") ConditionProfile isSymbolProfile,
+                    @Cached ConditionProfile isSymbolProfile,
                     @Cached JSClassProfile newValueClassProfile) {
         for (Object decorator : record.getDecorators()) {
             Object newValue = executeDecoratorWithContext(frame, record, extraInitializers, createDecoratorContextNode, callNode, decorator);

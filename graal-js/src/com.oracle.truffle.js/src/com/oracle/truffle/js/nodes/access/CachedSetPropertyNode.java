@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -128,9 +128,9 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     void doGeneric(JSDynamicObject target, Object key, Object value, Object receiver,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
-                    @Cached("createBinaryProfile()") ConditionProfile getType,
+                    @Cached ConditionProfile getType,
                     @Cached("create()") JSClassProfile jsclassProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile highFrequency,
+                    @Cached ConditionProfile highFrequency,
                     @Cached("createFrequencyBasedPropertySet(context, setOwn, strict, superProperty)") FrequencyBasedPropertySetNode hotKey,
                     @Cached TruffleString.EqualNode equalsNode) {
         Object arrayIndex = toArrayIndexNode.execute(key);

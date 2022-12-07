@@ -133,7 +133,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         private final JSContext context;
         private final TruffleString groupName;
         private final int groupIndex;
-        private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isIndicesObject = ConditionProfile.create();
 
         public LazyNamedCaptureGroupProperty(JSContext context, TruffleString groupName, int groupIndex) {
             this.context = context;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,10 +54,10 @@ public abstract class MaxNode extends MathOperation {
         super(context, builtin);
     }
 
-    private final ConditionProfile leftSmaller = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile rightSmaller = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile bothEqual = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile negativeZero = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile leftSmaller = ConditionProfile.create();
+    private final ConditionProfile rightSmaller = ConditionProfile.create();
+    private final ConditionProfile bothEqual = ConditionProfile.create();
+    private final ConditionProfile negativeZero = ConditionProfile.create();
 
     private double maxDoubleDouble(double a, double b) {
         if (leftSmaller.profile(a > b)) {
@@ -94,7 +94,7 @@ public abstract class MaxNode extends MathOperation {
 
     @Specialization(guards = {"args.length == 2", "caseIntInt(args)"})
     protected static int max2ParamInt(Object[] args,
-                    @Cached("createBinaryProfile()") ConditionProfile maxProfile) {
+                    @Cached ConditionProfile maxProfile) {
         int i1 = (int) args[0];
         int i2 = (int) args[1];
         return max(i1, i2, maxProfile);
@@ -102,8 +102,8 @@ public abstract class MaxNode extends MathOperation {
 
     @Specialization(guards = {"args.length == 2", "!caseIntInt(args)"})
     protected Object max2Param(Object[] args,
-                    @Cached("createBinaryProfile()") ConditionProfile isIntBranch,
-                    @Cached("createBinaryProfile()") ConditionProfile maxProfile,
+                    @Cached ConditionProfile isIntBranch,
+                    @Cached ConditionProfile maxProfile,
                     @Cached("create()") JSToNumberNode toNumber1Node,
                     @Cached("create()") JSToNumberNode toNumber2Node) {
         Number n1 = toNumber1Node.executeNumber(args[0]);

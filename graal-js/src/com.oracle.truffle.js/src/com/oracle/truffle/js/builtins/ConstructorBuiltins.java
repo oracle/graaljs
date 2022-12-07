@@ -879,7 +879,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSObject constructWithForeignArg(JSDynamicObject newTarget, Object[] args,
                         @CachedLibrary("firstArg(args)") InteropLibrary interop,
                         @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
-                        @Cached("createBinaryProfile()") ConditionProfile isNumber,
+                        @Cached ConditionProfile isNumber,
                         @Cached("create()") BranchProfile rangeErrorProfile) {
             Object len = args[0];
             if (isNumber.profile(interop.isNumber(len))) {
@@ -907,7 +907,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached("create()") BranchProfile isIntegerCase,
                         @Cached("create()") BranchProfile isDoubleCase,
                         @Cached("create()") BranchProfile isObjectCase,
-                        @Cached("createBinaryProfile()") ConditionProfile isLengthZero) {
+                        @Cached ConditionProfile isLengthZero) {
             JSRealm realm = getRealm();
             if (isLengthZero.profile(args == null || args.length == 0)) {
                 return swapPrototype(JSArray.create(getContext(), realm, ScriptArray.createConstantEmptyArray(), args, 0), newTarget);
@@ -1028,9 +1028,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Child private JSToPrimitiveNode toPrimitiveNode;
         @Child private JSToDoubleNode toDoubleNode;
-        private final ConditionProfile stringOrNumberProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isDateProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile gotFieldsProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile stringOrNumberProfile = ConditionProfile.create();
+        private final ConditionProfile isDateProfile = ConditionProfile.create();
+        private final ConditionProfile gotFieldsProfile = ConditionProfile.create();
 
         private Object toPrimitive(Object target) {
             if (toPrimitiveNode == null) {
@@ -1055,7 +1055,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length == 1"})
         protected JSDynamicObject constructDateOne(JSDynamicObject newTarget, Object[] args,
-                        @Cached("createBinaryProfile()") ConditionProfile isSpecialCase,
+                        @Cached ConditionProfile isSpecialCase,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             double dateValue = getDateValue(args[0], interop);
             return swapPrototype(JSDate.create(getContext(), getRealm(), timeClip(dateValue, isSpecialCase)), newTarget);
@@ -1435,8 +1435,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private final BranchProfile regexpMatcherObject = BranchProfile.create();
         private final BranchProfile regexpNonObject = BranchProfile.create();
         private final BranchProfile regexpObjectNewFlagsBranch = BranchProfile.create();
-        private final ConditionProfile callIsRegExpProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile constructorEquivalentProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile callIsRegExpProfile = ConditionProfile.create();
+        private final ConditionProfile constructorEquivalentProfile = ConditionProfile.create();
 
         @Specialization
         protected JSDynamicObject constructRegExp(JSDynamicObject newTarget, Object pattern, Object flags,
@@ -1929,7 +1929,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Object constructObjectJSObject(@SuppressWarnings("unused") JSDynamicObject newTarget, Object[] arguments,
                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
                         @CachedLibrary("firstArgument(arguments)") InteropLibrary interop,
-                        @Cached("createBinaryProfile()") ConditionProfile isNull) {
+                        @Cached ConditionProfile isNull) {
             Object arg0 = arguments[0];
             if (isNull.profile(interop.isNull(arg0))) {
                 return newObject(Null.instance);
@@ -2059,8 +2059,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected final JSDynamicObject constructFunction(JSDynamicObject newTarget, Object[] args,
-                        @Cached("createBinaryProfile()") ConditionProfile hasArgsProfile,
-                        @Cached("createBinaryProfile()") ConditionProfile hasParamsProfile) {
+                        @Cached ConditionProfile hasArgsProfile,
+                        @Cached ConditionProfile hasParamsProfile) {
             int argc = args.length;
             TruffleString[] params;
             TruffleString body;
@@ -2458,7 +2458,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"isJSHeapArrayBuffer(buffer)"})
         protected final JSDynamicObject ofHeapArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
                         @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode) {
             return constructDataView(newTarget, buffer, byteOffset, byteLength, false, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
@@ -2467,7 +2467,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"isJSDirectOrSharedArrayBuffer(buffer)"})
         protected final JSDynamicObject ofDirectArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
                         @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode) {
             return constructDataView(newTarget, buffer, byteOffset, byteLength, true, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
@@ -2476,7 +2476,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"isJSInteropArrayBuffer(buffer)"})
         protected final JSDynamicObject ofInteropArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
                         @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
@@ -2486,7 +2486,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"!isJSAbstractBuffer(buffer)", "bufferInterop.hasBufferElements(buffer)"})
         protected final JSDynamicObject ofInteropBuffer(JSDynamicObject newTarget, Object buffer, Object byteOffset, Object byteLength,
                         @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
@@ -2609,8 +2609,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     @ImportStatic(value = {JSProxy.class})
     public abstract static class ConstructJSProxyNode extends ConstructWithNewTargetNode {
-        private final ConditionProfile targetNonObject = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile handlerNonObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile targetNonObject = ConditionProfile.create();
+        private final ConditionProfile handlerNonObject = ConditionProfile.create();
 
         public ConstructJSProxyNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);

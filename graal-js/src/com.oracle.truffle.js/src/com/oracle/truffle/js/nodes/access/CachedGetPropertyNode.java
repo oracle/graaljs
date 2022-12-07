@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,9 +110,9 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     Object doGeneric(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
                     @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
-                    @Cached("createBinaryProfile()") ConditionProfile getType,
+                    @Cached ConditionProfile getType,
                     @Cached("create()") JSClassProfile jsclassProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile highFrequency,
+                    @Cached ConditionProfile highFrequency,
                     @Cached("createFrequencyBasedPropertyGet(context)") FrequencyBasedPropertyGetNode hotKey,
                     @Cached TruffleString.EqualNode equalsNode) {
         requireObjectCoercibleNode.executeVoid(target);

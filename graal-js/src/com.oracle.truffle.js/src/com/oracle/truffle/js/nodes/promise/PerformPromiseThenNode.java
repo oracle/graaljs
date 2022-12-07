@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,9 +68,9 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getPromiseIsHandledNode;
     @Child private PropertySetNode setPromiseIsHandledNode;
     @Child private PromiseReactionJobNode promiseReactionJobNode;
-    private final ConditionProfile pendingProf = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile fulfilledProf = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile unhandledProf = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile pendingProf = ConditionProfile.create();
+    private final ConditionProfile fulfilledProf = ConditionProfile.create();
+    private final ConditionProfile unhandledProf = ConditionProfile.create();
     private final BranchProfile growProfile = BranchProfile.create();
 
     protected PerformPromiseThenNode(JSContext context) {

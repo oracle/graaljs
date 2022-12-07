@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -493,8 +493,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSFunctionCallNode callNode;
         @Child private PropertyGetNode getSymbolNode;
         @Child private GetMethodNode getMethodNode;
-        protected final ConditionProfile isSpecialProfile = ConditionProfile.createBinaryProfile();
-        protected final ConditionProfile callSpecialProfile = ConditionProfile.createBinaryProfile();
+        protected final ConditionProfile isSpecialProfile = ConditionProfile.create();
+        protected final ConditionProfile callSpecialProfile = ConditionProfile.create();
 
         public JSStringOperationWithRegExpArgument(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -555,7 +555,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.4.
      */
     public abstract static class JSStringCharAtNode extends JSStringOperation implements JSBuiltinNode.Inlineable {
-        private final ConditionProfile indexOutOfBounds = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile indexOutOfBounds = ConditionProfile.create();
 
         @Child private TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
 
@@ -611,7 +611,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.5.
      */
     public abstract static class JSStringCharCodeAtNode extends JSStringOperation implements JSBuiltinNode.Inlineable {
-        private final ConditionProfile indexOutOfBounds = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile indexOutOfBounds = ConditionProfile.create();
 
         public JSStringCharCodeAtNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -680,7 +680,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.15.
      */
     public abstract static class JSStringSubstringNode extends JSStringOperation implements JSBuiltinNode.Inlineable {
-        private final ConditionProfile startLowerEnd = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile startLowerEnd = ConditionProfile.create();
 
         @Child private TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
 
@@ -721,8 +721,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected TruffleString substringGeneric(Object thisObj, Object start, Object end,
                         @Cached JSToNumberNode toNumberNode,
                         @Cached JSToNumberNode toNumber2Node,
-                        @Cached("createBinaryProfile()") ConditionProfile startUndefined,
-                        @Cached("createBinaryProfile()") ConditionProfile endUndefined) {
+                        @Cached ConditionProfile startUndefined,
+                        @Cached ConditionProfile endUndefined) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             int len = Strings.length(thisStr);
@@ -756,8 +756,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected TruffleString substringGeneric(Object thisObj, Object start, Object end,
                             @Cached JSToNumberNode toNumberNode,
                             @Cached JSToNumberNode toNumber2Node,
-                            @Cached("createBinaryProfile()") ConditionProfile startUndefined,
-                            @Cached("createBinaryProfile()") ConditionProfile endUndefined) {
+                            @Cached ConditionProfile startUndefined,
+                            @Cached ConditionProfile endUndefined) {
                 throw rewriteToCall();
             }
 
@@ -781,7 +781,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.7.
      */
     public abstract static class JSStringIndexOfNode extends JSStringOperation {
-        private final ConditionProfile hasPos = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile hasPos = ConditionProfile.create();
 
         public JSStringIndexOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -877,9 +877,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final ConditionProfile emptyInput = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile emptySeparator = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile zeroLimit = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile emptyInput = ConditionProfile.create();
+        private final ConditionProfile emptySeparator = ConditionProfile.create();
+        private final ConditionProfile zeroLimit = ConditionProfile.create();
         private final ConditionProfile matchProfile = ConditionProfile.createCountingProfile();
         private final BranchProfile isUndefinedBranch = BranchProfile.create();
         private final BranchProfile isStringBranch = BranchProfile.create();
@@ -1163,8 +1163,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child protected JSToStringNode toString2Node;
         @Child protected JSToStringNode toString3Node;
         @Child protected IsCallableNode isCallableNode;
-        protected final ConditionProfile functionalReplaceProfile = ConditionProfile.createBinaryProfile();
-        protected final ConditionProfile replaceNecessaryProfile = ConditionProfile.createBinaryProfile();
+        protected final ConditionProfile functionalReplaceProfile = ConditionProfile.create();
+        protected final ConditionProfile replaceNecessaryProfile = ConditionProfile.create();
         protected final BranchProfile dollarProfile = BranchProfile.create();
 
         @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
@@ -1374,8 +1374,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public abstract static class JSStringReplaceAllNode extends JSStringReplaceBaseNode {
-        private final ConditionProfile isSearchValueEmpty = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isRegExp = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isSearchValueEmpty = ConditionProfile.create();
+        private final ConditionProfile isRegExp = ConditionProfile.create();
         private final BranchProfile errorBranch = BranchProfile.create();
 
         @Child private IsRegExpNode isRegExpNode;
@@ -1723,7 +1723,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             final JSStringReplaceES5Node parentNode;
             @Child TRegexUtil.TRegexMaterializeResultNode resultMaterializer = TRegexUtil.TRegexMaterializeResultNode.create();
-            protected final ConditionProfile emptyReplace = ConditionProfile.createBinaryProfile();
+            protected final ConditionProfile emptyReplace = ConditionProfile.create();
 
             protected Replacer(JSStringReplaceES5Node parent) {
                 this.parentNode = parent;
@@ -2311,8 +2311,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * Non-standard String.prototype.trimLeft to provide compatibility with Nashorn and V8.
      */
     public abstract static class JSStringTrimLeftNode extends JSStringOperation {
-        private final ConditionProfile lengthExceeded = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile lengthZero = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile lengthExceeded = ConditionProfile.create();
+        private final ConditionProfile lengthZero = ConditionProfile.create();
 
         public JSStringTrimLeftNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -2341,7 +2341,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringTrimRightNode extends JSStringOperation {
 
-        private final ConditionProfile lengthExceeded = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile lengthExceeded = ConditionProfile.create();
 
         public JSStringTrimRightNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -2436,9 +2436,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.13.
      */
     public abstract static class JSStringSliceNode extends JSStringOperation {
-        private final ConditionProfile canReturnEmpty = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile offsetProfile1 = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile offsetProfile2 = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile canReturnEmpty = ConditionProfile.create();
+        private final ConditionProfile offsetProfile1 = ConditionProfile.create();
+        private final ConditionProfile offsetProfile2 = ConditionProfile.create();
 
         @Child private TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
 
@@ -2477,7 +2477,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(replaces = {"sliceStringIntInt", "sliceObjectIntInt", "sliceStringIntUndefined"})
         protected Object sliceGeneric(Object thisObj, Object start, Object end,
-                        @Cached("createBinaryProfile()") ConditionProfile isUndefined) {
+                        @Cached ConditionProfile isUndefined) {
             requireObjectCoercible(thisObj);
             TruffleString s = toString(thisObj);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,10 +66,10 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isPlainDateTimeProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isZonedDateTimeProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isPlainDateProfile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile isObjectProfile = ConditionProfile.create();
+    private final ConditionProfile isPlainDateTimeProfile = ConditionProfile.create();
+    private final ConditionProfile isZonedDateTimeProfile = ConditionProfile.create();
+    private final ConditionProfile isPlainDateProfile = ConditionProfile.create();
 
     protected final JSContext ctx;
 

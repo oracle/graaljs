@@ -389,7 +389,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     public abstract static class JSNumberToFixedNode extends JSNumberOperation {
         private final BranchProfile digitsErrorBranch = BranchProfile.create();
         private final BranchProfile nanBranch = BranchProfile.create();
-        private final ConditionProfile dtoaOrString = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile dtoaOrString = ConditionProfile.create();
         @Child protected JSDoubleToStringNode doubleToStringNode;
 
         protected JSNumberToFixedNode(JSContext context, JSBuiltin builtin) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,9 +88,9 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     private final boolean needWritability;
     final boolean allowCaching;
     @CompilationFinal private boolean seenNonArrayIndex;
-    private final ConditionProfile hasPropertyBranch = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isDataPropertyBranch = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isAccessorPropertyBranch = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile hasPropertyBranch = ConditionProfile.create();
+    private final ConditionProfile isDataPropertyBranch = ConditionProfile.create();
+    private final ConditionProfile isAccessorPropertyBranch = ConditionProfile.create();
     @Child private GetPropertyProxyValueNode getPropertyProxyValueNode;
 
     protected JSGetOwnPropertyNode(boolean needValue, boolean needEnumerability, boolean needConfigurability, boolean needWritability, boolean allowCaching) {
@@ -150,7 +150,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     /** @see JSString#getOwnProperty */
     @Specialization(guards = "isJSString(thisObj)")
     protected PropertyDescriptor getOwnPropertyString(JSDynamicObject thisObj, Object key,
-                    @Cached("createBinaryProfile()") ConditionProfile stringCaseProfile) {
+                    @Cached ConditionProfile stringCaseProfile) {
         assert JSRuntime.isPropertyKey(key);
         Property prop = thisObj.getShape().getProperty(key);
         PropertyDescriptor desc = ordinaryGetOwnProperty(thisObj, prop);

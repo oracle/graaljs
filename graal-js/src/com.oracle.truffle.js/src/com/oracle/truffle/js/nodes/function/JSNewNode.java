@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -181,8 +181,8 @@ public abstract class JSNewNode extends JavaScriptNode {
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                     @Cached("create()") ExportValueNode convert,
                     @Cached("create()") ImportValueNode toJSType,
-                    @Cached("createBinaryProfile()") ConditionProfile isHostClassProf,
-                    @Cached("createBinaryProfile()") ConditionProfile isAbstractProf) {
+                    @Cached ConditionProfile isHostClassProf,
+                    @Cached ConditionProfile isAbstractProf) {
         Object newTarget = target;
         int count = arguments.getCount(frame);
         Object[] args = new Object[count];

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -634,8 +634,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private JSObjectReadElementNonArrayTypeCacheNode nonArrayCaseNode;
         @Child private IsJSDynamicObjectNode isObjectNode;
-        private final ConditionProfile arrayProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile arrayProfile = ConditionProfile.create();
+        private final ConditionProfile arrayIndexProfile = ConditionProfile.create();
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
 
         JSObjectReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
@@ -902,8 +902,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     private abstract static class ArrayClassGuardCachedArrayReadElementCacheNode extends ArrayReadElementCacheNode {
         private final ScriptArray arrayType;
-        protected final ConditionProfile inBounds = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile needGetProperty = ConditionProfile.createBinaryProfile();
+        protected final ConditionProfile inBounds = ConditionProfile.create();
+        private final ConditionProfile needGetProperty = ConditionProfile.create();
         private final JSClassProfile outOfBoundsClassProfile = JSClassProfile.create();
 
         ArrayClassGuardCachedArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
@@ -981,8 +981,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class ConstantObjectArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-        private final ConditionProfile holeArrayProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile holeProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile holeArrayProfile = ConditionProfile.create();
+        private final ConditionProfile holeProfile = ConditionProfile.create();
 
         ConstantObjectArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
@@ -1121,7 +1121,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class HolesIntArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-        private final ConditionProfile holeProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile holeProfile = ConditionProfile.create();
 
         HolesIntArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
@@ -1141,7 +1141,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class HolesDoubleArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-        private final ConditionProfile holeProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile holeProfile = ConditionProfile.create();
 
         HolesDoubleArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
@@ -1161,7 +1161,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class HolesJSObjectArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-        private final ConditionProfile holeProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile holeProfile = ConditionProfile.create();
 
         HolesJSObjectArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
@@ -1181,7 +1181,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class HolesObjectArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-        private final ConditionProfile holeProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile holeProfile = ConditionProfile.create();
 
         HolesObjectArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
@@ -1252,7 +1252,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class Uint32ArrayReadElementCacheNode extends AbstractTypedArrayReadElementCacheNode {
-        private final ConditionProfile isSignedProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isSignedProfile = ConditionProfile.create();
 
         Uint32ArrayReadElementCacheNode(TypedArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
@@ -1374,8 +1374,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     private static class StringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
         private final JSContext context;
-        private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile stringIndexInBounds = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile arrayIndexProfile = ConditionProfile.create();
+        private final ConditionProfile stringIndexInBounds = ConditionProfile.create();
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private TruffleString.SubstringByteIndexNode substringByteIndexNode;
 

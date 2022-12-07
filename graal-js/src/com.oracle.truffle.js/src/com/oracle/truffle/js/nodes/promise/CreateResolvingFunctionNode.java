@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,7 +120,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Child private FulfillPromiseNode fulfillPromiseNode;
             @Child private RejectPromiseNode rejectPromiseNode;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-            private final ConditionProfile alreadyResolvedProfile = ConditionProfile.createBinaryProfile();
+            private final ConditionProfile alreadyResolvedProfile = ConditionProfile.create();
 
             // PromiseResolveThenableJob
             @Child private PropertySetNode setPromiseNode;
@@ -257,7 +257,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Child private PropertyGetNode getPromiseNode;
             @Child private PropertyGetNode getAlreadyResolvedNode = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
             @Child private RejectPromiseNode rejectPromiseNode;
-            private final ConditionProfile alreadyResolvedProfile = ConditionProfile.createBinaryProfile();
+            private final ConditionProfile alreadyResolvedProfile = ConditionProfile.create();
 
             @Override
             public Object execute(VirtualFrame frame) {

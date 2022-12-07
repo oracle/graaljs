@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,10 +90,10 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
     @Child private IsPristineObjectNode isPristineObjectNode;
     @Child private IsCallableNode isCallableNode = IsCallableNode.create();
     @Child private JSFunctionCallNode specialCallNode;
-    private final ConditionProfile isPristineProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isCallableProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile validResultProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isRegExpProfile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile isPristineProfile = ConditionProfile.create();
+    private final ConditionProfile isCallableProfile = ConditionProfile.create();
+    private final ConditionProfile validResultProfile = ConditionProfile.create();
+    private final ConditionProfile isRegExpProfile = ConditionProfile.create();
 
     JSRegExpExecIntlNode(JSContext context) {
         this.context = context;
@@ -192,7 +192,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         private final JSContext context;
         private final boolean doStaticResultUpdate;
         private final ValueProfile compiledRegexProfile = ValueProfile.createIdentityProfile();
-        private final ConditionProfile areLegacyFeaturesEnabled = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile areLegacyFeaturesEnabled = ConditionProfile.create();
 
         JSRegExpExecIntlIgnoreLastIndexNode(JSContext context, boolean doStaticResultUpdate) {
             this.context = context;
@@ -278,9 +278,9 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @Child private DynamicObjectLibrary setIndicesNode;
         @Child private DynamicObjectLibrary setIndicesRegexResultNode;
         @Child private DynamicObjectLibrary setIndicesGroupsNode;
-        private final ConditionProfile invalidLastIndex = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile invalidLastIndex = ConditionProfile.create();
         private final ConditionProfile match = ConditionProfile.createCountingProfile();
-        private final ConditionProfile areLegacyFeaturesEnabled = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile areLegacyFeaturesEnabled = ConditionProfile.create();
         private final int ecmaScriptVersion;
         @Child private JSToLengthNode toLengthNode;
         @Child private PropertyGetNode getLastIndexNode;

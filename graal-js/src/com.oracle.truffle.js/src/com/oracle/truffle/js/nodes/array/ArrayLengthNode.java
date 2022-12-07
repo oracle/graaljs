@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -160,7 +160,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSDynamicObject arrayObj, int length,
-                        @Cached("createBinaryProfile()") ConditionProfile sealedProfile,
+                        @Cached ConditionProfile sealedProfile,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);
@@ -204,7 +204,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSDynamicObject arrayObj, int length,
-                        @Cached("createBinaryProfile()") ConditionProfile mustDeleteProfile,
+                        @Cached ConditionProfile mustDeleteProfile,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);

@@ -84,7 +84,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
     private final BranchProfile relativeToUndefinedBranch = BranchProfile.create();
     private final BranchProfile relativeToPlainDateBranch = BranchProfile.create();
     private final BranchProfile relativeToZonedDateTimeBranch = BranchProfile.create();
-    private final ConditionProfile largetUnitYMWDProfile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile largetUnitYMWDProfile = ConditionProfile.create();
 
     protected TemporalDurationAddNode(JSContext ctx) {
         this.ctx = ctx;

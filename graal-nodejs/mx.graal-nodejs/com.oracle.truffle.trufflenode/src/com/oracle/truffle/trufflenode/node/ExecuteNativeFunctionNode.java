@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,9 +76,9 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     private final boolean isNew;
     private final boolean isNewTarget;
     private final BranchProfile errorBranch = BranchProfile.create();
-    private final ConditionProfile isTemplate = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile eightOrLessArgs = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile argumentLengthTwo = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile isTemplate = ConditionProfile.create();
+    private final ConditionProfile eightOrLessArgs = ConditionProfile.create();
+    private final ConditionProfile argumentLengthTwo = ConditionProfile.create();
 
     private static final int IMPLICIT_ARG_COUNT = 2;
     private static final int EXPLICIT_ARG_COUNT = 6;

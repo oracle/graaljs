@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -119,7 +119,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
 
     @Specialization(guards = {"isJSDynamicObject(iteratedObject)", "!isJSAdapter(iteratedObject)"})
     protected JSDynamicObject doEnumerateObject(JSDynamicObject iteratedObject,
-                    @Cached("createBinaryProfile()") ConditionProfile isObject) {
+                    @Cached ConditionProfile isObject) {
         if (isObject.profile(JSRuntime.isObject(iteratedObject))) {
             return newForInIterator(iteratedObject);
         } else {

@@ -93,9 +93,9 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
     // TODO still using (some) long arithmetics here, should use double?
     @Specialization
     protected JSTemporalDurationRecord balanceDurationRelative(double y, double m, double w, double d, TemporalUtil.Unit largestUnit, JSDynamicObject relTo,
-                    @Cached("createBinaryProfile()") ConditionProfile unitIsYear,
-                    @Cached("createBinaryProfile()") ConditionProfile unitIsMonth,
-                    @Cached("createBinaryProfile()") ConditionProfile unitIsDay,
+                    @Cached ConditionProfile unitIsYear,
+                    @Cached ConditionProfile unitIsMonth,
+                    @Cached ConditionProfile unitIsDay,
                     @Cached("create(ctx)") ToTemporalDateNode toTemporalDateNode) {
         long years = dtol(y);
         long months = dtol(m);

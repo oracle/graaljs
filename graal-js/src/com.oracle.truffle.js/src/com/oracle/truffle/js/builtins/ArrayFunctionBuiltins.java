@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -143,7 +143,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
     public abstract static class JSArrayFunctionOperation extends JSArrayOperation {
         @Child private ArrayCreateNode arrayCreateNode;
-        private final ConditionProfile isConstructor = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isConstructor = ConditionProfile.create();
 
         public JSArrayFunctionOperation(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
             super(context, builtin, isTypedArray);
@@ -207,7 +207,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Child private PropertyGetNode getNextMethodNode;
         @Child private JSGetLengthNode getSourceLengthNode;
         @Child private IsArrayNode isFastArrayNode;
-        private final ConditionProfile isIterable = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isIterable = ConditionProfile.create();
 
         public JSArrayFromNode(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
             super(context, builtin, isTypedArray);

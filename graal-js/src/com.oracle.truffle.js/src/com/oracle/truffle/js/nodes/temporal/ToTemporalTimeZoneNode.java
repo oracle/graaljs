@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,12 +65,12 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile parseNameEmpty = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile parseIsZ = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isTimeZoneProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile hasProperty1Profile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile hasProperty2Profile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile parseNameEmpty = ConditionProfile.create();
+    private final ConditionProfile parseIsZ = ConditionProfile.create();
+    private final ConditionProfile isObjectProfile = ConditionProfile.create();
+    private final ConditionProfile isTimeZoneProfile = ConditionProfile.create();
+    private final ConditionProfile hasProperty1Profile = ConditionProfile.create();
+    private final ConditionProfile hasProperty2Profile = ConditionProfile.create();
     private final BranchProfile errorBranch = BranchProfile.create();
 
     private final JSContext ctx;

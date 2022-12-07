@@ -777,9 +777,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Child private JSToObjectNode toObjectNode;
         @Child private ForeignPropertySetNode foreignSetNode;
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
-        private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isStrictSymbol = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isForeignObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isObject = ConditionProfile.create();
+        private final ConditionProfile isStrictSymbol = ConditionProfile.create();
+        private final ConditionProfile isForeignObject = ConditionProfile.create();
 
         public GenericPropertySetNode(JSContext context) {
             super(null);

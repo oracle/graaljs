@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -136,8 +136,8 @@ public abstract class PowNode extends MathOperation {
     @SuppressFBWarnings(value = "FE_FLOATING_POINT_EQUALITY", justification = "not necessary in this case")
     @Specialization
     protected double pow3(double a, double b,
-                    @Cached("createBinaryProfile()") ConditionProfile branch1,
-                    @Cached("createBinaryProfile()") ConditionProfile branch2) {
+                    @Cached ConditionProfile branch1,
+                    @Cached ConditionProfile branch2) {
         int ib = (int) b;
         if (branch1.profile(JSRuntime.doubleIsRepresentableAsInt(b, true) && b > 0)) {
             return positivePow(a, ib);

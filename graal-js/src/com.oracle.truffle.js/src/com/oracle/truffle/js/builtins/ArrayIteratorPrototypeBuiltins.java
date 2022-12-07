@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -111,10 +111,10 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private JSGetLengthNode getLengthNode;
         @Child private ReadElementNode readElementNode;
-        private final ConditionProfile intIndexProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile intIndexProfile = ConditionProfile.create();
         private final BranchProfile errorBranch = BranchProfile.create();
         private final BranchProfile useAfterCloseBranch = BranchProfile.create();
-        private final ConditionProfile isTypedArrayProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isTypedArrayProfile = ConditionProfile.create();
 
         public ArrayIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

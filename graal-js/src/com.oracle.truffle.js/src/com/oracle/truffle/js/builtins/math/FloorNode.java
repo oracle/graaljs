@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,10 +73,10 @@ public abstract class FloorNode extends MathOperation {
 
     @Specialization
     protected static Object floorDouble(double d,
-                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
-                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
-                    @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
-                    @Cached("createBinaryProfile()") @Shared("smaller") ConditionProfile smaller) {
+                    @Cached @Shared("isZero") ConditionProfile isZero,
+                    @Cached @Shared("fitsInt") ConditionProfile fitsInt,
+                    @Cached @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
+                    @Cached @Shared("smaller") ConditionProfile smaller) {
         if (isZero.profile(d == 0.0)) {
             // floor(-0.0) => -0.0
             // floor(+0.0) => +0.0
@@ -95,10 +95,10 @@ public abstract class FloorNode extends MathOperation {
 
     @Specialization(replaces = "floorDouble")
     protected Object floorToDouble(Object a,
-                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
-                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
-                    @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
-                    @Cached("createBinaryProfile()") @Shared("smaller") ConditionProfile smaller) {
+                    @Cached @Shared("isZero") ConditionProfile isZero,
+                    @Cached @Shared("fitsInt") ConditionProfile fitsInt,
+                    @Cached @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
+                    @Cached @Shared("smaller") ConditionProfile smaller) {
         double d = toDouble(a);
         return floorDouble(d, isZero, fitsInt, fitsSafeLong, smaller);
     }
