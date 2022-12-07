@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNodeGen.BuildGroupsObjectNodeGen;
@@ -279,7 +280,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @Child private DynamicObjectLibrary setIndicesRegexResultNode;
         @Child private DynamicObjectLibrary setIndicesGroupsNode;
         private final ConditionProfile invalidLastIndex = ConditionProfile.create();
-        private final ConditionProfile match = ConditionProfile.createCountingProfile();
+        private final CountingConditionProfile match = CountingConditionProfile.create();
         private final ConditionProfile areLegacyFeaturesEnabled = ConditionProfile.create();
         private final int ecmaScriptVersion;
         @Child private JSToLengthNode toLengthNode;

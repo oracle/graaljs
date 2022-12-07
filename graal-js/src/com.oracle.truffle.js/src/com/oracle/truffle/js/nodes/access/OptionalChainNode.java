@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
@@ -189,7 +189,7 @@ public final class OptionalChainNode extends JavaScriptNode {
         @Child private JavaScriptNode expressionNode;
 
         @Child JSIsNullOrUndefinedNode isNullOrUndefinedNode = JSIsNullOrUndefinedNode.create();
-        private final ConditionProfile isNullish = ConditionProfile.createCountingProfile();
+        private final CountingConditionProfile isNullish = CountingConditionProfile.create();
 
         ShortCircuitNode(JavaScriptNode expressionNode) {
             this.expressionNode = expressionNode;
@@ -231,7 +231,7 @@ public final class OptionalChainNode extends JavaScriptNode {
         @Child private JSTargetableNode expressionNode;
 
         @Child JSIsNullOrUndefinedNode isNullOrUndefinedNode = JSIsNullOrUndefinedNode.create();
-        private final ConditionProfile isNullish = ConditionProfile.createCountingProfile();
+        private final CountingConditionProfile isNullish = CountingConditionProfile.create();
 
         ShortCircuitTargetableNode(JSTargetableNode expressionNode) {
             this.expressionNode = expressionNode;

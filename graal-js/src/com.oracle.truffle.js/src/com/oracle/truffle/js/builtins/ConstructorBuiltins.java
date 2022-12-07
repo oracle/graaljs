@@ -2162,11 +2162,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(replaces = "doCached")
         protected final JSFunctionObject doUncached(String paramList, String body, String sourceName,
-                        @Cached("createCache()") LRUCache<CachedSourceKey, ScriptNode> cache,
-                        @Cached("createCountingProfile()") ConditionProfile cacheHit) {
+                        @Cached("createCache()") LRUCache<CachedSourceKey, ScriptNode> cache) {
             ScriptNode cached = cacheLookup(cache, new CachedSourceKey(paramList, body, sourceName));
             JSRealm realm = getRealm();
-            if (cacheHit.profile(cached == null)) {
+            if (cached == null) {
                 return parseAndEvalFunction(cache, realm, paramList, body, sourceName);
             } else {
                 return evalParsedFunction(realm, cached);

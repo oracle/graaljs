@@ -60,6 +60,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
@@ -880,7 +881,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ConditionProfile emptyInput = ConditionProfile.create();
         private final ConditionProfile emptySeparator = ConditionProfile.create();
         private final ConditionProfile zeroLimit = ConditionProfile.create();
-        private final ConditionProfile matchProfile = ConditionProfile.createCountingProfile();
+        private final CountingConditionProfile matchProfile = CountingConditionProfile.create();
         private final BranchProfile isUndefinedBranch = BranchProfile.create();
         private final BranchProfile isStringBranch = BranchProfile.create();
         private final BranchProfile isRegexpBranch = BranchProfile.create();
@@ -1562,9 +1563,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor = TRegexUtil.TRegexCompiledRegexAccessor.create();
         @Child private TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.create();
         @Child private TruffleString.ByteIndexOfStringNode stringIndexOfNode;
-        private final ConditionProfile match = ConditionProfile.createCountingProfile();
-        private final ConditionProfile isRegExp = ConditionProfile.createCountingProfile();
-        private final ConditionProfile isFnRepl = ConditionProfile.createCountingProfile();
+        private final CountingConditionProfile match = CountingConditionProfile.create();
+        private final CountingConditionProfile isRegExp = CountingConditionProfile.create();
+        private final CountingConditionProfile isFnRepl = CountingConditionProfile.create();
 
         public JSStringReplaceES5Node(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -2227,8 +2228,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private TRegexUtil.TRegexCompiledRegexSingleFlagAccessor globalFlagAccessor = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(TRegexUtil.Props.Flags.GLOBAL);
         @Child private TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.create();
         @Child private TRegexUtil.TRegexMaterializeResultNode resultMaterializer = TRegexUtil.TRegexMaterializeResultNode.create();
-        private final ConditionProfile match = ConditionProfile.createCountingProfile();
-        private final ConditionProfile isGlobalRegExp = ConditionProfile.createCountingProfile();
+        private final CountingConditionProfile match = CountingConditionProfile.create();
+        private final CountingConditionProfile isGlobalRegExp = CountingConditionProfile.create();
 
         public JSStringMatchES5Node(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

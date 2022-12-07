@@ -68,6 +68,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -1644,7 +1645,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Child private CreateMethodPropertyNode setConstructor;
         @CompilationFinal private int kind;
         private final JSContext context;
-        private final ConditionProfile prototypeInitializedProfile = ConditionProfile.createCountingProfile();
+        private final CountingConditionProfile prototypeInitializedProfile = CountingConditionProfile.create();
 
         private static final int UNKNOWN = 0;
         private static final int CONSTRUCTOR = 1;

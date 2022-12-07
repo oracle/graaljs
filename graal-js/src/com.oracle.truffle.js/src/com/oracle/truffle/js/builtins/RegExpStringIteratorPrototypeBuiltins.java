@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.RegExpPrototypeSymbolOperation;
 import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltinsFactory.RegExpStringIteratorNextNodeGen;
@@ -117,7 +118,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
 
-        private final ConditionProfile noMatchProfile = ConditionProfile.createCountingProfile();
+        private final CountingConditionProfile noMatchProfile = CountingConditionProfile.create();
         private final ConditionProfile globalProfile = ConditionProfile.create();
 
         public RegExpStringIteratorNextNode(JSContext context, JSBuiltin builtin) {
