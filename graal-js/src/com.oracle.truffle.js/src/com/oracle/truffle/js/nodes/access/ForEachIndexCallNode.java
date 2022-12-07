@@ -103,7 +103,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
 
     @Child private IsArrayNode isArrayNode = IsArrayNode.createIsAnyArray();
     protected final JSClassProfile targetClassProfile = JSClassProfile.create();
-    protected final LoopConditionProfile loopCond = LoopConditionProfile.createCountingProfile();
+    protected final LoopConditionProfile loopCond = LoopConditionProfile.create();
     @Child private CallbackNode callbackNode;
     @Child protected MaybeResultNode maybeResultNode;
 
