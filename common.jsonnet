@@ -1,20 +1,6 @@
 local common_json = (import "common.json");
 
 {
-  jdk8: {
-    jdk:: 'jdk8',
-    downloads+: {
-      JAVA_HOME: common_json.jdks.oraclejdk8,
-    },
-  },
-
-  jdk11: {
-    jdk:: 'jdk11',
-    downloads+: {
-      JAVA_HOME: common_json.jdks["labsjdk-ce-11"],
-    },
-  },
-
   jdk17: {
     jdk:: 'jdk17',
     downloads+: {
@@ -125,20 +111,6 @@ local common_json = (import "common.json");
     packages+: common_json.devkits["windows-jdk20"].packages,
     setup+: [
       ['set-export', 'DEVKIT_VERSION', '2022'],
-    ],
-  },
-
-  windows_jdk11: self.windows + {
-    packages+: common_json.devkits["windows-jdk11"].packages,
-    setup+: [
-      ['set-export', 'DEVKIT_VERSION', '2017'],
-    ],
-  },
-
-  windows_jdk8: self.windows + {
-    packages+: common_json.devkits["windows-oraclejdk8"].packages,
-    setup+: [
-      ['set-export', 'DEVKIT_VERSION', '2017'],
     ],
   },
 
