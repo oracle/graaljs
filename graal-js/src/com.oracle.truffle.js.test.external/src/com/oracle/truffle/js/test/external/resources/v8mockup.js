@@ -1142,3 +1142,45 @@ globalThis['%GetWasmExceptionTagId'] = function(exception, instance) {
 globalThis['%IsTurboFanFunction'] = function(fun) {
     return v8IgnoreResult;
 }
+
+globalThis['%ArrayBufferSetDetachKey'] = function(arrayBuffer, key) {
+}
+
+globalThis['%IsTurbofanEnabled'] = function() {
+    return v8IgnoreResult;
+}
+
+globalThis['%ActiveTierIsTurbofan'] = function(fun) {
+    return v8IgnoreResult;
+}
+
+globalThis['%IsMaglevEnabled'] = function() {
+    return v8IgnoreResult;
+}
+
+globalThis['%CurrentFrameIsTurbofan'] = function() {
+    return v8IgnoreResult;
+}
+
+globalThis['%ConstructThinString'] = function(str) {
+    return str;
+}
+
+globalThis['%IsSparkplugEnabled'] = function() {
+    return v8IgnoreResult;
+}
+
+globalThis['%ActiveTierIsSparkplug'] = function(fun) {
+    return v8IgnoreResult;
+}
+
+globalThis['%ForceFlush'] = function(fun) {
+}
+
+globalThis['%InYoungGeneration'] = function(o) {
+    return v8IgnoreResult;
+}
+
+globalThis['%IsInPlaceInternalizableString'] = function(str) {
+    return v8IgnoreResult;
+}
