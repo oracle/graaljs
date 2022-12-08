@@ -85,7 +85,7 @@ var d8 = {
 // ---------------------- other mockup functions ---------------- //
 
 globalThis['%OptimizeFunctionOnNextCall'] = function(f) {
-    f._optimized = true;
+    Object.defineProperty(f, '_optimized', { value: true });
     return undefined;
 }
 

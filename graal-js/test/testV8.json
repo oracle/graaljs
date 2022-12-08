@@ -1642,10 +1642,6 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1374746.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-11-28"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-1381404.js",
     "status" : "FAIL",
     "comment" : "Uses d8.serializer.deserialize"
