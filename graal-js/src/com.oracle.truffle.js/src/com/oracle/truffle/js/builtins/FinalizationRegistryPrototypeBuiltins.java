@@ -129,7 +129,7 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
         protected JSDynamicObject register(JSFinalizationRegistryObject thisObj, Object target, Object holdings, Object unregisterTokenArg) {
             if (!isObjectNode.executeBoolean(target)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("FinalizationRegistry.prototype.register: target must be an object");
+                throw Errors.createTypeError("FinalizationRegistry.prototype.register: invalid target");
             }
             if (sameValueNode.executeBoolean(target, holdings)) {
                 errorBranch.enter();

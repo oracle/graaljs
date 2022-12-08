@@ -100,6 +100,13 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-threads",
                     "--experimental-wasm-typed-funcref",
                     "--experimental-wasm-type-reflection",
+                    "--expose-fast-api",
+                    "--harmony-change-array-by-copy",
+                    "--harmony-json-parse-with-source",
+                    "--harmony-rab-gsab",
+                    "--harmony-regexp-unicode-sets",
+                    "--harmony-struct",
+                    "--harmony-symbol-as-weakmap-key",
                     "--wasm-staging"
     }));
     private static final Set<String> ES2023_FLAGS = new HashSet<>(Arrays.asList(new String[]{

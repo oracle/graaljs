@@ -415,13 +415,13 @@ public class DateParser {
 
         final char c = string.charAt(pos);
 
-        if (c > 0x80) {
+        final int type = Character.getType(c);
+        if (c > 0x80 && type != SPACE_SEPARATOR) {
             tokenLength = 1;
             pos++;
             return Token.UNKNOWN; // We only deal with ASCII here
         }
 
-        final int type = Character.getType(c);
         switch (type) {
             case DECIMAL_DIGIT_NUMBER:
                 numValue = readNumber(9);
