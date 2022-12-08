@@ -880,10 +880,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "mjsunit/harmony/weakrefs/basics.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-11-28"
-  }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanup-on-detached-realm.js",
     "status" : "FAIL",
     "comment" : "Uses Realm.detachGlobal()"

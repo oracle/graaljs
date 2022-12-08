@@ -1628,7 +1628,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!isJSObject(target)"})
         protected JSDynamicObject constructWeakRefNonObject(@SuppressWarnings("unused") JSDynamicObject newTarget, @SuppressWarnings("unused") Object target) {
-            throw Errors.createTypeError("WeakRef: target must be an object");
+            throw Errors.createTypeError("WeakRef: invalid target");
         }
 
         @Override
