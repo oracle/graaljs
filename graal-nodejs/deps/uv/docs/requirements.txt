@@ -6,7 +6,7 @@ alabaster==0.7.12
 appdirs==1.4.3
 Babel==2.9.0
 CacheControl==0.12.6
-certifi==2019.11.28
+certifi==2022.12.7
 chardet==3.0.4
 colorama==0.4.3
 contextlib2==0.6.0
