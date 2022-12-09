@@ -2956,7 +2956,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             protected abstract Object executeWithArguments(Object arg0);
 
-            @Specialization(guards = {"acceptCache(equalNode, value, cachedValue, symbolUsageMarker)"})
+            @Specialization(guards = {"acceptCache(equalNode, value, cachedValue, symbolUsageMarker)"}, limit = "1")
             protected Symbol callSymbolSingleton(TruffleString value,
                             @Cached("value") TruffleString cachedValue,
                             @Cached TruffleString.EqualNode equalNode,
