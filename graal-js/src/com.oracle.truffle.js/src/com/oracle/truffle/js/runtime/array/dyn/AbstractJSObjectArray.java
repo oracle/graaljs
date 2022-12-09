@@ -140,6 +140,7 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
         if (grown != 0) {
             incrementHolesCount(object, Math.abs(grown) - 1);
         }
+        assert checkFillHoles(object, internalIndex, grown);
     }
 
     @Override

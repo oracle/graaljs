@@ -64,7 +64,7 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
         HolesIntArray arrayType = createHolesIntArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         arraySetHoleCount(object, holeCount);
-        assert holeCount == arrayType.countHoles(object) : String.format("holeCount, %d, differs from the actual count, %d", holeCount, arrayType.countHoles(object));
+        assert arrayType.assertHoleCount(object);
         return arrayType;
     }
 
@@ -158,11 +158,6 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
             return Undefined.instance;
         }
         return value;
-    }
-
-    @Override
-    protected void incrementHolesCount(JSDynamicObject object, int offset) {
-        arraySetHoleCount(object, arrayGetHoleCount(object) + offset);
     }
 
     @Override
