@@ -944,24 +944,37 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.lazyRegexResultNode = DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit);
         }
 
-        @Specialization(guards = "stringEquals(equalsNode, cachedReplaceValue, replaceValue)")
-        protected Object replaceCached(JSDynamicObject rx, Object searchString, @SuppressWarnings("unused") TruffleString replaceValue,
+        @Specialization(guards = "stringEquals(equalsNode, cachedReplaceValue, replaceValue)", limit = "1")
+        protected Object replaceStringCached(JSDynamicObject rx, Object searchValue, @SuppressWarnings("unused") TruffleString replaceValue,
                         @Cached("replaceValue") TruffleString cachedReplaceValue,
                         @Cached(value = "parseReplaceValueWithNCG(replaceValue)", dimensions = 1) ReplaceStringParser.Token[] cachedParsedReplaceValueWithNamedCG,
                         @Cached(value = "parseReplaceValueWithoutNCG(replaceValue)", dimensions = 1) ReplaceStringParser.Token[] cachedParsedReplaceValueWithoutNamedCG,
                         @Shared("toString1") @Cached JSToStringNode toString1Node,
                         @SuppressWarnings("unused") @Cached TruffleString.EqualNode equalsNode) {
             checkObject(rx);
+            TruffleString searchString = toString1Node.executeString(searchValue);
             if (isPristine(rx)) {
-                return replaceInternal(rx, toString1Node.executeString(searchString), cachedReplaceValue, cachedParsedReplaceValueWithNamedCG, cachedParsedReplaceValueWithoutNamedCG);
+                return replaceInternal(rx, searchString, cachedReplaceValue, cachedParsedReplaceValueWithNamedCG, cachedParsedReplaceValueWithoutNamedCG);
             }
-            return replaceAccordingToSpec(rx, toString1Node.executeString(searchString), cachedReplaceValue, false);
+            return replaceAccordingToSpec(rx, searchString, cachedReplaceValue, false);
         }
 
-        @Specialization(replaces = "replaceCached")
-        protected Object replaceDynamic(JSDynamicObject rx, Object searchString, Object replaceValue,
+        @Specialization(replaces = "replaceStringCached")
+        protected Object replaceString(JSDynamicObject rx, Object searchValue, TruffleString replaceValue,
                         @Shared("toString1") @Cached JSToStringNode toString1Node) {
             checkObject(rx);
+            TruffleString searchString = toString1Node.executeString(searchValue);
+            if (isPristine(rx)) {
+                return replaceInternal(rx, searchString, replaceValue, null, null);
+            }
+            return replaceAccordingToSpec(rx, searchString, replaceValue, false);
+        }
+
+        @Specialization(replaces = "replaceString")
+        protected Object replaceDynamic(JSDynamicObject rx, Object searchValue, Object replaceValue,
+                        @Shared("toString1") @Cached JSToStringNode toString1Node) {
+            checkObject(rx);
+            TruffleString searchString = toString1Node.executeString(searchValue);
             boolean functionalReplace = functionalReplaceProfile.profile(isCallableNode.executeBoolean(replaceValue));
             Object replaceVal;
             if (functionalReplace) {
@@ -970,10 +983,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 TruffleString replaceString = toString2(replaceValue);
                 replaceVal = replaceString;
                 if (isPristine(rx)) {
-                    return replaceInternal(rx, toString1Node.executeString(searchString), replaceString, null, null);
+                    return replaceInternal(rx, searchString, replaceString, null, null);
                 }
             }
-            return replaceAccordingToSpec(rx, toString1Node.executeString(searchString), replaceVal, functionalReplace);
+            return replaceAccordingToSpec(rx, searchString, replaceVal, functionalReplace);
         }
 
         @Fallback
