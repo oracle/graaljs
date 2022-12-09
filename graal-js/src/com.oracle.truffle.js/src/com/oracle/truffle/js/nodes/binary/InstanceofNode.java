@@ -390,7 +390,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "cachedShape.check(func)", replaces = "doCachedInstance")
+        @Specialization(guards = "cachedShape.check(func)", replaces = "doCachedInstance", limit = "1")
         protected static boolean doCachedShape(JSDynamicObject func,
                         @Cached("func.getShape()") Shape cachedShape,
                         @Cached("isBoundFunction(func)") boolean cachedIsBound) {

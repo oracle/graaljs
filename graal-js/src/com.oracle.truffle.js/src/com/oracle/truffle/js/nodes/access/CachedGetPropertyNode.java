@@ -89,7 +89,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 
-    @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"})
+    @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"}, limit = "1")
     Object doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object receiver, Object defaultValue,
                     @Cached @Shared("requireObjectCoercible") RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
