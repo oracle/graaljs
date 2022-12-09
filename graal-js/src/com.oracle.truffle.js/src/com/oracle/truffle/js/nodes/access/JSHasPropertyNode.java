@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.IntToLongTypeSystem;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
@@ -76,7 +77,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  *
  */
 @TypeSystemReference(IntToLongTypeSystem.class)
-@ImportStatic(value = {JSRuntime.class, JSInteropUtil.class, JSConfig.class})
+@ImportStatic(value = {JSRuntime.class, JSInteropUtil.class, JSConfig.class, Strings.class})
 public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     private final boolean hasOwnProperty;
@@ -126,35 +127,37 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedObjectType != null", "cachedObjectType.isInstance(object)", "cachedName.equals(propertyName)"}, limit = "1")
-    public boolean objectStringCached(JSDynamicObject object, String propertyName,
+    @Specialization(guards = {"cachedObjectType != null", "cachedObjectType.isInstance(object)", "equals(equalNode, cachedName, propertyName)"}, limit = "1")
+    public boolean objectStringCached(JSDynamicObject object, TruffleString propertyName,
                     @Cached("getCacheableObjectType(object)") JSClass cachedObjectType,
-                    @Cached("propertyName") String cachedName,
-                    @Cached("getCachedPropertyGetter(object,propertyName)") HasPropertyCacheNode hasPropertyNode) {
+                    @Cached("propertyName") TruffleString cachedName,
+                    @Cached("getCachedPropertyGetter(object, propertyName)") HasPropertyCacheNode hasPropertyNode,
+                    @Cached TruffleString.EqualNode equalNode) {
         return hasPropertyNode.hasProperty(object);
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSArray(object)", "!isArrayIndex(cachedName)", "cachedName.equals(propertyName)"}, limit = "1")
-    public boolean arrayStringCached(JSDynamicObject object, String propertyName,
-                    @Cached("propertyName") String cachedName,
-                    @Cached("getCachedPropertyGetter(object,propertyName)") HasPropertyCacheNode hasPropertyNode) {
+    @Specialization(guards = {"isJSArray(object)", "!isArrayIndex(cachedName)", "equals(equalNode, cachedName, propertyName)"}, limit = "1")
+    public boolean arrayStringCached(JSDynamicObject object, TruffleString propertyName,
+                    @Cached("propertyName") TruffleString cachedName,
+                    @Cached("getCachedPropertyGetter(object, propertyName)") HasPropertyCacheNode hasPropertyNode,
+                    @Cached TruffleString.EqualNode equalNode) {
         return hasPropertyNode.hasProperty(object);
     }
 
     @ReportPolymorphism.Megamorphic
-    @Specialization(guards = {"isJSDynamicObject(object)"}, replaces = {"objectStringCached", "arrayStringCached"})
-    public boolean objectOrArrayString(JSDynamicObject object, String propertyName) {
+    @Specialization(replaces = {"objectStringCached", "arrayStringCached"})
+    public boolean objectString(JSDynamicObject object, TruffleString propertyName) {
         return hasPropertyGeneric(object, propertyName);
     }
 
     @ReportPolymorphism.Megamorphic
-    @Specialization(guards = {"isJSDynamicObject(object)"})
+    @Specialization
     public boolean objectSymbol(JSDynamicObject object, Symbol propertyName) {
         return hasPropertyGeneric(object, propertyName);
     }
 
-    @Specialization(guards = {"isJSDynamicObject(object)", "!isJSFastArray(object)", "!isJSArrayBufferView(object)"})
+    @Specialization(guards = {"!isJSFastArray(object)", "!isJSArrayBufferView(object)"})
     public boolean objectLong(JSDynamicObject object, long propertyIdx) {
         if (hasOwnProperty) {
             return JSObject.hasOwnProperty(object, propertyIdx, classProfile);
@@ -195,7 +198,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     @ReportPolymorphism.Megamorphic
-    @Specialization(guards = "isJSDynamicObject(object)")
+    @Specialization
     public boolean objectObject(JSDynamicObject object, Object propertyName,
                     @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
         Object propertyKey = toPropertyKeyNode.execute(propertyName);
