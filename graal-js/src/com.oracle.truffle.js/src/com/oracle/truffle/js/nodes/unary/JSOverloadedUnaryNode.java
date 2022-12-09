@@ -63,6 +63,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ImportStatic(OperatorSet.class)
 public abstract class JSOverloadedUnaryNode extends JavaScriptBaseNode {
 
+    static final int LIMIT = 3;
+
     private final TruffleString overloadedOperatorName;
 
     protected JSOverloadedUnaryNode(TruffleString overloadedOperatorName) {
@@ -75,7 +77,7 @@ public abstract class JSOverloadedUnaryNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object operand);
 
-    @Specialization(guards = {"operand.matchesOperatorCounter(operatorCounter)"})
+    @Specialization(guards = {"operand.matchesOperatorCounter(operatorCounter)"}, limit = "LIMIT")
     protected Object doCached(JSOverloadedOperatorsObject operand,
                     @Cached("operand.getOperatorCounter()") @SuppressWarnings("unused") int operatorCounter,
                     @Cached("getOperatorImplementation(operand, getOverloadedOperatorName())") Object operatorImplementation,

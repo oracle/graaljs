@@ -237,6 +237,8 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     @ImportStatic(OperatorSet.class)
     public abstract static class DispatchBinaryOperatorNode extends JavaScriptBaseNode {
 
+        static final int LIMIT = 3;
+
         private final TruffleString overloadedOperatorName;
 
         protected DispatchBinaryOperatorNode(TruffleString overloadedOperatorName) {
@@ -249,7 +251,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
 
         protected abstract Object execute(Object left, Object right);
 
-        @Specialization(guards = {"left.matchesOperatorCounter(leftOperatorCounter)", "right.matchesOperatorCounter(rightOperatorCounter)"})
+        @Specialization(guards = {"left.matchesOperatorCounter(leftOperatorCounter)", "right.matchesOperatorCounter(rightOperatorCounter)"}, limit = "LIMIT")
         protected Object doOverloadedOverloaded(JSOverloadedOperatorsObject left,
                         JSOverloadedOperatorsObject right,
                         @Cached("left.getOperatorCounter()") @SuppressWarnings("unused") int leftOperatorCounter,
@@ -259,7 +261,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
-        @Specialization(guards = {"left.matchesOperatorCounter(leftOperatorCounter)", "isNumber(right)"})
+        @Specialization(guards = {"left.matchesOperatorCounter(leftOperatorCounter)", "isNumber(right)"}, limit = "LIMIT")
         protected Object doOverloadedNumber(JSOverloadedOperatorsObject left,
                         Object right,
                         @Cached("left.getOperatorCounter()") @SuppressWarnings("unused") int leftOperatorCounter,
@@ -268,7 +270,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
-        @Specialization(guards = {"left.matchesOperatorCounter(leftOperatorCounter)"})
+        @Specialization(guards = {"left.matchesOperatorCounter(leftOperatorCounter)"}, limit = "LIMIT")
         protected Object doOverloadedBigInt(JSOverloadedOperatorsObject left,
                         BigInt right,
                         @Cached("left.getOperatorCounter()") @SuppressWarnings("unused") int leftOperatorCounter,
@@ -277,7 +279,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
-        @Specialization(guards = {"left.matchesOperatorCounter(leftOperatorCounter)", "isString(right)", "!isAddition()"})
+        @Specialization(guards = {"left.matchesOperatorCounter(leftOperatorCounter)", "isString(right)", "!isAddition()"}, limit = "LIMIT")
         protected Object doOverloadedString(JSOverloadedOperatorsObject left,
                         Object right,
                         @Cached("left.getOperatorCounter()") @SuppressWarnings("unused") int leftOperatorCounter,
@@ -291,7 +293,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return missingImplementation();
         }
 
-        @Specialization(guards = {"right.matchesOperatorCounter(rightOperatorCounter)", "isNumber(left)"})
+        @Specialization(guards = {"right.matchesOperatorCounter(rightOperatorCounter)", "isNumber(left)"}, limit = "LIMIT")
         protected Object doNumberOverloaded(Object left,
                         JSOverloadedOperatorsObject right,
                         @Cached("right.getOperatorCounter()") @SuppressWarnings("unused") int rightOperatorCounter,
@@ -300,7 +302,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
-        @Specialization(guards = {"right.matchesOperatorCounter(rightOperatorCounter)"})
+        @Specialization(guards = {"right.matchesOperatorCounter(rightOperatorCounter)"}, limit = "LIMIT")
         protected Object doBigIntOverloaded(BigInt left,
                         JSOverloadedOperatorsObject right,
                         @Cached("right.getOperatorCounter()") @SuppressWarnings("unused") int rightOperatorCounter,
@@ -309,7 +311,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
-        @Specialization(guards = {"right.matchesOperatorCounter(rightOperatorCounter)", "isString(left)", "!isAddition()"})
+        @Specialization(guards = {"right.matchesOperatorCounter(rightOperatorCounter)", "isString(left)", "!isAddition()"}, limit = "LIMIT")
         protected Object doStringOverloaded(Object left,
                         JSOverloadedOperatorsObject right,
                         @Cached("right.getOperatorCounter()") @SuppressWarnings("unused") int rightOperatorCounter,
