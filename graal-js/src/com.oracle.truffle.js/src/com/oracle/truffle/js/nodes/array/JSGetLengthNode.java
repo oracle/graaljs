@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.array;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -85,13 +86,13 @@ public abstract class JSGetLengthNode extends JavaScriptBaseNode {
 
     @Specialization(rewriteOn = UnexpectedResultException.class)
     public int getArrayLengthInt(JSArrayObject target,
-                    @Cached ArrayLengthReadNode arrayLengthReadNode) throws UnexpectedResultException {
+                    @Cached @Shared("arrayLengthRead") ArrayLengthReadNode arrayLengthReadNode) throws UnexpectedResultException {
         return arrayLengthReadNode.executeInt(target);
     }
 
     @Specialization(replaces = "getArrayLengthInt")
     public double getArrayLength(JSArrayObject target,
-                    @Cached ArrayLengthReadNode arrayLengthReadNode) {
+                    @Cached @Shared("arrayLengthRead") ArrayLengthReadNode arrayLengthReadNode) {
         return arrayLengthReadNode.executeDouble(target);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
@@ -82,14 +83,14 @@ public abstract class JSSetLengthNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static int setIntLength(JSDynamicObject object, int length,
-                    @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty) {
+                    @Cached("createWritePropertyNode()") @Shared("setLength") WritePropertyNode setLengthProperty) {
         setLengthProperty.executeIntWithValue(object, length);
         return length;
     }
 
     @Specialization(replaces = "setIntLength")
     protected static Object setLength(JSDynamicObject object, Object length,
-                    @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty) {
+                    @Cached("createWritePropertyNode()") @Shared("setLength") WritePropertyNode setLengthProperty) {
         setLengthProperty.executeWithValue(object, length);
         return length;
     }

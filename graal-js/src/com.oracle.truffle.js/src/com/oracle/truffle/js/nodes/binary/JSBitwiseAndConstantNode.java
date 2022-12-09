@@ -45,6 +45,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -159,8 +160,8 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "isInt"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"})
     protected Object doGeneric(Object a,
-                    @Cached JSToNumericNode toNumeric,
-                    @Cached ConditionProfile profileIsBigInt,
+                    @Cached @Shared("toNumeric") JSToNumericNode toNumeric,
+                    @Cached @Shared("isBigInt") ConditionProfile profileIsBigInt,
                     @Cached("makeCopy()") JavaScriptNode innerAndNode) {
         Object numericA = toNumeric.execute(a);
         if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {
@@ -181,8 +182,8 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!isInt()"}, replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"})
     protected BigInt doGenericBigIntCase(Object a,
-                    @Cached JSToNumericNode toNumeric,
-                    @Cached ConditionProfile profileIsBigInt) {
+                    @Cached @Shared("toNumeric") JSToNumericNode toNumeric,
+                    @Cached @Shared("isBigInt") ConditionProfile profileIsBigInt) {
         Object numericA = toNumeric.execute(a);
         if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {
             return doBigInt((BigInt) numericA);

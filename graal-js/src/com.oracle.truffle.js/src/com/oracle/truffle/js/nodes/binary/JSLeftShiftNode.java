@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -89,7 +90,7 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
 
     @Specialization
     protected Object doDouble(double a, double b,
-                    @Cached JSLeftShiftNode leftShift,
+                    @Cached @Shared("leftShift") JSLeftShiftNode leftShift,
                     @Cached JSToInt32Node leftInt32,
                     @Cached JSToUInt32Node rightUInt32) {
 
@@ -125,7 +126,7 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntegerDouble", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
-                    @Cached JSLeftShiftNode leftShift,
+                    @Cached @Shared("leftShift") JSLeftShiftNode leftShift,
                     @Cached JSToNumericNode leftToNumeric,
                     @Cached JSToNumericNode rightToNumeric,
                     @Cached BranchProfile mixedNumericTypes) {

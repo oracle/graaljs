@@ -58,6 +58,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -939,8 +940,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"isJSObject(object)", "longIsRepresentableAsInt(longLength)"})
         protected static void setIntLength(JSDynamicObject object, long longLength,
-                        @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
-                        @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty) {
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
+                        @Shared("writeProperty") @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty) {
             int intLength = (int) longLength;
             deletePropertyNode.executeEvaluated(object, intLength);
             setLengthProperty.executeIntWithValue(object, intLength);
@@ -948,8 +949,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"isJSObject(object)"}, replaces = "setIntLength")
         protected static void setLength(JSDynamicObject object, long longLength,
-                        @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
-                        @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
+                        @Shared("writeProperty") @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty,
                         @Cached ConditionProfile indexInIntRangeCondition) {
             Object boxedLength = JSRuntime.boxIndex(longLength, indexInIntRangeCondition);
             deletePropertyNode.executeEvaluated(object, boxedLength);
@@ -1049,7 +1050,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Shared("isSealed") @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile,
                         @Shared("lengthIsZero") @Cached ConditionProfile lengthIsZero,
-                        @Cached ConditionProfile lengthLargerOne) {
+                        @Cached @Exclusive ConditionProfile lengthLargerOne) {
             long len = getLength(thisObj);
 
             if (lengthIsZero.profile(len == 0)) {
@@ -2044,8 +2045,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             @Specialization(guards = {"cachedArrayType.isInstance(arrayType)"}, limit = "5")
             static void doCached(JSDynamicObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent,
                             @Cached("arrayType") ScriptArray cachedArrayType,
-                            @Cached GetPrototypeNode getPrototypeNode,
-                            @Cached ConditionProfile arrayElementwise) {
+                            @Cached @Shared("getPrototype") GetPrototypeNode getPrototypeNode,
+                            @Cached @Shared("useElementwise") ConditionProfile arrayElementwise) {
                 if (arrayElementwise.profile(parent.mustUseElementwise(array, len, cachedArrayType.cast(arrayType), getPrototypeNode))) {
                     parent.spliceJSArrayElementwise(array, len, actualStart, actualDeleteCount, itemCount);
                 } else {
@@ -2055,8 +2056,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             @Specialization(replaces = "doCached")
             static void doUncached(JSDynamicObject array, long len, long actualStart, long actualDeleteCount, long itemCount, ScriptArray arrayType, JSArraySpliceNode parent,
-                            @Cached GetPrototypeNode getPrototypeNode,
-                            @Cached ConditionProfile arrayElementwise) {
+                            @Cached @Shared("getPrototype") GetPrototypeNode getPrototypeNode,
+                            @Cached @Shared("useElementwise") ConditionProfile arrayElementwise) {
                 if (arrayElementwise.profile(parent.mustUseElementwise(array, len, arrayType, getPrototypeNode))) {
                     parent.spliceJSArrayElementwise(array, len, actualStart, actualDeleteCount, itemCount);
                 } else {

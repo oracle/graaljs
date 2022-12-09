@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -149,7 +150,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))"}, limit = "MAX_TYPE_COUNT")
         protected void doCached(JSDynamicObject arrayObj, int length,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
-                        @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
+                        @Cached("createSetLengthProfile()") @Shared("setLengthProfile") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
             if (arrayType.isSealed()) {
                 setLengthSealed(arrayObj, length, arrayType, setLengthProfile);
@@ -161,7 +162,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSDynamicObject arrayObj, int length,
                         @Cached ConditionProfile sealedProfile,
-                        @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
+                        @Cached("createSetLengthProfile()") @Shared("setLengthProfile") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);
             if (sealedProfile.profile(arrayType.isSealed())) {
@@ -193,7 +194,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))"}, limit = "MAX_TYPE_COUNT")
         protected void doCached(JSDynamicObject arrayObj, int length,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
-                        @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
+                        @Cached("createSetLengthProfile()") @Shared("setLengthProfile") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
             if (arrayType.isLengthNotWritable() || arrayType.isSealed()) {
                 deleteAndSetLength(arrayObj, length, arrayType, setLengthProfile);
@@ -205,7 +206,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSDynamicObject arrayObj, int length,
                         @Cached ConditionProfile mustDeleteProfile,
-                        @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
+                        @Cached("createSetLengthProfile()") @Shared("setLengthProfile") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);
             if (mustDeleteProfile.profile(arrayType.isLengthNotWritable() || arrayType.isSealed())) {

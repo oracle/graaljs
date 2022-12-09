@@ -43,6 +43,8 @@ package com.oracle.truffle.js.nodes.binary;
 import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -138,7 +140,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                     Object right,
                     @Cached("create(getHint(), !isEquality())") JSToOperandNode toOperandLeftNode,
                     @Cached("create(getHint(), !isEquality())") JSToOperandNode toOperandRightNode,
-                    @Cached("create(getOverloadedOperatorName())") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
+                    @Cached("create(getOverloadedOperatorName())") @Shared("dispatchBinaryOperator") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
         Object leftOperand;
         Object rightOperand;
 
@@ -158,7 +160,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                     Object right,
                     @Cached("create(getHint())") JSToOperandNode toOperandLeftNode,
                     @Cached("create(getHint())") JSToOperandNode toOperandRightNode,
-                    @Cached("create(getOverloadedOperatorName())") DispatchBinaryOperatorNode dispatchBinaryOperatorNode,
+                    @Cached("create(getOverloadedOperatorName())") @Shared("dispatchBinaryOperator") DispatchBinaryOperatorNode dispatchBinaryOperatorNode,
                     @Cached JSToStringNode toStringLeftNode,
                     @Cached JSToStringNode toStringRightNode,
                     @Cached ConditionProfile leftStringProfile,
@@ -191,7 +193,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                     Object right,
                     @Cached("create(true)") JSToNumericNode toNumericOperandLeftNode,
                     @Cached("create(true)") JSToNumericNode toNumericOperandRightNode,
-                    @Cached("create(getOverloadedOperatorName())") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
+                    @Cached("create(getOverloadedOperatorName())") @Shared("dispatchBinaryOperator") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
         Object leftOperand;
         Object rightOperand;
 
@@ -253,7 +255,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                         @Cached("left.getOperatorCounter()") @SuppressWarnings("unused") int leftOperatorCounter,
                         @Cached("right.getOperatorCounter()") @SuppressWarnings("unused") int rightOperatorCounter,
                         @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                        @Cached("createCall()") JSFunctionCallNode callNode) {
+                        @Cached("createCall()") @Exclusive JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
@@ -262,7 +264,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                         Object right,
                         @Cached("left.getOperatorCounter()") @SuppressWarnings("unused") int leftOperatorCounter,
                         @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                        @Cached("createCall()") JSFunctionCallNode callNode) {
+                        @Cached("createCall()") @Exclusive JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
@@ -271,7 +273,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                         BigInt right,
                         @Cached("left.getOperatorCounter()") @SuppressWarnings("unused") int leftOperatorCounter,
                         @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                        @Cached("createCall()") JSFunctionCallNode callNode) {
+                        @Cached("createCall()") @Exclusive JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
@@ -280,7 +282,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                         Object right,
                         @Cached("left.getOperatorCounter()") @SuppressWarnings("unused") int leftOperatorCounter,
                         @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                        @Cached("createCall()") JSFunctionCallNode callNode) {
+                        @Cached("createCall()") @Exclusive JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
@@ -294,7 +296,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                         JSOverloadedOperatorsObject right,
                         @Cached("right.getOperatorCounter()") @SuppressWarnings("unused") int rightOperatorCounter,
                         @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                        @Cached("createCall()") JSFunctionCallNode callNode) {
+                        @Cached("createCall()") @Exclusive JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
@@ -303,7 +305,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                         JSOverloadedOperatorsObject right,
                         @Cached("right.getOperatorCounter()") @SuppressWarnings("unused") int rightOperatorCounter,
                         @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                        @Cached("createCall()") JSFunctionCallNode callNode) {
+                        @Cached("createCall()") @Exclusive JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
@@ -312,7 +314,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                         JSOverloadedOperatorsObject right,
                         @Cached("right.getOperatorCounter()") @SuppressWarnings("unused") int rightOperatorCounter,
                         @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                        @Cached("createCall()") JSFunctionCallNode callNode) {
+                        @Cached("createCall()") @Exclusive JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
@@ -324,7 +326,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"doOverloadedOverloaded", "doOverloadedNumber", "doOverloadedBigInt", "doOverloadedString", "doNumberOverloaded", "doBigIntOverloaded", "doStringOverloaded"})
         protected Object doGeneric(Object left, Object right,
-                        @Cached("createCall()") JSFunctionCallNode callNode) {
+                        @Cached("createCall()") @Exclusive JSFunctionCallNode callNode) {
             Object operatorImplementation = OperatorSet.getOperatorImplementation(left, right, getOverloadedOperatorName());
             return performOverloaded(callNode, operatorImplementation, left, right);
         }

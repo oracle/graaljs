@@ -42,6 +42,8 @@ package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -94,7 +96,7 @@ public abstract class MaxNode extends MathOperation {
 
     @Specialization(guards = {"args.length == 2", "caseIntInt(args)"})
     protected static int max2ParamInt(Object[] args,
-                    @Cached ConditionProfile maxProfile) {
+                    @Cached @Shared("maxProfile") ConditionProfile maxProfile) {
         int i1 = (int) args[0];
         int i2 = (int) args[1];
         return max(i1, i2, maxProfile);
@@ -102,8 +104,8 @@ public abstract class MaxNode extends MathOperation {
 
     @Specialization(guards = {"args.length == 2", "!caseIntInt(args)"})
     protected Object max2Param(Object[] args,
-                    @Cached ConditionProfile isIntBranch,
-                    @Cached ConditionProfile maxProfile,
+                    @Cached @Exclusive ConditionProfile isIntBranch,
+                    @Cached @Shared("maxProfile") ConditionProfile maxProfile,
                     @Cached JSToNumberNode toNumber1Node,
                     @Cached JSToNumberNode toNumber2Node) {
         Number n1 = toNumber1Node.executeNumber(args[0]);

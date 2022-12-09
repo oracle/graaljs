@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -87,7 +88,7 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
                     @Cached TruffleString.SubstringByteIndexNode substringNode,
                     @Cached BranchProfile startsWithWhitespaceBranch,
                     @Cached BranchProfile endsWithWhitespaceBranch,
-                    @Cached ConditionProfile isEmpty) {
+                    @Cached @Exclusive ConditionProfile isEmpty) {
         int len = Strings.length(string);
         int firstIdx = 0;
         if (isWhiteSpace(readRawNode, string, 0, isFastNonWhitespace, isFastWhitespace)) {

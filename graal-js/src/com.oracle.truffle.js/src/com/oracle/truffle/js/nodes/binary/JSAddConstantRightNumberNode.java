@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -149,8 +150,8 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
 
     @Specialization
     protected TruffleString doStringNumber(TruffleString a,
-                    @Cached("rightValueToString()") TruffleString rightString,
-                    @Cached JSConcatStringsNode createLazyString) {
+                    @Cached("rightValueToString()") @Shared("rightString") TruffleString rightString,
+                    @Cached @Shared("concatStrings") JSConcatStringsNode createLazyString) {
         return createLazyString.executeTString(a, rightString);
     }
 
@@ -168,8 +169,8 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
     protected Object doPrimitiveConversion(Object a,
                     @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveA,
                     @Cached JSToNumberNode toNumberA,
-                    @Cached("rightValueToString()") TruffleString rightString,
-                    @Cached JSConcatStringsNode createLazyString,
+                    @Cached("rightValueToString()") @Shared("rightString") TruffleString rightString,
+                    @Cached @Shared("concatStrings") JSConcatStringsNode createLazyString,
                     @Cached ConditionProfile profileA) {
 
         Object primitiveA = toPrimitiveA.execute(a);

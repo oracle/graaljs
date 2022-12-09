@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -105,7 +106,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     @Specialization
     protected double doJSObject(JSObject value,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
+                    @Cached("createHintNumber()") @Shared("toPrimitiveHintNumber") JSToPrimitiveNode toPrimitiveNode) {
         return getToDoubleNode().executeDouble(toPrimitiveNode.execute(value));
     }
 
@@ -116,7 +117,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isForeignObject(object)")
     protected double doForeignObject(Object object,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
+                    @Cached("createHintNumber()") @Shared("toPrimitiveHintNumber") JSToPrimitiveNode toPrimitiveNode) {
         return getToDoubleNode().executeDouble(toPrimitiveNode.execute(object));
     }
 

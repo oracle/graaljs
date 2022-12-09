@@ -46,6 +46,7 @@ import java.util.NoSuchElementException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -321,8 +322,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSObject(object)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)"})
     protected JSDynamicObject doObject(JSDynamicObject newTarget, JSDynamicObject object, Object byteOffset0, Object length0,
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
-                    @Cached ConditionProfile isIterableProfile,
-                    @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
+                    @Cached @Exclusive ConditionProfile isIterableProfile,
+                    @Cached("createWriteOwn()") @Shared("writeOwn") WriteElementNode writeOwnNode,
                     @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
                     @Cached IsJSObjectNode isObjectNode,
                     @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode,
@@ -364,9 +365,9 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Specialization(guards = {"!isUndefined(newTarget)", "isForeignObject(object)"}, limit = "InteropLibraryLimit")
     protected JSDynamicObject doForeignObject(JSDynamicObject newTarget, Object object, Object byteOffset0, Object length0,
                     @CachedLibrary("object") InteropLibrary interop,
-                    @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
+                    @Cached("createWriteOwn()") @Shared("writeOwn") WriteElementNode writeOwnNode,
                     @Cached ImportValueNode importValue,
-                    @Cached ConditionProfile lengthIsUndefined) {
+                    @Cached @Exclusive ConditionProfile lengthIsUndefined) {
         if (interop.hasBufferElements(object)) {
             JSDynamicObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), object);
             long bufferByteLength = getBufferSizeSafe(object, interop);

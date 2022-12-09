@@ -63,6 +63,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -827,7 +829,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected double parseFloatDouble(double value, @Cached ConditionProfile negativeZero) {
+        protected double parseFloatDouble(double value,
+                        @Cached ConditionProfile negativeZero) {
             if (negativeZero.profile(JSRuntime.isNegativeZero(value))) {
                 return 0;
             }
@@ -921,7 +924,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "!isUndefined(radix0)")
         protected Object parseIntInt(int value, Object radix0,
-                        @Cached BranchProfile needsRadixConversion) {
+                        @Cached @Shared("convertToRadixBranch") BranchProfile needsRadixConversion) {
             int radix = toInt32(radix0);
             if (radix == 10 || radix == 0) {
                 return value;
@@ -957,7 +960,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "hasRegularToString(value)")
         protected double parseIntDouble(double value, Object radix0,
-                        @Cached BranchProfile needsRadixConversion) {
+                        @Cached @Shared("convertToRadixBranch") BranchProfile needsRadixConversion) {
             int radix = toInt32(radix0);
             if (radix == 0) {
                 radix = 10;
@@ -976,7 +979,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = {"radix == 10", "stringLength(string) < 15"})
         protected Object parseIntStringInt10(TruffleString string, @SuppressWarnings("unused") int radix,
-                        @Cached TruffleString.ReadCharUTF16Node readRawNode) {
+                        @Cached @Shared("readChar") TruffleString.ReadCharUTF16Node readRawNode) {
             assert isShortStringInt10(string, radix);
 
             int pos = 0;
@@ -1045,9 +1048,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization(guards = "!isShortStringInt10(input, radix0)")
         protected Object parseIntGeneric(Object input, Object radix0,
                         @Cached JSToStringNode toStringNode,
-                        @Cached BranchProfile needsRadix16,
-                        @Cached BranchProfile needsDontFitLong,
-                        @Cached TruffleString.ReadCharUTF16Node readRawNode,
+                        @Cached @Exclusive BranchProfile needsRadix16,
+                        @Cached @Exclusive BranchProfile needsDontFitLong,
+                        @Cached @Shared("readChar") TruffleString.ReadCharUTF16Node readRawNode,
                         @Cached TruffleString.SubstringByteIndexNode substringNode) {
             TruffleString inputStr = toStringNode.executeString(input);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.array;
 import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -77,7 +78,7 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
                     "cachedArrayType.firstElementIndex(array)==0"}, limit = "5")
     protected Object[] fromDenseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
-                    @Cached("create(context)") ReadElementNode readNode) {
+                    @Cached("create(context)") @Shared("readElement") ReadElementNode readNode) {
         assert JSRuntime.longIsRepresentableAsInt(length);
         int iLen = (int) length;
 
@@ -92,8 +93,8 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "cachedArrayType.isHolesType() || cachedArrayType.hasHoles(array)"}, limit = "5")
     protected Object[] fromSparseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
-                    @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached BranchProfile growProfile) {
+                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared("growBranch") BranchProfile growProfile) {
         long pos = cachedArrayType.firstElementIndex(array);
         SimpleArrayList<Object> list = new SimpleArrayList<>();
         while (pos <= cachedArrayType.lastElementIndex(array)) {
@@ -106,9 +107,9 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = {"fromDenseArray", "fromSparseArray"})
     protected Object[] doUncached(JSDynamicObject array, ScriptArray arrayType, long length,
-                    @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached("create(context)") ReadElementNode readNode,
-                    @Cached BranchProfile growProfile) {
+                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached("create(context)") @Shared("readElement") ReadElementNode readNode,
+                    @Cached @Shared("growBranch") BranchProfile growProfile) {
         if (arrayType.isHolesType() || arrayType.hasHoles(array) || arrayType.firstElementIndex(array) != 0) {
             return fromSparseArray(array, arrayType, length, arrayType, nextElementIndexNode, growProfile);
         } else {

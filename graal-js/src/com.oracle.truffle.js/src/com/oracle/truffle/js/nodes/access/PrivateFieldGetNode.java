@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -89,7 +90,7 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     @Specialization(limit = "3")
     Object doField(JSObject target, HiddenKey key,
                     @CachedLibrary("target") DynamicObjectLibrary access,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
         if (Properties.containsKey(access, target, key)) {
             return Properties.getOrDefault(access, target, key, Undefined.instance);
         } else {
@@ -106,7 +107,7 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     @Specialization
     Object doAccessor(JSObject target, Accessor accessor,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
         Object getter = accessor.getGetter();
         if (getter == Undefined.instance) {
             errorBranch.enter();

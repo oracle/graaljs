@@ -343,7 +343,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization(guards = "isJSObject(target)")
         protected Object doObject(JSDynamicObject target, Object propertyKey, Object[] optionalArgs,
-                        @Cached JSClassProfile classProfile) {
+                        @Shared("jsclassProf") @Cached JSClassProfile classProfile) {
             Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSRuntime.nullToUndefined(classProfile.getJSClass(target).getHelper(target, receiver, key, this));
@@ -354,7 +354,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @CachedLibrary("target") InteropLibrary interop,
                         @Cached ImportValueNode importValue,
                         @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                        @Cached JSClassProfile classProfile) {
+                        @Shared("jsclassProf") @Cached JSClassProfile classProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
                 Object result = JSInteropUtil.readMemberOrDefault(target, key, null, interop, importValue, this);
@@ -421,7 +421,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization(guards = "isJSObject(target)")
         protected Object doObject(JSDynamicObject target, Object propertyKey,
-                        @Cached JSClassProfile jsclassProfile) {
+                        @Shared("jsclassProf") @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSObject.hasProperty(target, key, jsclassProfile);
         }
@@ -431,7 +431,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @CachedLibrary("target") InteropLibrary interop,
                         @Cached TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                        @Cached JSClassProfile classProfile) {
+                        @Shared("jsclassProf") @Cached JSClassProfile classProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
                 if (key instanceof TruffleString) {

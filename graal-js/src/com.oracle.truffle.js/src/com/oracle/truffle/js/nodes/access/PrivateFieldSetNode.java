@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -87,7 +88,7 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     @Specialization(limit = "3")
     Object doField(JSObject target, HiddenKey key, Object value,
                     @CachedLibrary("target") DynamicObjectLibrary access,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
         if (!Properties.putIfPresent(access, target, key, value)) {
             errorBranch.enter();
             missing(target, key, value);
@@ -98,7 +99,7 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     @Specialization
     Object doAccessor(JSObject target, Accessor accessor, Object value,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
         Object setter = accessor.getSetter();
         if (setter == Undefined.instance) {
             errorBranch.enter();

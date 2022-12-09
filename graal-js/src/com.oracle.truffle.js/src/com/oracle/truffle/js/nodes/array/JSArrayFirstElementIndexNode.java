@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -94,16 +95,16 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
                     "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long doWithHolesCached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
-                    @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached ConditionProfile isZero) {
+                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared("isZero") ConditionProfile isZero) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
         return holesArrayImpl(object, length, cachedArrayType, nextElementIndexNode, isZero);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "doWithHolesCached")
     public long doWithHolesUncached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached ConditionProfile isZero,
+                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared("isZero") ConditionProfile isZero,
                     @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
         assert isSupportedArray(object);
         ScriptArray array = arrayTypeProfile.profile(getArrayType(object));
@@ -138,7 +139,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)"})
     public long firstObjectViaEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         if (hasPropertyNode.executeBoolean(object, 0)) {
             return 0;
         }
@@ -147,7 +148,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)", "isSuitableForEnumBasedProcessing(object, length)"})
     public long firstObjectViaFullEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         if (hasPropertyNode.executeBoolean(object, 0)) {
             return 0;
         }
@@ -156,7 +157,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, length)"})
     public long doObject(Object object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long index = 0;
         while (!hasPropertyNode.executeBoolean(object, index) && index <= (length - 1)) {
             index++;

@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -307,7 +308,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          */
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
         protected JSTypedArrayObject subarray(JSDynamicObject thisObj, int begin, int end,
-                        @Cached("createIdentityProfile()") ValueProfile arrayTypeProfile) {
+                        @Cached("createIdentityProfile()") @Shared("arrayTypeProfile") ValueProfile arrayTypeProfile) {
             TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj));
             int length = (int) array.length(thisObj);
             int clampedBegin = JSArrayBufferSliceNode.clampIndex(begin, 0, length);
@@ -317,7 +318,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
         protected JSTypedArrayObject subarray(JSDynamicObject thisObj, Object begin0, Object end0,
-                        @Cached("createIdentityProfile()") ValueProfile arrayTypeProfile,
+                        @Cached("createIdentityProfile()") @Shared("arrayTypeProfile") ValueProfile arrayTypeProfile,
                         @Cached ConditionProfile negativeBegin,
                         @Cached ConditionProfile negativeEnd,
                         @Cached ConditionProfile smallerEnd) {

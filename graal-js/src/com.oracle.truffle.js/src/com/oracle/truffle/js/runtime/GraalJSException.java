@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -609,7 +609,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
     @ExportMessage
     @TruffleBoundary
     public final int identityHashCode(
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary delegateLib) throws UnsupportedMessageException {
+                    @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary delegateLib) throws UnsupportedMessageException {
         return delegateLib.identityHashCode(getErrorObject());
     }
 

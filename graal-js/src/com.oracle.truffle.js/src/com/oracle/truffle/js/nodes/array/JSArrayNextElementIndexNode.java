@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.array;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -94,16 +95,16 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
                     "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long nextWithHolesCached(JSDynamicObject object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
-                    @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached ConditionProfile isPlusOne) {
+                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared("isPlusOne") ConditionProfile isPlusOne) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
         return holesArrayImpl(object, currentIndex, length, cachedArrayType, nextElementIndexNode, isPlusOne);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "nextWithHolesCached")
     public long nextWithHolesUncached(JSDynamicObject object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached ConditionProfile isPlusOne,
+                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared("isPlusOne") ConditionProfile isPlusOne,
                     @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
         assert isSupportedArray(object);
         ScriptArray arrayType = arrayTypeProfile.profile(getArrayType(object));
@@ -133,7 +134,7 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)"})
     public long nextObjectViaEnumeration(JSDynamicObject object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long currentIndexPlusOne = currentIndex + 1;
         if (hasPropertyNode.executeBoolean(object, currentIndexPlusOne)) {
             return currentIndexPlusOne;
@@ -143,7 +144,7 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)", "isSuitableForEnumBasedProcessing(object, length)"})
     public long nextObjectViaFullEnumeration(JSDynamicObject object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long currentIndexPlusOne = currentIndex + 1;
         if (hasPropertyNode.executeBoolean(object, currentIndexPlusOne)) {
             return currentIndexPlusOne;
@@ -153,7 +154,7 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, length)"})
     public long nextObjectViaPolling(Object object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long index = currentIndex + 1;
         while (!hasPropertyNode.executeBoolean(object, index)) {
             index++;

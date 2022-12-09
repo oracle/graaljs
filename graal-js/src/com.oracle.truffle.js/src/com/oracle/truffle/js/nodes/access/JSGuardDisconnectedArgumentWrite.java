@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -108,7 +109,7 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
 
     @Specialization(guards = "isArgumentsDisconnected(argumentsArray)")
     public Object doObjectDisconnected(JSArgumentsObject argumentsArray, Object value,
-                    @Cached ConditionProfile wasDisconnected,
+                    @Cached @Exclusive ConditionProfile wasDisconnected,
                     @Cached @Shared("unconnected") ConditionProfile unconnected) {
         assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
         if (wasDisconnected.profile(JSAbstractArgumentsArray.wasIndexDisconnected(argumentsArray, argumentIndex))) {

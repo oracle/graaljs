@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -186,7 +187,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected JSDynamicObject doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary iteratorLib,
                         @Cached BranchProfile growProfile) {
             try {
                 Object hashEntriesIterator = mapLib.getHashKeysIterator(thisObj);
@@ -394,8 +395,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("createCall()") @Shared("callNode") JSFunctionCallNode callNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary entryLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary iteratorLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary entryLib) {
             try {
                 Object hashEntriesIterator = mapLib.getHashEntriesIterator(thisObj);
                 while (true) {

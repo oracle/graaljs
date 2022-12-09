@@ -138,14 +138,14 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     public JSDynamicObject createWithProtoCachedClass(@SuppressWarnings("unused") JSDynamicObject target, Object prototype,
                     @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
                     @Cached("getClassIfJSObject(prototype)") Class<?> prototypeClass,
-                    @Cached("getShapeWithoutProto()") Shape cachedShape) {
+                    @Cached("getShapeWithoutProto()") @Shared("shapeWithoutProto") Shape cachedShape) {
         return createWithProto(target, (JSDynamicObject) prototypeClass.cast(prototype), setProtoNode, cachedShape);
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "isJSObject(prototype)"})
     public JSDynamicObject createWithProto(@SuppressWarnings("unused") JSDynamicObject target, JSDynamicObject prototype,
                     @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
-                    @Cached("getShapeWithoutProto()") Shape cachedShape) {
+                    @Cached("getShapeWithoutProto()") @Shared("shapeWithoutProto") Shape cachedShape) {
         JSDynamicObject object = JSOrdinary.create(context, cachedShape);
         setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
         return object;

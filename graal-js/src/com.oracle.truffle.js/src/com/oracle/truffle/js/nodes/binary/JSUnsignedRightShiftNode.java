@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -118,7 +119,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
 
     @Specialization(guards = "!rvalZero(b)")
     protected Number doDouble(double a, int b,
-                    @Cached ConditionProfile returnType) {
+                    @Cached @Shared("returnTypeProfile") ConditionProfile returnType) {
 
         long lnum = toUInt32(a);
         int shiftCount = b & 0x1F;
@@ -131,7 +132,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     @Specialization
     protected Number doIntDouble(int a, double b,
                     @Cached JSToUInt32Node rvalToUint32Node,
-                    @Cached ConditionProfile returnType) {
+                    @Cached @Shared("returnTypeProfile") ConditionProfile returnType) {
 
         long lnum = toUInt32(a);
         int shiftCount = (int) rvalToUint32Node.executeLong(b) & 0x1F;

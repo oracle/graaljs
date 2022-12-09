@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -124,13 +125,13 @@ public abstract class JSToIntegerAsLongNode extends JavaScriptBaseNode {
 
     @Specialization
     protected long doJSObject(JSObject value,
-                    @Cached JSToNumberNode toNumberNode) {
+                    @Cached @Shared("toNumber") JSToNumberNode toNumberNode) {
         return JSRuntime.toInteger(toNumberNode.executeNumber(value));
     }
 
     @Specialization(guards = "isForeignObject(value)")
     protected long doForeignObject(Object value,
-                    @Cached JSToNumberNode toNumberNode) {
+                    @Cached @Shared("toNumber") JSToNumberNode toNumberNode) {
         return JSRuntime.toInteger(toNumberNode.executeNumber(value));
     }
 

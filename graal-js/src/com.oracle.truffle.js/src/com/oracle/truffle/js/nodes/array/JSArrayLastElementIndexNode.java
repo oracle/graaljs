@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -95,16 +96,16 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
                     "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long doWithHolesCached(JSDynamicObject object, long length, boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
-                    @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
-                    @Cached ConditionProfile isLengthMinusOne) {
+                    @Cached("create(context)") @Shared("prevElementIndex") JSArrayPreviousElementIndexNode previousElementIndexNode,
+                    @Cached @Shared("isMinusOne") ConditionProfile isLengthMinusOne) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
         return holesArrayImpl(object, length, cachedArrayType, previousElementIndexNode, isLengthMinusOne, isArray);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "doWithHolesCached")
     public long doWithHolesUncached(JSDynamicObject object, long length, boolean isArray,
-                    @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
-                    @Cached ConditionProfile isLengthMinusOne,
+                    @Cached("create(context)") @Shared("prevElementIndex") JSArrayPreviousElementIndexNode previousElementIndexNode,
+                    @Cached @Shared("isMinusOne") ConditionProfile isLengthMinusOne,
                     @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
         assert isSupportedArray(object);
         ScriptArray arrayType = arrayTypeProfile.profile(getArrayType(object));
@@ -139,7 +140,7 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)"})
     public long doObjectViaEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long lengthMinusOne = length - 1;
         if (hasPropertyNode.executeBoolean(object, lengthMinusOne)) {
             return lengthMinusOne;
@@ -150,7 +151,7 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)", "isSuitableForEnumBasedProcessing(object, length)"})
     public long doObjectViaFullEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long lengthMinusOne = length - 1;
         if (hasPropertyNode.executeBoolean(object, lengthMinusOne)) {
             return lengthMinusOne;
@@ -161,7 +162,7 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, length)"})
     public long doObject(Object object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long index = length - 1;
         while (!hasPropertyNode.executeBoolean(object, index) && index > 0) {
             index--;

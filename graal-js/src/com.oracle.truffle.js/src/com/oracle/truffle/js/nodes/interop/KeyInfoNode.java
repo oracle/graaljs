@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -91,10 +92,10 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isJSProxy(target)", "property != null"}, limit = "2")
     static boolean cachedOwnProperty(JSDynamicObject target, @SuppressWarnings("unused") String key, int query,
                     @CachedLibrary("target") DynamicObjectLibrary objectLibrary,
-                    @Cached @SuppressWarnings("unused") TruffleString.FromJavaStringNode fromJavaStringNode,
+                    @Cached @Shared("fromJavaString") @SuppressWarnings("unused") TruffleString.FromJavaStringNode fromJavaStringNode,
                     @Bind("fromJavaString(fromJavaStringNode, key)") TruffleString tStringKey,
                     @Bind("objectLibrary.getProperty(target, tStringKey)") Property property,
-                    @Cached IsCallableNode isCallable,
+                    @Cached @Shared("isCallable") IsCallableNode isCallable,
                     @Cached BranchProfile proxyBranch,
                     @Cached BranchProfile moduleNamespaceBranch) {
         if (JSProperty.isAccessor(property)) {
@@ -149,9 +150,9 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
     @Specialization(replaces = "cachedOwnProperty")
     static boolean member(JSDynamicObject target, String key, int query,
                     @Cached GetPrototypeNode getPrototype,
-                    @Cached IsCallableNode isCallable,
+                    @Cached @Shared("isCallable") IsCallableNode isCallable,
                     @Cached IsExtensibleNode isExtensible,
-                    @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+                    @Cached @Shared("fromJavaString") TruffleString.FromJavaStringNode fromJavaStringNode) {
         TruffleString tStringKey = Strings.fromJavaString(fromJavaStringNode, key);
         PropertyDescriptor desc = null;
         boolean isProxy = false;

@@ -53,6 +53,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -862,10 +863,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return swapPrototype(JSArray.createConstantEmptyArray(getContext(), realm, arrayAllocationSite, length), newTarget);
         }
 
-        @Specialization(guards = {"args.length == 1", "toArrayLengthNode.isTypeNumber(len)"}, replaces = "constructArrayWithIntLength")
+        @Specialization(guards = {"args.length == 1", "toArrayLengthNode.isTypeNumber(len)"}, replaces = "constructArrayWithIntLength", limit = "1")
         protected JSObject constructWithLength(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args,
                         @Cached @SuppressWarnings("unused") ToArrayLengthNode toArrayLengthNode,
-                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
+                        @Cached("create(getContext())") @Shared("arrayCreate") ArrayCreateNode arrayCreateNode,
                         @Bind("toArrayLengthNode.executeLong(firstArg(args))") long len) {
             JSArrayObject array = arrayCreateNode.execute(len);
             return swapPrototype(array, newTarget);
@@ -878,9 +879,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = "isOneForeignArg(args)", limit = "InteropLibraryLimit")
         protected JSObject constructWithForeignArg(JSDynamicObject newTarget, Object[] args,
                         @CachedLibrary("firstArg(args)") InteropLibrary interop,
-                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
-                        @Cached ConditionProfile isNumber,
-                        @Cached BranchProfile rangeErrorProfile) {
+                        @Cached("create(getContext())") @Shared("arrayCreate") ArrayCreateNode arrayCreateNode,
+                        @Cached @Exclusive ConditionProfile isNumber,
+                        @Cached @Exclusive BranchProfile rangeErrorProfile) {
             Object len = args[0];
             if (isNumber.profile(interop.isNumber(len))) {
                 if (interop.fitsInLong(len)) {
@@ -904,10 +905,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!isOneNumberArg(args)", "!isOneForeignArg(args)"})
         protected JSObject constructArrayVarargs(JSDynamicObject newTarget, Object[] args,
-                        @Cached BranchProfile isIntegerCase,
-                        @Cached BranchProfile isDoubleCase,
-                        @Cached BranchProfile isObjectCase,
-                        @Cached ConditionProfile isLengthZero) {
+                        @Cached @Exclusive BranchProfile isIntegerCase,
+                        @Cached @Exclusive BranchProfile isDoubleCase,
+                        @Cached @Exclusive BranchProfile isObjectCase,
+                        @Cached @Exclusive ConditionProfile isLengthZero) {
             JSRealm realm = getRealm();
             if (isLengthZero.profile(args == null || args.length == 0)) {
                 return swapPrototype(JSArray.create(getContext(), realm, ScriptArray.createConstantEmptyArray(), args, 0), newTarget);

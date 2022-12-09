@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -99,7 +100,7 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)
     protected int doInt(int a, int b, //
-                    @Cached BranchProfile resultZeroBranch) {
+                    @Cached @Exclusive BranchProfile resultZeroBranch) {
         int result = Math.multiplyExact(a, b);
         if (result == 0) {
             resultZeroBranch.enter();
@@ -140,7 +141,7 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
                     @Cached JSMultiplyNode nestedMultiplyNode,
                     @Cached JSToNumericNode toNumeric1Node,
                     @Cached JSToNumericNode toNumeric2Node,
-                    @Cached BranchProfile mixedNumericTypes) {
+                    @Cached @Exclusive BranchProfile mixedNumericTypes) {
         Object operandA = toNumeric1Node.execute(a);
         Object operandB = toNumeric2Node.execute(b);
         ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);

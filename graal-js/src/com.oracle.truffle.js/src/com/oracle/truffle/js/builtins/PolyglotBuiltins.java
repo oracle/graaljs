@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -444,7 +445,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object unsupportedKey(TruffleObject obj, Object key,
                         @Shared("importValue") @Cached ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop) {
+                        @Exclusive @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop) {
             try {
                 if (keyInterop.isString(key)) {
                     return member(obj, keyInterop.asTruffleString(key), foreignConvert, interop);
@@ -475,7 +476,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object member(TruffleObject obj, TruffleString name, Object value,
                         @Shared("exportValue") @Cached ExportValueNode exportValue,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
+                        @Shared("toJavaString") @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
             Object convertedValue = exportValue.execute(value);
             try {
                 interop.writeMember(obj, Strings.toJavaString(toJavaStringNode, name), convertedValue);
@@ -522,8 +523,8 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object unsupportedKey(TruffleObject obj, Object key, Object value,
                         @Shared("exportValue") @Cached ExportValueNode exportValue,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop,
-                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
+                        @Exclusive @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop,
+                        @Shared("toJavaString") @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
             try {
                 if (keyInterop.isString(key)) {
                     return member(obj, keyInterop.asTruffleString(key), value, exportValue, interop, toJavaStringNode);
@@ -553,7 +554,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected boolean member(TruffleObject obj, TruffleString name,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
+                        @Shared("toJavaString") @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
             try {
                 interop.removeMember(obj, Strings.toJavaString(toJavaStringNode, name));
                 return true;
@@ -594,8 +595,8 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization(guards = {"!isString(key)", "!isNumber(key)"})
         protected Object unsupportedKey(TruffleObject obj, Object key,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop,
-                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
+                        @Exclusive @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop,
+                        @Shared("toJavaString") @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
             try {
                 if (keyInterop.isString(key)) {
                     return member(obj, keyInterop.asTruffleString(key), interop, toJavaStringNode);

@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.binary;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -77,8 +78,8 @@ public abstract class JSModuloNode extends JSBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class, guards = "isPowOf2(b)")
     protected int doIntPow2(int a, int b,
-                    @Cached BranchProfile negativeBranch,
-                    @Cached BranchProfile negativeZeroBranch) {
+                    @Cached @Exclusive BranchProfile negativeBranch,
+                    @Cached @Exclusive BranchProfile negativeZeroBranch) {
         int mask = b - 1;
         int result;
         if (a < 0) {
@@ -96,7 +97,7 @@ public abstract class JSModuloNode extends JSBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class, guards = "!isPowOf2(b)")
     protected int doInt(int a, int b,
-                    @Cached BranchProfile specialBranch) {
+                    @Cached @Exclusive BranchProfile specialBranch) {
         int result = a % b;
         if (result == 0) {
             specialBranch.enter();
@@ -138,7 +139,7 @@ public abstract class JSModuloNode extends JSBinaryNode {
                     @Cached JSModuloNode nestedModuloNode,
                     @Cached JSToNumericNode toNumeric1Node,
                     @Cached JSToNumericNode toNumeric2Node,
-                    @Cached BranchProfile mixedNumericTypes) {
+                    @Cached @Exclusive BranchProfile mixedNumericTypes) {
         Object operandA = toNumeric1Node.execute(a);
         Object operandB = toNumeric2Node.execute(b);
         ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);

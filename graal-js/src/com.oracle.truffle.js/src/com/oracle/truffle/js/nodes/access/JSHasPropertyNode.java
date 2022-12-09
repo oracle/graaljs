@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -132,7 +133,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                     @Cached("getCacheableObjectType(object)") JSClass cachedObjectType,
                     @Cached("propertyName") TruffleString cachedName,
                     @Cached("getCachedPropertyGetter(object, propertyName)") HasPropertyCacheNode hasPropertyNode,
-                    @Cached TruffleString.EqualNode equalNode) {
+                    @Cached @Shared("strEq") TruffleString.EqualNode equalNode) {
         return hasPropertyNode.hasProperty(object);
     }
 
@@ -141,7 +142,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     public boolean arrayStringCached(JSDynamicObject object, TruffleString propertyName,
                     @Cached("propertyName") TruffleString cachedName,
                     @Cached("getCachedPropertyGetter(object, propertyName)") HasPropertyCacheNode hasPropertyNode,
-                    @Cached TruffleString.EqualNode equalNode) {
+                    @Cached @Shared("strEq") TruffleString.EqualNode equalNode) {
         return hasPropertyNode.hasProperty(object);
     }
 

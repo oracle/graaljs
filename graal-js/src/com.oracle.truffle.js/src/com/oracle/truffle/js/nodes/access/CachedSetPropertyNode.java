@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -87,21 +88,21 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     void doCachedKey(JSDynamicObject target, Object key, Object value, Object receiver,
                     @Cached("cachedPropertyKey(key)") Object cachedKey,
                     @Cached("createSet(cachedKey)") PropertySetNode propertyNode,
-                    @Cached TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
         propertyNode.setValue(target, value, receiver);
     }
 
     @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
     void doIntIndex(JSDynamicObject target, int index, Object value, Object receiver,
-                    @Cached JSClassProfile jsclassProfile) {
+                    @Cached @Shared("jsclassProf") JSClassProfile jsclassProfile) {
         doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
     }
 
-    @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"})
+    @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"}, limit = "1")
     void doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object value, Object receiver,
                     @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
                     @Bind("toArrayIndexNode.execute(key)") Object maybeIndex,
-                    @Cached JSClassProfile jsclassProfile) {
+                    @Cached @Shared("jsclassProf") JSClassProfile jsclassProfile) {
         long index = (long) maybeIndex;
         doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
     }
@@ -129,10 +130,10 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     void doGeneric(JSDynamicObject target, Object key, Object value, Object receiver,
                     @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached ConditionProfile getType,
-                    @Cached JSClassProfile jsclassProfile,
+                    @Cached @Shared("jsclassProf") JSClassProfile jsclassProfile,
                     @Cached ConditionProfile highFrequency,
                     @Cached("createFrequencyBasedPropertySet(context, setOwn, strict, superProperty)") FrequencyBasedPropertySetNode hotKey,
-                    @Cached TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(arrayIndex instanceof Long)) {
             long index = (long) arrayIndex;

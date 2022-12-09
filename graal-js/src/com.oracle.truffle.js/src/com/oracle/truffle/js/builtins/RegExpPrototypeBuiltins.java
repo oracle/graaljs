@@ -45,6 +45,7 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -948,7 +949,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("replaceValue") TruffleString cachedReplaceValue,
                         @Cached(value = "parseReplaceValueWithNCG(replaceValue)", dimensions = 1) ReplaceStringParser.Token[] cachedParsedReplaceValueWithNamedCG,
                         @Cached(value = "parseReplaceValueWithoutNCG(replaceValue)", dimensions = 1) ReplaceStringParser.Token[] cachedParsedReplaceValueWithoutNamedCG,
-                        @Cached JSToStringNode toString1Node,
+                        @Shared("toString1") @Cached JSToStringNode toString1Node,
                         @SuppressWarnings("unused") @Cached TruffleString.EqualNode equalsNode) {
             checkObject(rx);
             if (isPristine(rx)) {
@@ -959,7 +960,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(replaces = "replaceCached")
         protected Object replaceDynamic(JSDynamicObject rx, Object searchString, Object replaceValue,
-                        @Cached JSToStringNode toString1Node) {
+                        @Shared("toString1") @Cached JSToStringNode toString1Node) {
             checkObject(rx);
             boolean functionalReplace = functionalReplaceProfile.profile(isCallableNode.executeBoolean(replaceValue));
             Object replaceVal;

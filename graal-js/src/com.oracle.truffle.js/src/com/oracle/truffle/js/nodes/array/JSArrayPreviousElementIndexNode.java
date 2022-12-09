@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -94,16 +95,16 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
                     "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long previousWithHolesCached(JSDynamicObject object, long currentIndex, boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
-                    @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
-                    @Cached ConditionProfile isMinusOne) {
+                    @Cached("create(context)") @Shared("prevElementIndex") JSArrayPreviousElementIndexNode previousElementIndexNode,
+                    @Cached @Shared("isMinusOne") ConditionProfile isMinusOne) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
         return holesArrayImpl(object, currentIndex, isArray, cachedArrayType, previousElementIndexNode, isMinusOne);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "previousWithHolesCached")
     public long previousWithHolesUncached(JSDynamicObject object, long currentIndex, boolean isArray,
-                    @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
-                    @Cached ConditionProfile isMinusOne,
+                    @Cached("create(context)") @Shared("prevElementIndex") JSArrayPreviousElementIndexNode previousElementIndexNode,
+                    @Cached @Shared("isMinusOne") ConditionProfile isMinusOne,
                     @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
         assert isSupportedArray(object);
         ScriptArray arrayType = arrayTypeProfile.profile(getArrayType(object));
@@ -133,7 +134,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
 
     @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, currentIndex)"})
     public long previousObjectViaEnumeration(JSDynamicObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long currentIndexMinusOne = currentIndex - 1;
         if (hasPropertyNode.executeBoolean(object, currentIndexMinusOne)) {
             return currentIndexMinusOne;
@@ -144,7 +145,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, currentIndex)", "isSuitableForEnumBasedProcessing(object, currentIndex)"})
     public long previousObjectViaFullEnumeration(JSDynamicObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long currentIndexMinusOne = currentIndex - 1;
         if (hasPropertyNode.executeBoolean(object, currentIndexMinusOne)) {
             return currentIndexMinusOne;
@@ -155,7 +156,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, currentIndex)"})
     public long previousObjectViaIteration(Object object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
-                    @Cached JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long index = currentIndex - 1;
         while (index >= 0 && !hasPropertyNode.executeBoolean(object, index)) {
             index--;

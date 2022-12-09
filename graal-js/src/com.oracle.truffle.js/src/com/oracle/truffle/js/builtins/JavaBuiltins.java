@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -445,7 +446,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization(guards = {"isJSObject(jsObj)"})
         protected Object to(Object jsObj, Object toType,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("typeInterop") InteropLibrary interop) {
             TruffleLanguage.Env env = getRealm().getEnv();
             Object javaType;
             boolean knownArrayClass = false;
@@ -475,7 +476,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization(guards = {"!isJSObject(obj)"}, limit = "InteropLibraryLimit")
         protected Object toNonObject(Object obj, @SuppressWarnings("unused") Object toType,
                         @CachedLibrary("obj") InteropLibrary objInterop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary typeInterop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("typeInterop") InteropLibrary typeInterop) {
             if (objInterop.hasArrayElements(obj)) {
                 return to(obj, toType, typeInterop);
             }

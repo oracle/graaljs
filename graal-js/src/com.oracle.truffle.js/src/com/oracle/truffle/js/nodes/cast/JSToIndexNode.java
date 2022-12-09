@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -84,7 +85,7 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
     @Specialization
     protected long doDouble(double value,
                     @Cached @Shared("negativeIndexBranch") BranchProfile negativeIndexBranch,
-                    @Cached BranchProfile tooLargeIndexBranch) {
+                    @Cached @Exclusive BranchProfile tooLargeIndexBranch) {
         long integerIndex = (long) value;
         if (integerIndex < 0) {
             negativeIndexBranch.enter();

@@ -192,7 +192,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     protected final boolean doJSObject(JSDynamicObject targetObject, Object key,
                     @Cached("createIsFastArray()") IsArrayNode isArrayNode,
                     @Cached ConditionProfile arrayProfile,
-                    @Cached ToArrayIndexNode toArrayIndexNode,
+                    @Shared("toArrayIndex") @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached ConditionProfile arrayIndexProfile,
                     @Cached("create(context, strict)") JSArrayDeleteIndexNode deleteArrayIndexNode,
                     @Cached JSClassProfile jsclassProfile,

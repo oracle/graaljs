@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -95,7 +96,7 @@ public abstract class MinNode extends MathOperation {
 
     @Specialization(guards = {"args.length == 2", "caseIntInt(args)"})
     protected static int min2ParamInt(Object[] args,
-                    @Shared("minProfile") @Cached ConditionProfile minProfile) {
+                    @Cached @Shared("minProfile") ConditionProfile minProfile) {
         int i1 = (int) args[0];
         int i2 = (int) args[1];
         return min(i1, i2, minProfile);
@@ -103,8 +104,8 @@ public abstract class MinNode extends MathOperation {
 
     @Specialization(guards = {"args.length == 2", "!caseIntInt(args)"})
     protected Object min2Param(Object[] args,
-                    @Cached ConditionProfile isIntBranch,
-                    @Shared("minProfile") @Cached ConditionProfile minProfile,
+                    @Cached @Exclusive ConditionProfile isIntBranch,
+                    @Cached @Shared("minProfile") ConditionProfile minProfile,
                     @Cached JSToNumberNode toNumber1Node,
                     @Cached JSToNumberNode toNumber2Node) {
         Number n1 = toNumber1Node.executeNumber(args[0]);
