@@ -116,6 +116,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     private static final HiddenKey INIT_KEY = new HiddenKey(":initializers");
     protected static final HiddenKey MAGIC_KEY = new HiddenKey(":magic");
 
+    static final int LIMIT = 3;
+
     @CompilationFinal private int blockScopeSlot = -1;
     @CompilationFinal private JSFunctionData valueGetterFrameUncached;
     @CompilationFinal private JSFunctionData valueGetterPropertyUncached;
@@ -161,7 +163,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     // ##### Method
     //
 
-    @Specialization(guards = {"record.isMethod()", "nameEquals(strEq,record,cachedName)", "privateName"})
+    @Specialization(guards = {"record.isMethod()", "nameEquals(strEq,record,cachedName)", "privateName"}, limit = "LIMIT")
     public JSDynamicObject doPrivateMethodCached(VirtualFrame frame, PrivateFrameBasedElementDefinitionRecord record, Object initializers, Record state,
                     @Cached("record.getKey()") Object cachedName,
                     @Cached("getName(cachedName)") @SuppressWarnings("unused") Object description,
@@ -172,7 +174,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         return createContextObject(frame, cachedName, initializers, state, getter, null, privateName, METHOD_KIND);
     }
 
-    @Specialization(guards = {"record.isMethod()", "nameEquals(strEq,record,cachedName)", "!privateName"})
+    @Specialization(guards = {"record.isMethod()", "nameEquals(strEq,record,cachedName)", "!privateName"}, limit = "LIMIT")
     public JSDynamicObject doPublicMethodCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
                     @Cached("getName(cachedName)") Object description,
@@ -196,7 +198,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     // ##### Field
     //
 
-    @Specialization(guards = {"record.isField()", "nameEquals(strEq,record,cachedName)"})
+    @Specialization(guards = {"record.isField()", "nameEquals(strEq,record,cachedName)"}, limit = "LIMIT")
     public JSDynamicObject doFieldCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
                     @Cached("getName(cachedName)") Object description,
@@ -219,7 +221,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     // ##### AutoAccessor
     //
 
-    @Specialization(guards = {"record.isAutoAccessor()", "nameEquals(strEq,record,cachedName)"})
+    @Specialization(guards = {"record.isAutoAccessor()", "nameEquals(strEq,record,cachedName)"}, limit = "LIMIT")
     public JSDynamicObject doAutoAccessorCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord.AutoAccessor record, Object initializers, Record state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
                     @Cached("getName(cachedName)") Object description,
@@ -242,7 +244,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     // ##### Getter
     //
 
-    @Specialization(guards = {"record.isGetter()", "nameEquals(strEq,record,cachedName)", "!privateName"})
+    @Specialization(guards = {"record.isGetter()", "nameEquals(strEq,record,cachedName)", "!privateName"}, limit = "LIMIT")
     public JSDynamicObject doGetterCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
                     @Cached("getName(cachedName)") Object description,
@@ -266,7 +268,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     // ##### Setter
     //
 
-    @Specialization(guards = {"record.isSetter()", "nameEquals(strEq,record,cachedName)", "!privateName"})
+    @Specialization(guards = {"record.isSetter()", "nameEquals(strEq,record,cachedName)", "!privateName"}, limit = "LIMIT")
     public JSDynamicObject doSetterCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
                     @Cached("getName(cachedName)") Object description,
