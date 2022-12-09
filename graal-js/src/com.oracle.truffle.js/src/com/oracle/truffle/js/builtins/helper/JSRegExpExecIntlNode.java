@@ -84,6 +84,8 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
  */
 public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
+    static final int LIMIT = 3;
+
     private final JSContext context;
     @Child private JSRegExpExecBuiltinNode regExpBuiltinNode;
     @Child private PropertyGetNode getExecNode;
@@ -239,7 +241,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         // We can reuse the cachedGroupsFactory even if the new groups factory is different, as long
         // as the compiledRegex is the same. This can happen if a new RegExp instance is repeatedly
         // created for the same regular expression.
-        @Specialization(guards = "getGroupsFactory(regExp) == cachedGroupsFactory || getCompiledRegex(regExp) == cachedCompiledRegex")
+        @Specialization(guards = "getGroupsFactory(regExp) == cachedGroupsFactory || getCompiledRegex(regExp) == cachedCompiledRegex", limit = "LIMIT")
         final JSDynamicObject doCachedGroupsFactory(JSContext context,
                         @SuppressWarnings("unused") JSDynamicObject regExp,
                         Object regexResult,
@@ -314,7 +316,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
         public abstract Object execute(JSRegExpObject regExp, TruffleString input);
 
-        @Specialization(guards = "getCompiledRegex(regExp) == cachedCompiledRegex")
+        @Specialization(guards = "getCompiledRegex(regExp) == cachedCompiledRegex", limit = "LIMIT")
         Object doCached(JSRegExpObject regExp, TruffleString input,
                         @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex) {
             return doExec(regExp, cachedCompiledRegex, input);
