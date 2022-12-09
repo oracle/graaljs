@@ -45,17 +45,21 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -228,6 +232,28 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         }
     }
 
+    public static final class ModuleNamespaceHasOwnPropertyNode extends LinkedHasPropertyCacheNode {
+
+        private final Location location;
+        @Child ReadImportBindingNode readBindingNode;
+
+        public ModuleNamespaceHasOwnPropertyNode(ReceiverCheckNode receiverCheck, Property property) {
+            super(receiverCheck);
+            assert JSProperty.isModuleNamespaceExport(property);
+            this.location = property.getLocation();
+            this.readBindingNode = ReadImportBindingNode.create();
+        }
+
+        @Override
+        protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
+            JSModuleNamespaceObject store = (JSModuleNamespaceObject) receiverCheck.getStore(thisObj);
+            ExportResolution.Resolved exportResolution = (ExportResolution.Resolved) location.get(store, receiverCheck.getShape());
+            // Throws ReferenceError in case of an uninitialized binding.
+            readBindingNode.execute(exportResolution);
+            return true;
+        }
+    }
+
     public static final class UnspecializedHasPropertyCacheNode extends LinkedHasPropertyCacheNode {
 
         public UnspecializedHasPropertyCacheNode(ReceiverCheckNode receiverCheckNode) {
@@ -311,6 +337,9 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             check = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);
         } else {
             check = createPrimitiveReceiverCheck(thisObj, depth);
+        }
+        if (hasOwnProperty && JSProperty.isModuleNamespaceExport(property)) {
+            return new ModuleNamespaceHasOwnPropertyNode(check, property);
         }
         return new PresentHasPropertyCacheNode(check);
     }

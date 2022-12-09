@@ -10,6 +10,12 @@ load('../assert.js');
 import * as ns from './module_namespace_object.mjs';
 
 assertThrows(() => ns.answer, ReferenceError);
+assertTrue('answer' in ns);
+assertTrue(Reflect.has(ns, 'answer'));
+assertThrows(() => Object.getOwnPropertyDescriptor(ns, 'answer'), ReferenceError);
+assertThrows(() => Object.hasOwn(ns,'answer'), ReferenceError);
+assertThrows(() => Object.prototype.hasOwnProperty.call(ns,'answer'), ReferenceError);
+assertThrows(() => ns.answer = 42, TypeError);
 
 assertThrows(() => Object.seal(ns), ReferenceError);
 assertThrows(() => Object.freeze(ns), ReferenceError);
@@ -19,6 +25,12 @@ assertThrows(() => Object.isFrozen(ns), ReferenceError);
 export const answer = 42;
 
 assertSame(42, ns.answer);
+assertTrue('answer' in ns);
+assertTrue(Reflect.has(ns, 'answer'));
+assertSame(42, Object.getOwnPropertyDescriptor(ns, 'answer').value);
+assertTrue(Object.hasOwn(ns,'answer'));
+assertTrue(Object.prototype.hasOwnProperty.call(ns,'answer'));
+assertThrows(() => ns.answer = 42, TypeError);
 
 Object.seal(ns);
 assertThrows(() => Object.freeze(ns), TypeError);
