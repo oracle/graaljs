@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -59,10 +60,11 @@ public class GetMethodNode extends JavaScriptBaseNode {
     private final BranchProfile notCallableBranch = BranchProfile.create();
 
     protected GetMethodNode(JSContext context, Object propertyKey) {
-        this.cacheNode = PropertyGetNode.create(propertyKey, false, context);
+        this.cacheNode = PropertyGetNode.create(propertyKey, context);
         this.isCallableNode = IsCallableNode.create();
     }
 
+    @NeverDefault
     public static GetMethodNode create(JSContext ctx, Object key) {
         return new GetMethodNode(ctx, key);
     }

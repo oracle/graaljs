@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -138,24 +139,29 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     private boolean propertyAssumptionCheckEnabled = true;
     @Child protected GetCacheNode cacheNode;
 
+    @NeverDefault
     public static PropertyGetNode create(Object key, JSContext context) {
         return create(key, false, context);
     }
 
+    @NeverDefault
     public static PropertyGetNode create(Object key, boolean isGlobal, JSContext context) {
         final boolean getOwnProperty = false;
         final boolean isMethod = false;
         return createImpl(key, isGlobal, context, getOwnProperty, isMethod);
     }
 
+    @NeverDefault
     public static PropertyGetNode create(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty, boolean isMethod) {
         return createImpl(key, isGlobal, context, getOwnProperty, isMethod);
     }
 
+    @NeverDefault
     private static PropertyGetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty, boolean isMethod) {
         return new PropertyGetNode(key, context, isGlobal, getOwnProperty, isMethod);
     }
 
+    @NeverDefault
     public static PropertyGetNode createGetOwn(Object key, JSContext context) {
         final boolean global = false;
         final boolean getOwnProperty = true;
@@ -163,10 +169,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return createImpl(key, global, context, getOwnProperty, isMethod);
     }
 
+    @NeverDefault
     public static PropertyGetNode createGetHidden(HiddenKey key, JSContext context) {
         return createGetOwn(key, context);
     }
 
+    @NeverDefault
     public static PropertyGetNode createGetMethod(Object key, JSContext context) {
         return createImpl(key, false, context, false, true);
     }

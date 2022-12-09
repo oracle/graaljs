@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -106,24 +107,29 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     private boolean propertyAssumptionCheckEnabled;
     @Child protected SetCacheNode cacheNode;
 
+    @NeverDefault
     public static PropertySetNode create(Object key, boolean isGlobal, JSContext context, boolean isStrict) {
         final boolean setOwnProperty = false;
         return createImpl(key, isGlobal, context, isStrict, setOwnProperty, JSAttributes.getDefault());
     }
 
+    @NeverDefault
     public static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags) {
         return createImpl(key, isGlobal, context, isStrict, setOwnProperty, attributeFlags, false, false);
     }
 
+    @NeverDefault
     public static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags, boolean declaration) {
         return createImpl(key, isGlobal, context, isStrict, setOwnProperty, attributeFlags, declaration, false);
     }
 
+    @NeverDefault
     public static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags, boolean declaration,
                     boolean superProperty) {
         return new PropertySetNode(key, context, isGlobal, isStrict, setOwnProperty, attributeFlags, declaration, superProperty);
     }
 
+    @NeverDefault
     public static PropertySetNode createSetHidden(HiddenKey key, JSContext context) {
         return createImpl(key, false, context, false, true, 0);
     }

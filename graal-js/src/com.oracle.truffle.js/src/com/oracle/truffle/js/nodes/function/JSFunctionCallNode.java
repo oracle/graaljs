@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -126,14 +127,17 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         this.flags = flags;
     }
 
+    @NeverDefault
     public static JSFunctionCallNode createCall() {
         return create(false);
     }
 
+    @NeverDefault
     public static JSFunctionCallNode createNew() {
         return create(true);
     }
 
+    @NeverDefault
     public static JSFunctionCallNode createNewTarget() {
         return create(true, true);
     }
@@ -178,10 +182,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return new InvokeNNode(targetFunction, arguments, flags);
     }
 
+    @NeverDefault
     public static JSFunctionCallNode getUncachedCall() {
         return Uncached.CALL;
     }
 
+    @NeverDefault
     public static JSFunctionCallNode getUncachedNew() {
         return Uncached.NEW;
     }
