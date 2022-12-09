@@ -138,7 +138,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)"})
     public long firstObjectViaEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+                    @Cached JSHasPropertyNode hasPropertyNode) {
         if (hasPropertyNode.executeBoolean(object, 0)) {
             return 0;
         }
@@ -147,7 +147,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)", "isSuitableForEnumBasedProcessing(object, length)"})
     public long firstObjectViaFullEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+                    @Cached JSHasPropertyNode hasPropertyNode) {
         if (hasPropertyNode.executeBoolean(object, 0)) {
             return 0;
         }
@@ -156,7 +156,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, length)"})
     public long doObject(Object object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+                    @Cached JSHasPropertyNode hasPropertyNode) {
         long index = 0;
         while (!hasPropertyNode.executeBoolean(object, index) && index <= (length - 1)) {
             index++;

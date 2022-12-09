@@ -880,7 +880,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @CachedLibrary("firstArg(args)") InteropLibrary interop,
                         @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
                         @Cached ConditionProfile isNumber,
-                        @Cached("create()") BranchProfile rangeErrorProfile) {
+                        @Cached BranchProfile rangeErrorProfile) {
             Object len = args[0];
             if (isNumber.profile(interop.isNumber(len))) {
                 if (interop.fitsInLong(len)) {
@@ -904,9 +904,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!isOneNumberArg(args)", "!isOneForeignArg(args)"})
         protected JSObject constructArrayVarargs(JSDynamicObject newTarget, Object[] args,
-                        @Cached("create()") BranchProfile isIntegerCase,
-                        @Cached("create()") BranchProfile isDoubleCase,
-                        @Cached("create()") BranchProfile isObjectCase,
+                        @Cached BranchProfile isIntegerCase,
+                        @Cached BranchProfile isDoubleCase,
+                        @Cached BranchProfile isObjectCase,
                         @Cached ConditionProfile isLengthZero) {
             JSRealm realm = getRealm();
             if (isLengthZero.profile(args == null || args.length == 0)) {
@@ -983,7 +983,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected boolean callBoolean(Object value, @Cached("create()") JSToBooleanNode toBoolean) {
+        protected boolean callBoolean(Object value, @Cached JSToBooleanNode toBoolean) {
             return toBoolean.executeBoolean(value);
         }
     }
@@ -995,7 +995,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructBoolean(JSDynamicObject newTarget, Object value,
-                        @Cached("create()") JSToBooleanNode toBoolean) {
+                        @Cached JSToBooleanNode toBoolean) {
             return swapPrototype(JSBoolean.create(getContext(), getRealm(), toBoolean.executeBoolean(value)), newTarget);
         }
 
@@ -1142,9 +1142,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSDynamicObject constructTemporalPlainDate(JSDynamicObject newTarget, Object isoYear, Object isoMonth,
                         Object isoDay, Object calendarLike,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode,
+                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                        @Cached("create()") BranchProfile errorBranch) {
+                        @Cached BranchProfile errorBranch) {
             final int y = toIntegerNode.executeIntOrThrow(isoYear);
             final int m = toIntegerNode.executeIntOrThrow(isoMonth);
             final int d = toIntegerNode.executeIntOrThrow(isoDay);
@@ -1169,7 +1169,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject,
                         @Cached BranchProfile errorBranch,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode) {
+                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode) {
             final int hour = toIntegerNode.executeIntOrThrow(hourObj);
             final int minute = toIntegerNode.executeIntOrThrow(minuteObj);
             final int second = toIntegerNode.executeIntOrThrow(secondObj);
@@ -1196,7 +1196,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalPlainDateTime(JSDynamicObject newTarget, Object yearObj, Object monthObj, Object dayObj, Object hourObj, Object minuteObj,
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject, Object calendarLike,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode,
+                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                         @Cached BranchProfile errorBranch) {
             final int year = toIntegerNode.executeIntOrThrow(yearObj);
@@ -1230,7 +1230,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalDuration(JSDynamicObject newTarget, Object yearsObj, Object monthsObj,
                         Object weeksObj, Object daysObj, Object hoursObj, Object minutesObj, Object secondsObj,
                         Object millisecondsObject, Object microsecondsObject, Object nanosecondsObject,
-                        @Cached("create()") JSToIntegerWithoutRoundingNode toIntegerNode,
+                        @Cached JSToIntegerWithoutRoundingNode toIntegerNode,
                         @Cached BranchProfile errorBranch) {
             final double years = toIntegerNode.executeDouble(yearsObj);
             final double months = toIntegerNode.executeDouble(monthsObj);
@@ -1261,7 +1261,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSDynamicObject constructTemporalCalendar(JSDynamicObject newTarget, Object arg,
                         @Cached BranchProfile errorBranch,
-                        @Cached("create()") JSToStringNode toString) {
+                        @Cached JSToStringNode toString) {
             final TruffleString id = toString.executeString(arg);
             return swapPrototype(JSTemporalCalendar.create(getContext(), getRealm(), id, errorBranch), newTarget);
         }
@@ -1281,8 +1281,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSDynamicObject constructTemporalPlainYearMonth(JSDynamicObject newTarget, Object isoYear,
                         Object isoMonth, Object calendarLike, Object refISODay,
-                        @Cached("create()") BranchProfile errorBranch,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toInteger,
+                        @Cached BranchProfile errorBranch,
+                        @Cached JSToIntegerThrowOnInfinityNode toInteger,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode) {
 
             Object referenceISODay = refISODay;
@@ -1311,8 +1311,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSDynamicObject constructTemporalPlainMonthDay(JSDynamicObject newTarget, Object isoMonth,
                         Object isoDay, Object calendarLike, Object refISOYear,
-                        @Cached("create()") BranchProfile errorBranch,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toInt,
+                        @Cached BranchProfile errorBranch,
+                        @Cached JSToIntegerThrowOnInfinityNode toInt,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode) {
             Object referenceISOYear = refISOYear;
             if (referenceISOYear == Undefined.instance || referenceISOYear == null) {
@@ -1362,7 +1362,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructTemporalTimeZone(JSDynamicObject newTarget, Object identifier,
-                        @Cached("create()") JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode) {
             TruffleString id = toStringNode.executeString(identifier);
             return constructTemporalTimeZoneIntl(newTarget, id);
         }
@@ -1396,7 +1396,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalZonedDateTime(JSDynamicObject newTarget, Object epochNanoseconds, Object timeZoneLike, Object calendarLike,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                        @Cached("create()") JSToBigIntNode toBigIntNode,
+                        @Cached JSToBigIntNode toBigIntNode,
                         @Cached BranchProfile errorBranch) {
             BigInt ns = toBigIntNode.executeBigInteger(epochNanoseconds);
             if (!TemporalUtil.isValidEpochNanoseconds(ns)) {
@@ -1605,7 +1605,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length != 0"})
         protected JSDynamicObject constructString(JSDynamicObject newTarget, Object[] args,
-                        @Cached("create()") JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode) {
             return swapPrototype(JSString.create(getContext(), getRealm(), toStringNode.executeString(args[0])), newTarget);
         }
 
@@ -1966,8 +1966,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length > 0"})
         protected Number callNumber(Object[] args,
-                        @Cached("create()") JSToNumericNode toNumericNode,
-                        @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
+                        @Cached JSToNumericNode toNumericNode,
+                        @Cached JSNumericToNumberNode toNumberFromNumericNode) {
             return toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]));
         }
     }
@@ -1984,8 +1984,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length > 0"})
         protected JSDynamicObject constructNumber(JSDynamicObject newTarget, Object[] args,
-                        @Cached("create()") JSToNumericNode toNumericNode,
-                        @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
+                        @Cached JSToNumericNode toNumericNode,
+                        @Cached JSNumericToNumberNode toNumberFromNumericNode) {
             return swapPrototype(JSNumber.create(getContext(), getRealm(), toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]))), newTarget);
         }
 
@@ -2019,8 +2019,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length > 0"})
         protected Object callBigInt(Object[] args,
-                        @Cached("create()") JSNumberToBigIntNode numberToBigIntNode,
-                        @Cached("create()") JSToBigIntNode toBigIntNode) {
+                        @Cached JSNumberToBigIntNode numberToBigIntNode,
+                        @Cached JSToBigIntNode toBigIntNode) {
             Object value = args[0];
             Object primitiveObj = toPrimitive(value);
             if (JSRuntime.isNumber(primitiveObj)) {
@@ -2261,7 +2261,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!bufferInterop.hasBufferElements(length)"})
         protected JSDynamicObject constructFromLength(JSDynamicObject newTarget, Object length,
-                        @Cached("create()") JSToIndexNode toIndexNode,
+                        @Cached JSToIndexNode toIndexNode,
                         @Cached @Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") @SuppressWarnings("unused") InteropLibrary bufferInterop) {
             long byteLength = toIndexNode.executeLong(length);
@@ -2341,7 +2341,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = "!isString(message)")
         protected JSDynamicObject constructError(JSDynamicObject newTarget, Object message, Object options,
-                        @Cached("create()") JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode) {
             return constructErrorImpl(newTarget, message == Undefined.instance ? null : toStringNode.executeString(message), options);
         }
 

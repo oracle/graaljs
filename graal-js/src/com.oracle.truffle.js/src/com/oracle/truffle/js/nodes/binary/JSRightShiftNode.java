@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,7 +86,7 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
 
     @Specialization
     protected BigInt doBigInt(BigInt a, BigInt b,
-                    @Cached("create()") JSLeftShiftNode leftShift) {
+                    @Cached JSLeftShiftNode leftShift) {
         return leftShift.doBigInt(a, b.negate());
     }
 
@@ -97,9 +97,9 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
 
     @Specialization
     protected Object doDouble(double a, double b,
-                    @Cached("create()") JSRightShiftNode rightShift,
-                    @Cached("create()") JSToInt32Node leftInt32,
-                    @Cached("create()") JSToUInt32Node rightUInt32) {
+                    @Cached JSRightShiftNode rightShift,
+                    @Cached JSToInt32Node leftInt32,
+                    @Cached JSToUInt32Node rightUInt32) {
 
         return rightShift.execute(leftInt32.executeInt(a), rightUInt32.execute(b));
     }
@@ -116,10 +116,10 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntDouble", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
-                    @Cached("create()") JSRightShiftNode rightShift,
-                    @Cached("create()") JSToNumericNode leftToNumeric,
-                    @Cached("create()") JSToNumericNode rightToNumeric,
-                    @Cached("create()") BranchProfile mixedNumericTypes) {
+                    @Cached JSRightShiftNode rightShift,
+                    @Cached JSToNumericNode leftToNumeric,
+                    @Cached JSToNumericNode rightToNumeric,
+                    @Cached BranchProfile mixedNumericTypes) {
         Object operandA = leftToNumeric.execute(a);
         Object operandB = rightToNumeric.execute(b);
         ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -277,7 +277,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization
         protected boolean reflectDefineProperty(Object target, Object propertyKey, Object attributes,
-                        @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached JSToPropertyKeyNode toPropertyKeyNode,
                         @Cached("create(getContext())") ToPropertyDescriptorNode toPropertyDescriptorNode) {
             ensureJSObject(target);
             Object key = toPropertyKeyNode.execute(propertyKey);
@@ -297,7 +297,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization(guards = "isJSObject(target)")
         protected boolean doObject(JSDynamicObject target, Object propertyKey,
-                        @Cached("create()") JSClassProfile classProfile) {
+                        @Cached JSClassProfile classProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSObject.delete(target, key, false, classProfile);
         }
@@ -343,7 +343,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization(guards = "isJSObject(target)")
         protected Object doObject(JSDynamicObject target, Object propertyKey, Object[] optionalArgs,
-                        @Cached("create()") JSClassProfile classProfile) {
+                        @Cached JSClassProfile classProfile) {
             Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSRuntime.nullToUndefined(classProfile.getJSClass(target).getHelper(target, receiver, key, this));
@@ -421,7 +421,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization(guards = "isJSObject(target)")
         protected Object doObject(JSDynamicObject target, Object propertyKey,
-                        @Cached("create()") JSClassProfile jsclassProfile) {
+                        @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSObject.hasProperty(target, key, jsclassProfile);
         }

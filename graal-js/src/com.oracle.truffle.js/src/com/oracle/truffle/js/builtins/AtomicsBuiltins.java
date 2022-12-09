@@ -1076,8 +1076,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization
         protected Object doNotify(Object maybeTarget, Object index, Object count,
                         @Cached JSToIndexNode toIndexNode,
-                        @Cached("create()") JSToInt32Node toInt32Node,
-                        @Cached("create()") BranchProfile notSharedArrayBuffer) {
+                        @Cached JSToInt32Node toInt32Node,
+                        @Cached BranchProfile notSharedArrayBuffer) {
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
             validateIntegerTypedArray(target, true);

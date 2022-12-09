@@ -150,7 +150,7 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
     @Specialization
     protected TruffleString doStringNumber(TruffleString a,
                     @Cached("rightValueToString()") TruffleString rightString,
-                    @Cached("create()") JSConcatStringsNode createLazyString) {
+                    @Cached JSConcatStringsNode createLazyString) {
         return createLazyString.executeTString(a, rightString);
     }
 
@@ -167,9 +167,9 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
     @Specialization(guards = {"!hasOverloadedOperators(a)"}, replaces = {"doInt", "doDouble", "doStringNumber"})
     protected Object doPrimitiveConversion(Object a,
                     @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveA,
-                    @Cached("create()") JSToNumberNode toNumberA,
+                    @Cached JSToNumberNode toNumberA,
                     @Cached("rightValueToString()") TruffleString rightString,
-                    @Cached("create()") JSConcatStringsNode createLazyString,
+                    @Cached JSConcatStringsNode createLazyString,
                     @Cached ConditionProfile profileA) {
 
         Object primitiveA = toPrimitiveA.execute(a);

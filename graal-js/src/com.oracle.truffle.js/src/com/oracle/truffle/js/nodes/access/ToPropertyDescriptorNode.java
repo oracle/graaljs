@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -134,13 +134,13 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     @Specialization(guards = {"wasExecuted(obj)", "isObjectNode.executeBoolean(obj)"}, limit = "1")
     protected Object doDefault(Object obj,
                     @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode,
-                    @Cached("create()") BranchProfile hasGetBranch,
-                    @Cached("create()") BranchProfile hasSetBranch,
-                    @Cached("create()") BranchProfile hasEnumerableBranch,
-                    @Cached("create()") BranchProfile hasConfigurableBranch,
-                    @Cached("create()") BranchProfile hasValueBranch,
-                    @Cached("create()") BranchProfile hasWritableBranch,
-                    @Cached("create()") IsCallableNode isCallable) {
+                    @Cached BranchProfile hasGetBranch,
+                    @Cached BranchProfile hasSetBranch,
+                    @Cached BranchProfile hasEnumerableBranch,
+                    @Cached BranchProfile hasConfigurableBranch,
+                    @Cached BranchProfile hasValueBranch,
+                    @Cached BranchProfile hasWritableBranch,
+                    @Cached IsCallableNode isCallable) {
         initialize();
         PropertyDescriptor desc = PropertyDescriptor.createEmpty();
 

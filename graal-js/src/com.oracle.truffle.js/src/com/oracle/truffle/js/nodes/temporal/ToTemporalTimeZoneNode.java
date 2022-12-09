@@ -88,8 +88,8 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
 
     @Specialization
     protected JSDynamicObject toTemporalTimeZone(Object temporalTimeZoneLikeParam,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode) {
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode) {
         Object temporalTimeZoneLike = temporalTimeZoneLikeParam;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(temporalTimeZoneLike))) {
             JSDynamicObject tzObj = (JSDynamicObject) temporalTimeZoneLike;

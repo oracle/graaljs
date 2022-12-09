@@ -109,7 +109,7 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
     public Object doForeignObject(Object object,
                     @CachedLibrary("object") InteropLibrary interop,
                     @Cached ConditionProfile primitiveProfile,
-                    @Cached("create()") JSCollectionsNormalizeNode nestedNormalizeNode) {
+                    @Cached JSCollectionsNormalizeNode nestedNormalizeNode) {
         Object primitive = JSInteropUtil.toPrimitiveOrDefault(object, null, interop, this);
         return primitiveProfile.profile(primitive == null) ? object : nestedNormalizeNode.execute(primitive);
     }

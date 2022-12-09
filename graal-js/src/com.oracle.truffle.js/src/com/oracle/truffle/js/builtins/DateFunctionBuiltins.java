@@ -138,7 +138,7 @@ public final class DateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<D
 
         @Specialization
         protected double utc(Object[] args,
-                        @Cached("create()") JSToNumberNode toNumberNode) {
+                        @Cached JSToNumberNode toNumberNode) {
             double[] argsEvaluated = new double[args.length];
             boolean isNaN = false;
             for (int i = 0; i < args.length; i++) {

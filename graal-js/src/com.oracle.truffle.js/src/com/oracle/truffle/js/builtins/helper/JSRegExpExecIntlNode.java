@@ -208,8 +208,8 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
         @Specialization
         Object doGeneric(JSDynamicObject regExp, TruffleString input, long lastIndex,
-                        @Cached("create()") TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
-                        @Cached("create()") TRegexUtil.TRegexResultAccessor regexResultAccessor) {
+                        @Cached TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
+                        @Cached TRegexUtil.TRegexResultAccessor regexResultAccessor) {
             assert JSRegExp.isJSRegExp(regExp);
             Object compiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegex(regExp));
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);

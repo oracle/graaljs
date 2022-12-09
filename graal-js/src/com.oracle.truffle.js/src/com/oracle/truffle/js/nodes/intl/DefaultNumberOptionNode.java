@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,8 +64,8 @@ public abstract class DefaultNumberOptionNode extends JavaScriptBaseNode {
     @Specialization(guards = "!isUndefined(value)")
     public int getOption(Object value, int minimum, int maximum,
                     @SuppressWarnings("unused") int fallback,
-                    @Cached("create()") JSToNumberNode toNumberNode,
-                    @Cached("create()") BranchProfile errorBranch) {
+                    @Cached JSToNumberNode toNumberNode,
+                    @Cached BranchProfile errorBranch) {
         Number numValue = toNumberNode.executeNumber(value);
         double doubleValue = JSRuntime.doubleValue(numValue);
         if (Double.isNaN(doubleValue) || doubleValue < minimum || maximum < doubleValue) {

@@ -244,7 +244,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!usesOrdinaryGetOwnProperty.execute(thisObj)", "!isJSArray(thisObj)", "!isJSString(thisObj)"}, limit = "1")
     static PropertyDescriptor generic(JSDynamicObject thisObj, Object key,
-                    @Cached("create()") JSClassProfile jsclassProfile,
+                    @Cached JSClassProfile jsclassProfile,
                     @Cached @Shared("usesOrdinaryGetOwnProperty") @SuppressWarnings("unused") UsesOrdinaryGetOwnPropertyNode usesOrdinaryGetOwnProperty) {
         assert !JSObject.getJSClass(thisObj).usesOrdinaryGetOwnProperty();
         return JSObject.getOwnProperty(thisObj, key, jsclassProfile);

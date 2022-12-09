@@ -105,7 +105,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
     public void decorateField(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
                     @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached("create()") IsCallableNode isCallableNode) {
+                    @Cached IsCallableNode isCallableNode) {
         for (Object decorator : record.getDecorators()) {
             Record state = new Record();
             JSDynamicObject decoratorContext = createDecoratorContextNode.executeContext(frame, record, extraInitializers, state);
@@ -136,7 +136,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
     public void decorateMethod(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
                     @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached("create()") IsCallableNode isCallableNode,
+                    @Cached IsCallableNode isCallableNode,
                     @Cached ConditionProfile isSymbolProfile,
                     @Cached JSClassProfile newValueClassProfile) {
         for (Object decorator : record.getDecorators()) {
@@ -162,9 +162,9 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
     public void decorateGetterSetter(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
                     @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached("create()") IsCallableNode isCallableNode,
+                    @Cached IsCallableNode isCallableNode,
                     @Cached("createSymbolToString()") JSToStringNode toStringNode,
-                    @Cached("create()") TruffleString.ConcatNode concatNode,
+                    @Cached TruffleString.ConcatNode concatNode,
                     @Cached JSClassProfile newValueClassProfile) {
         for (Object decorator : record.getDecorators()) {
             Object newValue = executeDecoratorWithContext(frame, record, extraInitializers, createDecoratorContextNode, callNode, decorator);
@@ -190,9 +190,9 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Cached("createGetterNode()") PropertyGetNode getGetterNode,
                     @Cached("createSetterNode()") PropertyGetNode getSetterNode,
                     @Cached("createInitNode()") PropertyGetNode getInitNode,
-                    @Cached("create()") IsCallableNode isCallableNode,
+                    @Cached IsCallableNode isCallableNode,
                     @Cached("create(context)") CreateObjectNode createObjectNode,
-                    @Cached("create()") IsObjectNode isObjectNode) {
+                    @Cached IsObjectNode isObjectNode) {
         for (Object decorator : record.getDecorators()) {
             Record state = new Record();
             JSDynamicObject decoratorContext = createDecoratorContextNode.executeContext(frame, record, extraInitializers, state);

@@ -420,21 +420,21 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
         @Specialization
         protected Object member(TruffleObject obj, TruffleString name,
-                        @Shared("importValue") @Cached("create()") ImportValueNode foreignConvert,
+                        @Shared("importValue") @Cached ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             return JSInteropUtil.readMemberOrDefault(obj, name, Null.instance, interop, foreignConvert, this);
         }
 
         @Specialization
         protected Object arrayElementInt(TruffleObject obj, int index,
-                        @Shared("importValue") @Cached("create()") ImportValueNode foreignConvert,
+                        @Shared("importValue") @Cached ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             return JSInteropUtil.readArrayElementOrDefault(obj, index, Null.instance, interop, foreignConvert, this);
         }
 
         @Specialization(guards = "isNumber(index)", replaces = "arrayElementInt")
         protected Object arrayElement(TruffleObject obj, Number index,
-                        @Shared("importValue") @Cached("create()") ImportValueNode foreignConvert,
+                        @Shared("importValue") @Cached ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             return JSInteropUtil.readArrayElementOrDefault(obj, JSRuntime.longValue(index), Null.instance, interop, foreignConvert, this);
         }
@@ -442,7 +442,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isString(key)", "!isNumber(key)"})
         protected Object unsupportedKey(TruffleObject obj, Object key,
-                        @Shared("importValue") @Cached("create()") ImportValueNode foreignConvert,
+                        @Shared("importValue") @Cached ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keyInterop) {
             try {

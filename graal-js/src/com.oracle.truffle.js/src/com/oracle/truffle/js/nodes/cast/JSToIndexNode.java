@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,8 +104,8 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static long doObject(Object value,
-                    @Cached("create()") JSToNumberNode toNumberNode,
-                    @Cached("create()") JSToIndexNode recursiveToIndexNode) {
+                    @Cached JSToNumberNode toNumberNode,
+                    @Cached JSToIndexNode recursiveToIndexNode) {
         Number number = (Number) toNumberNode.execute(value);
         assert number instanceof Integer || number instanceof Double;
         return recursiveToIndexNode.executeLong(number);

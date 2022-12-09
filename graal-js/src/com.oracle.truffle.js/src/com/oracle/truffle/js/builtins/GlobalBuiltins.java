@@ -1542,7 +1542,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         protected Object exit(Object arg,
-                        @Cached("create()") JSToNumberNode toNumberNode) {
+                        @Cached JSToNumberNode toNumberNode) {
             int exitCode = (int) JSRuntime.toInteger(toNumberNode.executeNumber(arg));
             return exit(exitCode);
         }

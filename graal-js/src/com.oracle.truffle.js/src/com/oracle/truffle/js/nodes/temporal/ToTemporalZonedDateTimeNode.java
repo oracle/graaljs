@@ -93,9 +93,9 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
 
     @Specialization
     public JSDynamicObject toTemporalZonedDateTime(Object item, JSDynamicObject options,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("create()") TemporalGetOptionNode getOptionNode,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode,
+                    @Cached TemporalGetOptionNode getOptionNode,
                     @Cached("create(ctx)") ToTemporalTimeZoneNode toTemporalTimeZone,
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -129,7 +129,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @ReportPolymorphism.Megamorphic
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(prototype)"}, replaces = "doCachedProto")
     public JSDynamicObject doUncachedProto(@SuppressWarnings("unused") JSDynamicObject target, JSDynamicObject prototype,
-                    @Cached("create()") BranchProfile slowBranch) {
+                    @Cached BranchProfile slowBranch) {
         Shape shape = JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context, slowBranch);
         return JSOrdinary.create(context, shape);
     }

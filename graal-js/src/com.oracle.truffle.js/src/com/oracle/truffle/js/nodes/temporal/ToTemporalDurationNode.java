@@ -74,8 +74,8 @@ public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
 
     @Specialization
     protected JSDynamicObject toTemporalDuration(Object item,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode) {
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode) {
         JSTemporalDurationRecord result;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;

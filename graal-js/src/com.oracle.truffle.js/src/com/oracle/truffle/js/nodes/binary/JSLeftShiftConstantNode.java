@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -124,7 +124,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
 
     @Specialization
     protected int doDouble(double a,
-                    @Cached("create()") JSToInt32Node leftInt32Node) {
+                    @Cached JSToInt32Node leftInt32Node) {
         return leftInt32Node.executeInt(a) << shiftValue;
     }
 
@@ -145,7 +145,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a,
-                    @Cached("create()") JSToNumericNode leftToNumericNode,
+                    @Cached JSToNumericNode leftToNumericNode,
                     @Cached("makeCopy()") JSLeftShiftConstantNode innerShiftNode) {
         Object numericLeft = leftToNumericNode.execute(a);
         return innerShiftNode.executeInt(numericLeft);

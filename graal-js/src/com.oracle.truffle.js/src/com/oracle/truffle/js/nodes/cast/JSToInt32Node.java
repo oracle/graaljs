@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -192,7 +192,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
 
     @Specialization
     protected int doString(TruffleString value,
-                    @Cached("create()") JSStringToNumberNode stringToNumberNode) {
+                    @Cached JSStringToNumberNode stringToNumberNode) {
         return doubleToInt32(stringToNumberNode.executeString(value));
     }
 
@@ -222,7 +222,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
 
     @Specialization(guards = {"!isBitwiseOr() || !hasOverloadedOperators(value)"})
     protected int doJSObject(JSObject value,
-                    @Cached("create()") JSToDoubleNode toDoubleNode) {
+                    @Cached JSToDoubleNode toDoubleNode) {
         return doubleToInt32(toDoubleNode.executeDouble(value));
     }
 
@@ -236,7 +236,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
     @Specialization(guards = "isForeignObject(object)")
     protected static int doForeignObject(Object object,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
-                    @Cached("create()") JSToInt32Node toInt32Node) {
+                    @Cached JSToInt32Node toInt32Node) {
         return toInt32Node.executeInt(toPrimitiveNode.execute(object));
     }
 

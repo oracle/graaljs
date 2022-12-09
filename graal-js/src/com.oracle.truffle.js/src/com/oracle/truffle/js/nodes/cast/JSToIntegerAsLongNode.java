@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -117,20 +117,20 @@ public abstract class JSToIntegerAsLongNode extends JavaScriptBaseNode {
 
     @Specialization
     protected long doString(TruffleString value,
-                    @Cached("create()") JSToIntegerAsLongNode nestedToIntegerNode,
-                    @Cached("create()") JSStringToNumberNode stringToNumberNode) {
+                    @Cached JSToIntegerAsLongNode nestedToIntegerNode,
+                    @Cached JSStringToNumberNode stringToNumberNode) {
         return nestedToIntegerNode.executeLong(stringToNumberNode.executeString(value));
     }
 
     @Specialization
     protected long doJSObject(JSObject value,
-                    @Cached("create()") JSToNumberNode toNumberNode) {
+                    @Cached JSToNumberNode toNumberNode) {
         return JSRuntime.toInteger(toNumberNode.executeNumber(value));
     }
 
     @Specialization(guards = "isForeignObject(value)")
     protected long doForeignObject(Object value,
-                    @Cached("create()") JSToNumberNode toNumberNode) {
+                    @Cached JSToNumberNode toNumberNode) {
         return JSRuntime.toInteger(toNumberNode.executeNumber(value));
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,8 +123,8 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
 
         @Specialization
         public TruffleString doFormat(JSRelativeTimeFormatObject relativeTimeFormat, Object value, Object unit,
-                        @Cached("create()") JSToStringNode toStringNode,
-                        @Cached("create()") JSToNumberNode toNumberNode) {
+                        @Cached JSToStringNode toStringNode,
+                        @Cached JSToNumberNode toNumberNode) {
             return JSRelativeTimeFormat.format(relativeTimeFormat, JSRuntime.doubleValue(toNumberNode.executeNumber(value)), Strings.toJavaString(toStringNode.executeString(unit)));
         }
 
@@ -143,8 +143,8 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
 
         @Specialization
         public Object doFormatToParts(JSRelativeTimeFormatObject relativeTimeFormat, Object value, Object unit,
-                        @Cached("create()") JSToStringNode toStringNode,
-                        @Cached("create()") JSToNumberNode toNumberNode) {
+                        @Cached JSToStringNode toStringNode,
+                        @Cached JSToNumberNode toNumberNode) {
             double amount = JSRuntime.doubleValue(toNumberNode.executeNumber(value));
             TruffleString unitString = toStringNode.executeString(unit);
             return JSRelativeTimeFormat.formatToParts(getContext(), getRealm(), relativeTimeFormat, amount, Strings.toJavaString(unitString));

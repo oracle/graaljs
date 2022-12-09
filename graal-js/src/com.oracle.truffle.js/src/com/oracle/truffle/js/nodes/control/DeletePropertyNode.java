@@ -167,7 +167,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @Specialization(guards = {"isJSOrdinaryObject(targetObject)"})
     protected final boolean doJSOrdinaryObject(JSDynamicObject targetObject, Object key,
-                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
+                    @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode,
                     @CachedLibrary(limit = "InteropLibraryLimit") DynamicObjectLibrary dynamicObjectLib) {
         Object propertyKey = toPropertyKeyNode.execute(key);
 
@@ -333,8 +333,8 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)"}, replaces = {"member", "arrayElementInt"})
     protected boolean foreignObject(Object target, Object key,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                    @Shared("toArrayIndex") @Cached("create()") ToArrayIndexNode toArrayIndexNode,
-                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+                    @Shared("toArrayIndex") @Cached ToArrayIndexNode toArrayIndexNode,
+                    @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         Object propertyKey;
         if (interop.hasArrayElements(target)) {
             Object indexOrPropertyKey = toArrayIndexNode.execute(key);

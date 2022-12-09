@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,8 +99,8 @@ public abstract class JSBitwiseXorNode extends JSBinaryNode {
 
     @Specialization
     protected int doDouble(double a, double b,
-                    @Cached("create()") JSToInt32Node leftInt32,
-                    @Cached("create()") JSToInt32Node rightInt32) {
+                    @Cached JSToInt32Node leftInt32,
+                    @Cached JSToInt32Node rightInt32) {
         return doInteger(leftInt32.executeInt(a), rightInt32.executeInt(b));
     }
 
@@ -122,10 +122,10 @@ public abstract class JSBitwiseXorNode extends JSBinaryNode {
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntSafeInteger", "doSafeIntegerInt", "doSafeInteger",
                     "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
-                    @Cached("create()") JSToNumericNode leftNumeric,
-                    @Cached("create()") JSToNumericNode rightNumeric,
+                    @Cached JSToNumericNode leftNumeric,
+                    @Cached JSToNumericNode rightNumeric,
                     @Cached("createInner()") JSBitwiseXorNode xor,
-                    @Cached("create()") BranchProfile mixedNumericTypes) {
+                    @Cached BranchProfile mixedNumericTypes) {
         Object left = leftNumeric.execute(a);
         Object right = rightNumeric.execute(b);
         ensureBothSameNumericType(left, right, mixedNumericTypes);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,9 +89,9 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
 
     @Specialization
     protected Object doDouble(double a, double b,
-                    @Cached("create()") JSLeftShiftNode leftShift,
-                    @Cached("create()") JSToInt32Node leftInt32,
-                    @Cached("create()") JSToUInt32Node rightUInt32) {
+                    @Cached JSLeftShiftNode leftShift,
+                    @Cached JSToInt32Node leftInt32,
+                    @Cached JSToUInt32Node rightUInt32) {
 
         return leftShift.executeObject(leftInt32.executeInt(a), rightUInt32.execute(b));
     }
@@ -125,10 +125,10 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntegerDouble", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
-                    @Cached("create()") JSLeftShiftNode leftShift,
-                    @Cached("create()") JSToNumericNode leftToNumeric,
-                    @Cached("create()") JSToNumericNode rightToNumeric,
-                    @Cached("create()") BranchProfile mixedNumericTypes) {
+                    @Cached JSLeftShiftNode leftShift,
+                    @Cached JSToNumericNode leftToNumeric,
+                    @Cached JSToNumericNode rightToNumeric,
+                    @Cached BranchProfile mixedNumericTypes) {
         Object operandA = leftToNumeric.execute(a);
         Object operandB = rightToNumeric.execute(b);
         ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);

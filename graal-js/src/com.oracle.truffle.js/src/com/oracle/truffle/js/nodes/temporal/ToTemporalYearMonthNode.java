@@ -79,8 +79,8 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
     @Specialization
     public JSTemporalPlainYearMonthObject toTemporalYearMonth(Object item, JSDynamicObject options,
                     @Cached BranchProfile errorBranch,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode,
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarWithISODefaultNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached TemporalGetOptionNode getOptionNode,

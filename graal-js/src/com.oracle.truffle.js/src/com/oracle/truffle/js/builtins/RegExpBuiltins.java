@@ -261,7 +261,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         boolean getMultilineEager(@Cached("createGetResultNode()") GetStaticRegExpResultNode getResultNode,
-                        @Cached("create()") TRegexUtil.TRegexResultAccessor resultAccessor) {
+                        @Cached TRegexUtil.TRegexResultAccessor resultAccessor) {
             Object compiledRegex = getRealm().getStaticRegexResultCompiledRegex();
             Object result = getResultNode.execute();
             if (!getContext().isOptionNashornCompatibilityMode() && resultAccessor.isMatch(result)) {

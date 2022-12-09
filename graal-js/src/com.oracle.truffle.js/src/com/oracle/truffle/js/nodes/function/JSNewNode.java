@@ -179,8 +179,8 @@ public abstract class JSNewNode extends JavaScriptNode {
     @Specialization(guards = {"isForeignObject(target)"})
     public Object doNewForeignObject(VirtualFrame frame, Object target,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                    @Cached("create()") ExportValueNode convert,
-                    @Cached("create()") ImportValueNode toJSType,
+                    @Cached ExportValueNode convert,
+                    @Cached ImportValueNode toJSType,
                     @Cached ConditionProfile isHostClassProf,
                     @Cached ConditionProfile isAbstractProf) {
         Object newTarget = target;

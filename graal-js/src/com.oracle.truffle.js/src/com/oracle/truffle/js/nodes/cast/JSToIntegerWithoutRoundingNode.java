@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -91,7 +92,7 @@ public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode 
 
     @Specialization
     protected static double doDoubleInfinite(double value,
-                    @Cached("create()") BranchProfile errorBranch) {
+                    @Cached BranchProfile errorBranch) {
         if (Double.isNaN(value) || value == 0d) {
             return 0.0;
         }
@@ -124,15 +125,15 @@ public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode 
 
     @Specialization
     protected double doString(TruffleString value,
-                    @Cached.Shared("recToIntOrInf") @Cached("create()") JSToIntegerWithoutRoundingNode toIntOrInf,
-                    @Cached("create()") JSStringToNumberNode stringToNumberNode) {
+                    @Shared("recToIntOrInf") @Cached JSToIntegerWithoutRoundingNode toIntOrInf,
+                    @Cached JSStringToNumberNode stringToNumberNode) {
         return toIntOrInf.executeDouble(stringToNumberNode.executeString(value));
     }
 
     @Specialization(guards = "isForeignObject(value)||isJSObject(value)")
     protected double doJSOrForeignObject(Object value,
-                    @Cached.Shared("recToIntOrInf") @Cached("create()") JSToIntegerWithoutRoundingNode toIntOrInf,
-                    @Cached("create()") JSToNumberNode toNumberNode) {
+                    @Shared("recToIntOrInf") @Cached JSToIntegerWithoutRoundingNode toIntOrInf,
+                    @Cached JSToNumberNode toNumberNode) {
         return toIntOrInf.executeDouble(toNumberNode.executeNumber(value));
     }
 }

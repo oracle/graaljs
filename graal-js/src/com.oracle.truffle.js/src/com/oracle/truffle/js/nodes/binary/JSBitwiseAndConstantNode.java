@@ -123,7 +123,7 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
     }
 
     @Specialization(guards = "isInt")
-    protected int doDouble(double a, @Cached("create()") JSToInt32Node leftInt32) {
+    protected int doDouble(double a, @Cached JSToInt32Node leftInt32) {
         return doInteger(leftInt32.executeInt(a));
     }
 
@@ -159,7 +159,7 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "isInt"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"})
     protected Object doGeneric(Object a,
-                    @Cached("create()") JSToNumericNode toNumeric,
+                    @Cached JSToNumericNode toNumeric,
                     @Cached ConditionProfile profileIsBigInt,
                     @Cached("makeCopy()") JavaScriptNode innerAndNode) {
         Object numericA = toNumeric.execute(a);
@@ -181,7 +181,7 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!isInt()"}, replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"})
     protected BigInt doGenericBigIntCase(Object a,
-                    @Cached("create()") JSToNumericNode toNumeric,
+                    @Cached JSToNumericNode toNumeric,
                     @Cached ConditionProfile profileIsBigInt) {
         Object numericA = toNumeric.execute(a);
         if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -125,10 +125,10 @@ public abstract class JSDivideNode extends JSBinaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = "doDouble")
     protected Object doGeneric(Object a, Object b,
-                    @Cached("create()") JSDivideNode nestedDivideNode,
-                    @Cached("create()") JSToNumericNode toNumeric1Node,
-                    @Cached("create()") JSToNumericNode toNumeric2Node,
-                    @Cached("create()") BranchProfile mixedNumericTypes) {
+                    @Cached JSDivideNode nestedDivideNode,
+                    @Cached JSToNumericNode toNumeric1Node,
+                    @Cached JSToNumericNode toNumeric2Node,
+                    @Cached BranchProfile mixedNumericTypes) {
         Object numericA = toNumeric1Node.execute(a);
         Object numericB = toNumeric2Node.execute(b);
         ensureBothSameNumericType(numericA, numericB, mixedNumericTypes);

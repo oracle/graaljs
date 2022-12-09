@@ -104,8 +104,8 @@ public abstract class MaxNode extends MathOperation {
     protected Object max2Param(Object[] args,
                     @Cached ConditionProfile isIntBranch,
                     @Cached ConditionProfile maxProfile,
-                    @Cached("create()") JSToNumberNode toNumber1Node,
-                    @Cached("create()") JSToNumberNode toNumber2Node) {
+                    @Cached JSToNumberNode toNumber1Node,
+                    @Cached JSToNumberNode toNumber2Node) {
         Number n1 = toNumber1Node.executeNumber(args[0]);
         Number n2 = toNumber2Node.executeNumber(args[1]);
         if (isIntBranch.profile(n1 instanceof Integer && n2 instanceof Integer)) {

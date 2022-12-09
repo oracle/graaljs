@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -294,7 +294,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSDynamicObject with(Object thisObj, Object temporalDurationLike,
-                        @Cached("create()") JSToIntegerWithoutRoundingNode toInt) {
+                        @Cached JSToIntegerWithoutRoundingNode toInt) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             JSDynamicObject durationLike = TemporalUtil.toPartialDuration(temporalDurationLike,
                             getContext(), isObjectNode, toInt, errorBranch);
@@ -359,7 +359,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected JSDynamicObject add(Object thisObj, Object other, Object options,
                         @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
-                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             return addDurationToOrSubtractDurationFromDuration(TemporalUtil.ADD, duration, other, options, durationAddNode, toRelativeTemporalObjectNode, toLimitedTemporalDurationNode);
         }
@@ -375,7 +375,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected JSDynamicObject subtract(Object thisObj, Object other, Object options,
                         @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
-                        @Cached("create()") ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             return addDurationToOrSubtractDurationFromDuration(TemporalUtil.SUBTRACT, duration, other, options, durationAddNode, toRelativeTemporalObjectNode, toLimitedTemporalDurationNode);
         }
@@ -389,7 +389,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSDynamicObject round(Object thisObj, Object roundToParam,
-                        @Cached("create()") JSToNumberNode toNumber,
+                        @Cached JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached JSNumberToBigIntNode toBigInt,
                         @Cached TruffleString.EqualNode equalNode,

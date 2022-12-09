@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,13 +85,13 @@ public abstract class JSGetLengthNode extends JavaScriptBaseNode {
 
     @Specialization(rewriteOn = UnexpectedResultException.class)
     public int getArrayLengthInt(JSArrayObject target,
-                    @Cached("create()") ArrayLengthReadNode arrayLengthReadNode) throws UnexpectedResultException {
+                    @Cached ArrayLengthReadNode arrayLengthReadNode) throws UnexpectedResultException {
         return arrayLengthReadNode.executeInt(target);
     }
 
     @Specialization(replaces = "getArrayLengthInt")
     public double getArrayLength(JSArrayObject target,
-                    @Cached("create()") ArrayLengthReadNode arrayLengthReadNode) {
+                    @Cached ArrayLengthReadNode arrayLengthReadNode) {
         return arrayLengthReadNode.executeDouble(target);
     }
 
@@ -104,7 +104,7 @@ public abstract class JSGetLengthNode extends JavaScriptBaseNode {
     @Specialization(guards = "!isJSDynamicObject(target)", limit = "3")
     public double getLengthForeign(Object target,
                     @CachedLibrary("target") InteropLibrary interop,
-                    @Cached("create()") ImportValueNode importValueNode) {
+                    @Cached ImportValueNode importValueNode) {
         if (interop.hasArrayElements(target)) {
             return JSInteropUtil.getArraySize(target, interop, this);
         } else {

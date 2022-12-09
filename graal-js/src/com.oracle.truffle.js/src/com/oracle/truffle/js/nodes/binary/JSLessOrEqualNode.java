@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -166,7 +166,7 @@ public abstract class JSLessOrEqualNode extends JSCompareNode {
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
     protected boolean doOverloaded(Object a, Object b,
                     @Cached("createHintNumberRightToLeft(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
-                    @Cached("create()") JSToBooleanNode toBooleanNode) {
+                    @Cached JSToBooleanNode toBooleanNode) {
         Object result = overloadedOperatorNode.execute(b, a);
         if (result == Undefined.instance) {
             return false;
@@ -182,11 +182,11 @@ public abstract class JSLessOrEqualNode extends JSCompareNode {
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString",
                     "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})
     protected boolean doGeneric(Object a, Object b,
-                    @Cached("create()") JSToStringOrNumberNode toStringOrNumber1,
+                    @Cached JSToStringOrNumberNode toStringOrNumber1,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive1,
-                    @Cached("create()") JSToStringOrNumberNode toStringOrNumber2,
+                    @Cached JSToStringOrNumberNode toStringOrNumber2,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive2,
-                    @Cached("create()") JSLessOrEqualNode lessOrEqualNode) {
+                    @Cached JSLessOrEqualNode lessOrEqualNode) {
         return lessOrEqualNode.executeBoolean(toStringOrNumber1.execute(toPrimitive1.execute(a)), toStringOrNumber2.execute(toPrimitive2.execute(b)));
     }
 

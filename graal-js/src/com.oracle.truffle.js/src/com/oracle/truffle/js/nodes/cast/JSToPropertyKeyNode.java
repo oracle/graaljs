@@ -78,7 +78,7 @@ public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isSymbol(value)"})
     protected Object doOther(Object value,
                     @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode,
-                    @Cached("create()") JSToStringNode toStringNode,
+                    @Cached JSToStringNode toStringNode,
                     @Cached ConditionProfile isSymbol) {
         Object key = toPrimitiveNode.execute(value);
         if (isSymbol.profile(key instanceof Symbol)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -164,7 +164,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     public JSDynamicObject doPrivateMethodCached(VirtualFrame frame, PrivateFrameBasedElementDefinitionRecord record, Object initializers, Record state,
                     @Cached("record.getKey()") Object cachedName,
                     @SuppressWarnings("unused") @Cached("getName(cachedName)") Object description,
-                    @SuppressWarnings("unused") @Cached("create()") TruffleString.EqualNode strEq,
+                    @SuppressWarnings("unused") @Cached TruffleString.EqualNode strEq,
                     @Cached("createMethodGetterFromFrameCached(record)") JSFunctionData valueGetterFunctionData,
                     @Cached("record.isPrivate()") boolean privateName) {
         JSDynamicObject getter = JSFunction.create(getRealm(), valueGetterFunctionData, getScopeFrame(frame, record));
@@ -175,7 +175,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     public JSDynamicObject doPublicMethodCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
                     @SuppressWarnings("unused") @Cached("record.getKey()") Object cachedName,
                     @Cached("getName(cachedName)") Object description,
-                    @SuppressWarnings("unused") @Cached("create()") TruffleString.EqualNode strEq,
+                    @SuppressWarnings("unused") @Cached TruffleString.EqualNode strEq,
                     @Cached("record.isPrivate()") boolean privateName,
                     @Cached("createValueGetterCached(cachedName,false)") JSFunctionData valueGetterFunctionData) {
         JSDynamicObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
@@ -199,7 +199,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     public JSDynamicObject doFieldCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
                     @SuppressWarnings("unused") @Cached("record.getKey()") Object cachedName,
                     @Cached("getName(cachedName)") Object description,
-                    @SuppressWarnings("unused") @Cached("create()") TruffleString.EqualNode strEq,
+                    @SuppressWarnings("unused") @Cached TruffleString.EqualNode strEq,
                     @Cached("record.isPrivate()") boolean privateName,
                     @Cached("createValueGetterCached(cachedName,privateName)") JSFunctionData valueGetterFunctionData,
                     @Cached("createValueSetterCached(cachedName,privateName)") JSFunctionData valueSetterFunctionData) {
@@ -222,7 +222,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     public JSDynamicObject doAutoAccessorCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord.AutoAccessor record, Object initializers, Record state,
                     @SuppressWarnings("unused") @Cached("record.getKey()") Object cachedName,
                     @Cached("getName(cachedName)") Object description,
-                    @SuppressWarnings("unused") @Cached("create()") TruffleString.EqualNode strEq,
+                    @SuppressWarnings("unused") @Cached TruffleString.EqualNode strEq,
                     @Cached("record.isPrivate()") boolean privateName,
                     @Cached("createValueGetterCached(cachedName,privateName)") JSFunctionData valueGetterFunctionData,
                     @Cached("createValueSetterCached(cachedName,privateName)") JSFunctionData valueSetterFunctionData) {
@@ -245,7 +245,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     public JSDynamicObject doGetterCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
                     @SuppressWarnings("unused") @Cached("record.getKey()") Object cachedName,
                     @Cached("getName(cachedName)") Object description,
-                    @SuppressWarnings("unused") @Cached("create()") TruffleString.EqualNode strEq,
+                    @SuppressWarnings("unused") @Cached TruffleString.EqualNode strEq,
                     @Cached("record.isPrivate()") boolean privateName,
                     @Cached("createValueGetterCached(cachedName,privateName)") JSFunctionData valueGetterFunctionData) {
         JSDynamicObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
@@ -269,7 +269,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     public JSDynamicObject doSetterCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
                     @SuppressWarnings("unused") @Cached("record.getKey()") Object cachedName,
                     @Cached("getName(cachedName)") Object description,
-                    @SuppressWarnings("unused") @Cached("create()") TruffleString.EqualNode strEq,
+                    @SuppressWarnings("unused") @Cached TruffleString.EqualNode strEq,
                     @Cached("record.isPrivate()") boolean privateName,
                     @Cached("createValueSetterCached(cachedName,privateName)") JSFunctionData valueSetterFunctionData) {
         JSDynamicObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);

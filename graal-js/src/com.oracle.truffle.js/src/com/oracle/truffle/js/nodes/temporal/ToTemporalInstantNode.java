@@ -73,8 +73,8 @@ public abstract class ToTemporalInstantNode extends JavaScriptBaseNode {
 
     @Specialization
     public JSTemporalInstantObject toTemporalDateTime(Object item,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode,
                     @Cached ConditionProfile isObjectProfile) {
         if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
             if (TemporalUtil.isTemporalInstant(item)) {

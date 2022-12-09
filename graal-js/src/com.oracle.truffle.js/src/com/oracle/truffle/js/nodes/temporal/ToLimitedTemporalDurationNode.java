@@ -77,8 +77,8 @@ public abstract class ToLimitedTemporalDurationNode extends JavaScriptBaseNode {
 
     @Specialization
     protected JSTemporalDurationRecord toLimitedTemporalDuration(Object temporalDurationLike, List<TruffleString> disallowedFields,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode) {
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode) {
         JSTemporalDurationRecord d;
         if (isObjectProfile.profile(!isObjectNode.executeBoolean(temporalDurationLike))) {
             TruffleString str = toStringNode.executeString(temporalDurationLike);

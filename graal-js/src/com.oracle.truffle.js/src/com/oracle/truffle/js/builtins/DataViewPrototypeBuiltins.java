@@ -222,7 +222,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         protected final Object doDataView(JSDataViewObject dataView, Object byteOffset, Object littleEndian,
-                        @Cached("create()") JSToIndexNode toIndexNode,
+                        @Cached JSToIndexNode toIndexNode,
                         @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
             long getIndex = toIndexNode.executeLong(byteOffset);
@@ -259,7 +259,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         protected Object doDataView(JSDataViewObject dataView, Object byteOffset, Object value, Object littleEndian,
-                        @Cached("create()") JSToIndexNode toIndexNode,
+                        @Cached JSToIndexNode toIndexNode,
                         @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
             long getIndex = toIndexNode.executeLong(byteOffset);

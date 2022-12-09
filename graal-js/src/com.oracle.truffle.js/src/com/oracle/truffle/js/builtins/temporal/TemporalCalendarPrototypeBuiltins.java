@@ -377,8 +377,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         public Object dateFromFields(Object thisObj, Object fields, Object optionsParam,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
-                        @Cached("create()") TemporalGetOptionNode getOptionNode,
-                        @Cached("create()") JSToIntegerOrInfinityNode toIntOrInfinityNode) {
+                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             if (!isObject(fields)) {
@@ -403,8 +403,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         public Object yearMonthFromFields(Object thisObj, Object fields, Object optionsParam,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
-                        @Cached("create()") TemporalGetOptionNode getOptionNode,
-                        @Cached("create()") JSToIntegerOrInfinityNode toIntOrInfinityNode) {
+                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             if (!isObject(fields)) {
@@ -428,8 +428,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         public Object monthDayFromFields(Object thisObj, Object fields, Object optionsParam,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
-                        @Cached("create()") TemporalGetOptionNode getOptionNode,
-                        @Cached("create()") JSToIntegerOrInfinityNode toIntOrInfinityNode) {
+                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             if (!isObject(fields)) {

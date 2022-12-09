@@ -178,9 +178,9 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
     public boolean foreignObject(Object object, Object propertyName,
                     @CachedLibrary("object") InteropLibrary interop,
-                    @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("create()") ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                    @Cached("create()") JSHasPropertyNode hasInPrototype) {
+                    @Cached JSToStringNode toStringNode,
+                    @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
+                    @Cached JSHasPropertyNode hasInPrototype) {
         if (propertyName instanceof Number && interop.hasArrayElements(object)) {
             long index = JSRuntime.longValue((Number) propertyName);
             return index >= 0 && index < JSInteropUtil.getArraySize(object, interop, this);
@@ -200,7 +200,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     @ReportPolymorphism.Megamorphic
     @Specialization
     public boolean objectObject(JSDynamicObject object, Object propertyName,
-                    @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+                    @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         Object propertyKey = toPropertyKeyNode.execute(propertyName);
         return hasPropertyGeneric(object, propertyKey);
     }

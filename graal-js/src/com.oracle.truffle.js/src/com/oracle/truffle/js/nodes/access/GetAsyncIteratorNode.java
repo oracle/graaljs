@@ -77,9 +77,9 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
     @Override
     @Specialization
     protected IteratorRecord doGetIterator(Object iteratedObject,
-                    @Cached("create()") IsCallableNode isCallableNode,
+                    @Cached IsCallableNode isCallableNode,
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
-                    @Cached("create()") IsJSObjectNode isObjectNode) {
+                    @Cached IsJSObjectNode isObjectNode) {
         Object method = getAsyncIteratorMethodNode.executeWithTarget(iteratedObject);
         if (asyncToSync.profile(method == Undefined.instance)) {
             Object syncMethod = getIteratorMethodNode().executeWithTarget(iteratedObject);

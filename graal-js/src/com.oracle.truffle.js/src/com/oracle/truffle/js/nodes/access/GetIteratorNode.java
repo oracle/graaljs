@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,9 +91,9 @@ public abstract class GetIteratorNode extends JavaScriptNode {
 
     @Specialization
     protected IteratorRecord doGetIterator(Object iteratedObject,
-                    @Cached("create()") IsCallableNode isCallableNode,
+                    @Cached IsCallableNode isCallableNode,
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
-                    @Cached("create()") IsJSObjectNode isObjectNode) {
+                    @Cached IsJSObjectNode isObjectNode) {
         Object method = getIteratorMethodNode().executeWithTarget(iteratedObject);
         return getIterator(iteratedObject, method, isCallableNode, methodCallNode, isObjectNode);
     }

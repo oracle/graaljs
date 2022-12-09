@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -111,7 +111,7 @@ abstract class GlobalScopeTDZCheckNode extends GlobalScopeNode {
     @Specialization(replaces = "doCached")
     final Object doUncached(Object scope,
                     @Cached("create(varName, context)") PropertyGetNode getNode,
-                    @Cached("create()") BranchProfile deadBranch) {
+                    @Cached BranchProfile deadBranch) {
         if (getNode.getValue(scope) == Dead.instance()) {
             deadBranch.enter();
             throw Errors.createReferenceErrorNotDefined(context, varName, this);

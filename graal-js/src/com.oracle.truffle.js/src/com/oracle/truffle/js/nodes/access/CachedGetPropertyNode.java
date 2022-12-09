@@ -84,16 +84,16 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
     Object doIntIndex(JSDynamicObject target, int index, Object receiver, Object defaultValue,
-                    @Cached("create()") JSClassProfile jsclassProfile) {
+                    @Cached JSClassProfile jsclassProfile) {
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 
     @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"})
     Object doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object receiver, Object defaultValue,
-                    @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
+                    @Cached RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
                     @Bind("toArrayIndexNode.execute(key)") Object maybeIndex,
-                    @Cached("create()") JSClassProfile jsclassProfile) {
+                    @Cached JSClassProfile jsclassProfile) {
         requireObjectCoercibleNode.executeVoid(target);
         long index = (long) maybeIndex;
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
@@ -108,10 +108,10 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     Object doGeneric(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
-                    @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
-                    @Cached("create()") ToArrayIndexNode toArrayIndexNode,
+                    @Cached RequireObjectCoercibleNode requireObjectCoercibleNode,
+                    @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached ConditionProfile getType,
-                    @Cached("create()") JSClassProfile jsclassProfile,
+                    @Cached JSClassProfile jsclassProfile,
                     @Cached ConditionProfile highFrequency,
                     @Cached("createFrequencyBasedPropertyGet(context)") FrequencyBasedPropertyGetNode hotKey,
                     @Cached TruffleString.EqualNode equalsNode) {

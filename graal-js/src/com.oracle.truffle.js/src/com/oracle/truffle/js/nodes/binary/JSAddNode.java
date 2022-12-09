@@ -227,14 +227,14 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     protected Object doPrimitiveConversion(Object a, Object b,
                     @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveA,
                     @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveB,
-                    @Cached("create()") JSToNumericNode toNumericA,
-                    @Cached("create()") JSToNumericNode toNumericB,
-                    @Cached("create()") JSToStringNode toStringA,
-                    @Cached("create()") JSToStringNode toStringB,
+                    @Cached JSToNumericNode toNumericA,
+                    @Cached JSToNumericNode toNumericB,
+                    @Cached JSToStringNode toStringA,
+                    @Cached JSToStringNode toStringB,
                     @Cached ConditionProfile profileA,
                     @Cached ConditionProfile profileB,
                     @Cached("copyRecursive()") JSAddNode add,
-                    @Cached("create()") BranchProfile mixedNumericTypes) {
+                    @Cached BranchProfile mixedNumericTypes) {
 
         Object primitiveA = toPrimitiveA.execute(a);
         Object primitiveB = toPrimitiveB.execute(b);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,8 +77,8 @@ public abstract class JSModuloNode extends JSBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class, guards = "isPowOf2(b)")
     protected int doIntPow2(int a, int b,
-                    @Cached("create()") BranchProfile negativeBranch,
-                    @Cached("create()") BranchProfile negativeZeroBranch) {
+                    @Cached BranchProfile negativeBranch,
+                    @Cached BranchProfile negativeZeroBranch) {
         int mask = b - 1;
         int result;
         if (a < 0) {
@@ -96,7 +96,7 @@ public abstract class JSModuloNode extends JSBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class, guards = "!isPowOf2(b)")
     protected int doInt(int a, int b,
-                    @Cached("create()") BranchProfile specialBranch) {
+                    @Cached BranchProfile specialBranch) {
         int result = a % b;
         if (result == 0) {
             specialBranch.enter();
@@ -135,10 +135,10 @@ public abstract class JSModuloNode extends JSBinaryNode {
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doDouble", "doBigIntegerZeroDivision",
                     "doBigInteger"})
     protected Object doGeneric(Object a, Object b,
-                    @Cached("create()") JSModuloNode nestedModuloNode,
-                    @Cached("create()") JSToNumericNode toNumeric1Node,
-                    @Cached("create()") JSToNumericNode toNumeric2Node,
-                    @Cached("create()") BranchProfile mixedNumericTypes) {
+                    @Cached JSModuloNode nestedModuloNode,
+                    @Cached JSToNumericNode toNumeric1Node,
+                    @Cached JSToNumericNode toNumeric2Node,
+                    @Cached BranchProfile mixedNumericTypes) {
         Object operandA = toNumeric1Node.execute(a);
         Object operandB = toNumeric2Node.execute(b);
         ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);

@@ -979,7 +979,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object sliceGeneric(Object thisObj, Object begin, Object end,
-                        @Cached("create()") JSToIntegerAsLongNode toIntegerAsLong) {
+                        @Cached JSToIntegerAsLongNode toIntegerAsLong) {
             Object thisArrayObj = toObjectOrValidateTypedArray(thisObj);
             long len = getLength(thisArrayObj);
             long startPos = begin != Undefined.instance ? JSRuntime.getOffset(toIntegerAsLong.executeLong(begin), len, offsetProfile1) : 0;

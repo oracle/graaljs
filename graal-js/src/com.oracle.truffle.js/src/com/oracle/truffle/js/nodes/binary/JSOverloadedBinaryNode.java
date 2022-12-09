@@ -159,8 +159,8 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                     @Cached("create(getHint())") JSToOperandNode toOperandLeftNode,
                     @Cached("create(getHint())") JSToOperandNode toOperandRightNode,
                     @Cached("create(getOverloadedOperatorName())") DispatchBinaryOperatorNode dispatchBinaryOperatorNode,
-                    @Cached("create()") JSToStringNode toStringLeftNode,
-                    @Cached("create()") JSToStringNode toStringRightNode,
+                    @Cached JSToStringNode toStringLeftNode,
+                    @Cached JSToStringNode toStringRightNode,
                     @Cached ConditionProfile leftStringProfile,
                     @Cached ConditionProfile rightStringProfile,
                     @Cached("createUnoptimized()") JSAddNode addNode) {

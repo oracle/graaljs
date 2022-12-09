@@ -130,7 +130,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
 
     @Specialization
     protected Number doIntDouble(int a, double b,
-                    @Cached("create()") JSToUInt32Node rvalToUint32Node,
+                    @Cached JSToUInt32Node rvalToUint32Node,
                     @Cached ConditionProfile returnType) {
 
         long lnum = toUInt32(a);
@@ -163,10 +163,10 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(lval)", "!hasOverloadedOperators(rval)", "!isHandled(lval, rval)"})
     protected Number doGeneric(Object lval, Object rval,
-                    @Cached("create()") JSToNumericNode lvalToNumericNode,
-                    @Cached("create()") JSToNumericNode rvalToNumericNode,
-                    @Cached("create()") JSUnsignedRightShiftNode innerShiftNode,
-                    @Cached("create()") BranchProfile mixedNumericTypes) {
+                    @Cached JSToNumericNode lvalToNumericNode,
+                    @Cached JSToNumericNode rvalToNumericNode,
+                    @Cached JSUnsignedRightShiftNode innerShiftNode,
+                    @Cached BranchProfile mixedNumericTypes) {
         Object lnum = lvalToNumericNode.execute(lval);
         Object rnum = rvalToNumericNode.execute(rval);
         ensureBothSameNumericType(lnum, rnum, mixedNumericTypes);

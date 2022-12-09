@@ -93,7 +93,7 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
     void doIntIndex(JSDynamicObject target, int index, Object value, Object receiver,
-                    @Cached("create()") JSClassProfile jsclassProfile) {
+                    @Cached JSClassProfile jsclassProfile) {
         doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
     }
 
@@ -101,7 +101,7 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     void doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object value, Object receiver,
                     @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
                     @Bind("toArrayIndexNode.execute(key)") Object maybeIndex,
-                    @Cached("create()") JSClassProfile jsclassProfile) {
+                    @Cached JSClassProfile jsclassProfile) {
         long index = (long) maybeIndex;
         doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
     }
@@ -127,9 +127,9 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     void doGeneric(JSDynamicObject target, Object key, Object value, Object receiver,
-                    @Cached("create()") ToArrayIndexNode toArrayIndexNode,
+                    @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached ConditionProfile getType,
-                    @Cached("create()") JSClassProfile jsclassProfile,
+                    @Cached JSClassProfile jsclassProfile,
                     @Cached ConditionProfile highFrequency,
                     @Cached("createFrequencyBasedPropertySet(context, setOwn, strict, superProperty)") FrequencyBasedPropertySetNode hotKey,
                     @Cached TruffleString.EqualNode equalsNode) {

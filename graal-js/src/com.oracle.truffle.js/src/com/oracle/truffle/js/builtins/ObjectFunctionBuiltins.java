@@ -337,7 +337,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isJSObject(object)")
         protected JSDynamicObject getPrototypeOfJSObject(JSDynamicObject object,
-                        @Cached("create()") GetPrototypeNode getPrototypeNode) {
+                        @Cached GetPrototypeNode getPrototypeNode) {
             return getPrototypeNode.execute(object);
         }
     }
@@ -362,7 +362,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
         protected JSDynamicObject getForeignObject(Object thisObj, Object property,
                         @CachedLibrary("thisObj") InteropLibrary interop,
-                        @Cached("create()") ImportValueNode toJSType,
+                        @Cached ImportValueNode toJSType,
                         @Cached TruffleString.ReadCharUTF16Node charAtNode) {
             Object propertyKey = toPropertyKeyNode.execute(property);
             if (Strings.isTString(propertyKey)) {
@@ -421,7 +421,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected JSDynamicObject getForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
-                        @Cached("create()") ImportValueNode toJSType,
+                        @Cached ImportValueNode toJSType,
                         @Cached BranchProfile errorBranch) {
             JSDynamicObject result = JSOrdinary.create(getContext(), getRealm());
             try {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,7 @@ public abstract class JSToUInt16Node extends JavaScriptBaseNode {
 
     @Specialization
     protected int doDouble(double value,
-                    @Cached("create()") BranchProfile needPositiveInfinityBranch) {
+                    @Cached BranchProfile needPositiveInfinityBranch) {
         if (JSRuntime.isPositiveInfinity(value)) {
             needPositiveInfinityBranch.enter();
             return 0;
@@ -75,7 +75,7 @@ public abstract class JSToUInt16Node extends JavaScriptBaseNode {
 
     @Specialization
     protected int doGeneric(Object value,
-                    @Cached("create()") JSToNumberNode toNumberNode) {
+                    @Cached JSToNumberNode toNumberNode) {
         return JSRuntime.toUInt16(toNumberNode.executeNumber(value));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,7 +96,7 @@ public abstract class JSToLengthNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static long doObject(Object value,
-                    @Cached("create()") JSToNumberNode toNumberNode,
+                    @Cached JSToNumberNode toNumberNode,
                     @Cached @Shared("negativeBranch") BranchProfile negativeBranch,
                     @Cached @Shared("tooLargeBranch") BranchProfile tooLargeBranch) {
         Number result = (Number) toNumberNode.execute(value);

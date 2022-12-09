@@ -87,8 +87,8 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
     @Specialization
     public JSDynamicObject toTemporalCalendar(Object itemParam,
                     @Cached BranchProfile errorBranch,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode) {
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode) {
         Object item = itemParam;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, errorBranch);

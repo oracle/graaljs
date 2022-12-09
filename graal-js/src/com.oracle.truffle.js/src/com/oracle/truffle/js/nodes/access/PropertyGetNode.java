@@ -1467,8 +1467,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Specialization(guards = {"isGlobal()"})
         protected Object doRequired(JSDynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root,
-                        @Cached("create()") JSHasPropertyNode hasPropertyNode,
-                        @Cached("create()") JSClassProfile classProfile) {
+                        @Cached JSHasPropertyNode hasPropertyNode,
+                        @Cached JSClassProfile classProfile) {
             if (hasPropertyNode.executeBoolean(object, key)) {
                 return getPropertyFromJSObjectIntl(classProfile.profile(JSObject.getJSClass(object)), object, receiver, defaultValue, root);
             } else {

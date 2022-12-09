@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -484,7 +484,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
 
         @Specialization
         protected Object numWaiters(Object maybeTarget, Object index,
-                        @Cached("create()") JSToIndexNode toIndexNode) {
+                        @Cached JSToIndexNode toIndexNode) {
             JSDynamicObject target = ensureSharedArray(maybeTarget);
             int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
@@ -501,7 +501,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
 
         @Specialization
         protected Object numUnresolvedAsyncPromises(Object maybeTarget, Object index,
-                        @Cached("create()") JSToIndexNode toIndexNode) {
+                        @Cached JSToIndexNode toIndexNode) {
             JSDynamicObject target = ensureSharedArray(maybeTarget);
             int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             JSAgent agent = getRealm().getAgent();

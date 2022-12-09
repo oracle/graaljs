@@ -118,13 +118,13 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
     @Specialization(guards = {"isObjectNode.executeBoolean(target)"}, limit = "1")
     protected boolean doJSObject(Object obj, JSDynamicObject target,
-                    @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
+                    @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                     @Cached("createGetMethodHasInstance()") GetMethodNode getMethodHasInstanceNode,
-                    @Cached("create()") JSToBooleanNode toBooleanNode,
+                    @Cached JSToBooleanNode toBooleanNode,
                     @Cached("createCall()") JSFunctionCallNode callHasInstanceNode,
-                    @Cached("create()") IsCallableNode isCallableNode,
+                    @Cached IsCallableNode isCallableNode,
                     @Cached ConditionProfile hasInstanceProfile,
-                    @Cached("create()") BranchProfile errorBranch) {
+                    @Cached BranchProfile errorBranch) {
         Object hasInstance = getMethodHasInstanceNode.executeWithTarget(target);
         if (hasInstanceProfile.profile(hasInstance == Undefined.instance)) {
             // Fall back to default instanceof semantics (legacy instanceof).
