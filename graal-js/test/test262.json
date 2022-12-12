@@ -6372,10 +6372,6 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
-    "filePath" : "intl402/Array/prototype/toLocaleString/invoke-element-tolocalestring.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-12-12"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
