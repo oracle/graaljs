@@ -218,6 +218,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     };
 
     private final int bytesPerElement;
+    private final TruffleString name;
     private final TypedArray arrayType;
     private final TypedArray arrayTypeWithOffset;
     private final TypedArray directArrayType;
@@ -227,6 +228,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
 
     TypedArrayFactory(int bytesPerElement) {
         this.bytesPerElement = bytesPerElement;
+        this.name = Strings.constant(name());
         this.arrayType = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, false);
         this.arrayTypeWithOffset = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, true);
         this.directArrayType = instantiateArrayType(TypedArray.BUFFER_TYPE_DIRECT, false);
@@ -274,7 +276,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     }
 
     public final TruffleString getName() {
-        return Strings.fromJavaString(name());
+        return name;
     }
 
     abstract TypedArray instantiateArrayType(byte bufferType, boolean offset);
