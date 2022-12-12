@@ -68,7 +68,6 @@ import com.oracle.truffle.js.nodes.cast.OrdinaryToPrimitiveNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -2837,10 +2836,6 @@ public final class JSRuntime {
     @SuppressWarnings("unchecked")
     public static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
         throw (E) ex;
-    }
-
-    public static boolean isTypedArrayBigIntFactory(TypedArrayFactory factory) {
-        return factory == TypedArrayFactory.BigInt64Array || factory == TypedArrayFactory.BigUint64Array;
     }
 
     public static GraalJSException getException(Object errorObject) {
