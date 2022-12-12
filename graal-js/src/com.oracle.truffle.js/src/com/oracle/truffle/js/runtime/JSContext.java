@@ -46,9 +46,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSNonProxy.GET_SYMBOL_SPECI
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.charset.Charset;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -218,10 +215,7 @@ public class JSContext {
      */
     private final Assumption globalObjectPristineAssumption;
 
-    private volatile Map<TruffleString, Symbol> symbolRegistry;
-
-    // 0 = Number, 1 = BigInt, 2 = String
-    private int operatorCounter = 3;
+    private final Map<TruffleString, Symbol> symbolRegistry = new ConcurrentHashMap<>();
 
     private final Object nodeFactory;
 
@@ -767,10 +761,7 @@ public class JSContext {
         this.regexOptions = createRegexOptions(contextOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
-        this.supportedImportAssertions = contextOptions.isImportAssertions() ? new HashSet<>() : Collections.emptySet();
-        if (contextOptions.isImportAssertions()) {
-            supportedImportAssertions.add(TYPE_IMPORT_ASSERTION);
-        }
+        this.supportedImportAssertions = contextOptions.isImportAssertions() ? Set.of(TYPE_IMPORT_ASSERTION) : Set.of();
 
         if (contextOptions.getUnhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
             setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, contextOptions.getUnhandledRejectionsMode()));
@@ -896,25 +887,7 @@ public class JSContext {
     }
 
     public final Map<TruffleString, Symbol> getSymbolRegistry() {
-        if (symbolRegistry == null) {
-            createSymbolRegistry();
-        }
         return symbolRegistry;
-    }
-
-    @TruffleBoundary
-    private synchronized void createSymbolRegistry() {
-        if (symbolRegistry == null) {
-            symbolRegistry = new HashMap<>();
-        }
-    }
-
-    public int getOperatorCounter() {
-        return operatorCounter;
-    }
-
-    public int incOperatorCounter() {
-        return operatorCounter++;
     }
 
     /**
@@ -1314,10 +1287,6 @@ public class JSContext {
 
     public Shape getRegExpGroupsEmptyShape() {
         return regExpGroupsEmptyShape;
-    }
-
-    public void setSymbolRegistry(Map<TruffleString, Symbol> newSymbolRegistry) {
-        this.symbolRegistry = newSymbolRegistry;
     }
 
     public Map<Shape, JSShapeData> getShapeDataMap() {

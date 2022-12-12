@@ -572,6 +572,9 @@ public class JSRealm {
      */
     private JSDynamicObject parentPromise;
 
+    /** 0 = Number, 1 = BigInt, 2 = String. */
+    private int operatorCounter = 3;
+
     protected JSRealm(JSContext context, TruffleLanguage.Env env) {
         this(context, env, null);
     }
@@ -3266,5 +3269,15 @@ public class JSRealm {
             parentPromise = null;
         }
         return parent;
+    }
+
+    public int getOperatorCounter() {
+        assert isMainRealm();
+        return operatorCounter;
+    }
+
+    public void incOperatorCounter() {
+        assert isMainRealm();
+        operatorCounter++;
     }
 }

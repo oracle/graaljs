@@ -263,7 +263,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(length);
 
-        boolean elementTypeIsBig = JSRuntime.isTypedArrayBigIntFactory(factory);
+        boolean elementTypeIsBig = factory.isBigInt();
         boolean sourceTypeIsBig = sourceType instanceof TypedArray.TypedBigIntArray;
         if (elementTypeIsBig != sourceTypeIsBig) {
             throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);

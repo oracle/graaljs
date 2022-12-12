@@ -45,7 +45,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray.BigInt64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.BigUint64Array;
@@ -218,6 +217,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     };
 
     private final int bytesPerElement;
+    private final TruffleString name;
     private final TypedArray arrayType;
     private final TypedArray arrayTypeWithOffset;
     private final TypedArray directArrayType;
@@ -227,6 +227,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
 
     TypedArrayFactory(int bytesPerElement) {
         this.bytesPerElement = bytesPerElement;
+        this.name = Strings.constant(name());
         this.arrayType = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, false);
         this.arrayTypeWithOffset = instantiateArrayType(TypedArray.BUFFER_TYPE_ARRAY, true);
         this.directArrayType = instantiateArrayType(TypedArray.BUFFER_TYPE_DIRECT, false);
@@ -274,7 +275,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     }
 
     public final TruffleString getName() {
-        return Strings.fromJavaString(name());
+        return name;
     }
 
     abstract TypedArray instantiateArrayType(byte bufferType, boolean offset);
@@ -284,6 +285,10 @@ public enum TypedArrayFactory implements PrototypeSupplier {
         return realm.getArrayBufferViewPrototype(this);
     }
 
+    public final boolean isBigInt() {
+        return this == TypedArrayFactory.BigInt64Array || this == TypedArrayFactory.BigUint64Array;
+    }
+
     static final TypedArrayFactory[] FACTORIES = TypedArrayFactory.values();
     private static TypedArrayFactory[] FACTORIES_NO_BIGINT;
 
@@ -291,9 +296,9 @@ public enum TypedArrayFactory implements PrototypeSupplier {
         if (FACTORIES_NO_BIGINT == null) {
             TypedArrayFactory[] allFactories = TypedArrayFactory.values();
             List<TypedArrayFactory> noBigIntFactories = new ArrayList<>(allFactories.length);
-            for (TypedArrayFactory fact : allFactories) {
-                if (!JSRuntime.isTypedArrayBigIntFactory(fact)) {
-                    noBigIntFactories.add(fact);
+            for (TypedArrayFactory factory : allFactories) {
+                if (!factory.isBigInt()) {
+                    noBigIntFactories.add(factory);
                 }
             }
             FACTORIES_NO_BIGINT = noBigIntFactories.toArray(new TypedArrayFactory[0]);

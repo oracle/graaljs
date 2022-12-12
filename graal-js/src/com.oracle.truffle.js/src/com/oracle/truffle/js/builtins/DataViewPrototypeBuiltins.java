@@ -59,7 +59,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
@@ -234,7 +233,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         public DataViewSetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            if (JSRuntime.isTypedArrayBigIntFactory(factory)) {
+            if (factory.isBigInt()) {
                 this.toBigIntNode = JSToBigIntNode.create();
             } else {
                 this.toNumberNode = JSToNumberNode.create();
@@ -247,7 +246,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
             long getIndex = toIndexNode.executeLong(byteOffset);
-            Object numberValue = JSRuntime.isTypedArrayBigIntFactory(factory) ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
+            Object numberValue = factory.isBigInt() ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
             boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(littleEndian);
 
             JSArrayBufferObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
