@@ -130,6 +130,10 @@
     },
     "comment" : "GR-22846"
   }, {
+    "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
+    "status" : "SKIP",
+    "comment" : "Long running test"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Alphabetic.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -2453,6 +2457,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/yearOfWeek/argument-string-date-with-utc-offset.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
+  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/yearOfWeek/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2596,6 +2604,10 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/add/nanoseconds-is-number-max-value-2.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/add/precision-exact-mathematical-values.js",
     "status" : "FAIL",
@@ -2761,6 +2773,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/precision-exact-mathematical-values.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2804,6 +2820,10 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/toString/fractionalseconddigits-non-integer.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/toString/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/toString/throws-when-rounded-duration-is-invalid.js",
     "status" : "FAIL",
@@ -3013,6 +3033,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/since/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
+  }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/since/roundingmode-ceil.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -3044,6 +3068,10 @@
     "filePath" : "built-ins/Temporal/Instant/prototype/toString/fractionalseconddigits-non-integer.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/toString/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/toString/rounding-direction.js",
     "status" : "FAIL",
@@ -3172,6 +3200,10 @@
     "filePath" : "built-ins/Temporal/Instant/prototype/until/instant-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/until/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/until/roundingmode-ceil.js",
     "status" : "FAIL",
@@ -3448,6 +3480,10 @@
     "filePath" : "built-ins/Temporal/PlainDate/from/argument-string-unknown-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/from/calendar-fields-custom.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/add/balance-smaller-units.js",
     "status" : "FAIL",
@@ -4105,6 +4141,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toString/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toString/roundingmode-expand.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -4641,6 +4681,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/since/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
+  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/since/roundingmode-expand.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -4720,6 +4764,10 @@
     "filePath" : "built-ins/Temporal/PlainTime/prototype/toString/fractionalseconddigits-non-integer.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/toString/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/toString/roundingmode-expand.js",
     "status" : "FAIL",
@@ -4836,6 +4884,10 @@
     "filePath" : "built-ins/Temporal/PlainTime/prototype/until/argument-zoneddatetime-timezone-getoffsetnanosecondsfor-out-of-range.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/until/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/until/roundingmode-expand.js",
     "status" : "FAIL",
@@ -5080,6 +5132,10 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/toPlainDate/copies-merge-fields-object.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/toString/calendar-tostring.js",
     "status" : "FAIL",
@@ -5489,6 +5545,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/compare/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/compare/zoneddatetime-string-multiple-offsets.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-01-25"
@@ -5700,6 +5760,10 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/leap-second.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/sub-minute-offset.js",
     "status" : "FAIL",
@@ -5961,6 +6025,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/toString/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/toString/rounding-direction.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
@@ -6120,6 +6188,10 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/calendar-fields-undefined.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/copies-merge-fields-object.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/offset-property-sub-minute.js",
     "status" : "FAIL",
@@ -6300,6 +6372,10 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
+    "filePath" : "intl402/Array/prototype/toLocaleString/invoke-element-tolocalestring.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -6315,6 +6391,10 @@
     "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/NumberFormat/constructor-roundingIncrement.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "intl402/Temporal/Calendar/calendar-case-insensitive.js",
     "status" : "FAIL",
@@ -7110,5 +7190,17 @@
     "filePath" : "language/module-code/eval-gtbndng-indirect-faux-assertion.js",
     "status" : "FAIL",
     "comment" : "Tries to redefine the assert property on the globalThis object, which is not allowed in this context"
+  }, {
+    "filePath" : "language/statements/class/decorator/syntax/valid/class-element-decorator-call-expr-identifier-reference-yield.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
+  }, {
+    "filePath" : "language/statements/class/decorator/syntax/valid/class-element-decorator-member-expr-identifier-reference-yield.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
+  }, {
+    "filePath" : "language/statements/class/decorator/syntax/valid/class-element-decorator-parenthesized-expr-identifier-reference-yield.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2022-12-12"
   } ]
 }
