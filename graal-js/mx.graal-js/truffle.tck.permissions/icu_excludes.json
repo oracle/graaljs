@@ -140,7 +140,28 @@
             "boolean",
             "boolean",
             "java.lang.String",
-            "java.io.File[]" 
+            "java.io.File[]"
+        ]}
+    ]
+  },
+
+  {
+    "name" : "com.ibm.icu.impl.number.DecimalFormatProperties",
+    "methods" : [
+      { "name" : "toStringBare",
+        "justification" : "Uses reflection to read the object's field values. Used by DecimalFormatProperties.toString() which is never actually called.",
+        "parameterTypes" : [
+            "java.lang.StringBuilder"
+        ]}
+    ]
+  },
+  {
+    "name" : "com.ibm.icu.text.CurrencyMetaInfo",
+    "methods" : [
+      { "name" : "debugString",
+        "justification" : "Uses reflection to read the object's field values. Used by CurrencyMetaInfo.*.toString() which is never actually called.",
+        "parameterTypes" : [
+            "java.lang.Object"
         ]}
     ]
   }
