@@ -1857,7 +1857,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayToLocaleStringNode extends JSArrayOperation {
-
+        private final boolean passArguments;
         private final StringBuilderProfile stringBuilderProfile;
         private final BranchProfile stackGrowProfile = BranchProfile.create();
         @Child private PropertyGetNode getToLocaleStringNode;
@@ -1869,6 +1869,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public JSArrayToLocaleStringNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
+            this.passArguments = context.isOptionIntl402() && !context.isOptionV8CompatibilityMode();
             this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
         }
 
@@ -1886,7 +1887,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return Strings.EMPTY_STRING;
             }
             try {
-                Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
+                Object[] userArguments;
+                if (passArguments) {
+                    Object[] args = frame.getArguments();
+                    int argc = JSArguments.getUserArgumentCount(args);
+                    Object locales = (argc > 0) ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
+                    Object options = (argc > 1) ? JSArguments.getUserArgument(args, 1) : Undefined.instance;
+                    userArguments = new Object[]{locales, options};
+                } else {
+                    userArguments = JSArguments.EMPTY_ARGUMENTS_ARRAY;
+                }
                 long k = 0;
                 TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder();
                 while (k < len) {

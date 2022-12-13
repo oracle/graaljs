@@ -246,6 +246,8 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
+                    "String.prototype.isWellFormed",
+                    "String.prototype.toWellFormed",
                     "arbitrary-module-namespace-names",
                     "change-array-by-copy",
                     "regexp-duplicate-named-groups",

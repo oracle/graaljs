@@ -201,9 +201,9 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
                 return;
             }
 
-            options.put(JSContextOptions.DEBUG_BUILTIN_NAME, "true");
-            options.put(JSContextOptions.SHARED_ARRAY_BUFFER_NAME, "true");
-            options.put(JSContextOptions.INTL_402_NAME, "true");
+            options.putIfAbsent(JSContextOptions.DEBUG_BUILTIN_NAME, "true");
+            options.putIfAbsent(JSContextOptions.SHARED_ARRAY_BUFFER_NAME, "true");
+            options.putIfAbsent(JSContextOptions.INTL_402_NAME, "true");
 
             String[] args = parseArgs(sourceLines);
             // allowHostAccess, allowIO, allowHostReflection

@@ -41,10 +41,12 @@
 package com.oracle.truffle.js.decorators;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 
 import java.util.Objects;
+import java.util.Set;
 
 public class DecoratorListEvaluationNode extends JavaScriptNode {
 
@@ -68,4 +70,10 @@ public class DecoratorListEvaluationNode extends JavaScriptNode {
         }
         return values;
     }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new DecoratorListEvaluationNode(cloneUninitialized(decorators, materializedTags));
+    }
+
 }
