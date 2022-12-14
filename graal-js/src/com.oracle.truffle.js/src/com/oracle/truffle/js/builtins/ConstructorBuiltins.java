@@ -3240,10 +3240,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child PropertyGetNode getElementNode;
         @Child PropertyGetNode getInitialNode;
         @Child PropertyGetNode getMaximumNode;
-        @Child JSToStringNode toStringNode;
         @Child ToWebAssemblyIndexOrSizeNode toInitialSizeNode;
         @Child ToWebAssemblyIndexOrSizeNode toMaximumSizeNode;
-        @Child ToWebAssemblyValueNode toWebAssemblyValueNode;
         @Child InteropLibrary tableAllocLib;
 
         public ConstructWebAssemblyTableNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
@@ -3252,15 +3250,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.getElementNode = PropertyGetNode.create(Strings.ELEMENT, context);
             this.getInitialNode = PropertyGetNode.create(Strings.INITIAL, context);
             this.getMaximumNode = PropertyGetNode.create(Strings.MAXIMUM, context);
-            this.toStringNode = JSToStringNode.create();
             this.toInitialSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table(): Property 'initial'");
             this.toMaximumSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table(): Property 'maximum'");
-            this.toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             this.tableAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
-        protected JSDynamicObject constructTable(JSDynamicObject newTarget, Object descriptor, Object[] args) {
+        protected JSDynamicObject constructTable(JSDynamicObject newTarget, Object descriptor, Object[] args,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached ToWebAssemblyValueNode toWebAssemblyValueNode) {
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Table(): Argument 0 must be a table descriptor", this);
             }
@@ -3314,27 +3312,23 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     }
 
     public abstract static class ConstructWebAssemblyGlobalNode extends ConstructWithNewTargetNode {
-        @Child IsObjectNode isObjectNode;
-        @Child JSToStringNode toStringNode;
-        @Child JSToBooleanNode toBooleanNode;
         @Child PropertyGetNode getValueNode;
         @Child PropertyGetNode getMutableNode;
-        @Child ToWebAssemblyValueNode toWebAssemblyValueNode;
         @Child InteropLibrary globalAllocLib;
 
         public ConstructWebAssemblyGlobalNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
-            this.isObjectNode = IsObjectNode.create();
-            this.toStringNode = JSToStringNode.create();
-            this.toBooleanNode = JSToBooleanNode.create();
             this.getValueNode = PropertyGetNode.create(Strings.VALUE, context);
             this.getMutableNode = PropertyGetNode.create(Strings.MUTABLE, context);
-            this.toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             this.globalAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
-        protected JSDynamicObject constructGlobal(JSDynamicObject newTarget, Object descriptor, Object[] args) {
+        protected JSDynamicObject constructGlobal(JSDynamicObject newTarget, Object descriptor, Object[] args,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached JSToBooleanNode toBooleanNode,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached ToWebAssemblyValueNode toWebAssemblyValueNode) {
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Global(): Argument 0 must be a global descriptor", this);
             }

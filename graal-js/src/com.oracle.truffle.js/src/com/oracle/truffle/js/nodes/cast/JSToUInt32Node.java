@@ -243,8 +243,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
             } else if (child instanceof JSConstantStringNode) {
                 Object value = child.execute(null);
                 return JSConstantNode.createDouble(doStringStatic((TruffleString) value));
-            } else if (child instanceof JSToInt32Node) {
-                JSToInt32Node toInt32Child = (JSToInt32Node) child;
+            } else if (child instanceof JSToInt32Node.JSToInt32UnaryNode) {
+                JSToInt32Node.JSToInt32UnaryNode toInt32Child = (JSToInt32Node.JSToInt32UnaryNode) child;
                 if (toInt32Child.isBitwiseOr() && unsignedRightShift) {
                     return JSToUInt32WrapperNodeGen.create(toInt32Child, unsignedRightShift, shiftValue);
                 } else {

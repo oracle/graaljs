@@ -176,4 +176,18 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
             return getOperand().expressionToString();
         }
     }
+
+    public static JSToNumberNode getUncached() {
+        return new JSToNumberNode() {
+            @Override
+            public Object execute(Object value) {
+                return JSRuntime.toNumber(value);
+            }
+
+            @Override
+            public boolean isAdoptable() {
+                return false;
+            }
+        };
+    }
 }

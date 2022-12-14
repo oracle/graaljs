@@ -49,11 +49,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.cast.JSToInt32NodeGen.JSToInt32UnaryNodeGen;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -66,45 +67,13 @@ import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * This node implements the behavior of 9.5 ToInt32. Not to confuse with 9.4 ToInteger, etc.
+ * This node implements the behavior of ToInt32. Not to confuse with ToInteger, etc.
  *
  */
-public abstract class JSToInt32Node extends JSUnaryNode {
+public abstract class JSToInt32Node extends JavaScriptBaseNode {
 
-    /**
-     * Whether this node is used to implement {@code x | 0}. This optimization is valid insofar as
-     * {@code x} does not overload operators.
-     */
-    protected final boolean bitwiseOr;
-
-    protected JSToInt32Node(JavaScriptNode operand, boolean bitwiseOr) {
-        super(operand);
-        this.bitwiseOr = bitwiseOr;
+    protected JSToInt32Node() {
     }
-
-    @Override
-    public final Object execute(VirtualFrame frame) {
-        return executeInt(frame);
-    }
-
-    @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == UnaryOperationTag.class) {
-            return true;
-        } else {
-            return super.hasTag(tag);
-        }
-    }
-
-    @Override
-    public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("operator", getClass().getAnnotation(NodeInfo.class).shortName());
-    }
-
-    @Override
-    public abstract int executeInt(VirtualFrame frame);
-
-    public abstract int executeInt(Object operand);
 
     public static JavaScriptNode create(JavaScriptNode child) {
         return create(child, false);
@@ -123,18 +92,15 @@ public abstract class JSToInt32Node extends JSUnaryNode {
                 }
             }
         }
-        return JSToInt32NodeGen.create(child, bitwiseOr);
+        return JSToInt32UnaryNodeGen.create(child, bitwiseOr);
     }
 
     @NeverDefault
     public static JSToInt32Node create() {
-        return JSToInt32NodeGen.create(null, false);
+        return JSToInt32NodeGen.create();
     }
 
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return !bitwiseOr && clazz == int.class;
-    }
+    public abstract int executeInt(Object operand);
 
     @Specialization
     protected int doInteger(int value) {
@@ -208,21 +174,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
     }
 
-    public boolean isBitwiseOr() {
-        return bitwiseOr;
-    }
-
-    @Specialization(guards = {"isBitwiseOr()"})
-    protected Object doOverloadedOperator(JSOverloadedOperatorsObject value,
-                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
-        return overloadedOperatorNode.execute(value, 0);
-    }
-
-    protected TruffleString getOverloadedOperatorName() {
-        return Strings.SYMBOL_PIPE;
-    }
-
-    @Specialization(guards = {"!isBitwiseOr() || !hasOverloadedOperators(value)"})
+    @Specialization
     protected int doJSObject(JSObject value,
                     @Cached JSToDoubleNode toDoubleNode) {
         return doubleToInt32(toDoubleNode.executeDouble(value));
@@ -242,8 +194,168 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         return toInt32Node.executeInt(toPrimitiveNode.execute(object));
     }
 
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSToInt32NodeGen.create(cloneUninitialized(getOperand(), materializedTags), bitwiseOr);
+    @NodeInfo(shortName = "|")
+    public abstract static class JSToInt32UnaryNode extends JSUnaryNode {
+
+        /**
+         * Whether this node is used to implement {@code x | 0}. This optimization is valid insofar
+         * as {@code x} does not overload operators.
+         */
+        protected final boolean bitwiseOr;
+
+        protected JSToInt32UnaryNode(JavaScriptNode operand, boolean bitwiseOr) {
+            super(operand);
+            this.bitwiseOr = bitwiseOr;
+        }
+
+        @Override
+        public final Object execute(VirtualFrame frame) {
+            return executeInt(frame);
+        }
+
+        @Override
+        public abstract int executeInt(VirtualFrame frame);
+
+        @Specialization
+        protected int doInteger(int value) {
+            return value;
+        }
+
+        @Specialization
+        protected int doSafeInteger(SafeInteger value) {
+            return value.intValue();
+        }
+
+        @Specialization
+        protected int doBoolean(boolean value) {
+            return JSRuntime.booleanToNumber(value);
+        }
+
+        @Specialization(guards = "isLongRepresentableAsInt32(value)")
+        protected int doLong(long value) {
+            return (int) value;
+        }
+
+        @Specialization(guards = "!isDoubleLargerThan2e32(value)")
+        protected int doDoubleFitsInt(double value) {
+            return (int) (long) value;
+        }
+
+        @Specialization(guards = {"isDoubleLargerThan2e32(value)", "isDoubleRepresentableAsLong(value)", "isDoubleSafeInteger(value)"})
+        protected int doDoubleRepresentableAsSafeInteger(double value) {
+            assert !Double.isFinite(value) || value % 1 == 0;
+
+            assert !Double.isNaN(value);
+            assert !JSRuntime.isNegativeZero(value);
+
+            return (int) (long) value;
+        }
+
+        @Specialization(guards = {"isDoubleLargerThan2e32(value)", "isDoubleRepresentableAsLong(value)"}, replaces = "doDoubleRepresentableAsSafeInteger")
+        protected int doDoubleRepresentableAsLong(double value) {
+            assert !Double.isFinite(value) || value % 1 == 0;
+            return JSRuntime.toInt32NoTruncate(value);
+        }
+
+        @Specialization(guards = {"isDoubleLargerThan2e32(value)", "!isDoubleRepresentableAsLong(value)"})
+        protected int doDouble(double value) {
+            return JSRuntime.toInt32(value);
+        }
+
+        @Specialization(guards = "isUndefined(value)")
+        protected int doUndefined(@SuppressWarnings("unused") Object value) {
+            return 0; // toNumber() returns NaN, but toInteger() converts that
+        }
+
+        @Specialization(guards = "isJSNull(value)")
+        protected int doNull(@SuppressWarnings("unused") Object value) {
+            return 0;
+        }
+
+        @Specialization
+        protected int doString(TruffleString value,
+                        @Cached JSStringToNumberNode stringToNumberNode) {
+            return doubleToInt32(stringToNumberNode.executeString(value));
+        }
+
+        @Specialization
+        protected final int doSymbol(@SuppressWarnings("unused") Symbol value) {
+            throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
+        }
+
+        @Specialization
+        protected int doBigInt(@SuppressWarnings("unused") BigInt value) {
+            throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
+        }
+
+        @Specialization(guards = {"isBitwiseOr()"})
+        protected Object doOverloadedOperator(JSOverloadedOperatorsObject value,
+                        @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+            return overloadedOperatorNode.execute(value, 0);
+        }
+
+        protected TruffleString getOverloadedOperatorName() {
+            return Strings.SYMBOL_PIPE;
+        }
+
+        @Specialization(guards = {"!isBitwiseOr() || !hasOverloadedOperators(value)"})
+        protected int doJSObject(JSObject value,
+                        @Cached JSToDoubleNode toDoubleNode) {
+            return doubleToInt32(toDoubleNode.executeDouble(value));
+        }
+
+        @Specialization(guards = "isForeignObject(object)")
+        protected static int doForeignObject(Object object,
+                        @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                        @Cached JSToInt32Node toInt32Node) {
+            return toInt32Node.executeInt(toPrimitiveNode.execute(object));
+        }
+
+        public final boolean isBitwiseOr() {
+            return bitwiseOr;
+        }
+
+        @Override
+        public boolean isResultAlwaysOfType(Class<?> clazz) {
+            return !bitwiseOr && clazz == int.class;
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            if (tag == UnaryOperationTag.class) {
+                return true;
+            } else {
+                return super.hasTag(tag);
+            }
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return JSToInt32UnaryNodeGen.create(cloneUninitialized(getOperand(), materializedTags), bitwiseOr);
+        }
+
+        @Override
+        public String expressionToString() {
+            return getOperand().expressionToString();
+        }
+
+        @Override
+        public Object getNodeObject() {
+            return isBitwiseOr() ? super.getNodeObject() : null;
+        }
+    }
+
+    public static JSToInt32Node getUncached() {
+        return new JSToInt32Node() {
+            @Override
+            public int executeInt(Object value) {
+                return JSRuntime.toInt32(value);
+            }
+
+            @Override
+            public boolean isAdoptable() {
+                return false;
+            }
+        };
     }
 }

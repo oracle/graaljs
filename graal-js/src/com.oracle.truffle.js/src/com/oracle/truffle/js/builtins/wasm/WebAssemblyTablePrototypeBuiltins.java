@@ -41,11 +41,14 @@
 package com.oracle.truffle.js.builtins.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -119,20 +122,20 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
         return null;
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class WebAssemblyTableGrowNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toDeltaNode;
-        @Child ToWebAssemblyValueNode toWebAssemblyValueNode;
-        private final BranchProfile errorBranch = BranchProfile.create();
-        @Child InteropLibrary tableGrowLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyTableGrowNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             toDeltaNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table.grow(): Argument 0");
-            toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
         }
 
         @Specialization
-        protected Object grow(Object thiz, Object delta, Object[] args) {
+        protected Object grow(Object thiz, Object delta, Object[] args,
+                        @Cached ToWebAssemblyValueNode toWebAssemblyValueNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary tableGrowLib,
+                        @Cached BranchProfile errorBranch) {
             if (!JSWebAssemblyTable.isJSWebAssemblyTable(thiz)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Table.grow(): Receiver is not a WebAssembly.Table");
@@ -162,20 +165,20 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class WebAssemblyTableGetNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toIndexNode;
-        @Child ToJSValueNode toJSValueNode;
-        private final BranchProfile errorBranch = BranchProfile.create();
-        @Child InteropLibrary tableGetLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyTableGetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             toIndexNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table.get(): Argument 0");
-            toJSValueNode = ToJSValueNode.create();
         }
 
         @Specialization
-        protected Object get(Object thiz, Object index) {
+        protected Object get(Object thiz, Object index,
+                        @Cached ToJSValueNode toJSValueNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary tableGetLib,
+                        @Cached BranchProfile errorBranch) {
             if (!JSWebAssemblyTable.isJSWebAssemblyTable(thiz)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Table.get(): Receiver is not a WebAssembly.Table");
@@ -196,20 +199,20 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class WebAssemblyTableSetNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toIndexNode;
-        @Child ToWebAssemblyValueNode toWebAssemblyValueNode;
-        private final BranchProfile errorBranch = BranchProfile.create();
-        @Child InteropLibrary tableSetLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyTableSetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             toIndexNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table.set(): Argument 0");
-            toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
         }
 
         @Specialization
-        protected Object set(Object thiz, Object index, Object[] args) {
+        protected Object set(Object thiz, Object index, Object[] args,
+                        @Cached ToWebAssemblyValueNode toWebAssemblyValueNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary tableSetLib,
+                        @Cached BranchProfile errorBranch) {
             if (!JSWebAssemblyTable.isJSWebAssemblyTable(thiz)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Table.set(): Receiver is not a WebAssembly.Table");
