@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -61,7 +60,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
@@ -126,17 +124,11 @@ public abstract class JSObject extends JSDynamicObject {
         return true;
     }
 
-    @ImportStatic({JSGuards.class, JSObject.class})
     @ExportMessage
     public abstract static class GetMembers {
-        @Specialization(guards = {"cachedJSClass != null", "getJSClass(target) == cachedJSClass"})
-        public static Object nonArrayCached(JSObject target, @SuppressWarnings("unused") boolean internal,
-                        @Cached("getJSClass(target)") @SuppressWarnings("unused") JSClass cachedJSClass) {
-            return InteropArray.create(JSObject.enumerableOwnNames(target));
-        }
 
-        @Specialization(replaces = "nonArrayCached")
-        public static Object nonArrayUncached(JSObject target, @SuppressWarnings("unused") boolean internal) {
+        @Specialization
+        public static Object nonArray(JSObject target, @SuppressWarnings("unused") boolean internal) {
             return InteropArray.create(JSObject.enumerableOwnNames(target));
         }
     }
