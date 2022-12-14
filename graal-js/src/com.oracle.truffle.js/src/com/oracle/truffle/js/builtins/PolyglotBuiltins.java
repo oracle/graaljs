@@ -655,7 +655,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @Specialization
-        protected Object execute(TruffleObject obj, Object[] arguments,
+        protected Object doExecute(TruffleObject obj, Object[] arguments,
                         @Cached ExportValueNode exportValue,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             Object target = exportValue.execute(obj);

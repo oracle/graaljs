@@ -407,16 +407,16 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"stringEquals(equalsNode, cachedName, name)"}, limit = "10")
-        protected TruffleString executeCached(TruffleString name,
+        protected TruffleString doCached(TruffleString name,
                         @Cached("name") TruffleString cachedName,
-                        @Cached("executeUncached(name)") TruffleString cachedResult,
+                        @Cached("doUncached(name)") TruffleString cachedResult,
                         @Cached TruffleString.EqualNode equalsNode) {
             return cachedResult;
         }
 
         @TruffleBoundary
         @Specialization
-        protected TruffleString executeUncached(TruffleString name) {
+        protected TruffleString doUncached(TruffleString name) {
             return Strings.concatAll(Strings.BRACKET_OBJECT_SPC, name, Strings.BRACKET_CLOSE);
         }
     }
