@@ -65,6 +65,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalTimeZonePrototypeBuiltins
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarWithISODefaultNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalInstantNode;
@@ -280,11 +281,12 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected JSDynamicObject getInstantFor(Object thisObj, Object dateTimeParam, Object optionsParam,
                         @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime,
-                        @Cached TruffleString.EqualNode equalNode) {
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSTemporalTimeZoneObject timeZone = requireTemporalTimeZone(thisObj);
             JSTemporalPlainDateTimeObject dateTime = (JSTemporalPlainDateTimeObject) toTemporalDateTime.execute(dateTimeParam, Undefined.instance);
             JSDynamicObject options = getOptionsObject(optionsParam);
-            Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode(), equalNode);
+            Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode, equalNode);
             return TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, dateTime, disambiguation);
         }
     }

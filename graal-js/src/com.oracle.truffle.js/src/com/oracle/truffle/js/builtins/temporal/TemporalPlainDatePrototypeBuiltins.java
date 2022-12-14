@@ -53,7 +53,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.UNIT;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -122,7 +121,6 @@ import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Disambiguation;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionType;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
@@ -298,7 +296,6 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected final BranchProfile errorBranch = BranchProfile.create();
         protected final ConditionProfile optionUndefined = ConditionProfile.create();
         @Child protected IsObjectNode isObjectNode = IsObjectNode.create();
-        @Child private TemporalGetOptionNode getOptionNode;
 
         public JSTemporalBuiltinOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -399,9 +396,10 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             return isObjectNode.executeBoolean(obj);
         }
 
-        protected Unit toLargestTemporalUnit(JSDynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback, Unit autoValue, TruffleString.EqualNode equalNode) {
+        protected Unit toLargestTemporalUnit(JSDynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback, Unit autoValue,
+                        TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode) {
             assert fallback == null || (!disallowedUnits.contains(fallback) && !disallowedUnits.contains(AUTO));
-            TruffleString largestUnit = (TruffleString) getOption(normalizedOptions, LARGEST_UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTimeAuto, fallback);
+            TruffleString largestUnit = (TruffleString) getOptionNode.execute(normalizedOptions, LARGEST_UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTimeAuto, fallback);
             if (largestUnit != null && largestUnit.equals(AUTO) && autoValue != null) {
                 return autoValue;
             }
@@ -415,8 +413,9 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             return TemporalUtil.toUnit(largestUnit, equalNode);
         }
 
-        protected Unit toSmallestTemporalUnit(JSDynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback, TruffleString.EqualNode equalNode) {
-            TruffleString smallestUnit = (TruffleString) getOption(normalizedOptions, SMALLEST_UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTime, fallback);
+        protected Unit toSmallestTemporalUnit(JSDynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback,
+                        TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode) {
+            TruffleString smallestUnit = (TruffleString) getOptionNode.execute(normalizedOptions, SMALLEST_UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTime, fallback);
             if (smallestUnit != null && Boundaries.setContains(TemporalUtil.pluralUnits, smallestUnit)) {
                 smallestUnit = Boundaries.mapGet(TemporalUtil.pluralToSingular, smallestUnit);
             }
@@ -427,28 +426,17 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             return TemporalUtil.toUnit(smallestUnit, equalNode);
         }
 
-        protected Object getOption(JSDynamicObject option, TruffleString properties, OptionType type, List<TruffleString> values, TruffleString fallback) {
-            return getOptionNode().execute(option, properties, type, values, fallback);
-        }
-
-        protected Unit toTemporalDurationTotalUnit(JSDynamicObject normalizedOptions, TruffleString.EqualNode equalNode) {
-            TruffleString unit = (TruffleString) getOption(normalizedOptions, UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTime, null);
+        protected Unit toTemporalDurationTotalUnit(JSDynamicObject normalizedOptions, TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode) {
+            TruffleString unit = (TruffleString) getOptionNode.execute(normalizedOptions, UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTime, null);
             if (unit != null && Boundaries.setContains(TemporalUtil.pluralUnits, unit)) {
                 unit = Boundaries.mapGet(TemporalUtil.pluralToSingular, unit);
             }
             return TemporalUtil.toUnit(unit, equalNode);
         }
 
-        protected RoundingMode toTemporalRoundingMode(JSDynamicObject options, TruffleString fallback, TruffleString.EqualNode equalNode) {
-            return TemporalUtil.toRoundingMode((TruffleString) getOption(options, ROUNDING_MODE, TemporalUtil.OptionType.STRING, TemporalUtil.listRoundingMode, fallback), equalNode);
-        }
-
-        protected TemporalGetOptionNode getOptionNode() {
-            if (getOptionNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getOptionNode = insert(TemporalGetOptionNode.create());
-            }
-            return getOptionNode;
+        protected RoundingMode toTemporalRoundingMode(JSDynamicObject options, TruffleString fallback,
+                        TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode) {
+            return TemporalUtil.toRoundingMode((TruffleString) getOptionNode.execute(options, ROUNDING_MODE, TemporalUtil.OptionType.STRING, TemporalUtil.listRoundingMode, fallback), equalNode);
         }
     }
 
@@ -557,8 +545,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         protected JSTemporalDurationObject differenceTemporalPlainDate(int sign, JSTemporalPlainDateObject temporalDate, Object otherObj, Object optionsParam, JSToNumberNode toNumber,
-                        EnumerableOwnPropertyNamesNode namesNode,
-                        ToTemporalDateNode toTemporalDate, JSToStringNode toStringNode, TruffleString.EqualNode equalNode, TemporalRoundDurationNode roundDurationNode) {
+                        EnumerableOwnPropertyNamesNode namesNode, ToTemporalDateNode toTemporalDate, JSToStringNode toStringNode, TruffleString.EqualNode equalNode,
+                        TemporalRoundDurationNode roundDurationNode, TemporalGetOptionNode getOptionNode) {
             JSTemporalPlainDateObject other = toTemporalDate.execute(otherObj, Undefined.instance);
             if (!TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar(), toStringNode)) {
                 errorBranch.enter();
@@ -567,11 +555,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
             JSDynamicObject options = getOptionsObject(optionsParam);
             List<TruffleString> disallowedUnits = TemporalUtil.listTime;
-            Unit smallestUnit = toSmallestTemporalUnit(options, disallowedUnits, DAY, equalNode);
+            Unit smallestUnit = toSmallestTemporalUnit(options, disallowedUnits, DAY, equalNode, getOptionNode);
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.DAY, smallestUnit);
-            Unit largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, defaultLargestUnit, equalNode);
+            Unit largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, defaultLargestUnit, equalNode, getOptionNode);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
             if (sign == TemporalUtil.SINCE) {
                 roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             }
@@ -602,9 +590,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
+                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSTemporalPlainDateObject temporalDate = requireTemporalDate(thisObj);
-            return differenceTemporalPlainDate(TemporalUtil.SINCE, temporalDate, otherObj, optionsParam, toNumber, namesNode, toTemporalDate, toStringNode, equalNode, roundDurationNode);
+            return differenceTemporalPlainDate(TemporalUtil.SINCE, temporalDate, otherObj, optionsParam,
+                            toNumber, namesNode, toTemporalDate, toStringNode, equalNode, roundDurationNode, getOptionNode);
         }
     }
 
@@ -620,9 +610,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
+                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSTemporalPlainDateObject temporalDate = requireTemporalDate(thisObj);
-            return differenceTemporalPlainDate(TemporalUtil.UNTIL, temporalDate, otherObj, optionsParam, toNumber, namesNode, toTemporalDate, toStringNode, equalNode, roundDurationNode);
+            return differenceTemporalPlainDate(TemporalUtil.UNTIL, temporalDate, otherObj, optionsParam,
+                            toNumber, namesNode, toTemporalDate, toStringNode, equalNode, roundDurationNode, getOptionNode);
         }
     }
 
@@ -652,10 +644,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected TruffleString toString(Object thisObj, Object optionsParam,
-                        @Cached TruffleString.EqualNode equalNode) {
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSTemporalPlainDateObject date = requireTemporalDate(thisObj);
             JSDynamicObject options = getOptionsObject(optionsParam);
-            ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode(), equalNode);
+            ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode, equalNode);
             return JSTemporalPlainDate.temporalDateToString(date, showCalendar);
         }
     }

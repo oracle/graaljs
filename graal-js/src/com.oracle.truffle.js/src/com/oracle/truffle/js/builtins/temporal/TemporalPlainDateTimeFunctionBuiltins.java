@@ -47,6 +47,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltin
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimeFunctionBuiltinsFactory.JSTemporalPlainDateTimeCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimeFunctionBuiltinsFactory.JSTemporalPlainDateTimeFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -99,11 +100,12 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected Object from(Object item, Object optParam,
-                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
+                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSDynamicObject options = getOptionsObject(optParam);
             if (isObject(item) && JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 JSTemporalPlainDateTimeObject dtItem = (JSTemporalPlainDateTimeObject) item;
-                TemporalUtil.toTemporalOverflow(options, getOptionNode());
+                TemporalUtil.toTemporalOverflow(options, getOptionNode);
                 return JSTemporalPlainDateTime.create(getContext(),
                                 dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(),
                                 dtItem.getHour(), dtItem.getMinute(), dtItem.getSecond(), dtItem.getMillisecond(),

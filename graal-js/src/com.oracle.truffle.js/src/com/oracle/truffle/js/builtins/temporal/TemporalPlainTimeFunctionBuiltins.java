@@ -47,6 +47,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltin
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimeFunctionBuiltinsFactory.JSTemporalPlainTimeCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimeFunctionBuiltinsFactory.JSTemporalPlainTimeFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -99,9 +100,10 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object from(Object item, Object options,
-                        @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime) {
+                        @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSDynamicObject normalizedOptions = getOptionsObject(options);
-            Overflow overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, getOptionNode());
+            Overflow overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, getOptionNode);
             if (isObject(item) && JSTemporalPlainTime.isJSTemporalPlainTime(item)) {
                 JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
                 return JSTemporalPlainTime.create(getContext(),

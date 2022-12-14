@@ -68,10 +68,6 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
     protected TemporalGetOptionNode() {
     }
 
-    public static TemporalGetOptionNode create() {
-        return TemporalGetOptionNodeGen.create();
-    }
-
     public abstract Object execute(JSDynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback);
 
     @Specialization

@@ -74,10 +74,6 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
         this.ctx = context;
     }
 
-    public static ToTemporalDateNode create(JSContext context) {
-        return ToTemporalDateNodeGen.create(context);
-    }
-
     public abstract JSTemporalPlainDateObject execute(Object value, JSDynamicObject options);
 
     @Specialization

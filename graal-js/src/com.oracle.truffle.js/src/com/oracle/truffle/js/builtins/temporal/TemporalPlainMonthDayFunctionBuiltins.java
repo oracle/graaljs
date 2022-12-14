@@ -46,6 +46,7 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayFunctionBuiltinsFactory.JSTemporalPlainMonthDayFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalMonthDayNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -95,11 +96,12 @@ public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected JSDynamicObject from(Object item, Object optParam,
-                        @Cached("create(getContext())") ToTemporalMonthDayNode toTemporalMonthDayNode) {
+                        @Cached("create(getContext())") ToTemporalMonthDayNode toTemporalMonthDayNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSDynamicObject options = getOptionsObject(optParam);
             if (isObject(item) && JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(item)) {
                 JSTemporalPlainMonthDayObject pmd = (JSTemporalPlainMonthDayObject) item;
-                TemporalUtil.toTemporalOverflow(options, getOptionNode());
+                TemporalUtil.toTemporalOverflow(options, getOptionNode);
                 return JSTemporalPlainMonthDay.create(getContext(), pmd.getMonth(), pmd.getDay(), pmd.getCalendar(), pmd.getYear(), errorBranch);
             }
             return toTemporalMonthDayNode.execute(item, options);

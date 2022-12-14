@@ -47,6 +47,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltinsFactory.JSTemporalPlainDateFromNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -99,11 +100,12 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object from(Object item, Object optParam,
+                        @Cached TemporalGetOptionNode getOptionNode,
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
             JSDynamicObject options = getOptionsObject(optParam);
             if (isObject(item) && JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
                 JSTemporalPlainDateObject dtItem = (JSTemporalPlainDateObject) item;
-                TemporalUtil.toTemporalOverflow(options, getOptionNode());
+                TemporalUtil.toTemporalOverflow(options, getOptionNode);
                 return JSTemporalPlainDate.create(getContext(),
                                 dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(), dtItem.getCalendar(), errorBranch);
             }

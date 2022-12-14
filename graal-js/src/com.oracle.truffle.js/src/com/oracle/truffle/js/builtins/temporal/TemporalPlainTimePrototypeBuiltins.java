@@ -80,6 +80,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToLimitedTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
@@ -266,13 +267,14 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         protected JSTemporalDurationObject differenceTemporalPlainTime(int sign, TemporalTime temporalTime, Object otherObj, Object optionsParam, JSToNumberNode toNumber,
-                        EnumerableOwnPropertyNamesNode namesNode, ToTemporalTimeNode toTemporalTime, TruffleString.EqualNode equalNode, TemporalRoundDurationNode roundDurationNode) {
+                        EnumerableOwnPropertyNamesNode namesNode, ToTemporalTimeNode toTemporalTime, TruffleString.EqualNode equalNode, TemporalRoundDurationNode roundDurationNode,
+                        TemporalGetOptionNode getOptionNode) {
             JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.execute(otherObj, null);
             JSDynamicObject options = getOptionsObject(optionsParam);
-            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode);
-            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode);
+            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode, getOptionNode);
+            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode, getOptionNode);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode, getOptionNode);
             if (sign == TemporalUtil.SINCE) {
                 roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             }
@@ -332,7 +334,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected JSDynamicObject with(Object thisObj, Object temporalTimeLike, Object options,
                         @Cached JSToIntegerThrowOnInfinityNode toIntThrows,
-                        @Cached JSToIntegerAsIntNode toInt) {
+                        @Cached JSToIntegerAsIntNode toInt,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             if (!isObject(temporalTimeLike)) {
                 errorBranch.enter();
@@ -352,7 +355,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(timeLikeObj, isObjectNode, toIntThrows, getContext());
             JSDynamicObject normalizedOptions = getOptionsObject(options);
-            Overflow overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, getOptionNode());
+            Overflow overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, getOptionNode);
             int hour;
             int minute;
             int second;
@@ -413,9 +416,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
-                        @Cached TruffleString.EqualNode equalNode, @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
+                        @Cached TruffleString.EqualNode equalNode, @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
-            return differenceTemporalPlainTime(TemporalUtil.UNTIL, temporalTime, otherObj, optionsParam, toNumber, namesNode, toTemporalTime, equalNode, roundDurationNode);
+            return differenceTemporalPlainTime(TemporalUtil.UNTIL, temporalTime, otherObj, optionsParam,
+                            toNumber, namesNode, toTemporalTime, equalNode, roundDurationNode, getOptionNode);
         }
     }
 
@@ -431,9 +436,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
                         @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode) {
+                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
-            return differenceTemporalPlainTime(TemporalUtil.SINCE, temporalTime, otherObj, optionsParam, toNumber, namesNode, toTemporalTime, equalNode, roundDurationNode);
+            return differenceTemporalPlainTime(TemporalUtil.SINCE, temporalTime, otherObj, optionsParam,
+                            toNumber, namesNode, toTemporalTime, equalNode, roundDurationNode, getOptionNode);
         }
     }
 
@@ -446,7 +453,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected JSDynamicObject round(Object thisObj, Object roundToParam,
                         @Cached JSToNumberNode toNumber,
-                        @Cached TruffleString.EqualNode equalNode) {
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             if (roundToParam == Undefined.instance) {
                 errorBranch.enter();
@@ -459,12 +467,12 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             } else {
                 roundTo = getOptionsObject(roundToParam);
             }
-            Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null, equalNode);
+            Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null, equalNode, getOptionNode);
             if (smallestUnit == Unit.EMPTY) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
-            RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode);
+            RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             int maximum;
             if (smallestUnit == Unit.HOUR) {
                 maximum = 24;
@@ -618,11 +626,12 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected TruffleString toString(Object thisObj, Object optionsParam,
                         @Cached JSToStringNode toStringNode,
-                        @Cached TruffleString.EqualNode equalNode) {
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             TemporalTime time = requireTemporalTime(thisObj);
             JSDynamicObject options = getOptionsObject(optionsParam);
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode(), equalNode);
-            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode);
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode, equalNode);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode, getOptionNode);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundTime(
                             time.getHour(), time.getMinute(), time.getSecond(),
                             time.getMillisecond(), time.getMicrosecond(), time.getNanosecond(),

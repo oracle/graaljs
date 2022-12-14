@@ -49,6 +49,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimeFunctionBuil
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimeFunctionBuiltinsFactory.JSTemporalZonedDateTimeFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalZonedDateTimeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -103,13 +104,14 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         @Specialization
         protected JSDynamicObject from(Object item, Object optionsParam,
                         @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
-                        @Cached TruffleString.EqualNode equalNode) {
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached TemporalGetOptionNode getOptionNode) {
             JSDynamicObject options = getOptionsObject(optionsParam);
             if (JSTemporalZonedDateTime.isJSTemporalZonedDateTime(item)) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
-                TemporalUtil.toTemporalOverflow(options, getOptionNode());
-                TemporalUtil.toTemporalDisambiguation(options, getOptionNode(), equalNode);
-                TemporalUtil.toTemporalOffset(options, TemporalConstants.REJECT, getOptionNode(), equalNode);
+                TemporalUtil.toTemporalOverflow(options, getOptionNode);
+                TemporalUtil.toTemporalDisambiguation(options, getOptionNode, equalNode);
+                TemporalUtil.toTemporalOffset(options, TemporalConstants.REJECT, getOptionNode, equalNode);
                 return JSTemporalZonedDateTime.create(getContext(), getRealm(), zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar());
             }
             return toTemporalZonedDateTime.execute(item, options);
