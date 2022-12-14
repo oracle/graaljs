@@ -56,6 +56,8 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.WeakMap;
+import java.util.Map;
 
 /**
  * @see JSSymbol
@@ -237,5 +239,15 @@ public final class Symbol implements TruffleObject {
     @ExportMessage
     int identityHashCode() {
         return super.hashCode();
+    }
+
+    private Map<WeakMap, Object> invertedMap;
+
+    public Map<WeakMap, Object> getInvertedMap(){
+        return invertedMap;
+    }
+
+    public void setInvertedMap(Map<WeakMap, Object> invMap) {
+        invertedMap = invMap;
     }
 }

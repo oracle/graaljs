@@ -74,7 +74,7 @@ public final class JSWeakMap extends JSNonProxy implements JSConstructorFactory.
     }
 
     @SuppressWarnings("unchecked")
-    public static Map<JSObject, Object> getInternalWeakMap(JSDynamicObject obj) {
+    public static Map<Object, Object> getInternalWeakMap(JSDynamicObject obj) {
         assert isJSWeakMap(obj);
         return ((JSWeakMapObject) obj).getWeakHashMap();
     }
