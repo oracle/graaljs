@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -102,10 +103,12 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         this.propertyNode = propertyNode;
     }
 
+    @NeverDefault
     public static DeletePropertyNode create(boolean strict, JSContext context) {
         return create(null, null, strict, context);
     }
 
+    @NeverDefault
     public static DeletePropertyNode createNonStrict(JSContext context) {
         return create(null, null, false, context);
     }

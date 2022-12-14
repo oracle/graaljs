@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -67,6 +68,7 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
         super(context);
     }
 
+    @NeverDefault
     public static JSArrayNextElementIndexNode create(JSContext context) {
         return JSArrayNextElementIndexNodeGen.create(context);
     }

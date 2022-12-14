@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOp
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -77,14 +78,17 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         this.toNumericOperand = toNumericOperand;
     }
 
+    @NeverDefault
     public static JSToNumericNode create(boolean toNumericOperand) {
         return JSToNumericNodeGen.create(toNumericOperand);
     }
 
+    @NeverDefault
     public static JSToNumericNode create() {
         return create(false);
     }
 
+    @NeverDefault
     public static JSToNumericNode createToNumericOperand() {
         return create(true);
     }

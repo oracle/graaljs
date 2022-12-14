@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -65,6 +66,7 @@ public abstract class JSToIntegerOrInfinityNode extends JavaScriptBaseNode {
         return (Number) execute(value);
     }
 
+    @NeverDefault
     public static JSToIntegerOrInfinityNode create() {
         return JSToIntegerOrInfinityNodeGen.create();
     }

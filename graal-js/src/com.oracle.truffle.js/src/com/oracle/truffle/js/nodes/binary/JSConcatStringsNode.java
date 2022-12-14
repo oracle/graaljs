@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.CompilerDirectives.SLOWPATH_PROBABILITY;
 import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -60,10 +61,12 @@ public abstract class JSConcatStringsNode extends JavaScriptBaseNode {
         this.stringLengthLimit = stringLengthLimit;
     }
 
+    @NeverDefault
     public static JSConcatStringsNode create(int stringLengthLimit) {
         return JSConcatStringsNodeGen.create(stringLengthLimit);
     }
 
+    @NeverDefault
     public static JSConcatStringsNode create() {
         return create(JavaScriptLanguage.getCurrentLanguage().getJSContext().getStringLengthLimit());
     }

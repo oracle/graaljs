@@ -48,6 +48,7 @@ import java.util.concurrent.locks.Lock;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -140,10 +141,12 @@ public class WriteElementNode extends JSTargetableNode {
     private static final byte INDEX_INT = 1;
     private static final byte INDEX_OBJECT = 2;
 
+    @NeverDefault
     public static WriteElementNode create(JSContext context, boolean isStrict) {
         return create(null, null, null, context, isStrict, false);
     }
 
+    @NeverDefault
     public static WriteElementNode create(JSContext context, boolean isStrict, boolean writeOwn) {
         return create(null, null, null, context, isStrict, writeOwn);
     }

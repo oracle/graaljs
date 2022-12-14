@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -125,6 +126,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         return JSToInt32NodeGen.create(child, bitwiseOr);
     }
 
+    @NeverDefault
     public static JSToInt32Node create() {
         return JSToInt32NodeGen.create(null, false);
     }

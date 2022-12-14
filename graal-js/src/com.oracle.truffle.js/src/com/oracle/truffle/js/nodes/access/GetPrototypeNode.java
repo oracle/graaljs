@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -73,6 +74,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
 
     public abstract JSDynamicObject execute(Object obj);
 
+    @NeverDefault
     public static GetPrototypeNode create() {
         return GetPrototypeNodeGen.create();
     }

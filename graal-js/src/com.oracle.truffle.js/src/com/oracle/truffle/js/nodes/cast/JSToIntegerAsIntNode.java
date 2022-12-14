@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -64,6 +65,7 @@ public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
 
     @Child private JSToNumberNode toNumberNode;
 
+    @NeverDefault
     public static JSToIntegerAsIntNode create() {
         return JSToIntegerAsIntNodeGen.create();
     }

@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins.helper;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -66,6 +67,7 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object operand);
 
+    @NeverDefault
     public static JSCollectionsNormalizeNode create() {
         return JSCollectionsNormalizeNodeGen.create();
     }

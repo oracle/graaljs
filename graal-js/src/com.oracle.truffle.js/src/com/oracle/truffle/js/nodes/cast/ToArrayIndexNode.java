@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -82,14 +83,17 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         this.convertStringToIndex = convertStringToIndex;
     }
 
+    @NeverDefault
     public static ToArrayIndexNode create() {
         return ToArrayIndexNodeGen.create(true, true);
     }
 
+    @NeverDefault
     public static ToArrayIndexNode createNoToPropertyKey() {
         return ToArrayIndexNodeGen.create(false, true);
     }
 
+    @NeverDefault
     public static ToArrayIndexNode createNoStringToIndex() {
         return ToArrayIndexNodeGen.create(true, false);
     }

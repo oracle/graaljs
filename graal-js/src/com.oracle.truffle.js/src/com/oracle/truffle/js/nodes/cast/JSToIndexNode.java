@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -54,7 +55,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
  * Implementation of the abstract operation ToIndex(value) (ES7 7.1.17).
  */
 public abstract class JSToIndexNode extends JavaScriptBaseNode {
-
+    @NeverDefault
     public static JSToIndexNode create() {
         return JSToIndexNodeGen.create();
     }

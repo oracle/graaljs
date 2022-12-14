@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -58,6 +59,8 @@ import com.oracle.truffle.js.runtime.Symbol;
  * This implements ECMAScript 6 ToPropertyKey(argument).
  */
 public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
+
+    @NeverDefault
     public static JSToPropertyKeyNode create() {
         return JSToPropertyKeyNodeGen.create();
     }

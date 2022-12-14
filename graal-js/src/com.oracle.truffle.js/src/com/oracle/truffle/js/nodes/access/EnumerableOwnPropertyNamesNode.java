@@ -45,6 +45,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -92,14 +93,17 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
         this.values = values;
     }
 
+    @NeverDefault
     public static EnumerableOwnPropertyNamesNode createKeys(JSContext context) {
         return EnumerableOwnPropertyNamesNodeGen.create(context, true, false);
     }
 
+    @NeverDefault
     public static EnumerableOwnPropertyNamesNode createValues(JSContext context) {
         return EnumerableOwnPropertyNamesNodeGen.create(context, false, true);
     }
 
+    @NeverDefault
     public static EnumerableOwnPropertyNamesNode createKeysValues(JSContext context) {
         return EnumerableOwnPropertyNamesNodeGen.create(context, true, true);
     }

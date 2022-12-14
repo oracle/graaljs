@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -125,6 +126,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     private static final byte INDEX_INT = 1;
     private static final byte INDEX_OBJECT = 2;
 
+    @NeverDefault
     public static ReadElementNode create(JSContext context) {
         return new ReadElementNode(null, null, context);
     }

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -105,30 +106,37 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         this.leftToRight = leftToRight;
     }
 
+    @NeverDefault
     public static JSOverloadedBinaryNode create(TruffleString overloadedOperatorName, Hint hint) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, hint, true);
     }
 
+    @NeverDefault
     public static JSOverloadedBinaryNode createHintDefault(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Default, true);
     }
 
+    @NeverDefault
     public static JSOverloadedBinaryNode createHintNumber(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Number, true);
     }
 
+    @NeverDefault
     public static JSOverloadedBinaryNode createHintNumberLeftToRight(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Number, true);
     }
 
+    @NeverDefault
     public static JSOverloadedBinaryNode createHintNumberRightToLeft(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Number, false);
     }
 
+    @NeverDefault
     public static JSOverloadedBinaryNode createHintString(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.String, true);
     }
 
+    @NeverDefault
     public static JSOverloadedBinaryNode createNumeric(TruffleString overloadedOperatorName) {
         return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, true, null, true);
     }

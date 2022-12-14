@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -91,10 +92,12 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         this.hasOwnProperty = hasOwnProperty;
     }
 
+    @NeverDefault
     public static JSHasPropertyNode create() {
         return JSHasPropertyNodeGen.create(false);
     }
 
+    @NeverDefault
     public static JSHasPropertyNode create(boolean hasOwnProperty) {
         return JSHasPropertyNodeGen.create(hasOwnProperty);
     }
