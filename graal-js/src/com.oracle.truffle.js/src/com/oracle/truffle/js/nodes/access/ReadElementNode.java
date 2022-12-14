@@ -67,6 +67,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
+import com.oracle.truffle.js.builtins.helper.ListGetNodeGen;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -1068,7 +1069,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         LazyArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
-            this.listGetNode = ListGetNode.create();
+            this.listGetNode = ListGetNodeGen.create();
         }
 
         @Override
