@@ -57,6 +57,7 @@ import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -2141,6 +2142,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return a.equals(b);
         }
 
+        @NeverDefault
         protected LRUCache<CachedSourceKey, ScriptNode> createCache() {
             return new LRUCache<>(context.getContextOptions().getFunctionConstructorCacheSize());
         }
@@ -2148,10 +2150,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("unused")
         @Specialization(guards = {"equals(cachedParamList, paramList)", "equals(cachedBody, body)", "equals(cachedSourceName, sourceName)"}, limit = "1")
         protected final JSFunctionObject doCached(String paramList, String body, String sourceName,
-                        @Cached("paramList") String cachedParamList,
-                        @Cached("body") String cachedBody,
-                        @Cached("sourceName") String cachedSourceName,
-                        @Cached("createAssumedValue()") AssumedValue<ScriptNode> cachedParsedFunction) {
+                        @Cached(value = "paramList", neverDefault = true) String cachedParamList,
+                        @Cached(value = "body", neverDefault = true) String cachedBody,
+                        @Cached(value = "sourceName", neverDefault = true) String cachedSourceName,
+                        @Cached(value = "createAssumedValue()", neverDefault = true) AssumedValue<ScriptNode> cachedParsedFunction) {
             ScriptNode parsedFunction = cachedParsedFunction.get();
             if (parsedFunction == null) {
                 parsedFunction = parseFunction(paramList, body, sourceName);
