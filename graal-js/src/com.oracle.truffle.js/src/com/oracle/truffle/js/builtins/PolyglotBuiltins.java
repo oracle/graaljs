@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -730,6 +731,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
     }
 
+    @ImportStatic(Strings.class)
     abstract static class PolyglotEvalBaseNode extends JSBuiltinNode {
 
         protected final ConditionProfile isValid = ConditionProfile.create();
@@ -738,6 +740,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             super(context, builtin);
         }
 
+        @NeverDefault
         protected Pair<String, String> getLanguageIdAndMimeType(TruffleString.ToJavaStringNode toJavaStringNode, TruffleString languageIdOrMimeTypeTS) {
             String languageIdOrMimeType = Strings.toJavaString(toJavaStringNode, languageIdOrMimeTypeTS);
             String languageId = languageIdOrMimeType;
@@ -760,10 +763,11 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"language.equals(cachedLanguage)"}, limit = "1")
+        @Specialization(guards = {"equals(strEq, language, cachedLanguage)"}, limit = "1")
         @TruffleBoundary
         protected Object evalCachedLanguage(TruffleString language, TruffleString source,
                         @Cached("language") TruffleString cachedLanguage,
+                        @Cached TruffleString.EqualNode strEq,
                         @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached("getLanguageIdAndMimeType(toJavaStringNode, language)") Pair<String, String> languagePair,
                         @Cached @Shared("callNode") IndirectCallNode callNode) {
@@ -806,10 +810,11 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"language.equals(cachedLanguage)"}, limit = "1")
+        @Specialization(guards = {"equals(strEq, language, cachedLanguage)"}, limit = "1")
         @TruffleBoundary
         protected Object evalFileCachedLanguage(TruffleString language, TruffleString file,
                         @Cached("language") TruffleString cachedLanguage,
+                        @Cached TruffleString.EqualNode strEq,
                         @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached("getLanguageIdAndMimeType(toJavaStringNode, language)") Pair<String, String> languagePair,
                         @Cached @Shared("callNode") IndirectCallNode callNode) {
@@ -953,7 +958,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @Specialization
-        protected Object execute(Object value) {
+        protected Object toPolyglotValue(Object value) {
             return exportValueNode.execute(value);
         }
     }
