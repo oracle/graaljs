@@ -50,7 +50,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 import com.oracle.truffle.js.builtins.ForInIteratorPrototypeBuiltinsFactory.ForInIteratorPrototypeNextNodeGen;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
@@ -118,14 +117,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private PropertyGetNode getIteratorNode;
         @Child private GetPrototypeNode getPrototypeNode;
-        @Child private HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode;
-        @Child private ListGetNode listGet;
-        @Child private ListSizeNode listSize;
         @Child private JSGetOwnPropertyNode getOwnPropertyNode;
-        private final BranchProfile errorBranch = BranchProfile.create();
-        private final BranchProfile growProfile = BranchProfile.create();
-        private final ConditionProfile fastOwnKeysProfile = ConditionProfile.create();
-        private final ConditionProfile sameShapeProfile = ConditionProfile.create();
 
         private static final Object DONE = null;
         private static final int MAX_PROTO_DEPTH = 1000;
@@ -135,22 +127,27 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.FOR_IN_ITERATOR_ID, context);
             this.getPrototypeNode = GetPrototypeNode.create();
-            this.hasOnlyShapePropertiesNode = HasOnlyShapePropertiesNode.create();
             this.getOwnPropertyNode = JSGetOwnPropertyNode.create();
-            this.listGet = ListGetNode.create();
-            this.listSize = ListSizeNode.create();
         }
 
         @Specialization
-        public JSDynamicObject execute(VirtualFrame frame, Object target,
-                        @Cached("createEqualityProfile()") PrimitiveValueProfile valuesProfile) {
+        public JSDynamicObject next(VirtualFrame frame, Object target,
+                        @Cached ConditionProfile valuesProfile,
+                        @Cached BranchProfile errorBranch,
+                        @Cached BranchProfile growProfile,
+                        @Cached ConditionProfile fastOwnKeysProfile,
+                        @Cached ConditionProfile sameShapeProfile,
+                        @Cached ListGetNode listGet,
+                        @Cached ListSizeNode listSize,
+                        @Cached HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode) {
             Object iteratorValue = getIteratorNode.getValue(target);
             if (iteratorValue == Undefined.instance) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorIncompatibleReceiver(target);
             }
             ForInIterator state = (ForInIterator) iteratorValue;
-            Object nextValue = findNext(state);
+            Object nextValue = findNext(state,
+                            errorBranch, growProfile, fastOwnKeysProfile, sameShapeProfile, listGet, listSize, hasOnlyShapePropertiesNode);
             boolean done = nextValue == DONE;
             if (done) {
                 nextValue = Undefined.instance;
@@ -164,7 +161,9 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             return createIterResultObjectNode.execute(frame, nextValue, done);
         }
 
-        private Object findNext(ForInIterator state) {
+        private Object findNext(ForInIterator state,
+                        BranchProfile errorBranch, BranchProfile growProfile, ConditionProfile fastOwnKeysProfile, ConditionProfile sameShapeProfile,
+                        ListGetNode listGet, ListSizeNode listSize, HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode) {
             for (;;) {
                 JSDynamicObject object = state.object;
                 if (!state.objectWasVisited) {
@@ -233,7 +232,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 }
 
                 JSDynamicObject proto = getPrototypeNode.execute(object);
-                if (tryFastForwardImmutablePrototype(proto)) {
+                if (tryFastForwardImmutablePrototype(proto, hasOnlyShapePropertiesNode)) {
                     proto = Null.instance;
                 }
                 state.object = proto;
@@ -265,7 +264,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
         }
 
-        private boolean tryFastForwardImmutablePrototype(JSDynamicObject proto) {
+        private static boolean tryFastForwardImmutablePrototype(JSDynamicObject proto, HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode) {
             if (proto == Null.instance) {
                 return false;
             }
