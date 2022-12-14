@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -99,22 +100,19 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
 
     @ImportStatic({JSConfig.class})
     public abstract static class EnumerateNextNode extends JSBuiltinNode {
-        @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private PropertyGetNode getIteratorNode;
-        @Child private ImportValueNode importValueNode;
-        private final BranchProfile errorBranch;
 
         public EnumerateNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context);
-            this.importValueNode = ImportValueNode.create();
-            this.errorBranch = BranchProfile.create();
         }
 
         @Specialization
-        public JSDynamicObject execute(VirtualFrame frame, Object target,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+        public JSDynamicObject next(VirtualFrame frame, Object target,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached("create(getContext())") CreateIterResultObjectNode createIterResultObjectNode,
+                        @Cached ImportValueNode importValueNode,
+                        @Cached BranchProfile errorBranch) {
             Object iterator = getIteratorNode.getValue(target);
             if (iterator == Undefined.instance) {
                 errorBranch.enter();
