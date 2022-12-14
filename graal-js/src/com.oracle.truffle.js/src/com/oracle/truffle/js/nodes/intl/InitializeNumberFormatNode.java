@@ -147,17 +147,22 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
                 mxfdDefault = IntlUtil.PERCENT.equals(style) ? 0 : 3;
             }
 
+            int roundingIncrement = getRoundingIncrementOption.executeInt(options, 1, 5000, 1);
+            if (!isValidRoundingIncrement(roundingIncrement)) {
+                errorBranch.enter();
+                throw Errors.createRangeError("roundingIncrement value is out of range.");
+            }
+
+            if (roundingIncrement != 1) {
+                mxfdDefault = mnfdDefault;
+            }
+
             String notation = getNotationOption.executeValue(options);
             state.setNotation(notation);
 
             boolean compactNotation = IntlUtil.COMPACT.equals(notation);
             setNumberFormatDigitOptions.execute(state, options, mnfdDefault, mxfdDefault, compactNotation);
 
-            int roundingIncrement = getRoundingIncrementOption.executeInt(options, 1, 5000, 1);
-            if (!isValidRoundingIncrement(roundingIncrement)) {
-                errorBranch.enter();
-                throw Errors.createRangeError("roundingIncrement value is out of range.");
-            }
             if (roundingIncrement != 1) {
                 if (!IntlUtil.FRACTION_DIGITS.equals(state.getRoundingType())) {
                     errorBranch.enter();
