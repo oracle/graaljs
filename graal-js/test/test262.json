@@ -6388,10 +6388,6 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "intl402/NumberFormat/constructor-roundingIncrement.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-12-12"
-  }, {
     "filePath" : "intl402/Temporal/Calendar/calendar-case-insensitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -7189,14 +7185,14 @@
   }, {
     "filePath" : "language/statements/class/decorator/syntax/valid/class-element-decorator-call-expr-identifier-reference-yield.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-12-12"
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/pull/3744"
   }, {
     "filePath" : "language/statements/class/decorator/syntax/valid/class-element-decorator-member-expr-identifier-reference-yield.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-12-12"
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/pull/3744"
   }, {
     "filePath" : "language/statements/class/decorator/syntax/valid/class-element-decorator-parenthesized-expr-identifier-reference-yield.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-12-12"
+    "comment" : "Incorrect test, see https://github.com/tc39/test262/pull/3744"
   } ]
 }
