@@ -59,26 +59,21 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile isCalendarProfile = ConditionProfile.create();
-    private final ConditionProfile isNullishProfile = ConditionProfile.create();
-
-    private final JSContext ctx;
+    protected final JSContext ctx;
     @Child protected PropertyGetNode getCalendarNode;
-    @Child protected ToTemporalCalendarNode toTemporalCalendarNode;
 
     protected GetTemporalCalendarWithISODefaultNode(JSContext context) {
         this.ctx = context;
     }
 
-    public static GetTemporalCalendarWithISODefaultNode create(JSContext context) {
-        return GetTemporalCalendarWithISODefaultNodeGen.create(context);
-    }
-
-    public abstract JSDynamicObject executeDynamicObject(Object temporalTimeZoneLike);
+    public abstract JSDynamicObject execute(Object temporalTimeZoneLike);
 
     @Specialization
     protected JSDynamicObject getTemporalCalendarWithISODefault(Object item,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached BranchProfile errorBranch,
+                    @Cached ConditionProfile isCalendarProfile,
+                    @Cached ConditionProfile isNullishProfile,
+                    @Cached("create(ctx)") ToTemporalCalendarNode toTemporalCalendarNode) {
         if (isCalendarProfile.profile(item instanceof TemporalCalendar)) {
             return ((TemporalCalendar) item).getCalendar();
         } else {
@@ -87,23 +82,15 @@ public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBa
             if (isNullishProfile.profile(calendar == Undefined.instance)) {
                 return TemporalUtil.getISO8601Calendar(ctx, getRealm(), errorBranch);
             } else {
-                return toTemporalCalendar(calendar);
+                return toTemporalCalendarNode.execute(calendar);
             }
         }
-    }
-
-    private JSDynamicObject toTemporalCalendar(Object obj) {
-        if (toTemporalCalendarNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toTemporalCalendarNode = insert(ToTemporalCalendarNode.create(ctx));
-        }
-        return toTemporalCalendarNode.executeDynamicObject(obj);
     }
 
     private Object getCalendar(JSDynamicObject obj) {
         if (getCalendarNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getCalendarNode = insert(PropertyGetNode.create(TemporalConstants.CALENDAR, false, ctx));
+            getCalendarNode = insert(PropertyGetNode.create(TemporalConstants.CALENDAR, ctx));
         }
         return getCalendarNode.getValue(obj);
     }

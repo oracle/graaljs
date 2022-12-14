@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,7 +109,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                                 dtItem.getHour(), dtItem.getMinute(), dtItem.getSecond(), dtItem.getMillisecond(),
                                 dtItem.getMicrosecond(), dtItem.getNanosecond(), dtItem.getCalendar(), errorBranch);
             }
-            return toTemporalDateTime.executeDynamicObject(item, options);
+            return toTemporalDateTime.execute(item, options);
         }
 
     }
@@ -123,8 +123,8 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         @Specialization
         protected int compare(Object obj1, Object obj2,
                         @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
-            JSTemporalPlainDateTimeObject one = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(obj1, Undefined.instance);
-            JSTemporalPlainDateTimeObject two = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(obj2, Undefined.instance);
+            JSTemporalPlainDateTimeObject one = (JSTemporalPlainDateTimeObject) toTemporalDateTime.execute(obj1, Undefined.instance);
+            JSTemporalPlainDateTimeObject two = (JSTemporalPlainDateTimeObject) toTemporalDateTime.execute(obj2, Undefined.instance);
             return TemporalUtil.compareISODateTime(
                             one.getYear(), one.getMonth(), one.getDay(),
                             one.getHour(), one.getMinute(), one.getSecond(),

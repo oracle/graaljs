@@ -63,21 +63,17 @@ public abstract class ToTemporalCalendarWithISODefaultNode extends JavaScriptBas
         this.ctx = ctx;
     }
 
-    public static ToTemporalCalendarWithISODefaultNode create(JSContext context) {
-        return ToTemporalCalendarWithISODefaultNodeGen.create(context);
-    }
-
-    public abstract JSDynamicObject executeDynamicObject(Object calendar);
+    public abstract JSDynamicObject execute(Object calendar);
 
     @Specialization
     public JSDynamicObject toTemporalCalendarWithISODefault(Object calendar,
                     @Cached BranchProfile errorBranch,
-                    @Cached("create(ctx)") ToTemporalCalendarNode toTemporalCalendarNode,
-                    @Cached ConditionProfile calendarAvailable) {
+                    @Cached ConditionProfile calendarAvailable,
+                    @Cached("create(ctx)") ToTemporalCalendarNode toTemporalCalendarNode) {
         if (calendarAvailable.profile(calendar == null || calendar == Undefined.instance)) {
             return JSTemporalCalendar.create(ctx, getRealm(), ISO8601, errorBranch);
         } else {
-            return toTemporalCalendarNode.executeDynamicObject(calendar);
+            return toTemporalCalendarNode.execute(calendar);
         }
     }
 }

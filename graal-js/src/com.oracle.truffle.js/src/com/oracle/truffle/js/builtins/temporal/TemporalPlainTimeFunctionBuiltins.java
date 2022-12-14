@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -108,7 +108,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
                                 timeItem.getHour(), timeItem.getMinute(), timeItem.getSecond(), timeItem.getMillisecond(),
                                 timeItem.getMicrosecond(), timeItem.getNanosecond(), errorBranch);
             }
-            return toTemporalTime.executeDynamicObject(item, overflow);
+            return toTemporalTime.execute(item, overflow);
         }
 
     }
@@ -122,8 +122,8 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected int compare(Object obj1, Object obj2,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime) {
-            JSTemporalPlainTimeObject time1 = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(obj1, null);
-            JSTemporalPlainTimeObject time2 = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(obj2, null);
+            JSTemporalPlainTimeObject time1 = (JSTemporalPlainTimeObject) toTemporalTime.execute(obj1, null);
+            JSTemporalPlainTimeObject time2 = (JSTemporalPlainTimeObject) toTemporalTime.execute(obj2, null);
             return TemporalUtil.compareTemporalTime(
                             time1.getHour(), time1.getMinute(), time1.getSecond(),
                             time1.getMillisecond(), time1.getMicrosecond(), time1.getNanosecond(),

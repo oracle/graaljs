@@ -59,21 +59,17 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
 
     protected final JSContext ctx;
-    private final ConditionProfile isObjectProfile = ConditionProfile.create();
-    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected ToTemporalDurationNode(JSContext context) {
         this.ctx = context;
     }
 
-    public static ToTemporalDurationNode create(JSContext context) {
-        return ToTemporalDurationNodeGen.create(context);
-    }
-
-    public abstract JSDynamicObject executeDynamicObject(Object item);
+    public abstract JSDynamicObject execute(Object item);
 
     @Specialization
     protected JSDynamicObject toTemporalDuration(Object item,
+                    @Cached ConditionProfile isObjectProfile,
+                    @Cached BranchProfile errorBranch,
                     @Cached IsObjectNode isObjectNode,
                     @Cached JSToStringNode toStringNode) {
         JSTemporalDurationRecord result;

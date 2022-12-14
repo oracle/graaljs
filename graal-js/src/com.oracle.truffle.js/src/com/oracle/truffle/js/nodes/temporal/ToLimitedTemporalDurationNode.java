@@ -62,23 +62,18 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToLimitedTemporalDurationNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile isObjectProfile = ConditionProfile.create();
-    private final ConditionProfile hasDisallowedFields = ConditionProfile.create();
-    private final BranchProfile errorBranch = BranchProfile.create();
-
     protected ToLimitedTemporalDurationNode() {
     }
 
-    public static ToLimitedTemporalDurationNode create() {
-        return ToLimitedTemporalDurationNodeGen.create();
-    }
-
-    public abstract JSTemporalDurationRecord executeDynamicObject(Object temporalDurationLike, List<TruffleString> disallowedFields);
+    public abstract JSTemporalDurationRecord execute(Object temporalDurationLike, List<TruffleString> disallowedFields);
 
     @Specialization
     protected JSTemporalDurationRecord toLimitedTemporalDuration(Object temporalDurationLike, List<TruffleString> disallowedFields,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached JSToStringNode toStringNode) {
+                    @Cached JSToStringNode toStringNode,
+                    @Cached ConditionProfile isObjectProfile,
+                    @Cached ConditionProfile hasDisallowedFields,
+                    @Cached BranchProfile errorBranch) {
         JSTemporalDurationRecord d;
         if (isObjectProfile.profile(!isObjectNode.executeBoolean(temporalDurationLike))) {
             TruffleString str = toStringNode.executeString(temporalDurationLike);

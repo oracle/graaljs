@@ -336,7 +336,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached JSToStringNode toStringNode,
                         @Cached("create(getContext())") ToTemporalYearMonthNode toTemporalYearMonthNode) {
             JSTemporalPlainYearMonthObject md = requireTemporalYearMonth(thisObj);
-            JSTemporalPlainYearMonthObject other = toTemporalYearMonthNode.executeDynamicObject(otherParam, Undefined.instance);
+            JSTemporalPlainYearMonthObject other = toTemporalYearMonthNode.execute(otherParam, Undefined.instance);
             if (md.getMonth() != other.getMonth()) {
                 return false;
             }
@@ -398,7 +398,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         EnumerableOwnPropertyNamesNode namesNode, ToLimitedTemporalDurationNode toLimitedTemporalDurationNode, TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
                         TemporalCalendarFieldsNode calendarFieldsNode, TemporalCalendarGetterNode calendarGetterNode, JSToIntegerThrowOnInfinityNode toIntNode,
                         TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
+            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.execute(temporalDurationLike, TemporalUtil.listEmpty);
             if (operation == -1) {
                 duration = TemporalUtil.createNegatedTemporalDuration(duration);
             }
@@ -429,7 +429,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         JSToStringNode toStringNode, JSToNumberNode toNumberNode, EnumerableOwnPropertyNamesNode namesNode, TruffleString.EqualNode equalNode,
                         TemporalRoundDurationNode roundDurationNode, ToTemporalYearMonthNode toTemporalYearMonthNode, TemporalCalendarFieldsNode calendarFieldsNode,
                         TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
-            JSTemporalPlainYearMonthObject other = toTemporalYearMonthNode.executeDynamicObject(otherParam, Undefined.instance);
+            JSTemporalPlainYearMonthObject other = toTemporalYearMonthNode.execute(otherParam, Undefined.instance);
             JSDynamicObject calendar = ym.getCalendar();
             if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toStringNode)) {
                 errorBranch.enter();

@@ -68,12 +68,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile isObjectProfile = ConditionProfile.create();
-    private final ConditionProfile isPlainDateTimeProfile = ConditionProfile.create();
-    private final ConditionProfile isZonedDateTimeProfile = ConditionProfile.create();
-    private final ConditionProfile isPlainDateProfile = ConditionProfile.create();
-    private final BranchProfile errorBranch = BranchProfile.create();
-
     protected final JSContext ctx;
 
     protected ToTemporalDateNode(JSContext context) {
@@ -84,14 +78,19 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
         return ToTemporalDateNodeGen.create(context);
     }
 
-    public abstract JSTemporalPlainDateObject executeDynamicObject(Object value, JSDynamicObject options);
+    public abstract JSTemporalPlainDateObject execute(Object value, JSDynamicObject options);
 
     @Specialization
     public JSTemporalPlainDateObject toTemporalDate(Object itemParam, JSDynamicObject options,
+                    @Cached BranchProfile errorBranch,
+                    @Cached ConditionProfile isObjectProfile,
+                    @Cached ConditionProfile isPlainDateTimeProfile,
+                    @Cached ConditionProfile isZonedDateTimeProfile,
+                    @Cached ConditionProfile isPlainDateProfile,
                     @Cached IsObjectNode isObjectNode,
                     @Cached JSToStringNode toStringNode,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
                     @Cached TemporalGetOptionNode getOptionNode,
+                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached("create(ctx)") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
@@ -111,7 +110,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                 JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) item;
                 return JSTemporalPlainDate.create(ctx, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar(), errorBranch);
             }
-            JSDynamicObject calendar = getTemporalCalendarNode.executeDynamicObject(item);
+            JSDynamicObject calendar = getTemporalCalendarNode.execute(item);
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDMMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);
             return dateFromFieldsNode.execute(calendar, fields, options);
@@ -119,7 +118,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
         TemporalUtil.toTemporalOverflow(options, getOptionNode);
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(toStringNode.executeString(itemParam));
         assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
-        JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(result.getCalendar());
+        JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(result.getCalendar());
         return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar, errorBranch);
     }
 }

@@ -251,7 +251,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         protected JSTemporalPlainTimeObject addDurationToOrSubtractDurationFromPlainTime(int sign, TemporalTime temporalTime, Object temporalDurationLike,
                         ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.executeDynamicObject(temporalDurationLike, TemporalUtil.listEmpty);
+            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.execute(temporalDurationLike, TemporalUtil.listEmpty);
 
             JSTemporalDurationRecord result = TemporalUtil.addTimeDouble(
                             temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
@@ -267,7 +267,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         protected JSTemporalDurationObject differenceTemporalPlainTime(int sign, TemporalTime temporalTime, Object otherObj, Object optionsParam, JSToNumberNode toNumber,
                         EnumerableOwnPropertyNamesNode namesNode, ToTemporalTimeNode toTemporalTime, TruffleString.EqualNode equalNode, TemporalRoundDurationNode roundDurationNode) {
-            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
+            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.execute(otherObj, null);
             JSDynamicObject options = getOptionsObject(optionsParam);
             Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode);
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode);
@@ -501,7 +501,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected boolean equalsGeneric(Object thisObj, Object other,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
-            TemporalTime otherTime = (TemporalTime) toTemporalTime.executeDynamicObject(other, null);
+            TemporalTime otherTime = (TemporalTime) toTemporalTime.execute(other, null);
             return equalsIntl(temporalTime, otherTime);
         }
 
@@ -539,7 +539,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public JSDynamicObject toPlainDateTime(Object thisObj, Object temporalDateObj,
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
             TemporalTime time = requireTemporalTime(thisObj);
-            JSDynamicObject temporalDate = toTemporalDate.executeDynamicObject(temporalDateObj, Undefined.instance);
+            JSDynamicObject temporalDate = toTemporalDate.execute(temporalDateObj, Undefined.instance);
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) temporalDate;
 
             return JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(),
@@ -570,13 +570,13 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter();
                 throw TemporalErrors.createTypeErrorTemporalDateExpected();
             }
-            JSTemporalPlainDateObject date = toTemporalDate.executeDynamicObject(temporalDateLike, Undefined.instance);
+            JSTemporalPlainDateObject date = toTemporalDate.execute(temporalDateLike, Undefined.instance);
             Object temporalTimeZoneLike = JSObject.get(item, TemporalConstants.TIME_ZONE);
             if (temporalTimeZoneLike == Undefined.instance || temporalTimeZoneLike == null) {
                 errorBranch.enter();
                 throw Errors.createTypeError("TimeZone expected");
             }
-            JSDynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(temporalTimeZoneLike);
+            JSDynamicObject timeZone = toTemporalTimeZone.execute(temporalTimeZoneLike);
 
             JSTemporalPlainDateTimeObject temporalDateTime = JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),

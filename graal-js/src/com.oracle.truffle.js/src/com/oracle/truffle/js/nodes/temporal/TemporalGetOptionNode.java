@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.temporal;
 import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -64,7 +63,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionType;
 /**
  * Implementation of GetOption() operation.
  */
-@GenerateUncached
 public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
 
     protected TemporalGetOptionNode() {
@@ -74,10 +72,6 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         return TemporalGetOptionNodeGen.create();
     }
 
-    public static TemporalGetOptionNode getUncached() {
-        return TemporalGetOptionNodeGen.getUncached();
-    }
-
     public abstract Object execute(JSDynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback);
 
     @Specialization
@@ -85,8 +79,8 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
                     @Cached BranchProfile errorBranch,
                     @Cached ConditionProfile isFallbackProfile,
                     @Cached JSToBooleanNode toBooleanNode,
-                    @Cached(uncached = "createEmptyToString()") JSToStringNode toStringNode,
-                    @Cached(uncached = "createEmptyToNumber()") JSToNumberNode toNumberNode) {
+                    @Cached JSToStringNode toStringNode,
+                    @Cached JSToNumberNode toNumberNode) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
         if (isFallbackProfile.profile(value == Undefined.instance)) {
@@ -122,11 +116,4 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         return value;
     }
 
-    protected JSToStringNode createEmptyToString() {
-        return null;
-    }
-
-    protected JSToNumberNode createEmptyToNumber() {
-        return null;
-    }
 }

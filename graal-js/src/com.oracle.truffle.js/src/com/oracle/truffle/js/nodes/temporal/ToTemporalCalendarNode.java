@@ -65,12 +65,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile isObjectProfile = ConditionProfile.create();
-    private final ConditionProfile isCalendarProfile = ConditionProfile.create();
-    private final ConditionProfile hasCalendarProfile = ConditionProfile.create();
-    private final ConditionProfile hasCalendar2Profile = ConditionProfile.create();
-    private final BranchProfile parseBranch = BranchProfile.create();
-
     private final JSContext context;
     @Child private PropertyGetNode getCalendarPropertyNode;
 
@@ -78,17 +72,18 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
-    public static ToTemporalCalendarNode create(JSContext context) {
-        return ToTemporalCalendarNodeGen.create(context);
-    }
-
-    public abstract JSDynamicObject executeDynamicObject(Object value);
+    public abstract JSDynamicObject execute(Object value);
 
     @Specialization
     public JSDynamicObject toTemporalCalendar(Object itemParam,
                     @Cached BranchProfile errorBranch,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached JSToStringNode toStringNode) {
+                    @Cached JSToStringNode toStringNode,
+                    @Cached ConditionProfile isObjectProfile,
+                    @Cached ConditionProfile isCalendarProfile,
+                    @Cached ConditionProfile hasCalendarProfile,
+                    @Cached ConditionProfile hasCalendar2Profile,
+                    @Cached BranchProfile parseBranch) {
         Object item = itemParam;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, errorBranch);
@@ -117,7 +112,7 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
     private Object getCalendarProperty(JSDynamicObject obj) {
         if (getCalendarPropertyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getCalendarPropertyNode = insert(PropertyGetNode.create(CALENDAR, false, context));
+            getCalendarPropertyNode = insert(PropertyGetNode.create(CALENDAR, context));
         }
         return getCalendarPropertyNode.getValue(obj);
     }

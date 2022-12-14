@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -108,7 +108,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                                 duration.getMicroseconds(), duration.getNanoseconds(), errorBranch);
             }
-            return toTemporalDurationNode.executeDynamicObject(item);
+            return toTemporalDurationNode.execute(item);
         }
     }
 
@@ -123,8 +123,8 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached("create(getContext())") TemporalUnbalanceDurationRelativeNode unbalanceDurationRelativeNode,
                         @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode) {
-            JSTemporalDurationObject one = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(oneParam);
-            JSTemporalDurationObject two = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(twoParam);
+            JSTemporalDurationObject one = (JSTemporalDurationObject) toTemporalDurationNode.execute(oneParam);
+            JSTemporalDurationObject two = (JSTemporalDurationObject) toTemporalDurationNode.execute(twoParam);
             JSDynamicObject options = getOptionsObject(optionsParam);
             JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
             double shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,7 +107,7 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalPlainDate.create(getContext(),
                                 dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(), dtItem.getCalendar(), errorBranch);
             }
-            return toTemporalDate.executeDynamicObject(item, options);
+            return toTemporalDate.execute(item, options);
         }
 
     }
@@ -121,8 +121,8 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected int compare(Object obj1, Object obj2,
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
-            JSTemporalPlainDateObject one = toTemporalDate.executeDynamicObject(obj1, Undefined.instance);
-            JSTemporalPlainDateObject two = toTemporalDate.executeDynamicObject(obj2, Undefined.instance);
+            JSTemporalPlainDateObject one = toTemporalDate.execute(obj1, Undefined.instance);
+            JSTemporalPlainDateObject two = toTemporalDate.execute(obj2, Undefined.instance);
             return TemporalUtil.compareISODate(
                             one.getYear(), one.getMonth(), one.getDay(),
                             two.getYear(), two.getMonth(), two.getDay());

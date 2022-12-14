@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,7 +112,7 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                 TemporalUtil.toTemporalOffset(options, TemporalConstants.REJECT, getOptionNode(), equalNode);
                 return JSTemporalZonedDateTime.create(getContext(), getRealm(), zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar());
             }
-            return toTemporalZonedDateTime.executeDynamicObject(item, options);
+            return toTemporalZonedDateTime.execute(item, options);
         }
     }
 
@@ -125,8 +125,8 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         @Specialization
         protected int compare(Object obj1, Object obj2,
                         @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime) {
-            JSTemporalZonedDateTimeObject one = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.executeDynamicObject(obj1, Undefined.instance);
-            JSTemporalZonedDateTimeObject two = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.executeDynamicObject(obj2, Undefined.instance);
+            JSTemporalZonedDateTimeObject one = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.execute(obj1, Undefined.instance);
+            JSTemporalZonedDateTimeObject two = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.execute(obj2, Undefined.instance);
             return TemporalUtil.compareEpochNanoseconds(one.getNanoseconds(), two.getNanoseconds());
         }
     }

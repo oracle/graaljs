@@ -270,7 +270,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toTemporalDate = insert(ToTemporalDateNode.create(getContext()));
             }
-            return toTemporalDate.executeDynamicObject(item, options);
+            return toTemporalDate.execute(item, options);
         }
     }
 
@@ -459,7 +459,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) toTemporalDate(dateObj, Undefined.instance);
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(durationObj);
+            JSTemporalDurationObject duration = (JSTemporalDurationObject) toTemporalDurationNode.execute(durationObj);
             JSDynamicObject options = getOptionsObject(optionsParam);
             Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode());
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
@@ -589,7 +589,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSDynamicObject tdl = Undefined.instance;
             if (!JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike) && !JSTemporalPlainDateTime.isJSTemporalPlainDateTime(temporalDateLike) &&
                             !JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(temporalDateLike)) {
-                tdl = toTemporalDate.executeDynamicObject(temporalDateLike, Undefined.instance);
+                tdl = toTemporalDate.execute(temporalDateLike, Undefined.instance);
             } else {
                 tdl = (JSDynamicObject) temporalDateLike;
             }

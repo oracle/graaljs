@@ -79,27 +79,24 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getMonthCodeNode;
     @Child private PropertyGetNode getYearNode;
     @Child private PropertyGetNode getCalendarNode;
-    protected final ConditionProfile isObjectProfile = ConditionProfile.create();
-    protected final ConditionProfile setReferenceYear = ConditionProfile.create();
-    protected final ConditionProfile returnPlainMonthDay = ConditionProfile.create();
-    protected final ConditionProfile getCalendarPath = ConditionProfile.create();
     protected final JSContext ctx;
 
     protected ToTemporalMonthDayNode(JSContext context) {
         this.ctx = context;
     }
 
-    public static ToTemporalMonthDayNode create(JSContext context) {
-        return ToTemporalMonthDayNodeGen.create(context);
-    }
-
-    public abstract JSTemporalPlainMonthDayObject executeDynamicObject(Object item, JSDynamicObject optParam);
+    public abstract JSTemporalPlainMonthDayObject execute(Object item, JSDynamicObject optParam);
 
     @Specialization
     public JSTemporalPlainMonthDayObject toTemporalMonthDay(Object item, JSDynamicObject options,
                     @Cached BranchProfile errorBranch,
+                    @Cached ConditionProfile isObjectProfile,
+                    @Cached ConditionProfile setReferenceYear,
+                    @Cached ConditionProfile returnPlainMonthDay,
+                    @Cached ConditionProfile getCalendarPath,
                     @Cached IsObjectNode isObjectNode,
                     @Cached JSToStringNode toStringNode,
+                    @Cached TemporalGetOptionNode temporalGetOptionNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached("create(ctx)") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
                     @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode) {
@@ -120,7 +117,7 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
             } else {
                 Object calendarObj = getCalendar(itemObj);
                 calendarAbsent = (calendarObj == Undefined.instance);
-                calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarObj);
+                calendar = toTemporalCalendarWithISODefaultNode.execute(calendarObj);
             }
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDMMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listEmpty);
@@ -139,10 +136,10 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
             }
             return monthDayFromFieldsNode.execute(calendar, fields, options);
         } else {
-            TemporalUtil.toTemporalOverflow(options, TemporalGetOptionNode.getUncached());
+            TemporalUtil.toTemporalOverflow(options, temporalGetOptionNode);
             TruffleString string = toStringNode.executeString(item);
             JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalMonthDayString(string);
-            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(result.getCalendar());
+            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(result.getCalendar());
             if (returnPlainMonthDay.profile(result.getYear() == Integer.MIN_VALUE)) {
                 return JSTemporalPlainMonthDay.create(ctx, result.getMonth(), result.getDay(), calendar, referenceISOYear, errorBranch);
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -57,7 +58,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalCalendarDateFromFieldsNode extends JavaScriptBaseNode {
 
-    private final BranchProfile errorBranch = BranchProfile.create();
     @Child protected PropertyGetNode getDateFromFieldsNode;
     @Child protected JSFunctionCallNode callNode;
 
@@ -66,14 +66,11 @@ public abstract class TemporalCalendarDateFromFieldsNode extends JavaScriptBaseN
         this.callNode = JSFunctionCallNode.createCall();
     }
 
-    public static TemporalCalendarDateFromFieldsNode create(JSContext context) {
-        return TemporalCalendarDateFromFieldsNodeGen.create(context);
-    }
-
     public abstract JSTemporalPlainDateObject execute(JSDynamicObject calendar, JSDynamicObject fields, Object options);
 
     @Specialization
-    public JSTemporalPlainDateObject toTemporalDate(JSDynamicObject calendar, JSDynamicObject fields, Object options) {
+    public JSTemporalPlainDateObject toTemporalDate(JSDynamicObject calendar, JSDynamicObject fields, Object options,
+                    @Cached BranchProfile errorBranch) {
         Object dateFromFields = getDateFromFieldsNode.getValue(calendar);
         Object date = callNode.executeCall(JSArguments.create(calendar, dateFromFields, fields, options));
         return TemporalUtil.requireTemporalDate(date, errorBranch);

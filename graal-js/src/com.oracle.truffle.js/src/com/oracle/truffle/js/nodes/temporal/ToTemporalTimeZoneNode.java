@@ -65,14 +65,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile parseNameEmpty = ConditionProfile.create();
-    private final ConditionProfile parseIsZ = ConditionProfile.create();
-    private final ConditionProfile isObjectProfile = ConditionProfile.create();
-    private final ConditionProfile isTimeZoneProfile = ConditionProfile.create();
-    private final ConditionProfile hasProperty1Profile = ConditionProfile.create();
-    private final ConditionProfile hasProperty2Profile = ConditionProfile.create();
-    private final BranchProfile errorBranch = BranchProfile.create();
-
     private final JSContext ctx;
     @Child protected PropertyGetNode getTimeZoneNode;
 
@@ -80,16 +72,19 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
         this.ctx = context;
     }
 
-    public static ToTemporalTimeZoneNode create(JSContext context) {
-        return ToTemporalTimeZoneNodeGen.create(context);
-    }
-
-    public abstract JSDynamicObject executeDynamicObject(Object temporalTimeZoneLike);
+    public abstract JSDynamicObject execute(Object temporalTimeZoneLike);
 
     @Specialization
     protected JSDynamicObject toTemporalTimeZone(Object temporalTimeZoneLikeParam,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached JSToStringNode toStringNode) {
+                    @Cached JSToStringNode toStringNode,
+                    @Cached BranchProfile errorBranch,
+                    @Cached ConditionProfile parseNameEmpty,
+                    @Cached ConditionProfile parseIsZ,
+                    @Cached ConditionProfile isObjectProfile,
+                    @Cached ConditionProfile isTimeZoneProfile,
+                    @Cached ConditionProfile hasProperty1Profile,
+                    @Cached ConditionProfile hasProperty2Profile) {
         Object temporalTimeZoneLike = temporalTimeZoneLikeParam;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(temporalTimeZoneLike))) {
             JSDynamicObject tzObj = (JSDynamicObject) temporalTimeZoneLike;
@@ -129,7 +124,7 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
     private Object getTimeZone(JSDynamicObject obj) {
         if (getTimeZoneNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getTimeZoneNode = insert(PropertyGetNode.create(TIME_ZONE, false, ctx));
+            getTimeZoneNode = insert(PropertyGetNode.create(TIME_ZONE, ctx));
         }
         return getTimeZoneNode.getValue(obj);
     }

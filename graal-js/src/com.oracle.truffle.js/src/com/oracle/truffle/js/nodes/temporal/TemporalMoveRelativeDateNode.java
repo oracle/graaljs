@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -63,26 +64,22 @@ public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
     protected final JSContext ctx;
     @Child private GetMethodNode getMethodDateAddNode;
     @Child private JSFunctionCallNode callDateAddNode;
-    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected TemporalMoveRelativeDateNode(JSContext ctx) {
         this.ctx = ctx;
     }
 
-    public static TemporalMoveRelativeDateNode create(JSContext ctx) {
-        return TemporalMoveRelativeDateNodeGen.create(ctx);
-    }
-
     public abstract JSTemporalRelativeDateRecord execute(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration);
 
     @Specialization
-    protected JSTemporalRelativeDateRecord moveRelativeDate(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration) {
-        JSTemporalPlainDateObject newDate = calendarDateAdd(calendar, relativeTo, duration);
+    protected JSTemporalRelativeDateRecord moveRelativeDate(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration,
+                    @Cached BranchProfile errorBranch) {
+        JSTemporalPlainDateObject newDate = calendarDateAdd(calendar, relativeTo, duration, errorBranch);
         long days = TemporalUtil.daysUntil(relativeTo, newDate);
         return JSTemporalRelativeDateRecord.create(newDate, days);
     }
 
-    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration) {
+    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, BranchProfile errorBranch) {
         if (getMethodDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getMethodDateAddNode = insert(GetMethodNode.create(ctx, TemporalConstants.DATE_ADD));

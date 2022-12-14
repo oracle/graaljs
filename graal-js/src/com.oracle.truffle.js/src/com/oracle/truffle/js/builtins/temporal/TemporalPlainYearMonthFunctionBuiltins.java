@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,7 +107,7 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
                 TemporalUtil.toTemporalOverflow(options, getOptionNode());
                 return JSTemporalPlainYearMonth.create(getContext(), pmd.getYear(), pmd.getMonth(), pmd.getCalendar(), pmd.getDay(), errorBranch);
             }
-            return toTemporalYearMonthNode.executeDynamicObject(item, options);
+            return toTemporalYearMonthNode.execute(item, options);
         }
 
     }
@@ -121,8 +121,8 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected int compare(Object one, Object two,
                         @Cached("create(getContext())") ToTemporalYearMonthNode toTemporalYearMonthNode) {
-            JSTemporalPlainYearMonthObject oneYM = toTemporalYearMonthNode.executeDynamicObject(one, Undefined.instance);
-            JSTemporalPlainYearMonthObject twoYM = toTemporalYearMonthNode.executeDynamicObject(two, Undefined.instance);
+            JSTemporalPlainYearMonthObject oneYM = toTemporalYearMonthNode.execute(one, Undefined.instance);
+            JSTemporalPlainYearMonthObject twoYM = toTemporalYearMonthNode.execute(two, Undefined.instance);
             return TemporalUtil.compareISODate(oneYM.getYear(), oneYM.getMonth(), oneYM.getDay(), twoYM.getYear(), twoYM.getMonth(), twoYM.getDay());
         }
 

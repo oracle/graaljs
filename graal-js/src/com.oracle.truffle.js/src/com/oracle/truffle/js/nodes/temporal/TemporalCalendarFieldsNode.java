@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.temporal;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -66,21 +67,17 @@ public abstract class TemporalCalendarFieldsNode extends JavaScriptBaseNode {
     private final JSContext ctx;
     @Child private GetMethodNode getMethodFieldsNode;
     @Child private JSFunctionCallNode callFieldsNode;
-    private final ConditionProfile fieldsUndefined = ConditionProfile.create();
 
     protected TemporalCalendarFieldsNode(JSContext ctx) {
         this.ctx = ctx;
         this.getMethodFieldsNode = GetMethodNode.create(ctx, TemporalConstants.FIELDS);
     }
 
-    public static TemporalCalendarFieldsNode create(JSContext ctx) {
-        return TemporalCalendarFieldsNodeGen.create(ctx);
-    }
-
     public abstract List<TruffleString> execute(JSDynamicObject calendar, List<TruffleString> strings);
 
     @Specialization
-    protected List<TruffleString> calendarFields(JSDynamicObject calendar, List<TruffleString> strings) {
+    protected List<TruffleString> calendarFields(JSDynamicObject calendar, List<TruffleString> strings,
+                    @Cached ConditionProfile fieldsUndefined) {
         Object fields = getMethodFieldsNode.executeWithTarget(calendar);
         if (fieldsUndefined.profile(fields == Undefined.instance)) {
             return strings;

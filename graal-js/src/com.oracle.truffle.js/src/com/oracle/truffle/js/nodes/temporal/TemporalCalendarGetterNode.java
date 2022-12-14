@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -65,16 +66,11 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callNode;
     @Child private JSToIntegerThrowOnInfinityNode toIntegerThrowOnInfinityNode;
     @Child private JSToStringNode toStringNode;
-    private final BranchProfile errorBranch = BranchProfile.create();
     private TruffleString cachedName;
 
     protected TemporalCalendarGetterNode(JSContext ctx) {
         this.ctx = ctx;
         this.callNode = JSFunctionCallNode.createCall();
-    }
-
-    public static TemporalCalendarGetterNode create(JSContext ctx) {
-        return TemporalCalendarGetterNodeGen.create(ctx);
     }
 
     public abstract Object execute(JSDynamicObject calendar, JSDynamicObject dateLike, TruffleString name);
@@ -96,7 +92,8 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected Object calendarGetter(JSDynamicObject calendar, JSDynamicObject dateLike, TruffleString name) {
+    protected Object calendarGetter(JSDynamicObject calendar, JSDynamicObject dateLike, TruffleString name,
+                    @Cached BranchProfile errorBranch) {
         Object fn = getMethod(calendar, name);
         Object result = callNode.executeCall(JSArguments.create(calendar, fn, dateLike));
 

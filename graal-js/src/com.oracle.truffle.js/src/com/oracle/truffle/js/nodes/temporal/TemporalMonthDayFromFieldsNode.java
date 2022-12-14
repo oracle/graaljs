@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -57,7 +58,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalMonthDayFromFieldsNode extends JavaScriptBaseNode {
 
-    protected final BranchProfile errorBranch = BranchProfile.create();
     @Child private GetMethodNode getMethodMonthDayFromFieldsNode;
     @Child private JSFunctionCallNode callMonthDayFromFieldsNode;
 
@@ -66,21 +66,18 @@ public abstract class TemporalMonthDayFromFieldsNode extends JavaScriptBaseNode 
         this.callMonthDayFromFieldsNode = JSFunctionCallNode.createCall();
     }
 
-    public static TemporalMonthDayFromFieldsNode create(JSContext ctx) {
-        return TemporalMonthDayFromFieldsNodeGen.create(ctx);
-    }
-
     public abstract JSTemporalPlainMonthDayObject execute(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options);
 
     @Specialization
-    protected JSTemporalPlainMonthDayObject monthDayFromFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options) {
+    protected JSTemporalPlainMonthDayObject monthDayFromFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options,
+                    @Cached BranchProfile errorBranch) {
         assert options != null;
         Object fn = getMethodMonthDayFromFieldsNode.executeWithTarget(calendar);
         Object monthDay = callMonthDayFromFieldsNode.executeCall(JSArguments.create(calendar, fn, fields, options));
-        return requireTemporalMonthDay(monthDay);
+        return requireTemporalMonthDay(monthDay, errorBranch);
     }
 
-    public JSTemporalPlainMonthDayObject requireTemporalMonthDay(Object obj) {
+    public JSTemporalPlainMonthDayObject requireTemporalMonthDay(Object obj, BranchProfile errorBranch) {
         if (!(obj instanceof JSTemporalPlainMonthDayObject)) {
             errorBranch.enter();
             throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
