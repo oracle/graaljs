@@ -52,7 +52,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNodeGen.DispatchBinaryOperatorNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToOperandNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
@@ -251,10 +250,6 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
 
         protected DispatchBinaryOperatorNode(TruffleString overloadedOperatorName) {
             this.overloadedOperatorName = overloadedOperatorName;
-        }
-
-        public static DispatchBinaryOperatorNode create(TruffleString overloadedOperatorName) {
-            return DispatchBinaryOperatorNodeGen.create(overloadedOperatorName);
         }
 
         protected abstract Object execute(Object left, Object right);

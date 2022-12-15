@@ -54,7 +54,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.FormatCacheNodeGen;
-import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.GetBuiltinToStringTagNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeDefineGetterOrSetterNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeHasOwnPropertyNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeIsPrototypeOfNodeGen;
@@ -378,10 +377,6 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     public abstract static class GetBuiltinToStringTagNode extends JavaScriptBaseNode {
 
         public abstract TruffleString execute(JSObject object);
-
-        public static GetBuiltinToStringTagNode create() {
-            return GetBuiltinToStringTagNodeGen.create();
-        }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "5")

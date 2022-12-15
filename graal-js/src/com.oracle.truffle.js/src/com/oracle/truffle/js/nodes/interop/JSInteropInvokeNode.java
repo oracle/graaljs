@@ -61,10 +61,6 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
     JSInteropInvokeNode() {
     }
 
-    public static JSInteropInvokeNode create() {
-        return JSInteropInvokeNodeGen.create();
-    }
-
     public abstract Object execute(JSDynamicObject receiver, TruffleString name, Object[] arguments) throws UnknownIdentifierException, UnsupportedMessageException;
 
     @Specialization(guards = {"stringEquals(equalNode, cachedName, name)"}, limit = "1")

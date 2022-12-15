@@ -913,10 +913,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             this.context = context;
         }
 
-        public static DeleteAndSetLengthNode create(JSContext context) {
-            return DeleteAndSetLengthNodeGen.create(context);
-        }
-
         public abstract void executeVoid(Object target, long newLength);
 
         @NeverDefault

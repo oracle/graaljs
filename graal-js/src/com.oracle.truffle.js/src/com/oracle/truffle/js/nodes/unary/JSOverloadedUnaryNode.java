@@ -71,10 +71,6 @@ public abstract class JSOverloadedUnaryNode extends JavaScriptBaseNode {
         this.overloadedOperatorName = overloadedOperatorName;
     }
 
-    public static JSOverloadedUnaryNode create(TruffleString overloadedOperatorName) {
-        return JSOverloadedUnaryNodeGen.create(overloadedOperatorName);
-    }
-
     public abstract Object execute(Object operand);
 
     @Specialization(guards = {"operand.matchesOperatorCounter(operatorCounter)"}, limit = "LIMIT")

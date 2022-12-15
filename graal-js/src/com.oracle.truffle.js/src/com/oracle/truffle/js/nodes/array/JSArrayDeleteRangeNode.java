@@ -66,10 +66,6 @@ public abstract class JSArrayDeleteRangeNode extends JavaScriptBaseNode {
         this.orThrow = orThrow;
     }
 
-    public static JSArrayDeleteRangeNode create(JSContext context, boolean orThrow) {
-        return JSArrayDeleteRangeNodeGen.create(context, orThrow);
-    }
-
     public abstract void execute(JSDynamicObject array, ScriptArray arrayType, long start, long end);
 
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "!cachedArrayType.isHolesType()"}, limit = "5")

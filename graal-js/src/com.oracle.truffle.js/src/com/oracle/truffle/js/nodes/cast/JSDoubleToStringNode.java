@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,10 +56,6 @@ import com.oracle.truffle.js.runtime.Strings;
  */
 @GenerateUncached
 public abstract class JSDoubleToStringNode extends JavaScriptBaseNode {
-
-    public static JSDoubleToStringNode create() {
-        return JSDoubleToStringNodeGen.create();
-    }
 
     public abstract TruffleString executeString(Object operand);
 

@@ -57,7 +57,6 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNodeGen.GetPropertyProxyValueNodeGen;
-import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNodeGen.UsesOrdinaryGetOwnPropertyNodeGen;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -271,10 +270,6 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     public abstract static class UsesOrdinaryGetOwnPropertyNode extends JavaScriptBaseNode {
 
         protected UsesOrdinaryGetOwnPropertyNode() {
-        }
-
-        public static UsesOrdinaryGetOwnPropertyNode create() {
-            return UsesOrdinaryGetOwnPropertyNodeGen.create();
         }
 
         public final boolean execute(JSDynamicObject object) {

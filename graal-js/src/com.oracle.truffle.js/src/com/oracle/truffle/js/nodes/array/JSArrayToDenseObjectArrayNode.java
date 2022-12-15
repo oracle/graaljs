@@ -68,10 +68,6 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
         this.context = Objects.requireNonNull(context);
     }
 
-    public static JSArrayToDenseObjectArrayNode create(JSContext context) {
-        return JSArrayToDenseObjectArrayNodeGen.create(context);
-    }
-
     public abstract Object[] executeObjectArray(JSDynamicObject array, ScriptArray arrayType, long length);
 
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "!cachedArrayType.isHolesType()", "!cachedArrayType.hasHoles(array)",

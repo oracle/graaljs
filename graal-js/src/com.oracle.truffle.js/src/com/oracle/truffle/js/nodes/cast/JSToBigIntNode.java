@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToBigIntNodeGen.JSToBigIntInnerConversionNodeGen;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSErrorType;
@@ -75,10 +74,6 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
     }
 
     public abstract static class JSToBigIntInnerConversionNode extends JavaScriptBaseNode {
-
-        public static JSToBigIntInnerConversionNode create() {
-            return JSToBigIntInnerConversionNodeGen.create();
-        }
 
         public abstract Object execute(Object value);
 

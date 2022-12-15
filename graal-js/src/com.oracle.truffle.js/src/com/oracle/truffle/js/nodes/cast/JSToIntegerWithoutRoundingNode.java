@@ -66,10 +66,6 @@ public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode 
         return (double) execute(value);
     }
 
-    public static JSToIntegerWithoutRoundingNode create() {
-        return JSToIntegerWithoutRoundingNodeGen.create();
-    }
-
     @Specialization
     protected static double doInteger(int value) {
         return value;
