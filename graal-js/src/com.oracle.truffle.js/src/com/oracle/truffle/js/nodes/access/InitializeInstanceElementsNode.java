@@ -126,7 +126,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL)
     @Specialization
     protected static Object withFields(Object target, Object constructor, ClassElementDefinitionRecord[] fields, JSFunctionObject[] initializers, Object brand,
-                    @Cached("createBrandAddNode(brand, context)") @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode,
+                    @Cached(value = "createBrandAddNode(brand, context)", neverDefault = false) @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode,
                     @Cached("createFieldNodes(fields, context)") DefineFieldNode[] fieldNodes,
                     @Cached("createCall()") JSFunctionCallNode callInit) {
         privateBrandAdd(target, constructor, fields, initializers, brand, privateBrandAddNode);
@@ -156,7 +156,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
 
     @Specialization
     protected static Object privateBrandAdd(Object target, Object constructor, @SuppressWarnings("unused") Object fields, @SuppressWarnings("unused") Object initializers, Object brand,
-                    @Cached("createBrandAddNode(brand, context)") @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode) {
+                    @Cached(value = "createBrandAddNode(brand, context)", neverDefault = false) @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode) {
         // If constructor.[[PrivateBrand]] is not undefined,
         // Perform ? PrivateBrandAdd(O, constructor.[[PrivateBrand]]).
         assert (privateBrandAddNode != null) == (brand != Undefined.instance);
