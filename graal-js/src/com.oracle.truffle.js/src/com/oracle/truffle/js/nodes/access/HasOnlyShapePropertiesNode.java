@@ -71,7 +71,7 @@ public abstract class HasOnlyShapePropertiesNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isJSObjectPrototype(jsclass)"})
     static boolean doObjectPrototype(JSDynamicObject object, JSClass jsclass,
-                    @Cached("getJSContext(object)") JSContext context) {
+                    @Cached("getLanguage().getJSContext()") JSContext context) {
         if (context.getArrayPrototypeNoElementsAssumption().isValid()) {
             assert jsclass.hasOnlyShapeProperties(object);
             return true;
