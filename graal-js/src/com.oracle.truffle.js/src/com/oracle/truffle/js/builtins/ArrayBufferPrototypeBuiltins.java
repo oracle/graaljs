@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -230,8 +231,6 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
     @ImportStatic({JSArrayBuffer.class, JSConfig.class})
     public abstract static class JSArrayBufferSliceNode extends JSArrayBufferAbstractSliceNode {
 
-        private final BranchProfile errorBranch = BranchProfile.create();
-
         public JSArrayBufferSliceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -256,14 +255,15 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
          * @return sliced ArrayBuffer
          */
         @Specialization(guards = "isJSHeapArrayBuffer(thisObj)")
-        protected JSDynamicObject sliceIntInt(JSDynamicObject thisObj, int begin, int end) {
+        protected JSDynamicObject sliceIntInt(JSDynamicObject thisObj, int begin, int end,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch) {
             byte[] byteArray = JSArrayBuffer.getByteArray(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteArray.length);
             int clampedEnd = clampIndex(end, clampedBegin, byteArray.length);
             int newLen = Math.max(clampedEnd - clampedBegin, 0);
 
             JSDynamicObject resObj = constructNewArrayBuffer(thisObj, newLen);
-            checkErrors(resObj, thisObj, newLen, false);
+            checkErrors(resObj, thisObj, newLen, false, errorBranch);
 
             byte[] newByteArray = JSArrayBuffer.getByteArray(resObj);
             System.arraycopy(byteArray, clampedBegin, newByteArray, 0, newLen);
@@ -276,7 +276,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return (JSDynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
         }
 
-        private void checkErrors(Object resObj, Object thisObj, int newLen, boolean direct) {
+        private void checkErrors(Object resObj, Object thisObj, int newLen, boolean direct, BranchProfile errorBranch) {
             if ((direct && !JSArrayBuffer.isJSDirectArrayBuffer(resObj)) || (!direct && !JSArrayBuffer.isJSHeapArrayBuffer(resObj))) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorArrayBufferExpected();
@@ -302,15 +302,17 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(guards = "isJSHeapArrayBuffer(thisObj)", replaces = "sliceIntInt")
-        protected JSDynamicObject slice(JSDynamicObject thisObj, Object begin0, Object end0) {
+        protected JSDynamicObject slice(JSDynamicObject thisObj, Object begin0, Object end0,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch) {
             int len = JSArrayBuffer.getByteArray(thisObj).length;
             int begin = getStart(begin0, len);
             int finalEnd = getEnd(end0, len);
-            return sliceIntInt(thisObj, begin, finalEnd);
+            return sliceIntInt(thisObj, begin, finalEnd, errorBranch);
         }
 
         @Specialization(guards = "isJSDirectArrayBuffer(thisObj)")
-        protected JSDynamicObject sliceDirectIntInt(JSDynamicObject thisObj, int begin, int end) {
+        protected JSDynamicObject sliceDirectIntInt(JSDynamicObject thisObj, int begin, int end,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch) {
             ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(thisObj);
             int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteLength);
@@ -318,7 +320,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             int newLen = clampedEnd - clampedBegin;
 
             JSDynamicObject resObj = constructNewArrayBuffer(thisObj, newLen);
-            checkErrors(resObj, thisObj, newLen, true);
+            checkErrors(resObj, thisObj, newLen, true, errorBranch);
 
             ByteBuffer resBuffer = JSArrayBuffer.getDirectByteBuffer(resObj);
             Boundaries.byteBufferPutSlice(resBuffer, 0, byteBuffer, clampedBegin, clampedEnd);
@@ -326,15 +328,17 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization(guards = "isJSDirectArrayBuffer(thisObj)", replaces = "sliceDirectIntInt")
-        protected JSDynamicObject sliceDirect(JSDynamicObject thisObj, Object begin0, Object end0) {
+        protected JSDynamicObject sliceDirect(JSDynamicObject thisObj, Object begin0, Object end0,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch) {
             int len = JSArrayBuffer.getDirectByteLength(thisObj);
             int begin = getStart(begin0, len);
             int end = getEnd(end0, len);
-            return sliceDirectIntInt(thisObj, begin, end);
+            return sliceDirectIntInt(thisObj, begin, end, errorBranch);
         }
 
         @Specialization(guards = "isJSInteropArrayBuffer(thisObj)")
         protected Object sliceInterop(JSDynamicObject thisObj, Object begin0, Object end0,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("srcBufferLib") InteropLibrary srcBufferLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("dstBufferLib") InteropLibrary dstBufferLib) {
             Object interopBuffer = JSArrayBuffer.getInteropBuffer(thisObj);
@@ -346,13 +350,14 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             int newLen = Math.max(clampedEnd - clampedBegin, 0);
 
             Object resObj = constructNewArrayBuffer(thisObj, newLen);
-            checkErrors(resObj, thisObj, newLen, getContext().isOptionDirectByteBuffer());
+            checkErrors(resObj, thisObj, newLen, getContext().isOptionDirectByteBuffer(), errorBranch);
 
-            copyInteropBufferElements(thisObj, resObj, clampedBegin, newLen, srcBufferLib, dstBufferLib);
+            copyInteropBufferElements(thisObj, resObj, clampedBegin, newLen, errorBranch, srcBufferLib, dstBufferLib);
             return resObj;
         }
 
-        private void copyInteropBufferElements(Object srcBuffer, Object dstBuffer, int srcBufferOffset, int len, InteropLibrary srcBufferLib, InteropLibrary dstBufferLib) {
+        private static void copyInteropBufferElements(Object srcBuffer, Object dstBuffer, int srcBufferOffset, int len,
+                        BranchProfile errorBranch, InteropLibrary srcBufferLib, InteropLibrary dstBufferLib) {
             try {
                 for (int i = 0; i < len; i++) {
                     dstBufferLib.writeBufferByte(dstBuffer, i, srcBufferLib.readBufferByte(srcBuffer, srcBufferOffset + i));
@@ -365,9 +370,11 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization(guards = {"!isJSSharedArrayBuffer(thisObj)", "hasBufferElements(thisObj, srcBufferLib)"})
         protected Object sliceTruffleBuffer(Object thisObj, Object begin0, Object end0,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("srcBufferLib") InteropLibrary srcBufferLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("dstBufferLib") InteropLibrary dstBufferLib) {
-            return sliceInterop(JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), thisObj), begin0, end0, srcBufferLib, dstBufferLib);
+            return sliceInterop(JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), thisObj), begin0, end0,
+                            errorBranch, srcBufferLib, dstBufferLib);
         }
 
         @Fallback

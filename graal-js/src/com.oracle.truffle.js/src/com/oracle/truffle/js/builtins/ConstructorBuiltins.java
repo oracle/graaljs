@@ -1433,17 +1433,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private PropertyGetNode getSourceNode;
         @Child private PropertyGetNode getFlagsNode;
         @Child private TRegexUtil.InteropReadStringMemberNode interopReadPatternNode;
-        private final BranchProfile regexpObject = BranchProfile.create();
-        private final BranchProfile regexpMatcherObject = BranchProfile.create();
-        private final BranchProfile regexpNonObject = BranchProfile.create();
-        private final BranchProfile regexpObjectNewFlagsBranch = BranchProfile.create();
-        private final ConditionProfile callIsRegExpProfile = ConditionProfile.create();
-        private final ConditionProfile constructorEquivalentProfile = ConditionProfile.create();
 
         @Specialization
         protected JSDynamicObject constructRegExp(JSDynamicObject newTarget, Object pattern, Object flags,
-                        @Cached("create(getContext())") IsRegExpNode isRegExpNode) {
+                        @Cached("create(getContext())") IsRegExpNode isRegExpNode,
+                        @Cached BranchProfile regexpObject,
+                        @Cached BranchProfile regexpMatcherObject,
+                        @Cached BranchProfile regexpNonObject,
+                        @Cached BranchProfile regexpObjectNewFlagsBranch,
+                        @Cached ConditionProfile callIsRegExpProfile,
+                        @Cached ConditionProfile constructorEquivalentProfile) {
             boolean hasMatchSymbol = isRegExpNode.executeBoolean(pattern);
+            boolean legacyFeaturesEnabled;
             if (isCall) {
                 // we are in the "call" case, i.e. NewTarget is undefined (before)
                 if (callIsRegExpProfile.profile(hasMatchSymbol && flags == Undefined.instance && JSDynamicObject.isJSDynamicObject(pattern))) {
@@ -1453,15 +1454,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         return patternObj;
                     }
                 }
-                return constructRegExpImpl(pattern, flags, hasMatchSymbol, true);
+                legacyFeaturesEnabled = true;
             } else {
                 // we are in the "construct" case, i.e. NewTarget is NOT undefined
-                return swapPrototype(constructRegExpImpl(pattern, flags, hasMatchSymbol, newTarget == getRealm().getRegExpConstructor()), newTarget);
+                legacyFeaturesEnabled = newTarget == getRealm().getRegExpConstructor();
             }
-
+            JSRegExpObject regExpObject = constructRegExpImpl(pattern, flags, hasMatchSymbol, legacyFeaturesEnabled,
+                            regexpObject, regexpMatcherObject, regexpNonObject, regexpObjectNewFlagsBranch);
+            return isCall ? regExpObject : swapPrototype(regExpObject, newTarget);
         }
 
-        protected JSRegExpObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol, boolean legacyFeaturesEnabled) {
+        protected JSRegExpObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol, boolean legacyFeaturesEnabled,
+                        BranchProfile regexpObject, BranchProfile regexpMatcherObject, BranchProfile regexpNonObject, BranchProfile regexpObjectNewFlagsBranch) {
             Object p;
             Object f;
             boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);

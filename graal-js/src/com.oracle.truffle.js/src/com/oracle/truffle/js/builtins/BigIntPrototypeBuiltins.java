@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -143,28 +145,30 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final BranchProfile radixErrorBranch = BranchProfile.create();
-
         @SuppressWarnings("unused")
         @Specialization(guards = {"isUndefined(radix)"})
-        protected TruffleString toStringBigIntRadix10(BigInt thisObj, Object radix) {
-            return toStringImpl(thisObj, 10);
+        protected TruffleString toStringBigIntRadix10(BigInt thisObj, Object radix,
+                        @Cached @Shared("radixError") BranchProfile radixErrorBranch) {
+            return toStringImpl(thisObj, 10, radixErrorBranch);
         }
 
         @Specialization(guards = {"!isUndefined(radix)"})
-        protected TruffleString toStringBigInt(BigInt thisObj, Object radix) {
-            return toStringImpl(thisObj, radix);
+        protected TruffleString toStringBigInt(BigInt thisObj, Object radix,
+                        @Cached @Shared("radixError") BranchProfile radixErrorBranch) {
+            return toStringImpl(thisObj, radix, radixErrorBranch);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSBigInt(thisObj)", "isUndefined(radix)"})
-        protected TruffleString toStringRadix10(JSDynamicObject thisObj, Object radix) {
-            return toStringImpl(JSBigInt.valueOf(thisObj), 10);
+        protected TruffleString toStringRadix10(JSDynamicObject thisObj, Object radix,
+                        @Cached @Shared("radixError") BranchProfile radixErrorBranch) {
+            return toStringImpl(JSBigInt.valueOf(thisObj), 10, radixErrorBranch);
         }
 
         @Specialization(guards = {"isJSBigInt(thisObj)", "!isUndefined(radix)"})
-        protected TruffleString toString(JSDynamicObject thisObj, Object radix) {
-            return toStringImpl(JSBigInt.valueOf(thisObj), radix);
+        protected TruffleString toString(JSDynamicObject thisObj, Object radix,
+                        @Cached @Shared("radixError") BranchProfile radixErrorBranch) {
+            return toStringImpl(JSBigInt.valueOf(thisObj), radix, radixErrorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -173,7 +177,7 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeError("BigInt.prototype.toString requires that 'this' be a BigInt");
         }
 
-        private TruffleString toStringImpl(BigInt numberVal, Object radix) {
+        private TruffleString toStringImpl(BigInt numberVal, Object radix, BranchProfile radixErrorBranch) {
             int radixVal = toIntegerAsInt(radix);
             if (radixVal < 2 || radixVal > 36) {
                 radixErrorBranch.enter();

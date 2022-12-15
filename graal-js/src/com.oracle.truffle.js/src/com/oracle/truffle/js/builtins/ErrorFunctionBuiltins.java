@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -76,7 +77,6 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
     public abstract static class ErrorCaptureStackTraceNode extends JSBuiltinNode {
         @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
         @Child private InitErrorObjectNode initErrorObjectNode;
-        private final BranchProfile errorProfile = BranchProfile.create();
 
         public ErrorCaptureStackTraceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -85,7 +85,8 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
         }
 
         @Specialization
-        protected Object captureStackTrace(VirtualFrame frame, Object object, Object skipUpTo) {
+        protected Object captureStackTrace(VirtualFrame frame, Object object, Object skipUpTo,
+                        @Cached BranchProfile errorProfile) {
             if (!JSRuntime.isObject(object)) {
                 errorProfile.enter();
                 throw Errors.createTypeError("invalid_argument");

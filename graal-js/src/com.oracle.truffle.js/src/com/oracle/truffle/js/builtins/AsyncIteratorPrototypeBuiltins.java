@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -1097,8 +1098,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
 
-        private final BranchProfile errorBranch = BranchProfile.create();
-
         public AsyncIteratorTakeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
@@ -1109,7 +1108,8 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization
-        public JSDynamicObject take(Object thisObj, Object limit) {
+        public JSDynamicObject take(Object thisObj, Object limit,
+                        @Cached BranchProfile errorBranch) {
             IteratorRecord record = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
@@ -1216,8 +1216,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
 
-        private final BranchProfile errorProfile = BranchProfile.create();
-
         public AsyncIteratorDropNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
@@ -1228,18 +1226,19 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization
-        public JSDynamicObject drop(Object thisObj, Object limit) {
+        public JSDynamicObject drop(Object thisObj, Object limit,
+                        @Cached BranchProfile errorBranch) {
             IteratorRecord record = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
-                errorProfile.enter();
+                errorBranch.enter();
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
             if (integerLimit < 0) {
-                errorProfile.enter();
+                errorBranch.enter();
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 

@@ -328,11 +328,10 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             super(context, builtin);
         }
 
-        private final BranchProfile errorBranch = BranchProfile.create();
-
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
-        protected Object extend(Object[] arguments) {
+        protected Object extend(Object[] arguments,
+                        @Cached BranchProfile errorBranch) {
             if (JSConfig.SubstrateVM) {
                 throw Errors.unsupported("JavaAdapter");
             }

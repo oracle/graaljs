@@ -2081,35 +2081,43 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringSubstrNode extends JSStringOperation {
 
-        private final BranchProfile startNegativeBranch = BranchProfile.create();
-        private final BranchProfile finalLenEmptyBranch = BranchProfile.create();
-
-        @Child private TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
-
         public JSStringSubstrNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object substrInt(TruffleString thisStr, int start, int length) {
-            return substrIntl(thisStr, start, length);
+        protected Object substrInt(TruffleString thisStr, int start, int length,
+                        @Cached @Shared("substring") TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared("startNegativeBranch") BranchProfile startNegativeBranch,
+                        @Cached @Shared("finalLenEmptyBranch") BranchProfile finalLenEmptyBranch) {
+            return substrIntl(thisStr, start, length,
+                            substringNode, startNegativeBranch, finalLenEmptyBranch);
         }
 
         @Specialization(guards = "isUndefined(length)")
-        protected Object substrLenUndef(TruffleString thisStr, int start, @SuppressWarnings("unused") Object length) {
-            return substrIntl(thisStr, start, Strings.length(thisStr));
+        protected Object substrLenUndef(TruffleString thisStr, int start, @SuppressWarnings("unused") Object length,
+                        @Cached @Shared("substring") TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared("startNegativeBranch") BranchProfile startNegativeBranch,
+                        @Cached @Shared("finalLenEmptyBranch") BranchProfile finalLenEmptyBranch) {
+            return substrIntl(thisStr, start, Strings.length(thisStr),
+                            substringNode, startNegativeBranch, finalLenEmptyBranch);
         }
 
         @Specialization
-        protected Object substrGeneric(Object thisObj, Object start, Object length) {
+        protected Object substrGeneric(Object thisObj, Object start, Object length,
+                        @Cached @Shared("substring") TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared("startNegativeBranch") BranchProfile startNegativeBranch,
+                        @Cached @Shared("finalLenEmptyBranch") BranchProfile finalLenEmptyBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             int startInt = toIntegerAsInt(start);
             int len = (length == Undefined.instance) ? Strings.length(thisStr) : toIntegerAsInt(length);
-            return substrIntl(thisStr, startInt, len);
+            return substrIntl(thisStr, startInt, len,
+                            substringNode, startNegativeBranch, finalLenEmptyBranch);
         }
 
-        private Object substrIntl(TruffleString thisStr, int start, int length) {
+        private Object substrIntl(TruffleString thisStr, int start, int length,
+                        TruffleString.SubstringByteIndexNode substringNode, BranchProfile startNegativeBranch, BranchProfile finalLenEmptyBranch) {
             int startInt = start;
             if (startInt < 0) {
                 startNegativeBranch.enter();
@@ -2135,17 +2143,16 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private IsRegExpNode isRegExpNode;
         @Child private PropertyGetNode getFlagsNode;
         @Child private TruffleString.ByteIndexOfCodePointNode stringIndexOfNode;
-        private final BranchProfile errorBranch;
         private final boolean matchAll;
 
         protected JSStringMatchNode(JSContext context, JSBuiltin builtin, boolean matchAll) {
             super(context, builtin);
             this.matchAll = matchAll;
-            this.errorBranch = matchAll ? BranchProfile.create() : null;
         }
 
         @Specialization
-        protected Object match(Object thisObj, Object regex) {
+        protected Object match(Object thisObj, Object regex,
+                        @Cached BranchProfile errorBranch) {
             requireObjectCoercible(thisObj);
             if (isSpecialProfile.profile(!(regex == Undefined.instance || regex == Null.instance))) {
                 if (matchAll && getIsRegExpNode().executeBoolean(regex)) {
@@ -2603,7 +2610,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final BranchProfile noStringBranch = BranchProfile.create();
 
         @Specialization(guards = "isUndefined(position)")
         protected boolean includesString(TruffleString thisStr, TruffleString searchStr, @SuppressWarnings("unused") Object position,
@@ -2615,11 +2621,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected boolean includesGeneric(Object thisObj, Object searchString, Object position,
                         @Cached JSToStringNode toString2Node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode,
-                        @Cached @Shared("indexOfStringNode") TruffleString.ByteIndexOfStringNode indexOfStringNode) {
+                        @Cached @Shared("indexOfStringNode") TruffleString.ByteIndexOfStringNode indexOfStringNode,
+                        @Cached BranchProfile errorBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
-                noStringBranch.enter();
+                errorBranch.enter();
                 throw Errors.createTypeError("First argument to String.prototype.includes must not be a regular expression");
             }
             TruffleString searchStr = toString2Node.executeString(searchString);
@@ -2632,7 +2639,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * Implementation of the String.prototype.repeat() method of ECMAScript6/Harmony.
      */
     public abstract static class JSStringRepeatNode extends JSStringOperation {
-        private final BranchProfile errorBranch = BranchProfile.create();
 
         public JSStringRepeatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -2641,7 +2647,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected Object repeat(Object thisObj, Object count,
                         @Cached JSToNumberNode toNumberNode,
-                        @Cached TruffleString.RepeatNode repeatNode) {
+                        @Cached TruffleString.RepeatNode repeatNode,
+                        @Cached BranchProfile errorBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             Number repeatCountN = toNumberNode.executeNumber(count);
@@ -2675,13 +2682,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final BranchProfile undefinedBranch = BranchProfile.create();
-        private final BranchProfile needSecondBranch = BranchProfile.create();
-        private final BranchProfile needCalculationBranch = BranchProfile.create();
-
         @Specialization
         protected Object codePointAt(Object thisObj, Object position,
-                        @Cached TruffleString.CodePointAtByteIndexNode codePointAtRawNode) {
+                        @Cached TruffleString.CodePointAtByteIndexNode codePointAtRawNode,
+                        @Cached BranchProfile undefinedBranch,
+                        @Cached BranchProfile needSecondBranch,
+                        @Cached BranchProfile needCalculationBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             int pos = toIntegerAsInt(position);

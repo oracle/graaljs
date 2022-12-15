@@ -558,7 +558,6 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     @ImportStatic({JSConfig.class})
     public abstract static class JSNumberToPrecisionNode extends JSNumberOperation {
-        private final BranchProfile precisionErrorBranch = BranchProfile.create();
 
         public JSNumberToPrecisionNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -573,10 +572,11 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = {"isJSNumber(thisNumber)", "!isUndefined(precision)"})
         protected Object toPrecision(JSDynamicObject thisNumber, Object precision,
-                        @Shared("toNumber") @Cached JSToNumberNode toNumberNode) {
+                        @Shared("toNumber") @Cached JSToNumberNode toNumberNode,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch) {
             long lPrecision = JSRuntime.toInteger(toNumberNode.executeNumber(precision));
             double thisNumberVal = getDoubleValue(thisNumber);
-            return toPrecisionIntl(thisNumberVal, lPrecision);
+            return toPrecisionIntl(thisNumberVal, lPrecision, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -588,10 +588,11 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = {"isJavaNumber(thisNumber)", "!isUndefined(precision)"})
         protected Object toPrecisionPrimitive(Object thisNumber, Object precision,
-                        @Shared("toNumber") @Cached JSToNumberNode toNumberNode) {
+                        @Shared("toNumber") @Cached JSToNumberNode toNumberNode,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch) {
             long lPrecision = JSRuntime.toInteger(toNumberNode.executeNumber(precision));
             double thisNumberVal = JSRuntime.doubleValue((Number) thisNumber);
-            return toPrecisionIntl(thisNumberVal, lPrecision);
+            return toPrecisionIntl(thisNumberVal, lPrecision, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -605,10 +606,11 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = {"isForeignObject(thisNumber)", "!isUndefined(precision)"}, limit = "InteropLibraryLimit")
         protected Object toPrecisionForeignObject(Object thisNumber, Object precision,
                         @Shared("toNumber") @Cached JSToNumberNode toNumberNode,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary("thisNumber") InteropLibrary interop) {
             double thisNumberVal = getDoubleValue(interop, thisNumber);
             long lPrecision = JSRuntime.toInteger(toNumberNode.executeNumber(precision));
-            return toPrecisionIntl(thisNumberVal, lPrecision);
+            return toPrecisionIntl(thisNumberVal, lPrecision, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -617,20 +619,20 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorNotANumber(thisNumber);
         }
 
-        private Object toPrecisionIntl(double thisNumberVal, long lPrecision) {
+        private Object toPrecisionIntl(double thisNumberVal, long lPrecision, BranchProfile errorBranch) {
             if (Double.isNaN(thisNumberVal)) {
                 return Strings.NAN;
             } else if (Double.isInfinite(thisNumberVal)) {
                 return (thisNumberVal < 0) ? Strings.NEGATIVE_INFINITY : Strings.INFINITY;
             }
-            checkPrecision(lPrecision);
+            checkPrecision(lPrecision, errorBranch);
             return JSRuntime.formatDtoAPrecision(thisNumberVal, (int) lPrecision);
         }
 
-        private void checkPrecision(long precision) {
+        private void checkPrecision(long precision, BranchProfile errorBranch) {
             int maxPrecision = (getContext().getEcmaScriptVersion() >= JSConfig.ECMAScript2018) ? 100 : 20;
             if (precision < 1 || precision > maxPrecision) {
-                precisionErrorBranch.enter();
+                errorBranch.enter();
                 throw precisionRangeError(maxPrecision);
             }
         }

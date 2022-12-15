@@ -906,17 +906,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             super(context, builtin);
         }
 
-        @Child private JSToInt32Node toInt32Node;
-        private final BranchProfile needsNaN = BranchProfile.create();
-
-        protected int toInt32(Object target) {
-            if (toInt32Node == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toInt32Node = insert(JSToInt32Node.create());
-            }
-            return toInt32Node.executeInt(target);
-        }
-
         @Specialization(guards = "isUndefined(radix0)")
         protected int parseIntNoRadix(int value, @SuppressWarnings("unused") Object radix0) {
             return value;
@@ -924,8 +913,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "!isUndefined(radix0)")
         protected Object parseIntInt(int value, Object radix0,
-                        @Cached @Shared("convertToRadixBranch") BranchProfile needsRadixConversion) {
-            int radix = toInt32(radix0);
+                        @Cached @Shared("toInt32") JSToInt32Node toInt32,
+                        @Cached @Shared("convertToRadixBranch") BranchProfile needsRadixConversion,
+                        @Cached @Shared("needsNaN") BranchProfile needsNaN) {
+            int radix = toInt32.executeInt(radix0);
             if (radix == 10 || radix == 0) {
                 return value;
             }
@@ -960,8 +951,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "hasRegularToString(value)")
         protected double parseIntDouble(double value, Object radix0,
-                        @Cached @Shared("convertToRadixBranch") BranchProfile needsRadixConversion) {
-            int radix = toInt32(radix0);
+                        @Cached @Shared("toInt32") JSToInt32Node toInt32,
+                        @Cached @Shared("convertToRadixBranch") BranchProfile needsRadixConversion,
+                        @Cached @Shared("needsNaN") BranchProfile needsNaN) {
+            int radix = toInt32.executeInt(radix0);
             if (radix == 0) {
                 radix = 10;
             } else if (radix < 2 || radix > 36) {
@@ -1048,6 +1041,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization(guards = "!isShortStringInt10(input, radix0)")
         protected Object parseIntGeneric(Object input, Object radix0,
                         @Cached JSToStringNode toStringNode,
+                        @Cached @Shared("toInt32") JSToInt32Node toInt32,
+                        @Cached @Shared("needsNaN") BranchProfile needsNaN,
                         @Cached @Exclusive BranchProfile needsRadix16,
                         @Cached @Exclusive BranchProfile needsDontFitLong,
                         @Cached @Shared("readChar") TruffleString.ReadCharUTF16Node readRawNode,
@@ -1057,7 +1052,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             int firstIdx = JSRuntime.firstNonWhitespaceIndex(inputStr, false, readRawNode);
             int lastIdx = JSRuntime.lastNonWhitespaceIndex(inputStr, false, readRawNode) + 1;
 
-            int radix = toInt32(radix0);
+            int radix = toInt32.executeInt(radix0);
             if (lastIdx <= firstIdx) {
                 needsNaN.enter();
                 return Double.NaN;
@@ -1347,8 +1342,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     public abstract static class JSGlobalPrintNode extends JSGlobalOperation {
 
-        private final ConditionProfile argumentsCount = ConditionProfile.create();
-        private final BranchProfile consoleIndentation = BranchProfile.create();
         private final boolean useErr;
         private final boolean noNewLine;
 
@@ -1361,7 +1354,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         public abstract Object executeObjectArray(Object[] args);
 
         @Specialization
-        protected Object print(Object[] arguments) {
+        protected Object print(Object[] arguments,
+                        @Cached ConditionProfile argumentsCount,
+                        @Cached BranchProfile consoleIndentation) {
             // without a StringBuilder, synchronization fails testnashorn JDK-8041998.js
             TruffleStringBuilder builder = Strings.builderCreate();
             JSConsoleUtil consoleUtil = getRealm().getConsoleUtil();

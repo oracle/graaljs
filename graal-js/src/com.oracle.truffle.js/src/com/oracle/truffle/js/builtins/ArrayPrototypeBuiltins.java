@@ -1549,17 +1549,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayIndexOfNode extends ArrayForEachIndexCallOperation {
         private final boolean isForward;
 
-        @Child private JSToIntegerAsLongNode toIntegerNode;
-        private final BranchProfile arrayWithContentBranch = BranchProfile.create();
-        private final BranchProfile fromConversionBranch = BranchProfile.create();
-
         public JSArrayIndexOfNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation, boolean isForward) {
             super(context, builtin, isTypedArrayImplementation);
             this.isForward = isForward;
         }
 
         @Specialization
-        protected Object indexOf(Object thisObj, Object[] args) {
+        protected Object indexOf(Object thisObj, Object[] args,
+                        @Cached BranchProfile arrayWithContentBranch,
+                        @Cached JSToIntegerAsLongNode toInteger) {
             Object thisJSObject = toObjectOrValidateTypedArray(thisObj);
             long len = getLength(thisJSObject);
             if (len == 0) {
@@ -1569,7 +1567,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object searchElement = JSRuntime.getArgOrUndefined(args, 0);
             Object fromIndex = JSRuntime.getArgOrUndefined(args, 1);
 
-            long fromIndexValue = isForward() ? calcFromIndexForward(args, len, fromIndex) : calcFromIndexBackward(args, len, fromIndex);
+            long fromIndexValue = isForward()
+                            ? calcFromIndexForward(args, len, fromIndex, toInteger)
+                            : calcFromIndexBackward(args, len, fromIndex, toInteger);
             if (fromIndexValue < 0) {
                 return -1;
             }
@@ -1577,12 +1577,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         // for indexOf()
-        private long calcFromIndexForward(Object[] args, long len, Object fromIndex) {
+        private static long calcFromIndexForward(Object[] args, long len, Object fromIndex, JSToIntegerAsLongNode toInteger) {
             if (args.length <= 1) {
                 return 0;
             } else {
-                fromConversionBranch.enter();
-                long fromIndexValue = toInteger(fromIndex);
+                long fromIndexValue = toInteger.executeLong(fromIndex);
                 if (fromIndexValue > len) {
                     return -1;
                 }
@@ -1595,26 +1594,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         // for lastIndexOf()
-        private long calcFromIndexBackward(Object[] args, long len, Object fromIndex) {
+        private static long calcFromIndexBackward(Object[] args, long len, Object fromIndex, JSToIntegerAsLongNode toInteger) {
             if (args.length <= 1) {
                 return len - 1;
             } else {
-                fromConversionBranch.enter();
-                long fromIndexInt = toInteger(fromIndex);
+                long fromIndexInt = toInteger.executeLong(fromIndex);
                 if (fromIndexInt >= 0) {
                     return Math.min(fromIndexInt, len - 1);
                 } else {
                     return fromIndexInt + len;
                 }
             }
-        }
-
-        private long toInteger(Object operand) {
-            if (toIntegerNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntegerNode = insert(JSToIntegerAsLongNode.create());
-            }
-            return toIntegerNode.executeLong(operand);
         }
 
         @Override
@@ -1652,13 +1642,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSToStringNode elementToStringNode;
         @Child private TruffleString.ConcatNode stringConcatNode;
         @Child private InteropLibrary interopLibrary;
-        private final ConditionProfile separatorNotEmpty = ConditionProfile.create();
-        private final ConditionProfile isZero = ConditionProfile.create();
-        private final ConditionProfile isOne = ConditionProfile.create();
-        private final ConditionProfile isTwo = ConditionProfile.create();
-        private final ConditionProfile isSparse = ConditionProfile.create();
         private final BranchProfile growProfile = BranchProfile.create();
-        private final BranchProfile stackGrowProfile = BranchProfile.create();
         private final StringBuilderProfile stringBuilderProfile;
 
         @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
@@ -1671,7 +1655,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected TruffleString join(Object thisObj, Object joinStr) {
+        protected TruffleString join(Object thisObj, Object joinStr,
+                        @Cached ConditionProfile separatorNotEmpty,
+                        @Cached ConditionProfile isZero,
+                        @Cached ConditionProfile isOne,
+                        @Cached ConditionProfile isTwo,
+                        @Cached ConditionProfile isSparse,
+                        @Cached BranchProfile stackGrowProfile) {
             final Object thisJSObject = toObjectOrValidateTypedArray(thisObj);
             final long length = getLength(thisJSObject);
             final TruffleString joinSeparator = joinStr == Undefined.instance ? Strings.COMMA : getSeparatorToString().executeString(joinStr);
@@ -1853,13 +1843,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayToLocaleStringNode extends JSArrayOperation {
         private final boolean passArguments;
         private final StringBuilderProfile stringBuilderProfile;
-        private final BranchProfile stackGrowProfile = BranchProfile.create();
         @Child private PropertyGetNode getToLocaleStringNode;
         @Child private JSFunctionCallNode callToLocaleStringNode;
-
-        @Child private TruffleStringBuilder.AppendCharUTF16Node appendCharNode;
-        @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
-        @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
 
         public JSArrayToLocaleStringNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -1869,7 +1854,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected TruffleString toLocaleString(VirtualFrame frame, Object thisObj,
-                        @Cached JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode,
+                        @Cached TruffleStringBuilder.AppendCharUTF16Node appendCharNode,
+                        @Cached TruffleStringBuilder.AppendStringNode appendStringNode,
+                        @Cached TruffleStringBuilder.ToStringNode builderToStringNode,
+                        @Cached BranchProfile stackGrowProfile) {
             Object arrayObj = toObjectOrValidateTypedArray(thisObj);
             long len = getLength(arrayObj);
             if (len == 0) {
@@ -1895,17 +1884,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder();
                 while (k < len) {
                     if (k > 0) {
-                        append(sb, ',');
+                        stringBuilderProfile.append(appendCharNode, sb, ',');
                     }
                     Object nextElement = read(arrayObj, k);
                     if (nextElement != Null.instance && nextElement != Undefined.instance) {
                         Object result = callToLocaleString(nextElement, userArguments);
                         TruffleString resultString = toStringNode.executeString(result);
-                        append(sb, resultString);
+                        stringBuilderProfile.append(appendStringNode, sb, resultString);
                     }
                     k++;
                 }
-                return builderToString(sb);
+                return StringBuilderProfile.toString(builderToStringNode, sb);
             } finally {
                 realm.joinStackPop();
             }
@@ -1922,29 +1911,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return callToLocaleStringNode.executeCall(JSArguments.create(nextElement, toLocaleString, userArguments));
         }
 
-        private void append(TruffleStringBuilder sb, char c) {
-            if (appendCharNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                appendCharNode = insert(TruffleStringBuilder.AppendCharUTF16Node.create());
-            }
-            stringBuilderProfile.append(appendCharNode, sb, c);
-        }
-
-        private void append(TruffleStringBuilder sb, TruffleString s) {
-            if (appendStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                appendStringNode = insert(TruffleStringBuilder.AppendStringNode.create());
-            }
-            stringBuilderProfile.append(appendStringNode, sb, s);
-        }
-
-        private TruffleString builderToString(TruffleStringBuilder sb) {
-            if (builderToStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                builderToStringNode = insert(TruffleStringBuilder.ToStringNode.create());
-            }
-            return StringBuilderProfile.toString(builderToStringNode, sb);
-        }
     }
 
     public abstract static class JSArraySpliceNode extends JSArrayOperationWithToInt {
@@ -1952,13 +1918,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
         private final BranchProfile branchA = BranchProfile.create();
         private final BranchProfile branchB = BranchProfile.create();
-        private final BranchProfile branchDelete = BranchProfile.create();
-        private final BranchProfile objectBranch = BranchProfile.create();
-        private final ConditionProfile argsLength0Profile = ConditionProfile.create();
-        private final ConditionProfile argsLength1Profile = ConditionProfile.create();
-        private final ConditionProfile offsetProfile = ConditionProfile.create();
         private final BranchProfile needMoveDeleteBranch = BranchProfile.create();
-        private final BranchProfile needInsertBranch = BranchProfile.create();
         @Child private InteropLibrary arrayInterop;
 
         public JSArraySpliceNode(JSContext context, JSBuiltin builtin) {
@@ -1968,7 +1928,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected JSDynamicObject splice(Object thisArg, Object[] args,
-                        @Cached("create(getContext())") SpliceJSArrayNode spliceJSArray) {
+                        @Cached("create(getContext())") SpliceJSArrayNode spliceJSArray,
+                        @Cached BranchProfile branchDelete,
+                        @Cached BranchProfile objectBranch,
+                        @Cached ConditionProfile argsLength0Profile,
+                        @Cached ConditionProfile argsLength1Profile,
+                        @Cached ConditionProfile offsetProfile,
+                        @Cached BranchProfile needInsertBranch) {
             Object thisObj = toObject(thisArg);
             long len = getLength(thisObj);
 
@@ -2991,11 +2957,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             this.isForward = isForward;
         }
 
-        private final BranchProfile findInitialValueBranch = BranchProfile.create();
         @Child private ForEachIndexCallNode forEachIndexFindInitialNode;
 
         @Specialization
-        protected Object reduce(Object thisObj, Object callback, Object... initialValueOpt) {
+        protected Object reduce(Object thisObj, Object callback, Object[] initialValueOpt,
+                        @Cached BranchProfile findInitialValueBranch) {
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);

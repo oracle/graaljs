@@ -198,7 +198,6 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private ReadElementNode readRawElementNode;
         @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
         @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
-        private final ConditionProfile emptyProf = ConditionProfile.create();
 
         public StringRawNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -214,7 +213,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object raw(Object template, Object[] substitutions) {
+        protected Object raw(Object template, Object[] substitutions,
+                        @Cached ConditionProfile emptyProf) {
             int numberOfSubstitutions = substitutions.length;
             Object cooked = templateToObjectNode.execute(template);
             Object raw = rawToObjectNode.execute(getRawNode.getValue(cooked));

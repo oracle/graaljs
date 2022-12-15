@@ -568,22 +568,22 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Child private CreateObjectNode.CreateObjectWithPrototypeNode objectCreateNode;
-        private final BranchProfile needDefineProperties = BranchProfile.create();
 
-        @SuppressWarnings("unused")
         @Specialization(guards = "isJSNull(prototype)")
-        protected JSDynamicObject createPrototypeNull(Object prototype, Object properties) {
+        protected JSDynamicObject createPrototypeNull(@SuppressWarnings("unused") Object prototype, Object properties,
+                        @Cached @Shared("definePropertiesBranch") BranchProfile definePropertiesBranch) {
             JSDynamicObject ret = JSOrdinary.createWithNullPrototype(getContext());
-            return objectDefineProperties(ret, properties);
+            return objectDefineProperties(ret, properties, definePropertiesBranch);
         }
 
         @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"}, limit = "InteropLibraryLimit")
         protected JSDynamicObject createForeignNullOrInvalidPrototype(Object prototype, Object properties,
+                        @Cached @Shared("definePropertiesBranch") BranchProfile definePropertiesBranch,
                         @CachedLibrary("prototype") InteropLibrary interop,
                         @Cached ConditionProfile isNull) {
             assert prototype != null;
             if (isNull.profile(prototype != Undefined.instance && interop.isNull(prototype))) {
-                return createPrototypeNull(Null.instance, properties);
+                return createPrototypeNull(Null.instance, properties, definePropertiesBranch);
             } else {
                 throw Errors.createTypeErrorInvalidPrototype(prototype);
             }
@@ -597,20 +597,20 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"isJSObject(prototype)", "!isJSNull(properties)"})
-        protected JSDynamicObject createObjectNotNull(JSDynamicObject prototype, Object properties) {
+        protected JSDynamicObject createObjectNotNull(JSDynamicObject prototype, Object properties,
+                        @Cached @Shared("definePropertiesBranch") BranchProfile definePropertiesBranch) {
             JSDynamicObject ret = createObjectWithPrototype(prototype);
-            return objectDefineProperties(ret, properties);
+            return objectDefineProperties(ret, properties, definePropertiesBranch);
         }
 
-        @SuppressWarnings("unused")
         @Specialization(guards = {"isJSObject(prototype)", "isJSNull(properties)"})
-        protected JSDynamicObject createObjectNull(JSDynamicObject prototype, Object properties) {
+        protected JSDynamicObject createObjectNull(@SuppressWarnings("unused") JSDynamicObject prototype, Object properties) {
             throw Errors.createTypeErrorNotObjectCoercible(properties, null, getContext());
         }
 
-        private JSDynamicObject objectDefineProperties(JSDynamicObject ret, Object properties) {
+        private JSDynamicObject objectDefineProperties(JSDynamicObject ret, Object properties, BranchProfile definePropertiesBranch) {
             if (properties != Undefined.instance) {
-                needDefineProperties.enter();
+                definePropertiesBranch.enter();
                 intlDefineProperties(ret, toJSObject(properties));
             }
             return ret;
@@ -831,15 +831,15 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class ObjectSetPrototypeOfNode extends ObjectOperation {
-        private final BranchProfile errorBranch = BranchProfile.create();
-        private final JSClassProfile classProfile = JSClassProfile.create();
 
         public ObjectSetPrototypeOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization(guards = {"isValidPrototype(newProto)"})
-        final Object setPrototypeOfJSObject(JSObject object, JSDynamicObject newProto) {
+        static Object setPrototypeOfJSObject(JSObject object, JSDynamicObject newProto,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+                        @Cached JSClassProfile classProfile) {
             if (!JSObject.setPrototype(object, newProto, classProfile)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("setPrototype failed");
@@ -859,7 +859,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"!isJSObject(object)", "!isNullOrUndefined(object)", "!isForeignObject(object)"})
-        protected Object setPrototypeOfValue(Object object, Object newProto) {
+        static Object setPrototypeOfValue(Object object, Object newProto,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch) {
             if (!JSGuards.isValidPrototype(newProto)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorInvalidPrototype(newProto);

@@ -161,15 +161,12 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     @ImportStatic({JSDataView.class})
     public abstract static class DataViewAccessNode extends JSBuiltinNode {
         protected final TypedArrayFactory factory;
-        @Child protected JSToBooleanNode toBooleanNode;
         @Child private InteropLibrary interopLibrary;
-        protected final BranchProfile errorBranch = BranchProfile.create();
 
         public DataViewAccessNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             // string doesn't escape
             this.factory = typedArrayFactoryFromType(Strings.lazySubstring(builtin.getName(), 3));
-            this.toBooleanNode = factory.getBytesPerElement() == 1 ? null : JSToBooleanNode.create();
         }
 
         private static TypedArrayFactory typedArrayFactoryFromType(TruffleString type) {
@@ -190,7 +187,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return lib;
         }
 
-        protected final void ensureNotDetached(JSArrayBufferObject buffer) {
+        protected final void ensureNotDetached(JSArrayBufferObject buffer, BranchProfile errorBranch) {
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid()) {
                 if (JSArrayBuffer.isDetachedBuffer(buffer)) {
                     errorBranch.enter();
@@ -199,7 +196,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
         }
 
-        protected final int getBufferIndex(JSDataViewObject dataView, long getIndex) {
+        protected final int getBufferIndex(JSDataViewObject dataView, long getIndex, BranchProfile errorBranch) {
             int viewLength = JSDataView.typedArrayGetLength(dataView);
             int elementSize = factory.getBytesPerElement();
             if (getIndex + elementSize > viewLength) {
@@ -223,14 +220,16 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization
         protected final Object doDataView(JSDataViewObject dataView, Object byteOffset, Object littleEndian,
                         @Cached JSToIndexNode toIndexNode,
+                        @Cached JSToBooleanNode toBooleanNode,
+                        @Cached BranchProfile errorBranch,
                         @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
             long getIndex = toIndexNode.executeLong(byteOffset);
             boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(littleEndian);
 
             JSArrayBufferObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
-            ensureNotDetached(buffer);
-            int bufferIndex = getBufferIndex(dataView, getIndex);
+            ensureNotDetached(buffer, errorBranch);
+            int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch);
 
             boolean isInteropBuffer = JSArrayBuffer.isJSInteropArrayBuffer(buffer);
             TypedArray strategy = arrayTypeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, isInteropBuffer));
@@ -260,6 +259,8 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization
         protected Object doDataView(JSDataViewObject dataView, Object byteOffset, Object value, Object littleEndian,
                         @Cached JSToIndexNode toIndexNode,
+                        @Cached JSToBooleanNode toBooleanNode,
+                        @Cached BranchProfile errorBranch,
                         @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
                         @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
             long getIndex = toIndexNode.executeLong(byteOffset);
@@ -267,8 +268,8 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(littleEndian);
 
             JSArrayBufferObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
-            ensureNotDetached(buffer);
-            int bufferIndex = getBufferIndex(dataView, getIndex);
+            ensureNotDetached(buffer, errorBranch);
+            int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch);
 
             boolean isInteropBuffer = JSArrayBuffer.isJSInteropArrayBuffer(buffer);
             TypedArray strategy = arrayTypeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, isInteropBuffer));
