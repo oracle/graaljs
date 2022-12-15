@@ -1050,33 +1050,26 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class ObjectFromEntriesNode extends ObjectOperation {
-        @Child private RequireObjectCoercibleNode requireObjectCoercibleNode = RequireObjectCoercibleNode.create();
-        @Child private GetIteratorBaseNode getIteratorNode;
-        @Child private IteratorStepNode iteratorStepNode;
-        @Child private IteratorValueNode iteratorValueNode;
-        @Child private IsObjectNode isObjectNode = IsObjectNode.create();
-        @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
-        @Child private ReadElementNode readElementNode;
-        private final BranchProfile errorBranch = BranchProfile.create();
 
-        public ObjectFromEntriesNode(JSContext context, JSBuiltin builtin) {
+        protected ObjectFromEntriesNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getIteratorNode = GetIteratorBaseNode.create();
-            this.iteratorStepNode = IteratorStepNode.create();
-            this.iteratorValueNode = IteratorValueNode.create();
-            this.readElementNode = ReadElementNode.create(context);
         }
 
         @Specialization
-        protected JSDynamicObject entries(Object iterable) {
+        protected JSDynamicObject entries(Object iterable,
+                        @Cached RequireObjectCoercibleNode requireObjectCoercibleNode,
+                        @Cached GetIteratorBaseNode getIteratorNode,
+                        @Cached IteratorStepNode iteratorStepNode,
+                        @Cached IteratorValueNode iteratorValueNode,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached("create(getContext())") ReadElementNode readElementNode,
+                        @Cached("create(getContext())") IteratorCloseNode iteratorCloseNode,
+                        @Cached BranchProfile errorBranch) {
             requireObjectCoercibleNode.executeVoid(iterable);
-            JSObject obj = JSOrdinary.create(getContext(), getRealm());
-            return addEntriesFromIterable(obj, iterable);
-        }
+            JSObject target = JSOrdinary.create(getContext(), getRealm());
 
-        private JSDynamicObject addEntriesFromIterable(JSDynamicObject target, Object iterable) {
-            assert !JSRuntime.isNullOrUndefined(target);
+            // AddEntriesFromIterable
             IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
             try {
                 while (true) {
@@ -1091,28 +1084,17 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     }
                     Object k = readElementNode.executeWithTargetAndIndex(nextItem, 0);
                     Object v = readElementNode.executeWithTargetAndIndex(nextItem, 1);
-                    createDataPropertyOnObject(target, k, v);
+
+                    Object propertyKey = toPropertyKeyNode.execute(k);
+                    JSRuntime.createDataPropertyOrThrow(target, propertyKey, v);
                 }
             } catch (AbstractTruffleException ex) {
                 errorBranch.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                iteratorCloseNode.executeAbrupt(iteratorRecord.getIterator());
                 throw ex;
             }
         }
 
-        private void createDataPropertyOnObject(JSDynamicObject thisObject, Object key, Object value) {
-            assert JSRuntime.isObject(thisObject);
-            Object propertyKey = toPropertyKeyNode.execute(key);
-            JSRuntime.createDataPropertyOrThrow(thisObject, propertyKey, value);
-        }
-
-        private void iteratorCloseAbrupt(JSDynamicObject iterator) {
-            if (iteratorCloseNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
-            }
-            iteratorCloseNode.executeAbrupt(iterator);
-        }
     }
 
     @ImportStatic({JSConfig.class})
