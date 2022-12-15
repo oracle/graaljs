@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -108,13 +108,6 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private PropertyGetNode getIterationKindNode;
         @Child private PropertySetNode setNextIndexNode;
         @Child private PropertySetNode setIteratedObjectNode;
-        @Child private CreateIterResultObjectNode createIterResultObjectNode;
-        @Child private JSGetLengthNode getLengthNode;
-        @Child private ReadElementNode readElementNode;
-        private final ConditionProfile intIndexProfile = ConditionProfile.create();
-        private final BranchProfile errorBranch = BranchProfile.create();
-        private final BranchProfile useAfterCloseBranch = BranchProfile.create();
-        private final ConditionProfile isTypedArrayProfile = ConditionProfile.create();
 
         public ArrayIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -124,11 +117,17 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.getIterationKindNode = PropertyGetNode.createGetHidden(JSArray.ARRAY_ITERATION_KIND_ID, context);
             this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
             this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
-            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         }
 
         @Specialization(guards = "isArrayIterator(iterator)")
-        protected JSDynamicObject doArrayIterator(VirtualFrame frame, JSDynamicObject iterator) {
+        protected JSDynamicObject doArrayIterator(VirtualFrame frame, JSDynamicObject iterator,
+                        @Cached("create(getContext())") CreateIterResultObjectNode createIterResultObjectNode,
+                        @Cached("create(getContext())") JSGetLengthNode getLengthNode,
+                        @Cached("create(getContext())") ReadElementNode readElementNode,
+                        @Cached BranchProfile doubleIndexBranch,
+                        @Cached BranchProfile errorBranch,
+                        @Cached BranchProfile useAfterCloseBranch,
+                        @Cached ConditionProfile isTypedArrayProfile) {
             Object array = getIteratedObjectNode.getValue(iterator);
             if (array == Undefined.instance) {
                 useAfterCloseBranch.enter();
@@ -146,7 +145,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 }
                 length = JSArrayBufferView.typedArrayGetLength(typedArray);
             } else {
-                length = getLength().executeLong(array);
+                length = getLengthNode.executeLong(array);
             }
 
             if (index >= length) {
@@ -156,16 +155,16 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             setNextIndexNode.setValue(iterator, index + 1);
             if (itemKind == JSRuntime.ITERATION_KIND_KEY) {
-                return createIterResultObjectNode.execute(frame, indexToJS(index), false);
+                return createIterResultObjectNode.execute(frame, toJSIndex(index, doubleIndexBranch), false);
             }
 
-            Object elementValue = readElement().executeWithTargetAndIndex(array, index);
+            Object elementValue = readElementNode.executeWithTargetAndIndex(array, index);
             Object result;
             if (itemKind == JSRuntime.ITERATION_KIND_VALUE) {
                 result = elementValue;
             } else {
                 assert itemKind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE;
-                result = JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{indexToJS(index), elementValue});
+                result = JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{toJSIndex(index, doubleIndexBranch), elementValue});
             }
             return createIterResultObjectNode.execute(frame, result, false);
         }
@@ -197,28 +196,8 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
         }
 
-        private Object indexToJS(long index) {
-            if (intIndexProfile.profile(JSRuntime.longIsRepresentableAsInt(index))) {
-                return (int) index;
-            } else {
-                return (double) index;
-            }
-        }
-
-        private ReadElementNode readElement() {
-            if (readElementNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readElementNode = insert(ReadElementNode.create(getContext()));
-            }
-            return readElementNode;
-        }
-
-        private JSGetLengthNode getLength() {
-            if (getLengthNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getLengthNode = insert(JSGetLengthNode.create(getContext()));
-            }
-            return getLengthNode;
+        private static Number toJSIndex(long index, BranchProfile doubleIndexBranch) {
+            return JSRuntime.longToIntOrDouble(index, doubleIndexBranch);
         }
     }
 }
