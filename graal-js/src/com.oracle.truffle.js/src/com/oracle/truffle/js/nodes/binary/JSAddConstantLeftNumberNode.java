@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -173,6 +174,7 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
         }
     }
 
+    @NeverDefault
     protected TruffleString leftValueToString() {
         return JSRuntime.toString(getLeftValue());
     }

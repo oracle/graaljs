@@ -48,6 +48,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -182,6 +183,7 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
         }
     }
 
+    @NeverDefault
     protected TruffleString rightValueToString() {
         return JSRuntime.toString(getRightValue());
     }
