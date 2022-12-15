@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -63,10 +64,12 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
         this.enumerable = enumerable;
     }
 
+    @NeverDefault
     public static CreateDataPropertyNode create(JSContext context, Object key) {
         return CreateDataPropertyNodeGen.create(context, key, true);
     }
 
+    @NeverDefault
     public static CreateDataPropertyNode createNonEnumerable(JSContext context, Object key) {
         return CreateDataPropertyNodeGen.create(context, key, false);
     }
@@ -93,6 +96,7 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorNotAnObject(object, this);
     }
 
+    @NeverDefault
     protected final PropertySetNode makeDefinePropertyCache() {
         if (enumerable) {
             return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefault());

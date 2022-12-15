@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -407,14 +408,17 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         }
     }
 
+    @NeverDefault
     GetMethodNode createGetIteratorMethod() {
         return GetMethodNode.create(getContext(), Symbol.SYMBOL_ITERATOR);
     }
 
+    @NeverDefault
     WriteElementNode createWriteOwn() {
         return WriteElementNode.create(getContext(), true, true);
     }
 
+    @NeverDefault
     JSGetLengthNode createGetLength() {
         return JSGetLengthNode.create(getContext());
     }

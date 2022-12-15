@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -110,6 +111,7 @@ public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode
         JSObjectUtil.defineConstantDataProperty(context, globalScope, varName, Dead.instance(), getAttributeFlags());
     }
 
+    @NeverDefault
     protected final PropertySetNode makeDefineOwnPropertyCache(JSContext context) {
         return PropertySetNode.createImpl(varName, false, context, true, true, getAttributeFlags(), true);
     }

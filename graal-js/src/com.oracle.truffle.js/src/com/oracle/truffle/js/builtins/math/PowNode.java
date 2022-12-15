@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -61,6 +62,7 @@ public abstract class PowNode extends MathOperation {
 
     public abstract double execute(Object a, Object b);
 
+    @NeverDefault
     protected PowNode create(JSContext context) {
         return PowNodeGen.create(context, null, null);
     }

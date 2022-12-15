@@ -1985,6 +1985,7 @@ public class WriteElementNode extends JSTargetableNode {
         return valueNode.isResultAlwaysOfType(clazz);
     }
 
+    @NeverDefault
     public static WriteElementNode createCachedInterop() {
         return create(JavaScriptLanguage.get(null).getJSContext(), true);
     }

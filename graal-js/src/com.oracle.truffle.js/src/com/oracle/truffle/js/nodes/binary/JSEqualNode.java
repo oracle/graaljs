@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -84,6 +85,7 @@ public abstract class JSEqualNode extends JSCompareNode {
         super(left, right);
     }
 
+    @NeverDefault
     public static JSEqualNode create() {
         return JSEqualNodeGen.create(null, null);
     }

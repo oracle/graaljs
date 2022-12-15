@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -255,6 +256,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
         JSObjectUtil.defineAccessorProperty(proto, elementRecord.getKey(), newAccessor, propertyFlags);
     }
 
+    @NeverDefault
     protected CreateDecoratorContextObjectNode createDecoratorContextObjectNode() {
         return CreateDecoratorContextObjectNode.create(context, isStatic);
     }

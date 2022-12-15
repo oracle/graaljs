@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -74,6 +75,7 @@ public abstract class JSGetLengthNode extends JavaScriptBaseNode {
         this.toLength = context.getEcmaScriptVersion() >= 6;
     }
 
+    @NeverDefault
     public static JSGetLengthNode create(JSContext context) {
         return JSGetLengthNodeGen.create(context);
     }
@@ -113,6 +115,7 @@ public abstract class JSGetLengthNode extends JavaScriptBaseNode {
         }
     }
 
+    @NeverDefault
     protected PropertyGetNode createLengthProperty() {
         return PropertyGetNode.create(JSArray.LENGTH, context);
     }

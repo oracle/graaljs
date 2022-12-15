@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.array;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -68,6 +69,7 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
         super(context);
     }
 
+    @NeverDefault
     public static JSArrayLastElementIndexNode create(JSContext context) {
         return JSArrayLastElementIndexNodeGen.create(context);
     }

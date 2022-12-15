@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.Property;
@@ -101,14 +102,17 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         this.allowCaching = allowCaching;
     }
 
+    @NeverDefault
     public static JSGetOwnPropertyNode create() {
         return create(true);
     }
 
+    @NeverDefault
     public static JSGetOwnPropertyNode create(boolean needValue) {
         return create(needValue, true, true, true, true);
     }
 
+    @NeverDefault
     public static JSGetOwnPropertyNode create(boolean needValue, boolean needEnumerability, boolean needConfigurability, boolean needWritability, boolean allowCaching) {
         return JSGetOwnPropertyNodeGen.create(needValue, needEnumerability, needConfigurability, needWritability, allowCaching);
     }

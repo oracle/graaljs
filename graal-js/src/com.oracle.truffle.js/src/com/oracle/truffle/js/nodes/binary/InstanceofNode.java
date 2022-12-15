@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -97,6 +98,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         this.context = context;
     }
 
+    @NeverDefault
     public static InstanceofNode create(JSContext context) {
         return create(context, null, null);
     }
@@ -112,6 +114,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
     public abstract boolean executeBoolean(Object left, Object right);
 
+    @NeverDefault
     GetMethodNode createGetMethodHasInstance() {
         return GetMethodNode.create(context, Symbol.SYMBOL_HAS_INSTANCE);
     }
@@ -207,6 +210,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
             this.isCallableNode = IsCallableNode.create();
         }
 
+        @NeverDefault
         public static OrdinaryHasInstanceNode create(JSContext context) {
             return OrdinaryHasInstanceNodeGen.create(context);
         }

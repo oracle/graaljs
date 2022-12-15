@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -74,10 +75,12 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
+    @NeverDefault
     public static CreateObjectNode create(JSContext context) {
         return new CreateOrdinaryObjectNode(context);
     }
 
+    @NeverDefault
     public static CreateObjectWithPrototypeNode createOrdinaryWithPrototype(JSContext context) {
         return createWithPrototype(context, null, JSOrdinary.INSTANCE);
     }

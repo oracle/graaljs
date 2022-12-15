@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -82,6 +83,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
         this.toBooleanNode = JSToBooleanNode.create();
     }
 
+    @NeverDefault
     public static JSProxyHasPropertyNode create(JSContext context) {
         return JSProxyHasPropertyNodeGen.create(context);
     }

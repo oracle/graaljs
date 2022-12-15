@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -87,6 +88,7 @@ public abstract class IsExtensibleNode extends JavaScriptBaseNode {
         return resultProfile.profile(JSObject.isExtensible(object));
     }
 
+    @NeverDefault
     public static IsExtensibleNode create() {
         return IsExtensibleNodeGen.create();
     }

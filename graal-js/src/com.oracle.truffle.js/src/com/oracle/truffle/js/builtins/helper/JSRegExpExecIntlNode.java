@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -102,6 +103,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
+    @NeverDefault
     public static JSRegExpExecIntlNode create(JSContext context) {
         return JSRegExpExecIntlNodeGen.create(context);
     }
@@ -182,6 +184,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         return specialCallNode.executeCall(JSArguments.createOneArg(regExp, exec, input));
     }
 
+    @NeverDefault
     public static IsJSClassNode createIsJSRegExpNode() {
         return IsJSClassNode.create(JSRegExp.INSTANCE);
     }

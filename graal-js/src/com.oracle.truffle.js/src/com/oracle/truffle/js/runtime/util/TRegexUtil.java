@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -361,6 +362,7 @@ public final class TRegexUtil {
         private TRegexCompiledRegexAccessor() {
         }
 
+        @NeverDefault
         public static TRegexCompiledRegexAccessor create() {
             return new TRegexCompiledRegexAccessor();
         }
@@ -434,6 +436,7 @@ public final class TRegexUtil {
         private TRegexNamedCaptureGroupsAccessor() {
         }
 
+        @NeverDefault
         public static TRegexNamedCaptureGroupsAccessor create() {
             return new TRegexNamedCaptureGroupsAccessor();
         }
@@ -474,6 +477,7 @@ public final class TRegexUtil {
         private TRegexFlagsAccessor() {
         }
 
+        @NeverDefault
         public static TRegexFlagsAccessor create() {
             return new TRegexFlagsAccessor();
         }
@@ -611,6 +615,7 @@ public final class TRegexUtil {
             }
         }
 
+        @NeverDefault
         public static TRegexResultAccessor create() {
             return new TRegexResultAccessor(true);
         }

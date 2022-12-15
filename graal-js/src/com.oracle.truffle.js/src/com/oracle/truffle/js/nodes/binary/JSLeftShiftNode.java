@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.binary;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -136,6 +137,7 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
         return leftShift.executeObject(operandA, operandB);
     }
 
+    @NeverDefault
     public static JSLeftShiftNode create() {
         return JSLeftShiftNodeGen.create(null, null);
     }

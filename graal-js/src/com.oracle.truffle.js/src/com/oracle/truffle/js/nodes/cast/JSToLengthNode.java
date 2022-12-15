@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -54,6 +55,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
  */
 public abstract class JSToLengthNode extends JavaScriptBaseNode {
 
+    @NeverDefault
     public static JSToLengthNode create() {
         return JSToLengthNodeGen.create();
     }

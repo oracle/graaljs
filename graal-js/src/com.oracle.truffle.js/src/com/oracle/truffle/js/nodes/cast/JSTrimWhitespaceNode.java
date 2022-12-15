@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -54,6 +55,7 @@ import com.oracle.truffle.js.runtime.Strings;
 
 public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
 
+    @NeverDefault
     public static JSTrimWhitespaceNode create() {
         return JSTrimWhitespaceNodeGen.create();
     }

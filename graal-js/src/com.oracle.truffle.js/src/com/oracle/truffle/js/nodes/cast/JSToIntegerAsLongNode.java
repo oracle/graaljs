@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -65,6 +66,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 @ImportStatic(Double.class)
 public abstract class JSToIntegerAsLongNode extends JavaScriptBaseNode {
 
+    @NeverDefault
     public static JSToIntegerAsLongNode create() {
         return JSToIntegerAsLongNodeGen.create();
     }

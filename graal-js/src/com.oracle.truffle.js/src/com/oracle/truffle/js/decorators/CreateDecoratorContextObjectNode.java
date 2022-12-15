@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -135,6 +136,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     private final JSFunctionData initializerData;
     protected final JSContext context;
 
+    @NeverDefault
     public static CreateDecoratorContextObjectNode create(JSContext context, boolean isStatic) {
         return CreateDecoratorContextObjectNodeGen.create(context, isStatic);
     }

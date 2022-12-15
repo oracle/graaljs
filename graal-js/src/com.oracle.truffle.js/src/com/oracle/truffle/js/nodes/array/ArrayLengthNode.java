@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -77,6 +78,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
     public abstract static class ArrayLengthReadNode extends ArrayLengthNode {
 
+        @NeverDefault
         public static ArrayLengthReadNode create() {
             return ArrayLengthReadNodeGen.create();
         }
@@ -129,10 +131,12 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
     }
 
     public abstract static class ArrayLengthWriteNode extends ArrayLengthNode {
+        @NeverDefault
         public static ArrayLengthWriteNode create(boolean strict) {
             return SetArrayLengthNodeGen.create(strict);
         }
 
+        @NeverDefault
         public static ArrayLengthWriteNode createSetOrDelete(boolean strict) {
             return SetArrayLengthOrDeleteNodeGen.create(strict);
         }

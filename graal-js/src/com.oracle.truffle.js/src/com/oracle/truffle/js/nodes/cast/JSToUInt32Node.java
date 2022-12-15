@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -89,10 +90,12 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         this.shiftValue = shiftValue;
     }
 
+    @NeverDefault
     public static JSToUInt32Node create() {
         return JSToUInt32NodeGen.create(false, 0);
     }
 
+    @NeverDefault
     public static JSToUInt32Node create(boolean unsignedRightShift, int shiftValue) {
         return JSToUInt32NodeGen.create(unsignedRightShift, shiftValue);
     }

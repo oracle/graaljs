@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -121,6 +122,7 @@ public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
         return configurable ? JSAttributes.configurableEnumerableWritable() : JSAttributes.notConfigurableEnumerableWritable();
     }
 
+    @NeverDefault
     protected final PropertySetNode makeDefineOwnPropertyCache(JSContext context) {
         return PropertySetNode.createImpl(varName, false, context, true, true, getAttributeFlags(), true);
     }

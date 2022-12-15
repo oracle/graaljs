@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -206,6 +207,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.functionNameLib = JSObjectUtil.createDispatched(JSFunction.NAME);
         }
 
+        @NeverDefault
         public static CopyFunctionNameAndLengthNode create(JSContext context) {
             return new CopyFunctionNameAndLengthNode(context);
         }

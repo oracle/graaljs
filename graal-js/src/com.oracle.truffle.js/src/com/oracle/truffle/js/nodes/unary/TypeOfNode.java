@@ -46,6 +46,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -90,6 +91,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return TypeOfNodeGen.create(operand);
     }
 
+    @NeverDefault
     public static TypeOfNode create() {
         return create(null);
     }

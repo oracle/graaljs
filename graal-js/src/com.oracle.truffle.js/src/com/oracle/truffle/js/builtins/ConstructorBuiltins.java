@@ -2388,6 +2388,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.setMessage = JSObjectUtil.createDispatched(JSError.MESSAGE);
         }
 
+        @NeverDefault
         GetMethodNode createGetIteratorMethod() {
             return GetMethodNode.create(getContext(), Symbol.SYMBOL_ITERATOR);
         }

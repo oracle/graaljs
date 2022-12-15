@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -103,6 +104,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return EnumerateNodeGen.create(context, values, requireIterable, null);
     }
 
+    @NeverDefault
     EnumerateNode copyRecursive() {
         return create(context, values, requireIterable);
     }
@@ -144,6 +146,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return newEmptyIterator();
     }
 
+    @NeverDefault
     EnumerateNode createValues() {
         return create(context, true, false);
     }

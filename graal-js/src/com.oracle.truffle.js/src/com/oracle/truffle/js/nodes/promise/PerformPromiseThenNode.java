@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -80,6 +81,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         this.setPromiseIsHandledNode = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
     }
 
+    @NeverDefault
     public static PerformPromiseThenNode create(JSContext context) {
         return new PerformPromiseThenNode(context);
     }

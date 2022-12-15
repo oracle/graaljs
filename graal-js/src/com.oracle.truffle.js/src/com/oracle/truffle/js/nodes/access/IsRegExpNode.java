@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -87,10 +88,12 @@ public abstract class IsRegExpNode extends JavaScriptBaseNode {
         return false;
     }
 
+    @NeverDefault
     static IsJSClassNode createIsJSRegExpNode() {
         return IsJSClassNode.create(JSRegExp.INSTANCE);
     }
 
+    @NeverDefault
     public static IsRegExpNode create(JSContext context) {
         return IsRegExpNodeGen.create(context);
     }

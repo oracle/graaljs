@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -351,6 +352,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return array;
         }
 
+        @NeverDefault
         static JSRegExpExecES5Node create(JSContext context) {
             return JSRegExpExecES5NodeGen.create(context, null, null);
         }
@@ -1666,6 +1668,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return ArraySpeciesConstructorNode.create(getContext(), false);
         }
 
+        @NeverDefault
         StringPrototypeBuiltins.CreateRegExpStringIteratorNode createCreateRegExpStringIteratorNode() {
             return new StringPrototypeBuiltins.CreateRegExpStringIteratorNode(getContext());
         }

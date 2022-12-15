@@ -61,6 +61,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -496,6 +497,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             this.constructorCall = JSFunctionCallNode.createNew();
         }
 
+        @NeverDefault
         protected static ArraySpeciesConstructorNode create(JSContext context, boolean isTypedArrayImplementation) {
             return new ArraySpeciesConstructorNode(context, isTypedArrayImplementation);
         }
@@ -2485,6 +2487,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             this.withMapCallback = withMapCallback;
         }
 
+        @NeverDefault
         public static FlattenIntoArrayNode create(JSContext context, boolean withCallback) {
             return FlattenIntoArrayNodeGen.create(context, withCallback);
         }
@@ -2611,6 +2614,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return resultArray;
         }
 
+        @NeverDefault
         protected static final FlattenIntoArrayNode createFlattenIntoArrayNode(JSContext context) {
             return FlattenIntoArrayNodeGen.create(context, true);
         }
@@ -2643,6 +2647,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return toIntegerNode.executeInt(depth);
         }
 
+        @NeverDefault
         protected static final FlattenIntoArrayNode createFlattenIntoArrayNode(JSContext context) {
             return FlattenIntoArrayNodeGen.create(context, false);
         }

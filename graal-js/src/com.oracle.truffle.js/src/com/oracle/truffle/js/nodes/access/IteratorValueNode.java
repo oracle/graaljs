@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -74,6 +75,7 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object iterResult);
 
+    @NeverDefault
     public static IteratorValueNode create() {
         return IteratorValueNodeGen.create();
     }
@@ -123,6 +125,7 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
         }
     }
 
+    @NeverDefault
     PropertyGetNode createGetValueNode() {
         return PropertyGetNode.create(Strings.VALUE, getLanguage().getJSContext());
     }

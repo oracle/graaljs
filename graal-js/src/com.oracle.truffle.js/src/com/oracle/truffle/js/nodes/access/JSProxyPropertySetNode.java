@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -91,6 +92,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
 
     public abstract boolean executeWithReceiverAndValueInt(Object proxy, Object receiver, int value, Object key);
 
+    @NeverDefault
     public static JSProxyPropertySetNode create(JSContext context, boolean isStrict) {
         return JSProxyPropertySetNodeGen.create(context, isStrict);
     }

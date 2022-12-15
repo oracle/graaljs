@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -64,6 +65,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     public abstract double executeDouble(Object value);
 
+    @NeverDefault
     public static JSToDoubleNode create() {
         return JSToDoubleNodeGen.create();
     }

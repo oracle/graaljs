@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -84,6 +85,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object operand);
 
+    @NeverDefault
     public static ToPropertyDescriptorNode create(JSContext context) {
         return ToPropertyDescriptorNodeGen.create(context);
     }
