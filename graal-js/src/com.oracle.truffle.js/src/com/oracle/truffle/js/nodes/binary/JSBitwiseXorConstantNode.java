@@ -44,8 +44,9 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -171,8 +172,9 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
         }
     }
 
-    protected JSBitwiseXorConstantNode makeCopy() {
-        return (JSBitwiseXorConstantNode) copyUninitialized(null);
+    @NeverDefault
+    final JSBitwiseXorConstantNode makeCopy() {
+        return JSBitwiseXorConstantNodeGen.create(null, isInt ? rightIntValue : rightBigIntValue);
     }
 
     // Workaround for SpotBugs warning in JSBitwiseXorConstantNodeGen
