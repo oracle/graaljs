@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -169,18 +168,6 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        @Child private JSDoubleToStringNode doubleToStringNode;
-        private final BranchProfile radixOtherBranch = BranchProfile.create();
-        private final BranchProfile radixErrorBranch = BranchProfile.create();
-
-        protected Object doubleToString(double value) {
-            if (doubleToStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                doubleToStringNode = insert(JSDoubleToStringNode.create());
-            }
-            return doubleToStringNode.executeString(value);
-        }
-
         protected boolean isRadix10(Object radix) {
             return radix == Undefined.instance || (radix instanceof Integer && ((Integer) radix) == 10);
         }
@@ -202,14 +189,19 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSNumber(thisObj)", "isRadix10(radix)"})
-        protected Object toStringRadix10(JSDynamicObject thisObj, Object radix) {
-            return doubleToString(getDoubleValue(thisObj));
+        protected Object toStringRadix10(JSDynamicObject thisObj, Object radix,
+                        @Cached @Shared("doubleToString") JSDoubleToStringNode doubleToString) {
+            return doubleToString.executeString(getDoubleValue(thisObj));
         }
 
         @Specialization(guards = {"isJSNumber(thisObj)", "!isUndefined(radix)"})
         protected Object toString(JSDynamicObject thisObj, Object radix,
-                        @Shared("toInt") @Cached JSToIntegerAsIntNode toIntegerNode) {
-            return toStringIntl(getDoubleValue(thisObj), radix, toIntegerNode);
+                        @Cached @Shared("toInt") JSToIntegerAsIntNode toIntegerNode,
+                        @Cached @Shared("doubleToString") JSDoubleToStringNode doubleToString,
+                        @Cached @Shared("radixOtherBranch") BranchProfile radixOtherBranch,
+                        @Cached @Shared("radixErrorBranch") BranchProfile radixErrorBranch) {
+            return toStringWithRadix(getDoubleValue(thisObj), radix,
+                            toIntegerNode, doubleToString, radixOtherBranch, radixErrorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -221,27 +213,40 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJavaNumber(thisObj)", "isRadix10(radix)"})
-        protected Object toStringPrimitiveRadix10(Object thisObj, Object radix) {
+        protected Object toStringPrimitiveRadix10(Object thisObj, Object radix,
+                        @Cached @Shared("doubleToString") JSDoubleToStringNode doubleToString) {
             Number n = (Number) thisObj;
-            return doubleToString(JSRuntime.doubleValue(n));
+            return doubleToString.executeString(JSRuntime.doubleValue(n));
         }
 
         @Specialization
-        protected Object toStringPrimitiveRadixInt(Number thisObj, int radix) {
-            return toStringIntl(JSRuntime.doubleValue(thisObj), radix);
+        protected Object toStringPrimitiveRadixInt(Number thisObj, int radix,
+                        @Cached @Shared("doubleToString") JSDoubleToStringNode doubleToString,
+                        @Cached @Shared("radixOtherBranch") BranchProfile radixOtherBranch,
+                        @Cached @Shared("radixErrorBranch") BranchProfile radixErrorBranch) {
+            return toStringWithIntRadix(JSRuntime.doubleValue(thisObj), radix,
+                            doubleToString, radixOtherBranch, radixErrorBranch);
         }
 
         @Specialization(guards = {"!isUndefined(radix)"}, replaces = "toStringPrimitiveRadixInt")
         protected Object toStringPrimitive(Number thisObj, Object radix,
-                        @Shared("toInt") @Cached JSToIntegerAsIntNode toIntegerNode) {
-            return toStringIntl(JSRuntime.doubleValue(thisObj), radix, toIntegerNode);
+                        @Cached @Shared("toInt") JSToIntegerAsIntNode toIntegerNode,
+                        @Cached @Shared("doubleToString") JSDoubleToStringNode doubleToString,
+                        @Cached @Shared("radixOtherBranch") BranchProfile radixOtherBranch,
+                        @Cached @Shared("radixErrorBranch") BranchProfile radixErrorBranch) {
+            return toStringWithRadix(JSRuntime.doubleValue(thisObj), radix,
+                            toIntegerNode, doubleToString, radixOtherBranch, radixErrorBranch);
         }
 
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
         protected Object toStringForeignObject(Object thisObj, Object radix,
-                        @Shared("toInt") @Cached JSToIntegerAsIntNode toIntegerNode,
+                        @Cached @Shared("toInt") JSToIntegerAsIntNode toIntegerNode,
+                        @Cached @Shared("doubleToString") JSDoubleToStringNode doubleToString,
+                        @Cached @Shared("radixOtherBranch") BranchProfile radixOtherBranch,
+                        @Cached @Shared("radixErrorBranch") BranchProfile radixErrorBranch,
                         @CachedLibrary("thisObj") InteropLibrary interop) {
-            return toStringIntl(getDoubleValue(interop, thisObj), (radix == Undefined.instance) ? 10 : radix, toIntegerNode);
+            return toStringWithRadix(getDoubleValue(interop, thisObj), (radix == Undefined.instance) ? 10 : radix,
+                            toIntegerNode, doubleToString, radixOtherBranch, radixErrorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -250,18 +255,20 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorNotANumber(thisObj);
         }
 
-        private Object toStringIntl(double numberVal, Object radix, JSToIntegerAsIntNode toIntegerNode) {
+        private static Object toStringWithRadix(double numberVal, Object radix,
+                        JSToIntegerAsIntNode toIntegerNode, JSDoubleToStringNode doubleToString, BranchProfile radixOtherBranch, BranchProfile radixErrorBranch) {
             int radixVal = toIntegerNode.executeInt(radix);
-            return toStringIntl(numberVal, radixVal);
+            return toStringWithIntRadix(numberVal, radixVal, doubleToString, radixOtherBranch, radixErrorBranch);
         }
 
-        private Object toStringIntl(double numberVal, int radixVal) {
+        private static Object toStringWithIntRadix(double numberVal, int radixVal,
+                        JSDoubleToStringNode doubleToString, BranchProfile radixOtherBranch, BranchProfile radixErrorBranch) {
             if (radixVal < 2 || radixVal > 36) {
                 radixErrorBranch.enter();
                 throw Errors.createRangeError("toString() expects radix in range 2-36");
             }
             if (radixVal == 10) {
-                return doubleToString(numberVal);
+                return doubleToString.executeString(numberVal);
             } else {
                 radixOtherBranch.enter();
                 return JSRuntime.doubleToString(numberVal, radixVal);
@@ -387,10 +394,6 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     @ImportStatic({JSConfig.class})
     public abstract static class JSNumberToFixedNode extends JSNumberOperation {
-        private final BranchProfile digitsErrorBranch = BranchProfile.create();
-        private final BranchProfile nanBranch = BranchProfile.create();
-        private final ConditionProfile dtoaOrString = ConditionProfile.create();
-        @Child protected JSDoubleToStringNode doubleToStringNode;
 
         protected JSNumberToFixedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -398,25 +401,40 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isJSNumber(thisNumber)")
         protected Object toFixed(JSDynamicObject thisNumber, Object fractionDigits,
-                        @Shared("toInt") @Cached JSToIntegerAsIntNode toIntegerNode) {
+                        @Cached @Shared("toInt") JSToIntegerAsIntNode toIntegerNode,
+                        @Cached @Shared("doubleToString") JSDoubleToStringNode doubleToString,
+                        @Cached @Shared("digitsErrorBranch") BranchProfile digitsErrorBranch,
+                        @Cached @Shared("nanBranch") BranchProfile nanBranch,
+                        @Cached @Shared("dtoaOrString") ConditionProfile dtoaOrString) {
             int digits = toIntegerNode.executeInt(fractionDigits);
-            return toFixedIntl(getDoubleValue(thisNumber), digits);
+            return toFixedIntl(getDoubleValue(thisNumber), digits,
+                            doubleToString, digitsErrorBranch, nanBranch, dtoaOrString);
         }
 
         @Specialization(guards = "isJavaNumber(thisNumber)")
         protected Object toFixedJava(Object thisNumber, Object fractionDigits,
-                        @Shared("toInt") @Cached JSToIntegerAsIntNode toIntegerNode) {
+                        @Cached @Shared("toInt") JSToIntegerAsIntNode toIntegerNode,
+                        @Cached @Shared("doubleToString") JSDoubleToStringNode doubleToString,
+                        @Cached @Shared("digitsErrorBranch") BranchProfile digitsErrorBranch,
+                        @Cached @Shared("nanBranch") BranchProfile nanBranch,
+                        @Cached @Shared("dtoaOrString") ConditionProfile dtoaOrString) {
             int digits = toIntegerNode.executeInt(fractionDigits);
-            return toFixedIntl(JSRuntime.doubleValue((Number) thisNumber), digits);
+            return toFixedIntl(JSRuntime.doubleValue((Number) thisNumber), digits,
+                            doubleToString, digitsErrorBranch, nanBranch, dtoaOrString);
         }
 
         @Specialization(guards = "isForeignObject(thisNumber)", limit = "InteropLibraryLimit")
         protected Object toFixedForeignObject(Object thisNumber, Object fractionDigits,
-                        @Shared("toInt") @Cached JSToIntegerAsIntNode toIntegerNode,
+                        @Cached @Shared("toInt") JSToIntegerAsIntNode toIntegerNode,
+                        @Cached @Shared("doubleToString") JSDoubleToStringNode doubleToString,
+                        @Cached @Shared("digitsErrorBranch") BranchProfile digitsErrorBranch,
+                        @Cached @Shared("nanBranch") BranchProfile nanBranch,
+                        @Cached @Shared("dtoaOrString") ConditionProfile dtoaOrString,
                         @CachedLibrary("thisNumber") InteropLibrary interop) {
             double doubleValue = getDoubleValue(interop, thisNumber);
             int digits = toIntegerNode.executeInt(fractionDigits);
-            return toFixedIntl(doubleValue, digits);
+            return toFixedIntl(doubleValue, digits,
+                            doubleToString, digitsErrorBranch, nanBranch, dtoaOrString);
         }
 
         @SuppressWarnings("unused")
@@ -425,7 +443,8 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorNotANumber(thisNumber);
         }
 
-        private Object toFixedIntl(double value, int digits) {
+        private Object toFixedIntl(double value, int digits,
+                        JSDoubleToStringNode doubleToString, BranchProfile digitsErrorBranch, BranchProfile nanBranch, ConditionProfile dtoaOrString) {
             if (0 > digits || digits > ((getContext().getEcmaScriptVersion() >= JSConfig.ECMAScript2018) ? 100 : 20)) {
                 digitsErrorBranch.enter();
                 throw Errors.createRangeError("toFixed() fraction digits need to be in range 0-100");
@@ -435,18 +454,10 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return Strings.NAN;
             }
             if (dtoaOrString.profile(value >= 1E21 || value <= -1E21)) {
-                return toString(value);
+                return doubleToString.executeString(value);
             } else {
                 return JSRuntime.formatDtoAFixed(value, digits);
             }
-        }
-
-        private Object toString(double value) {
-            if (doubleToStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                doubleToStringNode = insert(JSDoubleToStringNode.create());
-            }
-            return doubleToStringNode.executeString(value);
         }
     }
 
