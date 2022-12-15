@@ -350,6 +350,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             setInputNode.setValue(array, inputStr);
             return array;
         }
+
+        static JSRegExpExecES5Node create(JSContext context) {
+            return JSRegExpExecES5NodeGen.create(context, null, null);
+        }
     }
 
     /**

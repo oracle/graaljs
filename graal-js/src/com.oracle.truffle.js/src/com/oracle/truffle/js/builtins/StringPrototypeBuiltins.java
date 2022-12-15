@@ -64,7 +64,6 @@ import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
-import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateHTMLNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateStringIteratorNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringAtNodeGen;
@@ -2223,19 +2222,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringMatchES5Node extends JSStringOperationWithRegExpArgument {
         @Child private PropertySetNode setLastIndexNode;
-        @Child private JSToRegExpNode toRegExpNode;
-        @Child private JSRegExpExecES5Node regExpExecNode;
         @Child private TRegexUtil.TRegexCompiledRegexSingleFlagAccessor globalFlagAccessor = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(TRegexUtil.Props.Flags.GLOBAL);
         @Child private TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.create();
         @Child private TRegexUtil.TRegexMaterializeResultNode resultMaterializer = TRegexUtil.TRegexMaterializeResultNode.create();
-        private final CountingConditionProfile match = CountingConditionProfile.create();
-        private final CountingConditionProfile isGlobalRegExp = CountingConditionProfile.create();
 
         public JSStringMatchES5Node(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             assert context.getEcmaScriptVersion() < 6;
-            toRegExpNode = JSToRegExpNode.create(context);
-            this.regExpExecNode = JSRegExpExecES5NodeGen.create(context, null, null);
 
         }
 
@@ -2248,26 +2241,32 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected JSDynamicObject matchRegExpNotGlobal(Object thisObj, Object searchObj) {
+        protected JSDynamicObject matchRegExpNotGlobal(Object thisObj, Object searchObj,
+                        @Cached("create(getContext())") JSToRegExpNode toRegExpNode,
+                        @Cached("create(getContext())") JSRegExpExecES5Node regExpExecNode,
+                        @Cached CountingConditionProfile isMatch,
+                        @Cached CountingConditionProfile isGlobalRegExp) {
             requireObjectCoercible(thisObj);
             if (isGlobalRegExp.profile(JSRegExp.isJSRegExp(searchObj) && globalFlagAccessor.get(JSRegExp.getCompiledRegex((JSDynamicObject) searchObj)))) {
                 TruffleString thisStr = toString(thisObj);
-                return matchAll((JSDynamicObject) searchObj, thisStr);
+                return matchAll((JSDynamicObject) searchObj, thisStr, isMatch);
             } else {
-                return matchNotRegExpIntl(thisObj, searchObj);
+                return matchNotRegExpIntl(thisObj, searchObj, toRegExpNode, regExpExecNode);
             }
         }
 
-        private JSDynamicObject matchNotRegExpIntl(Object thisObj, Object searchObj) {
+        private JSDynamicObject matchNotRegExpIntl(Object thisObj, Object searchObj,
+                        JSToRegExpNode toRegExpNode, JSRegExpExecES5Node regExpExecNode) {
             Object thisStr = toString(thisObj);
             JSRegExpObject regExp = toRegExpNode.execute(searchObj);
             return regExpExecNode.exec(regExp, thisStr);
         }
 
-        private JSDynamicObject matchAll(JSDynamicObject regExp, TruffleString input) {
+        private JSDynamicObject matchAll(JSDynamicObject regExp, TruffleString input,
+                        CountingConditionProfile isMatch) {
             setLastIndex(regExp, 0);
             Object result = matchIgnoreLastIndex(regExp, input, 0);
-            if (match.profile(!resultAccessor.isMatch(result))) {
+            if (isMatch.profile(!resultAccessor.isMatch(result))) {
                 return Null.instance;
             }
             List<Object> matches = new ArrayList<>();
