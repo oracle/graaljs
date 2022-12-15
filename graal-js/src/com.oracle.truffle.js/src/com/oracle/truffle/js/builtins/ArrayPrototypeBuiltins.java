@@ -83,7 +83,6 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.DeleteAndSetLengthNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.FlattenIntoArrayNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayAtNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayConcatNodeGen;
@@ -132,7 +131,6 @@ import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
-import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthWriteNode;
 import com.oracle.truffle.js.nodes.array.JSArrayDeleteRangeNode;
@@ -921,8 +919,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public abstract void executeVoid(Object target, long newLength);
 
-        protected final WritePropertyNode createWritePropertyNode() {
-            return WritePropertyNode.create(null, JSArray.LENGTH, null, context, THROW_ERROR);
+        @NeverDefault
+        protected final PropertySetNode createSetLengthProperty() {
+            return PropertySetNode.create(JSArray.LENGTH, false, context, THROW_ERROR);
         }
 
         protected static boolean isArray(JSDynamicObject object) {
@@ -939,20 +938,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isJSObject(object)", "longIsRepresentableAsInt(longLength)"})
         protected static void setIntLength(JSDynamicObject object, long longLength,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
-                        @Shared("writeProperty") @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty) {
+                        @Shared("setLengthProperty") @Cached("createSetLengthProperty()") PropertySetNode setLengthProperty) {
             int intLength = (int) longLength;
             deletePropertyNode.executeEvaluated(object, intLength);
-            setLengthProperty.executeIntWithValue(object, intLength);
+            setLengthProperty.setValueInt(object, intLength);
         }
 
         @Specialization(guards = {"isJSObject(object)"}, replaces = "setIntLength")
         protected static void setLength(JSDynamicObject object, long longLength,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
-                        @Shared("writeProperty") @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty,
+                        @Shared("setLengthProperty") @Cached("createSetLengthProperty()") PropertySetNode setLengthProperty,
                         @Cached ConditionProfile indexInIntRangeCondition) {
             Object boxedLength = JSRuntime.boxIndex(longLength, indexInIntRangeCondition);
             deletePropertyNode.executeEvaluated(object, boxedLength);
-            setLengthProperty.executeWithValue(object, boxedLength);
+            setLengthProperty.setValue(object, boxedLength);
         }
 
         @Specialization(guards = {"!isJSObject(object)"})
