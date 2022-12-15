@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
@@ -176,6 +177,7 @@ public abstract class ScriptArray {
     protected static final SetLengthProfileAccess SET_LENGTH_PROFILE = new SetLengthProfileAccess() {
     };
 
+    @NeverDefault
     public static ProfileHolder createSetLengthProfile() {
         return ProfileHolder.create(8, SetLengthProfileAccess.class);
     }

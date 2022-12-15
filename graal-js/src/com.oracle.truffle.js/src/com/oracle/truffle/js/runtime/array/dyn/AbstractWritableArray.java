@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUse
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -879,6 +880,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         }
     }
 
+    @NeverDefault
     public static ProfileHolder createSetSupportedProfile() {
         return ProfileHolder.create(10, SetSupportedProfileAccess.class);
     }
