@@ -285,20 +285,18 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public abstract static class JSBindNode extends JSBuiltinNode {
-        @Child private GetPrototypeNode getPrototypeNode;
-        @Child private CopyFunctionNameAndLengthNode copyNameAndLengthNode;
-        private final ConditionProfile isConstructorProfile = ConditionProfile.create();
-        private final ConditionProfile isAsyncProfile = ConditionProfile.create();
-        private final ConditionProfile setProtoProfile = ConditionProfile.create();
 
         public JSBindNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getPrototypeNode = GetPrototypeNode.create();
-            this.copyNameAndLengthNode = CopyFunctionNameAndLengthNode.create(context);
         }
 
         @Specialization
-        protected JSDynamicObject bindFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args) {
+        protected JSDynamicObject bindFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args,
+                        @Cached GetPrototypeNode getPrototypeNode,
+                        @Cached("create(getContext())") @Shared("copyFunctionNameAndLength") CopyFunctionNameAndLengthNode copyNameAndLengthNode,
+                        @Cached @Shared("isConstructorProf") ConditionProfile isConstructorProfile,
+                        @Cached @Shared("isAsyncProf") ConditionProfile isAsyncProfile,
+                        @Cached @Shared("setProtoProf") ConditionProfile setProtoProfile) {
             JSDynamicObject proto = getPrototypeNode.execute(thisFnObj);
 
             JSFunctionObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto,
@@ -311,7 +309,11 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @TruffleBoundary
         @Specialization(guards = {"isJSProxy(thisObj)"})
-        protected JSDynamicObject bindProxy(JSDynamicObject thisObj, Object thisArg, Object[] args) {
+        protected JSDynamicObject bindProxy(JSDynamicObject thisObj, Object thisArg, Object[] args,
+                        @Cached("create(getContext())") @Shared("copyFunctionNameAndLength") CopyFunctionNameAndLengthNode copyNameAndLengthNode,
+                        @Cached @Shared("isConstructorProf") ConditionProfile isConstructorProfile,
+                        @Cached @Shared("isAsyncProf") ConditionProfile isAsyncProfile,
+                        @Cached @Shared("setProtoProf") ConditionProfile setProtoProfile) {
             final JSDynamicObject proto = JSObject.getPrototype(thisObj);
 
             final Object target = JSProxy.getTarget(thisObj);
