@@ -533,8 +533,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isDefaultPrototype(proto)", "!context.isMultiContext()", "proto == cachedProto"}, limit = "1")
         JSDynamicObject doCachedProto(JSDynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, JSDynamicObject proto,
-                        @Cached("proto") JSDynamicObject cachedProto,
-                        @Cached("makeObjectFactory(cachedProto)") JSObjectFactory objectFactory) {
+                        @Cached(value = "proto", neverDefault = true) JSDynamicObject cachedProto,
+                        @Cached(value = "makeObjectFactory(cachedProto)", neverDefault = true) JSObjectFactory objectFactory) {
             return JSArrayBufferView.createArrayBufferView(context, getRealm(), objectFactory, arrayBuffer, typedArray, offset, length);
         }
 

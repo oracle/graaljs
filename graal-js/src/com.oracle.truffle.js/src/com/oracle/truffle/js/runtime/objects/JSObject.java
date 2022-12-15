@@ -155,7 +155,7 @@ public abstract class JSObject extends JSDynamicObject {
     public final Object readMember(String key,
                     @CachedLibrary("this") @SuppressWarnings("unused") InteropLibrary self,
                     @Cached(value = "create(language(self).getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
-                    @Cached(value = "language(self).bindMemberFunctions()", allowUncached = true) boolean bindMemberFunctions,
+                    @Cached(value = "language(self).bindMemberFunctions()", allowUncached = true, neverDefault = false) boolean bindMemberFunctions,
                     @Cached @Exclusive ExportValueNode exportNode) throws UnknownIdentifierException {
         TruffleString tStringKey = Strings.fromJavaString(key);
         JSDynamicObject target = this;

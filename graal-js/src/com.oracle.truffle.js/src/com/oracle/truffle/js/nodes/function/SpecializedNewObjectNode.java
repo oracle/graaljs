@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -113,6 +114,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
         return null;
     }
 
+    @NeverDefault
     protected Shape getShapeWithoutProto() {
         CompilerAsserts.neverPartOfCompilation();
         return JSObjectUtil.getProtoChildShape(null, instanceLayout, context);
@@ -137,7 +139,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "prototypeClass != null", "prototypeClass.isInstance(prototype)"}, limit = "1")
     public JSDynamicObject createWithProtoCachedClass(@SuppressWarnings("unused") JSDynamicObject target, Object prototype,
                     @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
-                    @Cached("getClassIfJSObject(prototype)") Class<?> prototypeClass,
+                    @Cached(value = "getClassIfJSObject(prototype)", neverDefault = false) Class<?> prototypeClass,
                     @Cached("getShapeWithoutProto()") @Shared("shapeWithoutProto") Shape cachedShape) {
         return createWithProto(target, (JSDynamicObject) prototypeClass.cast(prototype), setProtoNode, cachedShape);
     }

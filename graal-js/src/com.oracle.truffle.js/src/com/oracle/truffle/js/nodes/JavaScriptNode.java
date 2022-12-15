@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -418,8 +418,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
 
     @ExportMessage
     final Object getScope(Frame frame, boolean nodeEnter,
-                    @Cached(value = "findBlockScopeNode(this)", allowUncached = true, adopt = false) Node blockNode,
-                    @Cached(value = "findFrameScopeNode(blockNode)", allowUncached = true, adopt = false) Node frameBlockNode) throws UnsupportedMessageException {
+                    @Cached(value = "findBlockScopeNode(this)", allowUncached = true, adopt = false, neverDefault = false) Node blockNode,
+                    @Cached(value = "findFrameScopeNode(blockNode)", allowUncached = true, adopt = false, neverDefault = false) Node frameBlockNode) throws UnsupportedMessageException {
         if (hasScope(frame)) {
             Frame functionFrame;
             Frame scopeFrame;

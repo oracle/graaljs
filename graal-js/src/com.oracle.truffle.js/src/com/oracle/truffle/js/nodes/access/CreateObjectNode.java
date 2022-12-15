@@ -191,6 +191,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
             return JSOrdinary.create(context, getRealm());
         }
 
+        @NeverDefault
         final Shape getProtoChildShape(JSDynamicObject prototype) {
             return prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
         }

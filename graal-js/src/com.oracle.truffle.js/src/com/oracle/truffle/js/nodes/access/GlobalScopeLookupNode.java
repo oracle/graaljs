@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -132,6 +133,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
         return false;
     }
 
+    @NeverDefault
     final Assumption getAbsentPropertyAssumption(Shape shape) {
         Property property = shape.getProperty(varName);
         if (property == null) {

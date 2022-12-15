@@ -117,7 +117,7 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static void doCachedJSClass(@SuppressWarnings("unused") Object object,
-                    @Cached("getClassIfJSObject(object)") @SuppressWarnings("unused") Class<?> cachedClass) {
+                    @Cached(value = "getClassIfJSObject(object)", neverDefault = false) @SuppressWarnings("unused") Class<?> cachedClass) {
     }
 
     @Specialization(guards = {"isJSObject(object)"}, replaces = "doCachedJSClass")
