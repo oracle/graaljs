@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -89,6 +90,7 @@ public abstract class ArrayBufferViewGetByteLengthNode extends JavaScriptBaseNod
         throw Errors.createTypeErrorArrayBufferViewExpected();
     }
 
+    @NeverDefault
     protected static TypedArray getArrayType(JSDynamicObject obj) {
         return JSArrayBufferView.typedArrayGetArrayType(obj);
     }

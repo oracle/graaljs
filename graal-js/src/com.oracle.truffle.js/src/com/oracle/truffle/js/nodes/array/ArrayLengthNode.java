@@ -72,6 +72,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
     protected ArrayLengthNode() {
     }
 
+    @NeverDefault
     protected static ScriptArray getArrayType(JSDynamicObject target) {
         return JSObject.getArray(target);
     }

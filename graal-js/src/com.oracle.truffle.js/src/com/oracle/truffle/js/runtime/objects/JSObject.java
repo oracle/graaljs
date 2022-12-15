@@ -46,6 +46,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -635,6 +636,7 @@ public abstract class JSObject extends JSDynamicObject {
         return testIntegrityLevel(obj, false);
     }
 
+    @NeverDefault
     public static ScriptArray getArray(JSDynamicObject obj) {
         assert hasArray(obj);
         if (obj instanceof JSArrayBase) {
