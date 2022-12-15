@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -1160,16 +1161,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     public abstract static class JSStringReplaceBaseNode extends JSStringOperationWithRegExpArgument {
         @Child protected JSFunctionCallNode functionReplaceCallNode;
-        @Child protected JSToStringNode toString2Node;
-        @Child protected JSToStringNode toString3Node;
-        @Child protected IsCallableNode isCallableNode;
         protected final ConditionProfile functionalReplaceProfile = ConditionProfile.create();
         protected final ConditionProfile replaceNecessaryProfile = ConditionProfile.create();
         protected final BranchProfile dollarProfile = BranchProfile.create();
 
-        @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
-        @Child private TruffleStringBuilder.AppendSubstringByteIndexNode appendSubStringNode;
-        @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
+        @Child protected TruffleStringBuilder.ToStringNode builderToStringNode = TruffleStringBuilder.ToStringNode.create();
+        @Child protected TruffleStringBuilder.AppendStringNode appendStringNode = TruffleStringBuilder.AppendStringNode.create();
+        @Child protected TruffleStringBuilder.AppendSubstringByteIndexNode appendSubStringNode = TruffleStringBuilder.AppendSubstringByteIndexNode.create();
 
         public JSStringReplaceBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1243,38 +1241,22 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             return functionReplaceCallNode.executeCall(JSArguments.create(separator, splitter, args));
         }
-
         void append(TruffleStringBuilder sb, TruffleString s) {
-            if (appendStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                appendStringNode = insert(TruffleStringBuilder.AppendStringNode.create());
-            }
             Strings.builderAppend(appendStringNode, sb, s);
         }
 
         void append(TruffleStringBuilder sb, TruffleString s, int fromIndex, int toIndex) {
-            if (appendSubStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                appendSubStringNode = insert(TruffleStringBuilder.AppendSubstringByteIndexNode.create());
-            }
             Strings.builderAppend(appendSubStringNode, sb, s, fromIndex, toIndex);
         }
 
         void appendLen(TruffleStringBuilder sb, TruffleString s, int fromIndex, int length) {
-            if (appendSubStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                appendSubStringNode = insert(TruffleStringBuilder.AppendSubstringByteIndexNode.create());
-            }
             Strings.builderAppendLen(appendSubStringNode, sb, s, fromIndex, length);
         }
 
         TruffleString builderToString(TruffleStringBuilder sb) {
-            if (builderToStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                builderToStringNode = insert(TruffleStringBuilder.ToStringNode.create());
-            }
             return Strings.builderToString(builderToStringNode, sb);
         }
+
     }
 
     /**
@@ -1305,7 +1287,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "!isStringString(searchValue, replaceValue)")
-        protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue) {
+        protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue,
+                        @Cached JSToStringNode toString2Node,
+                        @Cached JSToStringNode toString3Node,
+                        @Cached IsCallableNode isCallableNode) {
             requireObjectCoercible(thisObj);
             if (isSpecialProfile.profile(!(searchValue == Undefined.instance || searchValue == Null.instance))) {
                 Object replacer = getMethod(searchValue, Symbol.SYMBOL_REPLACE);
@@ -1313,17 +1298,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     return call(replacer, searchValue, new Object[]{thisObj, replaceValue});
                 }
             }
-            // all child nodes must be checked to avoid race conditions on shared ASTs
-            if (toString2Node == null || toString3Node == null || isCallableNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toString2Node = insert(JSToStringNode.create());
-                toString3Node = insert(JSToStringNode.create());
-                isCallableNode = insert(IsCallableNode.create());
-            }
-            return builtinReplace(searchValue, replaceValue, thisObj);
+            return builtinReplace(searchValue, replaceValue, thisObj,
+                            toString2Node, toString3Node, isCallableNode);
         }
 
-        private Object builtinReplace(Object searchValue, Object replParam, Object o) {
+        private Object builtinReplace(Object searchValue, Object replParam, Object o,
+                        JSToStringNode toString2Node, JSToStringNode toString3Node, IsCallableNode isCallableNode) {
             TruffleString input = toString(o);
             TruffleString searchString = toString2Node.executeString(searchValue);
             boolean functionalReplace = isCallableNode.executeBoolean(replParam);
@@ -1374,14 +1354,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public abstract static class JSStringReplaceAllNode extends JSStringReplaceBaseNode {
-        private final ConditionProfile isSearchValueEmpty = ConditionProfile.create();
-        private final ConditionProfile isRegExp = ConditionProfile.create();
-        private final BranchProfile errorBranch = BranchProfile.create();
 
         @Child private IsRegExpNode isRegExpNode;
         @Child private PropertyGetNode getFlagsNode;
-        @Child private TruffleString.ByteIndexOfCodePointNode stringIndexOfNode;
-        @Child private TruffleString.ByteIndexOfStringNode stringIndexOfStringNode;
 
         public JSStringReplaceAllNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1391,18 +1366,25 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected Object replaceStringCached(Object thisObj, TruffleString searchValue, @SuppressWarnings("unused") TruffleString replaceValue,
                         @Cached("replaceValue") TruffleString cachedReplaceValue,
                         @Cached(value = "parseReplaceValue(replaceValue)", dimensions = 1, neverDefault = true) ReplaceStringParser.Token[] cachedParsedReplaceValue,
-                        @SuppressWarnings("unused") @Cached TruffleString.EqualNode equalsNode) {
+                        @SuppressWarnings("unused") @Cached TruffleString.EqualNode equalsNode,
+                        @Cached @Shared("indexOfString") TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
+                        @Cached @Shared("isSearchValueEmpty") ConditionProfile isSearchValueEmpty) {
             requireObjectCoercible(thisObj);
-            return performReplaceAll(searchValue, cachedReplaceValue, thisObj, cachedParsedReplaceValue);
+            return performReplaceAll(searchValue, cachedReplaceValue, thisObj, cachedParsedReplaceValue,
+                            stringIndexOfStringNode, isSearchValueEmpty);
         }
 
         @Specialization(replaces = "replaceStringCached")
-        protected Object replaceString(Object thisObj, TruffleString searchValue, TruffleString replaceValue) {
+        protected Object replaceString(Object thisObj, TruffleString searchValue, TruffleString replaceValue,
+                        @Cached @Shared("indexOfString") TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
+                        @Cached @Shared("isSearchValueEmpty") ConditionProfile isSearchValueEmpty) {
             requireObjectCoercible(thisObj);
-            return performReplaceAll(searchValue, replaceValue, thisObj, null);
+            return performReplaceAll(searchValue, replaceValue, thisObj, null,
+                            stringIndexOfStringNode, isSearchValueEmpty);
         }
 
-        protected Object performReplaceAll(TruffleString searchValue, TruffleString replaceValue, Object thisObj, ReplaceStringParser.Token[] parsedReplaceParam) {
+        protected Object performReplaceAll(TruffleString searchValue, TruffleString replaceValue, Object thisObj, ReplaceStringParser.Token[] parsedReplaceParam,
+                        TruffleString.ByteIndexOfStringNode stringIndexOfStringNode, ConditionProfile isSearchValueEmpty) {
             TruffleString thisStr = toString(thisObj);
             if (isSearchValueEmpty.profile(Strings.isEmpty(searchValue))) {
                 int len = Strings.length(thisStr);
@@ -1417,7 +1399,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             TruffleStringBuilder sb = Strings.builderCreate();
             int position = 0;
             while (position < Strings.length(thisStr)) {
-                int nextPosition = indexOf(thisStr, searchValue, position);
+                int nextPosition = Strings.indexOf(stringIndexOfStringNode, thisStr, searchValue, position);
                 builtinReplaceString(searchValue, replaceValue, thisStr, parsedReplaceParam, position, nextPosition, sb);
                 if (nextPosition < 0) {
                     break;
@@ -1428,13 +1410,22 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "!isStringString(searchValue, replaceValue)")
-        protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue) {
+        protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue,
+                        @Cached BranchProfile errorBranch,
+                        @Cached JSToStringNode toString2Node,
+                        @Cached JSToStringNode toString3Node,
+                        @Cached IsCallableNode isCallableNode,
+                        @Cached @Exclusive ConditionProfile isRegExp,
+                        @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode,
+                        @Cached @Shared("indexOfString") TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
+                        @Cached @Shared("isSearchValueEmpty") ConditionProfile isSearchValueEmpty) {
             requireObjectCoercible(thisObj);
             if (isSpecialProfile.profile(!(searchValue == Undefined.instance || searchValue == Null.instance))) {
                 if (isRegExp.profile(getIsRegExpNode().executeBoolean(searchValue))) {
                     Object flags = getFlags(searchValue);
                     requireObjectCoercible(flags);
-                    if (indexOf(toString(flags), 'g') == -1) {
+                    TruffleString flagsStr = toString(flags);
+                    if (Strings.indexOf(stringIndexOfNode, flagsStr, 'g') == -1) {
                         errorBranch.enter();
                         throw Errors.createTypeError("Only global regexps allowed");
                     }
@@ -1444,17 +1435,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     return call(replacer, searchValue, new Object[]{thisObj, replaceValue});
                 }
             }
-            // all child nodes must be checked to avoid race conditions on shared ASTs
-            if (toString2Node == null || toString3Node == null || isCallableNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toString2Node = insert(JSToStringNode.create());
-                toString3Node = insert(JSToStringNode.create());
-                isCallableNode = insert(IsCallableNode.create());
-            }
-            return performReplaceAllGeneric(searchValue, replaceValue, thisObj);
+            return performReplaceAllGeneric(searchValue, replaceValue, thisObj,
+                            toString2Node, toString3Node, isCallableNode, stringIndexOfStringNode, isSearchValueEmpty);
         }
 
-        protected Object performReplaceAllGeneric(Object searchValue, Object replParam, Object thisObj) {
+        protected Object performReplaceAllGeneric(Object searchValue, Object replParam, Object thisObj,
+                        JSToStringNode toString2Node, JSToStringNode toString3Node, IsCallableNode isCallableNode,
+                        TruffleString.ByteIndexOfStringNode stringIndexOfStringNode, ConditionProfile isSearchValueEmpty) {
             TruffleString thisStr = toString(thisObj);
             TruffleString searchString = toString2Node.executeString(searchValue);
             TruffleStringBuilder sb = Strings.builderCreate();
@@ -1469,7 +1456,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             if (isSearchValueEmpty.profile(Strings.isEmpty(searchString))) {
                 while (position <= Strings.length(thisStr)) {
-                    builtinReplace(searchString, functionalReplace, replaceValue, thisStr, position, position, sb);
+                    builtinReplace(searchString, functionalReplace, replaceValue, thisStr, position, position, sb, toString3Node);
                     if (position < Strings.length(thisStr)) {
                         appendLen(sb, thisStr, position, 1);
                     }
@@ -1478,8 +1465,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return builderToString(sb);
             }
             while (position < Strings.length(thisStr)) {
-                int nextPosition = indexOf(thisStr, searchString, position);
-                builtinReplace(searchString, functionalReplace, replaceValue, thisStr, position, nextPosition, sb);
+                int nextPosition = Strings.indexOf(stringIndexOfStringNode, thisStr, searchString, position);
+                builtinReplace(searchString, functionalReplace, replaceValue, thisStr, position, nextPosition, sb, toString3Node);
                 if (nextPosition < 0) {
                     break;
                 }
@@ -1488,7 +1475,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return builderToString(sb);
         }
 
-        private void builtinReplace(TruffleString searchString, boolean functionalReplace, Object replParam, TruffleString input, int lastPosition, int curPosition, TruffleStringBuilder sb) {
+        private void builtinReplace(TruffleString searchString, boolean functionalReplace, Object replParam, TruffleString input, int lastPosition, int curPosition, TruffleStringBuilder sb,
+                        JSToStringNode toString3Node) {
             if (replaceNecessaryProfile.profile(curPosition < 0)) {
                 append(sb, input, lastPosition, Strings.length(input));
                 return;
@@ -1503,8 +1491,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private void builtinReplaceString(TruffleString searchString, TruffleString replaceString, TruffleString input, ReplaceStringParser.Token[] parsedReplaceParam,
-                        int lastPosition, int curPosition,
-                        TruffleStringBuilder sb) {
+                        int lastPosition, int curPosition, TruffleStringBuilder sb) {
             if (replaceNecessaryProfile.profile(curPosition < 0)) {
                 append(sb, input, lastPosition, Strings.length(input));
                 return;
@@ -1533,21 +1520,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return getFlagsNode.getValue(regexp);
         }
 
-        private int indexOf(TruffleString a, int codepoint) {
-            if (stringIndexOfNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                stringIndexOfNode = insert(TruffleString.ByteIndexOfCodePointNode.create());
-            }
-            return Strings.indexOf(stringIndexOfNode, a, codepoint);
-        }
-
-        private int indexOf(TruffleString s1, TruffleString s2, int fromIndex) {
-            if (stringIndexOfStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                stringIndexOfStringNode = insert(TruffleString.ByteIndexOfStringNode.create());
-            }
-            return Strings.indexOf(stringIndexOfStringNode, s1, s2, fromIndex);
-        }
     }
 
     /**
@@ -1572,7 +1544,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected Object replace(Object thisObj, Object searchValue, Object replaceValue) {
+        protected Object replace(Object thisObj, Object searchValue, Object replaceValue,
+                        @Cached JSToStringNode toString2Node,
+                        @Cached JSToStringNode toString3Node) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             if (Strings.length(thisStr) > getContext().getStringLengthLimit()) {
@@ -1591,7 +1565,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         return replaceFirst(thisStr, searchRegExp, getFunctionReplacerNode(), replaceFunc, tRegexCompiledRegex);
                     }
                 } else {
-                    TruffleString replaceStr = toString3(replaceValue);
+                    TruffleString replaceStr = toString3Node.executeString(replaceValue);
                     if (globalFlagAccessor.get(tRegexCompiledRegex)) {
                         return replaceAll(searchRegExp, thisStr, groupCount, getStringReplacerNode(), replaceStr, tRegexCompiledRegex);
                     } else {
@@ -1599,30 +1573,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                 }
             } else {
-                TruffleString searchStr = toString2(searchValue);
+                TruffleString searchStr = toString2Node.executeString(searchValue);
                 if (isFnRepl.profile(JSFunction.isJSFunction(replaceValue))) {
                     return replaceFirst(thisStr, searchStr, getFunctionReplacerNode(), (JSDynamicObject) replaceValue, null);
                 } else {
-                    TruffleString replaceStr = toString3(replaceValue);
+                    TruffleString replaceStr = toString3Node.executeString(replaceValue);
                     return replaceFirst(thisStr, searchStr, getStringReplacerNode(), replaceStr, null);
                 }
             }
-        }
-
-        private TruffleString toString2(Object obj) {
-            if (toString2Node == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toString2Node = insert(JSToStringNode.create());
-            }
-            return toString2Node.executeString(obj);
-        }
-
-        private TruffleString toString3(Object obj) {
-            if (toString3Node == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toString3Node = insert(JSToStringNode.create());
-            }
-            return toString3Node.executeString(obj);
         }
 
         private void setLastIndex(JSDynamicObject regExp, int value) {
