@@ -185,10 +185,6 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             this.context = context;
         }
 
-        static GetStaticRegExpResultNode create(JSContext context) {
-            return RegExpBuiltinsFactory.GetStaticRegExpResultNodeGen.create(context);
-        }
-
         abstract Object execute();
 
         @Specialization
@@ -260,7 +256,8 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         }
 
         @Specialization
-        boolean getMultilineEager(@Cached("createGetResultNode()") GetStaticRegExpResultNode getResultNode,
+        boolean getMultilineEager(
+                        @Cached("create(getContext())") GetStaticRegExpResultNode getResultNode,
                         @Cached TRegexUtil.TRegexResultAccessor resultAccessor) {
             Object compiledRegex = getRealm().getStaticRegexResultCompiledRegex();
             Object result = getResultNode.execute();
@@ -274,10 +271,6 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         Assumption getStaticResultUnusedAssumption() {
             return getContext().getRegExpStaticResultUnusedAssumption();
         }
-
-        GetStaticRegExpResultNode createGetResultNode() {
-            return GetStaticRegExpResultNode.create(getContext());
-        }
     }
 
     abstract static class JSRegExpStaticResultPropertyNode extends JSBuiltinNode {
@@ -288,7 +281,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         JSRegExpStaticResultPropertyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            getResultNode = GetStaticRegExpResultNode.create(context);
+            getResultNode = RegExpBuiltinsFactory.GetStaticRegExpResultNodeGen.create(context);
             compiledRegexAccessor = TRegexUtil.TRegexCompiledRegexAccessor.create();
             resultAccessor = TRegexUtil.TRegexResultAccessor.create();
         }

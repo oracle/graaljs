@@ -1642,7 +1642,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isObjectNode.executeBoolean(regex)", limit = "1")
         protected Object matchAll(JSDynamicObject regex, Object stringObj,
                         @Cached JSToStringNode toStringNodeForInput,
-                        @Cached("createSpeciesConstructNode()") ArraySpeciesConstructorNode speciesConstructNode,
+                        @Cached("create(getContext(), false)") ArraySpeciesConstructorNode speciesConstructNode,
                         @Cached("create(FLAGS, getContext())") PropertyGetNode getFlagsNode,
                         @Cached JSToStringNode toStringNodeForFlags,
                         @Cached("create(LAST_INDEX, getContext())") PropertyGetNode getLastIndexNode,
@@ -1662,10 +1662,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             boolean global = Strings.indexOf(stringIndexOfNode, flags, 'g') != -1;
             boolean fullUnicode = Strings.indexOf(stringIndexOfNode, flags, 'u') != -1;
             return createRegExpStringIteratorNode.createIterator(matcher, string, global, fullUnicode);
-        }
-
-        ArraySpeciesConstructorNode createSpeciesConstructNode() {
-            return ArraySpeciesConstructorNode.create(getContext(), false);
         }
 
         @NeverDefault

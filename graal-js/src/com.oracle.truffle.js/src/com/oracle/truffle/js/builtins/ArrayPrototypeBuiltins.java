@@ -932,12 +932,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"isArray(object)", "longIsRepresentableAsInt(longLength)"})
         protected static void setArrayLength(JSDynamicObject object, long longLength,
-                        @Cached("createArrayLengthWriteNode()") ArrayLengthWriteNode arrayLengthWriteNode) {
+                        @Cached("createSetOrDelete(THROW_ERROR)") ArrayLengthWriteNode arrayLengthWriteNode) {
             arrayLengthWriteNode.executeVoid(object, (int) longLength);
-        }
-
-        protected static final ArrayLengthWriteNode createArrayLengthWriteNode() {
-            return ArrayLengthWriteNode.createSetOrDelete(THROW_ERROR);
         }
 
         @Specialization(guards = {"isJSObject(object)", "longIsRepresentableAsInt(longLength)"})
