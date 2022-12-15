@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -129,7 +130,9 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
         }
     }
 
+    @NeverDefault
     protected final Shape getInitialArrayShape() {
+        CompilerAsserts.neverPartOfCompilation();
         JSRealm realm = getRealm();
         return realm.getContext().getArrayFactory().getShape(realm);
     }
