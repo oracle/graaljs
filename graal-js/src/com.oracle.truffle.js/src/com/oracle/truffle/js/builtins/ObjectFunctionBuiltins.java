@@ -349,12 +349,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
-        @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
-        @Child private FromPropertyDescriptorNode fromPropertyDescriptorNode = FromPropertyDescriptorNode.create();
-
         @Specialization(guards = {"isJSObject(thisObj)"})
-        protected JSDynamicObject getJSObject(JSDynamicObject thisObj, Object property) {
+        protected JSDynamicObject getJSObject(JSDynamicObject thisObj, Object property,
+                        @Cached @Shared("toPropertyKey") JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached @Shared("fromPropertyDescriptor") FromPropertyDescriptorNode fromPropertyDescriptorNode,
+                        @Cached @Shared("getOwnProperty") JSGetOwnPropertyNode getOwnPropertyNode) {
             Object propertyKey = toPropertyKeyNode.execute(property);
             PropertyDescriptor desc = getOwnPropertyNode.execute(thisObj, propertyKey);
             return fromPropertyDescriptorNode.execute(desc, getContext());
@@ -362,6 +361,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
         protected JSDynamicObject getForeignObject(Object thisObj, Object property,
+                        @Cached @Shared("toPropertyKey") JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached @Shared("fromPropertyDescriptor") FromPropertyDescriptorNode fromPropertyDescriptorNode,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @Cached ImportValueNode toJSType,
                         @Cached TruffleString.ReadCharUTF16Node charAtNode) {
@@ -376,19 +377,20 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
-        protected JSDynamicObject getDefault(Object thisObj, Object property) {
+        protected JSDynamicObject getDefault(Object thisObj, Object property,
+                        @Cached @Shared("toPropertyKey") JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached @Shared("fromPropertyDescriptor") FromPropertyDescriptorNode fromPropertyDescriptorNode,
+                        @Cached @Shared("getOwnProperty") JSGetOwnPropertyNode getOwnPropertyNode) {
             Object object = toObject(thisObj);
-            assert JSDynamicObject.isJSDynamicObject(object);
-            return getJSObject((JSDynamicObject) object, property);
+            assert JSDynamicObject.isJSDynamicObject(object) : object;
+            return getJSObject((JSDynamicObject) object, property,
+                            toPropertyKeyNode, fromPropertyDescriptorNode, getOwnPropertyNode);
         }
 
     }
 
     @ImportStatic({JSConfig.class})
     public abstract static class ObjectGetOwnPropertyDescriptorsNode extends ObjectOperation {
-
-        @Child private FromPropertyDescriptorNode fromPropertyDescriptorNode = FromPropertyDescriptorNode.create();
-        @Child private DynamicObjectLibrary putPropDescNode = DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit);
 
         public ObjectGetOwnPropertyDescriptorsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -398,6 +400,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"isJSObject(thisObj)"})
         protected JSDynamicObject getJSObject(JSDynamicObject thisObj,
+                        @Cached @Shared("fromPropertyDescriptor") FromPropertyDescriptorNode fromPropertyDescriptorNode,
+                        @CachedLibrary(limit = "PropertyCacheLimit") @Shared("putPropDescNode") DynamicObjectLibrary putPropDescNode,
                         @Cached JSGetOwnPropertyNode getOwnPropertyNode,
                         @Cached ListSizeNode listSize,
                         @Cached ListGetNode listGet,
@@ -420,6 +424,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
         protected JSDynamicObject getForeignObject(Object thisObj,
+                        @Cached @Shared("fromPropertyDescriptor") FromPropertyDescriptorNode fromPropertyDescriptorNode,
+                        @CachedLibrary(limit = "PropertyCacheLimit") @Shared("putPropDescNode") DynamicObjectLibrary putPropDescNode,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                         @Cached ImportValueNode toJSType,
