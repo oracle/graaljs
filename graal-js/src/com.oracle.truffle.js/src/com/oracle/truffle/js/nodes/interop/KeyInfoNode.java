@@ -56,8 +56,10 @@ import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -93,7 +95,8 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
                     @Bind("fromJavaString(fromJavaStringNode, key)") TruffleString tStringKey,
                     @Bind("objectLibrary.getProperty(target, tStringKey)") Property property,
                     @Cached IsCallableNode isCallable,
-                    @Cached BranchProfile proxyBranch) {
+                    @Cached BranchProfile proxyBranch,
+                    @Cached BranchProfile moduleNamespaceBranch) {
         if (JSProperty.isAccessor(property)) {
             Accessor accessor = (Accessor) Properties.getOrDefault(objectLibrary, target, tStringKey, null);
             if ((query & READABLE) != 0 && accessor.hasGetter()) {
@@ -122,9 +125,15 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
             }
             if ((query & INVOCABLE) != 0) {
                 Object value = Properties.getOrDefault(objectLibrary, target, tStringKey, Undefined.instance);
-                if (JSProperty.isProxy(property)) {
-                    proxyBranch.enter();
-                    value = ((PropertyProxy) value).get(target);
+                if (JSProperty.isDataSpecial(property)) {
+                    if (JSProperty.isProxy(property)) {
+                        proxyBranch.enter();
+                        value = ((PropertyProxy) value).get(target);
+                    } else {
+                        assert JSProperty.isModuleNamespaceExport(property) : property;
+                        moduleNamespaceBranch.enter();
+                        value = JSModuleNamespace.getBindingValue((ExportResolution) value);
+                    }
                 }
                 if (isCallable.executeBoolean(value)) {
                     return true;
