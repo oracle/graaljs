@@ -562,7 +562,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         public ObjectPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
-            assert JSProperty.isData(property) && !JSProperty.isProxy(property);
+            assert JSProperty.isData(property) && !JSProperty.isDataSpecial(property);
             this.location = property.getLocation();
         }
 
@@ -1844,7 +1844,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
         Shape cacheShape = thisJSObj.getShape();
 
-        if ((JSProperty.isData(property) && !JSProperty.isProxy(property) || JSProperty.isAccessor(property)) &&
+        if (((JSProperty.isData(property) && !JSProperty.isDataSpecial(property)) || JSProperty.isAccessor(property)) &&
                         property.getLocation().isAssumedFinal()) {
             /**
              * if property is final and: <br>
@@ -1874,7 +1874,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 isConstantObjectFinal = false;
             }
 
-            if (JSProperty.isData(property) && !JSProperty.isProxy(property)) {
+            if (JSProperty.isData(property) && !JSProperty.isDataSpecial(property)) {
                 if (isEligibleForFinalSpecialization(cacheShape, thisJSObj, depth, isConstantObjectFinal)) {
                     return createFinalDataPropertySpecialization(property, cacheShape, thisJSObj, depth, isConstantObjectFinal);
                 }
@@ -1938,6 +1938,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     private static GetCacheNode createSpecializationFromDataProperty(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
+        assert JSProperty.isData(property);
         if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {
             return new IntPropertyGetNode(property, receiverCheck);
         } else if (property.getLocation() instanceof com.oracle.truffle.api.object.DoubleLocation) {
@@ -1968,6 +1969,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return new ProxyPropertyGetNode(property, receiverCheck);
             }
         } else {
+            assert !JSProperty.isDataSpecial(property);
             return new ObjectPropertyGetNode(property, receiverCheck);
         }
     }
@@ -2150,16 +2152,15 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     @Override
     protected boolean canCombineShapeCheck(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
         assert shapesHaveCommonLayoutForKey(parentShape, cacheShape);
-        if (JSDynamicObject.isJSDynamicObject(thisObj) && JSProperty.isData(property)) {
-            if (!JSProperty.isAccessor(property) && !JSProperty.isProxy(property)) {
-                return !property.getLocation().isAssumedFinal();
-            }
+        if (JSObject.isJSObject(thisObj) && JSProperty.isData(property) && !JSProperty.isDataSpecial(property)) {
+            return !property.getLocation().isAssumedFinal();
         }
         return false;
     }
 
     @Override
     protected GetCacheNode createCombinedIcPropertyNode(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
+        assert JSProperty.isData(property) && !JSProperty.isDataSpecial(property) : property;
         CombinedShapeCheckNode receiverCheck = new CombinedShapeCheckNode(parentShape, cacheShape);
 
         if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {
@@ -2171,7 +2172,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         } else if (property.getLocation() instanceof com.oracle.truffle.api.object.LongLocation) {
             return new LongPropertyGetNode(property, receiverCheck);
         } else {
-            assert !JSProperty.isProxy(property);
             return new ObjectPropertyGetNode(property, receiverCheck);
         }
     }

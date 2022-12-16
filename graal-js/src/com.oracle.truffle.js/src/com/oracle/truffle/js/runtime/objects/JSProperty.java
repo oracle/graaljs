@@ -56,21 +56,32 @@ import com.oracle.truffle.js.runtime.Properties;
  * Property objects represent the mapping between low-level stores and high-level data. The simplest
  * Property could be nothing more than a map of one index to one property's value, but abstracting
  * the interface allows for getter/setter methods, type-checked properties, and other such
- * specialized and language-specific behavior. ECMAScript[8.6.1]
+ * specialized and language-specific behavior.
+ *
+ * @see JSAttributes
  */
-public class JSProperty {
-    /** Is this property an accessor or data property? */
+public final class JSProperty {
+
+    /** JS accessor property (implies not a data property). */
     public static final int ACCESSOR = 1 << 3;
 
-    /** Is this property a proxy property? */
+    /** Special JS data property using internal {@link PropertyProxy} accessor. */
     public static final int PROXY = 1 << 4;
 
+    /** Used for global scope const bindings. */
     public static final int CONST = 1 << 5;
 
-    public static final int MODULE_NAMESPACE_EXPORT = 1 << 6 | PROXY;
+    /** Module namespace object export binding (special data property). */
+    public static final int MODULE_NAMESPACE_EXPORT = 1 << 6;
+
+    /** A special data property with internal accessor-like semantics. */
+    private static final int DATA_SPECIAL = PROXY | MODULE_NAMESPACE_EXPORT;
+
+    private JSProperty() {
+    }
 
     @TruffleBoundary
-    public String toString(Property property) {
+    public static String toString(Property property) {
         return "\"" + property.getKey() + "\"" + getAttributeString(property) + ":" + property.getLocation();
     }
 
@@ -98,7 +109,7 @@ public class JSProperty {
         } else if (isProxy(property)) {
             return ((PropertyProxy) value).get(store);
         } else {
-            assert isData(property);
+            assert isData(property) && !isDataSpecial(property) : property;
             return value;
         }
     }
@@ -128,8 +139,8 @@ public class JSProperty {
                 if (isProxy(property)) {
                     return setValueProxy(property, store, thisObj, value, isStrict);
                 } else {
-                    assert isData(property);
-                    assert !(value instanceof Accessor || value instanceof PropertyProxy);
+                    assert isData(property) && !isDataSpecial(property) : property;
+                    assert !(value instanceof Accessor || value instanceof PropertyProxy || value instanceof ExportResolution);
                     boolean success = Properties.putIfPresentUncached(store, property.getKey(), value);
                     assert success;
                     return true;
@@ -164,35 +175,39 @@ public class JSProperty {
     }
 
     public static boolean isConfigurable(Property property) {
-        return (property.getFlags() & NOT_CONFIGURABLE) == 0;
+        return isConfigurable(property.getFlags());
     }
 
     public static boolean isEnumerable(Property property) {
-        return (property.getFlags() & NOT_ENUMERABLE) == 0;
+        return isEnumerable(property.getFlags());
     }
 
     public static boolean isWritable(Property property) {
-        return (property.getFlags() & NOT_WRITABLE) == 0;
+        return isWritable(property.getFlags());
     }
 
     public static boolean isProxy(Property property) {
-        return (property.getFlags() & PROXY) != 0;
+        return isProxy(property.getFlags());
     }
 
     public static boolean isAccessor(Property property) {
-        return (property.getFlags() & ACCESSOR) != 0;
+        return isAccessor(property.getFlags());
     }
 
     public static boolean isData(Property property) {
-        return (property.getFlags() & ACCESSOR) == 0;
+        return isData(property.getFlags());
     }
 
     public static boolean isConst(Property property) {
-        return (property.getFlags() & CONST) != 0;
+        return isConst(property.getFlags());
     }
 
     public static boolean isModuleNamespaceExport(Property property) {
         return isModuleNamespaceExport(property.getFlags());
+    }
+
+    public static boolean isDataSpecial(Property property) {
+        return isDataSpecial(property.getFlags());
     }
 
     public static boolean isConfigurable(int flags) {
@@ -224,7 +239,11 @@ public class JSProperty {
     }
 
     public static boolean isModuleNamespaceExport(int flags) {
-        return (flags & MODULE_NAMESPACE_EXPORT) == MODULE_NAMESPACE_EXPORT;
+        return (flags & MODULE_NAMESPACE_EXPORT) != 0;
+    }
+
+    public static boolean isDataSpecial(int flags) {
+        return (flags & DATA_SPECIAL) != 0;
     }
 
     public static PropertyProxy getConstantProxy(Property proxyProperty) {

@@ -470,6 +470,8 @@ public abstract class JSNonProxy extends JSClass {
             Object value = JSDynamicObject.getOrNull(thisObj, key);
             if (JSProperty.isProxy(prop)) {
                 value = ((PropertyProxy) value).get(thisObj);
+            } else {
+                assert !JSProperty.isDataSpecial(prop) : prop;
             }
             desc = PropertyDescriptor.createData(value);
             desc.setWritable(JSProperty.isWritable(prop));

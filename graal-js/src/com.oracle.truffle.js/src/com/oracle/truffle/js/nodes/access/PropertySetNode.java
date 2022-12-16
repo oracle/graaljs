@@ -402,7 +402,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         public ObjectPropertySetNode(Property property, ReceiverCheckNode shapeCheck) {
             super(shapeCheck);
             this.location = property.getLocation();
-            assert JSProperty.isData(property) && JSProperty.isWritable(property) && !JSProperty.isProxy(property) : property;
+            assert JSProperty.isData(property) && JSProperty.isWritable(property) && !JSProperty.isDataSpecial(property) : property;
         }
 
         @Override
@@ -1058,7 +1058,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
             return new PropertyProxySetNode(property, shapeCheck, isStrict());
         } else {
-            assert JSProperty.isWritable(property) && !JSProperty.isModuleNamespaceExport(property) && depth == 0 && !JSProperty.isProxy(property);
+            assert JSProperty.isWritable(property) && !JSProperty.isDataSpecial(property) && depth == 0;
             if (property.getLocation().isConstant() || !property.getLocation().canStore(value)) {
                 return createRedefinePropertyNode(key, shapeCheck, shapeCheck.getShape(), property);
             }
@@ -1195,16 +1195,16 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     @Override
     protected boolean canCombineShapeCheck(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
         assert shapesHaveCommonLayoutForKey(parentShape, cacheShape);
-        if (JSDynamicObject.isJSDynamicObject(thisObj) && JSProperty.isData(property)) {
-            if (JSProperty.isWritable(property) && depth == 0 && !superProperty && !JSProperty.isProxy(property)) {
-                return !property.getLocation().isConstant() && property.getLocation().canStore(value);
-            }
+        if (JSObject.isJSObject(thisObj) && JSProperty.isData(property) && !JSProperty.isDataSpecial(property) && JSProperty.isWritable(property) &&
+                        depth == 0 && !superProperty) {
+            return !property.getLocation().isConstant() && property.getLocation().canStore(value);
         }
         return false;
     }
 
     @Override
     protected SetCacheNode createCombinedIcPropertyNode(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
+        assert JSProperty.isData(property) && !JSProperty.isDataSpecial(property) : property;
         PropertyGetNode.CombinedShapeCheckNode shapeCheck = new PropertyGetNode.CombinedShapeCheckNode(parentShape, cacheShape);
 
         if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {
