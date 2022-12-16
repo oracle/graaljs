@@ -162,8 +162,8 @@ public final class JSModuleNamespace extends JSNonProxy {
         }
     }
 
-    static Object getBindingValue(ExportResolution binding) {
-        CompilerAsserts.neverPartOfCompilation();
+    @TruffleBoundary
+    public static Object getBindingValue(ExportResolution binding) {
         TruffleString bindingName = binding.getBindingName();
         JSModuleRecord targetModule = binding.getModule();
         MaterializedFrame targetEnv = targetModule.getEnvironment();

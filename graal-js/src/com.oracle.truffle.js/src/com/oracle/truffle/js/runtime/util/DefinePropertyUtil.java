@@ -200,6 +200,7 @@ public final class DefinePropertyUtil {
             return true;
         }
         Property currentProperty = getPropertyByKey(thisObj, key);
+        assert !JSProperty.isDataSpecial(currentProperty) || JSProperty.isProxy(currentProperty) : currentProperty;
 
         if (JSProperty.isProxy(currentProperty) && descriptor.isDataDescriptor()) {
             PropertyProxy proxy = (PropertyProxy) JSDynamicObject.getOrNull(thisObj, key);
