@@ -40,11 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_MICROSECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_MILLISECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_NANOSECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_SECONDS;
-
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantFunctionBuiltins;
@@ -102,14 +97,8 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalInstantPrototypeBuiltins.BUILTINS);
-
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, EPOCH_SECONDS, realm.lookupAccessor(TemporalInstantPrototypeBuiltins.BUILTINS, EPOCH_SECONDS));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, EPOCH_MILLISECONDS, realm.lookupAccessor(TemporalInstantPrototypeBuiltins.BUILTINS, EPOCH_MILLISECONDS));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, EPOCH_MICROSECONDS, realm.lookupAccessor(TemporalInstantPrototypeBuiltins.BUILTINS, EPOCH_MICROSECONDS));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, EPOCH_NANOSECONDS, realm.lookupAccessor(TemporalInstantPrototypeBuiltins.BUILTINS, EPOCH_NANOSECONDS));
-
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, TemporalInstantPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
-
         return prototype;
     }
 

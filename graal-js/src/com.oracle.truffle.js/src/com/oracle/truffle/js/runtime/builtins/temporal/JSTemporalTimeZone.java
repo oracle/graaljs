@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ID;
-
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZoneFunctionBuiltins;
@@ -100,11 +98,8 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalTimeZonePrototypeBuiltins.BUILTINS);
-
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, ID, realm.lookupAccessor(TemporalTimeZonePrototypeBuiltins.BUILTINS, ID));
-
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, TemporalTimeZonePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
-
         return prototype;
     }
 
