@@ -1,20 +1,6 @@
 local common_json = (import "common.json");
 
 {
-  jdk8: {
-    jdk:: 'jdk8',
-    downloads+: {
-      JAVA_HOME: common_json.jdks.oraclejdk8,
-    },
-  },
-
-  jdk11: {
-    jdk:: 'jdk11',
-    downloads+: {
-      JAVA_HOME: common_json.jdks["labsjdk-ce-11"],
-    },
-  },
-
   jdk17: {
     jdk:: 'jdk17',
     downloads+: {
@@ -22,10 +8,10 @@ local common_json = (import "common.json");
     },
   },
 
-  jdk19: {
-    jdk:: 'jdk19',
+  jdk20: {
+    jdk:: 'jdk20',
     downloads+: {
-      JAVA_HOME: common_json.jdks["labsjdk-ce-19"],
+      JAVA_HOME: common_json.jdks["labsjdk-ce-20"],
     },
   },
 
@@ -112,26 +98,10 @@ local common_json = (import "common.json");
     os:: 'windows',
     arch:: 'amd64',
     capabilities: ['windows', 'amd64'],
-  },
-
-  windows_jdk17: self.windows + {
-    packages+: common_json.devkits["windows-jdk17"].packages,
+    packages+: common_json.devkits["windows-" + self.jdk].packages,
+    devkit_version:: std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(self.packages))[0],
     setup+: [
-      ['set-export', 'DEVKIT_VERSION', '2019'],
-    ],
-  },
-
- windows_jdk11: self.windows + {
-    packages+: common_json.devkits["windows-jdk11"].packages,
-    setup+: [
-      ['set-export', 'DEVKIT_VERSION', '2017'],
-    ],
-  },
-
-  windows_jdk8: self.windows + {
-    packages+: common_json.devkits["windows-oraclejdk8"].packages,
-    setup+: [
-      ['set-export', 'DEVKIT_VERSION', '2017'],
+      ['set-export', 'DEVKIT_VERSION', self.devkit_version],
     ],
   },
 

@@ -291,7 +291,7 @@ public class Serializer {
         int idx = 0;
         do {
             byte b = (byte) rest;
-            b |= 0x80;
+            b |= (byte) 0x80;
             bytes[idx] = b;
             idx++;
             rest >>>= 7;
