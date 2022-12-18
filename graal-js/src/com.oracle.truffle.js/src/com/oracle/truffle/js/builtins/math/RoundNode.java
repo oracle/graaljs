@@ -43,6 +43,8 @@ package com.oracle.truffle.js.builtins.math;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -80,9 +82,6 @@ public abstract class RoundNode extends MathOperation {
         return value;
     }
 
-    private final ConditionProfile shiftProfile = ConditionProfile.create();
-    private final BranchProfile negativeLongBitsProfile = BranchProfile.create();
-
     // Copied from sun.misc.DoubleConsts
     private static final int EXP_BIAS = 1023;
     private static final int SIGNIFICAND_WIDTH = 53;
@@ -90,7 +89,9 @@ public abstract class RoundNode extends MathOperation {
     private static final long SIGNIF_BIT_MASK = 4503599627370495L;
 
     // Copy of Math.round() with added profiles
-    private long round(double a) {
+    private static long round(double a,
+                    ConditionProfile shiftProfile,
+                    BranchProfile negativeLongBitsProfile) {
         long longBits = Double.doubleToRawLongBits(a);
         long biasedExp = (longBits & EXP_BIT_MASK) >> (SIGNIFICAND_WIDTH - 1);
         long shift = (SIGNIFICAND_WIDTH - 2 + EXP_BIAS) - biasedExp;
@@ -118,8 +119,11 @@ public abstract class RoundNode extends MathOperation {
     }
 
     @Specialization(guards = {"!isCornercase(value)", "isDoubleInInt32Range(value)"}, rewriteOn = ArithmeticException.class)
-    protected int roundDoubleInt(double value) {
-        long longValue = round(value);
+    protected int roundDoubleInt(double value,
+                    @Cached @Shared("shiftProfile") ConditionProfile shiftProfile,
+                    @Cached @Shared("negativeLongBitsProfile") BranchProfile negativeLongBitsProfile) {
+        long longValue = round(value,
+                        shiftProfile, negativeLongBitsProfile);
         if (longValue == 0 && value < 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new ArithmeticException();
@@ -131,9 +135,12 @@ public abstract class RoundNode extends MathOperation {
 
     @Specialization(guards = {"!isCornercase(value)"}, replaces = "roundDoubleInt")
     protected double roundDouble(double value,
-                    @Cached ConditionProfile profileA,
-                    @Cached ConditionProfile profileB) {
-        long longValue = round(value);
+                    @Cached @Exclusive ConditionProfile profileA,
+                    @Cached @Exclusive ConditionProfile profileB,
+                    @Cached @Shared("shiftProfile") ConditionProfile shiftProfile,
+                    @Cached @Shared("negativeLongBitsProfile") BranchProfile negativeLongBitsProfile) {
+        long longValue = round(value,
+                        shiftProfile, negativeLongBitsProfile);
         if (profileA.profile(longValue == Long.MIN_VALUE || longValue == Long.MAX_VALUE)) {
             // The value is too large to have a fractional part (i.e. is rounded already)
             return value;

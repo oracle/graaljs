@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins.math;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -52,10 +54,9 @@ public abstract class AsinhNode extends MathOperation {
         super(context, builtin);
     }
 
-    private final ConditionProfile isNegative = ConditionProfile.create();
-
     @Specialization
-    protected double asinhDouble(double x) {
+    protected double asinhDouble(double x,
+                    @Cached @Shared("isNegative") ConditionProfile isNegative) {
         if (JSRuntime.isNegativeZero(x)) {
             return -0.0;
         }
@@ -74,7 +75,8 @@ public abstract class AsinhNode extends MathOperation {
     }
 
     @Specialization
-    protected double asinhGeneric(Object a) {
-        return asinhDouble(toDouble(a));
+    protected double asinhGeneric(Object a,
+                    @Cached @Shared("isNegative") ConditionProfile isNegative) {
+        return asinhDouble(toDouble(a), isNegative);
     }
 }

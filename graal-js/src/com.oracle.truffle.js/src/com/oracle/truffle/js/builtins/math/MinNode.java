@@ -56,12 +56,11 @@ public abstract class MinNode extends MathOperation {
         super(context, builtin);
     }
 
-    private final ConditionProfile leftSmaller = ConditionProfile.create();
-    private final ConditionProfile rightSmaller = ConditionProfile.create();
-    private final ConditionProfile bothEqual = ConditionProfile.create();
-    private final ConditionProfile negativeZero = ConditionProfile.create();
-
-    private double minDoubleDouble(double a, double b) {
+    private static double minDoubleDouble(double a, double b,
+                    ConditionProfile leftSmaller,
+                    ConditionProfile rightSmaller,
+                    ConditionProfile bothEqual,
+                    ConditionProfile negativeZero) {
         if (leftSmaller.profile(a < b)) {
             return a;
         } else if (rightSmaller.profile(b < a)) {
@@ -107,7 +106,11 @@ public abstract class MinNode extends MathOperation {
                     @Cached @Exclusive ConditionProfile isIntBranch,
                     @Cached @Shared("minProfile") ConditionProfile minProfile,
                     @Cached JSToNumberNode toNumber1Node,
-                    @Cached JSToNumberNode toNumber2Node) {
+                    @Cached JSToNumberNode toNumber2Node,
+                    @Cached @Shared("leftSmaller") ConditionProfile leftSmaller,
+                    @Cached @Shared("rightSmaller") ConditionProfile rightSmaller,
+                    @Cached @Shared("bothEqual") ConditionProfile bothEqual,
+                    @Cached @Shared("negativeZero") ConditionProfile negativeZero) {
         Number n1 = toNumber1Node.executeNumber(args[0]);
         Number n2 = toNumber2Node.executeNumber(args[1]);
         if (isIntBranch.profile(n1 instanceof Integer && n2 instanceof Integer)) {
@@ -115,7 +118,8 @@ public abstract class MinNode extends MathOperation {
         } else {
             double d1 = JSRuntime.doubleValue(n1);
             double d2 = JSRuntime.doubleValue(n2);
-            return minDoubleDouble(d1, d2);
+            return minDoubleDouble(d1, d2,
+                            leftSmaller, rightSmaller, bothEqual, negativeZero);
         }
     }
 
@@ -130,16 +134,28 @@ public abstract class MinNode extends MathOperation {
     }
 
     @Specialization(guards = {"args.length == 3", "!caseIntIntInt(args)"})
-    protected double min3ParamOther(Object[] args) {
-        double smallest = minDoubleDouble(toDouble(args[0]), toDouble(args[1]));
-        return minDoubleDouble(smallest, toDouble(args[2]));
+    protected double min3ParamOther(Object[] args,
+                    @Cached @Shared("leftSmaller") ConditionProfile leftSmaller,
+                    @Cached @Shared("rightSmaller") ConditionProfile rightSmaller,
+                    @Cached @Shared("bothEqual") ConditionProfile bothEqual,
+                    @Cached @Shared("negativeZero") ConditionProfile negativeZero) {
+        double smallest = minDoubleDouble(toDouble(args[0]), toDouble(args[1]),
+                        leftSmaller, rightSmaller, bothEqual, negativeZero);
+        return minDoubleDouble(smallest, toDouble(args[2]),
+                        leftSmaller, rightSmaller, bothEqual, negativeZero);
     }
 
     @Specialization(guards = "args.length >= 4")
-    protected double minGeneric(Object[] args) {
-        double smallest = minDoubleDouble(toDouble(args[0]), toDouble(args[1]));
+    protected double minGeneric(Object[] args,
+                    @Cached @Shared("leftSmaller") ConditionProfile leftSmaller,
+                    @Cached @Shared("rightSmaller") ConditionProfile rightSmaller,
+                    @Cached @Shared("bothEqual") ConditionProfile bothEqual,
+                    @Cached @Shared("negativeZero") ConditionProfile negativeZero) {
+        double smallest = minDoubleDouble(toDouble(args[0]), toDouble(args[1]),
+                        leftSmaller, rightSmaller, bothEqual, negativeZero);
         for (int i = 2; i < args.length; i++) {
-            smallest = minDoubleDouble(smallest, toDouble(args[i]));
+            smallest = minDoubleDouble(smallest, toDouble(args[i]),
+                            leftSmaller, rightSmaller, bothEqual, negativeZero);
         }
         return smallest;
     }
