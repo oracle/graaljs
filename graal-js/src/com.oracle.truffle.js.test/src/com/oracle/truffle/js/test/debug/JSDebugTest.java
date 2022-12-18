@@ -62,6 +62,7 @@ import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -1126,6 +1127,7 @@ public class JSDebugTest {
         }
     }
 
+    @Ignore
     @Test
     public void testBreakpointEverywhereBreaks() throws Throwable {
         final String sourceCode = "/* Test */\n" +
@@ -1159,6 +1161,7 @@ public class JSDebugTest {
         tester.assertBreakpointsBreakEverywhere(source);
     }
 
+    @Ignore
     @Test
     public void testMisplacedLineBreakpoints() throws Throwable {
         final String source = "// A comment\n" +                  // 1
@@ -1193,6 +1196,7 @@ public class JSDebugTest {
         tester.assertLineBreakpointsResolution(source, "R", "js");
     }
 
+    @Ignore
     @Test
     public void testMisplacedColumnBreakpoints() throws Throwable {
         // A source on a single line with BX_ and RX_ marks.

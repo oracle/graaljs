@@ -479,6 +479,7 @@ public class TestScope {
         assertEquals("3628800", tester.expectDone());
     }
 
+    @Ignore
     @Test
     public void testGenerator() {
         Source function = Source.newBuilder("js", "" +
