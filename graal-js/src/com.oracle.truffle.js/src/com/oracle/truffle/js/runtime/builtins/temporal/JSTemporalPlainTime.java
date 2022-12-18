@@ -65,8 +65,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public final class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
-                PrototypeSupplier {
+public final class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSTemporalPlainTime INSTANCE = new JSTemporalPlainTime();
 
@@ -119,11 +118,6 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getTemporalPlainTimePrototype();
-    }
-
-    @Override
-    public void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
-        WithFunctionsAndSpecies.super.fillConstructor(realm, constructor);
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {

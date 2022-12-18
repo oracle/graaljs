@@ -59,8 +59,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
-                PrototypeSupplier {
+public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSTemporalZonedDateTime INSTANCE = new JSTemporalZonedDateTime();
 
@@ -110,11 +109,6 @@ public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConst
     @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getTemporalZonedDateTimePrototype();
-    }
-
-    @Override
-    public void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
-        WithFunctionsAndSpecies.super.fillConstructor(realm, constructor);
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {

@@ -63,8 +63,7 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 
-public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
-                PrototypeSupplier {
+public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSTemporalPlainDateTime INSTANCE = new JSTemporalPlainDateTime();
 
@@ -143,11 +142,6 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
     @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getTemporalPlainDateTimePrototype();
-    }
-
-    @Override
-    public void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
-        WithFunctionsAndSpecies.super.fillConstructor(realm, constructor);
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
