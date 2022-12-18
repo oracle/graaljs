@@ -1134,15 +1134,15 @@ public class JSRealm {
     public final Accessor lookupAccessor(JSBuiltinsContainer container, Object key) {
         Pair<JSBuiltin, JSBuiltin> pair = container.lookupAccessorByKey(key);
         JSBuiltin getterBuiltin = pair.getLeft();
-        JSBuiltin setterBulitin = pair.getRight();
+        JSBuiltin setterBuiltin = pair.getRight();
         JSFunctionObject getterFunction = null;
         JSFunctionObject setterFunction = null;
         if (getterBuiltin != null) {
             JSFunctionData functionData = getterBuiltin.createFunctionData(context);
             getterFunction = JSFunction.create(this, functionData);
         }
-        if (setterBulitin != null) {
-            JSFunctionData functionData = setterBulitin.createFunctionData(context);
+        if (setterBuiltin != null) {
+            JSFunctionData functionData = setterBuiltin.createFunctionData(context);
             setterFunction = JSFunction.create(this, functionData);
         }
         return new Accessor(getterFunction, setterFunction);

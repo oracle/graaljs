@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -66,6 +67,7 @@ import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 /**
@@ -419,6 +421,33 @@ public final class JSObjectUtil {
                 }
                 JSFunctionData functionData = builtin.createFunctionData(context);
                 putDataProperty(thisObj, builtin.getKey(), JSFunction.create(realm, functionData), builtin.getAttributeFlags());
+            }
+        });
+    }
+
+    public static void putAccessorsFromContainer(JSRealm realm, JSDynamicObject thisObj, JSBuiltinsContainer container) {
+        JSContext context = realm.getContext();
+        container.forEachAccessor(new BiConsumer<Builtin, Builtin>() {
+            @Override
+            public void accept(Builtin getterBuiltin, Builtin setterBuiltin) {
+                JSFunctionObject getterFunction = null;
+                JSFunctionObject setterFunction = null;
+                if (getterBuiltin != null && getterBuiltin.isIncluded(context)) {
+                    JSFunctionData functionData = getterBuiltin.createFunctionData(context);
+                    getterFunction = JSFunction.create(realm, functionData);
+                }
+                if (setterBuiltin != null && setterBuiltin.isIncluded(context)) {
+                    JSFunctionData functionData = setterBuiltin.createFunctionData(context);
+                    setterFunction = JSFunction.create(realm, functionData);
+                }
+                if (getterFunction == null && setterFunction == null) {
+                    return;
+                }
+                Accessor accessor = new Accessor(getterFunction, setterFunction);
+                Builtin builtin = getterBuiltin != null ? getterBuiltin : setterBuiltin;
+                assert !(getterBuiltin != null && setterBuiltin != null) ||
+                                (getterBuiltin.getKey().equals(setterBuiltin.getKey()) && getterBuiltin.getAttributeFlags() == setterBuiltin.getAttributeFlags()) : builtin;
+                putBuiltinAccessorProperty(thisObj, builtin.getKey(), accessor, builtin.getAttributeFlags());
             }
         });
     }
