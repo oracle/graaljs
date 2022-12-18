@@ -40,27 +40,19 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.SymbolFunctionBuiltins;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltins;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Object wrapper around a primitive symbol.
@@ -91,14 +83,11 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
 
     @Override
     public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SymbolPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
-        if (ctx.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
-            JSObjectUtil.putBuiltinAccessorProperty(prototype, DESCRIPTION, createDescriptionGetterFunction(realm), Undefined.instance);
-        }
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, SymbolPrototypeBuiltins.BUILTINS);
         return prototype;
     }
 
@@ -110,30 +99,6 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
 
     public static JSConstructor createConstructor(JSRealm realm) {
         return INSTANCE.createConstructorAndPrototype(realm, SymbolFunctionBuiltins.BUILTINS);
-    }
-
-    private static JSDynamicObject createDescriptionGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SymbolGetDescription, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                private final ConditionProfile isSymbolProfile = ConditionProfile.createBinaryProfile();
-                private final ConditionProfile isJSSymbolProfile = ConditionProfile.createBinaryProfile();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (isSymbolProfile.profile(obj instanceof Symbol)) {
-                        return ((Symbol) obj).getDescription();
-                    } else if (isJSSymbolProfile.profile(isJSSymbol(obj))) {
-                        return JSSymbol.getSymbolData((JSDynamicObject) obj).getDescription();
-                    } else {
-                        throw Errors.createTypeErrorSymbolExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, DESCRIPTION));
-        });
-
-        return JSFunction.create(realm, getterData);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,9 +46,11 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolToPrimitiveNodeGen;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolToStringNodeGen;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolValueOfNodeGen;
+import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolGetDescriptionNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -80,7 +82,9 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             public boolean isWritable() {
                 return false;
             }
-        };
+        },
+
+        description(0);
 
         private final int length;
 
@@ -91,6 +95,19 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Override
         public int getLength() {
             return length;
+        }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (this == description) {
+                return JSConfig.ECMAScript2019;
+            }
+            return 6;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return this == description;
         }
     }
 
@@ -103,6 +120,8 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return SymbolValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case _toPrimitive:
                 return SymbolToPrimitiveNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case description:
+                return SymbolGetDescriptionNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -163,6 +182,26 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSSymbol.getSymbolData((JSSymbolObject) thisObj);
             } else {
                 throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+            }
+        }
+    }
+
+    public abstract static class SymbolGetDescriptionNode extends JSBuiltinNode {
+        private final ConditionProfile isSymbolProfile = ConditionProfile.create();
+        private final ConditionProfile isSymbolObjectProfile = ConditionProfile.create();
+
+        protected SymbolGetDescriptionNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object description(Object thisObj) {
+            if (isSymbolProfile.profile(thisObj instanceof Symbol)) {
+                return ((Symbol) thisObj).getDescription();
+            } else if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
+                return JSSymbol.getSymbolData((JSSymbolObject) thisObj).getDescription();
+            } else {
+                throw Errors.createTypeErrorSymbolExpected();
             }
         }
     }
