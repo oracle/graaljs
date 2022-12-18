@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -267,7 +267,7 @@ public final class JSError extends JSNonProxy {
     @TruffleBoundary
     public static JSDynamicObject setException(JSRealm realm, JSDynamicObject errorObj, GraalJSException exception, boolean defaultColumnNumber) {
         assert isJSError(errorObj);
-        defineStackProperty(realm, errorObj, exception);
+        defineStackProperty(errorObj, exception);
         JSContext context = realm.getContext();
         if (context.isOptionNashornCompatibilityMode() && exception.getJSStackTrace().length > 0) {
             JSStackTraceElement topStackTraceElement = exception.getJSStackTrace()[0];
@@ -281,9 +281,8 @@ public final class JSError extends JSNonProxy {
         JSObjectUtil.defineDataProperty(context, errorObj, key, value, JSAttributes.getDefaultNotEnumerable());
     }
 
-    private static void defineStackProperty(JSRealm realm, JSDynamicObject errorObj, GraalJSException exception) {
-        JSContext context = realm.getContext();
-        setErrorProperty(context, errorObj, EXCEPTION_PROPERTY_NAME, exception);
+    private static void defineStackProperty(JSDynamicObject errorObj, GraalJSException exception) {
+        JSObjectUtil.putHiddenProperty(errorObj, EXCEPTION_PROPERTY_NAME, exception);
 
         // Error.stack is not formatted until it is accessed
         JSObjectUtil.putHiddenProperty(errorObj, FORMATTED_STACK_NAME, null);
