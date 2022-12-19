@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putConstructorProperty;
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putFunctionsFromContainer;
-
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -141,9 +138,9 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
             arrayBufferPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         }
 
-        putConstructorProperty(arrayBufferPrototype, ctor);
-        putFunctionsFromContainer(realm, arrayBufferPrototype, ArrayBufferPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putBuiltinAccessorProperty(arrayBufferPrototype, BYTE_LENGTH, realm.lookupAccessor(ArrayBufferPrototypeBuiltins.BUILTINS, BYTE_LENGTH));
+        JSObjectUtil.putConstructorProperty(arrayBufferPrototype, ctor);
+        JSObjectUtil.putFunctionsFromContainer(realm, arrayBufferPrototype, ArrayBufferPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putAccessorsFromContainer(realm, arrayBufferPrototype, ArrayBufferPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(arrayBufferPrototype, CLASS_NAME);
         return arrayBufferPrototype;
     }
