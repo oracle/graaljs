@@ -579,19 +579,6 @@ public final class IntlUtil {
         return type.toLowerCase();
     }
 
-    @TruffleBoundary
-    public static Locale withoutUnicodeExtension(Locale originalLocale, String key) {
-        if (!originalLocale.getUnicodeLocaleKeys().contains(key)) {
-            return originalLocale;
-        } else {
-            String value = originalLocale.getUnicodeLocaleType(key);
-            String originalTag = originalLocale.toLanguageTag();
-            String toRemove = "-u-" + key + "-" + value;
-            String strippedTag = originalTag.replace(toRemove, "");
-            return Locale.forLanguageTag(strippedTag);
-        }
-    }
-
     public static boolean isWellFormedCurrencyCode(String currency) {
         return currency.length() == 3 && UTS35Validator.isAlpha(currency.charAt(0)) && UTS35Validator.isAlpha(currency.charAt(1)) && UTS35Validator.isAlpha(currency.charAt(2));
     }
