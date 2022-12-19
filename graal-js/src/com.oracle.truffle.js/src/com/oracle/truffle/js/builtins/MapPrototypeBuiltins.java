@@ -433,6 +433,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
     /**
      * Implementation of the Map.prototype.size getter.
      */
+    @ImportStatic({JSConfig.class, JSMapOperation.class})
     public abstract static class MapGetSizeNode extends JSBuiltinNode {
 
         public MapGetSizeNode(JSContext context, JSBuiltin builtin) {
@@ -444,9 +445,21 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             return JSMap.getMapSize(thisObj);
         }
 
+        @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
+        protected static Object doForeignMap(Object thisObj,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
+                        @Cached BranchProfile toDoubleBranch) {
+            try {
+                return JSRuntime.longToIntOrDouble(mapLib.getHashSize(thisObj), toDoubleBranch);
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(thisObj, e, "getHashSize", null);
+            }
+        }
+
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSMap(thisObj)"})
-        protected static int notMap(@SuppressWarnings("unused") Object thisObj) {
+        @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
+        protected static int notMap(@SuppressWarnings("unused") Object thisObj,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }
     }
