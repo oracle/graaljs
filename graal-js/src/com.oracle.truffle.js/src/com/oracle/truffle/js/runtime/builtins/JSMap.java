@@ -40,21 +40,15 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
@@ -62,7 +56,6 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
 public final class JSMap extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies, PrototypeSupplier {
@@ -74,8 +67,6 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
 
     public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("Map Iterator");
     public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("Map Iterator.prototype");
-
-    private static final TruffleString SIZE = Strings.constant("size");
 
     public static final HiddenKey MAP_ITERATION_KIND_ID = new HiddenKey("MapIterationKind");
 
@@ -98,33 +89,12 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
         return getInternalMap(obj).size();
     }
 
-    private static JSFunctionObject createSizeGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.MapGetSize, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSMap.isJSMap(obj)) {
-                        return JSMap.getMapSize((JSMapObject) obj);
-                    } else {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorMapExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, SIZE));
-        });
-        return JSFunction.create(realm, getterData);
-    }
-
     @Override
     public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(prototype, ctor);
         // sets the size just for the prototype
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, MapPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, MapPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         // The initial value of the @@iterator property is the same function object as

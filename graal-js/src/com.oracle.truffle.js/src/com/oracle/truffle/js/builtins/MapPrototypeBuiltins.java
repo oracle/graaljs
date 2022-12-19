@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,7 @@ import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapForEachNo
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapGetNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapHasNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapSetNodeGen;
+import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetSizeNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -103,7 +104,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         forEach(1),
         keys(0),
         values(0),
-        entries(0);
+        entries(0),
+        size(0);
 
         private final int length;
 
@@ -114,6 +116,11 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Override
         public int getLength() {
             return length;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return this == size;
         }
     }
 
@@ -138,6 +145,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 return CreateMapIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
             case entries:
                 return CreateMapIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
+            case size:
+                return MapGetSizeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -417,6 +426,27 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
         protected static Object notMap(Object thisObj, Object callback, Object thisArg,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+            throw Errors.createTypeErrorMapExpected();
+        }
+    }
+
+    /**
+     * Implementation of the Map.prototype.size getter.
+     */
+    public abstract static class MapGetSizeNode extends JSBuiltinNode {
+
+        public MapGetSizeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static int doMap(JSMapObject thisObj) {
+            return JSMap.getMapSize(thisObj);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isJSMap(thisObj)"})
+        protected static int notMap(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeErrorMapExpected();
         }
     }
