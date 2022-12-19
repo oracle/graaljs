@@ -47,29 +47,16 @@ import java.util.Locale;
 import com.ibm.icu.text.Collator;
 import com.ibm.icu.text.RuleBasedCollator;
 import com.ibm.icu.util.ULocale;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.CollatorFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.CollatorPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -79,7 +66,6 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSCollator extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
@@ -87,9 +73,6 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
     public static final TruffleString CLASS_NAME = Strings.constant("Collator");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Collator.prototype");
     public static final TruffleString TO_STRING_TAG = Strings.constant("Intl.Collator");
-    public static final TruffleString GET_COMPARE_NAME = Strings.constant("get compare");
-
-    static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(Strings.toJavaString(CLASS_NAME));
 
     public static final JSCollator INSTANCE = new JSCollator();
 
@@ -115,7 +98,7 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         JSObject collatorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(collatorPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, collatorPrototype, CollatorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putBuiltinAccessorProperty(collatorPrototype, Strings.COMPARE, createCompareFunctionGetter(realm), Undefined.instance);
+        JSObjectUtil.putAccessorsFromContainer(realm, collatorPrototype, CollatorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(collatorPrototype, TO_STRING_TAG);
         return collatorPrototype;
     }
@@ -275,6 +258,18 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_CASE_FIRST, Strings.fromJavaString(caseFirst), JSAttributes.getDefault());
             return result;
         }
+
+        public boolean isInitializedCollator() {
+            return initializedCollator;
+        }
+
+        public JSDynamicObject getBoundCompareFunction() {
+            return boundCompareFunction;
+        }
+
+        public void setBoundCompareFunction(JSDynamicObject boundCompareFunction) {
+            this.boundCompareFunction = boundCompareFunction;
+        }
     }
 
     @TruffleBoundary
@@ -286,68 +281,6 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
     public static InternalState getInternalState(JSDynamicObject collatorObj) {
         assert isJSCollator(collatorObj);
         return ((JSCollatorObject) collatorObj).getInternalState();
-    }
-
-    private static CallTarget createGetCompareCallTarget(JSContext context) {
-        return new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private PropertySetNode setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
-            private final BranchProfile errorBranch = BranchProfile.create();
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-
-                Object[] frameArgs = frame.getArguments();
-                Object collatorObj = JSArguments.getThisObject(frameArgs);
-
-                if (isJSCollator(collatorObj)) {
-
-                    InternalState state = getInternalState((JSDynamicObject) collatorObj);
-
-                    if (state == null || !state.initializedCollator) {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("compare");
-                    }
-
-                    if (state.boundCompareFunction == null) {
-                        JSFunctionData compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCompare, c -> createCompareFunctionData(c));
-                        JSDynamicObject compareFn = JSFunction.create(getRealm(), compareFunctionData);
-                        setBoundObjectNode.setValue(compareFn, collatorObj);
-                        state.boundCompareFunction = compareFn;
-                    }
-
-                    return state.boundCompareFunction;
-                }
-                errorBranch.enter();
-                throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
-            }
-        }.getCallTarget();
-    }
-
-    private static JSFunctionData createCompareFunctionData(JSContext context) {
-        return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
-            @Child private JSToStringNode toString1Node = JSToStringNode.create();
-            @Child private JSToStringNode toString2Node = JSToStringNode.create();
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] arguments = frame.getArguments();
-                JSDynamicObject thisObj = (JSDynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
-                assert isJSCollator(thisObj);
-                int argumentCount = JSArguments.getUserArgumentCount(arguments);
-                String one = Strings.toJavaString((argumentCount > 0) ? toString1Node.executeString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME);
-                String two = Strings.toJavaString((argumentCount > 1) ? toString2Node.executeString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME);
-                return compare(thisObj, one, two);
-            }
-        }.getCallTarget(), 2, Strings.EMPTY_STRING);
-    }
-
-    private static JSDynamicObject createCompareFunctionGetter(JSRealm realm) {
-        JSFunctionData fd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.CollatorGetCompare, (ctx) -> {
-            CallTarget ct = createGetCompareCallTarget(ctx);
-            return JSFunctionData.create(ctx, ct, ct, 0, GET_COMPARE_NAME, false, false, false, true);
-        });
-        return JSFunction.create(realm, fd);
     }
 
     @Override

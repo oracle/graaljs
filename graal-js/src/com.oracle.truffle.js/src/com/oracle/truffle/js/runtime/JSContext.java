@@ -362,7 +362,6 @@ public class JSContext {
         RegExp$7,
         RegExp$8,
         RegExp$9,
-        CollatorGetCompare,
         NumberFormatGetFormat,
         DateTimeFormatGetFormat,
         FunctionAsyncIterator,
