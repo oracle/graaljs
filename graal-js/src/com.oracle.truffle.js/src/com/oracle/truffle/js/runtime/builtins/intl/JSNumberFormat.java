@@ -45,9 +45,7 @@ import java.math.RoundingMode;
 import java.text.AttributedCharacterIterator;
 import java.text.Format;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Currency;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -159,7 +157,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     // minor unit value defined by ISO 4217. Unfortunately, JDK does not return -1 ("undefined") for
     // fraction digits for historical currencies => we have to keep track of these currencies
     // to return the digits expected by ECMAScript specification.
-    private static final Set<String> historicalCurrenciesInJDK = new HashSet<>(Arrays.asList(new String[]{
+    private static final Set<String> historicalCurrenciesInJDK = Set.of(
                     "ADP",
                     "BEF",
                     "BYB",
@@ -172,8 +170,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                     "PTE",
                     "ROL",
                     "TPE",
-                    "TRL",
-    }));
+                    "TRL");
 
     // https://tc39.github.io/ecma402/#sec-currencydigits
     @TruffleBoundary
