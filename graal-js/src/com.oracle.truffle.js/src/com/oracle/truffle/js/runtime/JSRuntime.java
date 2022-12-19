@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1991,6 +1991,15 @@ public final class JSRuntime {
 
     public static boolean isPropertyKey(Object key) {
         return Strings.isTString(key) || key instanceof Symbol;
+    }
+
+    public static TruffleString propertyKeyToFunctionNameString(Object key) {
+        assert JSRuntime.isPropertyKey(key) : key;
+        if (key instanceof TruffleString) {
+            return (TruffleString) key;
+        } else {
+            return ((Symbol) key).toFunctionNameString();
+        }
     }
 
     public static Object boxIndex(long longIndex, ConditionProfile indexInIntRangeConditionProfile) {
