@@ -40,27 +40,18 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltins;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -69,7 +60,6 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
     public static final int MAX_MEMORY_SIZE = 32767;
     public static final TruffleString CLASS_NAME = Strings.constant("Memory");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Memory.prototype");
-    public static final TruffleString BUFFER = Strings.constant("buffer");
 
     public static final TruffleString WEB_ASSEMBLY_MEMORY = Strings.constant("WebAssembly.Memory");
 
@@ -94,7 +84,7 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WebAssemblyMemoryPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, BUFFER, createBufferGetterFunction(realm), null, JSAttributes.configurableEnumerableWritable());
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, WebAssemblyMemoryPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_MEMORY);
         return prototype;
     }
@@ -124,28 +114,5 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         factory.initProto(object, realm);
         JSWebAssembly.setEmbedderData(realm, wasmMemory, object);
         return context.trackAllocation(object);
-    }
-
-    private static JSFunctionObject createBufferGetterFunction(JSRealm realm) {
-        JSContext context = realm.getContext();
-        JSFunctionData getterData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyMemoryGetBuffer, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object thiz = JSFrameUtil.getThisObj(frame);
-                    if (isJSWebAssemblyMemory(thiz)) {
-                        return ((JSWebAssemblyMemoryObject) thiz).getBufferObject(c, realm);
-                    } else {
-                        errorBranch.enter();
-                        throw Errors.createTypeError("WebAssembly.Memory.buffer: Receiver is not a WebAssembly.Memory", this);
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, BUFFER));
-        });
-
-        return JSFunction.create(realm, getterData);
     }
 }

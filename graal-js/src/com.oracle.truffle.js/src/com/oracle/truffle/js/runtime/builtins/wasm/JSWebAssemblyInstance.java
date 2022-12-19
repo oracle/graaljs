@@ -53,6 +53,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyInstancePrototypeBuiltins;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -60,7 +61,6 @@ import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -75,7 +75,6 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -84,7 +83,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final TruffleString CLASS_NAME = Strings.constant("Instance");
-    public static final TruffleString EXPORTS = Strings.constant("exports");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Instance.prototype");
 
     public static final TruffleString WEB_ASSEMBLY_INSTANCE = Strings.constant("WebAssembly.Instance");
 
@@ -108,7 +107,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(prototype, constructor);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, EXPORTS, createExportsGetterFunction(realm), Undefined.instance, JSAttributes.configurableEnumerableWritable());
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, WebAssemblyInstancePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_INSTANCE);
         return prototype;
     }
@@ -133,28 +132,6 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         JSWebAssemblyInstanceObject object = new JSWebAssemblyInstanceObject(factory.getShape(realm), wasmInstance, exportsObject);
         factory.initProto(object, realm);
         return context.trackAllocation(object);
-    }
-
-    private static JSFunctionObject createExportsGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyInstanceGetExports, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object thiz = JSFrameUtil.getThisObj(frame);
-                    if (isJSWebAssemblyInstance(thiz)) {
-                        return ((JSWebAssemblyInstanceObject) thiz).getExports();
-                    } else {
-                        errorBranch.enter();
-                        throw Errors.createTypeError("WebAssembly.Instance.exports(): Receiver is not a WebAssembly.Instance", this);
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, EXPORTS));
-        });
-
-        return JSFunction.create(realm, getterData);
     }
 
     private static JSObject createExportsObject(JSContext context, JSRealm realm, Object wasmInstance, Object wasmModule) {

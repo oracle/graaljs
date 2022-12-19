@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
@@ -47,6 +49,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGetLengthNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGetNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGrowNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableSetNodeGen;
@@ -76,17 +79,18 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
     public enum WebAssemblyTablePrototype implements BuiltinEnum<WebAssemblyTablePrototype> {
         grow(1),
         get(1),
-        set(1);
+        set(1),
+        length(0);
 
-        private final int length;
+        private final int functionLength;
 
         WebAssemblyTablePrototype(int length) {
-            this.length = length;
+            this.functionLength = length;
         }
 
         @Override
         public int getLength() {
-            return length;
+            return functionLength;
         }
 
         @Override
@@ -94,6 +98,10 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             return true;
         }
 
+        @Override
+        public boolean isGetter() {
+            return this == length;
+        }
     }
 
     @Override
@@ -105,6 +113,8 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return WebAssemblyTableGetNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case set:
                 return WebAssemblyTableSetNodeGen.create(context, builtin, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
+            case length:
+                return WebAssemblyTableGetLengthNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -228,5 +238,31 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             return Undefined.instance;
         }
 
+    }
+
+    public abstract static class WebAssemblyTableGetLengthNode extends JSBuiltinNode {
+
+        @Child InteropLibrary tableLengthLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+
+        public WebAssemblyTableGetLengthNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object getLength(JSWebAssemblyTableObject tableObj) {
+            Object wasmTable = tableObj.getWASMTable();
+            try {
+                Object lengthFn = getRealm().getWASMTableLength();
+                return tableLengthLib.execute(lengthFn, wasmTable);
+            } catch (InteropException ex) {
+                throw Errors.shouldNotReachHere(ex);
+            }
+        }
+
+        @TruffleBoundary
+        @Fallback
+        protected Object doIncompatibleReceiver(@SuppressWarnings("unused") Object thisObj) {
+            throw Errors.createTypeError("WebAssembly.Table.length(): Receiver is not a WebAssembly.Table", this);
+        }
     }
 }
