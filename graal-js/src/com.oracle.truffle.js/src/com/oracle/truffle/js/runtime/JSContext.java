@@ -375,8 +375,6 @@ public class JSContext {
         CollatorGetCompare,
         NumberFormatGetFormat,
         DateTimeFormatGetFormat,
-        SegmenterBreakType,
-        SegmenterPosition,
         FunctionAsyncIterator,
         IsGraalRuntime,
         SetUnhandledPromiseRejectionHandler,
