@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,24 +43,35 @@ package com.oracle.truffle.js.builtins.intl;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatFormatRangeNodeGen;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatFormatRangeToPartsNodeGen;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatFormatToPartsNodeGen;
+import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatGetFormatNodeGen;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatResolvedOptionsNodeGen;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DateTimeFormatPrototypeBuiltins.DateTimeFormatPrototype> {
@@ -77,7 +88,9 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         formatToParts(1),
 
         formatRange(2),
-        formatRangeToParts(2);
+        formatRangeToParts(2),
+
+        format(0);
 
         private final int length;
 
@@ -101,6 +114,11 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
+
+        @Override
+        public boolean isGetter() {
+            return this == format;
+        }
     }
 
     @Override
@@ -114,6 +132,8 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
                 return JSDateTimeFormatFormatRangeNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case formatRangeToParts:
                 return JSDateTimeFormatFormatRangeToPartsNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case format:
+                return JSDateTimeFormatGetFormatNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -219,4 +239,54 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         }
     }
 
+    public abstract static class JSDateTimeFormatGetFormatNode extends JSBuiltinNode {
+
+        static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(Strings.toJavaString(JSDateTimeFormat.CLASS_NAME));
+
+        @Child private PropertySetNode setBoundObjectNode;
+
+        public JSDateTimeFormatGetFormatNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
+        }
+
+        @Specialization
+        public Object doDateTimeFormat(JSDateTimeFormatObject dateTimeFormatObj,
+                        @Cached BranchProfile errorBranch) {
+            JSDateTimeFormat.InternalState state = JSDateTimeFormat.getInternalState(dateTimeFormatObj);
+
+            if (state == null || !state.isInitialized()) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
+            }
+
+            if (state.getBoundFormatFunction() == null) {
+                JSFunctionData formatFunctionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.DateTimeFormatFormat, c -> createFormatFunctionData(c));
+                JSDynamicObject formatFn = JSFunction.create(getRealm(), formatFunctionData);
+                setBoundObjectNode.setValue(formatFn, dateTimeFormatObj);
+                state.setBoundFormatFunction(formatFn);
+            }
+
+            return state.getBoundFormatFunction();
+        }
+
+        @Fallback
+        public Object doIncompatibleReceiver(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
+        }
+
+        private static JSFunctionData createFormatFunctionData(JSContext context) {
+            return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
+                @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object[] arguments = frame.getArguments();
+                    JSDateTimeFormatObject thisObj = (JSDateTimeFormatObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
+                    Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
+                    return JSDateTimeFormat.format(thisObj, n);
+                }
+            }.getCallTarget(), 1, Strings.EMPTY_STRING);
+        }
+    }
 }

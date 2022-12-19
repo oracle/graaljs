@@ -63,33 +63,23 @@ import com.ibm.icu.util.Calendar;
 import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
 import com.ibm.icu.util.ULocale;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -142,7 +132,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         JSObject numberFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, DateTimeFormatPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putBuiltinAccessorProperty(numberFormatPrototype, Strings.FORMAT, createFormatFunctionGetter(realm), Undefined.instance);
+        JSObjectUtil.putAccessorsFromContainer(realm, numberFormatPrototype, DateTimeFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(numberFormatPrototype, TO_STRING_TAG);
         return numberFormatPrototype;
     }
@@ -1016,6 +1006,18 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             }
             return result;
         }
+
+        public boolean isInitialized() {
+            return initialized;
+        }
+
+        public JSDynamicObject getBoundFormatFunction() {
+            return boundFormatFunction;
+        }
+
+        public void setBoundFormatFunction(JSDynamicObject boundFormatFunction) {
+            this.boundFormatFunction = boundFormatFunction;
+        }
     }
 
     @TruffleBoundary
@@ -1027,64 +1029,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     public static InternalState getInternalState(JSDynamicObject obj) {
         assert isJSDateTimeFormat(obj);
         return ((JSDateTimeFormatObject) obj).getInternalState();
-    }
-
-    private static CallTarget createGetFormatCallTarget(JSContext context) {
-        return new JavaScriptRootNode(context.getLanguage(), null, null) {
-            private final BranchProfile errorBranch = BranchProfile.create();
-            @Child private PropertySetNode setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-
-                Object[] frameArgs = frame.getArguments();
-                Object dateTimeFormatObj = JSArguments.getThisObject(frameArgs);
-
-                if (isJSDateTimeFormat(dateTimeFormatObj)) {
-
-                    InternalState state = getInternalState((JSDynamicObject) dateTimeFormatObj);
-
-                    if (state == null || !state.initialized) {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
-                    }
-
-                    if (state.boundFormatFunction == null) {
-                        JSFunctionData formatFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.DateTimeFormatFormat, c -> createFormatFunctionData(c));
-                        JSDynamicObject formatFn = JSFunction.create(getRealm(), formatFunctionData);
-                        setBoundObjectNode.setValue(formatFn, dateTimeFormatObj);
-                        state.boundFormatFunction = formatFn;
-                    }
-
-                    return state.boundFormatFunction;
-                }
-                errorBranch.enter();
-                throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
-            }
-        }.getCallTarget();
-    }
-
-    private static JSFunctionData createFormatFunctionData(JSContext context) {
-        return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] arguments = frame.getArguments();
-                JSDynamicObject thisObj = (JSDynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
-                assert isJSDateTimeFormat(thisObj);
-                Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
-                return format(thisObj, n);
-            }
-        }.getCallTarget(), 1, Strings.EMPTY_STRING);
-    }
-
-    private static JSDynamicObject createFormatFunctionGetter(JSRealm realm) {
-        JSFunctionData fd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.DateTimeFormatGetFormat, (ctx) -> {
-            CallTarget ct = createGetFormatCallTarget(ctx);
-            return JSFunctionData.create(ctx, ct, ct, 0, GET_FORMAT_NAME, false, false, false, true);
-        });
-        return JSFunction.create(realm, fd);
     }
 
     @Override

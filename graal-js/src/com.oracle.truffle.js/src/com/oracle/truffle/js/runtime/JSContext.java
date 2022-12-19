@@ -363,7 +363,6 @@ public class JSContext {
         RegExp$8,
         RegExp$9,
         NumberFormatGetFormat,
-        DateTimeFormatGetFormat,
         FunctionAsyncIterator,
         IsGraalRuntime,
         SetUnhandledPromiseRejectionHandler,
