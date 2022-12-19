@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.trufflenode;
 
+import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -96,8 +97,8 @@ public final class Options {
         if (launcherCommonPath == null) {
             launcherCommonPath = javaHome + "/lib/graalvm/launcher-common.jar";
         }
-        URL truffleNodeURL = new URL("file:" + truffleNodePath);
-        URL launcherCommonURL = new URL("file:" + launcherCommonPath);
+        URL truffleNodeURL = new URI("file:" + truffleNodePath).toURL();
+        URL launcherCommonURL = new URI("file:" + launcherCommonPath).toURL();
         ClassLoader loader = new URLClassLoader(new URL[]{launcherCommonURL, truffleNodeURL}, ClassLoader.getSystemClassLoader());
         return (Class<Function<String[], Object[]>>) loader.loadClass("com.oracle.truffle.trufflenode.Options$OptionsParser");
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,8 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -675,7 +677,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
             if (getContext().isOptionNashornCompatibilityMode() || getContext().isOptionLoadFromURL()) {
                 try {
-                    URL url = new URL(resource);
+                    URL url = new URI(resource).toURL();
                     if ("file".equals(url.getProtocol())) {
                         String path = url.getPath();
                         if (!path.isEmpty()) {
@@ -694,7 +696,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     } else {
                         return sourceFromURL(url);
                     }
-                } catch (MalformedURLException e) {
+                } catch (MalformedURLException | URISyntaxException e) {
                 }
             }
             return null;
