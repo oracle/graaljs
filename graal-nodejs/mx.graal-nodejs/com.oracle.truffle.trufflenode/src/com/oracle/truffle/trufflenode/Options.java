@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.trufflenode;
 
-import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -88,17 +89,12 @@ public final class Options {
 
     @SuppressWarnings("unchecked")
     private static Class<Function<String[], Object[]>> loadOptionsParser() throws Exception {
-        String javaHome = System.getProperty("java.home");
-        String truffleNodePath = System.getenv("TRUFFLENODE_JAR_PATH");
-        if (truffleNodePath == null) {
-            truffleNodePath = javaHome + "/languages/nodejs/trufflenode.jar";
-        }
-        String launcherCommonPath = System.getenv("LAUNCHER_COMMON_JAR_PATH");
-        if (launcherCommonPath == null) {
-            launcherCommonPath = javaHome + "/lib/graalvm/launcher-common.jar";
-        }
-        URL truffleNodeURL = new URI("file:" + truffleNodePath).toURL();
-        URL launcherCommonURL = new URI("file:" + launcherCommonPath).toURL();
+        Path truffleNodePath = Optional.ofNullable(System.getenv("TRUFFLENODE_JAR_PATH")).map(Path::of).orElseGet(
+                        () -> Path.of(System.getProperty("java.home"), "languages/nodejs/trufflenode.jar"));
+        Path launcherCommonPath = Optional.ofNullable(System.getenv("LAUNCHER_COMMON_JAR_PATH")).map(Path::of).orElseGet(
+                        () -> Path.of(System.getProperty("java.home"), "lib/graalvm/launcher-common.jar"));
+        URL truffleNodeURL = truffleNodePath.toUri().toURL();
+        URL launcherCommonURL = launcherCommonPath.toUri().toURL();
         ClassLoader loader = new URLClassLoader(new URL[]{launcherCommonURL, truffleNodeURL}, ClassLoader.getSystemClassLoader());
         return (Class<Function<String[], Object[]>>) loader.loadClass("com.oracle.truffle.trufflenode.Options$OptionsParser");
     }
