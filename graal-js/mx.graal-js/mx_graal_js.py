@@ -71,16 +71,16 @@ def _graal_js_gate_runner(args, tasks):
             js(['-Dpolyglot.js.profile-time=true', '-e', '""'])
 
     webassemblyTestSuite = 'com.oracle.truffle.js.test.suite.WebAssemblySimpleTestSuite'
-    with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all]) as t:
+    with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage], report=True) as t:
         if t:
             noWebAssemblyTestSuite = '^(?!' + webassemblyTestSuite  + ')'
             commonOptions = ['--enable-timing', '--very-verbose', '--suite', _suite.name]
-            unittest(['--regex', noWebAssemblyTestSuite] + commonOptions)
-            unittest(['--regex', 'ZoneRulesProviderTest', '-Djava.time.zone.DefaultZoneRulesProvider=com.oracle.truffle.js.test.runtime.SimpleZoneRulesProvider'] + commonOptions)
+            unittest(['--regex', noWebAssemblyTestSuite] + commonOptions, test_report_tags={'task': t.title})
+            unittest(['--regex', 'ZoneRulesProviderTest', '-Djava.time.zone.DefaultZoneRulesProvider=com.oracle.truffle.js.test.runtime.SimpleZoneRulesProvider'] + commonOptions, test_report_tags={'task': t.title})
 
-    with Task('WebAssemblyTests', tasks, tags=['webassembly', GraalJsDefaultTags.all]) as t:
+    with Task('WebAssemblyTests', tasks, tags=[GraalJsDefaultTags.webassembly, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage], report=True) as t:
         if t:
-            unittest(['--regex', webassemblyTestSuite, '--enable-timing', '--very-verbose', '--suite', _suite.name])
+            unittest(['--regex', webassemblyTestSuite, '--enable-timing', '--very-verbose', '--suite', _suite.name], test_report_tags={'task': t.title})
 
     gateTestConfigs = {
         GraalJsDefaultTags.default: ['gate'],
@@ -106,14 +106,14 @@ def _graal_js_gate_runner(args, tasks):
             if testCommandName == 'TestNashorn' and testConfigName == 'latestversion':
                 continue
             testName = '%s-%s' % (testCommandName, testConfigName)
-            with Task(testName, tasks, tags=[testName, testConfigName, GraalJsDefaultTags.all]) as t:
+            report = True if testConfigName == GraalJsDefaultTags.default else None
+            with Task(testName, tasks, tags=[testName, testConfigName, GraalJsDefaultTags.all], report=report) as t:
                 if t:
                     gateTestCommands[testCommandName](gateTestConfigs[testConfigName])
 
-    with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck]) as t:
+    with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck, GraalJsDefaultTags.coverage], report=True) as t:
         if t:
-            import mx_truffle
-            mx_truffle._tck([])
+            unittest(['com.oracle.truffle.tck.tests'], test_report_tags={'task': t.title})
 
 prepend_gate_runner(_suite, _graal_js_pre_gate_runner)
 add_gate_runner(_suite, _graal_js_gate_runner)
