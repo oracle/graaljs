@@ -62,7 +62,6 @@ import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -1127,7 +1126,6 @@ public class JSDebugTest {
         }
     }
 
-    @Ignore
     @Test
     public void testBreakpointEverywhereBreaks() throws Throwable {
         final String sourceCode = "/* Test */\n" +
@@ -1161,12 +1159,11 @@ public class JSDebugTest {
         tester.assertBreakpointsBreakEverywhere(source);
     }
 
-    @Ignore
     @Test
     public void testMisplacedLineBreakpoints() throws Throwable {
         final String source = "// A comment\n" +                  // 1
                         "function invocable(n) {\n" +
-                        "  R3_R25_if (n <= 1) {\n" +
+                        "  R2_R3_R25_if (n <= 1) {\n" +
                         "    R4_var fce = function() {\n" +
                         "      R5_one = 1;\n" +             // 5
                         "      R6-7_return one;\n" +
@@ -1189,21 +1186,20 @@ public class JSDebugTest {
                         "    \n" +
                         "  }\n" +
                         "}\n" +                             // 25
-                        "R1-2_R26-28_var res = invocable(1)() + invocable(2)();\n" +
+                        "R1_R26-28_var res = invocable(1)() + invocable(2)();\n" +
                         "// return res;\n" +
                         "\n";
 
         tester.assertLineBreakpointsResolution(source, "R", "js");
     }
 
-    @Ignore
     @Test
     public void testMisplacedColumnBreakpoints() throws Throwable {
         // A source on a single line with BX_ and RX_ marks.
         // BX_ denotes a submitted breakpoint X at the given location
         // RX_ denotes a resolved breakpoint X at the given location
         String sourceString = "B0_ B1_function invB2_ocable(n) {" +
-                        "B3_  R2-3_R23_if (n B4_<= 1) B5_ {B6_" +
+                        "B3_  R0-3_R23_if (n B4_<= 1) B5_ {B6_" +
                         "    R4-6_var fce = functionB7_() {B8_" +
                         "      R7-8_one = 1;B9_" +
                         "      R9_return one;" +
@@ -1218,7 +1214,7 @@ public class JSDebugTest {
                         "    R21_R22_return fce2;" +
                         "  B22_}" +
                         "B23_}B24_" +
-                        "R0-1_R24_R25_var lazy = invoB25_cable;" +
+                        "R24_R25_var lazy = invoB25_cable;" +
                         "R26_R27_var res = lazy(1)() + lazy(2)();" +
                         "B26_/*return res;*/B27_ ";
         tester.assertColumnBreakpointsResolution(sourceString, "B", "R", "js");
