@@ -60,16 +60,24 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                 p = join(unitTestDir, dir_name)
                 if exists(p):
                     mx.rmtree(p)
-            npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
-            npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs, cwd=unitTestDir)
-            if mx.suite('wasm', fatalIfMissing=False):
-                npm(['--scripts-prepend-node-path=auto', 'run', 'testwasm'] + commonArgs, cwd=unitTestDir)
-                # test that WebAssembly can be enabled using env. variables
-                _setEnvVar('NODE_OPTIONS', '--polyglot')
-                _setEnvVar('NODE_POLYGLOT_OPTIONS', '--js.webassembly --experimental-options')
-                node(commonArgs + ['-e', 'console.log(WebAssembly)'])
-                _setEnvVar('NODE_OPTIONS', '')
-                _setEnvVar('NODE_POLYGLOT_OPTIONS', '')
+
+            jsonResultsFile = tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz').name
+            testArgs = ['--', '--json-results=' + jsonResultsFile]
+            try:
+                npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
+                npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs + testArgs, cwd=unitTestDir)
+                if mx.suite('wasm', fatalIfMissing=False):
+                    npm(['--scripts-prepend-node-path=auto', 'run', 'testwasm'] + commonArgs + testArgs, cwd=unitTestDir)
+                    # test that WebAssembly can be enabled using env. variables
+                    _setEnvVar('NODE_OPTIONS', '--polyglot')
+                    _setEnvVar('NODE_POLYGLOT_OPTIONS', '--js.webassembly --experimental-options')
+                    node(commonArgs + ['-e', 'console.log(WebAssembly)'])
+                    _setEnvVar('NODE_OPTIONS', '')
+                    _setEnvVar('NODE_POLYGLOT_OPTIONS', '')
+
+                mx_gate.make_test_report(jsonResultsFile, tags={'task': t.title})
+            finally:
+                os.unlink(jsonResultsFile)
 
     with Task('TestNpm', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
