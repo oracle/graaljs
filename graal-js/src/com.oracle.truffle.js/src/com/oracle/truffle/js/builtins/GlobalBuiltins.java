@@ -633,7 +633,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Source sourceFromPath(String path, JSRealm realm) {
             Source source = null;
             JSContext ctx = getContext();
-            if ((ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL() || ctx.isOptionLoadFromClasspath()) && path.indexOf(':') != -1) {
+            if ((ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL() || ctx.isOptionLoadFromClasspath()) && path.indexOf(':') >= 2) {
                 source = sourceFromURI(path, realm);
                 if (source != null) {
                     return source;
@@ -710,6 +710,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                         URI uri = new URI(resource);
                         return sourceFromURL(uri.toURL());
                     } catch (MalformedURLException | URISyntaxException e) {
+                        throw Errors.createErrorFromException(e);
                     }
                 }
             }
