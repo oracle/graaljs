@@ -667,6 +667,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         private Source sourceFromURI(String resource, JSRealm realm) {
             CompilerAsserts.neverPartOfCompilation();
+            assert resource.indexOf(':') != -1;
             if (JSConfig.SubstrateVM) {
                 return null;
             }
@@ -676,27 +677,40 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return sourceFromResourceURL(resource);
             }
             if (getContext().isOptionNashornCompatibilityMode() || getContext().isOptionLoadFromURL()) {
-                try {
-                    URL url = new URI(resource).toURL();
-                    if ("file".equals(url.getProtocol())) {
-                        String path = url.getPath();
-                        if (!path.isEmpty()) {
-                            TruffleLanguage.Env env = realm.getEnv();
-                            if (env.getFileNameSeparator().equals("\\") && path.startsWith("/")) {
-                                // on Windows, remove first "/" from /c:/test/dir/ style paths
-                                path = path.substring(1);
+                if (resource.startsWith("file:")) {
+                    try {
+                        TruffleLanguage.Env env = realm.getEnv();
+                        TruffleFile truffleFile;
+                        try {
+                            URI uri = new URI(resource);
+                            assert "file".equals(uri.getScheme());
+                            truffleFile = env.getPublicTruffleFile(uri);
+                        } catch (URISyntaxException e) {
+                            // Not a valid URI, try parsing it as a path.
+                            boolean windowsPath = env.getFileNameSeparator().equals("\\");
+                            String path = windowsPath ? resource.replace('\\', '/') : resource;
+                            // Skip to start of path ("file:///path" --> "/path")
+                            int start = "file:".length();
+                            if (path.startsWith("///", start)) {
+                                start += 2;
                             }
-                            try {
-                                TruffleFile file = env.getPublicTruffleFile(path);
-                                return sourceFromTruffleFile(file);
-                            } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
-                                throw Errors.createErrorFromException(e);
+                            // "/c:/path" --> "c:/path"
+                            if (windowsPath && path.length() > start + 2 && path.charAt(start) == '/' && path.charAt(start + 2) == ':') {
+                                start += 1;
                             }
+                            path = path.substring(start);
+                            truffleFile = env.getPublicTruffleFile(path);
                         }
-                    } else {
-                        return sourceFromURL(url);
+                        return sourceFromTruffleFile(truffleFile);
+                    } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
+                        throw Errors.createErrorFromException(e);
                     }
-                } catch (MalformedURLException | URISyntaxException e) {
+                } else {
+                    try {
+                        URI uri = new URI(resource);
+                        return sourceFromURL(uri.toURL());
+                    } catch (MalformedURLException | URISyntaxException e) {
+                    }
                 }
             }
             return null;
