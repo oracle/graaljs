@@ -26,7 +26,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import os, shutil, tarfile
+import os, shutil, tarfile, tempfile
 from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
@@ -71,14 +71,14 @@ def _graal_js_gate_runner(args, tasks):
             js(['-Dpolyglot.js.profile-time=true', '-e', '""'])
 
     webassemblyTestSuite = 'com.oracle.truffle.js.test.suite.WebAssemblySimpleTestSuite'
-    with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage], report=True) as t:
+    with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all], report=True) as t:
         if t:
             noWebAssemblyTestSuite = '^(?!' + webassemblyTestSuite  + ')'
             commonOptions = ['--enable-timing', '--very-verbose', '--suite', _suite.name]
             unittest(['--regex', noWebAssemblyTestSuite] + commonOptions, test_report_tags={'task': t.title})
             unittest(['--regex', 'ZoneRulesProviderTest', '-Djava.time.zone.DefaultZoneRulesProvider=com.oracle.truffle.js.test.runtime.SimpleZoneRulesProvider'] + commonOptions, test_report_tags={'task': t.title})
 
-    with Task('WebAssemblyTests', tasks, tags=[GraalJsDefaultTags.webassembly, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage], report=True) as t:
+    with Task('WebAssemblyTests', tasks, tags=['webassembly', GraalJsDefaultTags.all], report=True) as t:
         if t:
             unittest(['--regex', webassemblyTestSuite, '--enable-timing', '--very-verbose', '--suite', _suite.name], test_report_tags={'task': t.title})
 
@@ -111,9 +111,15 @@ def _graal_js_gate_runner(args, tasks):
                 if t:
                     gateTestCommands[testCommandName](gateTestConfigs[testConfigName])
 
-    with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck, GraalJsDefaultTags.coverage], report=True) as t:
+    with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck], report=True) as t:
         if t:
-            unittest(['com.oracle.truffle.tck.tests'], test_report_tags={'task': t.title})
+            import mx_gate, mx_truffle
+            jsonResultsFile = tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz').name
+            try:
+                mx_truffle._tck(['--json-results=' + jsonResultsFile])
+                mx_gate.make_test_report(jsonResultsFile, tags={'task': t.title})
+            finally:
+                os.unlink(jsonResultsFile)
 
 prepend_gate_runner(_suite, _graal_js_pre_gate_runner)
 add_gate_runner(_suite, _graal_js_gate_runner)

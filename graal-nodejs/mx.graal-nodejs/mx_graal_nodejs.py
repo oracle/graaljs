@@ -50,7 +50,7 @@ class GraalNodeJsTags:
 
 def _graal_nodejs_post_gate_runner(args, tasks):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
-    with Task('UnitTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.unitTests, GraalNodeJsTags.coverage], report=True) as t:
+    with Task('UnitTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.unitTests], report=True) as t:
         if t:
             _setEnvVar('NODE_JVM_CLASSPATH', mx.distribution('graal-js:TRUFFLE_JS_TESTS').path)
             commonArgs = ['-ea', '-esa']
