@@ -123,7 +123,6 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSConsoleUtil;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -539,11 +538,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        protected final Source sourceFromTruffleFile(TruffleFile file) {
+        protected static Source sourceFromTruffleFile(TruffleFile file) {
             try {
                 return Source.newBuilder(JavaScriptLanguage.ID, file).build();
             } catch (IOException | SecurityException e) {
-                throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
+                throw Errors.createErrorFromException(e);
             }
         }
 
@@ -615,16 +614,16 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             try {
                 return Source.newBuilder(JavaScriptLanguage.ID, url).name(url.getFile()).build();
             } catch (IOException | SecurityException e) {
-                throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
+                throw Errors.createErrorFromException(e);
             }
         }
 
         @TruffleBoundary
-        protected final Source sourceFromFileName(String fileName, JSRealm realm) {
+        protected static Source sourceFromFileName(String fileName, JSRealm realm) {
             try {
                 return Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getPublicTruffleFile(fileName)).name(fileName).build();
             } catch (IOException | SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
-                throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
+                throw Errors.createErrorFromException(e);
             }
         }
 
