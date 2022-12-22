@@ -4,7 +4,7 @@ local common_json = (import "common.json");
   jdk17: {
     jdk:: 'jdk17',
     downloads+: {
-      JAVA_HOME: common_json.jdks["labsjdk-ce-17"],
+      JAVA_HOME: common_json.jdks["labsjdk-ee-17"],
     },
   },
 
