@@ -633,20 +633,22 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Source sourceFromPath(String path, JSRealm realm) {
             Source source = null;
             JSContext ctx = getContext();
-            if ((ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL() || ctx.isOptionLoadFromClasspath()) && path.indexOf(':') >= 2) {
-                source = sourceFromURI(path, realm);
-                if (source != null) {
-                    return source;
+            if (path.indexOf(':') >= 2) {
+                if (ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL() || ctx.isOptionLoadFromClasspath()) {
+                    source = sourceFromURI(path, realm);
+                    if (source != null) {
+                        return source;
+                    }
                 }
-            }
-
-            try {
-                TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
-                if (file.isRegularFile()) {
-                    source = sourceFromTruffleFile(file);
+            } else {
+                try {
+                    TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
+                    if (file.isRegularFile()) {
+                        source = sourceFromTruffleFile(file);
+                    }
+                } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
+                    throw Errors.createErrorFromException(e);
                 }
-            } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
-                throw Errors.createErrorFromException(e);
             }
 
             if (source == null) {
