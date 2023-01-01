@@ -71,7 +71,15 @@ class ReturnValue {
   friend class PropertyCallbackInfo;
   template <class F, class G, class H>
   friend class PersistentValueMapBase;
-  V8_INLINE void SetInternal(internal::Address value) { *value_ = value; }
+  V8_INLINE void SetInternal(internal::Address value) {
+    if (*value_) {
+      reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceRemoved();
+    }
+    *value_ = value;
+    if (*value_) {
+      reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceAdded();
+    }
+  }
   V8_INLINE internal::Address GetDefaultValue();
   V8_INLINE explicit ReturnValue(internal::Address* slot);
   internal::Address* value_;
@@ -259,10 +267,16 @@ template <typename T>
 template <typename S>
 void ReturnValue<T>::Set(const Global<S>& handle) {
   static_assert(std::is_base_of<T, S>::value, "type check");
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceRemoved();
+  }
   if (V8_UNLIKELY(handle.IsEmpty())) {
     *value_ = GetDefaultValue();
   } else {
-    *value_ = *reinterpret_cast<internal::Address*>(*handle);
+    *value_ = reinterpret_cast<internal::Address>(*handle);
+  }
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceAdded();
   }
 }
 
@@ -270,10 +284,16 @@ template <typename T>
 template <typename S>
 void ReturnValue<T>::Set(const BasicTracedReference<S>& handle) {
   static_assert(std::is_base_of<T, S>::value, "type check");
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceRemoved();
+  }
   if (V8_UNLIKELY(handle.IsEmpty())) {
     *value_ = GetDefaultValue();
   } else {
-    *value_ = *reinterpret_cast<internal::Address*>(handle.val_);
+    *value_ = reinterpret_cast<internal::Address>(*handle);
+  }
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceAdded();
   }
 }
 
@@ -282,28 +302,33 @@ template <typename S>
 void ReturnValue<T>::Set(const Local<S> handle) {
   static_assert(std::is_void<T>::value || std::is_base_of<T, S>::value,
                 "type check");
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceRemoved();
+  }
   if (V8_UNLIKELY(handle.IsEmpty())) {
     *value_ = GetDefaultValue();
   } else {
-    *value_ = *reinterpret_cast<internal::Address*>(*handle);
+    *value_ = reinterpret_cast<internal::Address>(*handle);
+  }
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceAdded();
   }
 }
 
 template <typename T>
 void ReturnValue<T>::Set(double i) {
   static_assert(std::is_base_of<T, Number>::value, "type check");
-  Set(Number::New(GetIsolate(), i));
+  using I = internal::Internals;
+  GetIsolate()->SaveReturnValue(i);
+  Set(Local<T>(reinterpret_cast<T*> (I::GetRoot(GetIsolate(), I::kDoubleReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
 void ReturnValue<T>::Set(int32_t i) {
   static_assert(std::is_base_of<T, Integer>::value, "type check");
   using I = internal::Internals;
-  if (V8_LIKELY(I::IsValidSmi(i))) {
-    *value_ = I::IntToSmi(i);
-    return;
-  }
-  Set(Integer::New(GetIsolate(), i));
+  GetIsolate()->SaveReturnValue(i);
+  Set(Local<T>(reinterpret_cast<T*> (I::GetRoot(GetIsolate(), I::kInt32ReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
@@ -315,41 +340,33 @@ void ReturnValue<T>::Set(uint32_t i) {
     Set(static_cast<int32_t>(i));
     return;
   }
-  Set(Integer::NewFromUnsigned(GetIsolate(), i));
+  using I = internal::Internals;
+  GetIsolate()->SaveReturnValue(i);
+  Set(Local<T>(reinterpret_cast<T*> (I::GetRoot(GetIsolate(), I::kUint32ReturnValuePlaceholderIndex))));
 }
 
 template <typename T>
 void ReturnValue<T>::Set(bool value) {
   static_assert(std::is_base_of<T, Boolean>::value, "type check");
-  using I = internal::Internals;
-  int root_index;
-  if (value) {
-    root_index = I::kTrueValueRootIndex;
-  } else {
-    root_index = I::kFalseValueRootIndex;
-  }
-  *value_ = *I::GetRoot(GetIsolate(), root_index);
+  Set(value ? True(GetIsolate()) : False(GetIsolate()));
 }
 
 template <typename T>
 void ReturnValue<T>::SetNull() {
   static_assert(std::is_base_of<T, Primitive>::value, "type check");
-  using I = internal::Internals;
-  *value_ = *I::GetRoot(GetIsolate(), I::kNullValueRootIndex);
+  Set(Null(GetIsolate()));
 }
 
 template <typename T>
 void ReturnValue<T>::SetUndefined() {
   static_assert(std::is_base_of<T, Primitive>::value, "type check");
-  using I = internal::Internals;
-  *value_ = *I::GetRoot(GetIsolate(), I::kUndefinedValueRootIndex);
+  Set(Undefined(GetIsolate()));
 }
 
 template <typename T>
 void ReturnValue<T>::SetEmptyString() {
   static_assert(std::is_base_of<T, String>::value, "type check");
-  using I = internal::Internals;
-  *value_ = *I::GetRoot(GetIsolate(), I::kEmptyStringRootIndex);
+  Set(String::Empty(GetIsolate()));
 }
 
 template <typename T>
@@ -360,10 +377,7 @@ Isolate* ReturnValue<T>::GetIsolate() const {
 
 template <typename T>
 Local<Value> ReturnValue<T>::Get() const {
-  using I = internal::Internals;
-  if (*value_ == *I::GetRoot(GetIsolate(), I::kTheHoleValueRootIndex))
-    return Local<Value>(*Undefined(GetIsolate()));
-  return Local<Value>::New(GetIsolate(), reinterpret_cast<Value*>(value_));
+  return GetIsolate()->CorrectReturnValue(*value_);
 }
 
 template <typename T>
@@ -375,7 +389,7 @@ void ReturnValue<T>::Set(S* whatever) {
 template <typename T>
 internal::Address ReturnValue<T>::GetDefaultValue() {
   // Default value is always the pointer below value_ on the stack.
-  return value_[-1];
+  return 0;
 }
 
 template <typename T>
@@ -388,30 +402,30 @@ template <typename T>
 Local<Value> FunctionCallbackInfo<T>::operator[](int i) const {
   // values_ points to the first argument (not the receiver).
   if (i < 0 || length_ <= i) return Local<Value>(*Undefined(GetIsolate()));
-  return Local<Value>(reinterpret_cast<Value*>(values_ + i));
+  return Local<Value>(*reinterpret_cast<Value**>(values_ + i));
 }
 
 template <typename T>
 Local<Object> FunctionCallbackInfo<T>::This() const {
   // values_ points to the first argument (not the receiver).
-  return Local<Object>(reinterpret_cast<Object*>(values_ - 1));
+  return Local<Object>(*reinterpret_cast<Object**>(values_ - 1));
 }
 
 template <typename T>
 Local<Object> FunctionCallbackInfo<T>::Holder() const {
-  return Local<Object>(
-      reinterpret_cast<Object*>(&implicit_args_[kHolderIndex]));
+   return Local<Object>(
+      reinterpret_cast<Object*>(implicit_args_[kHolderIndex]));
 }
 
 template <typename T>
 Local<Value> FunctionCallbackInfo<T>::NewTarget() const {
   return Local<Value>(
-      reinterpret_cast<Value*>(&implicit_args_[kNewTargetIndex]));
+      reinterpret_cast<Value*>(implicit_args_[kNewTargetIndex]));
 }
 
 template <typename T>
 Local<Value> FunctionCallbackInfo<T>::Data() const {
-  return Local<Value>(reinterpret_cast<Value*>(&implicit_args_[kDataIndex]));
+  return Local<Value>(reinterpret_cast<Value*>(implicit_args_[kDataIndex]));
 }
 
 template <typename T>
@@ -441,17 +455,17 @@ Isolate* PropertyCallbackInfo<T>::GetIsolate() const {
 
 template <typename T>
 Local<Value> PropertyCallbackInfo<T>::Data() const {
-  return Local<Value>(reinterpret_cast<Value*>(&args_[kDataIndex]));
+  return Local<Value>(reinterpret_cast<Value*>(args_[kDataIndex]));
 }
 
 template <typename T>
 Local<Object> PropertyCallbackInfo<T>::This() const {
-  return Local<Object>(reinterpret_cast<Object*>(&args_[kThisIndex]));
+  return Local<Object>(reinterpret_cast<Object*>(args_[kThisIndex]));
 }
 
 template <typename T>
 Local<Object> PropertyCallbackInfo<T>::Holder() const {
-  return Local<Object>(reinterpret_cast<Object*>(&args_[kHolderIndex]));
+  return Local<Object>(reinterpret_cast<Object*>(args_[kHolderIndex]));
 }
 
 template <typename T>

@@ -24,6 +24,8 @@
     'node_use_openssl%': 'true',
     'node_shared_openssl%': 'false',
     'node_v8_options%': '',
+    'node_target_type%': 'executable',
+    'node_production%': 'false',
     'node_core_target_name%': 'node',
     'node_lib_target_name%': 'libnode',
     'node_intermediate_lib_type%': 'static_library',
@@ -273,6 +275,22 @@
             ],
           },
         }],
+        ['OS=="mac"', {
+          'sources': [
+            'src/apple_main.mm',
+          ],
+          'conditions': [
+            # -force_flat_namespace is not applicable for the dynamic library
+            [ 'node_target_type=="executable"', {
+              'xcode_settings': {
+                'OTHER_LDFLAGS': [
+                  '-force_flat_namespace',
+                  '-headerpad_max_install_names',
+                ],
+              },
+            }],
+          ],
+        }],
         ['OS=="win"', {
           'libraries': [
             'Dbghelp.lib',
@@ -458,7 +476,10 @@
 
       'include_dirs': [
         'src',
-        '<(SHARED_INTERMEDIATE_DIR)' # for node_natives.h
+        '<(SHARED_INTERMEDIATE_DIR)', # for node_natives.h
+        'deps/v8/include/',
+        'deps/v8/', # include/v8_platform.h
+        'deps/v8/src/graal/',
       ],
       'dependencies': [
         'deps/base64/base64.gyp:base64',
@@ -680,6 +701,12 @@
         # node.gyp is added by default, common.gypi is added for change detection
         'common.gypi',
       ],
+      'conditions': [
+        # Production build
+        [ 'node_production=="true"', {
+          'defines': [ 'NDEBUG' ],
+        }],
+     ],
 
       'variables': {
         'openssl_system_ca_path%': '',
@@ -960,20 +987,6 @@
       'target_name': 'node_etw',
       'type': 'none',
       'conditions': [
-        [ 'node_use_etw=="true"', {
-          'actions': [
-            {
-              'action_name': 'node_etw',
-              'inputs': [ 'src/res/node_etw_provider.man' ],
-              'outputs': [
-                'tools/msvs/genfiles/node_etw_provider.rc',
-                'tools/msvs/genfiles/node_etw_provider.h',
-                'tools/msvs/genfiles/node_etw_providerTEMP.BIN',
-              ],
-              'action': [ 'mc <@(_inputs) -h tools/msvs/genfiles -r tools/msvs/genfiles' ]
-            }
-          ]
-        } ]
       ]
     }, # node_etw
     {
@@ -1081,7 +1094,10 @@
                     '-C', '-G', '-s', 'src/v8ustack.d', '-o', '<@(_outputs)',
                   ]
                 } ],
-              ]
+                [ 'target_arch=="sparcv9"', {
+                  'action': []
+                } ],
+              ],
             },
           ]
         } ],
@@ -1188,7 +1204,7 @@
     }, # fuzz_env
     {
       'target_name': 'cctest',
-      'type': 'executable',
+      'type': 'none',
 
       'dependencies': [
         '<(node_lib_target_name)',

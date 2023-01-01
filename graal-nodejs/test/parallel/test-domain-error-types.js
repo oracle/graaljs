@@ -1,4 +1,4 @@
-// Flags: --gc-interval=100 --stress-compaction
+// Flags: --gc-interval=100
 'use strict';
 
 const common = require('../common');

@@ -220,13 +220,6 @@ module.exports = function() {
 
     // Other APIs / Web Compatibility
     Console.prototype,
-    WebAssembly.Module.prototype,
-    WebAssembly.Instance.prototype,
-    WebAssembly.Table.prototype,
-    WebAssembly.Memory.prototype,
-    WebAssembly.CompileError.prototype,
-    WebAssembly.LinkError.prototype,
-    WebAssembly.RuntimeError.prototype,
   ];
   const intrinsics = [
     // 10.2.4.1 ThrowTypeError
@@ -350,8 +343,18 @@ module.exports = function() {
     setInterval,
     setTimeout,
     console,
-    WebAssembly,
   ];
+
+  if (typeof WebAssembly !== 'undefined') {
+    intrinsicPrototypes.push(WebAssembly.Module.prototype);
+    intrinsicPrototypes.push(WebAssembly.Instance.prototype);
+    intrinsicPrototypes.push(WebAssembly.Table.prototype);
+    intrinsicPrototypes.push(WebAssembly.Memory.prototype);
+    intrinsicPrototypes.push(WebAssembly.CompileError.prototype);
+    intrinsicPrototypes.push(WebAssembly.LinkError.prototype);
+    intrinsicPrototypes.push(WebAssembly.RuntimeError.prototype);
+    intrinsics.push(WebAssembly);
+  }
 
   if (typeof Intl !== 'undefined') {
     ArrayPrototypePush(intrinsicPrototypes,

@@ -520,6 +520,8 @@ class V8_EXPORT String : public Name {
    private:
     char* str_;
     int length_;
+    void* java_string_;
+    v8::Isolate* isolate_;
   };
 
   /**
@@ -543,6 +545,8 @@ class V8_EXPORT String : public Name {
    private:
     uint16_t* str_;
     int length_;
+    void* java_string_;
+    v8::Isolate* isolate_;
   };
 
  private:

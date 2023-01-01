@@ -710,49 +710,10 @@ class V8_EXPORT Object : public Value {
 // --- Implementation ---
 
 Local<Value> Object::GetInternalField(int index) {
-#ifndef V8_ENABLE_CHECKS
-  using A = internal::Address;
-  using I = internal::Internals;
-  A obj = *reinterpret_cast<A*>(this);
-  // Fast path: If the object is a plain JSObject, which is the common case, we
-  // know where to find the internal fields and can return the value directly.
-  int instance_type = I::GetInstanceType(obj);
-  if (v8::internal::CanHaveInternalField(instance_type)) {
-    int offset = I::kJSObjectHeaderSize + (I::kEmbedderDataSlotSize * index);
-    A value = I::ReadRawField<A>(obj, offset);
-#ifdef V8_COMPRESS_POINTERS
-    // We read the full pointer value and then decompress it in order to avoid
-    // dealing with potential endiannes issues.
-    value = I::DecompressTaggedAnyField(obj, static_cast<uint32_t>(value));
-#endif
-    internal::Isolate* isolate =
-        internal::IsolateFromNeverReadOnlySpaceObject(obj);
-    A* result = HandleScope::CreateHandle(isolate, value);
-    return Local<Value>(reinterpret_cast<Value*>(result));
-  }
-#endif
   return SlowGetInternalField(index);
 }
 
 void* Object::GetAlignedPointerFromInternalField(int index) {
-#if !defined(V8_ENABLE_CHECKS)
-  using A = internal::Address;
-  using I = internal::Internals;
-  A obj = *reinterpret_cast<A*>(this);
-  // Fast path: If the object is a plain JSObject, which is the common case, we
-  // know where to find the internal fields and can return the value directly.
-  auto instance_type = I::GetInstanceType(obj);
-  if (v8::internal::CanHaveInternalField(instance_type)) {
-    int offset = I::kJSObjectHeaderSize + (I::kEmbedderDataSlotSize * index);
-#ifdef V8_SANDBOXED_EXTERNAL_POINTERS
-    offset += I::kEmbedderDataSlotRawPayloadOffset;
-#endif
-    internal::Isolate* isolate = I::GetIsolateForSandbox(obj);
-    A value = I::ReadExternalPointerField(
-        isolate, obj, offset, internal::kEmbedderDataSlotPayloadTag);
-    return reinterpret_cast<void*>(value);
-  }
-#endif
   return SlowGetAlignedPointerFromInternalField(index);
 }
 

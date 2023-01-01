@@ -1826,8 +1826,10 @@ Node.js options that are allowed are:
 * `--inspect-port`, `--debug-port`
 * `--inspect-publish-uid`
 * `--inspect`
+* `--jvm`
 * `--max-http-header-size`
 * `--napi-modules`
+* `--native`
 * `--no-addons`
 * `--no-deprecation`
 * `--no-experimental-fetch`
@@ -1842,6 +1844,7 @@ Node.js options that are allowed are:
 * `--openssl-shared-config`
 * `--pending-deprecation`
 * `--policy-integrity`
+* `--polyglot`
 * `--preserve-symlinks-main`
 * `--preserve-symlinks`
 * `--prof-process`
