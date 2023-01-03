@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -164,39 +164,39 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.NULL);
         final TypeDescriptor nonNumeric = ANY.subtract(numericAndNull);
         // +
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull));
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY, JavaScriptVerifier.numericVerifier(null)));
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, ANY, nonNumeric, JavaScriptVerifier.numericVerifier(null)));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY, JavaScriptVerifier.numericVerifier(JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null))));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, ANY, nonNumeric, JavaScriptVerifier.numericVerifier(JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null))));
         // -
-        ops.add(createBinaryOperator(context, "-", TypeDescriptor.NUMBER, ANY, ANY));
+        ops.add(createBinaryOperator(context, "-", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // *
-        ops.add(createBinaryOperator(context, "*", TypeDescriptor.NUMBER, ANY, ANY));
+        ops.add(createBinaryOperator(context, "*", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // /
-        ops.add(createBinaryOperator(context, "/", TypeDescriptor.NUMBER, ANY, ANY));
+        ops.add(createBinaryOperator(context, "/", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // %
-        ops.add(createBinaryOperator(context, "%", TypeDescriptor.NUMBER, ANY, ANY));
+        ops.add(createBinaryOperator(context, "%", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // **
-        ops.add(createBinaryOperator(context, "**", TypeDescriptor.NUMBER, ANY, ANY));
+        ops.add(createBinaryOperator(context, "**", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // <
-        ops.add(createBinaryOperator(context, "<", TypeDescriptor.BOOLEAN, ANY, ANY));
+        ops.add(createBinaryOperator(context, "<", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // >
-        ops.add(createBinaryOperator(context, ">", TypeDescriptor.BOOLEAN, ANY, ANY));
+        ops.add(createBinaryOperator(context, ">", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // <=
-        ops.add(createBinaryOperator(context, "<=", TypeDescriptor.BOOLEAN, ANY, ANY));
+        ops.add(createBinaryOperator(context, "<=", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // <=
-        ops.add(createBinaryOperator(context, ">=", TypeDescriptor.BOOLEAN, ANY, ANY));
+        ops.add(createBinaryOperator(context, ">=", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // <<
-        ops.add(createBinaryOperator(context, "<<", TypeDescriptor.NUMBER, ANY, ANY));
+        ops.add(createBinaryOperator(context, "<<", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // >>
-        ops.add(createBinaryOperator(context, ">>", TypeDescriptor.NUMBER, ANY, ANY));
+        ops.add(createBinaryOperator(context, ">>", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // >>>
-        ops.add(createBinaryOperator(context, ">>>", TypeDescriptor.NUMBER, ANY, ANY));
+        ops.add(createBinaryOperator(context, ">>>", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // &
-        ops.add(createBinaryOperator(context, "&", TypeDescriptor.NUMBER, ANY, ANY));
+        ops.add(createBinaryOperator(context, "&", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // |
-        ops.add(createBinaryOperator(context, "|", TypeDescriptor.NUMBER, ANY, ANY));
+        ops.add(createBinaryOperator(context, "|", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // ^
-        ops.add(createBinaryOperator(context, "^", TypeDescriptor.NUMBER, ANY, ANY));
+        ops.add(createBinaryOperator(context, "^", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // &&
         ops.add(createBinaryOperator(context, "&&", ANY, ANY, ANY));
         // ||
@@ -204,9 +204,9 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // ??
         ops.add(createBinaryOperator(context, "??", ANY, ANY, ANY));
         // ==
-        ops.add(createBinaryOperator(context, "==", TypeDescriptor.BOOLEAN, ANY, ANY));
+        ops.add(createBinaryOperator(context, "==", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // !=
-        ops.add(createBinaryOperator(context, "!=", TypeDescriptor.BOOLEAN, ANY, ANY));
+        ops.add(createBinaryOperator(context, "!=", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // ===
         ops.add(createBinaryOperator(context, "===", TypeDescriptor.BOOLEAN, ANY, ANY));
         // !==
@@ -217,19 +217,19 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         ops.add(createBinaryOperator(context, "instanceof", TypeDescriptor.BOOLEAN, ANY, TypeDescriptor.META_OBJECT));
 
         // +
-        ops.add(createPrefixOperator(context, "+", TypeDescriptor.NUMBER, ANY));
+        ops.add(createPrefixOperator(context, "+", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // -
-        ops.add(createPrefixOperator(context, "-", TypeDescriptor.NUMBER, ANY));
+        ops.add(createPrefixOperator(context, "-", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // ~
-        ops.add(createPrefixOperator(context, "~", TypeDescriptor.NUMBER, ANY));
+        ops.add(createPrefixOperator(context, "~", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // ++
-        ops.add(createPrefixOperator(context, "++", TypeDescriptor.NUMBER, ANY));
+        ops.add(createPrefixOperator(context, "++", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // --
-        ops.add(createPrefixOperator(context, "--", TypeDescriptor.NUMBER, ANY));
+        ops.add(createPrefixOperator(context, "--", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // ++
-        ops.add(createPostfixOperator(context, "++", TypeDescriptor.NUMBER, ANY));
+        ops.add(createPostfixOperator(context, "++", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // --
-        ops.add(createPostfixOperator(context, "--", TypeDescriptor.NUMBER, ANY));
+        ops.add(createPostfixOperator(context, "--", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
         // typeof
         ops.add(createPrefixOperator(context, "typeof", TypeDescriptor.STRING, ANY));
         // void
@@ -381,15 +381,25 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     final String operator,
                     final TypeDescriptor type,
                     final TypeDescriptor rtype) {
-        return createUnaryOperator(context, PATTERN_PREFIX_OP_FNC, operator, type, rtype);
+        return createUnaryOperator(context, PATTERN_PREFIX_OP_FNC, operator, type, rtype, null);
+    }
+
+    private static Snippet createPrefixOperator(
+                    final Context context,
+                    final String operator,
+                    final TypeDescriptor type,
+                    final TypeDescriptor rtype,
+                    final ResultVerifier verifier) {
+        return createUnaryOperator(context, PATTERN_PREFIX_OP_FNC, operator, type, rtype, verifier);
     }
 
     private static Snippet createPostfixOperator(
                     final Context context,
                     final String operator,
                     final TypeDescriptor type,
-                    final TypeDescriptor ltype) {
-        return createUnaryOperator(context, PATTERN_POSTFIX_OP_FNC, operator, type, ltype);
+                    final TypeDescriptor ltype,
+                    final ResultVerifier verifier) {
+        return createUnaryOperator(context, PATTERN_POSTFIX_OP_FNC, operator, type, ltype, verifier);
     }
 
     private static Snippet createUnaryOperator(
@@ -397,9 +407,10 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     final String template,
                     final String operator,
                     final TypeDescriptor type,
-                    final TypeDescriptor paramType) {
+                    final TypeDescriptor paramType,
+                    final ResultVerifier verifier) {
         final Value fnc = eval(context, String.format(template, operator));
-        final Snippet.Builder opb = Snippet.newBuilder(operator, fnc, type).parameterTypes(paramType);
+        final Snippet.Builder opb = Snippet.newBuilder(operator, fnc, type).parameterTypes(paramType).resultVerifier(verifier);
         return opb.build();
     }
 
@@ -549,7 +560,9 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
          * Creates a {@link ResultVerifier} for {@code in} operator. This operator throws when there
          * is a primitive type on the right side. Unfortunately, TCK does not allow to specify
          * {@code TypeDescriptor} excluding specific traits (subtract does not work for objects with
-         * the combination of allowed and subtracted traits).
+         * the combination of allowed and subtracted traits). The operator also throws when there is
+         * an object on the right side and a non-primitive number on the left side that is also not
+         * a host object.
          * 
          * @param next the next {@link ResultVerifier} to be called, null for last one
          * @return the {@link ResultVerifier}
@@ -558,8 +571,15 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
             return new JavaScriptVerifier(next) {
                 @Override
                 public void accept(SnippetRun snippetRun) throws PolyglotException {
+                    Value needle = snippetRun.getParameters().get(0);
                     Value haystack = snippetRun.getParameters().get(1);
-                    boolean shouldThrow = (haystack.isNull() || haystack.isBoolean() || haystack.isNumber() || haystack.isString());
+                    boolean shouldThrow = (haystack.isNull() || haystack.isBoolean() || haystack.isNumber() || haystack.isString()) ||
+                                    /*
+                                     * if the haystack is none of the four things above, it must be
+                                     * an object. That is why we don't need a special check for
+                                     * haystack being an object on the following line
+                                     */
+                                    (needle.isNumber() && !needle.fitsInLong() && !needle.fitsInDouble() && !needle.isHostObject());
                     if (shouldThrow) {
                         if (snippetRun.getException() == null) {
                             throw new AssertionError("TypeError expected but no error has been thrown.");
@@ -602,6 +622,36 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         }
                     }
                     super.accept(snippetRun);
+                }
+            };
+        }
+
+        /**
+         * Creates a {@link ResultVerifier} which expects an error whenever at least one of the
+         * parameters is a non-primitive number.
+         * 
+         * @param next the next {@link ResultVerifier} to be called in case none of the parameters
+         *            is a non-primitive number, null for last one
+         * @return the {@link ResultVerifier}
+         */
+        static ResultVerifier nonPrimitiveNumberParameterThrows(ResultVerifier next) {
+            return new JavaScriptVerifier(next) {
+                @Override
+                public void accept(SnippetRun snippetRun) throws PolyglotException {
+                    boolean nonPrimitiveNumberParameter = false;
+                    for (Value actualParameter : snippetRun.getParameters()) {
+                        if (actualParameter.isNumber() && !actualParameter.fitsInLong() && !actualParameter.fitsInDouble()) {
+                            nonPrimitiveNumberParameter = true;
+                            break;
+                        }
+                    }
+                    if (nonPrimitiveNumberParameter) {
+                        if (snippetRun.getException() == null) {
+                            throw new AssertionError("TypeError expected but no error has been thrown.");
+                        } // else exception expected => ignore
+                    } else {
+                        super.accept(snippetRun); // no exception expected
+                    }
                 }
             };
         }

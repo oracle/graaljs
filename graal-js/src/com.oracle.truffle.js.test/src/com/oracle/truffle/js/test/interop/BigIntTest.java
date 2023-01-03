@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -169,6 +169,15 @@ public class BigIntTest {
             assertFalse(value.fitsInFloat());
 
             value = context.eval(JavaScriptLanguage.ID, "-(2n**160n)");
+            assertFalse(value.fitsInFloat());
+
+            value = context.eval(JavaScriptLanguage.ID, "9223372036854775807n");
+            assertFalse(value.fitsInFloat());
+
+            value = context.eval(JavaScriptLanguage.ID, "9223372036854775808n");
+            assertTrue(value.fitsInFloat());
+
+            value = context.eval(JavaScriptLanguage.ID, "9223372036854775809n");
             assertFalse(value.fitsInFloat());
         }
     }
