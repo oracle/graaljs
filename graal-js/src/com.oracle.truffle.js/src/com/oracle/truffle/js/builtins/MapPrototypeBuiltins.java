@@ -210,7 +210,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                     TruffleSafepoint.poll(this);
                 }
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, "clear", null);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "clear", this);
             }
             return Undefined.instance;
         }
@@ -249,7 +249,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             } catch (UnknownKeyException e) {
                 return false;
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, "removeHashEntry", null);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "removeHashEntry", this);
             }
         }
 
@@ -286,7 +286,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             try {
                 return importValue.executeWithTarget(mapLib.readHashValueOrDefault(thisObj, normalizedKey, Undefined.instance));
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, "readHashValue", null);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "readHashValue", this);
             }
         }
 
@@ -324,7 +324,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             try {
                 mapLib.writeHashEntry(thisObj, normalizedKey, exportedValue);
             } catch (UnsupportedMessageException | UnknownKeyException | UnsupportedTypeException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, "writeHashEntry", null);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "writeHashEntry", this);
             }
             return thisObj;
         }
@@ -409,7 +409,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                     }
                 }
             } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, "forEach", null);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "forEach", this);
             }
             return Undefined.instance;
         }
@@ -446,13 +446,13 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         }
 
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
-        protected static Object doForeignMap(Object thisObj,
+        protected final Object doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
                         @Cached BranchProfile toDoubleBranch) {
             try {
                 return JSRuntime.longToIntOrDouble(mapLib.getHashSize(thisObj), toDoubleBranch);
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, "getHashSize", null);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "getHashSize", this);
             }
         }
 
@@ -491,7 +491,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         }
 
         @Specialization(guards = {"!isJSMap(map)", "isForeignHash(map, mapLib)"})
-        protected JSDynamicObject doForeignMap(Object map,
+        protected final JSDynamicObject doForeignMap(Object map,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
                         @Cached("createSetHidden(ENUMERATE_ITERATOR_ID, getContext())") PropertySetNode setEnumerateIteratorNode) {
             Object iterator;
@@ -505,7 +505,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                     iterator = mapLib.getHashEntriesIterator(map);
                 }
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(map, e, "get hash iterator", null);
+                throw Errors.createTypeErrorInteropException(map, e, "get hash iterator", this);
             }
 
             JSDynamicObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());
@@ -515,7 +515,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
-        protected JSDynamicObject doIncompatibleReceiver(Object thisObj,
+        protected static JSDynamicObject doIncompatibleReceiver(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }
