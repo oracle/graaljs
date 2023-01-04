@@ -90,7 +90,7 @@ public class WebAssemblyInstancePrototypeBuiltins extends JSBuiltinsContainer.Sw
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, WebAssemblyInstancePrototype builtinEnum) {
         switch (builtinEnum) {
             case exports:
-                return WebAssemblyInstanceGetExportsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return WebAssemblyInstanceGetExportsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
