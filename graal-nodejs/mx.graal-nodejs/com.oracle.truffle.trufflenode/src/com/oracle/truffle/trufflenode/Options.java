@@ -90,9 +90,9 @@ public final class Options {
     @SuppressWarnings("unchecked")
     private static Class<Function<String[], Object[]>> loadOptionsParser() throws Exception {
         Path truffleNodePath = Optional.ofNullable(System.getenv("TRUFFLENODE_JAR_PATH")).map(Path::of).orElseGet(
-                        () -> Path.of(System.getProperty("java.home"), "languages/nodejs/trufflenode.jar"));
+                        () -> Path.of(System.getProperty("java.home"), "languages", "nodejs", "trufflenode.jar"));
         Path launcherCommonPath = Optional.ofNullable(System.getenv("LAUNCHER_COMMON_JAR_PATH")).map(Path::of).orElseGet(
-                        () -> Path.of(System.getProperty("java.home"), "lib/graalvm/launcher-common.jar"));
+                        () -> Path.of(System.getProperty("java.home"), "lib", "graalvm", "launcher-common.jar"));
         URL truffleNodeURL = truffleNodePath.toUri().toURL();
         URL launcherCommonURL = launcherCommonPath.toUri().toURL();
         ClassLoader loader = new URLClassLoader(new URL[]{launcherCommonURL, truffleNodeURL}, ClassLoader.getSystemClassLoader());
