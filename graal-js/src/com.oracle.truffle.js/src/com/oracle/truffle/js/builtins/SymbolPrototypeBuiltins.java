@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,16 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolToPrimitiveNodeGen;
+import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolGetDescriptionNodeGen;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolToStringNodeGen;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolValueOfNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -80,7 +81,9 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             public boolean isWritable() {
                 return false;
             }
-        };
+        },
+
+        description(0);
 
         private final int length;
 
@@ -92,6 +95,19 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         public int getLength() {
             return length;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (this == description) {
+                return JSConfig.ECMAScript2019;
+            }
+            return 6;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return this == description;
+        }
     }
 
     @Override
@@ -100,70 +116,77 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             case toString:
                 return SymbolToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
-                return SymbolValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case _toPrimitive:
-                return SymbolToPrimitiveNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return SymbolValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case description:
+                return SymbolGetDescriptionNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
 
     public abstract static class SymbolToStringNode extends JSBuiltinNode {
-        public SymbolToStringNode(JSContext context, JSBuiltin builtin) {
+
+        protected SymbolToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        private final ConditionProfile isSymbolObjectProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isPrimitiveSymbolProfile = ConditionProfile.createBinaryProfile();
+        @Specialization
+        protected static TruffleString symbolToString(Symbol thisObj) {
+            return thisObj.toTString();
+        }
 
         @Specialization
-        protected TruffleString toString(Object thisObj) {
-            if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
-                return JSSymbol.getSymbolData((JSSymbolObject) thisObj).toTString();
-            } else if (isPrimitiveSymbolProfile.profile(thisObj instanceof Symbol)) {
-                return ((Symbol) thisObj).toTString();
-            } else {
-                throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
-            }
+        protected static TruffleString symbolObjectToString(JSSymbolObject thisObj) {
+            return symbolToString(thisObj.getSymbol());
+        }
+
+        @Fallback
+        protected final TruffleString notSymbol(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
         }
     }
 
     public abstract static class SymbolValueOfNode extends JSBuiltinNode {
-        public SymbolValueOfNode(JSContext context, JSBuiltin builtin) {
+
+        protected SymbolValueOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        private final ConditionProfile isSymbolObjectProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isPrimitiveSymbolProfile = ConditionProfile.createBinaryProfile();
+        @Specialization
+        protected static Symbol symbol(Symbol thisObj) {
+            return thisObj;
+        }
 
         @Specialization
-        protected Symbol valueOf(Object thisObj) {
-            if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
-                return JSSymbol.getSymbolData((JSSymbolObject) thisObj);
-            } else if (isPrimitiveSymbolProfile.profile(thisObj instanceof Symbol)) {
-                return (Symbol) thisObj;
-            } else {
-                throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
-            }
+        protected static Symbol symbolObject(JSSymbolObject thisObj) {
+            return thisObj.getSymbol();
+        }
+
+        @Fallback
+        protected final Symbol notSymbol(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
         }
     }
 
-    public abstract static class SymbolToPrimitiveNode extends JSBuiltinNode {
-        private final ConditionProfile isSymbolProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isSymbolObjectProfile = ConditionProfile.createBinaryProfile();
+    public abstract static class SymbolGetDescriptionNode extends JSBuiltinNode {
 
-        public SymbolToPrimitiveNode(JSContext context, JSBuiltin builtin) {
+        protected SymbolGetDescriptionNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Symbol toPrimitive(Object thisObj) {
-            if (isSymbolProfile.profile(thisObj instanceof Symbol)) {
-                return (Symbol) thisObj;
-            } else if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
-                return JSSymbol.getSymbolData((JSSymbolObject) thisObj);
-            } else {
-                throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
-            }
+        protected static Object symbol(Symbol thisObj) {
+            return thisObj.getDescription();
+        }
+
+        @Specialization
+        protected static Object symbolObject(JSSymbolObject thisObj) {
+            return thisObj.getSymbol().getDescription();
+        }
+
+        @Fallback
+        protected final Object notSymbol(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
         }
     }
 }

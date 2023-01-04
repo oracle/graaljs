@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,8 +73,8 @@ public final class JSArgumentsArray extends JSAbstractArgumentsArray {
         JSArgumentsObject argumentsObject = createUnmapped(factory.getShape(realm), elements);
         factory.initProto(argumentsObject, realm);
 
-        JSObjectUtil.putDataProperty(context, argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.configurableNotEnumerableWritable());
 
         Accessor throwerAccessor = realm.getThrowerAccessor();
         JSObjectUtil.putBuiltinAccessorProperty(argumentsObject, CALLEE, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
@@ -92,10 +92,10 @@ public final class JSArgumentsArray extends JSAbstractArgumentsArray {
         JSArgumentsObject argumentsObject = createMapped(factory.getShape(realm), elements);
         factory.initProto(argumentsObject, realm);
 
-        JSObjectUtil.putDataProperty(context, argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.configurableNotEnumerableWritable());
 
-        JSObjectUtil.putDataProperty(context, argumentsObject, CALLEE, callee, JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(argumentsObject, CALLEE, callee, JSAttributes.configurableNotEnumerableWritable());
         return context.trackAllocation(argumentsObject);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -159,6 +159,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             }
         }
 
+        @TruffleBoundary
         @Override
         public boolean set(JSDynamicObject object, Object value) {
             JSObjectUtil.defineDataProperty(object, groupName, value, JSAttributes.getDefault());
@@ -200,7 +201,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     public static JSRegExpObject create(JSContext ctx, JSRealm realm, Object compiledRegex) {
         JSObjectFactory groupsFactory = computeGroupsFactory(ctx, compiledRegex);
         JSRegExpObject obj = create(ctx, realm, compiledRegex, groupsFactory);
-        JSObjectUtil.putDataProperty(ctx, obj, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(obj, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         return obj;
     }
 
@@ -306,7 +307,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             Shape shape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
             prototype = JSRegExpObject.create(shape, es5GetEmptyRegexEarly(realm), realm);
             JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
-            JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
+            JSObjectUtil.putDataProperty(prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         } else {
             prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         }
@@ -327,7 +328,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             putRegExpPropertyAccessor(realm, prototype, HAS_INDICES);
         }
         // ctor and functions
-        JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, RegExpPrototypeBuiltins.BUILTINS);
         return prototype;
     }

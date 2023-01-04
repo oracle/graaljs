@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,7 +73,7 @@ public final class Errors {
         JSRealm realm = JSRealm.get(originatingNode);
         JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
         JSError.setMessage(errorObj, message);
-        JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
+        JSObjectUtil.putDataProperty(errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
         JSException exception = JSException.create(JSErrorType.AggregateError, Strings.toJavaString(message), errorObj, realm);
         JSError.setException(realm, errorObj, exception, false);
         return exception;
@@ -84,7 +84,7 @@ public final class Errors {
         JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
         JSRealm realm = JSRealm.get(originatingNode);
         JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
-        JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
+        JSObjectUtil.putDataProperty(errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
         JSException exception = JSException.create(JSErrorType.AggregateError, null, errorObj, realm);
         JSError.setException(realm, errorObj, exception, false);
         return exception;

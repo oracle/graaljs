@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,22 +43,33 @@ package com.oracle.truffle.js.builtins.intl;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatFormatRangeNodeGen;
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatFormatRangeToPartsNodeGen;
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatFormatToPartsNodeGen;
+import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatGetFormatNodeGen;
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatResolvedOptionsNodeGen;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.ToIntlMathematicalValue;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormatObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<NumberFormatPrototypeBuiltins.NumberFormatPrototype> {
@@ -74,7 +85,8 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         resolvedOptions(0),
         formatToParts(1),
         formatRange(2),
-        formatRangeToParts(2);
+        formatRangeToParts(2),
+        format(0);
 
         private final int length;
 
@@ -99,6 +111,10 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
             return BuiltinEnum.super.getECMAScriptVersion();
         }
 
+        @Override
+        public boolean isGetter() {
+            return this == format;
+        }
     }
 
     @Override
@@ -112,6 +128,8 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
                 return JSNumberFormatFormatRangeNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case formatRangeToParts:
                 return JSNumberFormatFormatRangeToPartsNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case format:
+                return JSNumberFormatGetFormatNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -205,4 +223,55 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
     }
 
+    public abstract static class JSNumberFormatGetFormatNode extends JSBuiltinNode {
+
+        static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(Strings.toJavaString(JSNumberFormat.CLASS_NAME));
+
+        @Child private PropertySetNode setBoundObjectNode;
+
+        protected JSNumberFormatGetFormatNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
+        }
+
+        @Specialization
+        public Object doNumberFormat(JSNumberFormatObject numberFormatObj,
+                        @Cached BranchProfile errorBranch) {
+            JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
+
+            if (state == null) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
+            }
+
+            if (state.getBoundFormatFunction() == null) {
+                JSFunctionData formatFunctionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.NumberFormatFormat, c -> createFormatFunctionData(c));
+                JSDynamicObject formatFn = JSFunction.create(getRealm(), formatFunctionData);
+                setBoundObjectNode.setValue(formatFn, numberFormatObj);
+                state.setBoundFormatFunction(formatFn);
+            }
+
+            return state.getBoundFormatFunction();
+        }
+
+        @Fallback
+        public Object doIncompatibleReceiver(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
+        }
+
+        private static JSFunctionData createFormatFunctionData(JSContext context) {
+            return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
+                @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
+                @Child private ToIntlMathematicalValue toIntlMVValueNode = ToIntlMathematicalValue.create(false);
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object[] arguments = frame.getArguments();
+                    JSNumberFormatObject thisObj = (JSNumberFormatObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
+                    Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
+                    return JSNumberFormat.formatMV(thisObj, toIntlMVValueNode.executeNumber(n));
+                }
+            }.getCallTarget(), 1, Strings.EMPTY_STRING);
+        }
+    }
 }

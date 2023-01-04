@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -142,10 +142,9 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
 
     @Override
     public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
-        JSContext context = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
-        JSObjectUtil.putConstructorProperty(context, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         return prototype;
     }
 

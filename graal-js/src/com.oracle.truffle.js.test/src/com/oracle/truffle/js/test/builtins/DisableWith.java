@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,29 +38,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.TestV8Builtins;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.junit.Assert;
+import org.junit.Test;
 
-public final class JSTestV8 {
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
-    public static final TruffleString CLASS_NAME = Strings.constant("TestV8");
+public class DisableWith {
 
-    private JSTestV8() {
+    private static void testIntl(String sourceText) {
+        testIntl(sourceText, true);
     }
 
-    public static JSObject create(JSRealm realm) {
-        JSContext ctx = realm.getContext();
-        JSObject obj = JSOrdinary.createInit(realm);
-        JSObjectUtil.putToStringTag(obj, CLASS_NAME);
-        JSObjectUtil.putDataProperty(obj, Strings.STRING_MAX_LENGTH, ctx.getStringLengthLimit());
-        JSObjectUtil.putFunctionsFromContainer(realm, obj, TestV8Builtins.BUILTINS);
-        return obj;
+    private static void testIntl(String sourceText, boolean testPass) {
+        if (testPass) {
+            try (Context context = JSTest.newContextBuilder().option(JSContextOptions.DISABLE_WITH_NAME, "false").build()) {
+                Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "with-test").buildLiteral());
+                Assert.assertTrue(result.isNumber());
+                Assert.assertEquals(42, result.asInt());
+            }
+        }
+
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.DISABLE_WITH_NAME, "true").build()) {
+            context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "with-test").buildLiteral());
+            Assert.fail("should have thrown");
+        } catch (Exception ex) {
+            Assert.assertTrue(ex.getMessage().contains("with statement is disabled"));
+        }
+    }
+
+    @Test
+    public void testWith() {
+        testIntl("( function() { with ({}) { return 42; }; })();");
     }
 }

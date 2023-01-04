@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,29 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.TestV8Builtins;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import static org.junit.Assert.assertTrue;
 
-public final class JSTestV8 {
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.junit.Assert;
+import org.junit.Test;
 
-    public static final TruffleString CLASS_NAME = Strings.constant("TestV8");
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
-    private JSTestV8() {
-    }
+public class DisablePolyglotTest {
 
-    public static JSObject create(JSRealm realm) {
-        JSContext ctx = realm.getContext();
-        JSObject obj = JSOrdinary.createInit(realm);
-        JSObjectUtil.putToStringTag(obj, CLASS_NAME);
-        JSObjectUtil.putDataProperty(obj, Strings.STRING_MAX_LENGTH, ctx.getStringLengthLimit());
-        JSObjectUtil.putFunctionsFromContainer(realm, obj, TestV8Builtins.BUILTINS);
-        return obj;
+    @Test
+    public void testPolyglotBuiltin() {
+        Source src = Source.newBuilder(JavaScriptLanguage.ID, "" +
+                        "Polyglot.eval('js','3*4') === 12;", "arguments.js").buildLiteral();
+        try (Context context = JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            assertTrue(context.eval(src).asBoolean());
+        }
+        try (Context context = JSTest.newContextBuilder().allowPolyglotAccess(PolyglotAccess.NONE).build()) {
+            context.eval(src);
+            Assert.fail("should have thrown");
+        } catch (PolyglotException ex) {
+            assertTrue(ex.getMessage().contains("Polyglot is not defined"));
+        }
     }
 }

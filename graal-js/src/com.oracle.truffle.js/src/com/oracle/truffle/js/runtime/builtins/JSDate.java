@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -146,12 +146,12 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
             datePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         }
 
-        JSObjectUtil.putConstructorProperty(ctx, datePrototype, ctor);
+        JSObjectUtil.putConstructorProperty(datePrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, datePrototype, DatePrototypeBuiltins.BUILTINS);
 
         if (ctx.isOptionAnnexB()) {
             Object utcStringFunction = JSDynamicObject.getOrNull(datePrototype, Strings.TO_UTC_STRING);
-            JSObjectUtil.putDataProperty(ctx, datePrototype, Strings.TO_GMT_STRING, utcStringFunction, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(datePrototype, Strings.TO_GMT_STRING, utcStringFunction, JSAttributes.getDefaultNotEnumerable());
         }
         return datePrototype;
     }

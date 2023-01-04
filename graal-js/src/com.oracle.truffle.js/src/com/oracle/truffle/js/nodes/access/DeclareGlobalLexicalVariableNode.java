@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,7 +107,7 @@ public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode
 
     @Specialization(replaces = {"doCached"})
     protected void doUncached(JSDynamicObject globalScope, JSContext context) {
-        JSObjectUtil.putDeclaredDataProperty(context, globalScope, varName, Dead.instance(), getAttributeFlags());
+        JSObjectUtil.defineConstantDataProperty(context, globalScope, varName, Dead.instance(), getAttributeFlags());
     }
 
     protected final PropertySetNode makeDefineOwnPropertyCache(JSContext context) {

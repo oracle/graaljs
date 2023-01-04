@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -657,6 +657,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
      * @return whether the operation was successful
      */
     protected boolean defineOwnPropertyIndex(JSDynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, boolean doThrow) {
+        CompilerAsserts.neverPartOfCompilation();
         assert Strings.isTString(name);
         long index = JSRuntime.toUInt32(name);
         if (index >= this.getLength(thisObj)) {

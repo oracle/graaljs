@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,43 +40,25 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
-import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
     public static final TruffleString CLASS_NAME = Strings.constant("Global");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Global.prototype");
-    public static final TruffleString VALUE = Strings.constant("value");
 
     public static final TruffleString WEB_ASSEMBLY_GLOBAL = Strings.constant("WebAssembly.Global");
 
@@ -98,11 +80,10 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
+        JSObjectUtil.putConstructorProperty(prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WebAssemblyGlobalPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putAccessorProperty(ctx, prototype, VALUE, createValueGetterFunction(realm), createValueSetterFunction(realm), JSAttributes.configurableEnumerableWritable());
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, WebAssemblyGlobalPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_GLOBAL);
         return prototype;
     }
@@ -132,84 +113,4 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         JSWebAssembly.setEmbedderData(realm, wasmGlobal, object);
         return context.trackAllocation(object);
     }
-
-    private static JSFunctionObject createValueGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalGetValue, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
-                @Child InteropLibrary globalReadLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object thiz = JSFrameUtil.getThisObj(frame);
-                    if (isJSWebAssemblyGlobal(thiz)) {
-                        JSWebAssemblyGlobalObject object = (JSWebAssemblyGlobalObject) thiz;
-                        Object wasmGlobal = object.getWASMGlobal();
-                        Object globalRead = realm.getWASMGlobalRead();
-                        try {
-                            return toJSValueNode.execute(globalReadLib.execute(globalRead, wasmGlobal));
-                        } catch (InteropException ex) {
-                            throw Errors.shouldNotReachHere(ex);
-                        }
-                    } else {
-                        errorBranch.enter();
-                        throw Errors.createTypeError("get WebAssembly.Global.value: Receiver is not a WebAssembly.Global", this);
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, VALUE));
-        });
-
-        return JSFunction.create(realm, getterData);
-    }
-
-    private static JSFunctionObject createValueSetterFunction(JSRealm realm) {
-        JSFunctionData setterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalSetValue, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
-                @Child InteropLibrary globalWriteLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object[] args = frame.getArguments();
-                    Object thiz = JSArguments.getThisObject(args);
-                    if (isJSWebAssemblyGlobal(thiz)) {
-                        JSWebAssemblyGlobalObject global = (JSWebAssemblyGlobalObject) thiz;
-                        if (!global.isMutable()) {
-                            errorBranch.enter();
-                            throw Errors.createTypeError("set WebAssembly.Global.value: Can't set the value of an immutable global");
-                        }
-                        Object wasmGlobal = global.getWASMGlobal();
-                        try {
-                            Object value;
-                            if (JSArguments.getUserArgumentCount(args) == 0) {
-                                errorBranch.enter();
-                                throw Errors.createTypeError("set WebAssembly.Global.value: Argument 0 is required");
-                            } else {
-                                value = JSArguments.getUserArgument(args, 0);
-                            }
-                            Object webAssemblyValue = toWebAssemblyValueNode.execute(value, global.getValueType());
-                            Object globalWrite = realm.getWASMGlobalWrite();
-                            globalWriteLib.execute(globalWrite, wasmGlobal, webAssemblyValue);
-                            return Undefined.instance;
-                        } catch (InteropException ex) {
-                            throw Errors.shouldNotReachHere(ex);
-                        } catch (AbstractTruffleException ex) {
-                            errorBranch.enter();
-                            throw Errors.createTypeError(ex, this);
-                        }
-                    } else {
-                        errorBranch.enter();
-                        throw Errors.createTypeError("set WebAssembly.Global.value: Receiver is not a WebAssembly.Global", this);
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 1, Strings.concat(Strings.SET_SPC, VALUE));
-        });
-
-        return JSFunction.create(realm, setterData);
-    }
-
 }

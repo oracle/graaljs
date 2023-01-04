@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,7 @@ import java.math.RoundingMode;
 import java.text.AttributedCharacterIterator;
 import java.text.Format;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Currency;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -74,35 +72,24 @@ import com.ibm.icu.text.FormattedValue;
 import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.text.NumberingSystem;
 import com.ibm.icu.util.MeasureUnit;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.NumberFormatFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.nodes.intl.ToIntlMathematicalValue;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -112,7 +99,6 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LazyValue;
 
@@ -146,11 +132,10 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject numberFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
+        JSObjectUtil.putConstructorProperty(numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, NumberFormatPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putBuiltinAccessorProperty(numberFormatPrototype, Strings.FORMAT, createFormatFunctionGetter(realm, ctx), Undefined.instance);
+        JSObjectUtil.putAccessorsFromContainer(realm, numberFormatPrototype, NumberFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(numberFormatPrototype, TO_STRING_TAG);
         return numberFormatPrototype;
     }
@@ -160,7 +145,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     // minor unit value defined by ISO 4217. Unfortunately, JDK does not return -1 ("undefined") for
     // fraction digits for historical currencies => we have to keep track of these currencies
     // to return the digits expected by ECMAScript specification.
-    private static final Set<String> historicalCurrenciesInJDK = new HashSet<>(Arrays.asList(new String[]{
+    private static final Set<String> historicalCurrenciesInJDK = Set.of(
                     "ADP",
                     "BEF",
                     "BYB",
@@ -173,8 +158,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                     "PTE",
                     "ROL",
                     "TPE",
-                    "TRL",
-    }));
+                    "TRL");
 
     // https://tc39.github.io/ecma402/#sec-currencydigits
     @TruffleBoundary
@@ -733,19 +717,19 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             return resolvedOptions;
         }
 
-        void fillResolvedOptions(JSContext context, @SuppressWarnings("unused") JSRealm realm, JSDynamicObject result) {
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MINIMUM_INTEGER_DIGITS, minimumIntegerDigits, JSAttributes.getDefault());
+        void fillResolvedOptions(@SuppressWarnings("unused") JSContext context, @SuppressWarnings("unused") JSRealm realm, JSDynamicObject result) {
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MINIMUM_INTEGER_DIGITS, minimumIntegerDigits, JSAttributes.getDefault());
             if (minimumFractionDigits != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MINIMUM_FRACTION_DIGITS, minimumFractionDigits, JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MINIMUM_FRACTION_DIGITS, minimumFractionDigits, JSAttributes.getDefault());
             }
             if (maximumFractionDigits != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MAXIMUM_FRACTION_DIGITS, maximumFractionDigits, JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MAXIMUM_FRACTION_DIGITS, maximumFractionDigits, JSAttributes.getDefault());
             }
             if (minimumSignificantDigits != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MINIMUM_SIGNIFICANT_DIGITS, minimumSignificantDigits, JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MINIMUM_SIGNIFICANT_DIGITS, minimumSignificantDigits, JSAttributes.getDefault());
             }
             if (maximumSignificantDigits != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MAXIMUM_SIGNIFICANT_DIGITS, maximumSignificantDigits, JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MAXIMUM_SIGNIFICANT_DIGITS, maximumSignificantDigits, JSAttributes.getDefault());
             }
         }
 
@@ -898,43 +882,43 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
         @Override
         void fillResolvedOptions(JSContext context, JSRealm realm, JSDynamicObject result) {
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_NUMBERING_SYSTEM, Strings.fromJavaString(getNumberingSystem()), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_NUMBERING_SYSTEM, Strings.fromJavaString(getNumberingSystem()), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
             if (currency != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_CURRENCY, Strings.fromJavaString(currency), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_CURRENCY, Strings.fromJavaString(currency), JSAttributes.getDefault());
             }
             if (currencyDisplay != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_CURRENCY_DISPLAY, Strings.fromJavaString(currencyDisplay), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_CURRENCY_DISPLAY, Strings.fromJavaString(currencyDisplay), JSAttributes.getDefault());
             }
             if (currencySign != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_CURRENCY_SIGN, Strings.fromJavaString(currencySign), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_CURRENCY_SIGN, Strings.fromJavaString(currencySign), JSAttributes.getDefault());
             }
             if (unit != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_UNIT, Strings.fromJavaString(unit), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_UNIT, Strings.fromJavaString(unit), JSAttributes.getDefault());
             }
             if (unitDisplay != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_UNIT_DISPLAY, Strings.fromJavaString(unitDisplay), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_UNIT_DISPLAY, Strings.fromJavaString(unitDisplay), JSAttributes.getDefault());
             }
             super.fillResolvedOptions(context, realm, result);
             Object resolvedUseGrouping = useGrouping;
             if (useGrouping instanceof String && context.getEcmaScriptVersion() < JSConfig.StagingECMAScriptVersion) {
                 resolvedUseGrouping = true;
             }
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_USE_GROUPING,
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_USE_GROUPING,
                             resolvedUseGrouping instanceof String ? Strings.fromJavaString((String) resolvedUseGrouping) : resolvedUseGrouping, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_NOTATION, Strings.fromJavaString(notation), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_NOTATION, Strings.fromJavaString(notation), JSAttributes.getDefault());
             if (compactDisplay != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_COMPACT_DISPLAY, Strings.fromJavaString(compactDisplay), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_COMPACT_DISPLAY, Strings.fromJavaString(compactDisplay), JSAttributes.getDefault());
             }
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_SIGN_DISPLAY, Strings.fromJavaString(signDisplay), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_ROUNDING_MODE, Strings.fromJavaString(roundingMode), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_ROUNDING_INCREMENT, roundingIncrement, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, Strings.fromJavaString(trailingZeroDisplay), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_SIGN_DISPLAY, Strings.fromJavaString(signDisplay), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_MODE, Strings.fromJavaString(roundingMode), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_INCREMENT, roundingIncrement, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, Strings.fromJavaString(trailingZeroDisplay), JSAttributes.getDefault());
 
             String roundingType = getRoundingType();
             String resolvedRoundingType = (IntlUtil.MORE_PRECISION.equals(roundingType) || IntlUtil.LESS_PRECISION.equals(roundingType)) ? roundingType : IntlUtil.AUTO;
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_ROUNDING_PRIORITY, Strings.fromJavaString(resolvedRoundingType), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_PRIORITY, Strings.fromJavaString(resolvedRoundingType), JSAttributes.getDefault());
         }
 
         @TruffleBoundary
@@ -1076,6 +1060,14 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         public LocalizedNumberRangeFormatter getNumberRangeFormatter(boolean firstNegative, boolean secondNegative) {
             return numberRangeFormatter[secondNegative ? 0 : (firstNegative ? 1 : 2)];
         }
+
+        public JSDynamicObject getBoundFormatFunction() {
+            return boundFormatFunction;
+        }
+
+        public void setBoundFormatFunction(JSDynamicObject boundFormatFunction) {
+            this.boundFormatFunction = boundFormatFunction;
+        }
     }
 
     @TruffleBoundary
@@ -1087,65 +1079,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     public static InternalState getInternalState(JSDynamicObject obj) {
         assert isJSNumberFormat(obj);
         return ((JSNumberFormatObject) obj).getInternalState();
-    }
-
-    private static CallTarget createGetFormatCallTarget(JSContext context) {
-        return new JavaScriptRootNode(context.getLanguage(), null, null) {
-            private final BranchProfile errorBranch = BranchProfile.create();
-            @Child private PropertySetNode setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-
-                Object[] frameArgs = frame.getArguments();
-                Object numberFormatObj = JSArguments.getThisObject(frameArgs);
-
-                if (isJSNumberFormat(numberFormatObj)) {
-
-                    InternalState state = getInternalState((JSDynamicObject) numberFormatObj);
-
-                    if (state == null) {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
-                    }
-
-                    if (state.boundFormatFunction == null) {
-                        JSFunctionData formatFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.NumberFormatFormat, c -> createFormatFunctionData(c));
-                        JSDynamicObject formatFn = JSFunction.create(getRealm(), formatFunctionData);
-                        setBoundObjectNode.setValue(formatFn, numberFormatObj);
-                        state.boundFormatFunction = formatFn;
-                    }
-
-                    return state.boundFormatFunction;
-                }
-                errorBranch.enter();
-                throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
-            }
-        }.getCallTarget();
-    }
-
-    private static JSFunctionData createFormatFunctionData(JSContext context) {
-        return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
-            @Child private ToIntlMathematicalValue toIntlMVValueNode = ToIntlMathematicalValue.create(false);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] arguments = frame.getArguments();
-                JSDynamicObject thisObj = (JSDynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
-                assert isJSNumberFormat(thisObj);
-                Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
-                return formatMV(thisObj, toIntlMVValueNode.executeNumber(n));
-            }
-        }.getCallTarget(), 1, Strings.EMPTY_STRING);
-    }
-
-    private static JSDynamicObject createFormatFunctionGetter(JSRealm realm, JSContext context) {
-        JSFunctionData fd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.NumberFormatGetFormat, (c) -> {
-            CallTarget ct = createGetFormatCallTarget(context);
-            return JSFunctionData.create(context, ct, ct, 0, GET_FORMAT_NAME, false, false, false, true);
-        });
-        return JSFunction.create(realm, fd);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,6 +78,8 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySlice
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySortNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
+import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.GetTypedArrayBufferOrNameNodeGen;
+import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.GetTypedArrayLengthOrOffsetNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewFillNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewForEachNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewIteratorNodeGen;
@@ -99,6 +101,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
@@ -150,6 +153,18 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         values(0),
         entries(0),
 
+        // getters
+        length(0),
+        buffer(0),
+        byteLength(0),
+        byteOffset(0),
+        _toStringTag(0) {
+            @Override
+            public Object getKey() {
+                return Symbol.SYMBOL_TO_STRING_TAG;
+            }
+        },
+
         // ES2016
         includes(1),
 
@@ -160,15 +175,15 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         findLast(1),
         findLastIndex(1);
 
-        private final int length;
+        private final int functionLength;
 
         TypedArrayPrototype(int length) {
-            this.length = length;
+            this.functionLength = length;
         }
 
         @Override
         public int getLength() {
-            return length;
+            return functionLength;
         }
 
         @Override
@@ -181,6 +196,11 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
+        }
+
+        @Override
+        public boolean isGetter() {
+            return EnumSet.range(length, _toStringTag).contains(this);
         }
     }
 
@@ -202,7 +222,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case findLastIndex:
                 return JSArrayFindIndexNodeGen.create(context, builtin, true, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case fill:
-                return context.getEcmaScriptVersion() >= 9 ? JSArrayBufferViewFillNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context))
+                return context.getEcmaScriptVersion() >= JSConfig.ECMAScript2018
+                                ? JSArrayBufferViewFillNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context))
                                 : JSArrayFillNodeGen.create(context, builtin, true, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case reduce:
                 return JSArrayReduceNodeGen.create(context, builtin, true, true, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
@@ -238,11 +259,17 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSArrayBufferViewIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
             case entries:
                 return JSArrayBufferViewIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
-
             case includes:
                 return JSArrayIncludesNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case at:
                 return JSArrayAtNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case length:
+            case byteLength:
+            case byteOffset:
+                return GetTypedArrayLengthOrOffsetNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
+            case buffer:
+            case _toStringTag:
+                return GetTypedArrayBufferOrNameNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -783,6 +810,72 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 errorBranch.enter();
                 throw Errors.createTypeErrorDetachedBuffer();
             }
+        }
+    }
+
+    public abstract static class GetTypedArrayLengthOrOffsetNode extends JSBuiltinNode {
+
+        private final TypedArrayPrototype getter;
+
+        protected GetTypedArrayLengthOrOffsetNode(JSContext context, JSBuiltin builtin, TypedArrayPrototype getter) {
+            super(context, builtin);
+            this.getter = getter;
+        }
+
+        @Specialization
+        protected final int doTypedArray(JSTypedArrayObject typedArray,
+                        @Cached BranchProfile detachedBranch) {
+            if (JSArrayBufferView.hasDetachedBuffer(typedArray, getContext())) {
+                detachedBranch.enter();
+                return 0;
+            }
+            switch (getter) {
+                case length:
+                    return JSArrayBufferView.typedArrayGetLength(typedArray);
+                case byteLength:
+                    return JSArrayBufferView.getByteLength(typedArray, getContext());
+                case byteOffset:
+                    return JSArrayBufferView.getByteOffset(typedArray, getContext());
+                default:
+                    throw Errors.shouldNotReachHere();
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSArrayBufferView(thisObj)")
+        protected int doIncompatibleReceiver(Object thisObj) {
+            throw Errors.createTypeErrorArrayBufferViewExpected();
+        }
+    }
+
+    public abstract static class GetTypedArrayBufferOrNameNode extends JSBuiltinNode {
+
+        private final TypedArrayPrototype getter;
+
+        protected GetTypedArrayBufferOrNameNode(JSContext context, JSBuiltin builtin, TypedArrayPrototype getter) {
+            super(context, builtin);
+            this.getter = getter;
+        }
+
+        @Specialization
+        protected final Object doTypedArray(JSTypedArrayObject typedArray) {
+            switch (getter) {
+                case buffer:
+                    return JSArrayBufferView.getArrayBuffer(typedArray);
+                case _toStringTag:
+                    return JSArrayBufferView.typedArrayGetName(typedArray);
+                default:
+                    throw Errors.shouldNotReachHere();
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSArrayBufferView(thisObj)")
+        protected Object doIncompatibleReceiver(Object thisObj) {
+            if (getter == TypedArrayPrototype._toStringTag) {
+                return Undefined.instance;
+            }
+            throw Errors.createTypeErrorArrayBufferViewExpected();
         }
     }
 }

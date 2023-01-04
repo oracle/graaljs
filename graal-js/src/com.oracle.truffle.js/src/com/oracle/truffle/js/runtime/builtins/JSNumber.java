@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,7 +92,7 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
         JSObject numberPrototype = JSNumberObject.create(protoShape, 0);
         JSObjectUtil.setOrVerifyPrototype(context, numberPrototype, realm.getObjectPrototype());
 
-        JSObjectUtil.putConstructorProperty(context, numberPrototype, ctor);
+        JSObjectUtil.putConstructorProperty(numberPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberPrototype, NumberPrototypeBuiltins.BUILTINS);
         return numberPrototype;
     }
@@ -108,15 +108,15 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
         WithFunctions.super.fillConstructor(realm, constructor);
 
         JSContext context = realm.getContext();
-        JSObjectUtil.putDataProperty(context, constructor, Strings.NAN, Double.NaN);
-        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
-        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
-        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MAX_VALUE, Double.MAX_VALUE);
-        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MIN_VALUE, Double.MIN_VALUE);
+        JSObjectUtil.putDataProperty(constructor, Strings.NAN, Double.NaN);
+        JSObjectUtil.putDataProperty(constructor, Strings.CAPS_POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
+        JSObjectUtil.putDataProperty(constructor, Strings.CAPS_NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
+        JSObjectUtil.putDataProperty(constructor, Strings.CAPS_MAX_VALUE, Double.MAX_VALUE);
+        JSObjectUtil.putDataProperty(constructor, Strings.CAPS_MIN_VALUE, Double.MIN_VALUE);
         if (context.getEcmaScriptVersion() >= 6) {
-            JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_EPSILON, NUMBER_EPSILON);
-            JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MAX_SAFE_INTEGER, MAX_SAFE_INTEGER);
-            JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MIN_SAFE_INTEGER, MIN_SAFE_INTEGER);
+            JSObjectUtil.putDataProperty(constructor, Strings.CAPS_EPSILON, NUMBER_EPSILON);
+            JSObjectUtil.putDataProperty(constructor, Strings.CAPS_MAX_SAFE_INTEGER, MAX_SAFE_INTEGER);
+            JSObjectUtil.putDataProperty(constructor, Strings.CAPS_MIN_SAFE_INTEGER, MIN_SAFE_INTEGER);
         }
     }
 

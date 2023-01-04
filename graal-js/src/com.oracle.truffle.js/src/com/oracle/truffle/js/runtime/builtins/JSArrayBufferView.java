@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,24 +45,17 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
@@ -83,11 +76,6 @@ public final class JSArrayBufferView extends JSNonProxy {
     public static final TruffleString PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
 
     private static final TruffleString BYTES_PER_ELEMENT = Strings.constant("BYTES_PER_ELEMENT");
-    private static final TruffleString BYTE_LENGTH = Strings.constant("byteLength");
-    private static final TruffleString LENGTH = JSAbstractArray.LENGTH;
-    private static final TruffleString BUFFER = Strings.constant("buffer");
-    private static final TruffleString BYTE_OFFSET = Strings.constant("byteOffset");
-    private static final TruffleString GET_SYMBOL_TO_STRING_TAG_NAME = Strings.constant("get [Symbol.toStringTag]");
 
     public static final JSArrayBufferView INSTANCE = new JSArrayBufferView();
 
@@ -116,7 +104,7 @@ public final class JSArrayBufferView extends JSNonProxy {
         return DirectByteBufferHelper.cast(typedArray().getByteBuffer(thisObj));
     }
 
-    private static TruffleString typedArrayGetName(JSDynamicObject thisObj) {
+    public static TruffleString typedArrayGetName(JSDynamicObject thisObj) {
         return typedArrayGetArrayType(thisObj).getName();
     }
 
@@ -134,15 +122,6 @@ public final class JSArrayBufferView extends JSNonProxy {
             return 0;
         }
         TypedArray typedArray = typedArrayGetArrayType(store);
-        return typedArray.lengthInt(store) * typedArray.bytesPerElement();
-    }
-
-    public static int getByteLength(JSDynamicObject store, JSContext ctx, ValueProfile profile) {
-        assert JSArrayBufferView.isJSArrayBufferView(store);
-        if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
-            return 0;
-        }
-        TypedArray typedArray = profile.profile(typedArrayGetArrayType(store));
         return typedArray.lengthInt(store) * typedArray.bytesPerElement();
     }
 
@@ -374,8 +353,8 @@ public final class JSArrayBufferView extends JSNonProxy {
         JSObject prototype = context.getEcmaScriptVersion() >= 6
                         ? JSObjectUtil.createOrdinaryPrototypeObject(realm, taPrototype)
                         : createLegacyArrayBufferViewPrototype(realm, factory, taPrototype);
-        JSObjectUtil.putDataProperty(context, prototype, BYTES_PER_ELEMENT, bytesPerElement, JSAttributes.notConfigurableNotEnumerableNotWritable());
-        JSObjectUtil.putConstructorProperty(context, prototype, ctor);
+        JSObjectUtil.putDataProperty(prototype, BYTES_PER_ELEMENT, bytesPerElement, JSAttributes.notConfigurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         return prototype;
     }
 
@@ -391,109 +370,40 @@ public final class JSArrayBufferView extends JSNonProxy {
         return prototype;
     }
 
-    protected static void putArrayBufferViewPrototypeGetter(JSRealm realm, JSDynamicObject prototype, TruffleString key, BuiltinFunctionKey functionKey, ArrayBufferViewGetter getter) {
-        assert JSRuntime.isPropertyKey(key);
-        JSFunctionData lengthGetterData = realm.getContext().getOrCreateBuiltinFunctionData(functionKey, (c) -> {
-            return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = JSArguments.getThisObject(frame.getArguments());
-                    if (isJSArrayBufferView(obj)) {
-                        return getter.apply((JSTypedArrayObject) obj);
-                    }
-                    errorBranch.enter();
-                    throw Errors.createTypeError("method called on incompatible receiver");
-                }
-            }.getCallTarget(), 0, Strings.concat(Strings.GET_SPC, key));
-        });
-        JSDynamicObject lengthGetter = JSFunction.create(realm, lengthGetterData);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, key, lengthGetter, Undefined.instance);
-    }
-
-    private abstract static class ArrayBufferViewGetter {
-        public abstract Object apply(JSDynamicObject view);
-    }
-
     public static Shape makeInitialArrayBufferViewShape(JSContext ctx, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
     }
 
     public static JSConstructor createConstructor(JSRealm realm, TypedArrayFactory factory, JSConstructor taConstructor) {
-        JSContext ctx = realm.getContext();
         JSFunctionObject arrayBufferViewConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, factory.getName());
         JSObject.setPrototype(arrayBufferViewConstructor, taConstructor.getFunctionObject());
 
         JSObject arrayBufferViewPrototype = createArrayBufferViewPrototype(realm, arrayBufferViewConstructor, factory.getBytesPerElement(), factory, taConstructor.getPrototype());
-        JSObjectUtil.putConstructorPrototypeProperty(ctx, arrayBufferViewConstructor, arrayBufferViewPrototype);
-        JSObjectUtil.putDataProperty(ctx, arrayBufferViewConstructor, BYTES_PER_ELEMENT, factory.getBytesPerElement(), JSAttributes.notConfigurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstructorPrototypeProperty(arrayBufferViewConstructor, arrayBufferViewPrototype);
+        JSObjectUtil.putDataProperty(arrayBufferViewConstructor, BYTES_PER_ELEMENT, factory.getBytesPerElement(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         return new JSConstructor(arrayBufferViewConstructor, arrayBufferViewPrototype);
     }
 
     private static JSObject createTypedArrayPrototype(final JSRealm realm, JSDynamicObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TypedArrayPrototypeBuiltins.BUILTINS);
-        putArrayBufferViewPrototypeGetter(realm, prototype, LENGTH, BuiltinFunctionKey.ArrayBufferViewLength, new ArrayBufferViewGetter() {
-            private final ConditionProfile detachedBufferProfile = ConditionProfile.create();
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, TypedArrayPrototypeBuiltins.BUILTINS);
 
-            @Override
-            public Object apply(JSDynamicObject view) {
-                if (detachedBufferProfile.profile(JSArrayBufferView.hasDetachedBuffer(view, ctx))) {
-                    return 0;
-                }
-                return typedArrayGetLength(view);
-            }
-        });
-        putArrayBufferViewPrototypeGetter(realm, prototype, BUFFER, BuiltinFunctionKey.ArrayBufferViewBuffer, new ArrayBufferViewGetter() {
-            @Override
-            public Object apply(JSDynamicObject view) {
-                return getArrayBuffer(view);
-            }
-        });
-        putArrayBufferViewPrototypeGetter(realm, prototype, BYTE_LENGTH, BuiltinFunctionKey.ArrayBufferViewByteLength, new ArrayBufferViewGetter() {
-            @Override
-            public Object apply(JSDynamicObject view) {
-                return getByteLength(view, ctx);
-            }
-        });
-        putArrayBufferViewPrototypeGetter(realm, prototype, BYTE_OFFSET, BuiltinFunctionKey.ArrayBufferViewByteByteOffset, new ArrayBufferViewGetter() {
-            @Override
-            public Object apply(JSDynamicObject view) {
-                return getByteOffset(view, ctx);
-            }
-        });
-        JSFunctionData toStringData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ArrayBufferViewToString, (c) -> {
-            return JSFunctionData.createCallOnly(ctx, new JavaScriptRootNode(ctx.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = JSArguments.getThisObject(frame.getArguments());
-                    if (isJSArrayBufferView(obj)) {
-                        return typedArrayGetName((JSTypedArrayObject) obj);
-                    }
-                    return Undefined.instance;
-                }
-            }.getCallTarget(), 0, GET_SYMBOL_TO_STRING_TAG_NAME);
-        });
-        JSDynamicObject toStringTagGetter = JSFunction.create(realm, toStringData);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTagGetter, Undefined.instance);
         // The initial value of the @@iterator property is the same function object as the initial
         // value of the %TypedArray%.prototype.values property.
         Object valuesFunction = JSDynamicObject.getOrNull(prototype, Strings.VALUES);
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, valuesFunction, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(prototype, Symbol.SYMBOL_ITERATOR, valuesFunction, JSAttributes.getDefaultNotEnumerable());
         // %TypedArray%.prototype.toString is the same function object as Array.prototype.toString
         Object toStringFunction = JSDynamicObject.getOrNull(realm.getArrayPrototype(), Strings.TO_STRING);
-        JSObjectUtil.putDataProperty(ctx, prototype, Strings.TO_STRING, toStringFunction, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(prototype, Strings.TO_STRING, toStringFunction, JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
 
     public static JSConstructor createTypedArrayConstructor(JSRealm realm) {
-        JSContext ctx = realm.getContext();
         JSFunctionObject taConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, CLASS_NAME);
         JSObject taPrototype = createTypedArrayPrototype(realm, taConstructor);
-        JSObjectUtil.putConstructorPrototypeProperty(ctx, taConstructor, taPrototype);
+        JSObjectUtil.putConstructorPrototypeProperty(taConstructor, taPrototype);
         JSObjectUtil.putFunctionsFromContainer(realm, taConstructor, TypedArrayFunctionBuiltins.BUILTINS);
         putConstructorSpeciesGetter(realm, taConstructor);
         return new JSConstructor(taConstructor, taPrototype);

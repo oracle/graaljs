@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -249,9 +249,9 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         JSObject prototype = JSStringObject.create(protoShape, Strings.EMPTY_STRING);
         JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
 
-        JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         // sets the length just for the prototype
-        JSObjectUtil.putDataProperty(ctx, prototype, LENGTH, 0, JSAttributes.notConfigurableNotEnumerableNotWritable());
+        JSObjectUtil.putDataProperty(prototype, LENGTH, 0, JSAttributes.notConfigurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, StringPrototypeBuiltins.BUILTINS);
         if (ctx.isOptionNashornCompatibilityMode() || ctx.getParserOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
             JSObjectUtil.putFunctionsFromContainer(realm, prototype, StringPrototypeBuiltins.EXTENSION_BUILTINS);
@@ -260,8 +260,8 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
             // trimLeft/trimRight are the same objects as trimStart/trimEnd
             Object trimStart = JSObject.get(prototype, TRIM_START);
             Object trimEnd = JSObject.get(prototype, TRIM_END);
-            JSObjectUtil.putDataProperty(ctx, prototype, TRIM_LEFT, trimStart, JSAttributes.configurableNotEnumerableWritable());
-            JSObjectUtil.putDataProperty(ctx, prototype, TRIM_RIGHT, trimEnd, JSAttributes.configurableNotEnumerableWritable());
+            JSObjectUtil.putDataProperty(prototype, TRIM_LEFT, trimStart, JSAttributes.configurableNotEnumerableWritable());
+            JSObjectUtil.putDataProperty(prototype, TRIM_RIGHT, trimEnd, JSAttributes.configurableNotEnumerableWritable());
         }
         return prototype;
     }

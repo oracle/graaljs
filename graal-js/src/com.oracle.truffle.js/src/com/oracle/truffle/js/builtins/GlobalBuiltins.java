@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,8 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -121,7 +123,6 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSConsoleUtil;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -537,11 +538,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        protected final Source sourceFromTruffleFile(TruffleFile file) {
+        protected static Source sourceFromTruffleFile(TruffleFile file) {
             try {
                 return Source.newBuilder(JavaScriptLanguage.ID, file).build();
             } catch (IOException | SecurityException e) {
-                throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
+                throw Errors.createErrorFromException(e);
             }
         }
 
@@ -613,16 +614,16 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             try {
                 return Source.newBuilder(JavaScriptLanguage.ID, url).name(url.getFile()).build();
             } catch (IOException | SecurityException e) {
-                throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
+                throw Errors.createErrorFromException(e);
             }
         }
 
         @TruffleBoundary
-        protected final Source sourceFromFileName(String fileName, JSRealm realm) {
+        protected static Source sourceFromFileName(String fileName, JSRealm realm) {
             try {
                 return Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getPublicTruffleFile(fileName)).name(fileName).build();
             } catch (IOException | SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
-                throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
+                throw Errors.createErrorFromException(e);
             }
         }
 
@@ -631,20 +632,22 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Source sourceFromPath(String path, JSRealm realm) {
             Source source = null;
             JSContext ctx = getContext();
-            if ((ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL() || ctx.isOptionLoadFromClasspath()) && path.indexOf(':') != -1) {
-                source = sourceFromURI(path, realm);
-                if (source != null) {
-                    return source;
+            if (path.indexOf(':') >= 2) {
+                if (ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL() || ctx.isOptionLoadFromClasspath()) {
+                    source = sourceFromURI(path, realm);
+                    if (source != null) {
+                        return source;
+                    }
                 }
-            }
-
-            try {
-                TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
-                if (file.isRegularFile()) {
-                    source = sourceFromTruffleFile(file);
+            } else {
+                try {
+                    TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
+                    if (file.isRegularFile()) {
+                        source = sourceFromTruffleFile(file);
+                    }
+                } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
+                    throw Errors.createErrorFromException(e);
                 }
-            } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
-                throw Errors.createErrorFromException(e);
             }
 
             if (source == null) {
@@ -665,6 +668,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         private Source sourceFromURI(String resource, JSRealm realm) {
             CompilerAsserts.neverPartOfCompilation();
+            assert resource.indexOf(':') != -1;
             if (JSConfig.SubstrateVM) {
                 return null;
             }
@@ -674,27 +678,41 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return sourceFromResourceURL(resource);
             }
             if (getContext().isOptionNashornCompatibilityMode() || getContext().isOptionLoadFromURL()) {
-                try {
-                    URL url = new URL(resource);
-                    if ("file".equals(url.getProtocol())) {
-                        String path = url.getPath();
-                        if (!path.isEmpty()) {
-                            TruffleLanguage.Env env = realm.getEnv();
-                            if (env.getFileNameSeparator().equals("\\") && path.startsWith("/")) {
-                                // on Windows, remove first "/" from /c:/test/dir/ style paths
-                                path = path.substring(1);
+                if (resource.startsWith("file:")) {
+                    try {
+                        TruffleLanguage.Env env = realm.getEnv();
+                        TruffleFile truffleFile;
+                        try {
+                            URI uri = new URI(resource);
+                            assert "file".equals(uri.getScheme());
+                            truffleFile = env.getPublicTruffleFile(uri);
+                        } catch (URISyntaxException e) {
+                            // Not a valid URI, try parsing it as a path.
+                            boolean windowsPath = env.getFileNameSeparator().equals("\\");
+                            String path = windowsPath ? resource.replace('\\', '/') : resource;
+                            // Skip to start of path ("file:///path" --> "/path")
+                            int start = "file:".length();
+                            if (path.startsWith("///", start)) {
+                                start += 2;
                             }
-                            try {
-                                TruffleFile file = env.getPublicTruffleFile(path);
-                                return sourceFromTruffleFile(file);
-                            } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
-                                throw Errors.createErrorFromException(e);
+                            // "/c:/path" --> "c:/path"
+                            if (windowsPath && path.length() > start + 2 && path.charAt(start) == '/' && path.charAt(start + 2) == ':') {
+                                start += 1;
                             }
+                            path = path.substring(start);
+                            truffleFile = env.getPublicTruffleFile(path);
                         }
-                    } else {
-                        return sourceFromURL(url);
+                        return sourceFromTruffleFile(truffleFile);
+                    } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
+                        throw Errors.createErrorFromException(e);
                     }
-                } catch (MalformedURLException e) {
+                } else {
+                    try {
+                        URI uri = new URI(resource);
+                        return sourceFromURL(uri.toURL());
+                    } catch (MalformedURLException | URISyntaxException e) {
+                        throw Errors.createErrorFromException(e);
+                    }
                 }
             }
             return null;
@@ -1727,6 +1745,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return JSInteropUtil.readMemberOrDefault(globalContextBindings, key, Undefined.instance, bindingsInterop, ImportValueNode.getUncached(), null);
             }
 
+            @TruffleBoundary
             @Override
             public boolean set(JSDynamicObject store, Object value) {
                 JSObjectUtil.defineDataProperty(store, key, value, JSAttributes.getDefault());

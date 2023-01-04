@@ -38,11 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.nashorn;
+package com.oracle.truffle.js.test.builtins;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -50,37 +51,41 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 
-public class NashornGlobalTest {
-    private static boolean testIntl(String sourceText) {
-        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME,
-                        "true").option(JSContextOptions.SCRIPTING_NAME, "true").allowAllAccess(true).build()) {
-            Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "nashorn-global-test").buildLiteral());
-            Assert.assertTrue(result.isBoolean());
-            return result.asBoolean();
+public class LoadFromURLTest {
+
+    private static void testIntl(String operation, String url) {
+        String sourceText = operation + "(\"" + url + "\");";
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).option(JSContextOptions.LOAD_FROM_URL_NAME, "true").build()) {
+            try {
+                context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "load-test").buildLiteral());
+                Assert.fail("should have thrown");
+            } catch (PolyglotException ex) {
+                String message = ex.getMessage();
+                Assert.assertTrue(message, message.contains("Error"));
+                Assert.assertFalse(message, message.contains("Cannot load script"));
+            } catch (Exception other) {
+                Assert.fail("wrong exception thrown");
+            }
+        }
+
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.ALL).option(JSContextOptions.LOAD_FROM_URL_NAME, "false").build()) {
+            context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "load-test").buildLiteral());
+            Assert.fail("should have thrown");
+        } catch (Exception ex) {
+            String message = ex.getMessage();
+            Assert.assertTrue(message, message.contains("Cannot load script"));
         }
     }
 
     @Test
-    public void testEXEC() {
-        String cmd = System.getProperty("os.name").startsWith("Windows") ? "help" : "ls";
-        Assert.assertTrue(testIntl("var a = $EXEC('" + cmd + "'); a.length > 0;"));
+    public void testLoadFromLocalhost() {
+        testIntl("load", "http://this.domain.does.not.exist/");
+        testIntl("loadWithNewGlobal", "http://this.domain.does.not.exist/");
     }
 
     @Test
-    public void testLoadFileNonExistent() {
-        String src = "var ret=false; var FILE = Java.type('java.io.File'); \n" +
-                        "try { load(new FILE('nonexistent.file')); } \n" +
-                        "catch (ex) { ret = ex instanceof Error && ex.message.indexOf('nonexistent.file') >= 0; }; \n" +
-                        "ret;";
-        Assert.assertTrue(testIntl(src));
-    }
-
-    @Test
-    public void testLoadURLNonExistent() {
-        String src = "var ret=false; var URL = Java.type('java.net.URL'); \n" +
-                        "try { load(new URL('file://nonexistent.file')); } \n" +
-                        "catch (ex) { ret = ex instanceof Error && ex.message.indexOf('nonexistent.file') >= 0; }; \n" +
-                        "ret;";
-        Assert.assertTrue(testIntl(src));
+    public void testLoadFromFile() {
+        testIntl("load", "file://this/is/an/invalid/file");
+        testIntl("loadWithNewGlobal", "file://this/is/an/invalid/file");
     }
 }

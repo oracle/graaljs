@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1015,7 +1015,7 @@ public final class GraalJSAccess {
         JSRealm realm = getCurrentRealm();
         JSDynamicObject getter = instantiateAccessorFunction(realm, accessorFunctions.getFirst(), dynamicObject, accessor);
         JSDynamicObject setter = instantiateAccessorFunction(realm, accessorFunctions.getSecond(), dynamicObject, accessor);
-        JSObjectUtil.putAccessorProperty(context, dynamicObject, accessor.getName(), getter, setter, flags);
+        JSObjectUtil.defineAccessorProperty(context, dynamicObject, accessor.getName(), getter, setter, flags);
         return true;
     }
 
@@ -1918,8 +1918,8 @@ public final class GraalJSAccess {
             ObjectTemplate prototypeTemplate = template.getPrototypeTemplate();
             if (prototypeTemplate != null) {
                 JSDynamicObject proto = JSOrdinary.create(jsContext, jsRealm);
+                JSObjectUtil.putConstructorProperty(proto, obj);
                 objectTemplateInstantiate(jsRealm, prototypeTemplate, proto);
-                JSObjectUtil.putConstructorProperty(jsContext, proto, obj);
                 JSObject.set(obj, JSObject.PROTOTYPE, proto);
 
                 FunctionTemplate parentTemplate = template.getParent();
@@ -2090,7 +2090,7 @@ public final class GraalJSAccess {
             Pair<JSFunctionData, JSFunctionData> accessorFunctions = accessor.getFunctions(context);
             JSDynamicObject getter = instantiateAccessorFunction(realm, accessorFunctions.getFirst(), obj, accessor);
             JSDynamicObject setter = instantiateAccessorFunction(realm, accessorFunctions.getSecond(), obj, accessor);
-            JSObjectUtil.putAccessorProperty(context, obj, accessor.getName(), getter, setter, accessor.getAttributes());
+            JSObjectUtil.defineAccessorProperty(context, obj, accessor.getName(), getter, setter, accessor.getAttributes());
         }
 
         for (Value value : template.getValues()) {
@@ -2108,7 +2108,7 @@ public final class GraalJSAccess {
                 Object setterTemplate = pair.getSecond();
                 Object getter = (getterTemplate == null) ? Undefined.instance : functionTemplateGetFunction(realm, getterTemplate);
                 Object setter = (setterTemplate == null) ? Undefined.instance : functionTemplateGetFunction(realm, setterTemplate);
-                JSObjectUtil.putAccessorProperty(context, obj, name, (JSDynamicObject) getter, (JSDynamicObject) setter, attributes);
+                JSObjectUtil.defineAccessorProperty(context, obj, name, (JSDynamicObject) getter, (JSDynamicObject) setter, attributes);
             } else {
                 if (name instanceof HiddenKey) {
                     if (!template.hasPropertyHandler()) {
@@ -2514,7 +2514,7 @@ public final class GraalJSAccess {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public Object tryCatchException(Object context, Object exception) {
+    public Object tryCatchException(@SuppressWarnings("unused") Object context, Object exception) {
         Throwable throwable = (Throwable) exception;
         if (exception instanceof ExitException) {
             int exitCode = ((ExitException) exception).getStatus();

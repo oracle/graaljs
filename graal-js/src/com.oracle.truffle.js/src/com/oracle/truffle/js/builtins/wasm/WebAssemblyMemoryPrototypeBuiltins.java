@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.builtins.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltinsFactory.WebAssemblyMemoryGetBufferNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltinsFactory.WebAssemblyMemoryGrowNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -67,7 +70,8 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     public enum WebAssemblyMemoryPrototype implements BuiltinEnum<WebAssemblyMemoryPrototype> {
-        grow(1);
+        grow(1),
+        buffer(0);
 
         private final int length;
 
@@ -85,6 +89,10 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return true;
         }
 
+        @Override
+        public boolean isGetter() {
+            return this == buffer;
+        }
     }
 
     @Override
@@ -92,6 +100,8 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
         switch (builtinEnum) {
             case grow:
                 return WebAssemblyMemoryGrowNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case buffer:
+                return WebAssemblyMemoryGetBufferNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -127,6 +137,24 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
         }
 
+    }
+
+    public abstract static class WebAssemblyMemoryGetBufferNode extends JSBuiltinNode {
+
+        public WebAssemblyMemoryGetBufferNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object grow(JSWebAssemblyMemoryObject memory) {
+            return memory.getBufferObject(getContext(), getRealm());
+        }
+
+        @TruffleBoundary
+        @Fallback
+        protected Object doIncompatibleReceiver(@SuppressWarnings("unused") Object thisObj) {
+            throw Errors.createTypeError("WebAssembly.Memory.buffer: Receiver is not a WebAssembly.Memory", this);
+        }
     }
 
 }

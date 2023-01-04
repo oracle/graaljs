@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,17 +40,32 @@
  */
 package com.oracle.truffle.js.builtins.intl;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.intl.CollatorPrototypeBuiltinsFactory.JSCollatorGetCompareNodeGen;
 import com.oracle.truffle.js.builtins.intl.CollatorPrototypeBuiltinsFactory.JSCollatorResolvedOptionsNodeGen;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollatorObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<CollatorPrototypeBuiltins.CollatorPrototype> {
 
@@ -62,7 +77,8 @@ public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public enum CollatorPrototype implements BuiltinEnum<CollatorPrototype> {
 
-        resolvedOptions(0);
+        resolvedOptions(0),
+        compare(0);
 
         private final int length;
 
@@ -74,6 +90,11 @@ public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public int getLength() {
             return length;
         }
+
+        @Override
+        public boolean isGetter() {
+            return this == compare;
+        }
     }
 
     @Override
@@ -81,6 +102,8 @@ public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         switch (builtinEnum) {
             case resolvedOptions:
                 return JSCollatorResolvedOptionsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case compare:
+                return JSCollatorGetCompareNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -97,8 +120,63 @@ public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Fallback
-        public Object doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeError("Collator object expected.");
+        public Object doIncompatibleReceiver(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorTypeXExpected(JSCollator.CLASS_NAME);
+        }
+    }
+
+    public abstract static class JSCollatorGetCompareNode extends JSBuiltinNode {
+
+        static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(Strings.toJavaString(JSCollator.CLASS_NAME));
+
+        @Child private PropertySetNode setBoundObjectNode;
+
+        public JSCollatorGetCompareNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
+        }
+
+        @Specialization
+        public Object doCollator(JSCollatorObject collatorObj,
+                        @Cached BranchProfile errorBranch) {
+            JSCollator.InternalState state = JSCollator.getInternalState(collatorObj);
+
+            if (state == null || !state.isInitializedCollator()) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("compare");
+            }
+
+            if (state.getBoundCompareFunction() == null) {
+                JSFunctionData compareFunctionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCompare, c -> createCompareFunctionData(c));
+                JSDynamicObject compareFn = JSFunction.create(getRealm(), compareFunctionData);
+                setBoundObjectNode.setValue(compareFn, collatorObj);
+                state.setBoundCompareFunction(compareFn);
+            }
+
+            return state.getBoundCompareFunction();
+        }
+
+        @Fallback
+        public Object doIncompatibleReceiver(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorTypeXExpected(JSCollator.CLASS_NAME);
+        }
+
+        private static JSFunctionData createCompareFunctionData(JSContext context) {
+            return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
+                @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
+                @Child private JSToStringNode toString1Node = JSToStringNode.create();
+                @Child private JSToStringNode toString2Node = JSToStringNode.create();
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object[] arguments = frame.getArguments();
+                    JSCollatorObject thisObj = (JSCollatorObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
+                    int argumentCount = JSArguments.getUserArgumentCount(arguments);
+                    String one = Strings.toJavaString((argumentCount > 0) ? toString1Node.executeString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME);
+                    String two = Strings.toJavaString((argumentCount > 1) ? toString2Node.executeString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME);
+                    return JSCollator.compare(thisObj, one, two);
+                }
+            }.getCallTarget(), 2, Strings.EMPTY_STRING);
         }
     }
 }

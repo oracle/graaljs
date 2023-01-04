@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,29 @@
  */
 package com.oracle.truffle.js.builtins.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltinsFactory.WebAssemblyGlobalGetValueNodeGen;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltinsFactory.WebAssemblyGlobalSetValueNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltinsFactory.WebAssemblyGlobalValueOfNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
+import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobalObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssemblyGlobalPrototypeBuiltins.WebAssemblyGlobalPrototype> {
 
@@ -64,7 +73,25 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     public enum WebAssemblyGlobalPrototype implements BuiltinEnum<WebAssemblyGlobalPrototype> {
-        valueOf(0);
+        valueOf(0),
+
+        value(0) {
+            @Override
+            public boolean isGetter() {
+                return true;
+            }
+        },
+        set_value(1) {
+            @Override
+            public Object getKey() {
+                return value.getKey();
+            }
+
+            @Override
+            public boolean isSetter() {
+                return true;
+            }
+        };
 
         private final int length;
 
@@ -81,7 +108,6 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
         public boolean isEnumerable() {
             return true;
         }
-
     }
 
     @Override
@@ -89,6 +115,10 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
         switch (builtinEnum) {
             case valueOf:
                 return WebAssemblyGlobalValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case value:
+                return WebAssemblyGlobalGetValueNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case set_value:
+                return WebAssemblyGlobalSetValueNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
         }
         return null;
     }
@@ -120,4 +150,74 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
     }
 
+    public abstract static class WebAssemblyGlobalGetValueNode extends JSBuiltinNode {
+
+        @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
+        @Child InteropLibrary globalReadLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+
+        protected WebAssemblyGlobalGetValueNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object getValue(JSWebAssemblyGlobalObject object) {
+            Object wasmGlobal = object.getWASMGlobal();
+            Object globalRead = getRealm().getWASMGlobalRead();
+            try {
+                return toJSValueNode.execute(globalReadLib.execute(globalRead, wasmGlobal));
+            } catch (InteropException ex) {
+                throw Errors.shouldNotReachHere(ex);
+            }
+        }
+
+        @TruffleBoundary
+        @Fallback
+        protected Object doIncompatibleReceiver(@SuppressWarnings("unused") Object thisObj) {
+            throw Errors.createTypeError("get WebAssembly.Global.value: Receiver is not a WebAssembly.Global", this);
+        }
+    }
+
+    public abstract static class WebAssemblyGlobalSetValueNode extends JSBuiltinNode {
+
+        @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
+        @Child InteropLibrary globalWriteLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+
+        protected WebAssemblyGlobalSetValueNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object setValue(JSWebAssemblyGlobalObject global, Object[] args,
+                        @Cached BranchProfile errorBranch) {
+            if (!global.isMutable()) {
+                errorBranch.enter();
+                throw Errors.createTypeError("set WebAssembly.Global.value: Can't set the value of an immutable global");
+            }
+            Object wasmGlobal = global.getWASMGlobal();
+            try {
+                Object value;
+                if (args.length == 0) {
+                    errorBranch.enter();
+                    throw Errors.createTypeError("set WebAssembly.Global.value: Argument 0 is required");
+                } else {
+                    value = args[0];
+                }
+                Object webAssemblyValue = toWebAssemblyValueNode.execute(value, global.getValueType());
+                Object globalWrite = getRealm().getWASMGlobalWrite();
+                globalWriteLib.execute(globalWrite, wasmGlobal, webAssemblyValue);
+                return Undefined.instance;
+            } catch (InteropException ex) {
+                throw Errors.shouldNotReachHere(ex);
+            } catch (AbstractTruffleException ex) {
+                errorBranch.enter();
+                throw Errors.createTypeError(ex, this);
+            }
+        }
+
+        @TruffleBoundary
+        @Fallback
+        protected Object doIncompatibleReceiver(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object args) {
+            throw Errors.createTypeError("set WebAssembly.Global.value: Receiver is not a WebAssembly.Global", this);
+        }
+    }
 }

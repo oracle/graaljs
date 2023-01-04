@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -543,14 +543,14 @@ public final class IntlUtil {
                 result.add(ul.toLocale());
                 if (!ul.getScript().isEmpty()) {
                     // Add also a version without the script subtag
-                    result.add(new Locale(ul.getLanguage(), ul.getCountry()));
+                    result.add(new Locale.Builder().setLanguage(ul.getLanguage()).setRegion(ul.getCountry()).build());
                 }
             }
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
         }
 
-        return result;
+        return Set.of(result.toArray(new Locale[result.size()]));
     }
 
     public static boolean isValidNumberingSystem(String numberingSystem) {
@@ -577,19 +577,6 @@ public final class IntlUtil {
     @TruffleBoundary
     public static String normalizeUnicodeLocaleIdentifierType(String type) {
         return type.toLowerCase();
-    }
-
-    @TruffleBoundary
-    public static Locale withoutUnicodeExtension(Locale originalLocale, String key) {
-        if (!originalLocale.getUnicodeLocaleKeys().contains(key)) {
-            return originalLocale;
-        } else {
-            String value = originalLocale.getUnicodeLocaleType(key);
-            String originalTag = originalLocale.toLanguageTag();
-            String toRemove = "-u-" + key + "-" + value;
-            String strippedTag = originalTag.replace(toRemove, "");
-            return new Locale(strippedTag);
-        }
     }
 
     public static boolean isWellFormedCurrencyCode(String currency) {

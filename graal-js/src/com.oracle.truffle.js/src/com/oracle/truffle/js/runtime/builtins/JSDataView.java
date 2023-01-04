@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,23 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.function.Function;
-
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSDataView extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
@@ -64,10 +57,6 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("DataView.prototype");
 
     public static final JSDataView INSTANCE = new JSDataView();
-
-    private static final TruffleString BYTE_LENGTH = Strings.constant("byteLength");
-    private static final TruffleString BUFFER = Strings.constant("buffer");
-    private static final TruffleString BYTE_OFFSET = Strings.constant("byteOffset");
 
     public static int typedArrayGetLength(Object thisObj) {
         assert JSDataView.isJSDataView(thisObj);
@@ -97,19 +86,12 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext context = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(context, prototype, ctor);
-        putGetters(realm, prototype);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, DataViewPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, DataViewPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;
-    }
-
-    private static void putGetters(JSRealm realm, JSObject prototype) {
-        putGetter(realm, prototype, BUFFER, BuiltinFunctionKey.DataViewBuffer, view -> getArrayBuffer(view));
-        putGetter(realm, prototype, BYTE_LENGTH, BuiltinFunctionKey.DataViewByteLength, view -> typedArrayGetLengthChecked(view));
-        putGetter(realm, prototype, BYTE_OFFSET, BuiltinFunctionKey.DataViewByteOffset, view -> typedArrayGetOffsetChecked(view));
     }
 
     public static int typedArrayGetLengthChecked(JSDynamicObject thisObj) {
@@ -124,23 +106,6 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
             throw Errors.createTypeErrorDetachedBuffer();
         }
         return typedArrayGetOffset(thisObj);
-    }
-
-    private static void putGetter(JSRealm realm, JSObject prototype, TruffleString name, BuiltinFunctionKey key, Function<JSDynamicObject, Object> function) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(key, (c) -> {
-            return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = JSArguments.getThisObject(frame.getArguments());
-                    if (isJSDataView(obj)) {
-                        return function.apply((JSDataViewObject) obj);
-                    }
-                    throw Errors.createTypeErrorNotADataView();
-                }
-            }.getCallTarget(), 0, Strings.concat(Strings.GET_SPC, name));
-        });
-        JSDynamicObject getter = JSFunction.create(realm, getterData);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, name, getter, Undefined.instance);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -66,9 +67,11 @@ import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 /**
+ * @see JSObject
  * @see JSDynamicObject
  */
 public final class JSObjectUtil {
@@ -126,19 +129,8 @@ public final class JSObjectUtil {
     }
 
     @TruffleBoundary
-    public static void putDataProperty(JSContext context, JSDynamicObject thisObj, Object key, Object value, int flags) {
-        assert checkForExistingProperty(thisObj, key);
-        defineDataProperty(context, thisObj, key, value, flags);
-    }
-
-    @TruffleBoundary
-    public static void putDataProperty(JSDynamicObject thisObj, Object name, Object value, int flags) {
-        JSContext context = JSObject.getJSContext(thisObj);
-        putDataProperty(context, thisObj, name, value, flags);
-    }
-
-    @TruffleBoundary
     public static void defineDataProperty(JSContext context, JSDynamicObject thisObj, Object key, Object value, int flags) {
+        assert JSRuntime.isPropertyKey(key) : key;
         checkForNoSuchPropertyOrMethod(context, key);
         Properties.putWithFlagsUncached(thisObj, key, value, flags);
     }
@@ -149,30 +141,31 @@ public final class JSObjectUtil {
         defineDataProperty(context, thisObj, key, value, flags);
     }
 
-    public static void putOrSetDataProperty(JSContext context, JSDynamicObject thisObj, Object key, Object value, int flags) {
-        if (!JSObject.hasOwnProperty(thisObj, key)) {
-            JSObjectUtil.putDataProperty(context, thisObj, key, value, flags);
-        } else {
-            JSObject.set(thisObj, key, value);
-        }
+    @TruffleBoundary
+    public static void defineAccessorProperty(JSDynamicObject thisObj, Object key, Accessor accessor, int flags) {
+        JSContext context = JSObject.getJSContext(thisObj);
+        defineAccessorProperty(context, thisObj, key, accessor, flags);
     }
 
     @TruffleBoundary
-    public static void defineAccessorProperty(JSDynamicObject thisObj, Object key, Accessor accessor, int flags) {
-        int finalFlags = flags | JSProperty.ACCESSOR;
-
-        JSContext context = JSObject.getJSContext(thisObj);
+    public static void defineAccessorProperty(JSContext context, JSDynamicObject thisObj, Object key, Accessor accessor, int flags) {
+        assert JSRuntime.isPropertyKey(key) : key;
         checkForNoSuchPropertyOrMethod(context, key);
-        Properties.putWithFlagsUncached(thisObj, key, accessor, finalFlags);
+        Properties.putWithFlagsUncached(thisObj, key, accessor, flags | JSProperty.ACCESSOR);
+    }
+
+    @TruffleBoundary
+    public static void defineAccessorProperty(JSContext context, JSDynamicObject thisObj, Object key, JSDynamicObject getter, JSDynamicObject setter, int flags) {
+        Accessor accessor = new Accessor(getter, setter);
+        defineAccessorProperty(context, thisObj, key, accessor, flags);
     }
 
     @TruffleBoundary
     public static void defineProxyProperty(JSDynamicObject thisObj, Object key, PropertyProxy proxy, int flags) {
-        int finalFlags = flags | JSProperty.PROXY;
-
+        assert JSRuntime.isPropertyKey(key) : key;
         JSContext context = JSObject.getJSContext(thisObj);
         checkForNoSuchPropertyOrMethod(context, key);
-        Properties.putConstantUncached(thisObj, key, proxy, finalFlags);
+        Properties.putConstantUncached(thisObj, key, proxy, flags | JSProperty.PROXY);
     }
 
     @TruffleBoundary
@@ -183,45 +176,38 @@ public final class JSObjectUtil {
         JSDynamicObject.updatePropertyFlags(thisObj, key, (attr) -> (attr & ~JSAttributes.ATTRIBUTES_MASK) | flags);
     }
 
-    public static void putDataProperty(JSContext context, JSDynamicObject thisObj, Object name, Object value) {
-        putDataProperty(context, thisObj, name, value, JSAttributes.notConfigurableNotEnumerableNotWritable());
-    }
-
     @TruffleBoundary
-    public static void putDeclaredDataProperty(JSContext context, JSDynamicObject thisObj, Object key, Object value, int flags) {
-        assert JSRuntime.isPropertyKey(key);
-        assert checkForExistingProperty(thisObj, key);
-
+    public static void defineConstantDataProperty(JSContext context, JSDynamicObject thisObj, Object key, Object value, int flags) {
+        assert JSRuntime.isPropertyKey(key) : key;
         checkForNoSuchPropertyOrMethod(context, key);
         Properties.putConstantUncached(thisObj, key, value, flags);
     }
 
-    public static void putConstructorProperty(JSContext context, JSDynamicObject prototype, JSDynamicObject constructor) {
-        putDataProperty(context, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableWritable());
+    /**
+     * Adds a new data property with a known key that does not need to be checked against any
+     * assumptions, i.e. the key is neither "__noSuchProperty__" nor "__noSuchMethod__".
+     */
+    @TruffleBoundary
+    public static void putDataProperty(JSDynamicObject thisObj, Object key, Object value, int flags) {
+        assert JSRuntime.isPropertyKey(key) && !isNoSuchPropertyOrMethod(key) : key;
+        assert checkForExistingProperty(thisObj, key);
+        Properties.putWithFlagsUncached(thisObj, key, value, flags);
     }
 
-    public static void putConstructorPrototypeProperty(JSContext ctx, JSDynamicObject constructor, JSDynamicObject prototype) {
-        putDataProperty(ctx, constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
+    public static void putDataProperty(JSDynamicObject thisObj, Object name, Object value) {
+        putDataProperty(thisObj, name, value, JSAttributes.notConfigurableNotEnumerableNotWritable());
+    }
+
+    public static void putConstructorProperty(JSDynamicObject prototype, JSDynamicObject constructor) {
+        putDataProperty(prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableWritable());
+    }
+
+    public static void putConstructorPrototypeProperty(JSDynamicObject constructor, JSDynamicObject prototype) {
+        putDataProperty(constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
     }
 
     public static void putToStringTag(JSDynamicObject prototype, TruffleString toStringTag) {
-        assert checkForExistingProperty(prototype, Symbol.SYMBOL_TO_STRING_TAG);
-        Properties.putWithFlagsUncached(prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTag, JSAttributes.configurableNotEnumerableNotWritable());
-    }
-
-    @TruffleBoundary
-    public static void putAccessorProperty(JSContext context, JSDynamicObject thisObj, Object key, JSDynamicObject getter, JSDynamicObject setter, int flags) {
-        Accessor accessor = new Accessor(getter, setter);
-        putAccessorProperty(context, thisObj, key, accessor, flags);
-    }
-
-    @TruffleBoundary
-    public static void putAccessorProperty(JSContext context, JSDynamicObject thisObj, Object key, Accessor accessor, int flags) {
-        assert JSRuntime.isPropertyKey(key);
-        assert checkForExistingProperty(thisObj, key);
-
-        checkForNoSuchPropertyOrMethod(context, key);
-        Properties.putWithFlagsUncached(thisObj, key, accessor, flags | JSProperty.ACCESSOR);
+        putDataProperty(prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTag, JSAttributes.configurableNotEnumerableNotWritable());
     }
 
     public static void putBuiltinAccessorProperty(JSDynamicObject thisObj, Object key, JSDynamicObject getter, JSDynamicObject setter) {
@@ -234,9 +220,13 @@ public final class JSObjectUtil {
         putBuiltinAccessorProperty(thisObj, key, accessor, flags);
     }
 
+    /**
+     * Adds a new accessor property with a known key that does not need to be checked against any
+     * assumptions, i.e. the key is neither "__noSuchProperty__" nor "__noSuchMethod__".
+     */
     @TruffleBoundary
     public static void putBuiltinAccessorProperty(JSDynamicObject thisObj, Object key, Accessor accessor, int flags) {
-        assert JSRuntime.isPropertyKey(key) && !isNoSuchPropertyOrMethod(key);
+        assert JSRuntime.isPropertyKey(key) && !isNoSuchPropertyOrMethod(key) : key;
         assert checkForExistingProperty(thisObj, key);
         Properties.putWithFlagsUncached(thisObj, key, accessor, flags | JSProperty.ACCESSOR);
     }
@@ -245,10 +235,11 @@ public final class JSObjectUtil {
         putBuiltinAccessorProperty(thisObj, key, accessor, JSAttributes.configurableNotEnumerable());
     }
 
+    @TruffleBoundary
     public static void putProxyProperty(JSDynamicObject thisObj, Object key, PropertyProxy proxy, int flags) {
-        assert JSRuntime.isPropertyKey(key) && !isNoSuchPropertyOrMethod(key);
+        assert JSRuntime.isPropertyKey(key) && !isNoSuchPropertyOrMethod(key) : key;
         assert checkForExistingProperty(thisObj, key);
-        defineProxyProperty(thisObj, key, proxy, flags);
+        Properties.putConstantUncached(thisObj, key, proxy, flags | JSProperty.PROXY);
     }
 
     private static boolean checkForExistingProperty(JSDynamicObject thisObj, Object key) {
@@ -429,7 +420,34 @@ public final class JSObjectUtil {
                     return;
                 }
                 JSFunctionData functionData = builtin.createFunctionData(context);
-                putDataProperty(context, thisObj, builtin.getKey(), JSFunction.create(realm, functionData), builtin.getAttributeFlags());
+                putDataProperty(thisObj, builtin.getKey(), JSFunction.create(realm, functionData), builtin.getAttributeFlags());
+            }
+        });
+    }
+
+    public static void putAccessorsFromContainer(JSRealm realm, JSDynamicObject thisObj, JSBuiltinsContainer container) {
+        JSContext context = realm.getContext();
+        container.forEachAccessor(new BiConsumer<Builtin, Builtin>() {
+            @Override
+            public void accept(Builtin getterBuiltin, Builtin setterBuiltin) {
+                JSFunctionObject getterFunction = null;
+                JSFunctionObject setterFunction = null;
+                if (getterBuiltin != null && getterBuiltin.isIncluded(context)) {
+                    JSFunctionData functionData = getterBuiltin.createFunctionData(context);
+                    getterFunction = JSFunction.create(realm, functionData);
+                }
+                if (setterBuiltin != null && setterBuiltin.isIncluded(context)) {
+                    JSFunctionData functionData = setterBuiltin.createFunctionData(context);
+                    setterFunction = JSFunction.create(realm, functionData);
+                }
+                if (getterFunction == null && setterFunction == null) {
+                    return;
+                }
+                Accessor accessor = new Accessor(getterFunction, setterFunction);
+                Builtin builtin = getterBuiltin != null ? getterBuiltin : setterBuiltin;
+                assert !(getterBuiltin != null && setterBuiltin != null) ||
+                                (getterBuiltin.getKey().equals(setterBuiltin.getKey()) && getterBuiltin.getAttributeFlags() == setterBuiltin.getAttributeFlags()) : builtin;
+                putBuiltinAccessorProperty(thisObj, builtin.getKey(), accessor, builtin.getAttributeFlags());
             }
         });
     }

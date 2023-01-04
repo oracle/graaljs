@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,39 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.js.builtins.AsyncGeneratorPrototypeBuiltinsFactory.AsyncGeneratorResumeNodeGen;
-import com.oracle.truffle.js.nodes.control.AsyncGeneratorEnqueueNode;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyInstancePrototypeBuiltinsFactory.WebAssemblyInstanceGetExportsNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstanceObject;
 
-/**
- * Contains built-in methods of AsyncGenerator.prototype.
- */
-public final class AsyncGeneratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<AsyncGeneratorPrototypeBuiltins.AsyncGeneratorPrototype> {
+public class WebAssemblyInstancePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssemblyInstancePrototypeBuiltins.WebAssemblyInstancePrototype> {
 
-    public static final JSBuiltinsContainer BUILTINS = new AsyncGeneratorPrototypeBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new WebAssemblyInstancePrototypeBuiltins();
 
-    protected AsyncGeneratorPrototypeBuiltins() {
-        super(JSFunction.ASYNC_GENERATOR_PROTOTYPE_NAME, AsyncGeneratorPrototype.class);
+    protected WebAssemblyInstancePrototypeBuiltins() {
+        super(JSWebAssemblyInstance.PROTOTYPE_NAME, WebAssemblyInstancePrototype.class);
     }
 
-    public enum AsyncGeneratorPrototype implements BuiltinEnum<AsyncGeneratorPrototype> {
-        next(1),
-        return_(1),
-        throw_(1);
+    public enum WebAssemblyInstancePrototype implements BuiltinEnum<WebAssemblyInstancePrototype> {
+        exports(0);
 
         private final int length;
 
-        AsyncGeneratorPrototype(int length) {
+        WebAssemblyInstancePrototype(int length) {
             this.length = length;
         }
 
@@ -78,42 +74,43 @@ public final class AsyncGeneratorPrototypeBuiltins extends JSBuiltinsContainer.S
         public int getLength() {
             return length;
         }
+
+        @Override
+        public boolean isEnumerable() {
+            return true;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return this == exports;
+        }
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, AsyncGeneratorPrototype builtinEnum) {
-        assert context.getEcmaScriptVersion() >= JSConfig.ECMAScript2017;
-        Completion.Type resumeMethod;
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, WebAssemblyInstancePrototype builtinEnum) {
         switch (builtinEnum) {
-            case next:
-                resumeMethod = Completion.Type.Normal;
-                break;
-            case return_:
-                resumeMethod = Completion.Type.Return;
-                break;
-            case throw_:
-                resumeMethod = Completion.Type.Throw;
-                break;
-            default:
-                return null;
+            case exports:
+                return WebAssemblyInstanceGetExportsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
-        return AsyncGeneratorResumeNodeGen.create(context, builtin, resumeMethod, args().withThis().fixedArgs(1).createArgumentNodes(context));
+        return null;
     }
 
-    public abstract static class AsyncGeneratorResumeNode extends JSBuiltinNode {
-        private final Completion.Type resumeType;
-        @Child private AsyncGeneratorEnqueueNode enqueueNode;
+    public abstract static class WebAssemblyInstanceGetExportsNode extends JSBuiltinNode {
 
-        public AsyncGeneratorResumeNode(JSContext context, JSBuiltin builtin, Completion.Type resumeType) {
+        public WebAssemblyInstanceGetExportsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.resumeType = resumeType;
-            this.enqueueNode = AsyncGeneratorEnqueueNode.create(context);
         }
 
         @Specialization
-        protected Object resume(VirtualFrame frame, Object thisObj, Object value) {
-            Completion completion = Completion.create(resumeType, value);
-            return enqueueNode.execute(frame, thisObj, completion);
+        protected Object getExports(JSWebAssemblyInstanceObject instance) {
+            return instance.getExports();
+        }
+
+        @TruffleBoundary
+        @Fallback
+        protected Object doIncompatibleReceiver(@SuppressWarnings("unused") Object thisObj) {
+            throw Errors.createTypeError("WebAssembly.Instance.exports(): Receiver is not a WebAssembly.Instance", this);
         }
     }
+
 }

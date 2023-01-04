@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,10 +39,6 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.js.runtime.builtins;
-
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putConstructorProperty;
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putDataProperty;
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putFunctionsFromContainer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -203,16 +199,16 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         JSObject arrayPrototype = JSArrayObject.createEmpty(protoShape, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
         JSObjectUtil.setOrVerifyPrototype(ctx, arrayPrototype, realm.getObjectPrototype());
 
-        putConstructorProperty(ctx, arrayPrototype, ctor);
-        putFunctionsFromContainer(realm, arrayPrototype, ArrayPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putConstructorProperty(arrayPrototype, ctor);
+        JSObjectUtil.putFunctionsFromContainer(realm, arrayPrototype, ArrayPrototypeBuiltins.BUILTINS);
         // sets the length just for the prototype
         // putProxyProperty(arrayPrototype, ARRAY_LENGTH_PROXY_PROPERTY);
         JSObjectUtil.putProxyProperty(arrayPrototype, LENGTH, ARRAY_LENGTH_PROPERTY_PROXY, JSAttributes.notConfigurableNotEnumerableWritable());
         if (ctx.getEcmaScriptVersion() >= 6) {
             // The initial value of the @@iterator property is the same function object as the
             // initial value of the Array.prototype.values property.
-            putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_ITERATOR, JSDynamicObject.getOrNull(arrayPrototype, Strings.VALUES), JSAttributes.getDefaultNotEnumerable());
-            putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_UNSCOPABLES, createUnscopables(ctx, unscopableNameList(ctx)), JSAttributes.configurableNotEnumerableNotWritable());
+            JSObjectUtil.putDataProperty(arrayPrototype, Symbol.SYMBOL_ITERATOR, JSDynamicObject.getOrNull(arrayPrototype, Strings.VALUES), JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(arrayPrototype, Symbol.SYMBOL_UNSCOPABLES, createUnscopables(ctx, unscopableNameList(ctx)), JSAttributes.configurableNotEnumerableNotWritable());
         }
         return arrayPrototype;
     }
@@ -239,7 +235,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             names.add(Strings.GROUP);
             names.add(Strings.GROUP_TO_MAP);
         }
-        if (context.getEcmaScriptVersion() >= 7) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2016) {
             names.add(Strings.INCLUDES);
         }
         names.add(Strings.KEYS);
@@ -260,7 +256,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     private static JSObject createUnscopables(JSContext context, List<TruffleString> unscopableNames) {
         JSObject unscopables = JSOrdinary.createWithNullPrototypeInit(context);
         for (Object name : unscopableNames) {
-            putDataProperty(context, unscopables, name, true, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(unscopables, name, true, JSAttributes.getDefault());
         }
         return unscopables;
     }
@@ -383,11 +379,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_RESULT_ID, regexResult);
         JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_ORIGINAL_INPUT_ID, input);
         JSObjectUtil.putProxyProperty(obj, JSRegExp.INDEX, JSRegExp.LAZY_INDEX_PROXY, JSAttributes.getDefault());
-        JSObjectUtil.putDataProperty(context, obj, JSRegExp.INPUT, input, JSAttributes.getDefault());
-        JSObjectUtil.putDataProperty(context, obj, JSRegExp.GROUPS, groups, JSAttributes.getDefault());
+        JSObjectUtil.putDataProperty(obj, JSRegExp.INPUT, input, JSAttributes.getDefault());
+        JSObjectUtil.putDataProperty(obj, JSRegExp.GROUPS, groups, JSAttributes.getDefault());
         if (context.isOptionRegexpMatchIndices()) {
             JSArrayObject indices = createLazyRegexIndicesArray(context, realm, length, regexResult, indicesGroups);
-            JSObjectUtil.putDataProperty(context, obj, JSRegExp.INDICES, indices, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(obj, JSRegExp.INDICES, indices, JSAttributes.getDefault());
         }
         assert isJSArray(obj);
         return obj;
@@ -404,7 +400,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         Object[] array = new Object[length];
         JSArrayObject obj = create(context, realm, LazyRegexResultIndicesArray.createLazyRegexResultIndicesArray(), array, length);
         JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_RESULT_ID, regexResult);
-        JSObjectUtil.putDataProperty(context, obj, JSRegExp.GROUPS, indicesGroups, JSAttributes.getDefault());
+        JSObjectUtil.putDataProperty(obj, JSRegExp.GROUPS, indicesGroups, JSAttributes.getDefault());
         assert isJSArray(obj);
         return obj;
     }

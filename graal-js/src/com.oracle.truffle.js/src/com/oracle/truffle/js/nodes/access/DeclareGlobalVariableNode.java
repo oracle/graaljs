@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,7 +110,7 @@ public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
     @Specialization(replaces = {"doCached"})
     protected void doUncached(JSDynamicObject globalObject, JSContext context) {
         if (JSGlobal.isJSGlobalObject(globalObject)) {
-            JSObjectUtil.putDeclaredDataProperty(context, globalObject, varName, Undefined.instance, getAttributeFlags());
+            JSObjectUtil.defineConstantDataProperty(context, globalObject, varName, Undefined.instance, getAttributeFlags());
         } else {
             PropertyDescriptor desc = configurable ? PropertyDescriptor.undefinedDataDesc : PropertyDescriptor.undefinedDataDescNotConfigurable;
             JSObject.defineOwnProperty(globalObject, varName, desc, true);

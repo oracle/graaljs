@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsSubsetO
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsSupersetOfNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetSymmetricDifferenceNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetUnionNodeGen;
+import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.SetGetSizeNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -104,7 +105,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         has(1),
         forEach(1),
         values(0),
-        entries(0);
+        entries(0),
+        size(0);
 
         private final int length;
 
@@ -115,6 +117,11 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Override
         public int getLength() {
             return length;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return this == size;
         }
     }
 
@@ -135,6 +142,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 return CreateSetIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
             case entries:
                 return CreateSetIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
+            case size:
+                return SetGetSizeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -741,6 +750,27 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
         protected static Object forEachFunctionNoSet(Object thisObj, Object callback, Object thisArg) {
+            throw Errors.createTypeErrorSetExpected();
+        }
+    }
+
+    /**
+     * Implementation of the Set.prototype.size getter.
+     */
+    public abstract static class SetGetSizeNode extends JSBuiltinNode {
+
+        public SetGetSizeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static int doSet(JSSetObject thisObj) {
+            return JSSet.getSetSize(thisObj);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isJSMap(thisObj)"})
+        protected static int notSet(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeErrorSetExpected();
         }
     }
