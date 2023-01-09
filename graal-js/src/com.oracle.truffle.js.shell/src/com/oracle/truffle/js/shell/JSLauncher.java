@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -280,10 +280,8 @@ public class JSLauncher extends AbstractLanguageLauncher {
         printOption("-e, --eval CODE",      "evaluate the code");
         printOption("-f, --file FILE",      "load script file");
         printOption("--module FILE",        "load module file");
-        printOption("--syntax-extensions",  "enable non-spec syntax extensions");
+        printOption("--script-file FILE",   "load script file in strict mode");
         printOption("--print-result",       "print the return value of each FILE");
-        printOption("--scripting",          "enable scripting features (Nashorn compatibility option)");
-        printOption("--strict",             "run in strict mode");
         printOption("--version",            "print the version and exit");
         printOption("--show-version",       "print the version and continue");
         // @formatter:on
@@ -294,12 +292,11 @@ public class JSLauncher extends AbstractLanguageLauncher {
         args.addAll(Arrays.asList(
                         "-e", "--eval",
                         "-f", "--file",
-                        "--syntax-extensions",
+                        "--module",
+                        "--strict-file",
                         "--print-result",
                         "--version",
-                        "--show-version",
-                        "--scripting",
-                        "--strict"));
+                        "--show-version"));
     }
 
     protected static void printOption(String option, String description) {
