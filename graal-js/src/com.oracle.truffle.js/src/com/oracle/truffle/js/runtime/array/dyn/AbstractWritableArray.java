@@ -843,9 +843,6 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     public static class SetSupportedProfileAccess extends ProfileAccess {
 
-        public static final int REQUIRED_BITS = 10 * 2;
-        private static final SetSupportedProfileAccess UNCACHED = new SetSupportedProfileAccess();
-
         private final InlinedConditionProfile ensureCapacityGrow;
         private final InlinedConditionProfile ensureCapacityGrowLeft;
         private final InlinedConditionProfile inBoundsZeroBasedSetLength;
@@ -857,41 +854,34 @@ public abstract class AbstractWritableArray extends DynamicArray {
         private final InlinedConditionProfile fillHolesLeft;
         private final InlinedConditionProfile fillHolesRight;
 
-        @NeverDefault
-        public static SetSupportedProfileAccess inline(@InlineSupport.RequiredField(value = InlineSupport.StateField.class, bits = REQUIRED_BITS) InlineSupport.InlineTarget inlineTarget) {
-            return new SetSupportedProfileAccess(inlineTarget);
-        }
+        public static final int REQUIRED_BITS = 10 * 2;
+        private static final SetSupportedProfileAccess UNCACHED = new SetSupportedProfileAccess(new Builder());
 
         @NeverDefault
         public static SetSupportedProfileAccess getUncached() {
             return UNCACHED;
         }
 
-        protected SetSupportedProfileAccess(InlineSupport.InlineTarget inlineTarget) {
-            InlineSupport.StateField stateField = inlineTarget.getState(0, REQUIRED_BITS);
-            this.ensureCapacityGrow = nextConditionProfile(stateField);
-            this.ensureCapacityGrowLeft = nextConditionProfile(stateField);
-            this.inBoundsZeroBasedSetLength = nextConditionProfile(stateField);
-            this.inBoundsZeroBasedSetUsedLength = nextConditionProfile(stateField);
-            this.updateStatePrepend = nextConditionProfile(stateField);
-            this.updateStateAppend = nextConditionProfile(stateField);
-            this.updateStateSetLength = nextConditionProfile(stateField);
-            this.updateHolesStateIsHole = nextConditionProfile(stateField);
-            this.fillHolesLeft = nextConditionProfile(stateField);
-            this.fillHolesRight = nextConditionProfile(stateField);
+        @NeverDefault
+        public static SetSupportedProfileAccess inline(
+                        @InlineSupport.RequiredField(value = InlineSupport.StateField.class, bits = REQUIRED_BITS) InlineSupport.InlineTarget inlineTarget) {
+            try (Builder b = new Builder(inlineTarget, REQUIRED_BITS)) {
+                return new SetSupportedProfileAccess(b);
+            }
         }
 
-        protected SetSupportedProfileAccess() {
-            this.ensureCapacityGrow = InlinedConditionProfile.getUncached();
-            this.ensureCapacityGrowLeft = InlinedConditionProfile.getUncached();
-            this.inBoundsZeroBasedSetLength = InlinedConditionProfile.getUncached();
-            this.inBoundsZeroBasedSetUsedLength = InlinedConditionProfile.getUncached();
-            this.updateStatePrepend = InlinedConditionProfile.getUncached();
-            this.updateStateAppend = InlinedConditionProfile.getUncached();
-            this.updateStateSetLength = InlinedConditionProfile.getUncached();
-            this.updateHolesStateIsHole = InlinedConditionProfile.getUncached();
-            this.fillHolesLeft = InlinedConditionProfile.getUncached();
-            this.fillHolesRight = InlinedConditionProfile.getUncached();
+        protected SetSupportedProfileAccess(Builder b) {
+            super(b);
+            this.ensureCapacityGrow = b.conditionProfile();
+            this.ensureCapacityGrowLeft = b.conditionProfile();
+            this.inBoundsZeroBasedSetLength = b.conditionProfile();
+            this.inBoundsZeroBasedSetUsedLength = b.conditionProfile();
+            this.updateStatePrepend = b.conditionProfile();
+            this.updateStateAppend = b.conditionProfile();
+            this.updateStateSetLength = b.conditionProfile();
+            this.updateHolesStateIsHole = b.conditionProfile();
+            this.fillHolesLeft = b.conditionProfile();
+            this.fillHolesRight = b.conditionProfile();
         }
 
         public final boolean ensureCapacityGrow(Node node, boolean condition) {
