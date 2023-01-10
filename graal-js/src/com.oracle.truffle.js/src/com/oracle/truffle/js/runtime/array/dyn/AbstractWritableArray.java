@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.InlinedProfileBag;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
@@ -841,7 +842,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return removeRangeImpl(object, 0, from);
     }
 
-    public static class SetSupportedProfileAccess extends ProfileAccess {
+    public static class SetSupportedProfileAccess implements InlinedProfileBag {
 
         private final InlinedConditionProfile ensureCapacityGrow;
         private final InlinedConditionProfile ensureCapacityGrowLeft;
@@ -871,7 +872,6 @@ public abstract class AbstractWritableArray extends DynamicArray {
         }
 
         protected SetSupportedProfileAccess(Builder b) {
-            super(b);
             this.ensureCapacityGrow = b.conditionProfile();
             this.ensureCapacityGrowLeft = b.conditionProfile();
             this.inBoundsZeroBasedSetLength = b.conditionProfile();

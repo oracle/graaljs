@@ -45,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -57,7 +56,6 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -71,6 +69,7 @@ import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.InlinedProfileBag;
 
 public abstract class ScriptArray {
 
@@ -137,79 +136,7 @@ public abstract class ScriptArray {
 
     public abstract int lengthInt(JSDynamicObject object);
 
-    protected abstract static class ProfileAccess {
-
-        protected ProfileAccess(Builder b) {
-            Objects.requireNonNull(b);
-        }
-
-        protected static InlinedConditionProfile inlinedConditionProfile(InlineSupport.StateField stateField, int offset) {
-            return InlinedConditionProfile.inline(InlineSupport.InlineTarget.create(InlinedConditionProfile.class, stateField.subUpdater(offset, 2)));
-        }
-
-        protected static InlinedBranchProfile inlinedBranchProfile(InlineSupport.StateField stateField, int offset) {
-            return InlinedBranchProfile.inline(InlineSupport.InlineTarget.create(InlinedBranchProfile.class, stateField.subUpdater(offset, 1)));
-        }
-
-        protected static final class Builder implements AutoCloseable {
-            private final InlineSupport.InlineTarget inlineTarget;
-            private final int[] requiredBits;
-            private InlineSupport.StateField stateField;
-            private int stateFieldIndex;
-            private int stateFieldOffset;
-            private int usedBits;
-
-            public Builder(InlineSupport.InlineTarget inlineTarget, int... requiredBits) {
-                this.inlineTarget = inlineTarget;
-                this.requiredBits = requiredBits;
-                this.stateField = inlineTarget.getState(0, requiredBits[0]);
-            }
-
-            public Builder() {
-                this.inlineTarget = null;
-                this.requiredBits = null;
-            }
-
-            public InlinedConditionProfile conditionProfile() {
-                if (inlineTarget == null) {
-                    return InlinedConditionProfile.getUncached();
-                }
-                int profileBits = 2;
-                if (stateFieldOffset + profileBits > requiredBits[stateFieldIndex]) {
-                    stateFieldOffset = 0;
-                    stateFieldIndex += 1;
-                    stateField = inlineTarget.getState(stateFieldIndex, requiredBits[stateFieldIndex]);
-                }
-                InlinedConditionProfile profile = inlinedConditionProfile(stateField, stateFieldOffset);
-                stateFieldOffset += profileBits;
-                usedBits += profileBits;
-                return profile;
-            }
-
-            public InlinedBranchProfile branchProfile() {
-                if (inlineTarget == null) {
-                    return InlinedBranchProfile.getUncached();
-                }
-                int profileBits = 1;
-                if (stateFieldOffset + profileBits > requiredBits[stateFieldIndex]) {
-                    stateFieldOffset = 0;
-                    stateFieldIndex += 1;
-                    stateField = inlineTarget.getState(stateFieldIndex, requiredBits[stateFieldIndex]);
-                }
-                InlinedBranchProfile profile = inlinedBranchProfile(stateField, stateFieldOffset);
-                stateFieldOffset += profileBits;
-                usedBits += profileBits;
-                return profile;
-            }
-
-            @Override
-            public void close() {
-                assert inlineTarget == null || usedBits == Arrays.stream(requiredBits).sum() : usedBits;
-            }
-        }
-    }
-
-    public static class CreateWritableProfileAccess extends ProfileAccess {
+    public static class CreateWritableProfileAccess implements InlinedProfileBag {
 
         private final InlinedConditionProfile newArrayLengthZero;
         private final InlinedConditionProfile newArrayLengthBelowLimit;
@@ -233,7 +160,6 @@ public abstract class ScriptArray {
         }
 
         protected CreateWritableProfileAccess(Builder b) {
-            super(b);
             this.newArrayLengthZero = b.conditionProfile();
             this.newArrayLengthBelowLimit = b.conditionProfile();
             this.indexZero = b.conditionProfile();
