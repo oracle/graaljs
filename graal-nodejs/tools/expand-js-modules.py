@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -54,14 +54,13 @@ from os.path import join
 def WrapModule(module_path, module_code):
     delimiter = u'\u237f' # "random" character (vertical line with middle dot)
     wrapped_module_code = delimiter + module_code + delimiter
-    if module_path in [join('lib', 'internal', 'per_context', 'primordials.js'), join('lib', 'internal', 'per_context', 'messageport.js'), join('lib', 'internal', 'per_context', 'domexception.js')]:
-        result = "(function (global, exports, primordials) {" + wrapped_module_code + "\n});"
-    elif module_path in [join('lib', 'internal', 'main', 'run_third_party_main.js'), join('lib', 'internal', 'main', 'inspect.js'), join('lib', 'internal', 'main', 'print_help.js'), join('lib', 'internal', 'main', 'prof_process.js'), join('lib', 'internal', 'main', 'eval_string.js'), join('lib', 'internal', 'main', 'check_syntax.js'), join('lib', 'internal', 'main', 'test_runner.js'), join('lib', 'internal', 'main', 'run_main_module.js'), join('lib', 'internal', 'main', 'repl.js'), join('lib', 'internal', 'main', 'eval_stdin.js')]:
-        result = "(function (process, require, internalBinding, primordials, markBootstrapComplete) {" + wrapped_module_code + "\n});"
-    elif module_path in [join('lib', 'internal', 'bootstrap', 'node.js'), join('lib', 'internal', 'bootstrap', 'switches', 'is_main_thread.js'), join('lib', 'internal', 'bootstrap', 'switches', 'is_not_main_thread.js'), join('lib', 'internal', 'bootstrap', 'switches', 'does_own_process_state.js'), join('lib', 'internal', 'bootstrap', 'switches', 'does_not_own_process_state.js')]:
-        result = "(function (process, require, internalBinding, primordials) {" + wrapped_module_code + "\n});"
-    elif module_path == join('lib', 'internal', 'bootstrap', 'loaders.js'):
+    # see LookupAndCompile() in node_builtins.cc 
+    if module_path == join('lib', 'internal', 'bootstrap', 'loaders.js'):
         result = "(function (process, getLinkedBinding, getInternalBinding, primordials) {" + wrapped_module_code + "\n});"
+    elif module_path.startswith(join('lib', 'internal', 'per_context')):
+        result = "(function (exports, primordials) {" + wrapped_module_code + "\n});"
+    elif module_path.startswith(join('lib', 'internal', 'main')) or module_path.startswith(join('lib', 'internal', 'bootstrap')):
+        result = "(function (process, require, internalBinding, primordials) {" + wrapped_module_code + "\n});"
     else:
         result = "(function (exports, require, module, process, internalBinding, primordials) {" + wrapped_module_code + "\n});"
     return delimiter + result;
