@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.array.dyn;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -123,7 +124,7 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, Node node, CreateWritableProfileAccess profile) {
         Object[] array = materializeFull(TRegexUtil.TRegexResultAccessor.getUncached(), object, lengthInt(object));
         AbstractObjectArray newArray;
         newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, array.length, array.length, array, integrityLevel);
@@ -134,38 +135,38 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractObjectArray createWriteableInt(JSDynamicObject object, long index, int value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractObjectArray createWriteableInt(JSDynamicObject object, long index, int value, Node node, CreateWritableProfileAccess profile) {
+        return createWriteableObject(object, index, value, node, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableDouble(JSDynamicObject object, long index, double value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractObjectArray createWriteableDouble(JSDynamicObject object, long index, double value, Node node, CreateWritableProfileAccess profile) {
+        return createWriteableObject(object, index, value, node, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractObjectArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, Node node, CreateWritableProfileAccess profile) {
+        return createWriteableObject(object, index, value, node, profile);
     }
 
     @Override
     public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
-        return createWriteableObject(object, index, null, ProfileHolder.empty()).deleteElementImpl(object, index, strict);
+        return createWriteableObject(object, index, null, null, CreateWritableProfileAccess.getUncached()).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    public ScriptArray setLengthImpl(JSDynamicObject object, long length, ProfileHolder profile) {
-        return createWriteableObject(object, length - 1, null, ProfileHolder.empty()).setLengthImpl(object, length, profile);
+    public ScriptArray setLengthImpl(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
+        return createWriteableObject(object, length - 1, null, node, profile).setLengthImpl(object, length, node, profile);
     }
 
     @Override
     public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
-        return createWriteableObject(object, offset, null, ProfileHolder.empty()).addRangeImpl(object, offset, size);
+        return createWriteableObject(object, offset, null, null, CreateWritableProfileAccess.getUncached()).addRangeImpl(object, offset, size);
     }
 
     @Override
     public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
-        return createWriteableObject(object, start, null, ProfileHolder.empty()).removeRangeImpl(object, start, end);
+        return createWriteableObject(object, start, null, null, CreateWritableProfileAccess.getUncached()).removeRangeImpl(object, start, end);
     }
 
     @Override

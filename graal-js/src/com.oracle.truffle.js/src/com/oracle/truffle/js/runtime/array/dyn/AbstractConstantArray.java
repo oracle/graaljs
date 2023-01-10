@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.array.dyn;
 
-import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -57,11 +57,11 @@ public abstract class AbstractConstantArray extends DynamicArray {
     public final ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
         if (index <= Integer.MAX_VALUE) {
             if (value instanceof Integer) {
-                return createWriteableInt(object, index, (int) value, ProfileHolder.empty()).setElementImpl(object, index, value, strict);
+                return createWriteableInt(object, index, (int) value, null, CreateWritableProfileAccess.getUncached()).setElementImpl(object, index, value, strict);
             } else if (value instanceof Double) {
-                return createWriteableDouble(object, index, (double) value, ProfileHolder.empty()).setElementImpl(object, index, value, strict);
+                return createWriteableDouble(object, index, (double) value, null, CreateWritableProfileAccess.getUncached()).setElementImpl(object, index, value, strict);
             } else {
-                return createWriteableObject(object, index, value, ProfileHolder.empty()).setElementImpl(object, index, value, strict);
+                return createWriteableObject(object, index, value, null, CreateWritableProfileAccess.getUncached()).setElementImpl(object, index, value, strict);
             }
         } else {
             return SparseArray.makeSparseArray(object, this).setElementImpl(object, index, value, strict);
@@ -121,39 +121,13 @@ public abstract class AbstractConstantArray extends DynamicArray {
         return firstElementIndex(object) <= index && index <= lastElementIndex(object);
     }
 
-    public abstract AbstractWritableArray createWriteableDouble(JSDynamicObject object, long index, double value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableDouble(JSDynamicObject object, long index, double value, Node node, CreateWritableProfileAccess profile);
 
-    public abstract AbstractWritableArray createWriteableInt(JSDynamicObject object, long index, int value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableInt(JSDynamicObject object, long index, int value, Node node, CreateWritableProfileAccess profile);
 
-    public abstract AbstractWritableArray createWriteableObject(JSDynamicObject object, long index, Object value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableObject(JSDynamicObject object, long index, Object value, Node node, CreateWritableProfileAccess profile);
 
-    public abstract AbstractWritableArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, ProfileHolder profile);
-
-    protected interface CreateWritableProfileAccess extends ProfileAccess {
-        default boolean lengthZero(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 0, condition);
-        }
-
-        default boolean lengthBelowLimit(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 1, condition);
-        }
-
-        default boolean indexZero(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 2, condition);
-        }
-
-        default boolean indexLessThanLength(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 3, condition);
-        }
-    }
-
-    protected static final CreateWritableProfileAccess CREATE_WRITABLE_PROFILE = new CreateWritableProfileAccess() {
-    };
-
-    @NeverDefault
-    public static ProfileHolder createCreateWritableProfile() {
-        return ProfileHolder.create(4, CreateWritableProfileAccess.class);
-    }
+    public abstract AbstractWritableArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, Node node, CreateWritableProfileAccess profile);
 
     @Override
     public boolean hasHoles(JSDynamicObject object) {

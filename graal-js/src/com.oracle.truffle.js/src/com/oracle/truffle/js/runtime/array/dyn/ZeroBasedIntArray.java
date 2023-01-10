@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetLen
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUsedLength;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -93,20 +94,20 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     }
 
     @Override
-    protected int prepareInBounds(JSDynamicObject object, int index, ProfileHolder profile) {
-        prepareInBoundsZeroBased(object, index, profile);
+    protected int prepareInBounds(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
+        prepareInBoundsZeroBased(object, index, node, profile);
         return index;
     }
 
     @Override
-    protected int prepareSupported(JSDynamicObject object, int index, ProfileHolder profile) {
-        prepareSupportedZeroBased(object, index, profile);
+    protected int prepareSupported(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
+        prepareSupportedZeroBased(object, index, node, profile);
         return index;
     }
 
     @Override
-    protected void setLengthLess(JSDynamicObject object, long length, ProfileHolder profile) {
-        setLengthLessZeroBased(object, length, profile);
+    protected void setLengthLess(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
+        setLengthLessZeroBased(object, length, node, profile);
     }
 
     @Override

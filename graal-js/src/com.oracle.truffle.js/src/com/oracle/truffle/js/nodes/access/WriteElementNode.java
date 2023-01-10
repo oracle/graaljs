@@ -42,14 +42,18 @@ package com.oracle.truffle.js.nodes.access;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.InlineSupport.StateField;
+import com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -65,6 +69,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -824,8 +829,26 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private abstract static class RecursiveCachedArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
+
+        protected static final StateField STATE0_FIELD = StateField.create(MethodHandles.lookup(), "state0");
+
+        protected static final ScriptArray.CreateWritableProfileAccess CREATE_WRITABLE_PROFILE;
+        protected static final AbstractWritableArray.SetSupportedProfileAccess SET_SUPPORTED_PROFILE;
+        private static final InlinedBranchProfile NEED_PROTOTYPE_BRANCH;
+
+        static {
+            int offset = 0;
+            CREATE_WRITABLE_PROFILE = ScriptArray.CreateWritableProfileAccess.inline(InlineTarget.create(ScriptArray.CreateWritableProfileAccess.class,
+                            STATE0_FIELD.subUpdater(offset, offset += ScriptArray.CreateWritableProfileAccess.REQUIRED_BITS)));
+            SET_SUPPORTED_PROFILE = AbstractWritableArray.SetSupportedProfileAccess.inline(InlineTarget.create(AbstractWritableArray.SetSupportedProfileAccess.class,
+                            STATE0_FIELD.subUpdater(offset, offset += AbstractWritableArray.SetSupportedProfileAccess.REQUIRED_BITS)));
+            NEED_PROTOTYPE_BRANCH = InlinedBranchProfile.inline(InlineTarget.create(InlinedBranchProfile.class,
+                            STATE0_FIELD.subUpdater(offset, offset += 1)));
+        }
+
+        @UnsafeAccessedField private int state0;
+
         @Child private ArrayWriteElementCacheNode recursiveWrite;
-        private final BranchProfile needPrototypeBranch = BranchProfile.create();
 
         RecursiveCachedArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -840,7 +863,7 @@ public class WriteElementNode extends JSTargetableNode {
             assert !arrayType.isHolesType();
             if (!root.context.getArrayPrototypeNoElementsAssumption().isValid() && !root.writeOwn) {
                 if (!arrayType.hasElement(target, index)) {
-                    needPrototypeBranch.enter();
+                    NEED_PROTOTYPE_BRANCH.enter(this);
                     return true;
                 }
             }
@@ -853,7 +876,7 @@ public class WriteElementNode extends JSTargetableNode {
                             (!root.context.getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(target)) ||
                             (!root.context.getFastArgumentsObjectAssumption().isValid() && JSSlowArgumentsArray.isJSSlowArgumentsObject(target))) {
                 if (!arrayType.hasElement(target, index)) {
-                    needPrototypeBranch.enter();
+                    NEED_PROTOTYPE_BRANCH.enter(this);
                     return true;
                 }
             }
@@ -962,7 +985,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final BranchProfile inBoundsDoubleBranch = BranchProfile.create();
         private final BranchProfile inBoundsJSObjectBranch = BranchProfile.create();
         private final BranchProfile inBoundsObjectBranch = BranchProfile.create();
-        private final ScriptArray.ProfileHolder createWritableProfile = AbstractConstantArray.createCreateWritableProfile();
 
         ConstantArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -975,16 +997,16 @@ public class WriteElementNode extends JSTargetableNode {
                 ScriptArray newArray;
                 if (value instanceof Integer) {
                     inBoundsIntBranch.enter();
-                    newArray = constantArray.createWriteableInt(target, index, (int) value, createWritableProfile);
+                    newArray = constantArray.createWriteableInt(target, index, (int) value, this, CREATE_WRITABLE_PROFILE);
                 } else if (value instanceof Double) {
                     inBoundsDoubleBranch.enter();
-                    newArray = constantArray.createWriteableDouble(target, index, (double) value, createWritableProfile);
+                    newArray = constantArray.createWriteableDouble(target, index, (double) value, this, CREATE_WRITABLE_PROFILE);
                 } else if (JSDynamicObject.isJSDynamicObject(value)) {
                     inBoundsJSObjectBranch.enter();
-                    newArray = constantArray.createWriteableJSObject(target, index, (JSDynamicObject) value, createWritableProfile);
+                    newArray = constantArray.createWriteableJSObject(target, index, (JSDynamicObject) value, this, CREATE_WRITABLE_PROFILE);
                 } else {
                     inBoundsObjectBranch.enter();
-                    newArray = constantArray.createWriteableObject(target, index, value, createWritableProfile);
+                    newArray = constantArray.createWriteableObject(target, index, value, this, CREATE_WRITABLE_PROFILE);
                 }
                 return setArrayAndWrite(newArray, target, index, value, root);
             } else {
@@ -1023,7 +1045,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final ConditionProfile supportedZeroCondition = ConditionProfile.create();
         private final ConditionProfile supportedContiguousCondition = ConditionProfile.create();
         private final ConditionProfile supportedHolesCondition = ConditionProfile.create();
-        private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         IntArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1055,15 +1076,15 @@ public class WriteElementNode extends JSTargetableNode {
                 intArray.setInBoundsFast(target, iIndex, intValue);
                 return true;
             } else if (inBoundsCondition.profile(intArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(intArray, target, index))) {
-                intArray.setInBounds(target, iIndex, intValue, profile);
+                intArray.setInBounds(target, iIndex, intValue, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else if (supportedNonZeroCondition.profile(intArray.isSupported(target, index) && !mightTransferToNonContiguous(intArray, target, index))) {
-                intArray.setSupported(target, iIndex, intValue, profile);
+                intArray.setSupported(target, iIndex, intValue, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else {
                 ScriptArray toArrayType;
                 if (supportedZeroCondition.profile(mightTransferToNonContiguous(intArray, target, index) && intArray.isSupported(target, index))) {
-                    toArrayType = intArray.toNonContiguous(target, iIndex, intValue, profile);
+                    toArrayType = intArray.toNonContiguous(target, iIndex, intValue, this, SET_SUPPORTED_PROFILE);
                 } else if (supportedContiguousCondition.profile(!(intArray instanceof AbstractContiguousIntArray) && intArray.isSupportedContiguous(target, index))) {
                     toArrayType = intArray.toContiguous(target, index, intValue);
                 } else if (supportedHolesCondition.profile(intArray.isSupportedHoles(target, index))) {
@@ -1090,7 +1111,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final ConditionProfile supportedCondition = ConditionProfile.create();
         private final ConditionProfile supportedContiguousCondition = ConditionProfile.create();
         private final ConditionProfile supportedHolesCondition = ConditionProfile.create();
-        private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         DoubleArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1123,10 +1143,10 @@ public class WriteElementNode extends JSTargetableNode {
                 doubleArray.setInBoundsFast(target, iIndex, doubleValue);
                 return true;
             } else if (inBoundsCondition.profile(doubleArray.isInBounds(target, iIndex))) {
-                doubleArray.setInBounds(target, iIndex, doubleValue, profile);
+                doubleArray.setInBounds(target, iIndex, doubleValue, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else if (supportedCondition.profile(doubleArray.isSupported(target, index))) {
-                doubleArray.setSupported(target, iIndex, doubleValue, profile);
+                doubleArray.setSupported(target, iIndex, doubleValue, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1149,7 +1169,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final ConditionProfile supportedCondition = ConditionProfile.create();
         private final ConditionProfile supportedContiguousCondition = ConditionProfile.create();
         private final ConditionProfile supportedHolesCondition = ConditionProfile.create();
-        private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         ObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1167,10 +1186,10 @@ public class WriteElementNode extends JSTargetableNode {
                 objectArray.setInBoundsFast(target, iIndex, value);
                 return true;
             } else if (inBoundsCondition.profile(objectArray.isInBounds(target, iIndex))) {
-                objectArray.setInBounds(target, iIndex, value, profile);
+                objectArray.setInBounds(target, iIndex, value, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else if (supportedCondition.profile(objectArray.isSupported(target, index))) {
-                objectArray.setSupported(target, iIndex, value);
+                objectArray.setSupported(target, iIndex, value, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1194,7 +1213,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final ConditionProfile supportedCondition = ConditionProfile.create();
         private final ConditionProfile supportedContiguousCondition = ConditionProfile.create();
         private final ConditionProfile supportedHolesCondition = ConditionProfile.create();
-        private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         JSObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1221,10 +1239,10 @@ public class WriteElementNode extends JSTargetableNode {
                 jsobjectArray.setInBoundsFast(target, iIndex, jsobjectValue);
                 return true;
             } else if (inBoundsCondition.profile(jsobjectArray.isInBounds(target, iIndex))) {
-                jsobjectArray.setInBounds(target, iIndex, jsobjectValue, profile);
+                jsobjectArray.setInBounds(target, iIndex, jsobjectValue, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else if (supportedCondition.profile(jsobjectArray.isSupported(target, index))) {
-                jsobjectArray.setSupported(target, iIndex, jsobjectValue, profile);
+                jsobjectArray.setSupported(target, iIndex, jsobjectValue, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1252,7 +1270,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final ConditionProfile supportedNotContainsHolesCondition = ConditionProfile.create();
         private final ConditionProfile hasExplicitHolesProfile = ConditionProfile.create();
         private final ConditionProfile containsHolesProfile = ConditionProfile.create();
-        private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         HolesIntArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1289,10 +1306,10 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return true;
             } else if (containsHoles && inBoundsCondition.profile(holesIntArray.isInBounds(target, iIndex) && !HolesIntArray.isHoleValue(intValue))) {
-                holesIntArray.setInBounds(target, iIndex, intValue, profile);
+                holesIntArray.setInBounds(target, iIndex, intValue, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else if (containsHoles && supportedContainsHolesCondition.profile(holesIntArray.isSupported(target, index) && !HolesIntArray.isHoleValue(intValue))) {
-                holesIntArray.setSupported(target, iIndex, intValue, profile);
+                holesIntArray.setSupported(target, iIndex, intValue, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1322,7 +1339,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final ConditionProfile supportedNotContainsHolesCondition = ConditionProfile.create();
         private final ConditionProfile hasExplicitHolesProfile = ConditionProfile.create();
         private final ConditionProfile containsHolesProfile = ConditionProfile.create();
-        private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         HolesDoubleArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1360,10 +1376,10 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return true;
             } else if (containsHoles && inBoundsCondition.profile(holesDoubleArray.isInBounds(target, iIndex) && !HolesDoubleArray.isHoleValue(doubleValue))) {
-                holesDoubleArray.setInBounds(target, iIndex, doubleValue, profile);
+                holesDoubleArray.setInBounds(target, iIndex, doubleValue, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else if (containsHoles && supportedContainsHolesCondition.profile(holesDoubleArray.isSupported(target, index) && !HolesDoubleArray.isHoleValue(doubleValue))) {
-                holesDoubleArray.setSupported(target, iIndex, doubleValue, profile);
+                holesDoubleArray.setSupported(target, iIndex, doubleValue, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1391,7 +1407,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final ConditionProfile supportedNotContainsHolesCondition = ConditionProfile.create();
         private final ConditionProfile hasExplicitHolesProfile = ConditionProfile.create();
         private final ConditionProfile containsHolesProfile = ConditionProfile.create();
-        private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         HolesJSObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1423,11 +1438,11 @@ public class WriteElementNode extends JSTargetableNode {
                 return true;
             } else if (containsHoles && inBoundsCondition.profile(jsobjectArray.isInBounds(target, (int) index))) {
                 assert !HolesJSObjectArray.isHoleValue(value);
-                jsobjectArray.setInBounds(target, (int) index, value, profile);
+                jsobjectArray.setInBounds(target, (int) index, value, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else if (containsHoles && supportedContainsHolesCondition.profile(jsobjectArray.isSupported(target, index))) {
                 assert !HolesJSObjectArray.isHoleValue(value);
-                jsobjectArray.setSupported(target, (int) index, value, profile);
+                jsobjectArray.setSupported(target, (int) index, value, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1451,7 +1466,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.create();
         private final ConditionProfile inBoundsCondition = ConditionProfile.create();
         private final ConditionProfile supportedCondition = ConditionProfile.create();
-        private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
 
         HolesObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1474,11 +1488,11 @@ public class WriteElementNode extends JSTargetableNode {
                 return true;
             } else if (inBoundsCondition.profile(objectArray.isInBounds(target, (int) index))) {
                 assert !HolesObjectArray.isHoleValue(value);
-                objectArray.setInBounds(target, (int) index, value, profile);
+                objectArray.setInBounds(target, (int) index, value, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else if (supportedCondition.profile(objectArray.isSupported(target, index))) {
                 assert !HolesObjectArray.isHoleValue(value);
-                objectArray.setSupported(target, (int) index, value);
+                objectArray.setSupported(target, (int) index, value, this, SET_SUPPORTED_PROFILE);
                 return true;
             } else {
                 assert objectArray.isSparse(target, index);
