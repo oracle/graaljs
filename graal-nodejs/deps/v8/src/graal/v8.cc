@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -803,6 +803,18 @@ namespace v8 {
             SideEffectType getter_side_effect_type,
             SideEffectType setter_side_effect_type) {
         SetAccessor(name.As<String>(), (AccessorGetterCallback) getter, (AccessorSetterCallback) setter, data, settings, attribute, signature);
+    };
+
+    void ObjectTemplate::SetAccessor(
+            Local<Name> name,
+            AccessorNameGetterCallback getter,
+            AccessorNameSetterCallback setter,
+            Local<Value> data,
+            AccessControl settings,
+            PropertyAttribute attribute,
+            SideEffectType getter_side_effect_type,
+            SideEffectType setter_side_effect_type) {
+        SetAccessor(name, getter, setter, data, settings, attribute, nullptr);
     };
 
     void ObjectTemplate::SetHandler(const NamedPropertyHandlerConfiguration& configuration) {

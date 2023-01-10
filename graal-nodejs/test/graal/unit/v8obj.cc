@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,18 +53,6 @@ bool EntropySourceFunction(unsigned char* buffer, size_t size) {
 }
 
 #endif
-
-// V8::Initialize
-
-EXPORT_TO_JS(Initialize) {
-    args.GetReturnValue().Set(V8::Initialize());
-}
-
-// V8::Dispose
-
-EXPORT_TO_JS(Dispose) {
-    args.GetReturnValue().Set(V8::Dispose());
-}
 
 // V8::GetVersion
 
