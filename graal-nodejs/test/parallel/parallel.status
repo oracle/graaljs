@@ -21,9 +21,6 @@ test-async-wrap-pop-id-during-load: SKIP
 test-promise-reject-callback-exception: SKIP
 test-ttywrap-stack: SKIP
 
-# BackingStore::Data/ByteLength() called from a thread not attached to JVM
-test-blob: SKIP
-
 # Different error message
 # object is not extensible versus Cannot add new property ... to non-extensible ...
 test-assert-calltracker-getCalls: FAIL
@@ -39,6 +36,8 @@ test-errors-systemerror: FAIL
 test-fs-read: FAIL
 # Invalid array buffer length versus Array buffer allocation failed
 test-fs-write-buffer-large: FAIL
+# Invalid regular expression flags versus Invalid flags supplied to RegExp constructor ...
+test-runner-string-to-regexp: FAIL
 # ports is not iterable versus 0 is not iterable
 test-worker-message-event: FAIL
 
@@ -71,6 +70,7 @@ test-heapsnapshot-near-heap-limit-worker: SKIP
 test-http2-ping-settings-heapdump: SKIP
 test-v8-getheapsnapshot-twice: SKIP
 test-worker-exit-heapsnapshot: SKIP
+test-worker-heap-snapshot: SKIP
 
 # https://example.com does not work in CI
 test-https-agent-unref-socket: SKIP
@@ -95,9 +95,6 @@ test-util-format: FAIL
 # some differences in the handling of weak collections
 test-util-inspect: FAIL
 
-# Tests a V8-specific option
-test-v8-untrusted-code-mitigations: FAIL
-
 # v8.cachedDataVersionTag() not supported
 test-v8-version-tag: FAIL
 
@@ -110,8 +107,10 @@ test-vm-context: FAIL
 
 # WebAssembly is not supported
 test-fetch: FAIL
+test-fetch-disabled: FAIL
 test-vm-codegen: FAIL
 test-wasm-simple: FAIL
+test-wasm-web-api: FAIL
 test-whatwg-webstreams-transfer: FAIL
 test-worker-message-port-wasm-module: FAIL
 test-worker-message-port-wasm-threads: FAIL
@@ -121,11 +120,29 @@ test-vm-timeout-escape-promise: FAIL
 test-vm-timeout-escape-promise-module: FAIL
 test-vm-timeout-escape-promise-2: FAIL
 
+# run-time user-land snapshots are not supported
+test-snapshot-api: FAIL
+test-snapshot-basic: FAIL
+test-snapshot-cjs-main: FAIL
+test-snapshot-console: FAIL
+test-snapshot-dns-lookup-localhost: FAIL
+test-snapshot-dns-lookup-localhost-promise: FAIL
+test-snapshot-dns-resolve-localhost: FAIL
+test-snapshot-dns-resolve-localhost-promise: FAIL
+test-snapshot-error: FAIL
+test-snapshot-eval: FAIL
+test-snapshot-gzip: FAIL
+test-snapshot-typescript: FAIL
+test-snapshot-umd: FAIL
+test-snapshot-warning: FAIL
+
 # Contains an unused invalid regular expression
 # (which works on V8 where the regexp syntax check is lazy).
 test-trace-exit: FAIL
 
 # Tracing is not supported
+test-throw-error-with-getter-throw-traced: FAIL
+test-throw-undefined-or-null-traced: FAIL
 test-trace-atomics-wait: SKIP
 test-trace-events-all: SKIP
 test-trace-events-api: SKIP
@@ -170,7 +187,6 @@ test-domain-no-error-handler-abort-on-uncaught-9: FAIL
 test-domain-throw-error-then-throw-from-uncaught-exception-handler: FAIL
 test-fs-promises-file-handle-close: FAIL
 test-gc-http-client-connaborted: SKIP
-test-gc-http-client-timeout: SKIP
 test-gc-net-timeout: SKIP
 test-gc-tls-external-memory: SKIP
 test-http-server-keepalive-req-gc: SKIP
@@ -187,8 +203,6 @@ test-vm-syntax-error-stderr: FAIL
 test-worker-cleanexit-with-js: SKIP
 test-worker-cleanexit-with-moduleload: SKIP
 test-worker-error-stack-getter-throws: FAIL
-test-worker-fshandles-error-on-termination: SKIP
-test-worker-fshandles-open-close-on-termination: SKIP
 test-worker-stack-overflow-stack-size: SKIP
 test-zlib-invalid-input-memory: FAIL
 test-zlib-unused-weak: FAIL
