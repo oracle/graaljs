@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.test.builtins.fetch;
 
 import com.oracle.truffle.js.builtins.helper.FetchHttpConnection;
+import com.oracle.truffle.js.builtins.helper.FetchResponse;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.interop.AsyncInteropTest.TestOutput;
@@ -53,7 +54,10 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
@@ -139,6 +143,22 @@ public class FetchMethodTest extends JSTest {
             "const res = await fetch('ftp://example.com/');"
         );
         assertEquals("fetch cannot load ftp://example.com/. Scheme not supported: ftp\n", out);
+    }
+
+    @Test
+    public void testDataUrlProcessor() throws MalformedURLException, URISyntaxException {
+        FetchResponse res = FetchHttpConnection.processDataUrl(new URI("data:,helloworld"));
+        assertEquals(res.getBody(), "helloworld");
+        res = FetchHttpConnection.processDataUrl(new URI("data:text/plain,helloworld"));
+        assertEquals(res.getBody(), "helloworld");
+    }
+
+    @Test
+    public void testBase64DataUrlEncoding() throws MalformedURLException, URISyntaxException {
+        FetchResponse res = FetchHttpConnection.processDataUrl(new URI("data:text/plain;base64,aGVsbG93b3JsZA"));
+        assertEquals(res.getBody(), "helloworld");
+        res = FetchHttpConnection.processDataUrl(new URI("data:;base64,aGVsbG93b3JsZA"));
+        assertEquals(res.getBody(), "helloworld");
     }
 
     @Test(timeout = 5000)

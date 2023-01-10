@@ -50,9 +50,15 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static java.net.HttpURLConnection.*;
@@ -91,6 +97,14 @@ public class FetchHttpConnection {
                     ". Scheme not supported: " +
                     request.getUrl().getProtocol()
             );
+        }
+
+        if (request.getUrl().getProtocol().equals("data")) {
+            try {
+                processDataUrl(request.getUrl().toURI());
+            } catch (URISyntaxException e) {
+                throw Errors.createFetchError("Failed to fetch data url", "", node);
+            }
         }
 
         // Setup Connection
@@ -219,6 +233,76 @@ public class FetchHttpConnection {
         response.setStatusText(connection.getResponseMessage());
         response.setStatus(connection.getResponseCode());
         response.setHeaders(new FetchHeaders(connection.getHeaderFields()));
+
+        return response;
+    }
+
+    // https://fetch.spec.whatwg.org/#data-url-processor
+    public static FetchResponse processDataUrl(URI dataUri) throws URISyntaxException {
+        // 1. Assert: dataUrl scheme is "data"
+        if (!dataUri.getScheme().equals("data")) {
+            return null;
+        }
+
+        // 2. Let input be the result of running the URL serializer on dataURL with exclude fragment set to true.
+        if (dataUri.getFragment() != null) {
+            dataUri = new URI(dataUri.getScheme(), dataUri.getSchemeSpecificPart(), null);
+        }
+
+        String input = dataUri.toString();
+
+        // 3. Remove the leading "data:" from input.
+        input = input.substring(5);
+
+        // 5. Let mimeType be the result of collecting a sequence of code points
+        // that are not equal to U+002C (,), given position.
+        String mimeType = input.codePoints()
+                .takeWhile(c -> c != ',')
+                .collect(StringBuilder::new,
+                        StringBuilder::appendCodePoint,
+                        StringBuilder::append
+                )
+                .toString();
+
+        // 6. Strip leading and trailing ASCII whitespace from mimeType.
+        mimeType = mimeType.strip();
+
+        // 8. Advance position by 1.
+        // 9. Let encodedBody be the remainder of input.
+        String encodedBody = input.substring(mimeType.length() + 1);
+        String body = encodedBody;
+
+        // 11. If mimeType ends with U+003B (;),
+        // followed by zero or more U+0020 SPACE,
+        // followed by an ASCII case-insensitive match for "base64",
+        // then:
+        Pattern p = Pattern.compile(";(\\u0020)*base64$", Pattern.CASE_INSENSITIVE);
+        if (p.matcher(mimeType).find()) {
+            // 11.2. Set body to the forgiving-base64 decode of stringBody.
+            byte[] decoded = Base64.getDecoder().decode(encodedBody.trim());
+            body = new String(decoded, StandardCharsets.UTF_8);
+            // 11.4 Remove the last 6 code points from mimeType.
+            mimeType = mimeType.substring(0, mimeType.length() - 6);
+            // 11.5 Remove trailing U+0020 SPACE code points from mimeType, if any.
+            mimeType = mimeType.trim();
+            // 11.6 Remove the last U+003B (;) from mimeType.
+            mimeType = mimeType.substring(0, mimeType.length() - 1);
+        }
+
+        // 12. If mimeType starts with ";", then prepend "text/plain" to mimeType.
+        if (mimeType.startsWith(";")) {
+            mimeType = "text/plain" + mimeType;
+        }
+
+        // 14. If mimeTypeRecord is failure, then set mimeTypeRecord to text/plain;charset=US-ASCII.
+        if (mimeType.isEmpty()) {
+            mimeType = "text/plain;charset=US-ASCII";
+        }
+
+        FetchResponse response = new FetchResponse();
+        response.body = body;
+        response.headers = new FetchHeaders(Map.of("Content-Type", List.of(mimeType)));
+        response.setStatusText("OK");
 
         return response;
     }
