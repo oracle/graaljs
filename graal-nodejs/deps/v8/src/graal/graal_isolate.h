@@ -451,8 +451,8 @@ public:
     void NotifyPromiseRejectCallback(v8::PromiseRejectMessage message);
     void SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback);
     void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
-    void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyWithImportAssertionsCallback callback);
-    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions);
+    void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback);
+    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions);
     void SetPrepareStackTraceCallback(v8::PrepareStackTraceCallback callback);
     v8::MaybeLocal<v8::Value> NotifyPrepareStackTraceCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> error, v8::Local<v8::Array> sites);
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
@@ -765,7 +765,7 @@ public:
 private:
     // Slots accessed by v8::Isolate::Get/SetData
     // They must be the first field of GraalIsolate
-    void* slot[30] = {};
+    void* slot[v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiSystemPointerSize + v8::internal::Internals::kDoubleReturnValuePlaceholderIndex + 1] = {};
     std::vector<v8::Value*> eternals;
     std::vector<v8::Context*> contexts;
     std::vector<GraalHandleContent*> handles;
@@ -850,7 +850,7 @@ private:
     v8::PromiseHook promise_hook_;
     v8::PromiseRejectCallback promise_reject_callback_;
     v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
-    v8::HostImportModuleDynamicallyWithImportAssertionsCallback import_module_dynamically;
+    v8::HostImportModuleDynamicallyCallback import_module_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
     v8::internal::MicrotaskQueue microtask_queue_;

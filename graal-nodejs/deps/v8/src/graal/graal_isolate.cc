@@ -1355,7 +1355,7 @@ void GraalIsolate::NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta
     }
 }
 
-void GraalIsolate::SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyWithImportAssertionsCallback callback) {
+void GraalIsolate::SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback) {
     bool wasNull = import_module_dynamically == nullptr;
     bool isNull = callback == nullptr;
     if (wasNull != isNull) {
@@ -1365,9 +1365,9 @@ void GraalIsolate::SetImportModuleDynamicallyCallback(v8::HostImportModuleDynami
     import_module_dynamically = callback;
 }
 
-v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions) {
+v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions) {
     if (import_module_dynamically != nullptr) {
-        return import_module_dynamically(context, referrer, specifier, import_assertions);
+        return import_module_dynamically(context, host_defined_options, resource_name, specifier, import_assertions);
     } else {
         return v8::MaybeLocal<v8::Promise>();
     }

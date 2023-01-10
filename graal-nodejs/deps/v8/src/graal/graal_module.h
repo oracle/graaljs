@@ -50,7 +50,7 @@ class GraalIsolate;
 class GraalModule : public GraalHandleContent {
 public:
     inline static GraalModule* Allocate(GraalIsolate* isolate, jobject java_module);
-    static v8::MaybeLocal<v8::Module> Compile(v8::Local<v8::String> source, v8::Local<v8::String> name, v8::Local<v8::PrimitiveArray> options);
+    static v8::MaybeLocal<v8::Module> Compile(v8::Local<v8::String> source, v8::Local<v8::String> name, v8::Local<v8::Data> options);
     v8::Maybe<bool> InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveModuleCallback callback);
     v8::MaybeLocal<v8::Value> Evaluate(v8::Local<v8::Context> context);
     v8::Module::Status GetStatus() const;
@@ -64,7 +64,7 @@ public:
             v8::Isolate* isolate, v8::Local<v8::String> module_name,
             const std::vector<v8::Local<v8::String>>&export_names,
             v8::Module::SyntheticModuleEvaluationSteps evaluation_steps);
-    void SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8::Local<v8::Value> export_value);
+    v8::Maybe<bool> SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8::Local<v8::Value> export_value);
     v8::Local<v8::UnboundModuleScript> GetUnboundModuleScript();
 protected:
     inline GraalModule(GraalIsolate* isolate, jobject java_module);

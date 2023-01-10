@@ -113,7 +113,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("notifyPromiseRejectionTracker", "(Ljava/lang/Object;ILjava/lang/Object;)V", &GraalNotifyPromiseRejectionTracker),
     CALLBACK("notifyImportMetaInitializer", "(Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyImportMetaInitializer),
     CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
-    CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
+    CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
     CALLBACK("executePrepareStackTraceCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecutePrepareStackTraceCallback),
     CALLBACK("writeHostObject", "(JLjava/lang/Object;)V", &GraalWriteHostObject),
     CALLBACK("readHostObject", "(J)Ljava/lang/Object;", &GraalReadHostObject),
@@ -744,18 +744,20 @@ jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong call
     }
 }
 
-jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_referrer, jobject java_specifier, jobject java_import_assertions) {
+jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_host_defined_options, jobject java_resource_name, jobject java_specifier, jobject java_import_assertions) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
     GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
-    GraalScriptOrModule* graal_referrer = GraalScriptOrModule::Allocate(graal_isolate, java_referrer);
+    GraalData* graal_host_defined_options = GraalFixedArray::Allocate(graal_isolate, java_host_defined_options);
+    GraalString* graal_resource_name = GraalString::Allocate(graal_isolate, java_resource_name);
     GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
     GraalFixedArray* graal_import_assertions = GraalFixedArray::Allocate(graal_isolate, java_import_assertions);
     v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
-    v8::Local<v8::ScriptOrModule> v8_referrer = reinterpret_cast<v8::ScriptOrModule*> (graal_referrer);
+    v8::Local<v8::Data> v8_host_defined_options = reinterpret_cast<v8::Data*> (graal_host_defined_options);
+    v8::Local<v8::Value> v8_resource_name = reinterpret_cast<v8::Value*> (graal_resource_name);
     v8::Local<v8::String> v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
     v8::Local<v8::FixedArray> v8_import_assertions = reinterpret_cast<v8::FixedArray*> (graal_import_assertions);
-    v8::MaybeLocal<v8::Promise> v8_result = graal_isolate->NotifyImportModuleDynamically(v8_context, v8_referrer, v8_specifier, v8_import_assertions);
+    v8::MaybeLocal<v8::Promise> v8_result = graal_isolate->NotifyImportModuleDynamically(v8_context, v8_host_defined_options, v8_resource_name, v8_specifier, v8_import_assertions);
     if (v8_result.IsEmpty()) {
         return NULL;
     } else {

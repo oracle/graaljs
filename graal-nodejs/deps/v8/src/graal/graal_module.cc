@@ -56,7 +56,7 @@ GraalHandleContent* GraalModule::CopyImpl(jobject java_object_copy) {
     return new GraalModule(Isolate(), java_object_copy);
 }
 
-v8::MaybeLocal<v8::Module> GraalModule::Compile(v8::Local<v8::String> source, v8::Local<v8::String> name, v8::Local<v8::PrimitiveArray> options) {
+v8::MaybeLocal<v8::Module> GraalModule::Compile(v8::Local<v8::String> source, v8::Local<v8::String> name, v8::Local<v8::Data> options) {
     GraalString* graal_source = reinterpret_cast<GraalString*> (*source);
     jobject java_source = graal_source->GetJavaObject();
     jobject java_name = name.IsEmpty() ? NULL : reinterpret_cast<GraalString*> (*name)->GetJavaObject();
@@ -152,13 +152,14 @@ v8::Local<v8::Module> GraalModule::CreateSyntheticModule(
     return reinterpret_cast<v8::Module*> (graal_module);
 }
 
-void GraalModule::SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8::Local<v8::Value> export_value) {
+v8::Maybe<bool> GraalModule::SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8::Local<v8::Value> export_value) {
     GraalIsolate* graal_isolate = Isolate();
     GraalString* graal_name = reinterpret_cast<GraalString*> (*export_name);
     GraalValue* graal_value = reinterpret_cast<GraalValue*> (*export_value);
     jobject java_name = graal_name->GetJavaObject();
     jobject java_value = graal_value->GetJavaObject();
     JNI_CALL_VOID(graal_isolate, GraalAccessMethod::module_set_synthetic_module_export, GetJavaObject(), java_name, java_value);
+    return graal_isolate->GetJNIEnv()->ExceptionCheck() ? v8::Nothing<bool>() : v8::Just<bool>(true);
 }
 
 v8::Local<v8::UnboundModuleScript> GraalModule::GetUnboundModuleScript() {

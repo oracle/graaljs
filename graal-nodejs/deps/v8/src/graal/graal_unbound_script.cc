@@ -39,8 +39,8 @@
  * SOFTWARE.
  */
 
+#include "graal_data.h"
 #include "graal_isolate.h"
-#include "graal_primitive_array.h"
 #include "graal_script.h"
 #include "graal_string.h"
 #include "graal_unbound_script.h"
@@ -50,11 +50,11 @@
 #include "graal_string-inl.h"
 #include "graal_unbound_script-inl.h"
 
-v8::Local<v8::UnboundScript> GraalUnboundScript::Compile(v8::Local<v8::String> source_code, v8::Local<v8::String> file_name, v8::Local<v8::PrimitiveArray> options) {
+v8::Local<v8::UnboundScript> GraalUnboundScript::Compile(v8::Local<v8::String> source_code, v8::Local<v8::String> file_name, v8::Local<v8::Data> options) {
     GraalString* graal_source_code = reinterpret_cast<GraalString*> (*source_code);
     jobject java_source_code = graal_source_code->GetJavaObject();
     jobject java_file_name = file_name.IsEmpty() ? NULL : reinterpret_cast<GraalString*> (*file_name)->GetJavaObject();
-    jobject java_options = options.IsEmpty() ? NULL : reinterpret_cast<GraalPrimitiveArray*> (*options)->GetJavaObject();
+    jobject java_options = options.IsEmpty() ? NULL : reinterpret_cast<GraalData*> (*options)->GetJavaObject();
     GraalIsolate* graal_isolate = graal_source_code->Isolate();
     JNI_CALL(jobject, java_script, graal_isolate, GraalAccessMethod::unbound_script_compile, Object, java_source_code, java_file_name, java_options)
     if (java_script == NULL) {
@@ -83,7 +83,7 @@ v8::Local<v8::Script> GraalUnboundScript::BindToCurrentContext() {
     }
 }
 
-int GraalUnboundScript::GetId() {
+int GraalUnboundScript::GetId() const {
     JNI_CALL(jint, id, Isolate(), GraalAccessMethod::unbound_script_get_id, Int, GetJavaObject());
     return id;
 }

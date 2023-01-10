@@ -39,8 +39,8 @@
  * SOFTWARE.
  */
 
+#include "graal_data.h"
 #include "graal_isolate.h"
-#include "graal_primitive_array.h"
 #include "graal_script.h"
 #include "graal_string.h"
 #include "graal_unbound_script.h"
@@ -51,11 +51,11 @@
 
 v8::Local<v8::Script> GraalScript::Compile(v8::Local<v8::String> source_code, v8::ScriptOrigin* origin) {
     v8::Local<v8::String> file_name = origin == nullptr ? v8::Local<v8::String>() : origin->ResourceName().As<v8::String>();
-    v8::Local<v8::PrimitiveArray> options = origin == nullptr ? v8::Local<v8::PrimitiveArray>() : origin->HostDefinedOptions();
+    v8::Local<v8::Data> options = origin == nullptr ? v8::Local<v8::Data>() : origin->GetHostDefinedOptions();
     GraalString* graal_source_code = reinterpret_cast<GraalString*> (*source_code);
     jobject java_source_code = graal_source_code->GetJavaObject();
     jobject java_file_name = file_name.IsEmpty() ? NULL : reinterpret_cast<GraalString*> (*file_name)->GetJavaObject();
-    jobject java_options = options.IsEmpty() ? NULL : reinterpret_cast<GraalPrimitiveArray*> (*options)->GetJavaObject();
+    jobject java_options = options.IsEmpty() ? NULL : reinterpret_cast<GraalData*> (*options)->GetJavaObject();
     GraalIsolate* graal_isolate = graal_source_code->Isolate();
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_script, graal_isolate, GraalAccessMethod::script_compile, Object, java_context, java_source_code, java_file_name, java_options)
