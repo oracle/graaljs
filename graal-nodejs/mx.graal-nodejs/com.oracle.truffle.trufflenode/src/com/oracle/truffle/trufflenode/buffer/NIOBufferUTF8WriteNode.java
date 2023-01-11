@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
@@ -83,11 +84,11 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     @Specialization(guards = "isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
     final Object writeDirect(JSTypedArrayObject target, TruffleString str, Object destOffset, Object bytes,
-                    @Cached JSToIntegerAsIntNode toIntNode,
-                    @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getLengthNode,
-                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
-                    @Cached TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
-                    @Cached TruffleString.ReadByteNode readByteNode) {
+                    @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
+                    @Cached("create(getContext())") @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached @Shared("getInternalByteArray") TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
+                    @Cached @Shared("readByte") TruffleString.ReadByteNode readByteNode) {
         JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
 
@@ -97,11 +98,11 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     @Specialization(guards = "!isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
     final Object writeInterop(JSTypedArrayObject target, TruffleString str, Object destOffset, Object bytes,
-                    @Cached JSToIntegerAsIntNode toIntNode,
-                    @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getLengthNode,
-                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
-                    @Cached TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
-                    @Cached TruffleString.ReadByteNode readByteNode,
+                    @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
+                    @Cached("create(getContext())") @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached @Shared("getInternalByteArray") TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
+                    @Cached @Shared("readByte") TruffleString.ReadByteNode readByteNode,
                     @Cached ArrayBufferGetContentsNode arrayBufferGetContentsNode,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         ByteBuffer rawBuffer = arrayBufferGetContentsNode.execute(target.getArrayBuffer());

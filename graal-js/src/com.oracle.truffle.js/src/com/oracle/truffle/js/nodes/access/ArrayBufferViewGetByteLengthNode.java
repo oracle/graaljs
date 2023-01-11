@@ -64,10 +64,6 @@ public abstract class ArrayBufferViewGetByteLengthNode extends JavaScriptBaseNod
 
     public abstract int executeInt(JSDynamicObject obj);
 
-    public static ArrayBufferViewGetByteLengthNode create(JSContext context) {
-        return ArrayBufferViewGetByteLengthNodeGen.create(context);
-    }
-
     @Specialization(guards = {"isJSArrayBufferView(obj)", "hasDetachedBuffer(obj)"})
     protected int getByteLengthDetached(@SuppressWarnings("unused") JSDynamicObject obj) {
         return 0;

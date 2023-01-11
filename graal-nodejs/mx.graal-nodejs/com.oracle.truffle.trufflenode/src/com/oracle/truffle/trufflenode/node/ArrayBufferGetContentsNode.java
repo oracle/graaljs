@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.trufflenode.node;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -59,6 +60,7 @@ public abstract class ArrayBufferGetContentsNode extends JavaScriptBaseNode {
     ArrayBufferGetContentsNode() {
     }
 
+    @NeverDefault
     public static ArrayBufferGetContentsNode create() {
         return ArrayBufferGetContentsNodeGen.create();
     }
