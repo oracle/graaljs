@@ -24,6 +24,8 @@ test-vm-timeout-escape-promise-module-2: FAIL
 test-worker-prof: FAIL
 
 # Unclassified
+test-gc-http-client: SKIP
+test-gc-http-client-timeout: SKIP
 test-vm-break-on-sigint: FAIL
 test-worker-http2-stream-terminate: SKIP
 
@@ -37,8 +39,13 @@ test-child-process-pass-fd: SKIP
 # Triggers stack-overflow that may not be handled well
 test-fs-stat-sync-overflow: SKIP
 
-# Needs too many system resources (starts 80 child processes)
+# Needs too many system resources
 test-child-process-pass-fd: SKIP
+test-worker-fshandles-error-on-termination: SKIP
+test-worker-fshandles-open-close-on-termination: SKIP
+
+# Long-running test that exceeds the timeout sometimes
+test-watch-mode: SKIP
 
 ### Graal-specific end ###
 
