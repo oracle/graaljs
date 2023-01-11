@@ -45,7 +45,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.CollatorPrototypeBuiltinsFactory.JSCollatorGetCompareNodeGen;
 import com.oracle.truffle.js.builtins.intl.CollatorPrototypeBuiltinsFactory.JSCollatorResolvedOptionsNodeGen;
@@ -138,11 +138,11 @@ public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         public Object doCollator(JSCollatorObject collatorObj,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             JSCollator.InternalState state = JSCollator.getInternalState(collatorObj);
 
             if (state == null || !state.isInitializedCollator()) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("compare");
             }
 

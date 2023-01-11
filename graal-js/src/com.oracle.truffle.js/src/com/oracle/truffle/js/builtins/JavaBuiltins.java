@@ -58,7 +58,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaAddToClasspathNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaExtendNodeGen;
@@ -331,12 +331,12 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Object extend(Object[] arguments,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (JSConfig.SubstrateVM) {
                 throw Errors.unsupported("JavaAdapter");
             }
             if (arguments.length == 0) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("Java.extend needs at least one argument.");
             }
 
@@ -346,7 +346,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 classOverrides = arguments[arguments.length - 1];
                 typesLength = arguments.length - 1;
                 if (typesLength == 0) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeError("Java.extend needs at least one type argument.");
                 }
             } else {
@@ -358,7 +358,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             final Object[] types = new Object[typesLength];
             for (int i = 0; i < typesLength; i++) {
                 if (!isType(arguments[i], env)) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeError("Java.extend needs Java types as its arguments.");
                 }
                 types[i] = arguments[i];
@@ -392,7 +392,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Cached ImportValueNode importValueNode,
                         @Cached("createCachedInterop()") WriteElementNode writeNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             JSRealm realm = getRealm();
             TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(javaArray)) {
@@ -412,7 +412,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                     // fall through
                 }
             }
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeError("Cannot convert to JavaScript array.");
         }
     }

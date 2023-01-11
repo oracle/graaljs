@@ -51,8 +51,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -122,7 +123,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isJSArray(thisObj)"})
     PropertyDescriptor array(JSDynamicObject thisObj, Object propertyKey,
                     @Cached ToArrayIndexNode toArrayIndexNode,
-                    @Cached BranchProfile noSuchElementBranch,
+                    @Cached InlinedBranchProfile noSuchElementBranch,
                     @Cached("createIdentityProfile()") ValueProfile typeProfile) {
         assert JSRuntime.isPropertyKey(propertyKey);
         long idx = toArrayIndex(propertyKey, toArrayIndexNode);
@@ -145,7 +146,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
                 return desc;
             }
         }
-        noSuchElementBranch.enter();
+        noSuchElementBranch.enter(this);
         Property prop = thisObj.getShape().getProperty(propertyKey);
         return ordinaryGetOwnProperty(thisObj, prop);
     }
@@ -153,11 +154,11 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     /** @see JSString#getOwnProperty */
     @Specialization(guards = "isJSString(thisObj)")
     protected PropertyDescriptor getOwnPropertyString(JSDynamicObject thisObj, Object key,
-                    @Cached ConditionProfile stringCaseProfile) {
+                    @Cached InlinedConditionProfile stringCaseProfile) {
         assert JSRuntime.isPropertyKey(key);
         Property prop = thisObj.getShape().getProperty(key);
         PropertyDescriptor desc = ordinaryGetOwnProperty(thisObj, prop);
-        if (stringCaseProfile.profile(desc == null)) {
+        if (stringCaseProfile.profile(this, desc == null)) {
             return JSString.stringGetIndexProperty(thisObj, key);
         } else {
             return desc;

@@ -48,8 +48,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.ForInIteratorPrototypeBuiltinsFactory.ForInIteratorPrototypeNextNodeGen;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
@@ -132,17 +132,17 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization
         public JSDynamicObject next(VirtualFrame frame, Object target,
-                        @Cached ConditionProfile valuesProfile,
-                        @Cached BranchProfile errorBranch,
-                        @Cached BranchProfile growProfile,
-                        @Cached ConditionProfile fastOwnKeysProfile,
-                        @Cached ConditionProfile sameShapeProfile,
+                        @Cached InlinedConditionProfile valuesProfile,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedBranchProfile growProfile,
+                        @Cached InlinedConditionProfile fastOwnKeysProfile,
+                        @Cached InlinedConditionProfile sameShapeProfile,
                         @Cached ListGetNode listGet,
                         @Cached ListSizeNode listSize,
                         @Cached HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode) {
             Object iteratorValue = getIteratorNode.getValue(target);
             if (iteratorValue == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorIncompatibleReceiver(target);
             }
             ForInIterator state = (ForInIterator) iteratorValue;
@@ -152,7 +152,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             if (done) {
                 nextValue = Undefined.instance;
             } else {
-                if (valuesProfile.profile(state.iterateValues)) {
+                if (valuesProfile.profile(this, state.iterateValues)) {
                     nextValue = JSObject.get(state.object, nextValue);
                 } else {
                     assert JSGuards.isString(nextValue);
@@ -162,7 +162,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         private Object findNext(ForInIterator state,
-                        BranchProfile errorBranch, BranchProfile growProfile, ConditionProfile fastOwnKeysProfile, ConditionProfile sameShapeProfile,
+                        InlinedBranchProfile errorBranch, InlinedBranchProfile growProfile, InlinedConditionProfile fastOwnKeysProfile, InlinedConditionProfile sameShapeProfile,
                         ListGetNode listGet, ListSizeNode listSize, HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode) {
             for (;;) {
                 JSDynamicObject object = state.object;
@@ -172,7 +172,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     boolean fastOwnKeys;
                     List<?> list;
                     int size;
-                    if (fastOwnKeysProfile.profile(JSConfig.FastOwnKeys && hasOnlyShapePropertiesNode.execute(object, jsclass))) {
+                    if (fastOwnKeysProfile.profile(this, JSConfig.FastOwnKeys && hasOnlyShapePropertiesNode.execute(object, jsclass))) {
                         fastOwnKeys = true;
                         // if the object does not have enumerable properties, no need to enumerate
                         list = JSShape.getPropertiesIfHasEnumerablePropertyNames(objectShape);
@@ -201,8 +201,8 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                         continue;
                     }
 
-                    if (fastOwnKeysProfile.profile(state.fastOwnKeys && next instanceof Property)) {
-                        if (sameShapeProfile.profile(state.objectShape == object.getShape())) {
+                    if (fastOwnKeysProfile.profile(this, state.fastOwnKeys && next instanceof Property)) {
+                        if (sameShapeProfile.profile(this, state.objectShape == object.getShape())) {
                             // same shape => can skip GetOwnProperty
                             if (JSProperty.isEnumerable((Property) next)) {
                                 return key;
@@ -240,12 +240,12 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 if (proto == Null.instance) {
                     return DONE;
                 } else {
-                    if (fastOwnKeysProfile.profile(state.fastOwnKeys)) {
-                        state.addVisitedShape(state.objectShape, growProfile);
+                    if (fastOwnKeysProfile.profile(this, state.fastOwnKeys)) {
+                        state.addVisitedShape(state.objectShape, this, growProfile);
                     } else {
                         // check for Proxy prototype cycles
                         if (++state.protoDepth > MAX_PROTO_DEPTH) {
-                            errorBranch.enter();
+                            errorBranch.enter(this);
                             throw Errors.createRangeErrorStackOverflow();
                         }
                     }

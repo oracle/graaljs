@@ -42,7 +42,7 @@ package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 
@@ -53,8 +53,9 @@ public abstract class AbsNode extends MathOperation {
     }
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected static int absInt(int a, @Cached ConditionProfile negative) throws ArithmeticException {
-        return negative.profile(a < 0) ? Math.subtractExact(0, a) : a;
+    protected final int absInt(int a,
+                    @Cached InlinedConditionProfile negative) throws ArithmeticException {
+        return negative.profile(this, a < 0) ? Math.subtractExact(0, a) : a;
     }
 
     @Specialization

@@ -42,11 +42,13 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
@@ -124,14 +126,15 @@ public abstract class JSDivideNode extends JSBinaryNode {
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = "doDouble")
-    protected Object doGeneric(Object a, Object b,
+    protected static Object doGeneric(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached JSDivideNode nestedDivideNode,
                     @Cached JSToNumericNode toNumeric1Node,
                     @Cached JSToNumericNode toNumeric2Node,
-                    @Cached BranchProfile mixedNumericTypes) {
+                    @Cached InlinedBranchProfile mixedNumericTypes) {
         Object numericA = toNumeric1Node.execute(a);
         Object numericB = toNumeric2Node.execute(b);
-        ensureBothSameNumericType(numericA, numericB, mixedNumericTypes);
+        ensureBothSameNumericType(numericA, numericB, node, mixedNumericTypes);
         return nestedDivideNode.execute(numericA, numericB);
     }
 

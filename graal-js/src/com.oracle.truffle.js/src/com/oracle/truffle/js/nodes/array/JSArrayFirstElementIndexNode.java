@@ -41,12 +41,14 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -93,30 +95,32 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
         return getArrayType(object).firstElementIndex(object);
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object) == cachedArrayType",
                     "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long doWithHolesCached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
+                    @Bind("this") Node node,
                     @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached @Shared("isZero") ConditionProfile isZero) {
+                    @Cached @Shared("isZero") InlinedConditionProfile isZero) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
-        return holesArrayImpl(object, length, cachedArrayType, nextElementIndexNode, isZero);
+        return holesArrayImpl(object, length, cachedArrayType, node, nextElementIndexNode, isZero);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "doWithHolesCached")
     public long doWithHolesUncached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached @Shared("isZero") ConditionProfile isZero,
-                    @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
+                    @Cached @Shared("isZero") InlinedConditionProfile isZero,
+                    @Cached InlinedExactClassProfile arrayTypeProfile) {
         assert isSupportedArray(object);
-        ScriptArray array = arrayTypeProfile.profile(getArrayType(object));
-        return holesArrayImpl(object, length, array, nextElementIndexNode, isZero);
+        ScriptArray array = arrayTypeProfile.profile(this, getArrayType(object));
+        return holesArrayImpl(object, length, array, this, nextElementIndexNode, isZero);
     }
 
     private long holesArrayImpl(JSDynamicObject object, long length, ScriptArray array,
-                    JSArrayNextElementIndexNode nextElementIndexNode, ConditionProfile isZero) {
+                    Node node, JSArrayNextElementIndexNode nextElementIndexNode, InlinedConditionProfile isZero) {
         long firstIndex = array.firstElementIndex(object);
-        if (isZero.profile(firstIndex == 0)) {
+        if (isZero.profile(node, firstIndex == 0)) {
             return firstIndex;
         }
 

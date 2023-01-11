@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,15 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
@@ -95,16 +97,17 @@ public class WebAssemblyHostFunction implements TruffleObject {
 
     @ExportMessage
     public final Object execute(Object[] args,
+                    @Bind("$node") Node node,
                     @Cached ToWebAssemblyValueNode toWebAssemblyValueNode,
                     @Cached ToJSValueNode toJSValueNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @Cached BranchProfile errorBranch,
+                    @Cached InlinedBranchProfile errorBranch,
                     @Cached GetIteratorBaseNode getIteratorNode,
                     @Cached IterableToListNode iterableToListNode,
                     @CachedLibrary("this") InteropLibrary self) {
         JSContext context = JavaScriptLanguage.get(self).getJSContext();
         if (!context.getContextOptions().isWasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw Errors.createTypeError("wasm function signature contains illegal type");
         }
         Object[] jsArgs = new Object[args.length];
@@ -123,7 +126,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
             SimpleArrayList<Object> values = iterableToListNode.execute(iterator);
 
             if (resultTypes.length != values.size()) {
-                errorBranch.enter();
+                errorBranch.enter(node);
                 throw Errors.createTypeError("invalid result array arity");
             }
             Object[] wasmValues = new Object[values.size()];

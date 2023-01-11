@@ -43,7 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.ErrorFunctionBuiltinsFactory.ErrorCaptureStackTraceNodeGen;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
@@ -86,14 +86,14 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
 
         @Specialization
         protected Object captureStackTrace(VirtualFrame frame, Object object, Object skipUpTo,
-                        @Cached BranchProfile errorProfile) {
+                        @Cached InlinedBranchProfile errorProfile) {
             if (!JSRuntime.isObject(object)) {
-                errorProfile.enter();
+                errorProfile.enter(this);
                 throw Errors.createTypeError("invalid_argument");
             }
             JSObject obj = (JSObject) object;
             if (!JSObject.isExtensible(obj)) {
-                errorProfile.enter();
+                errorProfile.enter(this);
                 throw Errors.createTypeError("Cannot define property:stack, object is not extensible.");
             }
             int stackTraceLimit = stackTraceLimitNode.executeInt();

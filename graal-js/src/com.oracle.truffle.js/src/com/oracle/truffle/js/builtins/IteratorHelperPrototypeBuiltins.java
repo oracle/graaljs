@@ -47,7 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
@@ -151,14 +151,14 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == SuspendedYield"})
         public Object suspendedYield(VirtualFrame frame, Object thisObj,
-                        @Cached BranchProfile aliveBranch) {
+                        @Cached InlinedBranchProfile aliveBranch) {
             setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Executing);
 
             var args = (IteratorPrototypeBuiltins.IteratorArgs) getArgsNode.getValue(thisObj);
             if (args instanceof IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs) {
                 var flatMapArgs = (IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs) args;
                 if (flatMapArgs.innerAlive) {
-                    aliveBranch.enter();
+                    aliveBranch.enter(this);
                     iteratorCloseNode.executeAbrupt(flatMapArgs.innerIterator.getIterator());
                 }
             }
@@ -202,15 +202,15 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "hasImpl(thisObj)")
         public Object next(VirtualFrame frame, Object thisObj,
-                        @Cached BranchProfile executingProfile,
-                        @Cached BranchProfile completedProfile) {
+                        @Cached InlinedBranchProfile executingProfile,
+                        @Cached InlinedBranchProfile completedProfile) {
             Object state = getGeneratorStateNode.getValue(thisObj);
             if (state == JSFunction.GeneratorState.Executing) {
-                executingProfile.enter();
+                executingProfile.enter(this);
                 throw Errors.createTypeError("generator is already executing");
             }
             if (state == JSFunction.GeneratorState.Completed) {
-                completedProfile.enter();
+                completedProfile.enter(this);
                 if (createIterResultObjectNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     createIterResultObjectNode = insert(CreateIterResultObjectNode.create(getContext()));

@@ -46,7 +46,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.SlowPathException;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -153,9 +153,9 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "startsWithI(input)")
     protected double doInfinity(TruffleString input,
-                    @Cached ConditionProfile endsWithInfinity,
+                    @Cached InlinedConditionProfile endsWithInfinity,
                     @Cached TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
-        if (endsWithInfinity.profile(Strings.endsWith(regionEqualsNode, input, Strings.INFINITY))) {
+        if (endsWithInfinity.profile(this, Strings.endsWith(regionEqualsNode, input, Strings.INFINITY))) {
             return JSRuntime.identifyInfinity(charAt(input, 0), Strings.length(input));
         } else {
             return Double.NaN;

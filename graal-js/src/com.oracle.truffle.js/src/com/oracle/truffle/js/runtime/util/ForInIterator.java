@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,8 +46,9 @@ import java.util.List;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
@@ -71,9 +72,9 @@ public class ForInIterator {
         this.visitedShapes = new Shape[4];
     }
 
-    public void addVisitedShape(Shape shape, BranchProfile growBranch) {
+    public void addVisitedShape(Shape shape, Node node, InlinedBranchProfile growBranch) {
         if (visitedShapesSize >= visitedShapes.length) {
-            growBranch.enter();
+            growBranch.enter(node);
             visitedShapes = Arrays.copyOf(visitedShapes, visitedShapes.length * 2);
         }
         visitedShapes[visitedShapesSize++] = shape;

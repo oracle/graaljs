@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.CreateSetIteratorNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetAddNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetClearNodeGen;
@@ -442,11 +443,11 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         protected JSDynamicObject intersection(JSSetObject set, Object iterable,
-                        @Cached BranchProfile hasError) {
+                        @Cached InlinedBranchProfile hasError) {
             JSDynamicObject newSet = (JSDynamicObject) constructSet();
             Object hasCheck = getHasFunction(set);
             if (!isCallable(hasCheck)) {
-                hasError.enter();
+                hasError.enter(this);
                 throw Errors.createTypeErrorCallableExpected();
             }
             Object adder = getAddFunction(newSet);
@@ -492,11 +493,11 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         protected JSDynamicObject difference(JSSetObject set, Object iterable,
-                        @Cached BranchProfile removerError) {
+                        @Cached InlinedBranchProfile removerError) {
             JSDynamicObject newSet = (JSDynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
             if (!isCallable(remover)) {
-                removerError.enter();
+                removerError.enter(this);
                 throw Errors.createTypeErrorCallableExpected();
             }
             IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
@@ -534,11 +535,11 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         protected JSDynamicObject symmetricDifference(JSSetObject set, Object iterable,
-                        @Cached BranchProfile removerError) {
+                        @Cached InlinedBranchProfile removerError) {
             JSDynamicObject newSet = (JSDynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
             if (!isCallable(remover)) {
-                removerError.enter();
+                removerError.enter(this);
                 throw Errors.createTypeErrorCallableExpected();
             }
             Object adder = getAddFunction(newSet);
@@ -586,17 +587,17 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         protected Boolean isSubsetOf(JSSetObject set, Object iterable,
-                        @Cached BranchProfile needCreateNewBranch,
-                        @Cached BranchProfile isObjectError) {
+                        @Cached InlinedBranchProfile needCreateNewBranch,
+                        @Cached InlinedBranchProfile isObjectError) {
             IteratorRecord iteratorRecord = getIteratorNode.execute(set);
             if (!JSRuntime.isObject(iterable)) {
-                isObjectError.enter();
+                isObjectError.enter(this);
                 throw Errors.createTypeErrorNotIterable(iterable, this);
             }
             JSDynamicObject otherSet = (JSDynamicObject) iterable;
             Object hasCheck = getHasFunction(otherSet);
             if (!isCallable(hasCheck)) {
-                needCreateNewBranch.enter();
+                needCreateNewBranch.enter(this);
                 otherSet = (JSDynamicObject) constructSet();
                 addEntryFromIterable(otherSet, iterable, getAddFunction(otherSet));
                 hasCheck = getHasFunction(otherSet);
@@ -638,10 +639,10 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         protected Boolean isSupersetOf(JSSetObject set, Object iterable,
-                        @Cached BranchProfile notCallableError) {
+                        @Cached InlinedBranchProfile notCallableError) {
             Object hasCheck = getHasFunction(set);
             if (!isCallable(hasCheck)) {
-                notCallableError.enter();
+                notCallableError.enter(this);
                 throw Errors.createTypeErrorCallableExpected();
             }
             IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
@@ -682,10 +683,10 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization
         protected Boolean isDisjointFrom(JSSetObject set, Object iterable,
-                        @Cached BranchProfile notCallableError) {
+                        @Cached InlinedBranchProfile notCallableError) {
             Object hasCheck = getHasFunction(set);
             if (!isCallable(hasCheck)) {
-                notCallableError.enter();
+                notCallableError.enter(this);
                 throw Errors.createTypeErrorCallableExpected();
             }
             IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);

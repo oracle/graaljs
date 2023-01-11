@@ -41,12 +41,14 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -93,31 +95,33 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
         return getArrayType(object).nextElementIndex(object, currentIndex);
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object) == cachedArrayType",
                     "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long nextWithHolesCached(JSDynamicObject object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
+                    @Bind("this") Node node,
                     @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached @Shared("isPlusOne") ConditionProfile isPlusOne) {
+                    @Cached @Shared("isPlusOne") InlinedConditionProfile isPlusOne) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
-        return holesArrayImpl(object, currentIndex, length, cachedArrayType, nextElementIndexNode, isPlusOne);
+        return holesArrayImpl(object, currentIndex, length, cachedArrayType, node, nextElementIndexNode, isPlusOne);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "nextWithHolesCached")
     public long nextWithHolesUncached(JSDynamicObject object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached @Shared("isPlusOne") ConditionProfile isPlusOne,
-                    @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
+                    @Cached @Shared("isPlusOne") InlinedConditionProfile isPlusOne,
+                    @Cached InlinedExactClassProfile arrayTypeProfile) {
         assert isSupportedArray(object);
-        ScriptArray arrayType = arrayTypeProfile.profile(getArrayType(object));
-        return holesArrayImpl(object, currentIndex, length, arrayType, nextElementIndexNode, isPlusOne);
+        ScriptArray arrayType = arrayTypeProfile.profile(this, getArrayType(object));
+        return holesArrayImpl(object, currentIndex, length, arrayType, this, nextElementIndexNode, isPlusOne);
     }
 
-    private long holesArrayImpl(JSDynamicObject object, long currentIndex, long length, ScriptArray array, JSArrayNextElementIndexNode nextElementIndexNode,
-                    ConditionProfile isPlusOne) {
+    private long holesArrayImpl(JSDynamicObject object, long currentIndex, long length, ScriptArray array,
+                    Node node, JSArrayNextElementIndexNode nextElementIndexNode, InlinedConditionProfile isPlusOne) {
         long nextIndex = array.nextElementIndex(object, currentIndex);
         long plusOne = currentIndex + 1;
-        if (isPlusOne.profile(nextIndex == plusOne)) {
+        if (isPlusOne.profile(node, nextIndex == plusOne)) {
             return nextIndex;
         }
 

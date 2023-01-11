@@ -44,6 +44,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
@@ -51,9 +52,10 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
@@ -87,14 +89,16 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
         this.context = context;
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(limit = "3")
     Object doField(JSObject target, HiddenKey key,
+                    @Bind("this") Node node,
                     @CachedLibrary("target") DynamicObjectLibrary access,
-                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
+                    @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
         if (Properties.containsKey(access, target, key)) {
             return Properties.getOrDefault(access, target, key, Undefined.instance);
         } else {
-            errorBranch.enter();
+            errorBranch.enter(node);
             return missing(target, key);
         }
     }
@@ -107,10 +111,10 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     @Specialization
     Object doAccessor(JSObject target, Accessor accessor,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached @Shared("errorBranch") BranchProfile errorBranch) {
+                    @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
         Object getter = accessor.getGetter();
         if (getter == Undefined.instance) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorCannotGetAccessorProperty(keyAsString(), target, this);
         }
         return callNode.executeCall(JSArguments.createZeroArg(target, getter));

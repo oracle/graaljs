@@ -48,7 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
@@ -92,7 +92,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
 
     @Specialization
     protected boolean doGeneric(JSDynamicObject proxy, Object key,
-                    @Cached ConditionProfile trapFunProfile) {
+                    @Cached InlinedConditionProfile trapFunProfile) {
         assert JSProxy.isJSProxy(proxy);
         Object propertyKey = toPropertyKeyNode.execute(key);
         JSDynamicObject handler = JSProxy.getHandler(proxy);
@@ -102,7 +102,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
         }
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGetter.executeWithTarget(handler);
-        if (trapFunProfile.profile(trapFun == Undefined.instance)) {
+        if (trapFunProfile.profile(this, trapFun == Undefined.instance)) {
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.hasProperty((JSDynamicObject) target, propertyKey);
             } else {

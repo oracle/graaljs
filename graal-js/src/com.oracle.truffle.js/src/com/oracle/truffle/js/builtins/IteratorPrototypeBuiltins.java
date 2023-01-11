@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -68,6 +69,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -238,9 +240,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             @Child private IteratorStepNode iteratorStepNode;
             @Child private IteratorValueNode iteratorValueNode;
             @Child private PropertySetNode setGeneratorStateNode;
+            @Child private LongToIntOrDoubleNode indexToNumber = LongToIntOrDoubleNode.create();
 
             private final BranchProfile hasNoArgsProfile = BranchProfile.create();
-            private final BranchProfile doubleIndexBranch = BranchProfile.create();
             protected final JSContext context;
 
             public IteratorFromGeneratorImplNode(JSContext context) {
@@ -298,7 +300,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             public abstract IteratorFromGeneratorImplNode<T> copyUninitialized();
 
             protected final Object indexToJS(long index) {
-                return JSRuntime.longToIntOrDouble(index, doubleIndexBranch);
+                return indexToNumber.fromIndex(null, index);
             }
         }
 
@@ -524,18 +526,18 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         public JSDynamicObject take(Object thisObj, Object limit,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
             if (integerLimit < 0) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
@@ -603,18 +605,18 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         public JSDynamicObject drop(Object thisObj, Object limit,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
             if (integerLimit < 0) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
@@ -766,8 +768,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private IsJSObjectNode isObjectNode;
         @Child private JSToBooleanNode toBooleanNode;
         @Child private IteratorValueNode iteratorValueNode;
-
-        private final BranchProfile doubleIndexBranch = BranchProfile.create();
+        @Child private LongToIntOrDoubleNode indexToJS;
 
         protected static final Object CONTINUE = new Object();
 
@@ -781,6 +782,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.getDoneNode = PropertyGetNode.create(Strings.DONE, context);
             this.isObjectNode = IsJSObjectNode.create();
             this.toBooleanNode = JSToBooleanNode.create();
+            this.indexToJS = LongToIntOrDoubleNode.create();
         }
 
         protected Object end() {
@@ -807,13 +809,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "isCallable(fn)")
         protected Object compatible(Object thisObj, Object fn,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
             long counter = 0;
             while (true) {
                 Object next = iteratorNextNode.execute(iterated);
                 if (!isObjectNode.executeBoolean(next)) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeErrorIterResultNotAnObject(next, this);
                 }
                 if (toBooleanNode.executeBoolean(getDoneNode.getValue(next))) {
@@ -838,7 +840,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected final Object indexToJS(long index) {
-            return JSRuntime.longToIntOrDouble(index, doubleIndexBranch);
+            return indexToJS.execute(null, index);
         }
     }
 
@@ -963,7 +965,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "isCallable(reducer)")
         protected Object reduce(Object thisObj, Object reducer, Object[] args,
-                        @Cached BranchProfile doubleIndexBranch) {
+                        @Cached InlinedBranchProfile doubleIndexBranch) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
             Object accumulator;
@@ -988,7 +990,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 }
                 Object value = iteratorValueNode.execute(next);
                 try {
-                    accumulator = callNode.executeCall(JSArguments.create(Undefined.instance, reducer, accumulator, value, JSRuntime.longToIntOrDouble(counter, doubleIndexBranch)));
+                    Number counterJS = JSRuntime.longToIntOrDouble(counter, this, doubleIndexBranch);
+                    accumulator = callNode.executeCall(JSArguments.create(Undefined.instance, reducer, accumulator, value, counterJS));
                     counter++;
                 } catch (AbstractTruffleException ex) {
                     iteratorCloseNode().executeAbrupt(iterated.getIterator());

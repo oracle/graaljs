@@ -49,11 +49,12 @@ import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -265,13 +266,13 @@ public final class JSObjectUtil {
         return getProtoChildShapeSlowPath(obj, jsclass, context);
     }
 
-    public static Shape getProtoChildShape(JSDynamicObject obj, JSClass jsclass, JSContext context, BranchProfile branchProfile) {
+    public static Shape getProtoChildShape(JSDynamicObject obj, JSClass jsclass, JSContext context, Node node, InlinedBranchProfile branchProfile) {
         Shape protoChild = getProtoChildShapeMaybe(obj, jsclass);
         if (protoChild != null) {
             return protoChild;
         }
 
-        branchProfile.enter();
+        branchProfile.enter(node);
         return getProtoChildShapeSlowPath(obj, jsclass, context);
     }
 

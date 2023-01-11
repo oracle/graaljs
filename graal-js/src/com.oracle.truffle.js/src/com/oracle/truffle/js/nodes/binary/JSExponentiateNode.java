@@ -43,11 +43,13 @@ package com.oracle.truffle.js.nodes.binary;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
@@ -123,14 +125,15 @@ public abstract class JSExponentiateNode extends JSBinaryNode {
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = "doDouble")
-    protected Object doGeneric(Object a, Object b,
+    protected static Object doGeneric(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached JSExponentiateNode nestedExponentiateNode,
                     @Cached JSToNumericNode toNumeric1Node,
                     @Cached JSToNumericNode toNumeric2Node,
-                    @Cached BranchProfile mixedNumericTypes) {
+                    @Cached InlinedBranchProfile mixedNumericTypes) {
         Object operandA = toNumeric1Node.execute(a);
         Object operandB = toNumeric2Node.execute(b);
-        ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);
+        ensureBothSameNumericType(operandA, operandB, node, mixedNumericTypes);
         return nestedExponentiateNode.execute(operandA, operandB);
     }
 

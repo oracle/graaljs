@@ -43,12 +43,14 @@ package com.oracle.truffle.js.nodes.binary;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -100,10 +102,10 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)
     protected int doInt(int a, int b, //
-                    @Cached @Exclusive BranchProfile resultZeroBranch) {
+                    @Cached @Exclusive InlinedBranchProfile resultZeroBranch) {
         int result = Math.multiplyExact(a, b);
         if (result == 0) {
-            resultZeroBranch.enter();
+            resultZeroBranch.enter(this);
             if (a < 0 || b < 0) {
                 throw new ArithmeticException("could be -0");
             }
@@ -137,14 +139,15 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = "doDouble")
-    protected Object doGeneric(Object a, Object b,
+    protected static Object doGeneric(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached JSMultiplyNode nestedMultiplyNode,
                     @Cached JSToNumericNode toNumeric1Node,
                     @Cached JSToNumericNode toNumeric2Node,
-                    @Cached @Exclusive BranchProfile mixedNumericTypes) {
+                    @Cached @Exclusive InlinedBranchProfile mixedNumericTypes) {
         Object operandA = toNumeric1Node.execute(a);
         Object operandB = toNumeric2Node.execute(b);
-        ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);
+        ensureBothSameNumericType(operandA, operandB, node, mixedNumericTypes);
         return nestedMultiplyNode.execute(operandA, operandB);
     }
 

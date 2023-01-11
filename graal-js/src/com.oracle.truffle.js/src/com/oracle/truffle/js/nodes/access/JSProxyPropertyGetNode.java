@@ -47,8 +47,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
@@ -76,7 +76,6 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
     @Child private JSGetOwnPropertyNode getOwnPropertyNode;
     @Child private JSIdenticalNode sameValueNode;
     @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
-    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected JSProxyPropertyGetNode(JSContext context) {
         this.callNode = JSFunctionCallNode.createCall();
@@ -93,19 +92,20 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
     @Specialization
     protected Object doGeneric(JSDynamicObject proxy, Object receiver, Object key, Object defaultValue,
                     @Cached JSToPropertyKeyNode toPropertyKeyNode,
-                    @Cached ConditionProfile hasTrap,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached InlinedConditionProfile hasTrap,
                     @Cached JSClassProfile targetClassProfile) {
         assert JSProxy.isJSProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKeyNode.execute(key);
         JSDynamicObject handler = JSProxy.getHandler(proxy);
         if (handler == Null.instance) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorProxyRevoked(JSProxy.GET, this);
         }
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
-        if (hasTrap.profile(trapFun == Undefined.instance)) {
+        if (hasTrap.profile(this, trapFun == Undefined.instance)) {
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.getOrDefault((JSDynamicObject) target, propertyKey, receiver, defaultValue, targetClassProfile, this);
             } else {
@@ -118,7 +118,7 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         }
         Object trapResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, receiver));
         if (!(handler instanceof JSUncheckedProxyHandlerObject)) {
-            checkInvariants(propertyKey, target, trapResult);
+            checkInvariants(propertyKey, target, trapResult, errorBranch);
         }
         return trapResult;
     }
@@ -136,7 +136,8 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         return defaultValue;
     }
 
-    private void checkInvariants(Object propertyKey, Object proxyTarget, Object trapResult) {
+    private void checkInvariants(Object propertyKey, Object proxyTarget, Object trapResult,
+                    @Cached InlinedBranchProfile errorBranch) {
         assert JSRuntime.isPropertyKey(propertyKey);
         if (!JSDynamicObject.isJSDynamicObject(proxyTarget)) {
             return; // best effort, cannot check for foreign objects
@@ -146,13 +147,13 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
             if (targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && !targetDesc.getWritable()) {
                 Object targetValue = targetDesc.getValue();
                 if (!isSameValue(trapResult, targetValue)) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeErrorProxyGetInvariantViolated(propertyKey, targetValue, trapResult);
                 }
             }
             if (targetDesc.isAccessorDescriptor() && !targetDesc.getConfigurable() && targetDesc.getGet() == Undefined.instance) {
                 if (trapResult != Undefined.instance) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeError("Trap result must be undefined since the proxy target has a corresponding non-configurable own accessor property with undefined getter");
                 }
             }

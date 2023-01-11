@@ -49,7 +49,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGetLengthNodeGen;
@@ -135,9 +135,9 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected Object grow(Object thiz, Object delta, Object[] args,
                         @Cached ToWebAssemblyValueNode toWebAssemblyValueNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary tableGrowLib,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (!JSWebAssemblyTable.isJSWebAssemblyTable(thiz)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("WebAssembly.Table.grow(): Receiver is not a WebAssembly.Table");
             }
             JSWebAssemblyTableObject table = (JSWebAssemblyTableObject) thiz;
@@ -158,7 +158,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError(ex, this);
             }
         }
@@ -178,9 +178,9 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected Object get(Object thiz, Object index,
                         @Cached ToJSValueNode toJSValueNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary tableGetLib,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (!JSWebAssemblyTable.isJSWebAssemblyTable(thiz)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("WebAssembly.Table.get(): Receiver is not a WebAssembly.Table");
             }
             JSRealm realm = getRealm();
@@ -193,7 +193,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError(ex, this);
             }
         }
@@ -212,9 +212,9 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected Object set(Object thiz, Object index, Object[] args,
                         @Cached ToWebAssemblyValueNode toWebAssemblyValueNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary tableSetLib,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (!JSWebAssemblyTable.isJSWebAssemblyTable(thiz)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("WebAssembly.Table.set(): Receiver is not a WebAssembly.Table");
             }
             JSWebAssemblyTableObject table = (JSWebAssemblyTableObject) thiz;
@@ -235,7 +235,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError(ex, this);
             }
             return Undefined.instance;

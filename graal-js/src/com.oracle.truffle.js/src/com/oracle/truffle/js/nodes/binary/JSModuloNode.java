@@ -42,12 +42,14 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
@@ -78,15 +80,15 @@ public abstract class JSModuloNode extends JSBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class, guards = "isPowOf2(b)")
     protected int doIntPow2(int a, int b,
-                    @Cached @Exclusive BranchProfile negativeBranch,
-                    @Cached @Exclusive BranchProfile negativeZeroBranch) {
+                    @Cached @Exclusive InlinedBranchProfile negativeBranch,
+                    @Cached @Exclusive InlinedBranchProfile negativeZeroBranch) {
         int mask = b - 1;
         int result;
         if (a < 0) {
-            negativeBranch.enter();
+            negativeBranch.enter(this);
             result = -(-a & mask);
             if (result == 0) {
-                negativeZeroBranch.enter();
+                negativeZeroBranch.enter(this);
                 throw new ArithmeticException();
             }
         } else {
@@ -97,10 +99,10 @@ public abstract class JSModuloNode extends JSBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class, guards = "!isPowOf2(b)")
     protected int doInt(int a, int b,
-                    @Cached @Exclusive BranchProfile specialBranch) {
+                    @Cached @Exclusive InlinedBranchProfile specialBranch) {
         int result = a % b;
         if (result == 0) {
-            specialBranch.enter();
+            specialBranch.enter(this);
             if (a < 0) {
                 throw new ArithmeticException();
             }
@@ -135,14 +137,15 @@ public abstract class JSModuloNode extends JSBinaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doDouble", "doBigIntegerZeroDivision",
                     "doBigInteger"})
-    protected Object doGeneric(Object a, Object b,
+    protected static Object doGeneric(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached JSModuloNode nestedModuloNode,
                     @Cached JSToNumericNode toNumeric1Node,
                     @Cached JSToNumericNode toNumeric2Node,
-                    @Cached @Exclusive BranchProfile mixedNumericTypes) {
+                    @Cached @Exclusive InlinedBranchProfile mixedNumericTypes) {
         Object operandA = toNumeric1Node.execute(a);
         Object operandB = toNumeric2Node.execute(b);
-        ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);
+        ensureBothSameNumericType(operandA, operandB, node, mixedNumericTypes);
         return nestedModuloNode.execute(operandA, operandB);
     }
 

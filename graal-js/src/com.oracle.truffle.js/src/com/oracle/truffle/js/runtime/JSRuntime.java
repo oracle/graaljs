@@ -58,7 +58,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -195,11 +196,11 @@ public final class JSRuntime {
         }
     }
 
-    public static Number longToIntOrDouble(long value, BranchProfile toDoubleBranch) {
+    public static Number longToIntOrDouble(long value, Node node, InlinedBranchProfile toDoubleBranch) {
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, longIsRepresentableAsInt(value))) {
             return (int) value;
         } else {
-            toDoubleBranch.enter();
+            toDoubleBranch.enter(node);
             return (double) value;
         }
     }
@@ -2002,8 +2003,8 @@ public final class JSRuntime {
         }
     }
 
-    public static Object boxIndex(long longIndex, ConditionProfile indexInIntRangeConditionProfile) {
-        if (indexInIntRangeConditionProfile.profile(longIndex <= Integer.MAX_VALUE)) {
+    public static Object boxIndex(long longIndex, Node node, InlinedConditionProfile indexInIntRangeConditionProfile) {
+        if (indexInIntRangeConditionProfile.profile(node, longIndex <= Integer.MAX_VALUE)) {
             return (int) longIndex;
         } else {
             return (double) longIndex;
@@ -2158,16 +2159,16 @@ public final class JSRuntime {
         return args.length > i ? args[i] : defaultValue;
     }
 
-    public static long getOffset(long start, long length, ConditionProfile profile) {
-        if (profile.profile(start < 0)) {
+    public static long getOffset(long start, long length, Node node, InlinedConditionProfile profile) {
+        if (profile.profile(node, start < 0)) {
             return Math.max(start + length, 0);
         } else {
             return Math.min(start, length);
         }
     }
 
-    public static int getOffset(int start, int length, ConditionProfile profile) {
-        if (profile.profile(start < 0)) {
+    public static int getOffset(int start, int length, Node node, InlinedConditionProfile profile) {
+        if (profile.profile(node, start < 0)) {
             return Math.max(start + length, 0);
         } else {
             return Math.min(start, length);

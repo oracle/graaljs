@@ -44,7 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -87,13 +87,13 @@ public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode 
     }
 
     @Specialization
-    protected static double doDoubleInfinite(double value,
-                    @Cached BranchProfile errorBranch) {
+    protected final double doDoubleInfinite(double value,
+                    @Cached InlinedBranchProfile errorBranch) {
         if (Double.isNaN(value) || value == 0d) {
             return 0.0;
         }
         if (!JSRuntime.isIntegralNumber(value)) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createRangeError("integral number expected");
         }
         return value;

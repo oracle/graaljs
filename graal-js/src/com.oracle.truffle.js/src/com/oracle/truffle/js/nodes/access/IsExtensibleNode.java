@@ -40,14 +40,16 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -77,15 +79,17 @@ public abstract class IsExtensibleNode extends JavaScriptBaseNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedJSClass.usesOrdinaryIsExtensible()", "cachedJSClass.isInstance(object)"}, limit = "1", replaces = "doCachedShape")
     protected static boolean doCachedJSClass(JSDynamicObject object,
+                    @Bind("this") Node node,
                     @Cached("getJSClass(object.getShape())") JSClass cachedJSClass,
-                    @Cached @Shared("resultProfile") ConditionProfile resultProfile) {
-        return resultProfile.profile(JSShape.isExtensible(object.getShape()));
+                    @Cached @Shared("resultProfile") InlinedConditionProfile resultProfile) {
+        return resultProfile.profile(node, JSShape.isExtensible(object.getShape()));
     }
 
     @Specialization(replaces = {"doCachedJSClass"})
     protected static boolean doUncached(JSDynamicObject object,
-                    @Cached @Shared("resultProfile") ConditionProfile resultProfile) {
-        return resultProfile.profile(JSObject.isExtensible(object));
+                    @Bind("this") Node node,
+                    @Cached @Shared("resultProfile") InlinedConditionProfile resultProfile) {
+        return resultProfile.profile(node, JSObject.isExtensible(object));
     }
 
     @NeverDefault

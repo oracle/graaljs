@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -53,8 +54,9 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -121,8 +123,8 @@ public abstract class EnumerateNode extends JavaScriptNode {
 
     @Specialization(guards = {"isJSDynamicObject(iteratedObject)", "!isJSAdapter(iteratedObject)"})
     protected JSDynamicObject doEnumerateObject(JSDynamicObject iteratedObject,
-                    @Cached ConditionProfile isObject) {
-        if (isObject.profile(JSRuntime.isObject(iteratedObject))) {
+                    @Cached InlinedConditionProfile isObject) {
+        if (isObject.profile(this, JSRuntime.isObject(iteratedObject))) {
             return newForInIterator(iteratedObject);
         } else {
             // null or undefined
@@ -151,11 +153,13 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return create(context, true, false);
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isForeignObject(iteratedObject)"}, limit = "InteropLibraryLimit")
     protected JSDynamicObject doEnumerateTruffleObject(Object iteratedObject,
+                    @Bind("this") Node node,
                     @CachedLibrary("iteratedObject") InteropLibrary interop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
-                    @Cached BranchProfile notIterable) {
+                    @Cached InlinedBranchProfile notIterable) {
         try {
             if (!interop.isNull(iteratedObject)) {
                 if (values) {
@@ -191,7 +195,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
         }
 
         // object is not iterable; throw an error or return an empty iterator.
-        notIterable.enter();
+        notIterable.enter(node);
         if (requireIterable) {
             throw Errors.createTypeErrorNotIterable(iteratedObject, this);
         }

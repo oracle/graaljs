@@ -42,14 +42,16 @@ package com.oracle.truffle.js.builtins.helper;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.CountingConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNodeGen.BuildGroupsObjectNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNodeGen.JSRegExpExecBuiltinNodeGen;
@@ -108,29 +110,29 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
     @Specialization
     Object doGeneric(JSDynamicObject regExp, TruffleString input,
-                    @Cached ConditionProfile isPristineProfile,
-                    @Cached ConditionProfile isCallableProfile,
-                    @Cached ConditionProfile validResultProfile,
-                    @Cached ConditionProfile isRegExpProfile) {
+                    @Cached InlinedConditionProfile isPristineProfile,
+                    @Cached InlinedConditionProfile isCallableProfile,
+                    @Cached InlinedConditionProfile validResultProfile,
+                    @Cached InlinedConditionProfile isRegExpProfile) {
         if (context.getEcmaScriptVersion() >= 6) {
-            if (isPristineProfile.profile(isPristine(regExp))) {
+            if (isPristineProfile.profile(this, isPristine(regExp))) {
                 return builtinExec((JSRegExpObject) regExp, input);
             } else {
                 Object exec = getExecProperty(regExp);
-                if (isCallableProfile.profile(isCallable(exec))) {
+                if (isCallableProfile.profile(this, isCallable(exec))) {
                     return callJSFunction(regExp, input, exec, validResultProfile);
                 }
             }
         }
-        if (!isRegExpProfile.profile(JSRegExp.isJSRegExp(regExp))) {
+        if (!isRegExpProfile.profile(this, JSRegExp.isJSRegExp(regExp))) {
             throw Errors.createTypeError("RegExp expected");
         }
         return builtinExec((JSRegExpObject) regExp, input);
     }
 
-    private Object callJSFunction(JSDynamicObject regExp, Object input, Object exec, ConditionProfile validResultProfile) {
+    private Object callJSFunction(JSDynamicObject regExp, Object input, Object exec, InlinedConditionProfile validResultProfile) {
         Object result = doCallJSFunction(exec, regExp, input);
-        if (validResultProfile.profile(result == Null.instance || isJSObject(result) && result != Undefined.instance)) {
+        if (validResultProfile.profile(this, result == Null.instance || isJSObject(result) && result != Undefined.instance)) {
             return result;
         }
         throw Errors.createTypeError("object or null expected");
@@ -209,33 +211,35 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
         public abstract Object execute(JSDynamicObject regExp, Object input, long lastIndex);
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "getCompiledRegex(regExp) == cachedCompiledRegex", limit = "LIMIT")
         Object doCached(JSDynamicObject regExp, TruffleString input, long lastIndex,
                         @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
-                        @Cached @Shared("legacyFeaturesEnabled") ConditionProfile areLegacyFeaturesEnabled,
+                        @Bind("this") Node node,
+                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled,
                         @Cached @Shared("compiledRegexAccessor") TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
                         @Cached @Shared("regexResultAccessor") TRegexUtil.TRegexResultAccessor regexResultAccessor) {
-            return doExec(regExp, input, lastIndex, cachedCompiledRegex, compiledRegexAccessor, regexResultAccessor, areLegacyFeaturesEnabled);
+            return doExec(regExp, input, lastIndex, cachedCompiledRegex, compiledRegexAccessor, regexResultAccessor, node, areLegacyFeaturesEnabled);
         }
 
         @Specialization
         Object doGeneric(JSDynamicObject regExp, TruffleString input, long lastIndex,
-                        @Cached @Shared("legacyFeaturesEnabled") ConditionProfile areLegacyFeaturesEnabled,
+                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled,
                         @Cached @Shared("compiledRegexAccessor") TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
                         @Cached @Shared("regexResultAccessor") TRegexUtil.TRegexResultAccessor regexResultAccessor) {
             Object compiledRegex = JSRegExp.getCompiledRegex(regExp);
-            return doExec(regExp, input, lastIndex, compiledRegex, compiledRegexAccessor, regexResultAccessor, areLegacyFeaturesEnabled);
+            return doExec(regExp, input, lastIndex, compiledRegex, compiledRegexAccessor, regexResultAccessor, this, areLegacyFeaturesEnabled);
         }
 
         private Object doExec(JSDynamicObject regExp, TruffleString input, long lastIndex, Object compiledRegex,
                         TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
                         TRegexUtil.TRegexResultAccessor regexResultAccessor,
-                        ConditionProfile areLegacyFeaturesEnabled) {
+                        Node node, InlinedConditionProfile areLegacyFeaturesEnabled) {
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (doStaticResultUpdate && context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
                 JSRealm thisRealm = getRealm();
                 if (thisRealm == JSRegExp.getRealm(regExp)) {
-                    if (areLegacyFeaturesEnabled.profile(JSRegExp.getLegacyFeaturesEnabled(regExp))) {
+                    if (areLegacyFeaturesEnabled.profile(node, JSRegExp.getLegacyFeaturesEnabled(regExp))) {
                         thisRealm.setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
                     } else {
                         thisRealm.invalidateStaticRegexResult();
@@ -330,35 +334,38 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
         public abstract Object execute(JSRegExpObject regExp, TruffleString input);
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "getCompiledRegex(regExp) == cachedCompiledRegex", limit = "LIMIT")
         Object doCached(JSRegExpObject regExp, TruffleString input,
+                        @Bind("this") Node node,
                         @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
-                        @Cached @Shared("invalidLastIndex") ConditionProfile invalidLastIndex,
-                        @Cached @Shared("match") CountingConditionProfile match,
-                        @Cached @Shared("legacyFeaturesEnabled") ConditionProfile areLegacyFeaturesEnabled) {
+                        @Cached @Shared("invalidLastIndex") InlinedConditionProfile invalidLastIndex,
+                        @Cached @Shared("match") InlinedCountingConditionProfile match,
+                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled) {
             return doExec(regExp, cachedCompiledRegex, input,
-                            invalidLastIndex, match, areLegacyFeaturesEnabled);
+                            node, invalidLastIndex, match, areLegacyFeaturesEnabled);
         }
 
         @Specialization(replaces = "doCached")
         Object doDynamic(JSRegExpObject regExp, TruffleString input,
-                        @Cached @Shared("invalidLastIndex") ConditionProfile invalidLastIndex,
-                        @Cached @Shared("match") CountingConditionProfile match,
-                        @Cached @Shared("legacyFeaturesEnabled") ConditionProfile areLegacyFeaturesEnabled) {
+                        @Bind("this") Node node,
+                        @Cached @Shared("invalidLastIndex") InlinedConditionProfile invalidLastIndex,
+                        @Cached @Shared("match") InlinedCountingConditionProfile match,
+                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled) {
             return doExec(regExp, JSRegExp.getCompiledRegex(regExp), input,
-                            invalidLastIndex, match, areLegacyFeaturesEnabled);
+                            node, invalidLastIndex, match, areLegacyFeaturesEnabled);
         }
 
         // Implements 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
         private Object doExec(JSRegExpObject regExp, Object compiledRegex, TruffleString input,
-                        ConditionProfile invalidLastIndex, CountingConditionProfile match, ConditionProfile areLegacyFeaturesEnabled) {
+                        Node node, InlinedConditionProfile invalidLastIndex, InlinedCountingConditionProfile match, InlinedConditionProfile areLegacyFeaturesEnabled) {
             Object flags = compiledRegexAccessor.flags(compiledRegex);
             boolean global = flagsAccessor.global(flags);
             boolean sticky = ecmaScriptVersion >= 6 && flagsAccessor.sticky(flags);
             boolean hasIndices = flagsAccessor.hasIndices(flags);
             long lastIndex = getLastIndex(regExp);
             if (global || sticky) {
-                if (invalidLastIndex.profile(lastIndex < 0 || lastIndex > Strings.length(input))) {
+                if (invalidLastIndex.profile(node, lastIndex < 0 || lastIndex > Strings.length(input))) {
                     setLastIndex(regExp, 0);
                     return getEmptyResult();
                 }
@@ -370,14 +377,14 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
                 if (isSameRealm(regExp, thisRealm)) {
-                    if (areLegacyFeaturesEnabled.profile(JSRegExp.getLegacyFeaturesEnabled(regExp))) {
+                    if (areLegacyFeaturesEnabled.profile(node, JSRegExp.getLegacyFeaturesEnabled(regExp))) {
                         thisRealm.setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
                     } else {
                         thisRealm.invalidateStaticRegexResult();
                     }
                 }
             }
-            if (match.profile(regexResultAccessor.isMatch(result))) {
+            if (match.profile(node, regexResultAccessor.isMatch(result))) {
                 assert !sticky || regexResultAccessor.captureGroupStart(result, 0) == lastIndex;
                 if (global || sticky) {
                     setLastIndex(regExp, regexResultAccessor.captureGroupEnd(result, 0));

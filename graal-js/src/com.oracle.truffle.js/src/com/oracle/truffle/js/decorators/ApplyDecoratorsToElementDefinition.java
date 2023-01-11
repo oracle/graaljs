@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.decorators;
 
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -49,7 +51,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.Record;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -73,8 +75,6 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
-
-import java.util.List;
 
 @ImportStatic(ClassElementDefinitionRecord.class)
 public abstract class ApplyDecoratorsToElementDefinition extends Node {
@@ -123,9 +123,9 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
         record.cleanDecorator();
     }
 
-    private static void setFunctionName(JSObject callable, Object propertyKey, ConditionProfile isSymbolProfile, JSClassProfile classProfile) {
+    private static void setFunctionName(JSObject callable, Object propertyKey, Node node, InlinedConditionProfile isSymbolProfile, JSClassProfile classProfile) {
         assert JSRuntime.isPropertyKey(propertyKey);
-        TruffleString name = isSymbolProfile.profile(propertyKey instanceof Symbol) ? ((Symbol) propertyKey).toFunctionNameString() : (TruffleString) propertyKey;
+        TruffleString name = isSymbolProfile.profile(node, propertyKey instanceof Symbol) ? ((Symbol) propertyKey).toFunctionNameString() : (TruffleString) propertyKey;
         setFunctionNameTS(callable, name, classProfile);
     }
 
@@ -139,14 +139,14 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Shared("createDecoratorContext") @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
                     @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
-                    @Cached ConditionProfile isSymbolProfile,
+                    @Cached InlinedConditionProfile isSymbolProfile,
                     @Shared("newValueJSClass") @Cached JSClassProfile newValueClassProfile) {
         for (Object decorator : record.getDecorators()) {
             Object newValue = executeDecoratorWithContext(frame, record, extraInitializers, createDecoratorContextNode, callNode, decorator);
             if (isCallableNode.executeBoolean(newValue)) {
                 if (newValue instanceof JSObject) {
                     // cannot set function name of foreign objects
-                    setFunctionName((JSObject) newValue, record.getKey(), isSymbolProfile, newValueClassProfile);
+                    setFunctionName((JSObject) newValue, record.getKey(), this, isSymbolProfile, newValueClassProfile);
                 }
                 record.setValue(newValue);
             } else {

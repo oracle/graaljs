@@ -50,8 +50,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -137,14 +137,14 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"convertStringToIndex", "arrayIndexLengthInRange(index)"})
-    protected static Object convertFromString(TruffleString index,
-                    @Cached ConditionProfile startsWithDigitBranch,
-                    @Cached BranchProfile isArrayIndexBranch,
+    protected final Object convertFromString(TruffleString index,
+                    @Cached InlinedConditionProfile startsWithDigitBranch,
+                    @Cached InlinedBranchProfile isArrayIndexBranch,
                     @Cached TruffleString.ReadCharUTF16Node stringReadNode) {
-        if (startsWithDigitBranch.profile(JSRuntime.isAsciiDigit(Strings.charAt(stringReadNode, index, 0)))) {
+        if (startsWithDigitBranch.profile(this, JSRuntime.isAsciiDigit(Strings.charAt(stringReadNode, index, 0)))) {
             long longValue = JSRuntime.parseArrayIndexRaw(index, stringReadNode);
             if (JSRuntime.isArrayIndex(longValue)) {
-                isArrayIndexBranch.enter();
+                isArrayIndexBranch.enter(this);
                 return JSRuntime.castArrayIndex(longValue);
             }
         }

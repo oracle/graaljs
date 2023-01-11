@@ -42,15 +42,15 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
@@ -131,8 +131,8 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @ReportPolymorphism.Megamorphic
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(prototype)"}, replaces = "doCachedProto")
     public JSDynamicObject doUncachedProto(@SuppressWarnings("unused") JSDynamicObject target, JSDynamicObject prototype,
-                    @Cached BranchProfile slowBranch) {
-        Shape shape = JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context, slowBranch);
+                    @Cached InlinedBranchProfile slowBranch) {
+        Shape shape = JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context, this, slowBranch);
         return JSOrdinary.create(context, shape);
     }
 

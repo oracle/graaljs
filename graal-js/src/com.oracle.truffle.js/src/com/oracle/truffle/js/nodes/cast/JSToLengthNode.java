@@ -44,7 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
@@ -63,30 +63,30 @@ public abstract class JSToLengthNode extends JavaScriptBaseNode {
     public abstract long executeLong(Object value);
 
     @Specialization
-    protected static long doInt(int value,
-                    @Cached @Shared("negativeBranch") BranchProfile negativeBranch) {
+    protected final long doInt(int value,
+                    @Cached @Shared("negativeBranch") InlinedBranchProfile negativeBranch) {
         if (value < 0) {
-            negativeBranch.enter();
+            negativeBranch.enter(this);
             return 0;
         }
         return value;
     }
 
     @Specialization
-    protected static long doSafeInteger(SafeInteger value,
-                    @Cached @Shared("negativeBranch") BranchProfile negativeBranch) {
+    protected final long doSafeInteger(SafeInteger value,
+                    @Cached @Shared("negativeBranch") InlinedBranchProfile negativeBranch) {
         long longValue = value.longValue();
         if (longValue < 0) {
-            negativeBranch.enter();
+            negativeBranch.enter(this);
             return 0;
         }
         return longValue;
     }
 
     @Specialization
-    protected static long doDouble(double value,
-                    @Cached @Shared("negativeBranch") BranchProfile negativeBranch,
-                    @Cached @Shared("tooLargeBranch") BranchProfile tooLargeBranch) {
+    protected final long doDouble(double value,
+                    @Cached @Shared("negativeBranch") InlinedBranchProfile negativeBranch,
+                    @Cached @Shared("tooLargeBranch") InlinedBranchProfile tooLargeBranch) {
         // NaN and Infinity are converted to 0L and Long.MAX_VALUE by the long cast, respectively.
         return doLong((long) value, negativeBranch, tooLargeBranch);
     }
@@ -97,21 +97,23 @@ public abstract class JSToLengthNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static long doObject(Object value,
+    protected final long doObject(Object value,
                     @Cached JSToNumberNode toNumberNode,
-                    @Cached @Shared("negativeBranch") BranchProfile negativeBranch,
-                    @Cached @Shared("tooLargeBranch") BranchProfile tooLargeBranch) {
+                    @Cached @Shared("negativeBranch") InlinedBranchProfile negativeBranch,
+                    @Cached @Shared("tooLargeBranch") InlinedBranchProfile tooLargeBranch) {
         Number result = (Number) toNumberNode.execute(value);
         return doLong(JSRuntime.toInteger(result), negativeBranch, tooLargeBranch);
     }
 
-    private static long doLong(long value, BranchProfile negativeBranch, final BranchProfile tooLargeBranch) {
+    private long doLong(long value,
+                    InlinedBranchProfile negativeBranch,
+                    InlinedBranchProfile tooLargeBranch) {
         if (value < 0) {
-            negativeBranch.enter();
+            negativeBranch.enter(this);
             return 0;
         }
         if (value > JSRuntime.MAX_SAFE_INTEGER_LONG) {
-            tooLargeBranch.enter();
+            tooLargeBranch.enter(this);
             return JSRuntime.MAX_SAFE_INTEGER_LONG;
         }
         return value;

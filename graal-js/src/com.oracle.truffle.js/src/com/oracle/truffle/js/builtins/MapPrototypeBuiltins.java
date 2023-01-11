@@ -53,7 +53,7 @@ import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.CreateMapIteratorNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapClearNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapDeleteNodeGen;
@@ -188,7 +188,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         protected JSDynamicObject doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary iteratorLib,
-                        @Cached BranchProfile growProfile) {
+                        @Cached InlinedBranchProfile growProfile) {
             try {
                 Object hashEntriesIterator = mapLib.getHashKeysIterator(thisObj);
                 // Save keys to temporary array to avoid concurrent modification exceptions.
@@ -196,7 +196,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 while (true) {
                     try {
                         Object nextKey = iteratorLib.getIteratorNextElement(hashEntriesIterator);
-                        keys.add(nextKey, growProfile);
+                        keys.add(nextKey, this, growProfile);
                     } catch (StopIterationException e) {
                         break;
                     }
@@ -449,9 +449,9 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected final Object doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
-                        @Cached BranchProfile toDoubleBranch) {
+                        @Cached InlinedBranchProfile toDoubleBranch) {
             try {
-                return JSRuntime.longToIntOrDouble(mapLib.getHashSize(thisObj), toDoubleBranch);
+                return JSRuntime.longToIntOrDouble(mapLib.getHashSize(thisObj), this, toDoubleBranch);
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(thisObj, e, "getHashSize", this);
             }

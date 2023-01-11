@@ -50,11 +50,13 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferOperation;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferSliceNode;
@@ -319,16 +321,16 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
         protected JSTypedArrayObject subarray(JSDynamicObject thisObj, Object begin0, Object end0,
                         @Cached("createIdentityProfile()") @Shared("arrayTypeProfile") ValueProfile arrayTypeProfile,
-                        @Cached ConditionProfile negativeBegin,
-                        @Cached ConditionProfile negativeEnd,
-                        @Cached ConditionProfile smallerEnd) {
+                        @Cached InlinedConditionProfile negativeBegin,
+                        @Cached InlinedConditionProfile negativeEnd,
+                        @Cached InlinedConditionProfile smallerEnd) {
             TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj));
             long len = array.length(thisObj);
             long relativeBegin = toInteger(begin0);
-            long beginIndex = negativeBegin.profile(relativeBegin < 0) ? Math.max(len + relativeBegin, 0) : Math.min(relativeBegin, len);
+            long beginIndex = negativeBegin.profile(this, relativeBegin < 0) ? Math.max(len + relativeBegin, 0) : Math.min(relativeBegin, len);
             long relativeEnd = end0 == Undefined.instance ? len : toInteger(end0);
-            long endIndex = negativeEnd.profile(relativeEnd < 0) ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
-            if (smallerEnd.profile(endIndex < beginIndex)) {
+            long endIndex = negativeEnd.profile(this, relativeEnd < 0) ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
+            if (smallerEnd.profile(this, endIndex < beginIndex)) {
                 endIndex = beginIndex;
             }
             return subarrayImpl(thisObj, array, (int) beginIndex, (int) endIndex);
@@ -743,45 +745,31 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public abstract static class JSArrayBufferViewFillNode extends JSArrayOperationWithToInt {
-        private final ConditionProfile offsetProfile1 = ConditionProfile.create();
-        private final ConditionProfile offsetProfile2 = ConditionProfile.create();
-        @Child private JSToNumberNode toNumberNode;
-        @Child private JSToBigIntNode toBigIntNode;
 
         public JSArrayBufferViewFillNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, true);
         }
 
         @Specialization
-        protected JSDynamicObject fill(Object thisObj, Object value, Object start, Object end) {
+        protected JSDynamicObject fill(Object thisObj, Object value, Object start, Object end,
+                        @Cached JSToNumberNode toNumberNode,
+                        @Cached JSToBigIntNode toBigIntNode,
+                        @Cached InlinedConditionProfile offsetProfile1,
+                        @Cached InlinedConditionProfile offsetProfile2) {
             validateTypedArray(thisObj);
             JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             long len = getLength(thisJSObj);
-            Object convValue = JSArrayBufferView.isBigIntArrayBufferView(thisJSObj) ? toBigInt(value) : toNumber(value);
-            long lStart = JSRuntime.getOffset(toIntegerAsLong(start), len, offsetProfile1);
-            long lEnd = end == Undefined.instance ? len : JSRuntime.getOffset(toIntegerAsLong(end), len, offsetProfile2);
+            Object convValue = JSArrayBufferView.isBigIntArrayBufferView(thisJSObj)
+                            ? toBigIntNode.execute(value)
+                            : toNumberNode.execute(value);
+            long lStart = JSRuntime.getOffset(toIntegerAsLong(start), len, this, offsetProfile1);
+            long lEnd = end == Undefined.instance ? len : JSRuntime.getOffset(toIntegerAsLong(end), len, this, offsetProfile2);
             checkHasDetachedBuffer(thisJSObj);
             for (long idx = lStart; idx < lEnd; idx++) {
                 write(thisJSObj, idx, convValue);
                 TruffleSafepoint.poll(this);
             }
             return thisJSObj;
-        }
-
-        protected Object toNumber(Object value) {
-            if (toNumberNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toNumberNode = insert(JSToNumberNode.create());
-            }
-            return toNumberNode.execute(value);
-        }
-
-        protected Object toBigInt(Object value) {
-            if (toBigIntNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toBigIntNode = insert(JSToBigIntNode.create());
-            }
-            return toBigIntNode.execute(value);
         }
     }
 
@@ -825,9 +813,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected final int doTypedArray(JSTypedArrayObject typedArray,
-                        @Cached BranchProfile detachedBranch) {
+                        @Cached InlinedBranchProfile detachedBranch) {
             if (JSArrayBufferView.hasDetachedBuffer(typedArray, getContext())) {
-                detachedBranch.enter();
+                detachedBranch.enter(this);
                 return 0;
             }
             switch (getter) {

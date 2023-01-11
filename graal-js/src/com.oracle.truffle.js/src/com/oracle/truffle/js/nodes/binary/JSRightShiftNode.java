@@ -42,13 +42,15 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
@@ -117,14 +119,15 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntDouble", "doDouble", "doBigInt"})
-    protected Object doGeneric(Object a, Object b,
+    protected static Object doGeneric(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached @Shared("rightShift") JSRightShiftNode rightShift,
                     @Cached JSToNumericNode leftToNumeric,
                     @Cached JSToNumericNode rightToNumeric,
-                    @Cached BranchProfile mixedNumericTypes) {
+                    @Cached InlinedBranchProfile mixedNumericTypes) {
         Object operandA = leftToNumeric.execute(a);
         Object operandB = rightToNumeric.execute(b);
-        ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);
+        ensureBothSameNumericType(operandA, operandB, node, mixedNumericTypes);
         return rightShift.execute(operandA, operandB);
     }
 

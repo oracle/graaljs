@@ -47,6 +47,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -62,9 +63,11 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectAssignNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectCreateNodeGen;
@@ -302,7 +305,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "!isJSObject(object)")
         protected JSDynamicObject getPrototypeOfNonObject(Object object,
-                        @Cached ConditionProfile isForeignProfile) {
+                        @Cached InlinedConditionProfile isForeignProfile) {
             if (getContext().getEcmaScriptVersion() < 6) {
                 if (JSRuntime.isJSPrimitive(object)) {
                     throw Errors.createTypeErrorNotAnObject(object);
@@ -310,7 +313,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     return Null.instance;
                 }
             } else {
-                if (isForeignProfile.profile(JSRuntime.isForeignObject(object))) {
+                if (isForeignProfile.profile(this, JSRuntime.isForeignObject(object))) {
                     if (InteropLibrary.getUncached(object).isNull(object)) {
                         throw Errors.createTypeErrorNotAnObject(object);
                     }
@@ -422,21 +425,23 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return retObj;
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
         protected JSDynamicObject getForeignObject(Object thisObj,
+                        @Bind("this") Node node,
                         @Cached @Shared("fromPropertyDescriptor") FromPropertyDescriptorNode fromPropertyDescriptorNode,
                         @CachedLibrary(limit = "PropertyCacheLimit") @Shared("putPropDescNode") DynamicObjectLibrary putPropDescNode,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                         @Cached ImportValueNode toJSType,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             JSDynamicObject result = JSOrdinary.create(getContext(), getRealm());
             try {
                 if (interop.hasMembers(thisObj)) {
                     Object keysObj = interop.getMembers(thisObj);
                     long size = members.getArraySize(keysObj);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
-                        errorBranch.enter();
+                        errorBranch.enter(node);
                         throw Errors.createRangeErrorInvalidArrayLength();
                     }
                     for (int i = 0; i < size; i++) {
@@ -451,7 +456,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 if (interop.hasArrayElements(thisObj)) {
                     long size = interop.getArraySize(thisObj);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
-                        errorBranch.enter();
+                        errorBranch.enter(node);
                         throw Errors.createRangeErrorInvalidArrayLength();
                     }
                     for (long i = 0; i < size; i++) {
@@ -515,11 +520,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"})
         protected JSDynamicObject getForeignObjectNames(Object thisObj,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode,
-                        @Cached ConditionProfile hasElements) {
+                        @Cached InlinedConditionProfile hasElements) {
             UnmodifiableArrayList<? extends Object> keyList = enumerableOwnPropertyNamesNode.execute(thisObj);
             int len = keyList.size();
             JSRealm realm = getRealm();
-            if (hasElements.profile(len > 0)) {
+            if (hasElements.profile(this, len > 0)) {
                 assert keyList.stream().allMatch(Strings::isTString);
                 return JSArray.createConstant(getContext(), realm, keyList.toArray());
             }
@@ -571,19 +576,22 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isJSNull(prototype)")
         protected JSDynamicObject createPrototypeNull(@SuppressWarnings("unused") Object prototype, Object properties,
-                        @Cached @Shared("definePropertiesBranch") BranchProfile definePropertiesBranch) {
+                        @Bind("this") Node node,
+                        @Cached @Shared("definePropertiesBranch") InlinedBranchProfile definePropertiesBranch) {
             JSDynamicObject ret = JSOrdinary.createWithNullPrototype(getContext());
-            return objectDefineProperties(ret, properties, definePropertiesBranch);
+            return objectDefineProperties(ret, properties, node, definePropertiesBranch);
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"}, limit = "InteropLibraryLimit")
         protected JSDynamicObject createForeignNullOrInvalidPrototype(Object prototype, Object properties,
-                        @Cached @Shared("definePropertiesBranch") BranchProfile definePropertiesBranch,
+                        @Bind("this") Node node,
+                        @Cached @Shared("definePropertiesBranch") InlinedBranchProfile definePropertiesBranch,
                         @CachedLibrary("prototype") InteropLibrary interop,
-                        @Cached ConditionProfile isNull) {
+                        @Cached InlinedConditionProfile isNull) {
             assert prototype != null;
-            if (isNull.profile(prototype != Undefined.instance && interop.isNull(prototype))) {
-                return createPrototypeNull(Null.instance, properties, definePropertiesBranch);
+            if (isNull.profile(node, prototype != Undefined.instance && interop.isNull(prototype))) {
+                return createPrototypeNull(Null.instance, properties, node, definePropertiesBranch);
             } else {
                 throw Errors.createTypeErrorInvalidPrototype(prototype);
             }
@@ -598,9 +606,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"isJSObject(prototype)", "!isJSNull(properties)"})
         protected JSDynamicObject createObjectNotNull(JSDynamicObject prototype, Object properties,
-                        @Cached @Shared("definePropertiesBranch") BranchProfile definePropertiesBranch) {
+                        @Cached @Shared("definePropertiesBranch") InlinedBranchProfile definePropertiesBranch) {
             JSDynamicObject ret = createObjectWithPrototype(prototype);
-            return objectDefineProperties(ret, properties, definePropertiesBranch);
+            return objectDefineProperties(ret, properties, this, definePropertiesBranch);
         }
 
         @Specialization(guards = {"isJSObject(prototype)", "isJSNull(properties)"})
@@ -608,9 +616,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             throw Errors.createTypeErrorNotObjectCoercible(properties, null, getContext());
         }
 
-        private JSDynamicObject objectDefineProperties(JSDynamicObject ret, Object properties, BranchProfile definePropertiesBranch) {
+        private JSDynamicObject objectDefineProperties(JSDynamicObject ret, Object properties, Node node, InlinedBranchProfile definePropertiesBranch) {
             if (properties != Undefined.instance) {
-                definePropertiesBranch.enter();
+                definePropertiesBranch.enter(node);
                 intlDefineProperties(ret, toJSObject(properties));
             }
             return ret;
@@ -837,11 +845,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"isValidPrototype(newProto)"})
-        static Object setPrototypeOfJSObject(JSObject object, JSDynamicObject newProto,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+        final Object setPrototypeOfJSObject(JSObject object, JSDynamicObject newProto,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @Cached JSClassProfile classProfile) {
             if (!JSObject.setPrototype(object, newProto, classProfile)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("setPrototype failed");
             }
             return object;
@@ -859,10 +867,10 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"!isJSObject(object)", "!isNullOrUndefined(object)", "!isForeignObject(object)"})
-        static Object setPrototypeOfValue(Object object, Object newProto,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch) {
+        final Object setPrototypeOfValue(Object object, Object newProto,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
             if (!JSGuards.isValidPrototype(newProto)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorInvalidPrototype(newProto);
             }
             // If Type(O) is not Object, return O.
@@ -1065,7 +1073,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached JSToPropertyKeyNode toPropertyKeyNode,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
                         @Cached("create(getContext())") IteratorCloseNode iteratorCloseNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             requireObjectCoercibleNode.executeVoid(iterable);
             JSObject target = JSOrdinary.create(getContext(), getRealm());
 
@@ -1079,7 +1087,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     }
                     Object nextItem = iteratorValueNode.execute(next);
                     if (!isObjectNode.executeBoolean(nextItem)) {
-                        errorBranch.enter();
+                        errorBranch.enter(this);
                         throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
                     }
                     Object k = readElementNode.executeWithTargetAndIndex(nextItem, 0);
@@ -1089,7 +1097,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     JSRuntime.createDataPropertyOrThrow(target, propertyKey, v);
                 }
             } catch (AbstractTruffleException ex) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 iteratorCloseNode.executeAbrupt(iteratorRecord.getIterator());
                 throw ex;
             }

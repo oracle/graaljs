@@ -46,7 +46,7 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -104,14 +104,14 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = "doCached")
     final boolean doUncached(JSDynamicObject scope,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         Property property = scope.getShape().getProperty(varName);
         if (property != null) {
             if (JSDynamicObject.getOrNull(scope, varName) == Dead.instance()) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createReferenceErrorNotDefined(getLanguage().getJSContext(), varName, this);
             } else if (write && JSProperty.isConst(property)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorConstReassignment(varName, this);
             }
             return true;

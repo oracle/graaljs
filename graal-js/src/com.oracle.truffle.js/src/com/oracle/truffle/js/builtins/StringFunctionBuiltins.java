@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
@@ -214,13 +214,13 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object raw(Object template, Object[] substitutions,
-                        @Cached ConditionProfile emptyProf) {
+                        @Cached InlinedConditionProfile emptyProf) {
             int numberOfSubstitutions = substitutions.length;
             Object cooked = templateToObjectNode.execute(template);
             Object raw = rawToObjectNode.execute(getRawNode.getValue(cooked));
 
             int literalSegments = getRawLength(raw);
-            if (emptyProf.profile(literalSegments <= 0)) {
+            if (emptyProf.profile(this, literalSegments <= 0)) {
                 return Strings.EMPTY_STRING;
             }
 

@@ -45,7 +45,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatFormatRangeNodeGen;
@@ -179,9 +179,9 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         public TruffleString doFormatRange(JSNumberFormatObject numberFormat, Object start, Object end,
                         @Cached("create(true)") ToIntlMathematicalValue startToIntlMVNode,
                         @Cached("create(true)") ToIntlMathematicalValue endToIntlMVNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (start == Undefined.instance || end == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("invalid range");
             }
             Number x = startToIntlMVNode.executeNumber(start);
@@ -206,9 +206,9 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         public Object doFormatRangeToParts(JSNumberFormatObject numberFormat, Object start, Object end,
                         @Cached("create(true)") ToIntlMathematicalValue startToIntlMVNode,
                         @Cached("create(true)") ToIntlMathematicalValue endToIntlMVNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (start == Undefined.instance || end == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("invalid range");
             }
             Number x = startToIntlMVNode.executeNumber(start);
@@ -236,11 +236,11 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
 
         @Specialization
         public Object doNumberFormat(JSNumberFormatObject numberFormatObj,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
 
             if (state == null) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
             }
 

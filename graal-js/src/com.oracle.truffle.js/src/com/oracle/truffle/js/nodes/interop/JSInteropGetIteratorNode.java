@@ -45,7 +45,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -86,7 +86,7 @@ public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
                     @Cached IsCallableNode isCallableNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Cached(value = "create(NEXT, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode nextPropertyGetNode,
-                    @Cached BranchProfile exceptionBranch) throws UnsupportedMessageException {
+                    @Cached InlinedBranchProfile exceptionBranch) throws UnsupportedMessageException {
         Object method = getProperty(receiver, iteratorPropertyGetNode, Symbol.SYMBOL_ITERATOR, null);
         boolean hasIterator = method != null && isCallableNode.executeBoolean(method);
         if (hasIteratorCheck) {
@@ -101,10 +101,10 @@ public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
                     return JSIteratorWrapper.create(IteratorRecord.create(jsIterator, nextMethod));
                 }
             }
-            exceptionBranch.enter();
+            exceptionBranch.enter(this);
             throw Errors.createTypeErrorNotIterable(receiver, null);
         } else {
-            exceptionBranch.enter();
+            exceptionBranch.enter(this);
             throw UnsupportedMessageException.create();
         }
     }

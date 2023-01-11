@@ -46,7 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltinsFactory.IteratorNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -116,16 +116,16 @@ public final class ForeignIterablePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected JSDynamicObject iterator(Object target,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (!interop.hasIterator(target)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorNotIterable(target, null);
             }
             Object iterator;
             try {
                 iterator = interop.getIterator(target);
             } catch (UnsupportedMessageException e) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorInteropException(target, e, "getIterator", null);
             }
             JSObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());

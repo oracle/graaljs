@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -54,7 +55,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -180,14 +182,16 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return Undefined.instance;
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization
     protected Object doJSObject(JSObject object,
+                    @Bind("this") Node node,
                     @Cached("createGetToPrimitive()") PropertyGetNode getToPrimitive,
                     @Cached IsPrimitiveNode isPrimitive,
-                    @Cached ConditionProfile exoticToPrimProfile,
+                    @Cached InlinedConditionProfile exoticToPrimProfile,
                     @Cached("createCall()") JSFunctionCallNode callExoticToPrim) {
         Object exoticToPrim = getToPrimitive.getValue(object);
-        if (exoticToPrimProfile.profile(!JSRuntime.isNullOrUndefined(exoticToPrim))) {
+        if (exoticToPrimProfile.profile(node, !JSRuntime.isNullOrUndefined(exoticToPrim))) {
             Object result = callExoticToPrim.executeCall(JSArguments.createOneArg(object, exoticToPrim, hint.getHintName()));
             if (isPrimitive.executeBoolean(result)) {
                 return result;

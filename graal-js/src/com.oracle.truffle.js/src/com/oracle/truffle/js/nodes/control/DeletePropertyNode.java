@@ -44,6 +44,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
@@ -58,10 +59,11 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
@@ -191,20 +193,22 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         }
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"!isJSOrdinaryObject(targetObject)"})
     protected final boolean doJSObject(JSDynamicObject targetObject, Object key,
+                    @Bind("this") Node node,
                     @Cached("createIsFastArray()") IsArrayNode isArrayNode,
-                    @Cached ConditionProfile arrayProfile,
+                    @Cached InlinedConditionProfile arrayProfile,
                     @Shared("toArrayIndex") @Cached ToArrayIndexNode toArrayIndexNode,
-                    @Cached ConditionProfile arrayIndexProfile,
+                    @Cached InlinedConditionProfile arrayIndexProfile,
                     @Cached("create(context, strict)") JSArrayDeleteIndexNode deleteArrayIndexNode,
                     @Cached JSClassProfile jsclassProfile,
                     @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         final Object propertyKey;
-        if (arrayProfile.profile(isArrayNode.execute(targetObject))) {
+        if (arrayProfile.profile(node, isArrayNode.execute(targetObject))) {
             Object objIndex = toArrayIndexNode.execute(key);
 
-            if (arrayIndexProfile.profile(objIndex instanceof Long)) {
+            if (arrayIndexProfile.profile(node, objIndex instanceof Long)) {
                 long longIndex = (long) objIndex;
                 return deleteArrayIndexNode.execute(targetObject, arrayGetArrayType(targetObject), longIndex);
             } else {

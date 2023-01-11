@@ -57,7 +57,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -335,7 +335,7 @@ public final class JSFunction extends JSNonProxy {
         JSContext context = realm.getContext();
         JSDynamicObject proto = JSObject.getPrototype(thisFnObj);
         JSFunctionObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto,
-                        ConditionProfile.getUncached(), ConditionProfile.getUncached(), ConditionProfile.getUncached(), null);
+                        InlinedConditionProfile.getUncached(), InlinedConditionProfile.getUncached(), InlinedConditionProfile.getUncached(), null);
 
         long length = 0;
         boolean targetHasLength = JSObject.hasOwnProperty(thisFnObj, JSFunction.LENGTH);
@@ -362,17 +362,17 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static JSFunctionObject boundFunctionCreate(JSContext context, JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments, JSDynamicObject proto,
-                    ConditionProfile isConstructorProfile, ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile, Node node) {
+                    InlinedConditionProfile isConstructorProfile, InlinedConditionProfile isAsyncProfile, InlinedConditionProfile setProtoProfile, Node node) {
         CompilerAsserts.partialEvaluationConstant(context);
 
         JSFunctionData targetFunctionData = JSFunction.getFunctionData(boundTargetFunction);
-        boolean constructor = isConstructorProfile.profile(targetFunctionData.isConstructor());
-        boolean isAsync = isAsyncProfile.profile(targetFunctionData.isAsync());
+        boolean constructor = isConstructorProfile.profile(node, targetFunctionData.isConstructor());
+        boolean isAsync = isAsyncProfile.profile(node, targetFunctionData.isAsync());
         JSFunctionData boundFunctionData = context.getBoundFunctionData(constructor, isAsync);
         JSRealm realm = getRealm(boundTargetFunction, context, node);
         JSFunctionObject boundFunction = JSFunction.createBound(context, realm, boundFunctionData, boundTargetFunction, boundThis, boundArguments);
         boolean needSetProto = proto != realm.getFunctionPrototype();
-        if (setProtoProfile.profile(needSetProto)) {
+        if (setProtoProfile.profile(node, needSetProto)) {
             JSObject.setPrototype(boundFunction, proto);
         }
         assert JSObject.getPrototype(boundFunction) == proto;

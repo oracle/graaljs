@@ -42,11 +42,13 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
@@ -119,16 +121,16 @@ public abstract class JSBitwiseXorNode extends JSBinaryNode {
         return Strings.SYMBOL_CARET;
     }
 
-    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntSafeInteger", "doSafeIntegerInt", "doSafeInteger",
-                    "doDouble", "doBigInt"})
-    protected Object doGeneric(Object a, Object b,
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntSafeInteger", "doSafeIntegerInt", "doSafeInteger", "doDouble", "doBigInt"})
+    protected static Object doGeneric(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached JSToNumericNode leftNumeric,
                     @Cached JSToNumericNode rightNumeric,
                     @Cached("createInner()") JSBitwiseXorNode xor,
-                    @Cached BranchProfile mixedNumericTypes) {
+                    @Cached InlinedBranchProfile mixedNumericTypes) {
         Object left = leftNumeric.execute(a);
         Object right = rightNumeric.execute(b);
-        ensureBothSameNumericType(left, right, mixedNumericTypes);
+        ensureBothSameNumericType(left, right, node, mixedNumericTypes);
         return xor.executeObject(left, right);
     }
 

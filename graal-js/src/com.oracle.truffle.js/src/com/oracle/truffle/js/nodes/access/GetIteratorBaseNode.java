@@ -45,7 +45,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
@@ -93,7 +93,7 @@ public abstract class GetIteratorBaseNode extends JavaScriptBaseNode {
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode iteratorCallNode,
                     @Cached IsJSObjectNode isObjectNode,
                     @Cached(value = "createNextMethodNode()", uncached = "uncachedNextMethodNode()") PropertyGetNode getNextMethodNode,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         Object method;
         if (methodOpt != Undefined.instance) {
             method = methodOpt;
@@ -127,27 +127,27 @@ public abstract class GetIteratorBaseNode extends JavaScriptBaseNode {
                     JSFunctionCallNode methodCallNode,
                     IsJSObjectNode isObjectNode,
                     PropertyGetNode getNextMethodNode,
-                    BranchProfile errorBranch,
-                    JavaScriptBaseNode origin) {
+                    InlinedBranchProfile errorBranch,
+                    JavaScriptBaseNode node) {
         if (!isCallableNode.executeBoolean(method)) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorNotIterable(iteratedObject, origin);
+            errorBranch.enter(node);
+            throw Errors.createTypeErrorNotIterable(iteratedObject, node);
         }
-        return getIterator(iteratedObject, method, methodCallNode, isObjectNode, getNextMethodNode, origin);
+        return getIterator(iteratedObject, method, methodCallNode, isObjectNode, getNextMethodNode, node);
     }
 
     public static IteratorRecord getIterator(Object iteratedObject, Object method,
                     JSFunctionCallNode methodCallNode,
                     IsJSObjectNode isObjectNode,
                     PropertyGetNode getNextMethodNode,
-                    JavaScriptBaseNode origin) {
+                    JavaScriptBaseNode node) {
         Object iterator = methodCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
         if (isObjectNode.executeBoolean(iterator)) {
             JSDynamicObject jsIterator = (JSDynamicObject) iterator;
             Object nextMethod = getNextMethodNode != null ? getNextMethodNode.getValue(jsIterator) : JSObject.get(jsIterator, Strings.NEXT);
             return IteratorRecord.create(jsIterator, nextMethod, false);
         } else {
-            throw Errors.createTypeErrorNotAnObject(iterator, origin);
+            throw Errors.createTypeErrorNotAnObject(iterator, node);
         }
     }
 

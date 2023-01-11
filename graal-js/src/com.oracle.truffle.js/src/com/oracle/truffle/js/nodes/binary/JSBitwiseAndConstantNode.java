@@ -50,7 +50,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -162,10 +162,10 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
     @Specialization(guards = {"!hasOverloadedOperators(a)", "isInt"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"})
     protected Object doGeneric(Object a,
                     @Cached @Shared("toNumeric") JSToNumericNode toNumeric,
-                    @Cached @Shared("isBigInt") ConditionProfile profileIsBigInt,
+                    @Cached @Shared("isBigInt") InlinedConditionProfile profileIsBigInt,
                     @Cached("makeCopy()") JavaScriptNode innerAndNode) {
         Object numericA = toNumeric.execute(a);
-        if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {
+        if (profileIsBigInt.profile(this, JSRuntime.isBigInt(numericA))) {
             throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
         } else {
             return ((JSBitwiseAndConstantNode) innerAndNode).executeObject(numericA);
@@ -185,9 +185,9 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!isInt()"}, replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"})
     protected BigInt doGenericBigIntCase(Object a,
                     @Cached @Shared("toNumeric") JSToNumericNode toNumeric,
-                    @Cached @Shared("isBigInt") ConditionProfile profileIsBigInt) {
+                    @Cached @Shared("isBigInt") InlinedConditionProfile profileIsBigInt) {
         Object numericA = toNumeric.execute(a);
-        if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {
+        if (profileIsBigInt.profile(this, JSRuntime.isBigInt(numericA))) {
             return doBigInt((BigInt) numericA);
         } else {
             throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);

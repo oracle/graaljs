@@ -44,7 +44,7 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.ArrayBufferPrototype;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferAbstractSliceNode;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.ByteLengthGetterNodeGen;
@@ -92,24 +92,24 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             return (JSDynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
         }
 
-        private static void checkErrors(JSDynamicObject resObj, JSDynamicObject thisObj, int newLen, BranchProfile errorBranch) {
+        private void checkErrors(JSDynamicObject resObj, JSDynamicObject thisObj, int newLen, InlinedBranchProfile errorBranch) {
             if (!JSSharedArrayBuffer.isJSSharedArrayBuffer(resObj)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("SharedArrayBuffer expected");
             }
             if (resObj == thisObj) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("SameValue(new, O) is forbidden");
             }
             if (JSSharedArrayBuffer.getDirectByteBuffer(resObj).capacity() < newLen) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("insufficient length constructed");
             }
         }
 
         @Specialization(guards = "isJSSharedArrayBuffer(thisObj)")
         protected JSDynamicObject sliceSharedIntInt(JSDynamicObject thisObj, int begin, int end,
-                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch) {
+                        @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch) {
             ByteBuffer byteBuffer = JSSharedArrayBuffer.getDirectByteBuffer(thisObj);
             int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteLength);
@@ -126,7 +126,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
 
         @Specialization(guards = "isJSSharedArrayBuffer(thisObj)", replaces = "sliceSharedIntInt")
         protected JSDynamicObject sliceShared(JSDynamicObject thisObj, Object begin0, Object end0,
-                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch) {
+                        @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch) {
             int len = JSSharedArrayBuffer.getDirectByteBuffer(thisObj).capacity();
             int begin = getStart(begin0, len);
             int end = getEnd(end0, len);

@@ -46,7 +46,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 
@@ -71,8 +71,8 @@ public abstract class IsJSObjectNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = {"isObjectCached"})
     protected boolean isObject(Object object,
-                    @Cached ConditionProfile resultProfile) {
-        return resultProfile.profile(JSGuards.isJSObject(object));
+                    @Cached InlinedConditionProfile resultProfile) {
+        return resultProfile.profile(this, JSGuards.isJSObject(object));
     }
 
     @NeverDefault

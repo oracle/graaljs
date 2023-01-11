@@ -48,7 +48,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.EnumerateIteratorPrototypeBuiltinsFactory.EnumerateNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -112,10 +112,10 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Cached("create(getContext())") CreateIterResultObjectNode createIterResultObjectNode,
                         @Cached ImportValueNode importValueNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             Object iterator = getIteratorNode.getValue(target);
             if (iterator == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("Enumerate iterator required");
             }
             try {
@@ -130,7 +130,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
                 }
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             } catch (UnsupportedMessageException e) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorInteropException(iterator, e, "next", null);
             }
         }

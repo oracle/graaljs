@@ -53,6 +53,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.HasInstanceNodeGen;
@@ -294,9 +295,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected JSDynamicObject bindFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args,
                         @Cached GetPrototypeNode getPrototypeNode,
                         @Cached("create(getContext())") @Shared("copyFunctionNameAndLength") CopyFunctionNameAndLengthNode copyNameAndLengthNode,
-                        @Cached @Shared("isConstructorProf") ConditionProfile isConstructorProfile,
-                        @Cached @Shared("isAsyncProf") ConditionProfile isAsyncProfile,
-                        @Cached @Shared("setProtoProf") ConditionProfile setProtoProfile) {
+                        @Cached @Shared("isConstructorProf") InlinedConditionProfile isConstructorProfile,
+                        @Cached @Shared("isAsyncProf") InlinedConditionProfile isAsyncProfile,
+                        @Cached @Shared("setProtoProf") InlinedConditionProfile setProtoProfile) {
             JSDynamicObject proto = getPrototypeNode.execute(thisFnObj);
 
             JSFunctionObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto,
@@ -311,9 +312,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = {"isJSProxy(thisObj)"})
         protected JSDynamicObject bindProxy(JSDynamicObject thisObj, Object thisArg, Object[] args,
                         @Cached("create(getContext())") @Shared("copyFunctionNameAndLength") CopyFunctionNameAndLengthNode copyNameAndLengthNode,
-                        @Cached @Shared("isConstructorProf") ConditionProfile isConstructorProfile,
-                        @Cached @Shared("isAsyncProf") ConditionProfile isAsyncProfile,
-                        @Cached @Shared("setProtoProf") ConditionProfile setProtoProfile) {
+                        @Cached @Shared("isConstructorProf") InlinedConditionProfile isConstructorProfile,
+                        @Cached @Shared("isAsyncProf") InlinedConditionProfile isAsyncProfile,
+                        @Cached @Shared("setProtoProf") InlinedConditionProfile setProtoProfile) {
             final JSDynamicObject proto = JSObject.getPrototype(thisObj);
 
             final Object target = JSProxy.getTarget(thisObj);

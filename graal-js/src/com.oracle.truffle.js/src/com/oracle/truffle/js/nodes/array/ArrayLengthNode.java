@@ -51,7 +51,7 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNodeFactory.ArrayLengthReadNodeGen;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNodeFactory.SetArrayLengthNodeGen;
@@ -170,11 +170,11 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSDynamicObject arrayObj, int length,
-                        @Cached ConditionProfile sealedProfile,
+                        @Cached InlinedConditionProfile sealedProfile,
                         @Cached @Shared("setLengthProfile") ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);
-            if (sealedProfile.profile(arrayType.isSealed())) {
+            if (sealedProfile.profile(this, arrayType.isSealed())) {
                 setLengthSealed(arrayObj, length, arrayType, this, setLengthProfile);
                 return;
             }
@@ -216,11 +216,11 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSDynamicObject arrayObj, int length,
-                        @Cached ConditionProfile mustDeleteProfile,
+                        @Cached InlinedConditionProfile mustDeleteProfile,
                         @Cached @Shared("setLengthProfile") ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);
-            if (mustDeleteProfile.profile(arrayType.isLengthNotWritable() || arrayType.isSealed())) {
+            if (mustDeleteProfile.profile(this, arrayType.isLengthNotWritable() || arrayType.isSealed())) {
                 deleteAndSetLength(arrayObj, length, arrayType, this, setLengthProfile);
                 return;
             }

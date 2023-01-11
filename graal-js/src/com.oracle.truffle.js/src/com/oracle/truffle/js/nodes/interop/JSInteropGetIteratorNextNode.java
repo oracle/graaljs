@@ -45,7 +45,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.StopIterationException;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -86,7 +86,7 @@ public abstract class JSInteropGetIteratorNextNode extends JSInteropCallNode {
                     @Cached(value = "create(VALUE, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode valuePropertyGetNode,
                     @Cached JSToBooleanNode toBooleanNode,
                     @Cached ExportValueNode exportValueNode,
-                    @Cached BranchProfile exceptionBranch) throws StopIterationException {
+                    @Cached InlinedBranchProfile exceptionBranch) throws StopIterationException {
         Object iterResult = callNode.executeCall(JSArguments.createZeroArg(iterator.getIterator(), iterator.getNextMethod()));
         if (iterResult instanceof JSObject) {
             JSObject iterResultObject = (JSObject) iterResult;
@@ -103,7 +103,7 @@ public abstract class JSInteropGetIteratorNextNode extends JSInteropCallNode {
                 return exportValueNode.execute(value);
             }
         }
-        exceptionBranch.enter();
+        exceptionBranch.enter(this);
         throw Errors.createTypeErrorIteratorResultNotObject(iterResult, null);
     }
 

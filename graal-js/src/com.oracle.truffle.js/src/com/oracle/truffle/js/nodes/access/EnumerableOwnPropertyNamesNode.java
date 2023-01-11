@@ -43,7 +43,9 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,8 +54,9 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
@@ -85,7 +88,6 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
     private final JSContext context;
     @Child private JSGetOwnPropertyNode getOwnPropertyNode;
     private final ConditionProfile hasFastShapesProfile = ConditionProfile.create();
-    private final BranchProfile growProfile = BranchProfile.create();
 
     protected EnumerableOwnPropertyNamesNode(JSContext context, boolean keys, boolean values) {
         this.context = context;
@@ -115,7 +117,8 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
                     @Cached JSClassProfile jsclassProfile,
                     @Cached ListSizeNode listSize,
                     @Cached ListGetNode listGet,
-                    @Cached HasOnlyShapePropertiesNode hasOnlyShapeProperties) {
+                    @Cached HasOnlyShapePropertiesNode hasOnlyShapeProperties,
+                    @Cached @Exclusive InlinedBranchProfile growProfile) {
         JSClass jsclass = jsclassProfile.getJSClass(thisObj);
         if (hasFastShapesProfile.profile(keys && !values && JSConfig.FastOwnKeys && hasOnlyShapeProperties.execute(thisObj, jsclass))) {
             return JSShape.getEnumerablePropertyNames(thisObj.getShape());
@@ -141,7 +144,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
                                 element = createKeyValuePair(key, value);
                             }
                         }
-                        properties.add(element, growProfile);
+                        properties.add(element, this, growProfile);
                     }
                 }
             }
@@ -161,13 +164,15 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
         return getOwnPropertyNode.execute(thisObj, key);
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = "isForeignObject(obj)", limit = "InteropLibraryLimit")
     protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNamesForeign(Object obj,
+                    @Bind("this") Node node,
                     @CachedLibrary("obj") InteropLibrary interop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary asString,
                     @Cached ImportValueNode importValue,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached @Exclusive InlinedBranchProfile errorBranch) {
         try {
             long arraySize = 0;
             if (interop.hasArrayElements(obj)) {
@@ -181,7 +186,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
             }
             long size = arraySize + memberCount;
             if (arraySize < 0 || memberCount < 0 || size < 0 || size >= Integer.MAX_VALUE) {
-                errorBranch.enter();
+                errorBranch.enter(node);
                 throw Errors.createRangeErrorInvalidArrayLength();
             }
             if (size > 0) {

@@ -47,7 +47,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
@@ -103,14 +103,14 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isAnyfunc(type)")
     final Object anyfunc(Object value, @SuppressWarnings("unused") TruffleString type,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         if (value == Null.instance) {
             return getRealm().getWasmRefNull();
         } else {
             if (JSWebAssembly.isExportedFunction(value)) {
                 return JSWebAssembly.getExportedFunction((JSDynamicObject) value);
             }
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw notAnExportedFunctionError();
         }
     }

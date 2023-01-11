@@ -44,11 +44,13 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
@@ -110,15 +112,16 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doDouble", "doBigInt"})
-    protected Object doGeneric(Object a, Object b,
+    protected static Object doGeneric(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached JSToNumericNode toNumericA,
                     @Cached JSToNumericNode toNumericB,
                     @Cached("copyRecursive()") JavaScriptNode subtract,
-                    @Cached BranchProfile mixedNumericTypes) {
+                    @Cached InlinedBranchProfile mixedNumericTypes) {
 
         Object castA = toNumericA.execute(a);
         Object castB = toNumericB.execute(b);
-        ensureBothSameNumericType(castA, castB, mixedNumericTypes);
+        ensureBothSameNumericType(castA, castB, node, mixedNumericTypes);
         return ((JSSubtractNode) subtract).execute(castA, castB);
     }
 

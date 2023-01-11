@@ -42,14 +42,16 @@ package com.oracle.truffle.js.nodes.binary;
 
 import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
@@ -143,8 +145,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     public abstract Object execute(Object left, Object right);
 
     @Specialization(guards = {"!isNumeric()", "!isAddition()"})
-    protected Object doToOperandGeneric(Object left,
-                    Object right,
+    protected Object doToOperandGeneric(Object left, Object right,
                     @Cached("create(getHint(), !isEquality())") JSToOperandNode toOperandLeftNode,
                     @Cached("create(getHint(), !isEquality())") JSToOperandNode toOperandRightNode,
                     @Cached("create(getOverloadedOperatorName())") @Shared("dispatchBinaryOperator") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
@@ -162,16 +163,17 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         return dispatchBinaryOperatorNode.execute(leftOperand, rightOperand);
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"!isNumeric()", "isAddition()"})
-    protected Object doToOperandAddition(Object left,
-                    Object right,
+    protected Object doToOperandAddition(Object left, Object right,
+                    @Bind("this") Node node,
                     @Cached("create(getHint())") JSToOperandNode toOperandLeftNode,
                     @Cached("create(getHint())") JSToOperandNode toOperandRightNode,
                     @Cached("create(getOverloadedOperatorName())") @Shared("dispatchBinaryOperator") DispatchBinaryOperatorNode dispatchBinaryOperatorNode,
                     @Cached JSToStringNode toStringLeftNode,
                     @Cached JSToStringNode toStringRightNode,
-                    @Cached ConditionProfile leftStringProfile,
-                    @Cached ConditionProfile rightStringProfile,
+                    @Cached InlinedConditionProfile leftStringProfile,
+                    @Cached InlinedConditionProfile rightStringProfile,
                     @Cached("createUnoptimized()") JSAddNode addNode) {
         Object leftOperand;
         Object rightOperand;
@@ -186,9 +188,9 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
 
         // Addition with Strings cannot be overloaded. If either operand of + is a String, the
         // result is always the concatenation of their String values.
-        if (leftStringProfile.profile(isString(leftOperand))) {
+        if (leftStringProfile.profile(node, isString(leftOperand))) {
             return addNode.execute(leftOperand, toStringRightNode.executeString(rightOperand));
-        } else if (rightStringProfile.profile(isString(rightOperand))) {
+        } else if (rightStringProfile.profile(node, isString(rightOperand))) {
             return addNode.execute(toStringLeftNode.executeString(leftOperand), rightOperand);
         } else {
             return dispatchBinaryOperatorNode.execute(leftOperand, rightOperand);
@@ -196,8 +198,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isNumeric()"})
-    protected Object doToNumericOperand(Object left,
-                    Object right,
+    protected Object doToNumericOperand(Object left, Object right,
                     @Cached("create(true)") JSToNumericNode toNumericOperandLeftNode,
                     @Cached("create(true)") JSToNumericNode toNumericOperandRightNode,
                     @Cached("create(getOverloadedOperatorName())") @Shared("dispatchBinaryOperator") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {

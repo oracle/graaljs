@@ -47,9 +47,10 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
@@ -91,13 +92,14 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isJSProxy(target)", "property != null"}, limit = "2")
     static boolean cachedOwnProperty(JSDynamicObject target, @SuppressWarnings("unused") String key, int query,
+                    @Bind("this") Node node,
                     @CachedLibrary("target") DynamicObjectLibrary objectLibrary,
                     @Cached @Shared("fromJavaString") @SuppressWarnings("unused") TruffleString.FromJavaStringNode fromJavaStringNode,
                     @Bind("fromJavaString(fromJavaStringNode, key)") TruffleString tStringKey,
                     @Bind("objectLibrary.getProperty(target, tStringKey)") Property property,
                     @Cached @Shared("isCallable") IsCallableNode isCallable,
-                    @Cached BranchProfile proxyBranch,
-                    @Cached BranchProfile moduleNamespaceBranch) {
+                    @Cached InlinedBranchProfile proxyBranch,
+                    @Cached InlinedBranchProfile moduleNamespaceBranch) {
         if (JSProperty.isAccessor(property)) {
             Accessor accessor = (Accessor) Properties.getOrDefault(objectLibrary, target, tStringKey, null);
             if ((query & READABLE) != 0 && accessor.hasGetter()) {
@@ -128,11 +130,11 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
                 Object value = Properties.getOrDefault(objectLibrary, target, tStringKey, Undefined.instance);
                 if (JSProperty.isDataSpecial(property)) {
                     if (JSProperty.isProxy(property)) {
-                        proxyBranch.enter();
+                        proxyBranch.enter(node);
                         value = ((PropertyProxy) value).get(target);
                     } else {
                         assert JSProperty.isModuleNamespaceExport(property) : property;
-                        moduleNamespaceBranch.enter();
+                        moduleNamespaceBranch.enter(node);
                         value = JSModuleNamespace.getBindingValue((ExportResolution) value);
                     }
                 }

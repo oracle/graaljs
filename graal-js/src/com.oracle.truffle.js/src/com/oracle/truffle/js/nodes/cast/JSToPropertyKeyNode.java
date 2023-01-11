@@ -47,7 +47,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -82,9 +82,9 @@ public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
     protected Object doOther(Object value,
                     @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode,
                     @Cached JSToStringNode toStringNode,
-                    @Cached ConditionProfile isSymbol) {
+                    @Cached InlinedConditionProfile isSymbol) {
         Object key = toPrimitiveNode.execute(value);
-        if (isSymbol.profile(key instanceof Symbol)) {
+        if (isSymbol.profile(this, key instanceof Symbol)) {
             return key;
         } else {
             return toStringNode.executeString(key);

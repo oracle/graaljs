@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,8 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
@@ -57,8 +58,6 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 public final class SpreadArgumentNode extends JavaScriptNode {
     @Child private GetIteratorNode getIteratorNode;
     @Child private IteratorGetNextValueNode iteratorStepNode;
-    private final BranchProfile errorBranch = BranchProfile.create();
-    private final BranchProfile listGrowProfile = BranchProfile.create();
     private final JSContext context;
 
     private SpreadArgumentNode(JSContext context, GetIteratorNode getIteratorNode) {
@@ -79,11 +78,11 @@ public final class SpreadArgumentNode extends JavaScriptNode {
     @Override
     public Object[] execute(VirtualFrame frame) {
         SimpleArrayList<Object> argList = new SimpleArrayList<>();
-        executeToList(frame, argList, listGrowProfile);
+        executeToList(frame, argList, null, InlinedBranchProfile.getUncached(), InlinedBranchProfile.getUncached());
         return argList.toArray();
     }
 
-    public void executeToList(VirtualFrame frame, SimpleArrayList<Object> argList, BranchProfile growProfile) {
+    public void executeToList(VirtualFrame frame, SimpleArrayList<Object> argList, Node node, InlinedBranchProfile growBranch, InlinedBranchProfile errorBranch) {
         IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
         for (;;) {
             Object nextArg = iteratorStepNode.execute(frame, iteratorRecord);
@@ -91,18 +90,15 @@ public final class SpreadArgumentNode extends JavaScriptNode {
                 break;
             }
             if (argList.size() >= context.getFunctionArgumentsLimit()) {
-                errorBranch.enter();
+                errorBranch.enter(node);
                 throw Errors.createRangeError("spreaded function argument count exceeds limit");
             }
-            argList.add(nextArg, growProfile);
+            argList.add(nextArg, node, growBranch);
         }
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        SpreadArgumentNode copy = (SpreadArgumentNode) copy();
-        copy.getIteratorNode = cloneUninitialized(getIteratorNode, materializedTags);
-        copy.iteratorStepNode = cloneUninitialized(iteratorStepNode, materializedTags);
-        return copy;
+        return create(context, cloneUninitialized(getIteratorNode, materializedTags));
     }
 }

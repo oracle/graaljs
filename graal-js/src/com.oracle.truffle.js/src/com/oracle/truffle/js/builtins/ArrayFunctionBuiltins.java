@@ -43,9 +43,11 @@ package com.oracle.truffle.js.builtins;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayFromNodeGen;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayOfNodeGen;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSIsArrayNodeGen;
@@ -273,15 +275,16 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected JSDynamicObject arrayFrom(Object thisObj, Object[] args) {
+        protected JSDynamicObject arrayFrom(Object thisObj, Object[] args,
+                        @Cached InlinedBranchProfile growProfile) {
             Object items = JSRuntime.getArgOrUndefined(args, 0);
             Object mapFn = JSRuntime.getArgOrUndefined(args, 1);
             Object thisArg = JSRuntime.getArgOrUndefined(args, 2);
 
-            return arrayFromIntl(thisObj, items, mapFn, thisArg, true);
+            return arrayFromIntl(thisObj, items, mapFn, thisArg, true, growProfile);
         }
 
-        protected JSDynamicObject arrayFromIntl(Object thisObj, Object items, Object mapFn, Object thisArg, boolean setLength) {
+        protected JSDynamicObject arrayFromIntl(Object thisObj, Object items, Object mapFn, Object thisArg, boolean setLength, InlinedBranchProfile growProfile) {
             boolean mapping;
             if (mapFn == Undefined.instance) {
                 mapping = false;
@@ -291,7 +294,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
             Object usingIterator = getIteratorMethodNode.executeWithTarget(items);
             if (isIterable.profile(usingIterator != Undefined.instance)) {
-                return arrayFromIterable(thisObj, items, usingIterator, mapFn, thisArg, mapping);
+                return arrayFromIterable(thisObj, items, usingIterator, mapFn, thisArg, mapping, growProfile);
             } else {
                 // NOTE: source is not an Iterable so assume it is already an array-like object.
                 Object itemsObject = toObject(items);
@@ -299,7 +302,8 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
-        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
+        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping,
+                        @SuppressWarnings("unused") InlinedBranchProfile growProfile) {
             JSDynamicObject obj = constructOrArray(thisObj, 0, false);
 
             IteratorRecord iteratorRecord = getIterator(items, usingIterator);

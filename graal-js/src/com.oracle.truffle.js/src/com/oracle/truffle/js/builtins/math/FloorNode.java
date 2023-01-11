@@ -43,7 +43,7 @@ package com.oracle.truffle.js.builtins.math;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -72,21 +72,21 @@ public abstract class FloorNode extends MathOperation {
     }
 
     @Specialization
-    protected static Object floorDouble(double d,
-                    @Cached @Shared("isZero") ConditionProfile isZero,
-                    @Cached @Shared("fitsInt") ConditionProfile fitsInt,
-                    @Cached @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
-                    @Cached @Shared("smaller") ConditionProfile smaller) {
-        if (isZero.profile(d == 0.0)) {
+    protected final Object floorDouble(double d,
+                    @Cached @Shared("isZero") InlinedConditionProfile isZero,
+                    @Cached @Shared("fitsInt") InlinedConditionProfile fitsInt,
+                    @Cached @Shared("fitsSafeLong") InlinedConditionProfile fitsSafeLong,
+                    @Cached @Shared("smaller") InlinedConditionProfile smaller) {
+        if (isZero.profile(this, d == 0.0)) {
             // floor(-0.0) => -0.0
             // floor(+0.0) => +0.0
             return d;
-        } else if (fitsInt.profile(d >= Integer.MIN_VALUE && d <= Integer.MAX_VALUE)) {
+        } else if (fitsInt.profile(this, d >= Integer.MIN_VALUE && d <= Integer.MAX_VALUE)) {
             int i = (int) d;
-            return smaller.profile(d < i) ? i - 1 : i;
-        } else if (fitsSafeLong.profile(JSRuntime.isSafeInteger(d))) {
+            return smaller.profile(this, d < i) ? i - 1 : i;
+        } else if (fitsSafeLong.profile(this, JSRuntime.isSafeInteger(d))) {
             long i = (long) d;
-            long result = smaller.profile(d < i) ? i - 1 : i;
+            long result = smaller.profile(this, d < i) ? i - 1 : i;
             return SafeInteger.valueOf(result);
         } else {
             return Math.floor(d);
@@ -94,11 +94,11 @@ public abstract class FloorNode extends MathOperation {
     }
 
     @Specialization(replaces = "floorDouble")
-    protected Object floorToDouble(Object a,
-                    @Cached @Shared("isZero") ConditionProfile isZero,
-                    @Cached @Shared("fitsInt") ConditionProfile fitsInt,
-                    @Cached @Shared("fitsSafeLong") ConditionProfile fitsSafeLong,
-                    @Cached @Shared("smaller") ConditionProfile smaller) {
+    protected final Object floorToDouble(Object a,
+                    @Cached @Shared("isZero") InlinedConditionProfile isZero,
+                    @Cached @Shared("fitsInt") InlinedConditionProfile fitsInt,
+                    @Cached @Shared("fitsSafeLong") InlinedConditionProfile fitsSafeLong,
+                    @Cached @Shared("smaller") InlinedConditionProfile smaller) {
         double d = toDouble(a);
         return floorDouble(d, isZero, fitsInt, fitsSafeLong, smaller);
     }

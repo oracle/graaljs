@@ -43,7 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryCleanupSomeNodeGen;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryRegisterNodeGen;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryUnregisterNodeGen;
@@ -121,19 +121,19 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
         protected JSDynamicObject register(JSFinalizationRegistryObject thisObj, Object target, Object holdings, Object unregisterTokenArg,
                         @Cached("createSameValue()") JSIdenticalNode sameValueNode,
                         @Cached IsObjectNode isObjectNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (!isObjectNode.executeBoolean(target)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("FinalizationRegistry.prototype.register: invalid target");
             }
             if (sameValueNode.executeBoolean(target, holdings)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("FinalizationRegistry.prototype.register: target and holdings must not be same");
             }
             Object unregisterToken = unregisterTokenArg;
             if (!isObjectNode.executeBoolean(unregisterToken)) {
                 if (unregisterToken != Undefined.instance) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw invalidUnregisterToken(unregisterToken);
                 }
                 unregisterToken = Undefined.instance;
@@ -161,9 +161,9 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
         @Specialization
         protected boolean unregister(JSFinalizationRegistryObject thisObj, Object unregisterToken,
                         @Cached IsObjectNode isObjectNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (!isObjectNode.executeBoolean(unregisterToken)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw invalidUnregisterToken(unregisterToken);
             }
             return JSFinalizationRegistry.removeFromCells(thisObj, unregisterToken);
@@ -188,9 +188,9 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
         @Specialization
         protected JSDynamicObject cleanupSome(JSFinalizationRegistryObject thisObj, Object callback,
                         @Cached IsCallableNode isCallableNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (callback != Undefined.instance && !isCallableNode.executeBoolean(callback)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("FinalizationRegistry: cleanup must be callable");
             }
             JSFinalizationRegistry.cleanupFinalizationRegistry(thisObj, callback);

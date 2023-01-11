@@ -43,7 +43,7 @@ package com.oracle.truffle.js.nodes.intl;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -65,11 +65,11 @@ public abstract class DefaultNumberOptionNode extends JavaScriptBaseNode {
     public int getOption(Object value, int minimum, int maximum,
                     @SuppressWarnings("unused") int fallback,
                     @Cached JSToNumberNode toNumberNode,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         Number numValue = toNumberNode.executeNumber(value);
         double doubleValue = JSRuntime.doubleValue(numValue);
         if (Double.isNaN(doubleValue) || doubleValue < minimum || maximum < doubleValue) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw createRangeError(doubleValue, minimum, maximum);
         }
         return (int) doubleValue;

@@ -41,12 +41,13 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NeverDefault;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -63,10 +64,10 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
     public abstract TruffleString executeString(TruffleString operand);
 
     protected boolean startsOrEndsWithWhitespace(TruffleString.ReadCharUTF16Node readRawNode, TruffleString string,
-                    ConditionProfile isFastNonWhitespace, ConditionProfile isFastWhitespace) {
+                    InlinedConditionProfile isFastNonWhitespace, InlinedConditionProfile isFastWhitespace) {
         assert Strings.length(string) > 0;
-        return isWhiteSpace(readRawNode, string, 0, isFastNonWhitespace, isFastWhitespace) ||
-                        isWhiteSpace(readRawNode, string, Strings.length(string) - 1, isFastNonWhitespace, isFastWhitespace);
+        return isWhiteSpace(readRawNode, string, 0, this, isFastNonWhitespace, isFastWhitespace) ||
+                        isWhiteSpace(readRawNode, string, Strings.length(string) - 1, this, isFastNonWhitespace, isFastWhitespace);
     }
 
     @Specialization(guards = "stringLength(string) == 0")
@@ -77,32 +78,32 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
     @Specialization(guards = {"stringLength(string) > 0", "!startsOrEndsWithWhitespace(readRawNode, string, isFastNonWhitespace, isFastWhitespace)"}, limit = "1")
     protected static TruffleString doStringNoWhitespace(TruffleString string,
                     @Cached @SuppressWarnings("unused") @Shared("readChar") TruffleString.ReadCharUTF16Node readRawNode,
-                    @Cached @SuppressWarnings("unused") @Shared("isFastNonWhitespace") ConditionProfile isFastNonWhitespace,
-                    @Cached @SuppressWarnings("unused") @Shared("isFastWhitespace") ConditionProfile isFastWhitespace) {
+                    @Cached @SuppressWarnings("unused") @Shared("isFastNonWhitespace") InlinedConditionProfile isFastNonWhitespace,
+                    @Cached @SuppressWarnings("unused") @Shared("isFastWhitespace") InlinedConditionProfile isFastWhitespace) {
         return string;
     }
 
     @Specialization(guards = {"stringLength(string) > 0", "startsOrEndsWithWhitespace(readRawNode, string, isFastNonWhitespace, isFastWhitespace)"}, limit = "1")
     protected final TruffleString doString(TruffleString string,
                     @Cached @Shared("readChar") TruffleString.ReadCharUTF16Node readRawNode,
-                    @Cached @Shared("isFastNonWhitespace") ConditionProfile isFastNonWhitespace,
-                    @Cached @Shared("isFastWhitespace") ConditionProfile isFastWhitespace,
+                    @Cached @Shared("isFastNonWhitespace") InlinedConditionProfile isFastNonWhitespace,
+                    @Cached @Shared("isFastWhitespace") InlinedConditionProfile isFastWhitespace,
                     @Cached TruffleString.SubstringByteIndexNode substringNode,
-                    @Cached BranchProfile startsWithWhitespaceBranch,
-                    @Cached BranchProfile endsWithWhitespaceBranch,
-                    @Cached @Exclusive ConditionProfile isEmpty) {
+                    @Cached InlinedBranchProfile startsWithWhitespaceBranch,
+                    @Cached InlinedBranchProfile endsWithWhitespaceBranch,
+                    @Cached @Exclusive InlinedConditionProfile isEmpty) {
         int len = Strings.length(string);
         int firstIdx = 0;
-        if (isWhiteSpace(readRawNode, string, 0, isFastNonWhitespace, isFastWhitespace)) {
-            startsWithWhitespaceBranch.enter();
+        if (isWhiteSpace(readRawNode, string, 0, this, isFastNonWhitespace, isFastWhitespace)) {
+            startsWithWhitespaceBranch.enter(this);
             firstIdx = JSRuntime.firstNonWhitespaceIndex(string, false, readRawNode);
         }
         int lastIdx = len - 1;
-        if (isWhiteSpace(readRawNode, string, len - 1, isFastNonWhitespace, isFastWhitespace)) {
-            endsWithWhitespaceBranch.enter();
+        if (isWhiteSpace(readRawNode, string, len - 1, this, isFastNonWhitespace, isFastWhitespace)) {
+            endsWithWhitespaceBranch.enter(this);
             lastIdx = JSRuntime.lastNonWhitespaceIndex(string, false, readRawNode);
         }
-        if (isEmpty.profile(firstIdx > lastIdx)) {
+        if (isEmpty.profile(this, firstIdx > lastIdx)) {
             return Strings.EMPTY_STRING;
         } else {
             return Strings.substring(JavaScriptLanguage.get(this).getJSContext(), substringNode, string, firstIdx, lastIdx + 1 - firstIdx);
@@ -110,11 +111,11 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
     }
 
     private static boolean isWhiteSpace(TruffleString.ReadCharUTF16Node readRawNode, TruffleString str, int index,
-                    ConditionProfile isFastNonWhitespace, ConditionProfile isFastWhitespace) {
+                    Node node, InlinedConditionProfile isFastNonWhitespace, InlinedConditionProfile isFastWhitespace) {
         char c = Strings.charAt(readRawNode, str, index);
-        if (isFastNonWhitespace.profile(0x0020 < c && c < 0x00A0)) {
+        if (isFastNonWhitespace.profile(node, 0x0020 < c && c < 0x00A0)) {
             return false;
-        } else if (isFastWhitespace.profile(c == ' ' || c == '\n' || c == '\r' || c == '\t')) {
+        } else if (isFastWhitespace.profile(node, c == ' ' || c == '\n' || c == '\r' || c == '\t')) {
             return true;
         } else {
             return JSRuntime.isWhiteSpace(c);

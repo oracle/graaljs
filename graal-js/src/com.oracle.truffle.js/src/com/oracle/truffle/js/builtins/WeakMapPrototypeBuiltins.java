@@ -49,7 +49,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltinsFactory.JSWeakMapDeleteNodeGen;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltinsFactory.JSWeakMapGetNodeGen;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltinsFactory.JSWeakMapHasNodeGen;
@@ -146,12 +146,12 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization
-        protected static boolean delete(JSWeakMapObject thisObj, JSObject key,
+        protected boolean delete(JSWeakMapObject thisObj, JSObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
-                        @Cached ConditionProfile hasInvertedProfile) {
+                        @Cached InlinedConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
             Object inverted = getInvertedMap(key, invertedGetter);
-            if (hasInvertedProfile.profile(inverted != null)) {
+            if (hasInvertedProfile.profile(this, inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
                 return Boundaries.mapRemove(invertedMap, map) != null;
             }
@@ -184,10 +184,10 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization
         protected Object get(JSWeakMapObject thisObj, JSObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
-                        @Cached ConditionProfile hasInvertedProfile) {
+                        @Cached InlinedConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
             Object inverted = getInvertedMap(key, invertedGetter);
-            if (hasInvertedProfile.profile(inverted != null)) {
+            if (hasInvertedProfile.profile(this, inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
                 Object value = mapGet(invertedMap, map);
                 if (value != null) {
@@ -229,10 +229,10 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         protected Object set(JSWeakMapObject thisObj, JSObject key, Object value,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedSetter,
-                        @Cached ConditionProfile hasInvertedProfile) {
+                        @Cached InlinedConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
             Object inverted = getInvertedMap(key, invertedGetter);
-            if (hasInvertedProfile.profile(inverted != null)) {
+            if (hasInvertedProfile.profile(this, inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
                 mapPut(invertedMap, map, value);
             } else {
@@ -273,10 +273,10 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization
         protected boolean has(JSWeakMapObject thisObj, JSObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
-                        @Cached ConditionProfile hasInvertedProfile) {
+                        @Cached InlinedConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
             Object inverted = getInvertedMap(key, invertedGetter);
-            if (hasInvertedProfile.profile(inverted != null)) {
+            if (hasInvertedProfile.profile(this, inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
                 return mapHas(invertedMap, map);
             }

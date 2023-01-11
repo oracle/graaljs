@@ -66,9 +66,12 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.utilities.AssumedValue;
@@ -877,14 +880,16 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return arguments[0];
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "isOneForeignArg(args)", limit = "InteropLibraryLimit")
         protected JSObject constructWithForeignArg(JSDynamicObject newTarget, Object[] args,
+                        @Bind("this") Node node,
                         @CachedLibrary("firstArg(args)") InteropLibrary interop,
                         @Cached("create(getContext())") @Shared("arrayCreate") ArrayCreateNode arrayCreateNode,
-                        @Cached @Exclusive ConditionProfile isNumber,
-                        @Cached @Exclusive BranchProfile rangeErrorProfile) {
+                        @Cached @Exclusive InlinedConditionProfile isNumber,
+                        @Cached @Exclusive InlinedBranchProfile rangeErrorProfile) {
             Object len = args[0];
-            if (isNumber.profile(interop.isNumber(len))) {
+            if (isNumber.profile(node, interop.isNumber(len))) {
                 if (interop.fitsInLong(len)) {
                     try {
                         long length = interop.asLong(len);
@@ -893,11 +898,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                             return swapPrototype(array, newTarget);
                         }
                     } catch (UnsupportedMessageException umex) {
-                        rangeErrorProfile.enter();
+                        rangeErrorProfile.enter(node);
                         throw Errors.createTypeErrorInteropException(len, umex, "asLong", this);
                     }
                 }
-                rangeErrorProfile.enter();
+                rangeErrorProfile.enter(node);
                 throw Errors.createRangeErrorInvalidArrayLength();
             } else {
                 return swapPrototype(JSArray.create(getContext(), getRealm(), ConstantObjectArray.createConstantObjectArray(), args, 1), newTarget);
@@ -906,23 +911,23 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!isOneNumberArg(args)", "!isOneForeignArg(args)"})
         protected JSObject constructArrayVarargs(JSDynamicObject newTarget, Object[] args,
-                        @Cached @Exclusive BranchProfile isIntegerCase,
-                        @Cached @Exclusive BranchProfile isDoubleCase,
-                        @Cached @Exclusive BranchProfile isObjectCase,
-                        @Cached @Exclusive ConditionProfile isLengthZero) {
+                        @Cached @Exclusive InlinedBranchProfile isIntegerCase,
+                        @Cached @Exclusive InlinedBranchProfile isDoubleCase,
+                        @Cached @Exclusive InlinedBranchProfile isObjectCase,
+                        @Cached @Exclusive InlinedConditionProfile isLengthZero) {
             JSRealm realm = getRealm();
-            if (isLengthZero.profile(args == null || args.length == 0)) {
+            if (isLengthZero.profile(this, args == null || args.length == 0)) {
                 return swapPrototype(JSArray.create(getContext(), realm, ScriptArray.createConstantEmptyArray(), args, 0), newTarget);
             } else {
                 ArrayContentType type = ArrayLiteralNode.identifyPrimitiveContentType(args, false);
                 if (type == ArrayContentType.Integer) {
-                    isIntegerCase.enter();
+                    isIntegerCase.enter(this);
                     return swapPrototype(JSArray.createZeroBasedIntArray(getContext(), realm, ArrayLiteralNode.createIntArray(args)), newTarget);
                 } else if (type == ArrayContentType.Double) {
-                    isDoubleCase.enter();
+                    isDoubleCase.enter(this);
                     return swapPrototype(JSArray.createZeroBasedDoubleArray(getContext(), realm, ArrayLiteralNode.createDoubleArray(args)), newTarget);
                 } else {
-                    isObjectCase.enter();
+                    isObjectCase.enter(this);
                     return swapPrototype(JSArray.create(getContext(), realm, ConstantObjectArray.createConstantObjectArray(), args, args.length), newTarget);
                 }
             }
@@ -1057,7 +1062,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length == 1"})
         protected JSDynamicObject constructDateOne(JSDynamicObject newTarget, Object[] args,
-                        @Cached ConditionProfile isSpecialCase,
+                        @Cached InlinedConditionProfile isSpecialCase,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             double dateValue = getDateValue(args[0], interop);
             return swapPrototype(JSDate.create(getContext(), getRealm(), timeClip(dateValue, isSpecialCase)), newTarget);
@@ -1070,8 +1075,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         // inlined JSDate.timeClip to use profiles
-        private static double timeClip(double dateValue, ConditionProfile isSpecialCase) {
-            if (isSpecialCase.profile(Double.isInfinite(dateValue) || Double.isNaN(dateValue) || Math.abs(dateValue) > JSDate.MAX_DATE)) {
+        private double timeClip(double dateValue, InlinedConditionProfile isSpecialCase) {
+            if (isSpecialCase.profile(this, Double.isInfinite(dateValue) || Double.isNaN(dateValue) || Math.abs(dateValue) > JSDate.MAX_DATE)) {
                 return Double.NaN;
             }
             return (long) dateValue;
@@ -1437,20 +1442,20 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSDynamicObject constructRegExp(JSDynamicObject newTarget, Object pattern, Object flags,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode,
-                        @Cached BranchProfile regexpObject,
-                        @Cached BranchProfile regexpMatcherObject,
-                        @Cached BranchProfile regexpNonObject,
-                        @Cached BranchProfile regexpObjectNewFlagsBranch,
-                        @Cached ConditionProfile callIsRegExpProfile,
-                        @Cached ConditionProfile constructorEquivalentProfile) {
+                        @Cached InlinedBranchProfile regexpObject,
+                        @Cached InlinedBranchProfile regexpMatcherObject,
+                        @Cached InlinedBranchProfile regexpNonObject,
+                        @Cached InlinedBranchProfile regexpObjectNewFlagsBranch,
+                        @Cached InlinedConditionProfile callIsRegExpProfile,
+                        @Cached InlinedConditionProfile constructorEquivalentProfile) {
             boolean hasMatchSymbol = isRegExpNode.executeBoolean(pattern);
             boolean legacyFeaturesEnabled;
             if (isCall) {
                 // we are in the "call" case, i.e. NewTarget is undefined (before)
-                if (callIsRegExpProfile.profile(hasMatchSymbol && flags == Undefined.instance && JSDynamicObject.isJSDynamicObject(pattern))) {
+                if (callIsRegExpProfile.profile(this, hasMatchSymbol && flags == Undefined.instance && JSDynamicObject.isJSDynamicObject(pattern))) {
                     JSDynamicObject patternObj = (JSDynamicObject) pattern;
                     Object patternConstructor = getConstructor(patternObj);
-                    if (constructorEquivalentProfile.profile(patternConstructor == getRealm().getRegExpConstructor())) {
+                    if (constructorEquivalentProfile.profile(this, patternConstructor == getRealm().getRegExpConstructor())) {
                         return patternObj;
                     }
                 }
@@ -1465,12 +1470,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         protected JSRegExpObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol, boolean legacyFeaturesEnabled,
-                        BranchProfile regexpObject, BranchProfile regexpMatcherObject, BranchProfile regexpNonObject, BranchProfile regexpObjectNewFlagsBranch) {
+                        InlinedBranchProfile regexpObject,
+                        InlinedBranchProfile regexpMatcherObject,
+                        InlinedBranchProfile regexpNonObject,
+                        InlinedBranchProfile regexpObjectNewFlagsBranch) {
             Object p;
             Object f;
             boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);
             if (isJSRegExp) {
-                regexpObject.enter();
+                regexpObject.enter(this);
                 Object compiledRegex = JSRegExp.getCompiledRegex((JSDynamicObject) patternObj);
                 if (flags == Undefined.instance) {
                     return getCreateRegExpNode().createRegExp(compiledRegex);
@@ -1479,12 +1487,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         throw Errors.createTypeError("Cannot supply flags when constructing one RegExp from another");
                     }
                     Object flagsStr = flagsToString(flags);
-                    regexpObjectNewFlagsBranch.enter();
+                    regexpObjectNewFlagsBranch.enter(this);
                     Object newCompiledRegex = getCompileRegexNode().compile(getInteropReadPatternNode().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN), flagsStr);
                     return getCreateRegExpNode().createRegExp(newCompiledRegex);
                 }
             } else if (hasMatchSymbol) {
-                regexpMatcherObject.enter();
+                regexpMatcherObject.enter(this);
                 JSDynamicObject patternJSObj = (JSDynamicObject) patternObj;
                 p = getSource(patternJSObj);
                 if (flags == Undefined.instance) {
@@ -1493,7 +1501,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     f = flags;
                 }
             } else {
-                regexpNonObject.enter();
+                regexpNonObject.enter(this);
                 p = patternObj;
                 f = flags;
             }
@@ -1931,13 +1939,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return newObject(newTarget);
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"}, limit = "InteropLibraryLimit")
         protected Object constructObjectJSObject(@SuppressWarnings("unused") JSDynamicObject newTarget, Object[] arguments,
+                        @Bind("this") Node node,
                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
                         @CachedLibrary("firstArgument(arguments)") InteropLibrary interop,
-                        @Cached ConditionProfile isNull) {
+                        @Cached InlinedConditionProfile isNull) {
             Object arg0 = arguments[0];
-            if (isNull.profile(interop.isNull(arg0))) {
+            if (isNull.profile(node, interop.isNull(arg0))) {
                 return newObject(Null.instance);
             } else {
                 return toObjectNode.execute(arg0);
@@ -2065,12 +2075,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected final JSDynamicObject constructFunction(JSDynamicObject newTarget, Object[] args,
-                        @Cached ConditionProfile hasArgsProfile,
-                        @Cached ConditionProfile hasParamsProfile) {
+                        @Cached InlinedConditionProfile hasArgsProfile,
+                        @Cached InlinedConditionProfile hasParamsProfile) {
             int argc = args.length;
             TruffleString[] params;
             TruffleString body;
-            if (hasArgsProfile.profile(argc > 0)) {
+            if (hasArgsProfile.profile(this, argc > 0)) {
                 params = new TruffleString[argc - 1];
                 for (int i = 0; i < argc - 1; i++) {
                     params[i] = toStringNode.executeString(args[i]);
@@ -2080,7 +2090,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 params = new TruffleString[0];
                 body = Strings.EMPTY_STRING;
             }
-            TruffleString paramList = hasParamsProfile.profile(argc > 1) ? join(params) : Strings.EMPTY_STRING;
+            TruffleString paramList = hasParamsProfile.profile(this, argc > 1) ? join(params) : Strings.EMPTY_STRING;
             return swapPrototype(functionNode.executeFunction(Strings.toJavaString(paramList), Strings.toJavaString(body), getSourceName()), newTarget);
         }
 
@@ -2269,7 +2279,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"!bufferInterop.hasBufferElements(length)"})
         protected JSDynamicObject constructFromLength(JSDynamicObject newTarget, Object length,
                         @Cached JSToIndexNode toIndexNode,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") @SuppressWarnings("unused") InteropLibrary bufferInterop) {
             long byteLength = toIndexNode.executeLong(length);
 
@@ -2279,7 +2289,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
 
             if (byteLength > getContext().getContextOptions().getMaxTypedArrayLength()) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("Array buffer allocation failed");
             }
 
@@ -2303,9 +2313,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"bufferInterop.hasBufferElements(buffer)"})
         protected JSDynamicObject constructFromInteropBuffer(JSDynamicObject newTarget, Object buffer,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") @SuppressWarnings("unused") InteropLibrary bufferInterop) {
-            getBufferSizeSafe(buffer, bufferInterop, errorBranch);
+            getBufferSizeSafe(buffer, bufferInterop, this, errorBranch);
             return swapPrototype(JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), buffer), newTarget);
         }
 
@@ -2314,11 +2324,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return useShared ? realm.getSharedArrayBufferPrototype() : realm.getArrayBufferPrototype();
         }
 
-        static int getBufferSizeSafe(Object buffer, InteropLibrary bufferInterop, BranchProfile errorBranch) {
+        static int getBufferSizeSafe(Object buffer, InteropLibrary bufferInterop, Node node, InlinedBranchProfile errorBranch) {
             try {
                 long bufferSize = bufferInterop.getBufferSize(buffer);
                 if (bufferSize < 0 || bufferSize > Integer.MAX_VALUE) {
-                    errorBranch.enter();
+                    errorBranch.enter(node);
                     throw Errors.createRangeErrorInvalidBufferSize();
                 }
                 return (int) bufferSize;
@@ -2464,8 +2474,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"isJSHeapArrayBuffer(buffer)"})
         protected final JSDynamicObject ofHeapArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
+                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode) {
             return constructDataView(newTarget, buffer, byteOffset, byteLength, false, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
@@ -2473,8 +2483,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"isJSDirectOrSharedArrayBuffer(buffer)"})
         protected final JSDynamicObject ofDirectArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
+                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode) {
             return constructDataView(newTarget, buffer, byteOffset, byteLength, true, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
@@ -2482,8 +2492,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"isJSInteropArrayBuffer(buffer)"})
         protected final JSDynamicObject ofInteropArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
+                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
@@ -2492,8 +2502,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!isJSAbstractBuffer(buffer)", "bufferInterop.hasBufferElements(buffer)"})
         protected final JSDynamicObject ofInteropBuffer(JSDynamicObject newTarget, Object buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
+                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
@@ -2510,40 +2520,40 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         protected final JSDynamicObject constructDataView(JSDynamicObject newTarget, JSDynamicObject arrayBuffer, Object byteOffset, Object byteLength,
                         boolean direct, boolean isInteropBuffer,
-                        BranchProfile errorBranch,
-                        ConditionProfile byteLengthCondition,
+                        InlinedBranchProfile errorBranch,
+                        InlinedConditionProfile byteLengthCondition,
                         JSToIndexNode offsetToIndexNode,
                         JSToIndexNode lengthToIndexNode,
                         InteropLibrary bufferInterop) {
             long offset = offsetToIndexNode.executeLong(byteOffset);
 
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("detached buffer cannot be used");
             }
 
             int bufferByteLength;
             if (isInteropBuffer) {
-                bufferByteLength = ConstructArrayBufferNode.getBufferSizeSafe(JSArrayBuffer.getInteropBuffer(arrayBuffer), bufferInterop, errorBranch);
+                bufferByteLength = ConstructArrayBufferNode.getBufferSizeSafe(JSArrayBuffer.getInteropBuffer(arrayBuffer), bufferInterop, this, errorBranch);
             } else if (direct) {
                 bufferByteLength = JSArrayBuffer.getDirectByteLength(arrayBuffer);
             } else {
                 bufferByteLength = JSArrayBuffer.getHeapByteLength(arrayBuffer);
             }
             if (offset > bufferByteLength) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("offset > bufferByteLength");
             }
 
             final long viewByteLength;
-            if (byteLengthCondition.profile(byteLength != Undefined.instance)) {
+            if (byteLengthCondition.profile(this, byteLength != Undefined.instance)) {
                 viewByteLength = lengthToIndexNode.executeLong(byteLength);
                 if (viewByteLength < 0) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createRangeError("viewByteLength < 0");
                 }
                 if (offset + viewByteLength > bufferByteLength) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createRangeError("offset + viewByteLength > bufferByteLength");
                 }
             } else {
@@ -2552,7 +2562,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             assert offset >= 0 && offset <= Integer.MAX_VALUE && viewByteLength >= 0 && viewByteLength <= Integer.MAX_VALUE;
             JSDynamicObject result = swapPrototype(JSDataView.createDataView(getContext(), getRealm(), arrayBuffer, (int) offset, (int) viewByteLength), newTarget);
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorDetachedBuffer();
             }
             return result;

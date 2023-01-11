@@ -43,7 +43,7 @@ package com.oracle.truffle.js.builtins.math;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -56,14 +56,14 @@ public abstract class AsinhNode extends MathOperation {
 
     @Specialization
     protected double asinhDouble(double x,
-                    @Cached @Shared("isNegative") ConditionProfile isNegative) {
+                    @Cached @Shared("isNegative") InlinedConditionProfile isNegative) {
         if (JSRuntime.isNegativeZero(x)) {
             return -0.0;
         }
         if (x < 0 && Double.isInfinite(x)) {
             return x;
         }
-        if (isNegative.profile(x < 0)) {
+        if (isNegative.profile(this, x < 0)) {
             return -asinhImpl(-x);
         } else {
             return asinhImpl(x);
@@ -76,7 +76,7 @@ public abstract class AsinhNode extends MathOperation {
 
     @Specialization
     protected double asinhGeneric(Object a,
-                    @Cached @Shared("isNegative") ConditionProfile isNegative) {
+                    @Cached @Shared("isNegative") InlinedConditionProfile isNegative) {
         return asinhDouble(toDouble(a), isNegative);
     }
 }

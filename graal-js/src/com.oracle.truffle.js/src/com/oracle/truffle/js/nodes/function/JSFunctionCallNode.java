@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -52,9 +53,11 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.InlineSupport.StateField;
+import com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -72,6 +75,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -111,6 +115,7 @@ import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
+import com.oracle.truffle.js.runtime.util.InlinedProfileBuilder;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaScriptFunctionCallNode {
@@ -491,7 +496,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     @ExplodeLoop
-    protected static Object[] executeFillObjectArraySpread(JavaScriptNode[] arguments, VirtualFrame frame, Object[] args, int fixedArgumentsLength, BranchProfile growProfile) {
+    protected static Object[] executeFillObjectArraySpread(JavaScriptNode[] arguments, VirtualFrame frame, Object[] args, int fixedArgumentsLength,
+                    Node node, InlinedBranchProfile growBranch, InlinedBranchProfile errorBranch) {
         // assume size that avoids growing
         SimpleArrayList<Object> argList = SimpleArrayList.create((long) fixedArgumentsLength + arguments.length + JSConfig.SpreadArgumentPlaceholderCount);
         for (int i = 0; i < fixedArgumentsLength; i++) {
@@ -499,9 +505,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
         for (int i = 0; i < arguments.length; i++) {
             if (arguments[i] instanceof SpreadArgumentNode) {
-                ((SpreadArgumentNode) arguments[i]).executeToList(frame, argList, growProfile);
+                ((SpreadArgumentNode) arguments[i]).executeToList(frame, argList, node, growBranch, errorBranch);
             } else {
-                argList.add(arguments[i].execute(frame), growProfile);
+                argList.add(arguments[i].execute(frame), node, growBranch);
             }
         }
         return argList.toArray();
@@ -536,7 +542,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         protected abstract void materializeInstrumentableArguments();
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public final Object execute(VirtualFrame frame) {
             Object target = executeTarget(frame);
             Object receiver = evaluateReceiver(frame, target);
             Object function = functionNode.execute(frame);
@@ -687,7 +693,17 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     static class CallSpreadNode extends CallNNode {
 
-        private final BranchProfile growProfile = BranchProfile.create();
+        @CompilationFinal @UnsafeAccessedField private int state;
+
+        private static final StateField STATE_FIELD = StateField.create(MethodHandles.lookup(), "state");
+
+        private static final InlinedBranchProfile growBranch;
+        private static final InlinedBranchProfile errorBranch;
+        static {
+            var b = new InlinedProfileBuilder(STATE_FIELD);
+            growBranch = b.branchProfile();
+            errorBranch = b.branchProfile();
+        }
 
         protected CallSpreadNode(JavaScriptNode targetNode, JavaScriptNode functionNode, JavaScriptNode[] arguments, byte flags) {
             super(targetNode, functionNode, arguments, flags);
@@ -695,7 +711,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
-            return executeFillObjectArraySpread(arguments, frame, args, delta, growProfile);
+            return executeFillObjectArraySpread(arguments, frame, args, delta, this, growBranch, errorBranch);
         }
 
         @Override
@@ -739,7 +755,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         protected abstract void materializeInstrumentableArguments();
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public final Object execute(VirtualFrame frame) {
             Object target = executeTarget(frame);
             Object receiver = evaluateReceiver(frame, target);
             Object function = executeFunctionWithTarget(frame, target);
@@ -923,7 +939,18 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     static class InvokeSpreadNode extends InvokeNNode {
-        private final BranchProfile growProfile = BranchProfile.create();
+
+        @CompilationFinal @UnsafeAccessedField private int state;
+
+        private static final StateField STATE_FIELD = StateField.create(MethodHandles.lookup(), "state");
+
+        private static final InlinedBranchProfile growBranch;
+        private static final InlinedBranchProfile errorBranch;
+        static {
+            var b = new InlinedProfileBuilder(STATE_FIELD);
+            growBranch = b.branchProfile();
+            errorBranch = b.branchProfile();
+        }
 
         protected InvokeSpreadNode(JSTargetableNode functionNode, JavaScriptNode[] arguments, byte flags) {
             this(null, functionNode, arguments, flags);
@@ -935,7 +962,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
-            return executeFillObjectArraySpread(arguments, frame, args, delta, growProfile);
+            return executeFillObjectArraySpread(arguments, frame, args, delta, this, growBranch, errorBranch);
         }
 
         @Override

@@ -44,7 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -71,12 +71,12 @@ public abstract class IsRegExpNode extends JavaScriptBaseNode {
                     @Cached IsJSObjectNode isObjectNode,
                     @Cached JSToBooleanNode toBooleanNode,
                     @Cached("createIsJSRegExpNode()") IsJSClassNode isJSRegExpNode,
-                    @Cached ConditionProfile hasMatchSymbol) {
+                    @Cached InlinedConditionProfile hasMatchSymbol) {
         if (!isObjectNode.executeBoolean(obj)) {
             return false;
         }
         Object isRegExp = getSymbolMatchNode.getValue(obj);
-        if (hasMatchSymbol.profile(isRegExp != Undefined.instance)) {
+        if (hasMatchSymbol.profile(this, isRegExp != Undefined.instance)) {
             return toBooleanNode.executeBoolean(isRegExp);
         } else {
             return isJSRegExpNode.executeBoolean(obj);

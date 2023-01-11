@@ -46,7 +46,7 @@ import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -75,15 +75,15 @@ public abstract class JSConcatStringsNode extends JavaScriptBaseNode {
 
     @Specialization
     protected final TruffleString doConcat(TruffleString left, TruffleString right,
-                    @Cached BranchProfile errorBranch,
+                    @Cached InlinedBranchProfile errorBranch,
                     @Cached TruffleString.ConcatNode concatNode) {
         validateStringLength(Strings.length(left) + Strings.length(right), errorBranch);
         return Strings.concat(concatNode, left, right);
     }
 
-    private void validateStringLength(int resultLength, BranchProfile errorBranch) {
+    private void validateStringLength(int resultLength, InlinedBranchProfile errorBranch) {
         if (injectBranchProbability(SLOWPATH_PROBABILITY, resultLength < 0 || resultLength > stringLengthLimit)) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createRangeErrorInvalidStringLength(this);
         }
     }

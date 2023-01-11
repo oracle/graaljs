@@ -41,12 +41,14 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -94,30 +96,32 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
         return getArrayType(object).lastElementIndex(object);
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object) == cachedArrayType",
                     "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
-    public long doWithHolesCached(JSDynamicObject object, long length, boolean isArray,
+    public long doWithHolesCached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
+                    @Bind("this") Node node,
                     @Cached("create(context)") @Shared("prevElementIndex") JSArrayPreviousElementIndexNode previousElementIndexNode,
-                    @Cached @Shared("isMinusOne") ConditionProfile isLengthMinusOne) {
+                    @Cached @Shared("isMinusOne") InlinedConditionProfile isLengthMinusOne) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
-        return holesArrayImpl(object, length, cachedArrayType, previousElementIndexNode, isLengthMinusOne, isArray);
+        return holesArrayImpl(object, length, cachedArrayType, node, previousElementIndexNode, isLengthMinusOne);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "doWithHolesCached")
-    public long doWithHolesUncached(JSDynamicObject object, long length, boolean isArray,
+    public long doWithHolesUncached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create(context)") @Shared("prevElementIndex") JSArrayPreviousElementIndexNode previousElementIndexNode,
-                    @Cached @Shared("isMinusOne") ConditionProfile isLengthMinusOne,
-                    @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
+                    @Cached @Shared("isMinusOne") InlinedConditionProfile isLengthMinusOne,
+                    @Cached InlinedExactClassProfile arrayTypeProfile) {
         assert isSupportedArray(object);
-        ScriptArray arrayType = arrayTypeProfile.profile(getArrayType(object));
-        return holesArrayImpl(object, length, arrayType, previousElementIndexNode, isLengthMinusOne, isArray);
+        ScriptArray arrayType = arrayTypeProfile.profile(this, getArrayType(object));
+        return holesArrayImpl(object, length, arrayType, this, previousElementIndexNode, isLengthMinusOne);
     }
 
     private long holesArrayImpl(JSDynamicObject object, long length, ScriptArray array,
-                    JSArrayPreviousElementIndexNode previousElementIndexNode, ConditionProfile isLengthMinusOne, @SuppressWarnings("unused") boolean isArray) {
+                    Node node, JSArrayPreviousElementIndexNode previousElementIndexNode, InlinedConditionProfile isLengthMinusOne) {
         long lastIndex = array.lastElementIndex(object);
-        if (isLengthMinusOne.profile(lastIndex == length - 1)) {
+        if (isLengthMinusOne.profile(node, lastIndex == length - 1)) {
             return lastIndex;
         }
 

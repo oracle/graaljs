@@ -49,7 +49,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltinsFactory.WebAssemblyGlobalGetValueNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltinsFactory.WebAssemblyGlobalSetValueNodeGen;
@@ -187,18 +187,18 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected Object setValue(JSWebAssemblyGlobalObject global, Object[] args,
-                        @Cached BranchProfile errorBranch,
+                        @Cached InlinedBranchProfile errorBranch,
                         @Cached ToWebAssemblyValueNode toWebAssemblyValueNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary globalWriteLib) {
             if (!global.isMutable()) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("set WebAssembly.Global.value: Can't set the value of an immutable global");
             }
             Object wasmGlobal = global.getWASMGlobal();
             try {
                 Object value;
                 if (args.length == 0) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeError("set WebAssembly.Global.value: Argument 0 is required");
                 } else {
                     value = args[0];
@@ -210,7 +210,7 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError(ex, this);
             }
         }
