@@ -41,8 +41,11 @@
 package com.oracle.truffle.js.runtime.util;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.InlineSupport.IntField;
+import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 
 /**
  * Helper interface for {@link com.oracle.truffle.api.profiles.InlinedProfile inlined profile} bags.
@@ -54,14 +57,17 @@ public interface InlinedProfileBag {
         private final InlineTarget inlineTarget;
         private final int[] stateFieldBits;
         private int stateFieldIndex;
+        private int intFieldIndex;
 
         /**
          * Allocates a new inlined profile builder for the given inline target and state field bits.
          */
         public Builder(InlineTarget inlineTarget, int... requiredStateBits) {
-            super(inlineTarget.getState(0, requiredStateBits[0]), 0, requiredStateBits[0]);
-            this.inlineTarget = inlineTarget;
+            super(null, 0, 0);
+            this.inlineTarget = Objects.requireNonNull(inlineTarget);
             this.stateFieldBits = requiredStateBits;
+            this.stateFieldIndex = -1;
+            this.intFieldIndex = requiredStateBits.length;
         }
 
         /**
@@ -84,11 +90,23 @@ public interface InlinedProfileBag {
         }
 
         /**
+         * Adds and returns a new {@link InlinedCountingConditionProfile}.
+         */
+        public InlinedCountingConditionProfile countingConditionProfile() {
+            if (isUncached()) {
+                return InlinedCountingConditionProfile.getUncached();
+            }
+            return InlinedCountingConditionProfile.inline(InlineTarget.create(InlinedCountingConditionProfile.class,
+                            inlineTarget.getPrimitive(intFieldIndex++, IntField.class),
+                            inlineTarget.getPrimitive(intFieldIndex++, IntField.class)));
+        }
+
+        /**
          * Asserts that the used bit count is in sync with the expected required state bits.
          */
         @Override
         public void close() {
-            assert inlineTarget == null || totalUsedBits == Arrays.stream(stateFieldBits).sum() : totalUsedBits;
+            assert isUncached() || totalUsedBits == Arrays.stream(stateFieldBits).sum() : totalUsedBits;
         }
     }
 }

@@ -59,6 +59,7 @@ public class InlinedProfileBuilder {
     protected int stateFieldOffset;
     protected int stateFieldLength;
     protected int totalUsedBits;
+    private final boolean uncached;
 
     /**
      * Allocates a new inlined profile builder for a full stateField.
@@ -74,12 +75,14 @@ public class InlinedProfileBuilder {
         this.stateField = stateField;
         this.stateFieldOffset = offset;
         this.stateFieldLength = length;
+        this.uncached = false;
     }
 
     /**
      * Allocates a new builder for uncached profiles.
      */
     public InlinedProfileBuilder() {
+        this.uncached = true;
     }
 
     protected final void maybeAdvanceStateField(int bits) {
@@ -106,7 +109,7 @@ public class InlinedProfileBuilder {
      * Adds and returns a new {@link InlinedConditionProfile}.
      */
     public final InlinedConditionProfile conditionProfile() {
-        if (stateField == null) {
+        if (isUncached()) {
             return InlinedConditionProfile.getUncached();
         }
         return InlinedConditionProfile.inline(InlineTarget.create(InlinedConditionProfile.class, stateFieldForBits(CONDITION_PROFILE_STATE_BITS)));
@@ -116,9 +119,13 @@ public class InlinedProfileBuilder {
      * Adds and returns a new {@link InlinedBranchProfile}.
      */
     public final InlinedBranchProfile branchProfile() {
-        if (stateField == null) {
+        if (isUncached()) {
             return InlinedBranchProfile.getUncached();
         }
         return InlinedBranchProfile.inline(InlineTarget.create(InlinedBranchProfile.class, stateFieldForBits(BRANCH_PROFILE_STATE_BITS)));
+    }
+
+    protected final boolean isUncached() {
+        return uncached;
     }
 }
