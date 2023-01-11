@@ -244,7 +244,9 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return PROXY_OBJECT;
     }
 
-    @Specialization(guards = {"cachedArray == value.getArrayType()"})
+    static final int TYPED_ARRAY_LIMIT = 3;
+
+    @Specialization(guards = {"cachedArray == value.getArrayType()"}, limit = "TYPED_ARRAY_LIMIT")
     protected final int doArrayBufferView(JSTypedArrayObject value,
                     @Cached("value.getArrayType()") TypedArray cachedArray,
                     @Cached("identifyType(cachedArray)") int cachedTypeInt,
