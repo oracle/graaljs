@@ -159,7 +159,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
                 timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);
-                timeZone = TemporalUtil.createTemporalTimeZone(ctx, timeZoneName);
+                timeZone = TemporalUtil.createTemporalTimeZone(ctx, getRealm(), timeZoneName);
             }
 
             if (resultZDT.getTimeZoneZ()) {

@@ -50,6 +50,7 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
@@ -64,10 +65,10 @@ public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
         this.ctx = context;
     }
 
-    public abstract JSDynamicObject execute(Object item);
+    public abstract JSTemporalDurationObject execute(Object item);
 
     @Specialization
-    protected JSDynamicObject toTemporalDuration(Object item,
+    protected JSTemporalDurationObject toTemporalDuration(Object item,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached IsObjectNode isObjectNode,
@@ -76,7 +77,7 @@ public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
             if (JSTemporalDuration.isJSTemporalDuration(itemObj)) {
-                return itemObj;
+                return (JSTemporalDurationObject) itemObj;
             }
             result = JSTemporalDuration.toTemporalDurationRecord(itemObj);
         } else {

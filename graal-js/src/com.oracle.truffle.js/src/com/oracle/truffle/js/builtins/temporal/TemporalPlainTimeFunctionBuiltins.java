@@ -98,7 +98,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object from(Object item, Object options,
+        protected JSTemporalPlainTimeObject from(Object item, Object options,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
                         @Cached TemporalGetOptionNode getOptionNode) {
             JSDynamicObject normalizedOptions = getOptionsObject(options);
@@ -123,8 +123,8 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected int compare(Object obj1, Object obj2,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime) {
-            JSTemporalPlainTimeObject time1 = (JSTemporalPlainTimeObject) toTemporalTime.execute(obj1, null);
-            JSTemporalPlainTimeObject time2 = (JSTemporalPlainTimeObject) toTemporalTime.execute(obj2, null);
+            JSTemporalPlainTimeObject time1 = toTemporalTime.execute(obj1, null);
+            JSTemporalPlainTimeObject time2 = toTemporalTime.execute(obj2, null);
             return TemporalUtil.compareTemporalTime(
                             time1.getHour(), time1.getMinute(), time1.getSecond(),
                             time1.getMillisecond(), time1.getMicrosecond(), time1.getNanosecond(),

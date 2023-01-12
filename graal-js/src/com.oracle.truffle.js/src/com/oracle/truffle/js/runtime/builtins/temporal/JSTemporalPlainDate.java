@@ -127,21 +127,10 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
-        return createIntl(context, year, month, day, calendar);
+        return createIntl(context, JSRealm.get(node), year, month, day, calendar);
     }
 
-    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, JSDynamicObject calendar) {
-        if (!TemporalUtil.validateISODate(year, month, day)) {
-            throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
-        }
-        if (!TemporalUtil.isoDateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
-            throw TemporalErrors.createRangeErrorDateOutsideRange();
-        }
-        return createIntl(context, year, month, day, calendar);
-    }
-
-    private static JSTemporalPlainDateObject createIntl(JSContext context, int year, int month, int day, JSDynamicObject calendar) {
-        JSRealm realm = JSRealm.get(null);
+    private static JSTemporalPlainDateObject createIntl(JSContext context, JSRealm realm, int year, int month, int day, JSDynamicObject calendar) {
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
         JSTemporalPlainDateObject object = factory.initProto(new JSTemporalPlainDateObject(factory.getShape(realm),
                         year, month, day, calendar), realm);

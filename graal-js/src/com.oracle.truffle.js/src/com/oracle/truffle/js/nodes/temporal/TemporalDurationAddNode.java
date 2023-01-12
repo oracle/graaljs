@@ -101,9 +101,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
                     @Cached InlinedBranchProfile relativeToUndefinedBranch,
                     @Cached InlinedBranchProfile relativeToPlainDateBranch,
                     @Cached InlinedBranchProfile relativeToZonedDateTimeBranch,
-                    @Cached InlinedConditionProfile largetUnitYMWDProfile
-
-    ) {
+                    @Cached InlinedConditionProfile largetUnitYMWDProfile) {
         assert doubleIsInteger(y1) && doubleIsInteger(mon1) && doubleIsInteger(w1) && doubleIsInteger(d1);
         assert doubleIsInteger(h1) && doubleIsInteger(min1) && doubleIsInteger(s1) && doubleIsInteger(ms1) && doubleIsInteger(mus1) && doubleIsInteger(ns1);
         assert doubleIsInteger(y2) && doubleIsInteger(mon2) && doubleIsInteger(w2) && doubleIsInteger(d2);
@@ -158,7 +156,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
                 return TemporalUtil.createDurationRecord(0, 0, 0, 0, result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(),
                                 result.getNanoseconds());
             } else {
-                return TemporalUtil.differenceZonedDateTime(ctx, namesNode, zdt.getNanoseconds(), endNs, timeZone, calendar, largestUnit);
+                return TemporalUtil.differenceZonedDateTime(ctx, getRealm(), namesNode, zdt.getNanoseconds(), endNs, timeZone, calendar, largestUnit);
             }
         }
     }

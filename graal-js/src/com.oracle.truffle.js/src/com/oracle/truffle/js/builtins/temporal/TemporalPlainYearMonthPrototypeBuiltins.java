@@ -285,7 +285,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization
-        protected Object toPlainDate(Object thisObj, Object item,
+        protected JSTemporalPlainDateObject toPlainDate(Object thisObj, Object item,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
                         @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
@@ -316,7 +316,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization
-        public JSDynamicObject getISOFields(Object thisObj) {
+        public JSObject getISOFields(Object thisObj) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
             JSObject obj = JSOrdinary.create(getContext(), getRealm());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, ym.getCalendar());
@@ -359,7 +359,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization
-        protected JSDynamicObject with(Object thisObj, Object temporalYearMonthLike, Object optParam,
+        protected JSTemporalPlainYearMonthObject with(Object thisObj, Object temporalYearMonthLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
                         @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode) {
@@ -397,7 +397,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             super(context, builtin);
         }
 
-        protected JSTemporalPlainYearMonthObject addDurationToOrSubtractDurationFromPlainYearMont(int operation, JSTemporalPlainYearMonthObject ym, Object temporalDurationLike, Object optParam,
+        protected JSTemporalPlainYearMonthObject addDurationToOrSubtractDurationFromPlainYearMonth(int operation, JSTemporalPlainYearMonthObject ym, Object temporalDurationLike, Object optParam,
                         EnumerableOwnPropertyNamesNode namesNode, ToLimitedTemporalDurationNode toLimitedTemporalDurationNode, TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
                         TemporalCalendarFieldsNode calendarFieldsNode, TemporalCalendarGetterNode calendarGetterNode, JSToIntegerThrowOnInfinityNode toIntNode,
                         TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
@@ -475,7 +475,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization
-        protected JSDynamicObject add(Object thisObj, Object temporalDurationLike, Object optParam,
+        protected JSTemporalPlainYearMonthObject add(Object thisObj, Object temporalDurationLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
@@ -484,7 +484,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached JSToIntegerThrowOnInfinityNode toIntNode,
                         @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
-            return addDurationToOrSubtractDurationFromPlainYearMont(TemporalUtil.ADD, ym, temporalDurationLike, optParam,
+            return addDurationToOrSubtractDurationFromPlainYearMonth(TemporalUtil.ADD, ym, temporalDurationLike, optParam,
                             namesNode, toLimitedTemporalDurationNode, yearMonthFromFieldsNode,
                             calendarFieldsNode, calendarGetterNode, toIntNode, dateFromFieldsNode);
         }
@@ -497,7 +497,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization
-        protected JSDynamicObject subtract(Object thisObj, Object temporalDurationLike, Object optParam,
+        protected JSTemporalPlainYearMonthObject subtract(Object thisObj, Object temporalDurationLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
@@ -506,7 +506,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached JSToIntegerThrowOnInfinityNode toIntNode,
                         @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
-            return addDurationToOrSubtractDurationFromPlainYearMont(TemporalUtil.SUBTRACT, ym, temporalDurationLike, optParam,
+            return addDurationToOrSubtractDurationFromPlainYearMonth(TemporalUtil.SUBTRACT, ym, temporalDurationLike, optParam,
                             namesNode, toLimitedTemporalDurationNode, yearMonthFromFieldsNode, calendarFieldsNode, calendarGetterNode, toIntNode, dateFromFieldsNode);
         }
     }
@@ -519,7 +519,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
         @SuppressWarnings("unused")
         @Specialization
-        protected Object until(Object thisObj, Object otherParam, Object optParam,
+        protected JSTemporalDurationObject until(Object thisObj, Object otherParam, Object optParam,
                         @Cached InlinedConditionProfile unitIsMonth,
                         @Cached JSToStringNode toStringNode,
                         @Cached JSToBooleanNode toBooleanNode,
@@ -545,7 +545,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization
-        protected Object since(Object thisObj, Object otherParam, Object optParam,
+        protected JSTemporalDurationObject since(Object thisObj, Object otherParam, Object optParam,
                         @Cached InlinedConditionProfile unitIsMonth,
                         @Cached JSToNumberNode toNumberNode,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,

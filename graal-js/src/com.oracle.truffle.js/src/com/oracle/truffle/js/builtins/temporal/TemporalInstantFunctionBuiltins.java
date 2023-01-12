@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -118,7 +117,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        protected JSDynamicObject from(Object item,
+        protected JSTemporalInstantObject from(Object item,
                         @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
             if (TemporalUtil.isTemporalInstant(item)) {
                 return JSTemporalInstant.create(getContext(), getRealm(), ((JSTemporalInstantObject) item).getNanoseconds());
@@ -140,7 +139,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        protected JSDynamicObject from(Object epochParam,
+        protected JSTemporalInstantObject from(Object epochParam,
                         @Cached JSToNumberNode toNumberNode,
                         @Cached JSNumberToBigIntNode numberToBigIntNode) {
             BigInt epochNanoseconds = null;

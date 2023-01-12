@@ -83,7 +83,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
-        JSRealm realm = JSRealm.get(null);
+        JSRealm realm = JSRealm.get(node);
         JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm, node, errorBranch);
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
         JSTemporalPlainTimeObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),

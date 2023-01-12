@@ -94,7 +94,7 @@ public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected JSDynamicObject from(Object item, Object optParam,
+        protected JSTemporalPlainMonthDayObject from(Object item, Object optParam,
                         @Cached("create(getContext())") ToTemporalMonthDayNode toTemporalMonthDayNode,
                         @Cached TemporalGetOptionNode getOptionNode) {
             JSDynamicObject options = getOptionsObject(optParam);

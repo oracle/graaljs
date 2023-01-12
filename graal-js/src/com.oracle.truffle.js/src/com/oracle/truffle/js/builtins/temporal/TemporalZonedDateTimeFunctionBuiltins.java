@@ -101,7 +101,7 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected JSDynamicObject from(Object item, Object optionsParam,
+        protected JSTemporalZonedDateTimeObject from(Object item, Object optionsParam,
                         @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode) {
@@ -126,8 +126,8 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         @Specialization
         protected int compare(Object obj1, Object obj2,
                         @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime) {
-            JSTemporalZonedDateTimeObject one = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.execute(obj1, Undefined.instance);
-            JSTemporalZonedDateTimeObject two = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.execute(obj2, Undefined.instance);
+            JSTemporalZonedDateTimeObject one = toTemporalZonedDateTime.execute(obj1, Undefined.instance);
+            JSTemporalZonedDateTimeObject two = toTemporalZonedDateTime.execute(obj2, Undefined.instance);
             return TemporalUtil.compareEpochNanoseconds(one.getNanoseconds(), two.getNanoseconds());
         }
     }

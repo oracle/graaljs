@@ -109,9 +109,9 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         }
         long sign = TemporalUtil.durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         assert sign != 0;
-        JSDynamicObject oneYear = JSTemporalDuration.createTemporalDuration(ctx, sign, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        JSDynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(ctx, 0, sign, 0, 0, 0, 0, 0, 0, 0, 0);
-        JSDynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0);
+        JSDynamicObject oneYear = JSTemporalDuration.createTemporalDuration(ctx, sign, 0, 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
+        JSDynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(ctx, 0, sign, 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
+        JSDynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
         JSTemporalPlainDateObject relativeTo = toTemporalDateNode.execute(relTo, Undefined.instance);
         JSDynamicObject calendar = relativeTo.getCalendar();
         if (unitIsYear.profile(this, largestUnit == TemporalUtil.Unit.YEAR)) {

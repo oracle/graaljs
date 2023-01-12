@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of ToTemporalCalendar() operation. See {@link TemporalUtil#toTemporalCalendar}.
+ * Implementation of ToTemporalCalendar() operation.
  */
 public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
 

@@ -150,15 +150,15 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
             case YEAR:
                 yearBranch.enter(this);
                 return getUnitYear(increment, roundingMode, years, months, weeks, days, hours, minutes, seconds, microseconds, milliseconds, nanoseconds, relativeTo, calendar,
-                                this, errorBranch, moveRelativeDateNode);
+                                moveRelativeDateNode, this, errorBranch);
             case MONTH:
                 monthBranch.enter(this);
                 return getUnitMonth(increment, roundingMode, years, months, weeks, days, hours, minutes, seconds, microseconds, milliseconds, nanoseconds, relativeTo, calendar,
-                                moveRelativeDateNode);
+                                moveRelativeDateNode, this, dayOrLessBranch);
             case WEEK:
                 weekBranch.enter(this);
                 return getUnitWeek(increment, roundingMode, years, months, weeks, days, hours, minutes, seconds, microseconds, milliseconds, nanoseconds, relativeTo, calendar,
-                                moveRelativeDateNode);
+                                moveRelativeDateNode, this, dayOrLessBranch);
             case DAY:
                 dayOrLessBranch.enter(this);
                 return getUnitDay(increment, roundingMode, years, months, weeks, days, hours, minutes, seconds, microseconds, milliseconds, nanoseconds);
@@ -242,13 +242,13 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     @SuppressFBWarnings(value = "FL_FLOATS_AS_LOOP_COUNTERS", justification = "intentional use of floating-point variable as loop counter")
     private JSTemporalDurationRecord getUnitWeek(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeksP, final double daysP,
                     final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, JSDynamicObject relativeToP,
-                    JSDynamicObject calendar, TemporalMoveRelativeDateNode moveRelativeDateNode) {
+                    JSDynamicObject calendar, TemporalMoveRelativeDateNode moveRelativeDateNode, Node node, InlinedBranchProfile errorBranch) {
         double weeks = weeksP;
         double days = daysP;
         JSDynamicObject relativeTo = relativeToP;
 
         double sign = (days >= 0) ? 1 : -1;
-        JSDynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0);
+        JSDynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
         JSTemporalRelativeDateRecord moveResult = moveRelativeDateNode.execute(calendar, relativeTo, oneWeek);
         relativeTo = moveResult.getRelativeTo();
         double oneWeekDays = moveResult.getDays();
@@ -268,21 +268,21 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     @SuppressFBWarnings(value = "FL_FLOATS_AS_LOOP_COUNTERS", justification = "intentional use of floating-point variable as loop counter")
     private JSTemporalDurationRecord getUnitMonth(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double monthsP, final double weeks, final double daysP,
                     final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, JSDynamicObject relativeToP,
-                    JSDynamicObject calendar, TemporalMoveRelativeDateNode moveRelativeDateNode) {
+                    JSDynamicObject calendar, TemporalMoveRelativeDateNode moveRelativeDateNode, Node node, InlinedBranchProfile errorBranch) {
         double months = monthsP;
         double days = daysP;
         JSDynamicObject relativeTo = relativeToP;
 
-        JSDynamicObject yearsMonths = JSTemporalDuration.createTemporalDuration(ctx, years, months, 0, 0, 0, 0, 0, 0, 0, 0);
+        JSDynamicObject yearsMonths = JSTemporalDuration.createTemporalDuration(ctx, years, months, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
         Object dateAdd = JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
         JSTemporalPlainDateObject yearsMonthsLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonths, Undefined.instance, dateAdd);
-        JSDynamicObject yearsMonthsWeeks = JSTemporalDuration.createTemporalDuration(ctx, years, months, weeks, 0, 0, 0, 0, 0, 0, 0);
+        JSDynamicObject yearsMonthsWeeks = JSTemporalDuration.createTemporalDuration(ctx, years, months, weeks, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
         JSTemporalPlainDateObject yearsMonthsWeeksLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonthsWeeks, Undefined.instance, dateAdd);
         double weeksInDays = TemporalUtil.daysUntil(yearsMonthsLater, yearsMonthsWeeksLater);
         relativeTo = yearsMonthsLater;
         days = days + weeksInDays;
         double sign = (days >= 0) ? 1 : -1;
-        JSDynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(ctx, 0, sign, 0, 0, 0, 0, 0, 0, 0, 0);
+        JSDynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(ctx, 0, sign, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
         JSTemporalRelativeDateRecord moveResult = moveRelativeDateNode.execute(calendar, relativeTo, oneMonth);
         relativeTo = moveResult.getRelativeTo();
         double oneMonthDays = moveResult.getDays();
@@ -310,7 +310,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
 
     private JSTemporalDurationRecord getUnitYear(final double increment, TemporalUtil.RoundingMode roundingMode, final double yearsP, final double months, final double weeks, final double daysP,
                     final double hours, final double minutes, final double seconds, final double microseconds, final double milliseconds, final double nanoseconds, JSDynamicObject relativeToP,
-                    JSDynamicObject calendar, Node node, InlinedBranchProfile errorBranch, TemporalMoveRelativeDateNode moveRelativeDateNode) {
+                    JSDynamicObject calendar, TemporalMoveRelativeDateNode moveRelativeDateNode, Node node, InlinedBranchProfile errorBranch) {
         double years = yearsP;
         double days = daysP;
         JSDynamicObject relativeTo = relativeToP;

@@ -84,11 +84,13 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -236,7 +238,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        public JSDynamicObject add(Object thisObj, Object temporalDurationLike,
+        public JSTemporalInstantObject add(Object thisObj, Object temporalDurationLike,
                         @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             return addDurationToOrSubtractDurationFromInstant(TemporalUtil.ADD, instant, temporalDurationLike, toLimitedTemporalDurationNode);
@@ -250,7 +252,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        public JSDynamicObject subtract(Object thisObj, Object temporalDurationLike,
+        public JSTemporalInstantObject subtract(Object thisObj, Object temporalDurationLike,
                         @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             return addDurationToOrSubtractDurationFromInstant(TemporalUtil.SUBTRACT, instant, temporalDurationLike, toLimitedTemporalDurationNode);
@@ -267,7 +269,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        public JSDynamicObject untilOrSince(Object thisObj, Object otherObj, Object optionsParam,
+        public JSTemporalDurationObject untilOrSince(Object thisObj, Object otherObj, Object optionsParam,
                         @Cached JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached TruffleString.EqualNode equalNode,
@@ -301,7 +303,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        public JSDynamicObject round(Object thisObj, Object roundToParam,
+        public JSTemporalInstantObject round(Object thisObj, Object roundToParam,
                         @Cached JSToNumberNode toNumber,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode) {
@@ -420,7 +422,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected JSDynamicObject toZonedDateTime(Object thisObj, Object item,
+        protected JSTemporalZonedDateTimeObject toZonedDateTime(Object thisObj, Object item,
                         @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
@@ -452,7 +454,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected Object toZonedDateTimeISO(Object thisObj, Object itemParam,
+        protected JSTemporalZonedDateTimeObject toZonedDateTimeISO(Object thisObj, Object itemParam,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             Object item = itemParam;

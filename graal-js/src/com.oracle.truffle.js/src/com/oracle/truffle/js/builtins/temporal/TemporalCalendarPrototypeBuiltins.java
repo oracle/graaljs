@@ -443,7 +443,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject date = toTemporalDate.execute(dateObj, Undefined.instance);
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) toTemporalDurationNode.execute(durationObj);
+            JSTemporalDurationObject duration = toTemporalDurationNode.execute(durationObj);
             JSDynamicObject options = getOptionsObject(optionsParam);
             Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),

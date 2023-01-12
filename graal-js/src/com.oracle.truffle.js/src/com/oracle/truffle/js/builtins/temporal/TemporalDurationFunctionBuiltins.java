@@ -98,7 +98,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected JSDynamicObject from(Object item,
+        protected JSTemporalDurationObject from(Object item,
                         @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode) {
             if (isObject(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
@@ -122,8 +122,8 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached("create(getContext())") TemporalUnbalanceDurationRelativeNode unbalanceDurationRelativeNode,
                         @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode) {
-            JSTemporalDurationObject one = (JSTemporalDurationObject) toTemporalDurationNode.execute(oneParam);
-            JSTemporalDurationObject two = (JSTemporalDurationObject) toTemporalDurationNode.execute(twoParam);
+            JSTemporalDurationObject one = toTemporalDurationNode.execute(oneParam);
+            JSTemporalDurationObject two = toTemporalDurationNode.execute(twoParam);
             JSDynamicObject options = getOptionsObject(optionsParam);
             JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
             double shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,

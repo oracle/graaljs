@@ -1384,7 +1384,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 }
                 id = TemporalUtil.canonicalizeTimeZoneName(id);
             }
-            return swapPrototype(TemporalUtil.createTemporalTimeZone(getContext(), id), newTarget);
+            return swapPrototype(TemporalUtil.createTemporalTimeZone(getContext(), getRealm(), id), newTarget);
         }
 
         @Override

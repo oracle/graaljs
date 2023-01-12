@@ -72,10 +72,10 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
         this.ctx = context;
     }
 
-    public abstract JSDynamicObject execute(Object value, JSDynamicObject options);
+    public abstract JSTemporalPlainDateTimeObject execute(Object value, JSDynamicObject options);
 
     @Specialization
-    public JSDynamicObject toTemporalDateTime(Object item, JSDynamicObject options,
+    public JSTemporalPlainDateTimeObject toTemporalDateTime(Object item, JSDynamicObject options,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile isPlainDateTimeProfile,
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
@@ -94,7 +94,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
             if (isPlainDateTimeProfile.profile(this, itemObj instanceof JSTemporalPlainDateTimeObject)) {
-                return itemObj;
+                return (JSTemporalPlainDateTimeObject) itemObj;
             } else if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(itemObj))) {
                 TemporalUtil.toTemporalOverflow(options, getOptionNode);
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) itemObj;

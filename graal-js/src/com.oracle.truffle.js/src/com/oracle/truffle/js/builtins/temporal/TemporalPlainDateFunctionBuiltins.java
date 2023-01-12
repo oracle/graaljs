@@ -98,7 +98,7 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object from(Object item, Object optParam,
+        protected JSTemporalPlainDateObject from(Object item, Object optParam,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
             JSDynamicObject options = getOptionsObject(optParam);

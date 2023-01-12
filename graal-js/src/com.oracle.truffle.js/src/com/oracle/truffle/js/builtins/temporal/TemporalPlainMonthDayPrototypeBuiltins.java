@@ -74,6 +74,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -232,7 +233,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected Object toPlainDate(Object thisObj, Object item,
+        protected JSTemporalPlainDateObject toPlainDate(Object thisObj, Object item,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
                         @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
@@ -263,7 +264,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        public JSDynamicObject getISOFields(Object thisObj) {
+        public JSObject getISOFields(Object thisObj) {
             JSTemporalPlainMonthDayObject md = requireTemporalMonthDay(thisObj);
             JSObject obj = JSOrdinary.create(getContext(), getRealm());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, md.getCalendar());
@@ -281,7 +282,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected JSDynamicObject with(Object thisObj, Object temporalMonthDayLike, Object optParam,
+        protected JSTemporalPlainMonthDayObject with(Object thisObj, Object temporalMonthDayLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
                         @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode) {

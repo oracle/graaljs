@@ -293,7 +293,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected JSDynamicObject with(Object thisObj, Object temporalDurationLike,
+        protected JSTemporalDurationObject with(Object thisObj, Object temporalDurationLike,
                         @Cached JSToIntegerWithoutRoundingNode toInt) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             JSDynamicObject durationLike = TemporalUtil.toPartialDuration(temporalDurationLike,
@@ -322,7 +322,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected JSDynamicObject negated(Object thisObj) {
+        protected JSTemporalDurationObject negated(Object thisObj) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             return JSTemporalDuration.createTemporalDuration(getContext(),
                             -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -duration.getDays(),
@@ -339,7 +339,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected JSDynamicObject abs(Object thisObj) {
+        protected JSTemporalDurationObject abs(Object thisObj) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             return JSTemporalDuration.createTemporalDuration(getContext(),
                             Math.abs(duration.getYears()), Math.abs(duration.getMonths()), Math.abs(duration.getWeeks()),
@@ -356,7 +356,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected JSDynamicObject add(Object thisObj, Object other, Object options,
+        protected JSTemporalDurationObject add(Object thisObj, Object other, Object options,
                         @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
@@ -372,7 +372,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected JSDynamicObject subtract(Object thisObj, Object other, Object options,
+        protected JSTemporalDurationObject subtract(Object thisObj, Object other, Object options,
                         @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
@@ -388,7 +388,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected JSDynamicObject round(Object thisObj, Object roundToParam,
+        protected JSTemporalDurationObject round(Object thisObj, Object roundToParam,
                         @Cached JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached JSNumberToBigIntNode toBigInt,

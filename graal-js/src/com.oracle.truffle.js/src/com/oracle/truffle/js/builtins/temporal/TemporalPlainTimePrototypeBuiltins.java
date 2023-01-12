@@ -257,18 +257,20 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
                             temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
                             sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
-                            sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds());
+                            sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds(),
+                            this, errorBranch);
             assert TemporalUtil.isValidTime(dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
                             dtoi(result.getNanoseconds()));
             return JSTemporalPlainTime.create(getContext(),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
-                            dtoi(result.getNanoseconds()), this, errorBranch);
+                            dtoi(result.getNanoseconds()),
+                            this, errorBranch);
         }
 
         protected JSTemporalDurationObject differenceTemporalPlainTime(int sign, TemporalTime temporalTime, Object otherObj, Object optionsParam, JSToNumberNode toNumber,
                         EnumerableOwnPropertyNamesNode namesNode, ToTemporalTimeNode toTemporalTime, TruffleString.EqualNode equalNode, TemporalRoundDurationNode roundDurationNode,
                         TemporalGetOptionNode getOptionNode) {
-            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.execute(otherObj, null);
+            JSTemporalPlainTimeObject other = toTemporalTime.execute(otherObj, null);
             JSDynamicObject options = getOptionsObject(optionsParam);
             Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode, getOptionNode);
             Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode, getOptionNode);
@@ -508,7 +510,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected boolean equalsGeneric(Object thisObj, Object other,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
-            TemporalTime otherTime = (TemporalTime) toTemporalTime.execute(other, null);
+            TemporalTime otherTime = toTemporalTime.execute(other, null);
             return equalsIntl(temporalTime, otherTime);
         }
 

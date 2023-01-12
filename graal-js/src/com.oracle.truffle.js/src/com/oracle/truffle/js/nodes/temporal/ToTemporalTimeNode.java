@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -76,10 +77,10 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
         this.ctx = context;
     }
 
-    public abstract JSDynamicObject execute(Object value, Overflow overflowParam);
+    public abstract JSTemporalPlainTimeObject execute(Object value, Overflow overflowParam);
 
     @Specialization
-    protected JSDynamicObject toTemporalTime(Object item, Overflow overflowParam,
+    protected JSTemporalPlainTimeObject toTemporalTime(Object item, Overflow overflowParam,
                     @Cached IsObjectNode isObjectNode,
                     @Cached JSToStringNode toStringNode,
                     @Cached InlinedConditionProfile isObjectProfile,
@@ -94,7 +95,7 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
             if (isPlainTimeProfile.profile(this, JSTemporalPlainTime.isJSTemporalPlainTime(itemObj))) {
-                return itemObj;
+                return (JSTemporalPlainTimeObject) itemObj;
             } else if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(itemObj))) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) itemObj;
                 JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, getRealm(), zdt.getNanoseconds());

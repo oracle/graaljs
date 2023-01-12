@@ -72,13 +72,6 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     private JSTemporalCalendar() {
     }
 
-    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id) {
-        if (!TemporalUtil.isBuiltinCalendar(id)) {
-            throw TemporalErrors.createRangeErrorCalendarNotSupported();
-        }
-        return createIntl(context, realm != null ? realm : JSRealm.get(null), id);
-    }
-
     public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id, Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isBuiltinCalendar(id)) {
             errorBranch.enter(node);
