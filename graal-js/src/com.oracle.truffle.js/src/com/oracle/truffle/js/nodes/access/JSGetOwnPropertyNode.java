@@ -43,26 +43,27 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNodeGen.GetPropertyProxyValueNodeGen;
+import com.oracle.truffle.js.nodes.array.JSArrayGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -120,33 +121,22 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     public abstract PropertyDescriptor execute(JSDynamicObject object, Object key);
 
     /** @see JSArray#getOwnProperty */
-    @Specialization(guards = {"isJSArray(thisObj)"})
-    PropertyDescriptor array(JSDynamicObject thisObj, Object propertyKey,
+    @SuppressWarnings("truffle-static-method")
+    @Specialization
+    final PropertyDescriptor array(JSArrayObject thisObj, Object propertyKey,
+                    @Bind("this") Node node,
                     @Cached ToArrayIndexNode toArrayIndexNode,
-                    @Cached InlinedBranchProfile noSuchElementBranch,
-                    @Cached("createIdentityProfile()") ValueProfile typeProfile) {
+                    @Cached JSArrayGetOwnPropertyNode arrayGetOwnProperty,
+                    @Cached InlinedBranchProfile noSuchElementBranch) {
         assert JSRuntime.isPropertyKey(propertyKey);
         long idx = toArrayIndex(propertyKey, toArrayIndexNode);
         if (JSRuntime.isArrayIndex(idx)) {
-            ScriptArray array = typeProfile.profile(JSAbstractArray.arrayGetArrayType(thisObj));
-            if (array.hasElement(thisObj, idx)) {
-                PropertyDescriptor desc = PropertyDescriptor.createEmpty();
-                if (needEnumerability) {
-                    desc.setEnumerable(true);
-                }
-                if (needConfigurability) {
-                    desc.setConfigurable(!array.isSealed());
-                }
-                if (needWritability) {
-                    desc.setWritable(!array.isFrozen());
-                }
-                if (needValue) {
-                    desc.setValue(array.getElement(thisObj, idx));
-                }
+            PropertyDescriptor desc = arrayGetOwnProperty.execute(node, thisObj, idx, needValue, needEnumerability, needConfigurability, needWritability);
+            if (desc != null) {
                 return desc;
             }
         }
-        noSuchElementBranch.enter(this);
+        noSuchElementBranch.enter(node);
         Property prop = thisObj.getShape().getProperty(propertyKey);
         return ordinaryGetOwnProperty(thisObj, prop);
     }
