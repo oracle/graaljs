@@ -40,17 +40,22 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.InlineSupport.IntField;
+import com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.CountingConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -73,7 +78,13 @@ public final class IfNode extends StatementNode implements ResumableNode.WithInt
     @Child private JavaScriptNode condition;
     @Child private JavaScriptNode thenPart;
     @Child private JavaScriptNode elsePart;
-    private final CountingConditionProfile conditionProfile = CountingConditionProfile.create();
+
+    @CompilationFinal @UnsafeAccessedField private int trueCount;
+    @CompilationFinal @UnsafeAccessedField private int falseCount;
+
+    private static final InlinedCountingConditionProfile CONDITION_PROFILE = InlinedCountingConditionProfile.inline(InlineTarget.create(InlinedCountingConditionProfile.class,
+                    IntField.create(MethodHandles.lookup(), "trueCount"),
+                    IntField.create(MethodHandles.lookup(), "falseCount")));
 
     public static IfNode create(JavaScriptNode condition, JavaScriptNode thenPart, JavaScriptNode elsePart) {
         if (condition instanceof JSNotNode) {
@@ -156,7 +167,7 @@ public final class IfNode extends StatementNode implements ResumableNode.WithInt
 
     @Override
     public Object execute(VirtualFrame frame) {
-        if (conditionProfile.profile(executeCondition(frame))) {
+        if (CONDITION_PROFILE.profile(this, executeCondition(frame))) {
             if (thenPart != null) {
                 return thenPart.execute(frame);
             } else {
@@ -173,7 +184,7 @@ public final class IfNode extends StatementNode implements ResumableNode.WithInt
 
     @Override
     public void executeVoid(VirtualFrame frame) {
-        if (conditionProfile.profile(executeCondition(frame))) {
+        if (CONDITION_PROFILE.profile(this, executeCondition(frame))) {
             if (thenPart != null) {
                 thenPart.executeVoid(frame);
             }
@@ -187,7 +198,7 @@ public final class IfNode extends StatementNode implements ResumableNode.WithInt
     @Override
     public Object resume(VirtualFrame frame, int stateSlot) {
         int index = getStateAsIntAndReset(frame, stateSlot);
-        if (index == 0 && conditionProfile.profile(executeCondition(frame)) || index == 1) {
+        if (index == 0 && CONDITION_PROFILE.profile(this, executeCondition(frame)) || index == 1) {
             try {
                 if (thenPart != null) {
                     return thenPart.execute(frame);
