@@ -3546,7 +3546,7 @@ namespace v8 {
         jobject java_context = graal_isolate->CurrentJavaContext();
         jobject java_store = reinterpret_cast<GraalBackingStore*> (backing_store.get())->GetJavaStore();
         void* data = backing_store->Data();
-        JNI_CALL(jobject, java_array_buffer, isolate, GraalAccessMethod::shared_array_buffer_new, Object, java_context, java_store, (jlong) data, true);
+        JNI_CALL(jobject, java_array_buffer, isolate, GraalAccessMethod::shared_array_buffer_new, Object, java_context, java_store, (jlong) data);
         return reinterpret_cast<v8::SharedArrayBuffer*> (GraalObject::Allocate(graal_isolate, java_array_buffer));
     }
 

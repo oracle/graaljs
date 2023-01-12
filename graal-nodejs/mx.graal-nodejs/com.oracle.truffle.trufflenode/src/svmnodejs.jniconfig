@@ -7,9 +7,7 @@
     "methods": [
       { "name": "arrayBufferByteLength" },
       { "name": "arrayBufferDetach" },
-      { "name": "arrayBufferExternalize" },
       { "name": "arrayBufferGetContents" },
-      { "name": "arrayBufferIsExternal" },
       { "name": "arrayBufferNew" },
       { "name": "arrayBufferNewBackingStore" },
       { "name": "arrayBufferViewBuffer" },
@@ -204,7 +202,6 @@
       { "name": "sharedArrayBufferByteLength" },
       { "name": "sharedArrayBufferExternalize" },
       { "name": "sharedArrayBufferGetContents" },
-      { "name": "sharedArrayBufferIsExternal" },
       { "name": "sharedArrayBufferNew" },
       { "name": "stackFrameGetColumn" },
       { "name": "stackFrameGetFunctionName" },

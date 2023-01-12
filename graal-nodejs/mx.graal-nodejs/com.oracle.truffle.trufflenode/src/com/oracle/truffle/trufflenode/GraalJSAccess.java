@@ -323,8 +323,6 @@ public final class GraalJSAccess {
     public static final HiddenKey ACCESSOR_KEY = new HiddenKey("Accessor");
     public static final HiddenKey OBJECT_TEMPLATE_KEY = new HiddenKey("ObjectTemplate");
 
-    public static final HiddenKey EXTERNALIZED_KEY = new HiddenKey("Externalized");
-
     // Placeholders returned by a native function when a primitive value
     // written into a shared buffer should be returned instead
     private static final Object INT_PLACEHOLDER = new Object();
@@ -335,7 +333,6 @@ public final class GraalJSAccess {
     private final JSContext mainJSContext;
     private final JSRealm mainJSRealm;
     private final NodeJSAgent agent;
-    private final Deallocator deallocator;
     private ESModuleLoader moduleLoader;
 
     /** Env that can be used for accessing instruments when no context is active anymore. */
@@ -430,7 +427,6 @@ public final class GraalJSAccess {
         agent = new NodeJSAgent();
         mainJSRealm.setAgent(agent);
         agent.interopBoundaryEnter();
-        deallocator = new Deallocator();
         envForInstruments = mainJSRealm.getEnv();
         // Disallow importing dynamically unless ESM Loader (--experimental-modules) is enabled.
         isolateEnableImportModuleDynamically(false);
@@ -1306,11 +1302,8 @@ public final class GraalJSAccess {
         return JSArray.arrayGetLength((JSDynamicObject) object);
     }
 
-    public Object arrayBufferNew(Object context, Object buffer, long pointer) {
+    public Object arrayBufferNew(Object context, Object buffer) {
         ByteBuffer byteBuffer = (ByteBuffer) buffer;
-        if (pointer != 0) {
-            deallocator.register(byteBuffer, pointer);
-        }
         JSRealm realm = (JSRealm) context;
         JSContext jsContext = realm.getContext();
         JSDynamicObject arrayBuffer;
@@ -1319,7 +1312,6 @@ public final class GraalJSAccess {
         } else {
             arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(jsContext, realm, byteBuffer);
         }
-        JSObjectUtil.putHiddenProperty(arrayBuffer, EXTERNALIZED_KEY, pointer == 0);
         return arrayBuffer;
     }
 
@@ -1430,15 +1422,6 @@ public final class GraalJSAccess {
         return arrayBufferViewByteLength(JSObject.getJSContext(dynamicObject), dynamicObject);
     }
 
-    public boolean arrayBufferIsExternal(Object arrayBuffer) {
-        return JSObjectUtil.getHiddenProperty((JSDynamicObject) arrayBuffer, EXTERNALIZED_KEY) == Boolean.TRUE;
-    }
-
-    public void arrayBufferExternalize(Object arrayBuffer) {
-        JSDynamicObject dynamicObject = (JSDynamicObject) arrayBuffer;
-        JSObjectUtil.putHiddenProperty(dynamicObject, EXTERNALIZED_KEY, true);
-    }
-
     public void arrayBufferDetach(Object arrayBuffer) {
         JSArrayBuffer.detachArrayBuffer((JSDynamicObject) arrayBuffer);
     }
@@ -1503,21 +1486,12 @@ public final class GraalJSAccess {
         }
     }
 
-    public Object sharedArrayBufferNew(Object context, Object buffer, long pointer, boolean externalized) {
+    public Object sharedArrayBufferNew(Object context, Object buffer, long pointer) {
         ByteBuffer byteBuffer = (ByteBuffer) buffer;
         JSRealm realm = (JSRealm) context;
         JSDynamicObject sharedArrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(realm.getContext(), realm, byteBuffer);
-        JSObjectUtil.putHiddenProperty(sharedArrayBuffer, EXTERNALIZED_KEY, externalized);
-        if (externalized) {
-            updateWaiterList(sharedArrayBuffer, pointer);
-        } else {
-            deallocator.register(byteBuffer, pointer);
-        }
+        updateWaiterList(sharedArrayBuffer, pointer);
         return sharedArrayBuffer;
-    }
-
-    public boolean sharedArrayBufferIsExternal(Object sharedArrayBuffer) {
-        return JSObjectUtil.getHiddenProperty((JSDynamicObject) sharedArrayBuffer, EXTERNALIZED_KEY) == Boolean.TRUE;
     }
 
     public Object sharedArrayBufferGetContents(Object sharedArrayBuffer) {
@@ -1525,11 +1499,7 @@ public final class GraalJSAccess {
     }
 
     public void sharedArrayBufferExternalize(Object sharedArrayBuffer, long pointer) {
-        if (!sharedArrayBufferIsExternal(sharedArrayBuffer)) {
-            JSDynamicObject dynamicObject = (JSDynamicObject) sharedArrayBuffer;
-            JSObjectUtil.putHiddenProperty(dynamicObject, EXTERNALIZED_KEY, true);
-            updateWaiterList(dynamicObject, pointer);
-        }
+        updateWaiterList((JSDynamicObject) sharedArrayBuffer, pointer);
     }
 
     public long sharedArrayBufferByteLength(Object sharedArrayBuffer) {

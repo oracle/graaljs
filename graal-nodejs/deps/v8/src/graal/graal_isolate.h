@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -170,8 +170,6 @@ enum GraalAccessMethod {
     array_buffer_view_buffer,
     array_buffer_view_byte_length,
     array_buffer_view_byte_offset,
-    array_buffer_is_external,
-    array_buffer_externalize,
     array_buffer_detach,
     typed_array_length,
     uint8_array_new,
@@ -389,7 +387,6 @@ enum GraalAccessMethod {
     set_new,
     set_add,
     shared_array_buffer_new,
-    shared_array_buffer_is_external,
     shared_array_buffer_get_contents,
     shared_array_buffer_externalize,
     shared_array_buffer_byte_length,
@@ -669,7 +666,6 @@ public:
     }
 
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
-    void Externalize(jobject java_buffer);
     v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
     void SchedulePauseOnNextStatement();
 
@@ -786,9 +782,6 @@ private:
     jobject double_placeholder_;
     jmethodID jni_methods_[GraalAccessMethod::count];
     jfieldID jni_fields_[static_cast<int>(GraalAccessField::count)];
-    jfieldID cleanerField_;
-    jfieldID thunkField_;
-    jfieldID addressField_;
     GraalPrimitive* undefined_instance_;
     GraalPrimitive* null_instance_;
     GraalBoolean* true_instance_;
