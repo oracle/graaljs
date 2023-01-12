@@ -1497,7 +1497,7 @@ namespace v8 {
     }
 
     void* ArrayBuffer::Data() const {
-        return const_cast<ArrayBuffer*> (this)->GetBackingStore()->Data();
+        return reinterpret_cast<const GraalArrayBuffer*> (this)->Data();
     }
 
     int Message::GetEndColumn() const {

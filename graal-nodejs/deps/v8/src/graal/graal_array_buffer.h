@@ -51,6 +51,7 @@ public:
     inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct);
     inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct, void* placement);
     size_t ByteLength() const;
+    void* Data() const;
     bool IsArrayBuffer() const;
     inline bool IsDirect() const;
     void Detach();

@@ -51,18 +51,46 @@ GraalHandleContent* GraalArrayBuffer::CopyImpl(jobject java_object_copy) {
 
 size_t GraalArrayBuffer::ByteLength() const {
     GraalIsolate* graal_isolate = Isolate();
+    jobject java_array_buffer = GetJavaObject();
     jobject java_buffer;
     jlong capacity;
     if (IsDirect()) {
-        java_buffer = graal_isolate->JNIGetObjectFieldOrCall(GetJavaObject(), GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
-        JNIEnv* env = graal_isolate->GetJNIEnv();
-        capacity = env->GetDirectBufferCapacity(java_buffer);
-        env->DeleteLocalRef(java_buffer);
+        java_buffer = graal_isolate->JNIGetObjectFieldOrCall(java_array_buffer, GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
+        if (java_buffer == nullptr) {
+            // detached buffer
+            capacity = 0;
+        } else {
+            JNIEnv* env = graal_isolate->GetJNIEnv();
+            capacity = env->GetDirectBufferCapacity(java_buffer);
+            env->DeleteLocalRef(java_buffer);
+        }
     } else {
-        JNI_CALL(jlong, byte_length, graal_isolate, GraalAccessMethod::array_buffer_byte_length, Long, GetJavaObject());
+        JNI_CALL(jlong, byte_length, graal_isolate, GraalAccessMethod::array_buffer_byte_length, Long, java_array_buffer);
         capacity = byte_length;
     }
     return capacity;
+}
+
+void* GraalArrayBuffer::Data() const {
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_array_buffer = GetJavaObject();
+    jobject java_buffer;
+    if (IsDirect()) {
+        java_buffer = graal_isolate->JNIGetObjectFieldOrCall(java_array_buffer, GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
+    } else {
+        JNI_CALL(jobject, java_not_direct_buffer, graal_isolate, GraalAccessMethod::array_buffer_get_contents, Object, java_array_buffer);
+        java_buffer = java_not_direct_buffer;
+    }
+    void* data;
+    if (java_buffer == nullptr) {
+        // detached buffer
+        data = nullptr;
+    } else {
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        data = env->GetDirectBufferAddress(java_buffer);
+        env->DeleteLocalRef(java_buffer);
+    }
+    return data;
 }
 
 v8::Local<v8::ArrayBuffer> GraalArrayBuffer::New(v8::Isolate* isolate, size_t byte_length) {
