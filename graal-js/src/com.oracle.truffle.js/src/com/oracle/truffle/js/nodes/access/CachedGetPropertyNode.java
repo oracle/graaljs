@@ -40,13 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -77,7 +76,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(equalsNode, cachedKey, key)"}, limit = "MAX_DEPTH")
     Object doCachedKey(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
-                    @Cached("cachedPropertyKey(key)") Object cachedKey,
+                    @Cached("propertyKeyOrNull(key)") Object cachedKey,
                     @Cached("create(cachedKey, context)") PropertyGetNode propertyNode,
                     @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
         return propertyNode.getValueOrDefault(target, receiver, defaultValue);
@@ -130,12 +129,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         }
     }
 
-    public static Object cachedPropertyKey(Object key) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (JSRuntime.isPropertyKey(key)) {
-            return key;
-        } else {
-            return null;
-        }
+    static Object propertyKeyOrNull(Object key) {
+        return JSRuntime.isPropertyKey(key) ? key : null;
     }
 }

@@ -42,10 +42,11 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -61,7 +62,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
-@ImportStatic({JSRuntime.class, CachedGetPropertyNode.class})
+@ImportStatic({JSRuntime.class})
 abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     static final int MAX_DEPTH = 1;
 
@@ -86,7 +87,7 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(equalsNode, cachedKey, key)"}, limit = "MAX_DEPTH")
     void doCachedKey(JSDynamicObject target, Object key, Object value, Object receiver,
-                    @Cached("cachedPropertyKey(key)") Object cachedKey,
+                    @Cached("propertyKeyOrNull(key)") Object cachedKey,
                     @Cached("createSet(cachedKey)") PropertySetNode propertyNode,
                     @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
         propertyNode.setValue(target, value, receiver);
@@ -155,7 +156,12 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
         JSObject.defineOwnProperty(target, propertyKey, PropertyDescriptor.createDataDefault(value), true);
     }
 
+    @NeverDefault
     PropertySetNode createSet(Object key) {
         return PropertySetNode.createImpl(key, false, context, strict, setOwn, JSAttributes.getDefault(), false, superProperty);
+    }
+
+    static Object propertyKeyOrNull(Object key) {
+        return JSRuntime.isPropertyKey(key) ? key : null;
     }
 }
