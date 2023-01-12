@@ -360,9 +360,9 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case hoursInDay:
                     return getterHoursInDay(zdt);
                 case epochSeconds:
-                    return getterEpoch(zdt, BigInt.valueOf(1_000_000_000L)).bigIntegerValue().longValue();
+                    return getterEpoch(zdt, BigInt.valueOf(1_000_000_000L)).doubleValue();
                 case epochMilliseconds:
-                    return getterEpoch(zdt, BigInt.valueOf(1_000_000L)).bigIntegerValue().longValue();
+                    return getterEpoch(zdt, BigInt.valueOf(1_000_000L)).doubleValue();
                 case epochMicroseconds:
                     return getterEpoch(zdt, BigInt.valueOf(1000L));
                 case epochNanoseconds:
