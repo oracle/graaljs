@@ -949,8 +949,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected void setLength(JSDynamicObject object, long longLength,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
                         @Shared("setLengthProperty") @Cached("createSetLengthProperty()") PropertySetNode setLengthProperty,
-                        @Cached InlinedConditionProfile indexInIntRangeCondition) {
-            Object boxedLength = JSRuntime.boxIndex(longLength, this, indexInIntRangeCondition);
+                        @Cached(inline = true) LongToIntOrDoubleNode indexToNumber) {
+            Object boxedLength = indexToNumber.fromIndex(this, longLength);
             deletePropertyNode.executeEvaluated(object, boxedLength);
             setLengthProperty.setValue(object, boxedLength);
         }

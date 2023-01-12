@@ -95,6 +95,7 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
+import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -1648,8 +1649,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "isObjectNode.executeBoolean(regex)", limit = "1")
-        protected Object matchAll(JSDynamicObject regex, Object stringObj,
+        protected final Object matchAll(JSDynamicObject regex, Object stringObj,
                         @Bind("this") Node node,
                         @Cached JSToStringNode toStringNodeForInput,
                         @Cached("create(getContext(), false)") ArraySpeciesConstructorNode speciesConstructNode,
@@ -1660,7 +1662,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("create(LAST_INDEX, false, getContext(), true)") PropertySetNode setLastIndexNode,
                         @Cached("createCreateRegExpStringIteratorNode()") StringPrototypeBuiltins.CreateRegExpStringIteratorNode createRegExpStringIteratorNode,
                         @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
-                        @Cached InlinedConditionProfile indexInIntRangeProf,
+                        @Cached(inline = true) LongToIntOrDoubleNode indexToNumber,
                         @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode) {
             Object string = toStringNodeForInput.executeString(stringObj);
             JSDynamicObject regExpConstructor = getRealm().getRegExpConstructor();
@@ -1668,7 +1670,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             TruffleString flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(regex));
             Object matcher = speciesConstructNode.construct(constructor, regex, flags);
             long lastIndex = toLengthNode.executeLong(getLastIndexNode.getValue(regex));
-            setLastIndexNode.setValue(matcher, JSRuntime.boxIndex(lastIndex, node, indexInIntRangeProf));
+            setLastIndexNode.setValue(matcher, indexToNumber.fromIndex(node, lastIndex));
             boolean global = Strings.indexOf(stringIndexOfNode, flags, 'g') != -1;
             boolean fullUnicode = Strings.indexOf(stringIndexOfNode, flags, 'u') != -1;
             return createRegExpStringIteratorNode.createIterator(matcher, string, global, fullUnicode);

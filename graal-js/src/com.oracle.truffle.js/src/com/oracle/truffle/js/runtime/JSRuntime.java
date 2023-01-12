@@ -1993,14 +1993,6 @@ public final class JSRuntime {
         }
     }
 
-    public static Object boxIndex(long longIndex, Node node, InlinedConditionProfile indexInIntRangeConditionProfile) {
-        if (indexInIntRangeConditionProfile.profile(node, longIndex <= Integer.MAX_VALUE)) {
-            return (int) longIndex;
-        } else {
-            return (double) longIndex;
-        }
-    }
-
     @TruffleBoundary
     public static BigInt stringToBigInt(TruffleString s) {
         try {
