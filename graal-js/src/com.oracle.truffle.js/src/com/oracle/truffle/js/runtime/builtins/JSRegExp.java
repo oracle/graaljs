@@ -76,7 +76,10 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadIntMemberNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadMemberNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadStringMemberNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeGetGroupBoundariesMethodNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
 
@@ -117,7 +120,8 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
         @Override
         public Object get(JSDynamicObject object) {
-            return TRegexUtil.InvokeGetGroupBoundariesMethodNode.getUncached().execute(arrayGetRegexResult(object, DynamicObjectLibrary.getUncached()), TRegexUtil.Props.RegexResult.GET_START, 0);
+            Object regexResult = arrayGetRegexResult(object, DynamicObjectLibrary.getUncached());
+            return InvokeGetGroupBoundariesMethodNode.getUncached().execute(null, regexResult, TRegexUtil.Props.RegexResult.GET_START, 0);
         }
 
         @TruffleBoundary
@@ -237,7 +241,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
     @TruffleBoundary
     private static JSObjectFactory computeGroupsFactory(JSContext ctx, Object compiledRegex) {
-        Object namedCaptureGroups = TRegexUtil.InteropReadMemberNode.getUncached().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
+        Object namedCaptureGroups = InteropReadMemberNode.getUncached().execute(null, compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
         if (InteropLibrary.getUncached().isNull(namedCaptureGroups)) {
             return null;
         } else {
@@ -259,7 +263,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             List<Object> keys = JSInteropUtil.keys(namedCaptureGroups);
             List<Pair<Integer, TruffleString>> pairs = new ArrayList<>(keys.size());
             for (Object key : keys) {
-                int groupIndex = TRegexUtil.InteropReadIntMemberNode.getUncached().execute(namedCaptureGroups, InteropLibrary.getUncached().asString(key));
+                int groupIndex = InteropReadIntMemberNode.getUncached().execute(null, namedCaptureGroups, InteropLibrary.getUncached().asString(key));
                 TruffleString groupName = InteropLibrary.getUncached().asTruffleString(key);
                 pairs.add(new Pair<>(groupIndex, groupName));
             }
@@ -285,12 +289,13 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     @TruffleBoundary
     public static TruffleString prototypeToString(JSDynamicObject thisObj) {
         Object regex = getCompiledRegex(thisObj);
-        InteropReadStringMemberNode readString = TRegexUtil.InteropReadStringMemberNode.getUncached();
-        TruffleString pattern = readString.execute(regex, TRegexUtil.Props.CompiledRegex.PATTERN);
+        InteropReadStringMemberNode readString = InteropReadStringMemberNode.getUncached();
+        TruffleString pattern = readString.execute(null, regex, TRegexUtil.Props.CompiledRegex.PATTERN);
         if (Strings.length(pattern) == 0) {
             pattern = Strings.EMPTY_REGEX;
         }
-        TruffleString flags = readString.execute(TRegexUtil.InteropReadMemberNode.getUncached().execute(regex, TRegexUtil.Props.CompiledRegex.FLAGS), TRegexUtil.Props.Flags.SOURCE);
+        Object regexFlags = TRegexUtil.InteropReadMemberNode.getUncached().execute(null, regex, TRegexUtil.Props.CompiledRegex.FLAGS);
+        TruffleString flags = readString.execute(null, regexFlags, TRegexUtil.Props.Flags.SOURCE);
         return Strings.concatAll(Strings.SLASH, pattern, Strings.SLASH, flags);
     }
 

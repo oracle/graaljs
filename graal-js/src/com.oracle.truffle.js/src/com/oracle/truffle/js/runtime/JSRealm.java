@@ -2661,7 +2661,7 @@ public class JSRealm {
         if (ctx.getRegExpStaticResultUnusedAssumption().isValid()) {
             staticRegexResultFromIndex = fromIndex;
         } else {
-            assert TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(result, TRegexUtil.Props.RegexResult.IS_MATCH);
+            assert TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(null, result, TRegexUtil.Props.RegexResult.IS_MATCH);
             staticRegexResult = result;
         }
     }

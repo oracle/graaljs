@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,7 +71,7 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
     }
 
     public final JSRegExpObject createRegExp(Object compiledRegex, boolean legacyFeaturesEnabled) {
-        Object namedCaptureGroups = readNamedCG.execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
+        Object namedCaptureGroups = readNamedCG.execute(null, compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
         boolean hasNamedCaptureGroups = !isNamedCGNull.isNull(namedCaptureGroups);
         return execute(compiledRegex, legacyFeaturesEnabled, namedCaptureGroups, hasNamedCaptureGroups);
     }

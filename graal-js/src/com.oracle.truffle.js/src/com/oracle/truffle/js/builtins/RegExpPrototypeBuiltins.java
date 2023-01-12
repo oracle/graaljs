@@ -368,23 +368,24 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSRegExpTestNode extends JSBuiltinNode {
 
-        @Child private TRegexUtil.InteropReadBooleanMemberNode readIsMatch;
-
         protected JSRegExpTestNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "isObjectNode.executeBoolean(thisObj)", limit = "1")
         protected Object testGeneric(JSDynamicObject thisObj, Object input,
+                        @Bind("this") Node node,
                         @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached JSToStringNode toStringNode,
-                        @Cached("create(getContext())") JSRegExpExecIntlNode regExpNode) {
+                        @Cached("create(getContext())") JSRegExpExecIntlNode regExpNode,
+                        @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch) {
             Object inputStr = toStringNode.executeString(input);
             Object result = regExpNode.execute(thisObj, inputStr);
             if (getContext().getEcmaScriptVersion() >= 6) {
                 return (result != Null.instance);
             } else {
-                return getReadIsMatch().execute(result, TRegexUtil.Props.RegexResult.IS_MATCH);
+                return readIsMatch.execute(node, result, TRegexUtil.Props.RegexResult.IS_MATCH);
             }
         }
 
@@ -393,13 +394,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.test", thisNonObj);
         }
 
-        private TRegexUtil.InteropReadBooleanMemberNode getReadIsMatch() {
-            if (readIsMatch == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readIsMatch = insert(TRegexUtil.InteropReadBooleanMemberNode.create());
-            }
-            return readIsMatch;
-        }
     }
 
     /**
@@ -1867,15 +1861,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     abstract static class CompiledRegexPatternAccessor extends JSBuiltinNode {
 
-        @Child TRegexUtil.InteropReadStringMemberNode readPatternNode = TRegexUtil.InteropReadStringMemberNode.create();
-
         CompiledRegexPatternAccessor(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        Object doRegExp(JSRegExpObject obj) {
-            return JSRegExp.escapeRegExpPattern(readPatternNode.execute(JSRegExp.getCompiledRegex(obj), TRegexUtil.Props.CompiledRegex.PATTERN));
+        Object doRegExp(JSRegExpObject obj,
+                        @Cached(inline = true) TRegexUtil.InteropReadStringMemberNode readPatternNode) {
+            return JSRegExp.escapeRegExpPattern(readPatternNode.execute(this, JSRegExp.getCompiledRegex(obj), TRegexUtil.Props.CompiledRegex.PATTERN));
         }
 
         @Specialization(guards = "isRegExpPrototype(obj)")

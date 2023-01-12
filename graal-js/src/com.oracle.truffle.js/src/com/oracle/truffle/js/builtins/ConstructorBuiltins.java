@@ -1437,25 +1437,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private PropertyGetNode getConstructorNode;
         @Child private PropertyGetNode getSourceNode;
         @Child private PropertyGetNode getFlagsNode;
-        @Child private TRegexUtil.InteropReadStringMemberNode interopReadPatternNode;
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSDynamicObject constructRegExp(JSDynamicObject newTarget, Object pattern, Object flags,
+                        @Bind("this") Node node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode,
                         @Cached InlinedBranchProfile regexpObject,
                         @Cached InlinedBranchProfile regexpMatcherObject,
                         @Cached InlinedBranchProfile regexpNonObject,
                         @Cached InlinedBranchProfile regexpObjectNewFlagsBranch,
                         @Cached InlinedConditionProfile callIsRegExpProfile,
-                        @Cached InlinedConditionProfile constructorEquivalentProfile) {
+                        @Cached InlinedConditionProfile constructorEquivalentProfile,
+                        @Cached(inline = true) TRegexUtil.InteropReadStringMemberNode readPattern) {
             boolean hasMatchSymbol = isRegExpNode.executeBoolean(pattern);
             boolean legacyFeaturesEnabled;
             if (isCall) {
                 // we are in the "call" case, i.e. NewTarget is undefined (before)
-                if (callIsRegExpProfile.profile(this, hasMatchSymbol && flags == Undefined.instance && JSDynamicObject.isJSDynamicObject(pattern))) {
+                if (callIsRegExpProfile.profile(node, hasMatchSymbol && flags == Undefined.instance && JSDynamicObject.isJSDynamicObject(pattern))) {
                     JSDynamicObject patternObj = (JSDynamicObject) pattern;
                     Object patternConstructor = getConstructor(patternObj);
-                    if (constructorEquivalentProfile.profile(this, patternConstructor == getRealm().getRegExpConstructor())) {
+                    if (constructorEquivalentProfile.profile(node, patternConstructor == getRealm().getRegExpConstructor())) {
                         return patternObj;
                     }
                 }
@@ -1465,20 +1467,22 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 legacyFeaturesEnabled = newTarget == getRealm().getRegExpConstructor();
             }
             JSRegExpObject regExpObject = constructRegExpImpl(pattern, flags, hasMatchSymbol, legacyFeaturesEnabled,
-                            regexpObject, regexpMatcherObject, regexpNonObject, regexpObjectNewFlagsBranch);
+                            node, regexpObject, regexpMatcherObject, regexpNonObject, regexpObjectNewFlagsBranch, readPattern);
             return isCall ? regExpObject : swapPrototype(regExpObject, newTarget);
         }
 
         protected JSRegExpObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol, boolean legacyFeaturesEnabled,
+                        Node node,
                         InlinedBranchProfile regexpObject,
                         InlinedBranchProfile regexpMatcherObject,
                         InlinedBranchProfile regexpNonObject,
-                        InlinedBranchProfile regexpObjectNewFlagsBranch) {
+                        InlinedBranchProfile regexpObjectNewFlagsBranch,
+                        TRegexUtil.InteropReadStringMemberNode readPattern) {
             Object p;
             Object f;
             boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);
             if (isJSRegExp) {
-                regexpObject.enter(this);
+                regexpObject.enter(node);
                 Object compiledRegex = JSRegExp.getCompiledRegex((JSDynamicObject) patternObj);
                 if (flags == Undefined.instance) {
                     return getCreateRegExpNode().createRegExp(compiledRegex);
@@ -1487,12 +1491,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         throw Errors.createTypeError("Cannot supply flags when constructing one RegExp from another");
                     }
                     Object flagsStr = flagsToString(flags);
-                    regexpObjectNewFlagsBranch.enter(this);
-                    Object newCompiledRegex = getCompileRegexNode().compile(getInteropReadPatternNode().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN), flagsStr);
+                    regexpObjectNewFlagsBranch.enter(node);
+                    Object newCompiledRegex = getCompileRegexNode().compile(readPattern.execute(node, compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN), flagsStr);
                     return getCreateRegExpNode().createRegExp(newCompiledRegex);
                 }
             } else if (hasMatchSymbol) {
-                regexpMatcherObject.enter(this);
+                regexpMatcherObject.enter(node);
                 JSDynamicObject patternJSObj = (JSDynamicObject) patternObj;
                 p = getSource(patternJSObj);
                 if (flags == Undefined.instance) {
@@ -1501,7 +1505,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     f = flags;
                 }
             } else {
-                regexpNonObject.enter(this);
+                regexpNonObject.enter(node);
                 p = patternObj;
                 f = flags;
             }
@@ -1524,14 +1528,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 patternToStringNode = insert(JSToStringNode.createUndefinedToEmpty());
             }
             return patternToStringNode;
-        }
-
-        private TRegexUtil.InteropReadStringMemberNode getInteropReadPatternNode() {
-            if (interopReadPatternNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                interopReadPatternNode = insert(TRegexUtil.InteropReadStringMemberNode.create());
-            }
-            return interopReadPatternNode;
         }
 
         private CompileRegexNode getCompileRegexNode() {

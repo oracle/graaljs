@@ -1800,7 +1800,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             JSDynamicObject store = receiverCheck.getStore(thisObj);
             Object lazyRegexResult = Properties.getOrDefault(readLazyRegexResult, store, JSAbstractArray.LAZY_REGEX_RESULT_ID, null);
             assert lazyRegexResult != null;
-            return readStartNode.execute(lazyRegexResult, TRegexUtil.Props.RegexResult.GET_START, 0);
+            return readStartNode.execute(null, lazyRegexResult, TRegexUtil.Props.RegexResult.GET_START, 0);
         }
 
         @Override
