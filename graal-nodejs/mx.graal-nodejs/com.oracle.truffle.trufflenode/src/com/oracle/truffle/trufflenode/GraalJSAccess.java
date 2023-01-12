@@ -3835,16 +3835,6 @@ public final class GraalJSAccess {
         return evaluationError;
     }
 
-    public int moduleGetRequestsLength(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
-        return record.getModule().getRequestedModules().size();
-    }
-
-    public Object moduleGetRequest(Object module, int index) {
-        JSModuleRecord record = (JSModuleRecord) module;
-        return record.getModule().getRequestedModules().get(index).getSpecifier();
-    }
-
     public Object moduleGetModuleRequests(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
         return record.getModule().getRequestedModules().toArray();

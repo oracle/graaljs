@@ -342,8 +342,6 @@ enum GraalAccessMethod {
     module_instantiate,
     module_evaluate,
     module_get_status,
-    module_get_requests_length,
-    module_get_request,
     module_get_namespace,
     module_get_identity_hash,
     module_get_exception,

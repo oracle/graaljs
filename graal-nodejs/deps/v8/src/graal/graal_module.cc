@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,18 +99,6 @@ v8::MaybeLocal<v8::Value> GraalModule::Evaluate(v8::Local<v8::Context> context) 
 v8::Module::Status GraalModule::GetStatus() const {
     JNI_CALL(jint, java_status, Isolate(), GraalAccessMethod::module_get_status, Int, GetJavaObject());
     return static_cast<v8::Module::Status> (java_status);
-}
-
-int GraalModule::GetModuleRequestsLength() const {
-    JNI_CALL(jint, length, Isolate(), GraalAccessMethod::module_get_requests_length, Int, GetJavaObject());
-    return length;
-}
-
-v8::Local<v8::String> GraalModule::GetModuleRequest(int index) const {
-    GraalIsolate* graal_isolate = Isolate();
-    JNI_CALL(jobject, java_request, graal_isolate, GraalAccessMethod::module_get_request, Object, GetJavaObject(), (jint) index);
-    GraalString* graal_request = GraalString::Allocate(graal_isolate, java_request);
-    return reinterpret_cast<v8::String*> (graal_request);
 }
 
 v8::Local<v8::Value> GraalModule::GetModuleNamespace() {

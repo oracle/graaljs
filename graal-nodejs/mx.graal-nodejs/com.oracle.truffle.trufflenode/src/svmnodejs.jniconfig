@@ -131,8 +131,6 @@
       { "name": "moduleGetIdentityHash" },
       { "name": "moduleGetModuleRequests" },
       { "name": "moduleGetNamespace" },
-      { "name": "moduleGetRequest" },
-      { "name": "moduleGetRequestsLength" },
       { "name": "moduleGetStatus" },
       { "name": "moduleGetUnboundModuleScript" },
       { "name": "moduleRequestGetImportAssertions" },
