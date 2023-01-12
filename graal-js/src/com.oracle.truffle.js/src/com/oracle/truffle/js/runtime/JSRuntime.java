@@ -58,7 +58,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
@@ -192,15 +191,6 @@ public final class JSRuntime {
         if (Integer.MIN_VALUE <= value && value <= Integer.MAX_VALUE) {
             return (int) value;
         } else {
-            return (double) value;
-        }
-    }
-
-    public static Number longToIntOrDouble(long value, Node node, InlinedBranchProfile toDoubleBranch) {
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, longIsRepresentableAsInt(value))) {
-            return (int) value;
-        } else {
-            toDoubleBranch.enter(node);
             return (double) value;
         }
     }

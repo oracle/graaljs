@@ -65,6 +65,7 @@ import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetSizeNode
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -449,9 +450,10 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected final Object doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
-                        @Cached InlinedBranchProfile toDoubleBranch) {
+                        @Cached(inline = true) LongToIntOrDoubleNode sizeToJSNumber) {
             try {
-                return JSRuntime.longToIntOrDouble(mapLib.getHashSize(thisObj), this, toDoubleBranch);
+                long hashSize = mapLib.getHashSize(thisObj);
+                return sizeToJSNumber.execute(this, hashSize);
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(thisObj, e, "getHashSize", this);
             }

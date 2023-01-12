@@ -965,7 +965,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "isCallable(reducer)")
         protected Object reduce(Object thisObj, Object reducer, Object[] args,
-                        @Cached InlinedBranchProfile doubleIndexBranch) {
+                        @Cached(inline = true) LongToIntOrDoubleNode counterToJSNumber) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
             Object accumulator;
@@ -990,8 +990,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 }
                 Object value = iteratorValueNode.execute(next);
                 try {
-                    Number counterJS = JSRuntime.longToIntOrDouble(counter, this, doubleIndexBranch);
-                    accumulator = callNode.executeCall(JSArguments.create(Undefined.instance, reducer, accumulator, value, counterJS));
+                    accumulator = callNode.executeCall(JSArguments.create(Undefined.instance, reducer, accumulator, value, counterToJSNumber.execute(this, counter)));
                     counter++;
                 } catch (AbstractTruffleException ex) {
                     iteratorCloseNode().executeAbrupt(iterated.getIterator());
