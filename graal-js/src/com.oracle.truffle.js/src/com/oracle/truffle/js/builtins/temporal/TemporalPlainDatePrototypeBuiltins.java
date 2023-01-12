@@ -43,23 +43,14 @@ package com.oracle.truffle.js.builtins.temporal;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ROUNDING_MODE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SMALLEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.UNIT;
 
-import java.lang.invoke.MethodHandles;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.InlineSupport.StateField;
-import com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -80,7 +71,6 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltin
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateWithCalendarNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateWithNodeGen;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -97,12 +87,10 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -111,17 +99,13 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.InlinedProfileBuilder;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -290,170 +274,6 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = "!isJSTemporalDate(thisObj)")
         protected static int error(@SuppressWarnings("unused") Object thisObj) {
             throw TemporalErrors.createTypeErrorTemporalDateExpected();
-        }
-    }
-
-    /**
-     * Common base class for ALL Temporal Builtin operations.
-     *
-     */
-    public abstract static class JSTemporalBuiltinOperation extends JSBuiltinNode {
-
-        @CompilationFinal @UnsafeAccessedField private int state;
-
-        private static final StateField STATE_FIELD = StateField.create(MethodHandles.lookup(), "state");
-
-        protected static final InlinedBranchProfile errorBranch;
-        protected static final InlinedConditionProfile optionUndefined;
-
-        static {
-            var b = new InlinedProfileBuilder(STATE_FIELD);
-            errorBranch = b.branchProfile();
-            optionUndefined = b.conditionProfile();
-        }
-
-        @Child protected IsObjectNode isObjectNode = IsObjectNode.create();
-
-        public JSTemporalBuiltinOperation(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        protected JSTemporalPlainDateObject requireTemporalDate(Object obj) {
-            if (!(obj instanceof JSTemporalPlainDateObject)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorTemporalDateExpected();
-            }
-            return (JSTemporalPlainDateObject) obj;
-        }
-
-        protected TemporalTime requireTemporalTime(Object obj) {
-            if (!(obj instanceof TemporalTime)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorTemporalTimeExpected();
-            }
-            return (TemporalTime) obj;
-        }
-
-        protected JSTemporalPlainDateTimeObject requireTemporalDateTime(Object obj) {
-            if (!(obj instanceof JSTemporalPlainDateTimeObject)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorTemporalDateTimeExpected();
-            }
-            return (JSTemporalPlainDateTimeObject) obj;
-        }
-
-        protected JSTemporalPlainMonthDayObject requireTemporalMonthDay(Object obj) {
-            if (!(obj instanceof JSTemporalPlainMonthDayObject)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
-            }
-            return (JSTemporalPlainMonthDayObject) obj;
-        }
-
-        protected JSTemporalPlainYearMonthObject requireTemporalYearMonth(Object obj) {
-            if (!(obj instanceof JSTemporalPlainYearMonthObject)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorTemporalPlainYearMonthExpected();
-            }
-            return (JSTemporalPlainYearMonthObject) obj;
-        }
-
-        protected JSTemporalInstantObject requireTemporalInstant(Object obj) {
-            if (!(obj instanceof JSTemporalInstantObject)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorTemporalInstantExpected();
-            }
-            return (JSTemporalInstantObject) obj;
-        }
-
-        protected JSTemporalZonedDateTimeObject requireTemporalZonedDateTime(Object obj) {
-            if (!(obj instanceof JSTemporalZonedDateTimeObject)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorTemporalZonedDateTimeExpected();
-            }
-            return (JSTemporalZonedDateTimeObject) obj;
-        }
-
-        protected JSTemporalCalendarObject requireTemporalCalendar(Object obj) {
-            if (!(obj instanceof JSTemporalCalendarObject)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorTemporalCalendarExpected();
-            }
-            return (JSTemporalCalendarObject) obj;
-        }
-
-        protected JSTemporalDurationObject requireTemporalDuration(Object obj) {
-            if (!(obj instanceof JSTemporalDurationObject)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorTemporalDurationExpected();
-            }
-            return (JSTemporalDurationObject) obj;
-        }
-
-        protected JSTemporalTimeZoneObject requireTemporalTimeZone(Object obj) {
-            if (!(obj instanceof JSTemporalTimeZoneObject)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorTemporalTimeZoneExpected();
-            }
-            return (JSTemporalTimeZoneObject) obj;
-        }
-
-        protected JSDynamicObject getOptionsObject(Object options) {
-            if (optionUndefined.profile(this, options == Undefined.instance)) {
-                return JSOrdinary.createWithNullPrototype(getContext());
-            }
-            if (isObject(options)) {
-                return TemporalUtil.toJSDynamicObject(options, this, errorBranch);
-            }
-            errorBranch.enter(this);
-            throw TemporalErrors.createTypeErrorOptions();
-        }
-
-        protected boolean isObject(Object obj) {
-            return isObjectNode.executeBoolean(obj);
-        }
-
-        protected Unit toLargestTemporalUnit(JSDynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback, Unit autoValue,
-                        TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode) {
-            assert fallback == null || (!disallowedUnits.contains(fallback) && !disallowedUnits.contains(AUTO));
-            TruffleString largestUnit = (TruffleString) getOptionNode.execute(normalizedOptions, LARGEST_UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTimeAuto, fallback);
-            if (largestUnit != null && largestUnit.equals(AUTO) && autoValue != null) {
-                return autoValue;
-            }
-            if (largestUnit != null && Boundaries.setContains(TemporalUtil.pluralUnits, largestUnit)) {
-                largestUnit = Boundaries.mapGet(TemporalUtil.pluralToSingular, largestUnit);
-            }
-            if (largestUnit != null && Boundaries.listContains(disallowedUnits, largestUnit)) {
-                errorBranch.enter(this);
-                throw Errors.createRangeError("Largest unit is not allowed.");
-            }
-            return TemporalUtil.toUnit(largestUnit, equalNode);
-        }
-
-        protected Unit toSmallestTemporalUnit(JSDynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback,
-                        TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode) {
-            TruffleString smallestUnit = (TruffleString) getOptionNode.execute(normalizedOptions, SMALLEST_UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTime, fallback);
-            if (smallestUnit != null && Boundaries.setContains(TemporalUtil.pluralUnits, smallestUnit)) {
-                smallestUnit = Boundaries.mapGet(TemporalUtil.pluralToSingular, smallestUnit);
-            }
-            if (smallestUnit != null && Boundaries.listContains(disallowedUnits, smallestUnit)) {
-                errorBranch.enter(this);
-                throw Errors.createRangeError("Smallest unit not allowed.");
-            }
-            return TemporalUtil.toUnit(smallestUnit, equalNode);
-        }
-
-        protected Unit toTemporalDurationTotalUnit(JSDynamicObject normalizedOptions, TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode) {
-            TruffleString unit = (TruffleString) getOptionNode.execute(normalizedOptions, UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTime, null);
-            if (unit != null && Boundaries.setContains(TemporalUtil.pluralUnits, unit)) {
-                unit = Boundaries.mapGet(TemporalUtil.pluralToSingular, unit);
-            }
-            return TemporalUtil.toUnit(unit, equalNode);
-        }
-
-        protected RoundingMode toTemporalRoundingMode(JSDynamicObject options, TruffleString fallback,
-                        TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode) {
-            return TemporalUtil.toRoundingMode((TruffleString) getOptionNode.execute(options, ROUNDING_MODE, TemporalUtil.OptionType.STRING, TemporalUtil.listRoundingMode, fallback), equalNode);
         }
     }
 

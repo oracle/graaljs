@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltinsFactory.JSTemporalPlainDateCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltinsFactory.JSTemporalPlainDateFromNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
