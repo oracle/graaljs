@@ -101,7 +101,6 @@ import java.time.ZonedDateTime;
 import java.time.zone.ZoneOffsetTransition;
 import java.time.zone.ZoneRules;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
@@ -181,18 +180,57 @@ public final class TemporalUtil {
 
     public static final Set<TruffleString> pluralUnits = Set.of(YEARS, MONTHS, WEEKS, DAYS, HOURS, MINUTES, SECONDS,
                     MILLISECONDS, MICROSECONDS, NANOSECONDS);
-    public static final Map<TruffleString, TruffleString> pluralToSingular = toMap(
-                    new TruffleString[]{YEARS, MONTHS, WEEKS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS},
-                    new TruffleString[]{YEAR, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND});
-    @SuppressWarnings("unchecked") private static final Map<TruffleString, Function<Object, Object>> temporalFieldConversion = toMap(
-                    new TruffleString[]{YEAR, MONTH, MONTH_CODE, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND, OFFSET, ERA, ERA_YEAR},
-                    new Function[]{toIntegerThrowOnInfinity, toPositiveInteger, toString, toPositiveInteger, toIntegerThrowOnInfinity, toIntegerThrowOnInfinity, toIntegerThrowOnInfinity,
-                                    toIntegerThrowOnInfinity, toIntegerThrowOnInfinity, toIntegerThrowOnInfinity, toString, toString, toIntegerThrowOnInfinity});
-    public static final Map<TruffleString, Object> temporalFieldDefaults = toMap(
-                    new TruffleString[]{YEAR, MONTH, MONTH_CODE, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND, YEARS, MONTHS, WEEKS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS,
-                                    MICROSECONDS, NANOSECONDS, OFFSET, ERA, ERA_YEAR},
-                    new Object[]{Undefined.instance, Undefined.instance, Undefined.instance, Undefined.instance, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Undefined.instance, Undefined.instance,
-                                    Undefined.instance});
+    public static final Map<TruffleString, TruffleString> pluralToSingular = Map.ofEntries(
+                    Map.entry(YEARS, YEAR),
+                    Map.entry(MONTHS, MONTH),
+                    Map.entry(WEEKS, WEEK),
+                    Map.entry(DAYS, DAY),
+                    Map.entry(HOURS, HOUR),
+                    Map.entry(MINUTES, MINUTE),
+                    Map.entry(SECONDS, SECOND),
+                    Map.entry(MILLISECONDS, MILLISECOND),
+                    Map.entry(MICROSECONDS, MICROSECOND),
+                    Map.entry(NANOSECONDS, NANOSECOND));
+
+    private static final Map<TruffleString, Function<Object, Object>> temporalFieldConversion = Map.ofEntries(
+                    Map.entry(YEAR, toIntegerThrowOnInfinity),
+                    Map.entry(MONTH, toPositiveInteger),
+                    Map.entry(MONTH_CODE, toString),
+                    Map.entry(DAY, toPositiveInteger),
+                    Map.entry(HOUR, toIntegerThrowOnInfinity),
+                    Map.entry(MINUTE, toIntegerThrowOnInfinity),
+                    Map.entry(SECOND, toIntegerThrowOnInfinity),
+                    Map.entry(MILLISECOND, toIntegerThrowOnInfinity),
+                    Map.entry(MICROSECOND, toIntegerThrowOnInfinity),
+                    Map.entry(NANOSECOND, toIntegerThrowOnInfinity),
+                    Map.entry(OFFSET, toString),
+                    Map.entry(ERA, toString),
+                    Map.entry(ERA_YEAR, toIntegerThrowOnInfinity));
+
+    public static final Map<TruffleString, Object> temporalFieldDefaults = Map.ofEntries(
+                    Map.entry(YEAR, Undefined.instance),
+                    Map.entry(MONTH, Undefined.instance),
+                    Map.entry(MONTH_CODE, Undefined.instance),
+                    Map.entry(DAY, Undefined.instance),
+                    Map.entry(HOUR, 0),
+                    Map.entry(MINUTE, 0),
+                    Map.entry(SECOND, 0),
+                    Map.entry(MILLISECOND, 0),
+                    Map.entry(MICROSECOND, 0),
+                    Map.entry(NANOSECOND, 0),
+                    Map.entry(YEARS, 0),
+                    Map.entry(MONTHS, 0),
+                    Map.entry(WEEKS, 0),
+                    Map.entry(DAYS, 0),
+                    Map.entry(HOURS, 0),
+                    Map.entry(MINUTES, 0),
+                    Map.entry(SECONDS, 0),
+                    Map.entry(MILLISECONDS, 0),
+                    Map.entry(MICROSECONDS, 0),
+                    Map.entry(NANOSECONDS, 0),
+                    Map.entry(OFFSET, Undefined.instance),
+                    Map.entry(ERA, Undefined.instance),
+                    Map.entry(ERA_YEAR, Undefined.instance));
 
     public static final List<TruffleString> listEmpty = List.of();
     public static final List<TruffleString> listYMWD = List.of(YEAR, MONTH, WEEK, DAY);
@@ -984,15 +1022,6 @@ public final class TemporalUtil {
             throw Errors.createTypeError("Given dateTime like object has no relevant properties.");
         }
         return result;
-    }
-
-    @TruffleBoundary
-    private static <T, I> Map<T, I> toMap(T[] keys, I[] values) {
-        Map<T, I> map = new HashMap<>();
-        for (int i = 0; i < keys.length; i++) {
-            map.put(keys[i], values[i]);
-        }
-        return map;
     }
 
     public static JSTemporalYearMonthDayRecord regulateISOYearMonth(int year, int month, Overflow overflow) {
