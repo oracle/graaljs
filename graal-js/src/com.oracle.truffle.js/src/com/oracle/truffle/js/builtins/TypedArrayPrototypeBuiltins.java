@@ -50,7 +50,6 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -308,23 +307,21 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          * @param end end index
          * @return subarray TypedArray
          */
-        @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected JSTypedArrayObject subarray(JSDynamicObject thisObj, int begin, int end,
-                        @Cached("createIdentityProfile()") @Shared("arrayTypeProfile") ValueProfile arrayTypeProfile) {
-            TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj));
+        @Specialization
+        protected JSTypedArrayObject subarray(JSTypedArrayObject thisObj, int begin, int end) {
+            TypedArray array = typedArrayGetArrayType(thisObj);
             int length = (int) array.length(thisObj);
             int clampedBegin = JSArrayBufferSliceNode.clampIndex(begin, 0, length);
             int clampedEnd = JSArrayBufferSliceNode.clampIndex(end, clampedBegin, length);
             return subarrayImpl(thisObj, array, clampedBegin, clampedEnd);
         }
 
-        @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected JSTypedArrayObject subarray(JSDynamicObject thisObj, Object begin0, Object end0,
-                        @Cached("createIdentityProfile()") @Shared("arrayTypeProfile") ValueProfile arrayTypeProfile,
+        @Specialization
+        protected JSTypedArrayObject subarray(JSTypedArrayObject thisObj, Object begin0, Object end0,
                         @Cached InlinedConditionProfile negativeBegin,
                         @Cached InlinedConditionProfile negativeEnd,
                         @Cached InlinedConditionProfile smallerEnd) {
-            TypedArray array = arrayTypeProfile.profile(typedArrayGetArrayType(thisObj));
+            TypedArray array = typedArrayGetArrayType(thisObj);
             long len = array.length(thisObj);
             long relativeBegin = toInteger(begin0);
             long beginIndex = negativeBegin.profile(this, relativeBegin < 0) ? Math.max(len + relativeBegin, 0) : Math.min(relativeBegin, len);
