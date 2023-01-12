@@ -43,7 +43,7 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -93,12 +93,12 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Object calendarGetter(JSDynamicObject calendar, JSDynamicObject dateLike, TruffleString name,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         Object fn = getMethod(calendar, name);
         Object result = callNode.executeCall(JSArguments.create(calendar, fn, dateLike));
 
         if (result == Undefined.instance) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createRangeError("expected a value.");
         }
         return result;

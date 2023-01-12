@@ -112,7 +112,8 @@ import java.util.function.Function;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -930,10 +931,10 @@ public final class TemporalUtil {
         return result;
     }
 
-    public static int toPositiveIntegerConstrainInt(Object value, JSToIntegerThrowOnInfinityNode toIntegerThrowOnInfinityNode, BranchProfile errorBranch) {
+    public static int toPositiveIntegerConstrainInt(Object value, JSToIntegerThrowOnInfinityNode toIntegerThrowOnInfinityNode, Node node, InlinedBranchProfile errorBranch) {
         int integer = toIntegerThrowOnInfinityNode.executeIntOrThrow(value);
         if (integer <= 0) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw Errors.createRangeError("positive value expected");
         }
         return integer;
@@ -1111,20 +1112,20 @@ public final class TemporalUtil {
         return id.equals(ISO8601) || id.equals(GREGORY) || id.equals(JAPANESE);
     }
 
-    public static JSTemporalCalendarObject getISO8601Calendar(JSContext ctx, JSRealm realm, BranchProfile errorBranch) {
-        return getBuiltinCalendar(ISO8601, ctx, realm, errorBranch);
+    public static JSTemporalCalendarObject getISO8601Calendar(JSContext ctx, JSRealm realm, Node node, InlinedBranchProfile errorBranch) {
+        return getBuiltinCalendar(ISO8601, ctx, realm, node, errorBranch);
     }
 
     public static JSTemporalCalendarObject getISO8601Calendar(JSContext ctx, JSRealm realm) {
         return getBuiltinCalendar(ISO8601, ctx, realm);
     }
 
-    public static JSTemporalCalendarObject getBuiltinCalendar(TruffleString id, JSContext ctx, JSRealm realm, BranchProfile errorBranch) {
+    public static JSTemporalCalendarObject getBuiltinCalendar(TruffleString id, JSContext ctx, JSRealm realm, Node node, InlinedBranchProfile errorBranch) {
         if (!isBuiltinCalendar(id)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
-        return JSTemporalCalendar.create(ctx, realm, id, errorBranch);
+        return JSTemporalCalendar.create(ctx, realm, id, node, errorBranch);
     }
 
     public static JSTemporalCalendarObject getBuiltinCalendar(TruffleString id, JSContext ctx, JSRealm realm) {
@@ -1141,7 +1142,7 @@ public final class TemporalUtil {
     public static JSDynamicObject toTemporalCalendar(JSContext ctx, Object temporalCalendarLikeParam) {
         Object temporalCalendarLike = temporalCalendarLikeParam;
         if (JSRuntime.isObject(temporalCalendarLike)) {
-            JSDynamicObject obj = toJSDynamicObject(temporalCalendarLike, null);
+            JSDynamicObject obj = toJSDynamicObject(temporalCalendarLike, null, InlinedBranchProfile.getUncached());
             if (temporalCalendarLike instanceof TemporalCalendar) {
                 return ((TemporalCalendar) temporalCalendarLike).getCalendar();
             }
@@ -1150,7 +1151,7 @@ public final class TemporalUtil {
             }
             temporalCalendarLike = JSObject.get(obj, CALENDAR);
             if (JSRuntime.isObject(temporalCalendarLike)) {
-                JSDynamicObject tclObj = toJSDynamicObject(temporalCalendarLike, null);
+                JSDynamicObject tclObj = toJSDynamicObject(temporalCalendarLike, null, InlinedBranchProfile.getUncached());
                 if (!JSObject.hasProperty(tclObj, CALENDAR)) {
                     return tclObj;
                 }
@@ -1240,7 +1241,7 @@ public final class TemporalUtil {
     public static JSDynamicObject toTemporalTimeZone(JSContext ctx, Object temporalTimeZoneLikeParam) {
         Object temporalTimeZoneLike = temporalTimeZoneLikeParam;
         if (JSRuntime.isObject(temporalTimeZoneLike)) {
-            JSDynamicObject tzObj = toJSDynamicObject(temporalTimeZoneLike, null);
+            JSDynamicObject tzObj = toJSDynamicObject(temporalTimeZoneLike, null, InlinedBranchProfile.getUncached());
             if (isTemporalZonedDateTime(tzObj)) {
                 return ((JSTemporalZonedDateTimeObject) tzObj).getTimeZone();
             } else if (!JSObject.hasProperty(tzObj, TIME_ZONE)) {
@@ -1248,7 +1249,7 @@ public final class TemporalUtil {
             }
             temporalTimeZoneLike = JSObject.get(tzObj, TIME_ZONE);
             if (JSRuntime.isObject(temporalTimeZoneLike)) {
-                tzObj = toJSDynamicObject(temporalTimeZoneLike, null);
+                tzObj = toJSDynamicObject(temporalTimeZoneLike, null, InlinedBranchProfile.getUncached());
                 if (!JSObject.hasProperty(tzObj, TIME_ZONE)) {
                     return tzObj;
                 }
@@ -1613,9 +1614,9 @@ public final class TemporalUtil {
         return 0;
     }
 
-    public static JSTemporalPlainDateObject requireTemporalDate(Object obj, BranchProfile errorBranch) {
+    public static JSTemporalPlainDateObject requireTemporalDate(Object obj, Node node, InlinedBranchProfile errorBranch) {
         if (!(obj instanceof JSTemporalPlainDateObject)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createTypeErrorTemporalDateExpected();
         }
         return (JSTemporalPlainDateObject) obj;
@@ -1680,10 +1681,10 @@ public final class TemporalUtil {
         return Boundaries.equals(toStringNode.executeString(one), toStringNode.executeString(two));
     }
 
-    public static void rejectTemporalCalendarType(JSDynamicObject obj, BranchProfile errorBranch) {
+    public static void rejectTemporalCalendarType(JSDynamicObject obj, Node node, InlinedBranchProfile errorBranch) {
         if (obj instanceof JSTemporalPlainDateObject || obj instanceof JSTemporalPlainDateTimeObject || obj instanceof JSTemporalPlainMonthDayObject ||
                         obj instanceof JSTemporalPlainTimeObject || obj instanceof JSTemporalPlainYearMonthObject || isTemporalZonedDateTime(obj)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw Errors.createTypeError("rejecting calendar types");
         }
     }
@@ -1721,21 +1722,21 @@ public final class TemporalUtil {
         throw Errors.createTypeError("unknown property");
     }
 
-    public static JSDynamicObject calendarMergeFields(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, BranchProfile errorBranch, JSDynamicObject calendar, JSDynamicObject fields,
-                    JSDynamicObject additionalFields) {
+    public static JSDynamicObject calendarMergeFields(JSContext ctx, JSDynamicObject calendar, JSDynamicObject fields,
+                    JSDynamicObject additionalFields, EnumerableOwnPropertyNamesNode namesNode, Node node, InlinedBranchProfile errorBranch) {
         Object mergeFields = JSObject.getMethod(calendar, TemporalConstants.MERGE_FIELDS);
         if (mergeFields == Undefined.instance) {
-            return defaultMergeFields(ctx, namesNode, fields, additionalFields);
+            return defaultMergeFields(ctx, fields, additionalFields, namesNode);
         }
         Object result = JSRuntime.call(mergeFields, calendar, new Object[]{fields, additionalFields});
         if (!JSRuntime.isObject(result)) {
             throw TemporalErrors.createTypeErrorObjectExpected();
         }
-        return toJSDynamicObject(result, errorBranch);
+        return toJSDynamicObject(result, node, errorBranch);
     }
 
     @TruffleBoundary
-    public static JSDynamicObject defaultMergeFields(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, JSDynamicObject fields, JSDynamicObject additionalFields) {
+    public static JSDynamicObject defaultMergeFields(JSContext ctx, JSDynamicObject fields, JSDynamicObject additionalFields, EnumerableOwnPropertyNamesNode namesNode) {
         JSRealm realm = JSRealm.get(null);
         JSDynamicObject merged = JSOrdinary.create(ctx, realm);
         UnmodifiableArrayList<? extends Object> originalKeys = namesNode.execute(fields);
@@ -2095,13 +2096,11 @@ public final class TemporalUtil {
     }
 
     // TODO (GR-32375) for interop support, this needs to detect and convert foreign temporal values
-    public static JSDynamicObject toJSDynamicObject(Object item, BranchProfile errorBranch) {
+    public static JSDynamicObject toJSDynamicObject(Object item, Node node, InlinedBranchProfile errorBranch) {
         if (item instanceof JSDynamicObject) {
             return (JSDynamicObject) item;
         } else {
-            if (errorBranch != null) {
-                errorBranch.enter();
-            }
+            errorBranch.enter(node);
             throw Errors.createTypeError("Interop types not supported in Temporal");
         }
     }
@@ -2237,12 +2236,13 @@ public final class TemporalUtil {
         return Unit.NANOSECOND;
     }
 
-    public static JSDynamicObject toPartialDuration(Object temporalDurationLike, JSContext ctx, IsObjectNode isObjectNode, JSToIntegerWithoutRoundingNode toInt, BranchProfile errorBranch) {
+    public static JSDynamicObject toPartialDuration(Object temporalDurationLike,
+                    JSContext ctx, IsObjectNode isObjectNode, JSToIntegerWithoutRoundingNode toInt, Node node, InlinedBranchProfile errorBranch) {
         if (!isObjectNode.executeBoolean(temporalDurationLike)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw Errors.createTypeError("Given duration like is not a object.");
         }
-        JSDynamicObject temporalDurationLikeObj = toJSDynamicObject(temporalDurationLike, errorBranch);
+        JSDynamicObject temporalDurationLikeObj = toJSDynamicObject(temporalDurationLike, node, errorBranch);
         JSRealm realm = JSRealm.get(null);
         JSDynamicObject result = JSOrdinary.create(ctx, realm);
         boolean any = false;
@@ -2254,7 +2254,7 @@ public final class TemporalUtil {
             }
         }
         if (!any) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw Errors.createTypeError("Given duration like object has no duration properties.");
         }
         return result;

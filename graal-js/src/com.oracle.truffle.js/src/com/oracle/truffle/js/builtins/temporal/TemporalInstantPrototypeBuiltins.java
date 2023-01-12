@@ -291,7 +291,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             BigInteger roundedNs = TemporalUtil.differenceInstant(one, two, roundingIncrement, smallestUnit, roundingMode);
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(getContext(), namesNode, 0, 0, 0, 0, 0, 0, roundedNs, largestUnit, Undefined.instance);
             return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0, result.getHours(), result.getMinutes(), result.getSeconds(),
-                            result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), errorBranch);
+                            result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), this, errorBranch);
         }
     }
 
@@ -319,7 +319,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             }
             Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null, equalNode, getOptionNode);
             if (smallestUnit == Unit.EMPTY) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
@@ -426,19 +426,19 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             if (!isObject(item)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("object expected");
             }
-            JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, errorBranch);
+            JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, this, errorBranch);
             Object calendarLike = JSObject.get(itemObj, TemporalConstants.CALENDAR);
             if (calendarLike == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorTemporalCalendarExpected();
             }
             JSDynamicObject calendar = toTemporalCalendar.execute(calendarLike);
             Object timeZoneLike = JSObject.get(itemObj, TemporalConstants.TIME_ZONE);
             if (timeZoneLike == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorTemporalTimeZoneExpected();
             }
             JSDynamicObject timeZone = toTemporalTimeZone.execute(timeZoneLike);
@@ -458,7 +458,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             Object item = itemParam;
             if (isObject(item)) {
-                JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, errorBranch);
+                JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, this, errorBranch);
                 Object timeZoneProperty = JSObject.get(itemObj, TIME_ZONE);
                 if (timeZoneProperty != Undefined.instance) {
                     item = timeZoneProperty;
@@ -466,7 +466,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             }
             JSDynamicObject timeZone = toTemporalTimeZone.execute(item);
             JSRealm realm = getRealm();
-            JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext(), realm, errorBranch);
+            JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext(), realm, this, errorBranch);
             return JSTemporalZonedDateTime.create(getContext(), realm, instant.getNanoseconds(), timeZone, calendar);
         }
     }

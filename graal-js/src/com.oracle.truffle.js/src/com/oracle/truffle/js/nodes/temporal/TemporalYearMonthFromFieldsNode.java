@@ -42,7 +42,7 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -70,16 +70,16 @@ public abstract class TemporalYearMonthFromFieldsNode extends JavaScriptBaseNode
 
     @Specialization
     protected JSTemporalPlainYearMonthObject yearMonthFromFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         assert options != null;
         Object fn = getMethodYearMonthFromFieldsNode.executeWithTarget(calendar);
         Object yearMonth = callYearMonthFromFieldsNode.executeCall(JSArguments.create(calendar, fn, fields, options));
         return requireTemporalYearMonth(yearMonth, errorBranch);
     }
 
-    public JSTemporalPlainYearMonthObject requireTemporalYearMonth(Object obj, BranchProfile errorBranch) {
+    private JSTemporalPlainYearMonthObject requireTemporalYearMonth(Object obj, InlinedBranchProfile errorBranch) {
         if (!(obj instanceof JSTemporalPlainYearMonthObject)) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw TemporalErrors.createTypeErrorTemporalPlainYearMonthExpected();
         }
         return (JSTemporalPlainYearMonthObject) obj;

@@ -43,7 +43,7 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -73,13 +73,13 @@ public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
 
     @Specialization
     protected JSTemporalRelativeDateRecord moveRelativeDate(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         JSTemporalPlainDateObject newDate = calendarDateAdd(calendar, relativeTo, duration, errorBranch);
         long days = TemporalUtil.daysUntil(relativeTo, newDate);
         return JSTemporalRelativeDateRecord.create(newDate, days);
     }
 
-    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, BranchProfile errorBranch) {
+    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, InlinedBranchProfile errorBranch) {
         if (getMethodDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getMethodDateAddNode = insert(GetMethodNode.create(ctx, TemporalConstants.DATE_ADD));
@@ -90,6 +90,6 @@ public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
         }
         Object dateAddPrepared = getMethodDateAddNode.executeWithTarget(calendar);
         Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, dateAddPrepared, date, duration, Undefined.instance));
-        return TemporalUtil.requireTemporalDate(addedDate, errorBranch);
+        return TemporalUtil.requireTemporalDate(addedDate, this, errorBranch);
     }
 }

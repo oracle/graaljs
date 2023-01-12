@@ -263,7 +263,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             dtoi(result.getNanoseconds()));
             return JSTemporalPlainTime.create(getContext(),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
-                            dtoi(result.getNanoseconds()), errorBranch);
+                            dtoi(result.getNanoseconds()), this, errorBranch);
         }
 
         protected JSTemporalDurationObject differenceTemporalPlainTime(int sign, TemporalTime temporalTime, Object otherObj, Object optionsParam, JSToNumberNode toNumber,
@@ -292,7 +292,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             result2.getNanoseconds(), largestUnit);
             return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0,
                             sign * result3.getHours(), sign * result3.getMinutes(), sign * result3.getSeconds(), sign * result3.getMilliseconds(), sign * result3.getMicroseconds(),
-                            sign * result3.getNanoseconds(), errorBranch);
+                            sign * result3.getNanoseconds(), this, errorBranch);
         }
     }
 
@@ -338,19 +338,19 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached TemporalGetOptionNode getOptionNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             if (!isObject(temporalTimeLike)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("Temporal.Time like object expected.");
             }
             JSDynamicObject timeLikeObj = (JSDynamicObject) temporalTimeLike;
-            TemporalUtil.rejectTemporalCalendarType(timeLikeObj, errorBranch);
+            TemporalUtil.rejectTemporalCalendarType(timeLikeObj, this, errorBranch);
             Object calendarProperty = JSObject.get(timeLikeObj, TemporalConstants.CALENDAR);
             if (calendarProperty != Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorUnexpectedCalendar();
             }
             Object timeZoneProperty = JSObject.get(timeLikeObj, TemporalConstants.TIME_ZONE);
             if (timeZoneProperty != Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
             }
             JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(timeLikeObj, isObjectNode, toIntThrows, getContext());
@@ -401,7 +401,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalDurationRecord result = TemporalUtil.regulateTime(hour, minute, second, millisecond, microsecond, nanosecond, overflow);
             return JSTemporalPlainTime.create(getContext(),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
-                            dtoi(result.getNanoseconds()), errorBranch);
+                            dtoi(result.getNanoseconds()), this, errorBranch);
         }
     }
 
@@ -457,7 +457,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached TemporalGetOptionNode getOptionNode) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             if (roundToParam == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorOptionsUndefined();
             }
             JSDynamicObject roundTo;
@@ -469,7 +469,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null, equalNode, getOptionNode);
             if (smallestUnit == Unit.EMPTY) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
@@ -488,7 +488,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             temporalTime.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);
             return JSTemporalPlainTime.create(getContext(),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
-                            dtoi(result.getNanoseconds()), errorBranch);
+                            dtoi(result.getNanoseconds()), this, errorBranch);
         }
     }
 
@@ -552,7 +552,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
             return JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
-                            time.getNanosecond(), date.getCalendar(), errorBranch);
+                            time.getNanosecond(), date.getCalendar(), this, errorBranch);
         }
     }
 
@@ -575,20 +575,20 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
             Object temporalDateLike = JSObject.get(item, PLAIN_DATE);
             if (temporalDateLike == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorTemporalDateExpected();
             }
             JSTemporalPlainDateObject date = toTemporalDate.execute(temporalDateLike, Undefined.instance);
             Object temporalTimeZoneLike = JSObject.get(item, TemporalConstants.TIME_ZONE);
             if (temporalTimeZoneLike == Undefined.instance || temporalTimeZoneLike == null) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("TimeZone expected");
             }
             JSDynamicObject timeZone = toTemporalTimeZone.execute(temporalTimeZoneLike);
 
             JSTemporalPlainDateTimeObject temporalDateTime = JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
-                            time.getNanosecond(), date.getCalendar(), errorBranch);
+                            time.getNanosecond(), date.getCalendar(), this, errorBranch);
             JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
             return JSTemporalZonedDateTime.create(getContext(), getRealm(), instant.getNanoseconds(), timeZone, date.getCalendar());
         }

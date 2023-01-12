@@ -44,8 +44,8 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -72,14 +72,14 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Object getOption(JSDynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback,
-                    @Cached BranchProfile errorBranch,
-                    @Cached ConditionProfile isFallbackProfile,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached InlinedConditionProfile isFallbackProfile,
                     @Cached JSToBooleanNode toBooleanNode,
                     @Cached JSToStringNode toStringNode,
                     @Cached JSToNumberNode toNumberNode) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
-        if (isFallbackProfile.profile(value == Undefined.instance)) {
+        if (isFallbackProfile.profile(this, value == Undefined.instance)) {
             return fallback;
         }
         OptionType type;
@@ -98,7 +98,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
             // workaround as long as JSToStringNode cannot have an uncached version
             value = toNumberNode == null ? JSRuntime.toNumber(value) : toNumberNode.executeNumber(value);
             if (JSRuntime.isNaN(value)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
         } else if (type.allowsString()) {
@@ -106,7 +106,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
             value = toStringNode == null ? JSRuntime.toString(value) : toStringNode.executeString(value);
         }
         if (value != Undefined.instance && values != null && !Boundaries.listContainsUnchecked(values, value)) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw TemporalErrors.createRangeErrorOptionsNotContained(values, value);
         }
         return value;

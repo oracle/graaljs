@@ -46,8 +46,9 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -87,10 +88,10 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
     // TODO still using (some) long arithmetics here, should use double?
     @Specialization
     protected JSTemporalDurationRecord balanceDurationRelative(double y, double m, double w, double d, TemporalUtil.Unit largestUnit, JSDynamicObject relTo,
-                    @Cached BranchProfile errorBranch,
-                    @Cached ConditionProfile unitIsYear,
-                    @Cached ConditionProfile unitIsMonth,
-                    @Cached ConditionProfile unitIsDay,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached InlinedConditionProfile unitIsYear,
+                    @Cached InlinedConditionProfile unitIsMonth,
+                    @Cached InlinedConditionProfile unitIsDay,
                     @Cached("create(ctx)") ToTemporalDateNode toTemporalDateNode,
                     @Cached("create(ctx)") TemporalMoveRelativeDateNode moveRelativeDateNode) {
         long years = dtol(y);
@@ -98,12 +99,12 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         long weeks = dtol(w);
         long days = dtol(d);
 
-        if (unitIsDay.profile((largestUnit != TemporalUtil.Unit.YEAR && largestUnit != TemporalUtil.Unit.MONTH && largestUnit != TemporalUtil.Unit.WEEK) ||
+        if (unitIsDay.profile(this, (largestUnit != TemporalUtil.Unit.YEAR && largestUnit != TemporalUtil.Unit.MONTH && largestUnit != TemporalUtil.Unit.WEEK) ||
                         (years == 0 && months == 0 && weeks == 0 && days == 0))) {
             return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         }
         if (relTo == Undefined.instance) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw TemporalErrors.createRangeErrorRelativeToNotUndefined();
         }
         long sign = TemporalUtil.durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
@@ -113,10 +114,10 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         JSDynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0);
         JSTemporalPlainDateObject relativeTo = toTemporalDateNode.execute(relTo, Undefined.instance);
         JSDynamicObject calendar = relativeTo.getCalendar();
-        if (unitIsYear.profile(largestUnit == TemporalUtil.Unit.YEAR)) {
+        if (unitIsYear.profile(this, largestUnit == TemporalUtil.Unit.YEAR)) {
             return getUnitYear(years, months, weeks, days, sign, oneYear, oneMonth, relativeTo, calendar,
-                            errorBranch, moveRelativeDateNode);
-        } else if (unitIsMonth.profile(largestUnit == TemporalUtil.Unit.MONTH)) {
+                            this, errorBranch, moveRelativeDateNode);
+        } else if (unitIsMonth.profile(this, largestUnit == TemporalUtil.Unit.MONTH)) {
             return getUnitMonth(years, months, weeks, days, sign, oneMonth, relativeTo, calendar,
                             moveRelativeDateNode);
         } else {
@@ -126,7 +127,7 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
     }
 
     private JSTemporalDurationRecord getUnitYear(long yearsP, long monthsP, long weeks, long daysP, long sign, JSDynamicObject oneYear, JSDynamicObject oneMonth, JSDynamicObject relativeToP,
-                    JSDynamicObject calendar, BranchProfile errorBranch, TemporalMoveRelativeDateNode moveRelativeDateNode) {
+                    JSDynamicObject calendar, Node node, InlinedBranchProfile errorBranch, TemporalMoveRelativeDateNode moveRelativeDateNode) {
         long years = yearsP;
         long months = monthsP;
         long days = daysP;
@@ -153,7 +154,7 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         }
 
         Object dateAdd = getDateAdd(calendar);
-        JSDynamicObject newRelativeTo = calendarDateAdd(calendar, relativeTo, oneYear, Undefined.instance, dateAdd, errorBranch);
+        JSDynamicObject newRelativeTo = calendarDateAdd(calendar, relativeTo, oneYear, Undefined.instance, dateAdd, node, errorBranch);
 
         Object dateUntil = getDateUntil(calendar);
         JSObject untilOptions = JSOrdinary.createWithNullPrototype(ctx);
@@ -166,7 +167,7 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
             years = years + sign;
             relativeTo = newRelativeTo;
 
-            newRelativeTo = calendarDateAdd(calendar, relativeTo, oneYear, Undefined.instance, dateAdd, errorBranch);
+            newRelativeTo = calendarDateAdd(calendar, relativeTo, oneYear, Undefined.instance, dateAdd, node, errorBranch);
             untilOptions = JSOrdinary.createWithNullPrototype(ctx);
             JSObjectUtil.putDataProperty(untilOptions, TemporalConstants.LARGEST_UNIT, MONTH);
             untilResult = calendarDateUntil(calendar, relativeTo, newRelativeTo, untilOptions, dateUntil);
@@ -213,13 +214,13 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
     }
 
     protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateAdd,
-                    BranchProfile errorBranch) {
+                    Node node, InlinedBranchProfile errorBranch) {
         if (callDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callDateAddNode = insert(JSFunctionCallNode.createCall());
         }
         Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, dateAdd, date, duration, options));
-        return TemporalUtil.requireTemporalDate(addedDate, errorBranch);
+        return TemporalUtil.requireTemporalDate(addedDate, node, errorBranch);
     }
 
     protected JSTemporalDurationObject calendarDateUntil(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateUntil) {

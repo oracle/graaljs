@@ -42,7 +42,7 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -70,16 +70,16 @@ public abstract class TemporalMonthDayFromFieldsNode extends JavaScriptBaseNode 
 
     @Specialization
     protected JSTemporalPlainMonthDayObject monthDayFromFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         assert options != null;
         Object fn = getMethodMonthDayFromFieldsNode.executeWithTarget(calendar);
         Object monthDay = callMonthDayFromFieldsNode.executeCall(JSArguments.create(calendar, fn, fields, options));
         return requireTemporalMonthDay(monthDay, errorBranch);
     }
 
-    public JSTemporalPlainMonthDayObject requireTemporalMonthDay(Object obj, BranchProfile errorBranch) {
+    private JSTemporalPlainMonthDayObject requireTemporalMonthDay(Object obj, InlinedBranchProfile errorBranch) {
         if (!(obj instanceof JSTemporalPlainMonthDayObject)) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
         }
         return (JSTemporalPlainMonthDayObject) obj;

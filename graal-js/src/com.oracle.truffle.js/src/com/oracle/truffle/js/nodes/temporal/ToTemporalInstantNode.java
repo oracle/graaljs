@@ -42,7 +42,7 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -69,10 +69,10 @@ public abstract class ToTemporalInstantNode extends JavaScriptBaseNode {
 
     @Specialization
     public JSTemporalInstantObject toTemporalDateTime(Object item,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode,
-                    @Cached ConditionProfile isObjectProfile) {
-        if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode,
+                    @Cached InlinedConditionProfile isObjectProfile) {
+        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             if (TemporalUtil.isTemporalInstant(item)) {
                 return (JSTemporalInstantObject) item;
             }

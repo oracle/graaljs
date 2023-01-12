@@ -48,8 +48,8 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -85,9 +85,9 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
 
     @Specialization
     public JSDynamicObject toTemporalZonedDateTime(Object item, JSDynamicObject options,
-                    @Cached BranchProfile errorBranch,
-                    @Cached ConditionProfile isObjectProfile,
-                    @Cached ConditionProfile isZonedDateTimeProfile,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached InlinedConditionProfile isObjectProfile,
+                    @Cached InlinedConditionProfile isZonedDateTimeProfile,
                     @Cached IsObjectNode isObjectNode,
                     @Cached JSToStringNode toStringNode,
                     @Cached TruffleString.EqualNode equalNode,
@@ -105,9 +105,9 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         JSRealm realm = JSRealm.get(this);
         OffsetBehaviour offsetBehaviour = OffsetBehaviour.OPTION;
         MatchBehaviour matchBehaviour = MatchBehaviour.MATCH_EXACTLY;
-        if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
+        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
-            if (isZonedDateTimeProfile.profile(TemporalUtil.isTemporalZonedDateTime(itemObj))) {
+            if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(itemObj))) {
                 return itemObj;
             }
             calendar = getTemporalCalendarNode.execute(itemObj);
@@ -133,7 +133,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             assert timeZoneName != null;
             if (!TemporalUtil.canParseAsTimeZoneNumericUTCOffset(timeZoneName)) {
                 if (!TemporalUtil.isValidTimeZoneName(timeZoneName)) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
                 timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);

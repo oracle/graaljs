@@ -44,8 +44,8 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -71,22 +71,22 @@ public abstract class ToLimitedTemporalDurationNode extends JavaScriptBaseNode {
     protected JSTemporalDurationRecord toLimitedTemporalDuration(Object temporalDurationLike, List<TruffleString> disallowedFields,
                     @Cached IsObjectNode isObjectNode,
                     @Cached JSToStringNode toStringNode,
-                    @Cached ConditionProfile isObjectProfile,
-                    @Cached ConditionProfile hasDisallowedFields,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedConditionProfile isObjectProfile,
+                    @Cached InlinedConditionProfile hasDisallowedFields,
+                    @Cached InlinedBranchProfile errorBranch) {
         JSTemporalDurationRecord d;
-        if (isObjectProfile.profile(!isObjectNode.executeBoolean(temporalDurationLike))) {
+        if (isObjectProfile.profile(this, !isObjectNode.executeBoolean(temporalDurationLike))) {
             TruffleString str = toStringNode.executeString(temporalDurationLike);
             d = JSTemporalDuration.parseTemporalDurationString(str);
         } else {
             d = JSTemporalDuration.toTemporalDurationRecord((JSDynamicObject) temporalDurationLike);
         }
 
-        if (hasDisallowedFields.profile(disallowedFields != TemporalUtil.listEmpty)) {
+        if (hasDisallowedFields.profile(this, disallowedFields != TemporalUtil.listEmpty)) {
             for (TemporalUtil.UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
                 double value = TemporalUtil.getPropertyFromRecord(d, unit);
                 if (value != 0 && Boundaries.listContains(disallowedFields, unit.toTruffleString())) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw TemporalErrors.createRangeErrorDisallowedField(unit.toTruffleString());
                 }
             }

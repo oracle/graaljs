@@ -43,8 +43,9 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltins;
@@ -76,13 +77,14 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     private JSTemporalPlainYearMonth() {
     }
 
-    public static JSTemporalPlainYearMonthObject create(JSContext context, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay, BranchProfile errorBranch) {
+    public static JSTemporalPlainYearMonthObject create(JSContext context, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
+                    Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(isoYear, isoMonth, referenceISODay)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
         if (!TemporalUtil.isoYearMonthWithinLimits(isoYear, isoMonth)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorYearMonthOutsideRange();
         }
         return createIntl(context, isoYear, isoMonth, calendar, referenceISODay);

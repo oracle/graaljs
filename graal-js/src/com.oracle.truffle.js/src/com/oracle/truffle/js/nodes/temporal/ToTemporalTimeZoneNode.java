@@ -46,8 +46,8 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.UTC;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -78,44 +78,44 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
     protected JSDynamicObject toTemporalTimeZone(Object temporalTimeZoneLikeParam,
                     @Cached IsObjectNode isObjectNode,
                     @Cached JSToStringNode toStringNode,
-                    @Cached BranchProfile errorBranch,
-                    @Cached ConditionProfile parseNameEmpty,
-                    @Cached ConditionProfile parseIsZ,
-                    @Cached ConditionProfile isObjectProfile,
-                    @Cached ConditionProfile isTimeZoneProfile,
-                    @Cached ConditionProfile hasProperty1Profile,
-                    @Cached ConditionProfile hasProperty2Profile) {
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached InlinedConditionProfile parseNameEmpty,
+                    @Cached InlinedConditionProfile parseIsZ,
+                    @Cached InlinedConditionProfile isObjectProfile,
+                    @Cached InlinedConditionProfile isTimeZoneProfile,
+                    @Cached InlinedConditionProfile hasProperty1Profile,
+                    @Cached InlinedConditionProfile hasProperty2Profile) {
         Object temporalTimeZoneLike = temporalTimeZoneLikeParam;
-        if (isObjectProfile.profile(isObjectNode.executeBoolean(temporalTimeZoneLike))) {
+        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(temporalTimeZoneLike))) {
             JSDynamicObject tzObj = (JSDynamicObject) temporalTimeZoneLike;
-            if (isTimeZoneProfile.profile(TemporalUtil.isTemporalZonedDateTime(tzObj))) {
+            if (isTimeZoneProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(tzObj))) {
                 return (JSDynamicObject) getTimeZone(tzObj);
-            } else if (hasProperty1Profile.profile(!JSObject.hasProperty(tzObj, TIME_ZONE))) {
+            } else if (hasProperty1Profile.profile(this, !JSObject.hasProperty(tzObj, TIME_ZONE))) {
                 return tzObj;
             }
             temporalTimeZoneLike = getTimeZone(tzObj);
-            if (hasProperty2Profile.profile(isObjectNode.executeBoolean(temporalTimeZoneLike) && !JSObject.hasProperty((JSDynamicObject) temporalTimeZoneLike, TIME_ZONE))) {
+            if (hasProperty2Profile.profile(this, isObjectNode.executeBoolean(temporalTimeZoneLike) && !JSObject.hasProperty((JSDynamicObject) temporalTimeZoneLike, TIME_ZONE))) {
                 return (JSDynamicObject) temporalTimeZoneLike;
             }
         }
         TruffleString identifier = toStringNode.executeString(temporalTimeZoneLike);
         JSTemporalTimeZoneRecord parseResult = TemporalUtil.parseTemporalTimeZoneString(identifier);
-        if (parseNameEmpty.profile(parseResult.getName() != null)) {
+        if (parseNameEmpty.profile(this, parseResult.getName() != null)) {
             boolean canParse = TemporalUtil.canParseAsTimeZoneNumericUTCOffset(parseResult.getName());
             if (canParse) {
                 if (parseResult.getOffsetString() != null && TemporalUtil.parseTimeZoneOffsetString(parseResult.getOffsetString()) != TemporalUtil.parseTimeZoneOffsetString(parseResult.getName())) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
             } else {
                 if (!TemporalUtil.isValidTimeZoneName(parseResult.getName())) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
             }
             return TemporalUtil.createTemporalTimeZone(ctx, TemporalUtil.canonicalizeTimeZoneName(parseResult.getName()));
         }
-        if (parseIsZ.profile(parseResult.isZ())) {
+        if (parseIsZ.profile(this, parseResult.isZ())) {
             return TemporalUtil.createTemporalTimeZone(ctx, UTC);
         }
         return TemporalUtil.createTemporalTimeZone(ctx, parseResult.getOffsetString());

@@ -50,8 +50,8 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -95,12 +95,12 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
 
     @Specialization
     protected JSDynamicObject toRelativeTemporalObject(JSDynamicObject options,
-                    @Cached BranchProfile errorBranch,
-                    @Cached ConditionProfile valueIsObject,
-                    @Cached ConditionProfile valueIsUndefined,
-                    @Cached ConditionProfile valueIsPlainDate,
-                    @Cached ConditionProfile valueIsPlainDateTime,
-                    @Cached ConditionProfile timeZoneAvailable,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached InlinedConditionProfile valueIsObject,
+                    @Cached InlinedConditionProfile valueIsUndefined,
+                    @Cached InlinedConditionProfile valueIsPlainDate,
+                    @Cached InlinedConditionProfile valueIsPlainDateTime,
+                    @Cached InlinedConditionProfile timeZoneAvailable,
                     @Cached JSToStringNode toStringNode,
                     @Cached IsObjectNode isObjectNode,
                     @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
@@ -110,7 +110,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarWithISODefaultNode,
                     @Cached TemporalGetOptionNode getOptionNode) {
         Object value = getRelativeToNode.getValue(options);
-        if (valueIsUndefined.profile(value == Undefined.instance)) {
+        if (valueIsUndefined.profile(this, value == Undefined.instance)) {
             return Undefined.instance;
         }
         JSTemporalDateTimeRecord result;
@@ -119,14 +119,14 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
         Object offset;
         TemporalUtil.OffsetBehaviour offsetBehaviour = TemporalUtil.OffsetBehaviour.OPTION;
         TemporalUtil.MatchBehaviour matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_EXACTLY;
-        if (valueIsObject.profile(isObjectNode.executeBoolean(value))) {
+        if (valueIsObject.profile(this, isObjectNode.executeBoolean(value))) {
             JSDynamicObject valueObj = (JSDynamicObject) value;
-            if (valueIsPlainDate.profile(valueObj instanceof JSTemporalPlainDateObject || valueObj instanceof JSTemporalZonedDateTimeObject)) {
+            if (valueIsPlainDate.profile(this, valueObj instanceof JSTemporalPlainDateObject || valueObj instanceof JSTemporalZonedDateTimeObject)) {
                 return valueObj;
             }
-            if (valueIsPlainDateTime.profile(valueObj instanceof JSTemporalPlainDateTimeObject)) {
+            if (valueIsPlainDateTime.profile(this, valueObj instanceof JSTemporalPlainDateTimeObject)) {
                 JSTemporalPlainDateTimeObject pd = (JSTemporalPlainDateTimeObject) valueObj;
-                return JSTemporalPlainDate.create(ctx, pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar(), errorBranch);
+                return JSTemporalPlainDate.create(ctx, pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar(), this, errorBranch);
             }
             calendar = getTemporalCalendarWithISODefaultNode.execute(valueObj);
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDHMMMMMNSY);
@@ -155,7 +155,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                 // If ParseText(! StringToCodePoints(timeZoneName), TimeZoneNumericUTCOffset)
                 // is not a List of errors
                 if (!TemporalUtil.isValidTimeZoneName(timeZoneName)) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
                 timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);
@@ -170,7 +170,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_MINUTES;
         }
         assert timeZone != null;
-        if (timeZoneAvailable.profile(timeZone != Undefined.instance)) {
+        if (timeZoneAvailable.profile(this, timeZone != Undefined.instance)) {
             Object offsetNs = 0;
             if (offsetBehaviour == TemporalUtil.OffsetBehaviour.OPTION) {
                 offsetNs = TemporalUtil.parseTimeZoneOffsetString(toStringNode.executeString(offset));
@@ -184,6 +184,6 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                             matchBehaviour);
             return JSTemporalZonedDateTime.create(ctx, realm, epochNanoseconds, timeZone, calendar);
         }
-        return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar, errorBranch);
+        return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar, this, errorBranch);
     }
 }

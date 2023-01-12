@@ -106,7 +106,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                 return JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(),
                                 duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
-                                duration.getMicroseconds(), duration.getNanoseconds(), errorBranch);
+                                duration.getMicroseconds(), duration.getNanoseconds(), this, errorBranch);
             }
             return toTemporalDurationNode.execute(item);
         }

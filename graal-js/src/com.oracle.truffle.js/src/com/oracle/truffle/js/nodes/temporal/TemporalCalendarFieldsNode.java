@@ -45,7 +45,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -77,9 +77,9 @@ public abstract class TemporalCalendarFieldsNode extends JavaScriptBaseNode {
 
     @Specialization
     protected List<TruffleString> calendarFields(JSDynamicObject calendar, List<TruffleString> strings,
-                    @Cached ConditionProfile fieldsUndefined) {
+                    @Cached InlinedConditionProfile fieldsUndefined) {
         Object fields = getMethodFieldsNode.executeWithTarget(calendar);
-        if (fieldsUndefined.profile(fields == Undefined.instance)) {
+        if (fieldsUndefined.profile(this, fields == Undefined.instance)) {
             return strings;
         } else {
             JSDynamicObject fieldsArray = JSArray.createConstant(ctx, getRealm(), Boundaries.listToArray(strings));

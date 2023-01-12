@@ -42,8 +42,8 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -68,12 +68,12 @@ public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
 
     @Specialization
     protected JSDynamicObject toTemporalDuration(Object item,
-                    @Cached ConditionProfile isObjectProfile,
-                    @Cached BranchProfile errorBranch,
+                    @Cached InlinedConditionProfile isObjectProfile,
+                    @Cached InlinedBranchProfile errorBranch,
                     @Cached IsObjectNode isObjectNode,
                     @Cached JSToStringNode toStringNode) {
         JSTemporalDurationRecord result;
-        if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
+        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
             if (JSTemporalDuration.isJSTemporalDuration(itemObj)) {
                 return itemObj;
@@ -84,6 +84,6 @@ public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
             result = JSTemporalDuration.parseTemporalDurationString(string);
         }
         return JSTemporalDuration.createTemporalDuration(ctx, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
-                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), errorBranch);
+                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), this, errorBranch);
     }
 }

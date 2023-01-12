@@ -42,7 +42,7 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -70,9 +70,9 @@ public abstract class TemporalCalendarDateFromFieldsNode extends JavaScriptBaseN
 
     @Specialization
     public JSTemporalPlainDateObject toTemporalDate(JSDynamicObject calendar, JSDynamicObject fields, Object options,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         Object dateFromFields = getDateFromFieldsNode.getValue(calendar);
         Object date = callNode.executeCall(JSArguments.create(calendar, dateFromFields, fields, options));
-        return TemporalUtil.requireTemporalDate(date, errorBranch);
+        return TemporalUtil.requireTemporalDate(date, this, errorBranch);
     }
 }

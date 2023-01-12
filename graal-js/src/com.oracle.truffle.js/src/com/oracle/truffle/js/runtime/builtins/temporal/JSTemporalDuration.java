@@ -49,8 +49,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationFunctionBuiltins;
@@ -88,10 +89,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     public static JSTemporalDurationObject createTemporalDuration(JSContext context, double years, double months, double weeks, double days, double hours,
-                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, BranchProfile errorBranch) {
+                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds,
+                    Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isValidDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
                         nanoseconds)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createTypeErrorDurationOutsideRange();
         }
         return createIntl(context, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
