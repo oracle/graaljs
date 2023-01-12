@@ -85,7 +85,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     @Specialization(guards = "isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
     final Object writeDirect(JSTypedArrayObject target, TruffleString str, Object destOffset, Object bytes,
                     @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
-                    @Cached("create(getContext())") @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
                     @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
                     @Cached @Shared("getInternalByteArray") TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
                     @Cached @Shared("readByte") TruffleString.ReadByteNode readByteNode) {
@@ -99,7 +99,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     @Specialization(guards = "!isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
     final Object writeInterop(JSTypedArrayObject target, TruffleString str, Object destOffset, Object bytes,
                     @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
-                    @Cached("create(getContext())") @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
                     @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
                     @Cached @Shared("getInternalByteArray") TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
                     @Cached @Shared("readByte") TruffleString.ReadByteNode readByteNode,
@@ -119,7 +119,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
                     TruffleString.ReadByteNode readByteNode,
                     InteropLibrary interop) {
         int bufferOffset = getOffset(target);
-        int bufferLen = getLengthNode.executeInt(target);
+        int bufferLen = getLengthNode.executeInt(this, target, getContext());
 
         int destOffset;
         if (destOffset0 == Undefined.instance) {

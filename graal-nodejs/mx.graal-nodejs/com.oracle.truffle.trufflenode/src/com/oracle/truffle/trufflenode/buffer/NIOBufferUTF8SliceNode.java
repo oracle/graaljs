@@ -78,7 +78,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     @Specialization(guards = "isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
     final Object sliceDirect(JSTypedArrayObject target, Object start, Object end,
                     @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
-                    @Cached("create(getContext())") @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
                     @Cached @Shared("fromByteArray") TruffleString.FromByteArrayNode fromByteArrayNode,
                     @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
                     @Cached @Shared("isValid") TruffleString.IsValidNode isValidNode) {
@@ -92,7 +92,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     @Specialization(guards = "!isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
     final Object sliceInterop(JSTypedArrayObject target, Object start, Object end,
                     @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
-                    @Cached("create(getContext())") @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
                     @Cached @Shared("fromByteArray") TruffleString.FromByteArrayNode fromByteArrayNode,
                     @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
                     @Cached @Shared("isValid") TruffleString.IsValidNode isValidNode,
@@ -110,7 +110,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
                     TruffleString.FromByteArrayNode fromByteArrayNode,
                     TruffleString.SwitchEncodingNode switchEncodingNode,
                     TruffleString.IsValidNode isValidNode) {
-        int bufferLength = getLengthNode.executeInt(target);
+        int bufferLength = getLengthNode.executeInt(this, target, getContext());
         if (bufferLength == 0) {
             // By default, an empty buffer returns an empty string
             return Strings.EMPTY_STRING;
