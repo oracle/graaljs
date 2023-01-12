@@ -103,9 +103,9 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
                     @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
                     @Cached @Shared("getInternalByteArray") TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
                     @Cached @Shared("readByte") TruffleString.ReadByteNode readByteNode,
-                    @Cached ArrayBufferGetContentsNode arrayBufferGetContentsNode,
+                    @Cached(inline = true) ArrayBufferGetContentsNode arrayBufferGetContentsNode,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-        ByteBuffer rawBuffer = arrayBufferGetContentsNode.execute(target.getArrayBuffer());
+        ByteBuffer rawBuffer = arrayBufferGetContentsNode.execute(this, target.getArrayBuffer());
 
         return write(target, str, destOffset, bytes, rawBuffer,
                         toIntNode, getLengthNode, switchEncodingNode, getInternalByteArrayNode, readByteNode, interop);

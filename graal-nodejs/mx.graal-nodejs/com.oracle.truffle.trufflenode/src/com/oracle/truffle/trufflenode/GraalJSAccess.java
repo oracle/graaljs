@@ -1381,7 +1381,7 @@ public final class GraalJSAccess {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object value = valueNode.execute(frame);
-                return bufferGetContents.execute(value);
+                return bufferGetContents.execute(null, value);
             }
         }
         CallTarget callTarget = new InteropArrayBufferGetContents().getCallTarget();

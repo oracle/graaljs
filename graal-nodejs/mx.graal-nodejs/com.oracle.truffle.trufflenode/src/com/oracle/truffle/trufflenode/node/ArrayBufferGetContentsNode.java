@@ -42,6 +42,7 @@ package com.oracle.truffle.trufflenode.node;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -49,11 +50,13 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
+@GenerateInline
 @ImportStatic(JSConfig.class)
 public abstract class ArrayBufferGetContentsNode extends JavaScriptBaseNode {
 
@@ -65,7 +68,7 @@ public abstract class ArrayBufferGetContentsNode extends JavaScriptBaseNode {
         return ArrayBufferGetContentsNodeGen.create();
     }
 
-    public abstract ByteBuffer execute(Object buffer);
+    public abstract ByteBuffer execute(Node node, Object buffer);
 
     @Specialization(limit = "InteropLibraryLimit")
     protected ByteBuffer doInteropBuffer(Object buffer,

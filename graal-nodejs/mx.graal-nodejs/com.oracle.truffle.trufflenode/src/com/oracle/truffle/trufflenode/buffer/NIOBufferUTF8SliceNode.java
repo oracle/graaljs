@@ -96,9 +96,9 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
                     @Cached @Shared("fromByteArray") TruffleString.FromByteArrayNode fromByteArrayNode,
                     @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
                     @Cached @Shared("isValid") TruffleString.IsValidNode isValidNode,
-                    @Cached ArrayBufferGetContentsNode arrayBufferGetContentsNode) {
+                    @Cached(inline = true) ArrayBufferGetContentsNode arrayBufferGetContentsNode) {
         JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
-        ByteBuffer rawBuffer = arrayBufferGetContentsNode.execute(arrayBuffer);
+        ByteBuffer rawBuffer = arrayBufferGetContentsNode.execute(this, arrayBuffer);
 
         return slice(target, start, end, rawBuffer,
                         toIntNode, getLengthNode, fromByteArrayNode, switchEncodingNode, isValidNode);
