@@ -3161,7 +3161,6 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    @SuppressWarnings("unused")
     public static List<BigInt> getIANATimeZoneEpochValue(TruffleString identifier, long isoYear, long isoMonth, long isoDay, long hours, long minutes, long seconds, long milliseconds,
                     long microseconds,
                     long nanoseconds) {
@@ -3178,7 +3177,6 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    @SuppressWarnings("unused")
     public static double getIANATimeZoneOffsetNanoseconds(BigInt nanoseconds, TruffleString identifier) {
         try {
             Instant instant = Instant.ofEpochSecond(0, nanoseconds.longValue()); // TODO wrong
@@ -3193,7 +3191,6 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    @SuppressWarnings("unused")
     public static OptionalLong getIANATimeZoneNextTransition(BigInt nanoseconds, TruffleString identifier) {
         try {
             BigInteger[] sec = nanoseconds.bigIntegerValue().divideAndRemainder(BI_10_POW_9);
@@ -3212,7 +3209,6 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    @SuppressWarnings("unused")
     public static OptionalLong getIANATimeZonePreviousTransition(BigInt nanoseconds, TruffleString identifier) {
         try {
             BigInteger[] sec = nanoseconds.bigIntegerValue().divideAndRemainder(BI_10_POW_9);
