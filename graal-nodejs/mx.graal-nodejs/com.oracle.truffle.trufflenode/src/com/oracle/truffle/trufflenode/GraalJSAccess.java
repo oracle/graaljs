@@ -3598,6 +3598,7 @@ public final class GraalJSAccess {
         return Strings.builderToString(builder);
     }
 
+    @SuppressWarnings("cast")
     public Object regexpNew(Object context, Object pattern, int flags) {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();
@@ -3683,6 +3684,7 @@ public final class GraalJSAccess {
         return parser.parse((TruffleString) string, realm);
     }
 
+    @SuppressWarnings("cast")
     public Object jsonStringify(Object context, Object object, Object gap) {
         JSFunctionObject stringify = ((JSRealm) context).lookupFunction(JSONBuiltins.BUILTINS, STRINGIFY);
         return (TruffleString) JSFunction.call(stringify, Undefined.instance, new Object[]{
