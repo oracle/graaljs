@@ -1585,10 +1585,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     @ImportStatic(JSRegExp.class)
     public abstract static class JSRegExpMatchNode extends RegExpPrototypeSymbolOperation {
-        @Child private JSToLengthNode toLengthNode;
-
-        private final ConditionProfile isGlobalProfile = ConditionProfile.create();
-        private final ConditionProfile unicodeProfile = ConditionProfile.create();
 
         protected JSRegExpMatchNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1596,15 +1592,19 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isObjectNode.executeBoolean(rx)", limit = "1")
         protected Object match(JSDynamicObject rx, Object param,
+                        @Bind("this") Node node,
                         @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached("create(FLAGS, getContext())") PropertyGetNode getFlagsNode,
                         @Cached JSToStringNode toStringNodeForFlags,
                         @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode,
                         @Cached JSToStringNode toString1Node,
-                        @Cached JSToStringNode toString2Node) {
+                        @Cached JSToStringNode toString2Node,
+                        @Cached JSToLengthNode toLengthNode,
+                        @Cached InlinedConditionProfile isGlobal,
+                        @Cached InlinedConditionProfile isUnicode) {
             TruffleString s = toString1Node.executeString(param);
             TruffleString flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(rx));
-            if (isGlobalProfile.profile(Strings.indexOf(stringIndexOfNode, flags, 'g') == -1)) {
+            if (isGlobal.profile(node, Strings.indexOf(stringIndexOfNode, flags, 'g') == -1)) {
                 return regexExecIntl(rx, s);
             } else {
                 boolean fullUnicode = (Strings.indexOf(stringIndexOfNode, flags, 'u') != -1);
@@ -1621,8 +1621,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     matchStr = toString2Node.executeString(read(result, 0));
                     write(array, n, matchStr);
                     if (Strings.length(matchStr) == 0) {
-                        int lastI = toLength(getLastIndex(rx));
-                        setLastIndex(rx, unicodeProfile.profile(fullUnicode) ? advanceStringIndexUnicode(s, lastI) : lastI + 1);
+                        int lastI = (int) toLengthNode.executeLong(getLastIndex(rx));
+                        setLastIndex(rx, isUnicode.profile(node, fullUnicode) ? advanceStringIndexUnicode(s, lastI) : lastI + 1);
                     }
                     n++;
                 }
@@ -1630,16 +1630,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Fallback
-        protected Object match(Object thisObj, @SuppressWarnings("unused") Object string) {
+        protected static Object match(Object thisObj, @SuppressWarnings("unused") Object string) {
             throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@match", thisObj);
-        }
-
-        private int toLength(Object obj) {
-            if (toLengthNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toLengthNode = insert(JSToLengthNode.create());
-            }
-            return (int) toLengthNode.executeLong(obj);
         }
     }
 

@@ -41,12 +41,13 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.CountingConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.RegExpPrototypeSymbolOperation;
 import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltinsFactory.RegExpStringIteratorNextNodeGen;
@@ -118,17 +119,15 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
 
-        private final CountingConditionProfile noMatchProfile = CountingConditionProfile.create();
-        private final ConditionProfile globalProfile = ConditionProfile.create();
-
         public RegExpStringIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isRegExpStringIteratorNode = insert(HasHiddenKeyCacheNode.create(JSString.REGEXP_ITERATOR_ITERATING_REGEXP_ID));
+            this.isRegExpStringIteratorNode = HasHiddenKeyCacheNode.create(JSString.REGEXP_ITERATOR_ITERATING_REGEXP_ID);
         }
 
         @Specialization(guards = "isRegExpStringIterator(iterator)")
-        protected JSDynamicObject doRegExpStringIterator(VirtualFrame frame, JSDynamicObject iterator) {
-
+        protected JSDynamicObject doRegExpStringIterator(VirtualFrame frame, JSDynamicObject iterator,
+                        @Cached InlinedCountingConditionProfile noMatchProfile,
+                        @Cached InlinedConditionProfile globalProfile) {
             boolean done;
             try {
                 done = getGetDoneNode().getValueBoolean(iterator);
@@ -153,11 +152,11 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
             // JSRegExpExecIntlNode supports DynamicObjects only
             Object match = regexExecIntl((JSDynamicObject) regex, string);
 
-            if (noMatchProfile.profile(match == Null.instance)) {
+            if (noMatchProfile.profile(this, match == Null.instance)) {
                 getSetDoneNode().setValueBoolean(iterator, true);
                 return getCreateIterResultObjectNode().execute(frame, Undefined.instance, true);
             } else {
-                if (globalProfile.profile(global)) {
+                if (globalProfile.profile(this, global)) {
                     TruffleString matchStr = getToStringNode().executeString(read(match, 0));
                     if (Strings.isEmpty(matchStr)) {
                         int thisIndex = (int) getToLengthNode().executeLong(getLastIndex(regex));
@@ -174,7 +173,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         @SuppressWarnings("unused")
         @Fallback
-        protected JSDynamicObject doIncompatibleReceiver(Object iterator) {
+        protected static JSDynamicObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeError("not a RegExp String Iterator");
         }
 
