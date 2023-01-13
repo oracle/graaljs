@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.AdvanceStringIndexUnicodeNode;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.RegExpPrototypeSymbolOperation;
 import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltinsFactory.RegExpStringIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -127,7 +128,8 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
         @Specialization(guards = "isRegExpStringIterator(iterator)")
         protected JSDynamicObject doRegExpStringIterator(VirtualFrame frame, JSDynamicObject iterator,
                         @Cached InlinedCountingConditionProfile noMatchProfile,
-                        @Cached InlinedConditionProfile globalProfile) {
+                        @Cached InlinedConditionProfile globalProfile,
+                        @Cached AdvanceStringIndexUnicodeNode advanceStringIndexUnicode) {
             boolean done;
             try {
                 done = getGetDoneNode().getValueBoolean(iterator);
@@ -160,7 +162,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
                     TruffleString matchStr = getToStringNode().executeString(read(match, 0));
                     if (Strings.isEmpty(matchStr)) {
                         int thisIndex = (int) getToLengthNode().executeLong(getLastIndex(regex));
-                        int nextIndex = fullUnicode ? advanceStringIndexUnicode(string, thisIndex) : thisIndex + 1;
+                        int nextIndex = fullUnicode ? advanceStringIndexUnicode.execute(this, string, thisIndex) : thisIndex + 1;
                         setLastIndex(regex, nextIndex);
                     }
                     return getCreateIterResultObjectNode().execute(frame, match, false);

@@ -50,6 +50,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -168,6 +169,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     private JSRegExp() {
     }
 
+    @NeverDefault
     public static Object getCompiledRegex(JSDynamicObject thisObj) {
         assert isJSRegExp(thisObj);
         return ((JSRegExpObject) thisObj).getCompiledRegex();
