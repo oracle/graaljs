@@ -254,6 +254,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("create(LAST_INDEX, false, getContext(), true)") PropertySetNode setLastIndexNode,
                         @Cached("create(getContext())") CompileRegexNode compileRegexNode,
                         @Cached("createUndefinedToEmpty()") JSToStringNode toStringNode,
+                        @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile isRegExpProfile,
                         @Cached(inline = true) TRegexUtil.InteropReadStringMemberNode readPattern,
                         @Cached(inline = true) TRegexUtil.InteropReadMemberNode readFlags,
@@ -262,14 +263,17 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             Object flags;
 
             if (getRealm() != JSRegExp.getRealm(thisRegExp)) {
+                errorBranch.enter(node);
                 throw Errors.createTypeError("RegExp.prototype.compile cannot be used on a RegExp from a different Realm.");
             }
             if (!JSRegExp.getLegacyFeaturesEnabled(thisRegExp)) {
+                errorBranch.enter(node);
                 throw Errors.createTypeError("RegExp.prototype.compile cannot be used on subclasses of RegExp.");
             }
             boolean isRegExp = isRegExpProfile.profile(node, JSRegExp.isJSRegExp(patternObj));
             if (isRegExp) {
                 if (flagsObj != Undefined.instance) {
+                    errorBranch.enter(node);
                     throw Errors.createTypeError("flags must be undefined", node);
                 }
                 Object regex = JSRegExp.getCompiledRegex((JSDynamicObject) patternObj);
