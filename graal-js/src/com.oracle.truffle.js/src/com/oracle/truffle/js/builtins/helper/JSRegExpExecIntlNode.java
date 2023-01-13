@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -80,7 +81,14 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadBooleanMemberNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadIntMemberNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadMemberNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeExecMethodNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeGetGroupBoundariesMethodNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexCompiledRegexAccessor;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexFlagsAccessor;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
 
 /**
  * Implements ES6 21.2.5.2.1 Runtime Semantics: RegExpExec ( R, S ).
@@ -89,8 +97,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
     static final int LIMIT = 3;
 
-    private final JSContext context;
-    @Child private JSRegExpExecBuiltinNode regExpBuiltinNode;
+    protected final JSContext context;
     @Child private PropertyGetNode getExecNode;
     @Child private IsJSObjectNode isJSObjectNode;
     @Child private IsPristineObjectNode isPristineObjectNode;
@@ -110,13 +117,14 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
     @Specialization
     Object doGeneric(JSDynamicObject regExp, TruffleString input,
+                    @Cached("create(context)") JSRegExpExecBuiltinNode builtinExec,
                     @Cached InlinedConditionProfile isPristineProfile,
                     @Cached InlinedConditionProfile isCallableProfile,
                     @Cached InlinedConditionProfile validResultProfile,
                     @Cached InlinedConditionProfile isRegExpProfile) {
         if (context.getEcmaScriptVersion() >= 6) {
             if (isPristineProfile.profile(this, isPristine(regExp))) {
-                return builtinExec((JSRegExpObject) regExp, input);
+                return builtinExec.execute((JSRegExpObject) regExp, input);
             } else {
                 Object exec = getExecProperty(regExp);
                 if (isCallableProfile.profile(this, isCallable(exec))) {
@@ -127,7 +135,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         if (!isRegExpProfile.profile(this, JSRegExp.isJSRegExp(regExp))) {
             throw Errors.createTypeError("RegExp expected");
         }
-        return builtinExec((JSRegExpObject) regExp, input);
+        return builtinExec.execute((JSRegExpObject) regExp, input);
     }
 
     private Object callJSFunction(JSDynamicObject regExp, Object input, Object exec, InlinedConditionProfile validResultProfile) {
@@ -160,14 +168,6 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             isCallableNode = insert(IsCallableNode.create());
         }
         return isCallableNode.executeBoolean(obj);
-    }
-
-    private Object builtinExec(JSRegExpObject regExp, TruffleString input) {
-        if (regExpBuiltinNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            regExpBuiltinNode = insert(JSRegExpExecBuiltinNode.create(context));
-        }
-        return regExpBuiltinNode.execute(regExp, input);
     }
 
     private boolean isJSObject(Object obj) {
@@ -205,6 +205,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             this.doStaticResultUpdate = doStaticResultUpdate;
         }
 
+        @NeverDefault
         public static JSRegExpExecIntlIgnoreLastIndexNode create(JSContext context, boolean doStaticResultUpdate) {
             return JSRegExpExecIntlNodeGen.JSRegExpExecIntlIgnoreLastIndexNodeGen.create(context, doStaticResultUpdate);
         }
@@ -217,26 +218,29 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                         @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
                         @Bind("this") Node node,
                         @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled,
-                        @Cached @Shared("compiledRegexAccessor") TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
-                        @Cached @Shared("regexResultAccessor") TRegexUtil.TRegexResultAccessor regexResultAccessor) {
-            return doExec(regExp, input, lastIndex, cachedCompiledRegex, compiledRegexAccessor, regexResultAccessor, node, areLegacyFeaturesEnabled);
+                        @Cached(inline = true) @Shared("exec") InvokeExecMethodNode invokeExec,
+                        @Cached(inline = true) @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch) {
+            return doExec(regExp, input, lastIndex, cachedCompiledRegex,
+                            node, areLegacyFeaturesEnabled, invokeExec, readIsMatch);
         }
 
         @Specialization
         Object doGeneric(JSDynamicObject regExp, TruffleString input, long lastIndex,
                         @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled,
-                        @Cached @Shared("compiledRegexAccessor") TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
-                        @Cached @Shared("regexResultAccessor") TRegexUtil.TRegexResultAccessor regexResultAccessor) {
+                        @Cached(inline = true) @Shared("exec") InvokeExecMethodNode invokeExec,
+                        @Cached(inline = true) @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch) {
             Object compiledRegex = JSRegExp.getCompiledRegex(regExp);
-            return doExec(regExp, input, lastIndex, compiledRegex, compiledRegexAccessor, regexResultAccessor, this, areLegacyFeaturesEnabled);
+            return doExec(regExp, input, lastIndex, compiledRegex,
+                            this, areLegacyFeaturesEnabled, invokeExec, readIsMatch);
         }
 
         private Object doExec(JSDynamicObject regExp, TruffleString input, long lastIndex, Object compiledRegex,
-                        TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
-                        TRegexUtil.TRegexResultAccessor regexResultAccessor,
-                        Node node, InlinedConditionProfile areLegacyFeaturesEnabled) {
-            Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
-            if (doStaticResultUpdate && context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
+                        Node node,
+                        InlinedConditionProfile areLegacyFeaturesEnabled,
+                        InvokeExecMethodNode invokeExec,
+                        InteropReadBooleanMemberNode readIsMatch) {
+            Object result = executeCompiledRegex(compiledRegex, input, lastIndex, node, invokeExec);
+            if (doStaticResultUpdate && context.isOptionRegexpStaticResult() && TRegexResultAccessor.isMatch(result, node, readIsMatch)) {
                 JSRealm thisRealm = getRealm();
                 if (thisRealm == JSRegExp.getRealm(regExp)) {
                     if (areLegacyFeaturesEnabled.profile(node, JSRegExp.getLegacyFeaturesEnabled(regExp))) {
@@ -290,6 +294,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
     }
 
     // implements ES6 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
+    @GenerateCached(alwaysInlineCached = true)
     @ImportStatic({JSRegExp.class, JSRegExpExecIntlNode.class})
     public abstract static class JSRegExpExecBuiltinNode extends JavaScriptBaseNode {
 
@@ -306,9 +311,6 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @Child private JSToLengthNode toLengthNode;
         @Child private PropertyGetNode getLastIndexNode;
         @Child private PropertySetNode setLastIndexNode;
-        @Child private TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor = TRegexUtil.TRegexCompiledRegexAccessor.create();
-        @Child private TRegexUtil.TRegexFlagsAccessor flagsAccessor = TRegexUtil.TRegexFlagsAccessor.create();
-        @Child private TRegexUtil.TRegexResultAccessor regexResultAccessor = TRegexUtil.TRegexResultAccessor.create();
         @Child private BuildGroupsObjectNode groupsBuilder;
 
         JSRegExpExecBuiltinNode(JSContext context) {
@@ -324,6 +326,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             this.setIndicesGroupsNode = JSObjectUtil.createDispatched(JSRegExp.GROUPS);
         }
 
+        @NeverDefault
         public static JSRegExpExecBuiltinNode create(JSContext context) {
             return JSRegExpExecBuiltinNodeGen.create(context);
         }
@@ -341,28 +344,56 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                         @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
                         @Cached @Shared("invalidLastIndex") InlinedConditionProfile invalidLastIndex,
                         @Cached @Shared("match") InlinedCountingConditionProfile match,
-                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled) {
+                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled,
+                        @Cached @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch,
+                        @Cached @Shared("groupStart") InvokeGetGroupBoundariesMethodNode getStart,
+                        @Cached @Shared("groupEnd") InvokeGetGroupBoundariesMethodNode getEnd,
+                        @Cached @Shared("exec") InvokeExecMethodNode invokeExec,
+                        @Cached @Shared("flags") InteropReadMemberNode readFlags,
+                        @Cached @Shared("global") InteropReadBooleanMemberNode readGlobal,
+                        @Cached @Shared("sticky") InteropReadBooleanMemberNode readSticky,
+                        @Cached @Shared("hasIndices") InteropReadBooleanMemberNode readHasIndices,
+                        @Cached @Shared("groupCount") InteropReadIntMemberNode readGroupCount) {
             return doExec(regExp, cachedCompiledRegex, input,
-                            node, invalidLastIndex, match, areLegacyFeaturesEnabled);
+                            node, invalidLastIndex, match, areLegacyFeaturesEnabled, readIsMatch, getStart, getEnd, invokeExec, readFlags, readGlobal, readSticky, readHasIndices, readGroupCount);
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(replaces = "doCached")
         Object doDynamic(JSRegExpObject regExp, TruffleString input,
                         @Bind("this") Node node,
                         @Cached @Shared("invalidLastIndex") InlinedConditionProfile invalidLastIndex,
                         @Cached @Shared("match") InlinedCountingConditionProfile match,
-                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled) {
+                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled,
+                        @Cached @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch,
+                        @Cached @Shared("groupStart") InvokeGetGroupBoundariesMethodNode getStart,
+                        @Cached @Shared("groupEnd") InvokeGetGroupBoundariesMethodNode getEnd,
+                        @Cached @Shared("exec") InvokeExecMethodNode invokeExec,
+                        @Cached @Shared("flags") InteropReadMemberNode readFlags,
+                        @Cached @Shared("global") InteropReadBooleanMemberNode readGlobal,
+                        @Cached @Shared("sticky") InteropReadBooleanMemberNode readSticky,
+                        @Cached @Shared("hasIndices") InteropReadBooleanMemberNode readHasIndices,
+                        @Cached @Shared("groupCount") InteropReadIntMemberNode readGroupCount) {
             return doExec(regExp, JSRegExp.getCompiledRegex(regExp), input,
-                            node, invalidLastIndex, match, areLegacyFeaturesEnabled);
+                            node, invalidLastIndex, match, areLegacyFeaturesEnabled, readIsMatch, getStart, getEnd, invokeExec, readFlags, readGlobal, readSticky, readHasIndices, readGroupCount);
         }
 
         // Implements 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
         private Object doExec(JSRegExpObject regExp, Object compiledRegex, TruffleString input,
-                        Node node, InlinedConditionProfile invalidLastIndex, InlinedCountingConditionProfile match, InlinedConditionProfile areLegacyFeaturesEnabled) {
-            Object flags = compiledRegexAccessor.flags(compiledRegex);
-            boolean global = flagsAccessor.global(flags);
-            boolean sticky = ecmaScriptVersion >= 6 && flagsAccessor.sticky(flags);
-            boolean hasIndices = flagsAccessor.hasIndices(flags);
+                        Node node, InlinedConditionProfile invalidLastIndex, InlinedCountingConditionProfile match, InlinedConditionProfile areLegacyFeaturesEnabled,
+                        InteropReadBooleanMemberNode readIsMatch,
+                        InvokeGetGroupBoundariesMethodNode getStart,
+                        InvokeGetGroupBoundariesMethodNode getEnd,
+                        InvokeExecMethodNode invokeExec,
+                        InteropReadMemberNode readFlags,
+                        InteropReadBooleanMemberNode readGlobal,
+                        InteropReadBooleanMemberNode readSticky,
+                        InteropReadBooleanMemberNode readHasIndices,
+                        InteropReadIntMemberNode readGroupCount) {
+            Object flags = TRegexCompiledRegexAccessor.flags(compiledRegex, node, readFlags);
+            boolean global = TRegexFlagsAccessor.global(flags, node, readGlobal);
+            boolean sticky = ecmaScriptVersion >= 6 && TRegexFlagsAccessor.sticky(flags, node, readSticky);
+            boolean hasIndices = TRegexFlagsAccessor.hasIndices(flags, node, readHasIndices);
             long lastIndex = getLastIndex(regExp);
             if (global || sticky) {
                 if (invalidLastIndex.profile(node, lastIndex < 0 || lastIndex > Strings.length(input))) {
@@ -374,8 +405,8 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             }
 
             JSRealm thisRealm = getRealm();
-            Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
-            if (context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
+            Object result = executeCompiledRegex(compiledRegex, input, lastIndex, node, invokeExec);
+            if (context.isOptionRegexpStaticResult() && TRegexResultAccessor.isMatch(result, node, readIsMatch)) {
                 if (isSameRealm(regExp, thisRealm)) {
                     if (areLegacyFeaturesEnabled.profile(node, JSRegExp.getLegacyFeaturesEnabled(regExp))) {
                         thisRealm.setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
@@ -384,15 +415,15 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                     }
                 }
             }
-            if (match.profile(node, regexResultAccessor.isMatch(result))) {
-                assert !sticky || regexResultAccessor.captureGroupStart(result, 0) == lastIndex;
+            if (match.profile(node, TRegexResultAccessor.isMatch(result, node, readIsMatch))) {
+                assert !sticky || TRegexResultAccessor.captureGroupStart(result, 0, node, getStart) == lastIndex;
                 if (global || sticky) {
-                    setLastIndex(regExp, regexResultAccessor.captureGroupEnd(result, 0));
+                    setLastIndex(regExp, TRegexResultAccessor.captureGroupEnd(result, 0, node, getEnd));
                 }
                 if (ecmaScriptVersion < 6) {
                     return result;
                 }
-                int groupCount = compiledRegexAccessor.groupCount(compiledRegex);
+                int groupCount = TRegexCompiledRegexAccessor.groupCount(compiledRegex, node, readGroupCount);
                 return getMatchResult(regExp, result, groupCount, input, hasIndices, thisRealm);
             } else {
                 if (ecmaScriptVersion < 8 || global || sticky) {
@@ -465,7 +496,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
     }
 
     private static Object executeCompiledRegex(Object compiledRegex, Object input, long fromIndex,
-                    TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor) {
-        return compiledRegexAccessor.exec(compiledRegex, input, fromIndex);
+                    Node node, InvokeExecMethodNode invokeExec) {
+        return TRegexCompiledRegexAccessor.exec(compiledRegex, input, fromIndex, node, invokeExec);
     }
 }

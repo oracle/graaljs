@@ -48,17 +48,20 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
@@ -77,6 +80,7 @@ import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.RegExpFlags
 import com.oracle.truffle.js.builtins.helper.IsPristineObjectNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecBuiltinNode;
+import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode;
 import com.oracle.truffle.js.builtins.helper.ReplaceStringParser;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -113,12 +117,23 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadBooleanMemberNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadIntMemberNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadMemberNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropToIntNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeGetGroupBoundariesMethodNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexCompiledRegexAccessor;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexFlagsAccessor;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResult;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexNamedCaptureGroupsAccessor;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
+import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropToIntNodeGen;
 
 /**
  * Contains builtin methods for {@linkplain JSRegExp}.prototype.
@@ -225,21 +240,24 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     /**
      * This implements the deprecated RegExp.prototype.compile() method.
      */
+    @ImportStatic(JSRegExp.class)
     public abstract static class JSRegExpCompileNode extends JSBuiltinNode {
-        @Child private PropertySetNode setLastIndexNode;
 
         protected JSRegExpCompileNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            setLastIndexNode = PropertySetNode.create(JSRegExp.LAST_INDEX, false, context, true);
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSRegExpObject compile(JSRegExpObject thisRegExp, Object patternObj, Object flagsObj,
+                        @Bind("this") Node node,
+                        @Cached("create(LAST_INDEX, false, getContext(), true)") PropertySetNode setLastIndexNode,
                         @Cached("create(getContext())") CompileRegexNode compileRegexNode,
                         @Cached("createUndefinedToEmpty()") JSToStringNode toStringNode,
                         @Cached InlinedConditionProfile isRegExpProfile,
-                        @Cached TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
-                        @Cached TRegexUtil.TRegexFlagsAccessor flagsAccessor) {
+                        @Cached(inline = true) TRegexUtil.InteropReadStringMemberNode readPattern,
+                        @Cached(inline = true) TRegexUtil.InteropReadMemberNode readFlags,
+                        @Cached(inline = true) TRegexUtil.InteropReadStringMemberNode readSource) {
             Object pattern;
             Object flags;
 
@@ -249,14 +267,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (!JSRegExp.getLegacyFeaturesEnabled(thisRegExp)) {
                 throw Errors.createTypeError("RegExp.prototype.compile cannot be used on subclasses of RegExp.");
             }
-            boolean isRegExp = isRegExpProfile.profile(this, JSRegExp.isJSRegExp(patternObj));
+            boolean isRegExp = isRegExpProfile.profile(node, JSRegExp.isJSRegExp(patternObj));
             if (isRegExp) {
                 if (flagsObj != Undefined.instance) {
-                    throw Errors.createTypeError("flags must be undefined", this);
+                    throw Errors.createTypeError("flags must be undefined", node);
                 }
                 Object regex = JSRegExp.getCompiledRegex((JSDynamicObject) patternObj);
-                pattern = compiledRegexAccessor.pattern(regex);
-                flags = flagsAccessor.source(compiledRegexAccessor.flags(regex));
+                pattern = TRegexCompiledRegexAccessor.pattern(regex, node, readPattern);
+                flags = TRegexFlagsAccessor.source(TRegexCompiledRegexAccessor.flags(regex, node, readFlags), node, readSource);
             } else {
                 pattern = toStringNode.executeString(patternObj);
                 flags = toStringNode.executeString(flagsObj);
@@ -307,54 +325,49 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     /**
      * This implements the RegExp.prototype.exec() method as defined by ECMAScript 5.
      */
+    @ImportStatic(JSRegExp.class)
     public abstract static class JSRegExpExecES5Node extends JSBuiltinNode {
-
-        @Child private JSToStringNode toStringNode;
-        @Child private JSRegExpExecBuiltinNode regExpNode;
-        @Child private PropertySetNode setIndexNode;
-        @Child private PropertySetNode setInputNode;
-        @Child private TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor = TRegexUtil.TRegexCompiledRegexAccessor.create();
-        @Child private TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.create();
-        @Child private TRegexUtil.TRegexMaterializeResultNode resultMaterializer = TRegexUtil.TRegexMaterializeResultNode.create();
-        private final CountingConditionProfile match = CountingConditionProfile.create();
 
         protected JSRegExpExecES5Node(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             assert context.getEcmaScriptVersion() < 6;
-            this.regExpNode = JSRegExpExecBuiltinNode.create(context);
-            this.toStringNode = JSToStringNode.create();
         }
 
+        public abstract JSDynamicObject execute(Object thisRegExp, Object input);
+
+        @SuppressWarnings("truffle-static-method")
         @Specialization
-        protected JSDynamicObject exec(JSRegExpObject thisRegExp, Object input) {
+        protected JSDynamicObject exec(JSRegExpObject thisRegExp, Object input,
+                        @Bind("this") Node node,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached("create(getContext())") JSRegExpExecBuiltinNode regExpNode,
+                        @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached(inline = true) TRegexUtil.InteropReadIntMemberNode readGroupCount,
+                        @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                        @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
+                        @Cached TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached InlinedCountingConditionProfile ifIsMatch,
+                        @Cached("create(INDEX, false, getContext(), false)") PropertySetNode setIndexNode,
+                        @Cached("create(INPUT, false, getContext(), false)") PropertySetNode setInputNode) {
+            assert getContext().getEcmaScriptVersion() < 6;
             TruffleString inputStr = toStringNode.executeString(input);
             Object result = regExpNode.execute(thisRegExp, inputStr);
-            if (match.profile(resultAccessor.isMatch(result))) {
-                return getMatchResult(result, compiledRegexAccessor.groupCount(JSRegExp.getCompiledRegex(thisRegExp)), inputStr);
+            if (ifIsMatch.profile(node, TRegexResultAccessor.isMatch(result, node, readIsMatch))) {
+                int groupCount = TRegexCompiledRegexAccessor.groupCount(JSRegExp.getCompiledRegex(thisRegExp), node, readGroupCount);
+                // Convert RegexResult into JS Array.
+                Object[] matches = TRegexMaterializeResult.materializeFull(getContext(), result, groupCount, inputStr, node, substringNode, getStart, getEnd);
+                JSObject array = JSArray.createConstant(getContext(), getRealm(), matches);
+                setIndexNode.setValueInt(array, TRegexResultAccessor.captureGroupStart(result, 0, node, getStart));
+                setInputNode.setValue(array, inputStr);
+                return array;
             } else {
                 return Null.instance;
             }
         }
 
         @Fallback
-        protected Object exec(Object thisObj, @SuppressWarnings("unused") Object input) {
+        protected static JSDynamicObject exec(Object thisObj, @SuppressWarnings("unused") Object input) {
             throw createNoRegExpError(thisObj);
-        }
-
-        // converts RegexResult into JSDynamicObject
-        protected JSDynamicObject getMatchResult(Object result, int groupCount, TruffleString inputStr) {
-            assert getContext().getEcmaScriptVersion() < 6;
-
-            if (setIndexNode == null || setInputNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.setIndexNode = insert(PropertySetNode.create(JSRegExp.INDEX, false, getContext(), false));
-                this.setInputNode = insert(PropertySetNode.create(JSRegExp.INPUT, false, getContext(), false));
-            }
-            Object[] matches = resultMaterializer.materializeFull(getContext(), result, groupCount, inputStr);
-            JSDynamicObject array = JSArray.createConstant(getContext(), getRealm(), matches);
-            setIndexNode.setValueInt(array, resultAccessor.captureGroupStart(result, 0));
-            setInputNode.setValue(array, inputStr);
-            return array;
         }
 
         @NeverDefault
@@ -542,10 +555,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertyGetNode getLengthNode;
         @Child private JSToUInt32Node toUInt32Node;
         @Child private JSToLengthNode toLengthNode;
-        @Child private JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode;
-        @Child private TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor;
-        @Child private TRegexUtil.TRegexFlagsAccessor flagsAccessor;
-        @Child private TRegexUtil.TRegexResultAccessor resultAccessor;
         @Child private IsPristineObjectNode isPristineObjectNode;
         @Child private TruffleString.ConcatNode stringConcatNode;
         @Child private TruffleString.SubstringByteIndexNode substringNode;
@@ -560,23 +569,48 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ConditionProfile stickyFlagSet = ConditionProfile.create();
         private final ValueProfile compiledRegexProfile = ValueProfile.createIdentityProfile();
 
+        @Child private InteropReadMemberNode readFlagsNode = InteropReadMemberNode.create();
+        @Child private InteropReadBooleanMemberNode readStickyNode = InteropReadBooleanMemberNode.create();
+        @Child private InteropReadBooleanMemberNode readUnicodeNode = InteropReadBooleanMemberNode.create();
+
         JSRegExpSplitNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        JSDynamicObject splitIntLimit(JSDynamicObject rx, Object input, int limit) {
-            return doSplit(rx, input, toUInt32(limit));
+        JSDynamicObject splitIntLimit(JSDynamicObject rx, Object input, int limit,
+                        @Cached @Shared("removeStickyFlag") RemoveStickyFlagNode removeStickyFlag,
+                        @Cached(inline = true) @Shared("isMatch") TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached(inline = true) @Shared("groupCount") TRegexUtil.InteropReadIntMemberNode readGroupCount,
+                        @Cached(inline = true) @Shared("groupStart") TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                        @Cached(inline = true) @Shared("groupEnd") TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
+                        @Cached("create(getContext(), false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execNode) {
+            return doSplit(rx, input, toUInt32(limit),
+                            removeStickyFlag, readIsMatch, readGroupCount, getStart, getEnd, execNode);
         }
 
         @Specialization
-        JSDynamicObject splitLongLimit(JSDynamicObject rx, Object input, long limit) {
-            return doSplit(rx, input, toUInt32(limit));
+        JSDynamicObject splitLongLimit(JSDynamicObject rx, Object input, long limit,
+                        @Cached @Shared("removeStickyFlag") RemoveStickyFlagNode removeStickyFlag,
+                        @Cached(inline = true) @Shared("isMatch") TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached(inline = true) @Shared("groupCount") TRegexUtil.InteropReadIntMemberNode readGroupCount,
+                        @Cached(inline = true) @Shared("groupStart") TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                        @Cached(inline = true) @Shared("groupEnd") TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
+                        @Cached("create(getContext(), false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode) {
+            return doSplit(rx, input, toUInt32(limit),
+                            removeStickyFlag, readIsMatch, readGroupCount, getStart, getEnd, execIgnoreLastIndexNode);
         }
 
         @Specialization(guards = "isUndefined(limit)")
-        JSDynamicObject splitUndefinedLimit(JSDynamicObject rx, Object input, @SuppressWarnings("unused") Object limit) {
-            return doSplit(rx, input, JSRuntime.MAX_SAFE_INTEGER_LONG);
+        JSDynamicObject splitUndefinedLimit(JSDynamicObject rx, Object input, @SuppressWarnings("unused") Object limit,
+                        @Cached @Shared("removeStickyFlag") RemoveStickyFlagNode removeStickyFlag,
+                        @Cached(inline = true) @Shared("isMatch") TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached(inline = true) @Shared("groupCount") TRegexUtil.InteropReadIntMemberNode readGroupCount,
+                        @Cached(inline = true) @Shared("groupStart") TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                        @Cached(inline = true) @Shared("groupEnd") TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
+                        @Cached("create(getContext(), false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode) {
+            return doSplit(rx, input, JSRuntime.MAX_SAFE_INTEGER_LONG,
+                            removeStickyFlag, readIsMatch, readGroupCount, getStart, getEnd, execIgnoreLastIndexNode);
         }
 
         @Specialization(guards = "!isUndefined(limit)")
@@ -592,7 +626,13 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@split", rx);
         }
 
-        private JSDynamicObject doSplit(JSDynamicObject rx, Object input, long limit) {
+        private JSDynamicObject doSplit(JSDynamicObject rx, Object input, long limit,
+                        RemoveStickyFlagNode removeStickyFlag,
+                        TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        TRegexUtil.InteropReadIntMemberNode readGroupCount,
+                        TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                        TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
+                        JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode) {
             checkObject(rx);
             TruffleString str = toString1(input);
             if (limit == 0) {
@@ -601,7 +641,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             JSDynamicObject constructor = getSpeciesConstructor(rx);
             if (constructor == getRealm().getRegExpConstructor() && isPristine(rx)) {
-                return splitInternal(rx, str, limit);
+                return splitInternal(rx, str, limit,
+                                this, removeStickyFlag, readIsMatch, readGroupCount, getStart, getEnd, execIgnoreLastIndexNode);
             }
             return splitAccordingToSpec(rx, str, limit, constructor);
         }
@@ -678,15 +719,21 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return array;
         }
 
-        private JSDynamicObject splitInternal(JSDynamicObject rx, TruffleString str, long lim) {
-            initTRegexAccessors();
+        private JSDynamicObject splitInternal(JSDynamicObject rx, TruffleString str, long lim,
+                        Node node,
+                        RemoveStickyFlagNode removeStickyFlag,
+                        TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        TRegexUtil.InteropReadIntMemberNode readGroupCount,
+                        TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                        TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
+                        JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode) {
             Object tRegexCompiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegex(rx));
-            Object tRegexFlags = compiledRegexAccessor.flags(tRegexCompiledRegex);
-            boolean unicodeMatching = flagsAccessor.unicode(tRegexFlags);
+            Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlagsNode);
+            boolean unicodeMatching = TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicodeNode);
             JSDynamicObject splitter;
-            if (stickyFlagSet.profile(flagsAccessor.sticky(tRegexFlags))) {
+            if (stickyFlagSet.profile(TRegexFlagsAccessor.sticky(tRegexFlags, node, readStickyNode))) {
                 JSDynamicObject regexpConstructor = getRealm().getRegExpConstructor();
-                splitter = (JSDynamicObject) getArraySpeciesConstructorNode().construct(regexpConstructor, rx, removeStickyFlag(tRegexFlags));
+                splitter = (JSDynamicObject) getArraySpeciesConstructorNode().construct(regexpConstructor, rx, removeStickyFlag.execute(node, tRegexFlags));
             } else {
                 splitter = rx;
             }
@@ -700,7 +747,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             Object lastRegexResult = null;
             do {
                 Object tRegexResult = execIgnoreLastIndexNode.execute(splitter, str, fromIndex);
-                if (resultIsNull.profile(!resultAccessor.isMatch(tRegexResult))) {
+                if (resultIsNull.profile(!TRegexResultAccessor.isMatch(tRegexResult, node, readIsMatch))) {
                     if (sizeZeroProfile.profile(size == 0) || matchStart < 0) {
                         write(array, 0, str);
                         return array;
@@ -710,8 +757,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     if (!getContext().getRegExpStaticResultUnusedAssumption().isValid()) {
                         lastRegexResult = tRegexResult;
                     }
-                    matchStart = resultAccessor.captureGroupStart(tRegexResult, 0);
-                    matchEnd = resultAccessor.captureGroupEnd(tRegexResult, 0);
+                    matchStart = TRegexResultAccessor.captureGroupStart(tRegexResult, 0, node, getStart);
+                    matchEnd = TRegexResultAccessor.captureGroupEnd(tRegexResult, 0, node, getEnd);
                     if (matchEnd == prevMatchEnd) {
                         fromIndex = movePosition(str, unicodeMatching, fromIndex);
                     } else {
@@ -721,9 +768,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             return array;
                         }
                         prevMatchEnd = matchEnd;
-                        long numberOfCaptures = compiledRegexAccessor.groupCount(tRegexCompiledRegex);
+                        long numberOfCaptures = TRegexCompiledRegexAccessor.groupCount(tRegexCompiledRegex, node, readGroupCount);
                         for (int i = 1; i < numberOfCaptures; i++) {
-                            write(array, arrayLength, TRegexUtil.TRegexMaterializeResultNode.materializeGroup(getContext(), resultAccessor, substringNode, tRegexResult, i, str));
+                            write(array, arrayLength, TRegexUtil.TRegexMaterializeResult.materializeGroup(getContext(), tRegexResult, i, str,
+                                            node, substringNode, getStart, getEnd));
                             arrayLength++;
                             if (arrayLength == lim) {
                                 prematureReturnBranch.enter();
@@ -747,31 +795,44 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return array;
         }
 
-        private Object removeStickyFlag(Object tRegexFlags) {
-            char[] flags = new char[6];
-            int len = 0;
-            if (flagsAccessor.hasIndices(tRegexFlags)) {
-                flags[len++] = 'd';
+        @GenerateInline
+        @GenerateCached(false)
+        abstract static class RemoveStickyFlagNode extends Node {
+            abstract TruffleString execute(Node node, Object tRegexFlags);
+
+            @Specialization
+            static TruffleString removeStickyFlag(Node node, Object tRegexFlags,
+                            @Cached InteropReadBooleanMemberNode readGlobalNode,
+                            @Cached InteropReadBooleanMemberNode readMultilineNode,
+                            @Cached InteropReadBooleanMemberNode readIgnoreCaseNode,
+                            @Cached InteropReadBooleanMemberNode readUnicodeNode,
+                            @Cached InteropReadBooleanMemberNode readDotAllNode,
+                            @Cached InteropReadBooleanMemberNode readHasIndicesNode) {
+                char[] flags = new char[6];
+                int len = 0;
+                if (TRegexFlagsAccessor.hasIndices(tRegexFlags, node, readHasIndicesNode)) {
+                    flags[len++] = 'd';
+                }
+                if (TRegexFlagsAccessor.global(tRegexFlags, node, readGlobalNode)) {
+                    flags[len++] = 'g';
+                }
+                if (TRegexFlagsAccessor.ignoreCase(tRegexFlags, node, readIgnoreCaseNode)) {
+                    flags[len++] = 'i';
+                }
+                if (TRegexFlagsAccessor.multiline(tRegexFlags, node, readMultilineNode)) {
+                    flags[len++] = 'm';
+                }
+                if (TRegexFlagsAccessor.dotAll(tRegexFlags, node, readDotAllNode)) {
+                    flags[len++] = 's';
+                }
+                if (TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicodeNode)) {
+                    flags[len++] = 'u';
+                }
+                if (len == 0) {
+                    return Strings.EMPTY_STRING;
+                }
+                return Strings.fromCharArray(flags, 0, len);
             }
-            if (flagsAccessor.global(tRegexFlags)) {
-                flags[len++] = 'g';
-            }
-            if (flagsAccessor.ignoreCase(tRegexFlags)) {
-                flags[len++] = 'i';
-            }
-            if (flagsAccessor.multiline(tRegexFlags)) {
-                flags[len++] = 'm';
-            }
-            if (flagsAccessor.dotAll(tRegexFlags)) {
-                flags[len++] = 's';
-            }
-            if (flagsAccessor.unicode(tRegexFlags)) {
-                flags[len++] = 'u';
-            }
-            if (len == 0) {
-                return Strings.EMPTY_STRING;
-            }
-            return Strings.fromCharArray(flags, 0, len);
         }
 
         /**
@@ -784,16 +845,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return flags;
             } else {
                 return concat(flags, Strings.Y);
-            }
-        }
-
-        private void initTRegexAccessors() {
-            if (compiledRegexAccessor == null || flagsAccessor == null || resultAccessor == null || execIgnoreLastIndexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                compiledRegexAccessor = insert(TRegexUtil.TRegexCompiledRegexAccessor.create());
-                flagsAccessor = insert(TRegexUtil.TRegexFlagsAccessor.create());
-                resultAccessor = insert(TRegexUtil.TRegexResultAccessor.create());
-                execIgnoreLastIndexNode = insert(JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode.create(getContext(), false));
             }
         }
 
@@ -900,7 +951,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertyGetNode getLengthNode;
         @Child private PropertyGetNode getIndexNode;
         @Child private PropertyGetNode getGroupsNode;
-        @Child private TRegexUtil.TRegexResultAccessor readLazyLengthNode;
         @Child private DynamicObjectLibrary lazyRegexResultNode;
         @Child private JSToLengthNode toLengthNode;
         @Child private JSToIntegerAsIntNode toIntegerNode;
@@ -913,11 +963,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private ReadElementNode readNamedCaptureGroupNode;
         @Child private JSToObjectNode toObjectNode;
         @Child private HasHiddenKeyCacheNode hasLazyRegexResultNode;
-        @Child private JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode;
-        @Child TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor;
-        @Child private TRegexUtil.TRegexFlagsAccessor flagsAccessor;
-        @Child TRegexUtil.TRegexResultAccessor resultAccessor;
-        @Child private TRegexUtil.TRegexNamedCaptureGroupsAccessor namedCaptureGroupsAccessor;
         @Child private IsPristineObjectNode isPristineObjectNode;
 
         @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
@@ -936,6 +981,18 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         final StringBuilderProfile stringBuilderProfile;
         final BranchProfile invalidGroupNumberProfile = BranchProfile.create();
         private final ValueProfile compiledRegexProfile = ValueProfile.createIdentityProfile();
+
+        @Child private InteropReadBooleanMemberNode readGlobalNode = InteropReadBooleanMemberNode.create();
+        @Child private InteropReadBooleanMemberNode readStickyNode = InteropReadBooleanMemberNode.create();
+        @Child private InteropReadBooleanMemberNode readUnicodeNode = InteropReadBooleanMemberNode.create();
+        @Child private InteropReadBooleanMemberNode readIsMatchNode = InteropReadBooleanMemberNode.create();
+        @Child private InvokeGetGroupBoundariesMethodNode getStartNode = InvokeGetGroupBoundariesMethodNode.create();
+        @Child private InvokeGetGroupBoundariesMethodNode getEndNode = InvokeGetGroupBoundariesMethodNode.create();
+        @Child private InteropReadMemberNode readFlagsNode = InteropReadMemberNode.create();
+        @Child private InteropReadMemberNode readGroupsNode = InteropReadMemberNode.create();
+        @Child private InteropReadIntMemberNode readGroupCount = InteropReadIntMemberNode.create();
+        @Child private InteropLibrary namedCaptureGroupInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+        @Child private InteropToIntNode toIntNode = InteropToIntNodeGen.create();
 
         JSRegExpReplaceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -957,11 +1014,12 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached(value = "parseReplaceValueWithoutNCG(replaceValue)", dimensions = 1, neverDefault = true) ReplaceStringParser.Token[] cachedParsedReplaceValueWithoutNamedCG,
                         @Shared("toString1") @Cached JSToStringNode toString1Node,
                         @SuppressWarnings("unused") @Cached TruffleString.EqualNode equalsNode,
-                        @Cached @Shared("grow") InlinedBranchProfile growProfile) {
+                        @Cached @Shared("grow") InlinedBranchProfile growProfile,
+                        @Cached("create(getContext(), false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode) {
             checkObject(rx);
             TruffleString searchString = toString1Node.executeString(searchValue);
             if (isPristine(rx)) {
-                return replaceInternal(rx, searchString, cachedReplaceValue, cachedParsedReplaceValueWithNamedCG, cachedParsedReplaceValueWithoutNamedCG);
+                return replaceInternal(rx, searchString, cachedReplaceValue, cachedParsedReplaceValueWithNamedCG, cachedParsedReplaceValueWithoutNamedCG, node, execIgnoreLastIndexNode);
             }
             return replaceAccordingToSpec(rx, searchString, cachedReplaceValue, false, node, growProfile);
         }
@@ -969,11 +1027,12 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(replaces = "replaceStringCached")
         protected Object replaceString(JSDynamicObject rx, Object searchValue, TruffleString replaceValue,
                         @Shared("toString1") @Cached JSToStringNode toString1Node,
-                        @Cached @Shared("grow") InlinedBranchProfile growProfile) {
+                        @Cached @Shared("grow") InlinedBranchProfile growProfile,
+                        @Cached("create(getContext(), false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode) {
             checkObject(rx);
             TruffleString searchString = toString1Node.executeString(searchValue);
             if (isPristine(rx)) {
-                return replaceInternal(rx, searchString, replaceValue, null, null);
+                return replaceInternal(rx, searchString, replaceValue, null, null, this, execIgnoreLastIndexNode);
             }
             return replaceAccordingToSpec(rx, searchString, replaceValue, false, this, growProfile);
         }
@@ -981,7 +1040,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(replaces = "replaceString")
         protected Object replaceDynamic(JSDynamicObject rx, Object searchValue, Object replaceValue,
                         @Shared("toString1") @Cached JSToStringNode toString1Node,
-                        @Cached @Shared("grow") InlinedBranchProfile growProfile) {
+                        @Cached @Shared("grow") InlinedBranchProfile growProfile,
+                        @Cached("create(getContext(), false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode) {
             checkObject(rx);
             TruffleString searchString = toString1Node.executeString(searchValue);
             boolean functionalReplace = functionalReplaceProfile.profile(isCallableNode.executeBoolean(replaceValue));
@@ -992,7 +1052,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 TruffleString replaceString = toString2(replaceValue);
                 replaceVal = replaceString;
                 if (isPristine(rx)) {
-                    return replaceInternal(rx, searchString, replaceString, null, null);
+                    return replaceInternal(rx, searchString, replaceString, null, null, this, execIgnoreLastIndexNode);
                 }
             }
             return replaceAccordingToSpec(rx, searchString, replaceVal, functionalReplace, this, growProfile);
@@ -1021,24 +1081,15 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return ReplaceStringParser.parse(getContext(), replaceValue, 100, parseNamedCG);
         }
 
-        private void initTRegexAccessors() {
-            if (compiledRegexAccessor == null || flagsAccessor == null || resultAccessor == null || execIgnoreLastIndexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                compiledRegexAccessor = insert(TRegexUtil.TRegexCompiledRegexAccessor.create());
-                flagsAccessor = insert(TRegexUtil.TRegexFlagsAccessor.create());
-                resultAccessor = insert(TRegexUtil.TRegexResultAccessor.create());
-                execIgnoreLastIndexNode = insert(JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode.create(getContext(), false));
-            }
-        }
-
-        private Object replaceInternal(JSDynamicObject rx, TruffleString s, TruffleString replaceString, ReplaceStringParser.Token[] parsedWithNamedCG,
-                        ReplaceStringParser.Token[] parsedWithoutNamedCG) {
-            initTRegexAccessors();
+        private Object replaceInternal(JSDynamicObject rx, TruffleString s, TruffleString replaceString,
+                        ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG,
+                        Node node,
+                        JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode) {
             Object tRegexCompiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegex(rx));
-            Object tRegexFlags = compiledRegexAccessor.flags(tRegexCompiledRegex);
-            boolean global = globalProfile.profile(flagsAccessor.global(tRegexFlags));
-            boolean unicode = unicodeProfile.profile(flagsAccessor.unicode(tRegexFlags));
-            boolean sticky = stickyProfile.profile(flagsAccessor.sticky(tRegexFlags));
+            Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlagsNode);
+            boolean global = globalProfile.profile(TRegexFlagsAccessor.global(tRegexFlags, node, readGlobalNode));
+            boolean unicode = unicodeProfile.profile(TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicodeNode));
+            boolean sticky = stickyProfile.profile(TRegexFlagsAccessor.sticky(tRegexFlags, node, readStickyNode));
             int length = Strings.length(s);
             TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder(length + 16);
             int lastMatchEnd = 0;
@@ -1047,7 +1098,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             Object lastRegexResult = null;
             while (lastIndex <= length) {
                 Object tRegexResult = execIgnoreLastIndexNode.execute(rx, s, lastIndex);
-                if (noMatchProfile.profile(!resultAccessor.isMatch(tRegexResult))) {
+                if (noMatchProfile.profile(!TRegexResultAccessor.isMatch(tRegexResult, node, readIsMatchNode))) {
                     if (matchStart < 0) {
                         if (global || sticky) {
                             setLastIndex(rx, 0);
@@ -1059,17 +1110,19 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 if (!getContext().getRegExpStaticResultUnusedAssumption().isValid()) {
                     lastRegexResult = tRegexResult;
                 }
-                matchStart = resultAccessor.captureGroupStart(tRegexResult, 0);
-                int matchEnd = resultAccessor.captureGroupEnd(tRegexResult, 0);
+                matchStart = TRegexResultAccessor.captureGroupStart(tRegexResult, 0, node, getStartNode);
+                int matchEnd = TRegexResultAccessor.captureGroupEnd(tRegexResult, 0, node, getEndNode);
                 assert matchStart >= 0 && matchStart <= length && matchStart >= lastMatchEnd;
                 append(sb, s, lastMatchEnd, matchStart);
-                boolean namedCG = hasNamedCaptureGroupsProfile.profile(!getNamedCaptureGroupsAccessor().isNull(compiledRegexAccessor.namedCaptureGroups(tRegexCompiledRegex)));
+                Object namedCG = TRegexCompiledRegexAccessor.namedCaptureGroups(tRegexCompiledRegex, node, readGroupsNode);
+                boolean hasNamedCG = hasNamedCaptureGroupsProfile.profile(!namedCaptureGroupInterop.isNull(namedCG));
+                int groupCount = TRegexCompiledRegexAccessor.groupCount(tRegexCompiledRegex, node, readGroupCount);
                 if (parsedWithNamedCG == null) {
-                    ReplaceStringParser.process(getContext(), replaceString, compiledRegexAccessor.groupCount(tRegexCompiledRegex), namedCG, dollarProfile,
-                                    new ReplaceStringConsumerTRegex(sb, s, replaceString, matchStart, matchEnd, tRegexResult, tRegexCompiledRegex), this);
+                    ReplaceStringParser.process(getContext(), replaceString, groupCount, hasNamedCG, dollarProfile,
+                                    new ReplaceStringConsumerTRegex(sb, s, replaceString, matchStart, matchEnd, tRegexResult, tRegexCompiledRegex, groupCount), this);
                 } else {
-                    ReplaceStringParser.processParsed(namedCG ? parsedWithNamedCG : parsedWithoutNamedCG,
-                                    new ReplaceStringConsumerTRegex(sb, s, replaceString, matchStart, matchEnd, tRegexResult, tRegexCompiledRegex), this);
+                    ReplaceStringParser.processParsed(hasNamedCG ? parsedWithNamedCG : parsedWithoutNamedCG,
+                                    new ReplaceStringConsumerTRegex(sb, s, replaceString, matchStart, matchEnd, tRegexResult, tRegexCompiledRegex, groupCount), this);
                 }
                 lastMatchEnd = matchEnd;
                 if (global) {
@@ -1248,11 +1301,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private int getLazyLength(JSDynamicObject obj) {
-            if (readLazyLengthNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readLazyLengthNode = insert(TRegexUtil.TRegexResultAccessor.create());
-            }
-            return readLazyLengthNode.captureGroupLength(JSAbstractArray.arrayGetRegexResult(obj, lazyRegexResultNode), 0);
+            Object regexResult = JSAbstractArray.arrayGetRegexResult(obj, lazyRegexResultNode);
+            return TRegexResultAccessor.captureGroupLength(regexResult, 0, null, getStartNode, getEndNode);
         }
 
         private PropertyGetNode getGetFlagsNode() {
@@ -1354,27 +1404,18 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Override
-        public final TRegexUtil.TRegexNamedCaptureGroupsAccessor getNamedCaptureGroupsAccessor() {
-            if (namedCaptureGroupsAccessor == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                namedCaptureGroupsAccessor = insert(TRegexUtil.TRegexNamedCaptureGroupsAccessor.create());
-            }
-            return namedCaptureGroupsAccessor;
-        }
-
-        @Override
-        public TRegexUtil.TRegexCompiledRegexAccessor getCompiledRegexAccessor() {
-            return compiledRegexAccessor;
-        }
-
-        @Override
-        public TRegexUtil.TRegexResultAccessor getResultAccessor() {
-            return resultAccessor;
-        }
-
-        @Override
         public BranchProfile getInvalidGroupNumberProfile() {
             return invalidGroupNumberProfile;
+        }
+
+        @Override
+        public InvokeGetGroupBoundariesMethodNode getGetStartNode() {
+            return getStartNode;
+        }
+
+        @Override
+        public InvokeGetGroupBoundariesMethodNode getGetEndNode() {
+            return getEndNode;
         }
     }
 
@@ -1444,17 +1485,15 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         public interface ParentNode {
 
-            TRegexUtil.TRegexCompiledRegexAccessor getCompiledRegexAccessor();
-
-            TRegexUtil.TRegexResultAccessor getResultAccessor();
-
-            TRegexUtil.TRegexNamedCaptureGroupsAccessor getNamedCaptureGroupsAccessor();
-
             void append(TruffleStringBuilder sb, TruffleString s);
 
             void append(TruffleStringBuilder sb, TruffleString s, int fromIndex, int toIndex);
 
             BranchProfile getInvalidGroupNumberProfile();
+
+            InvokeGetGroupBoundariesMethodNode getGetStartNode();
+
+            InvokeGetGroupBoundariesMethodNode getGetEndNode();
         }
 
         private final TruffleStringBuilder sb;
@@ -1464,8 +1503,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final int endPos;
         private final Object tRegexResult;
         private final Object tRegexCompiledRegex;
+        private final int groupCount;
 
-        public ReplaceStringConsumerTRegex(TruffleStringBuilder sb, TruffleString input, TruffleString replaceStr, int startPos, int endPos, Object tRegexResult, Object tRegexCompiledRegex) {
+        public ReplaceStringConsumerTRegex(TruffleStringBuilder sb, TruffleString input, TruffleString replaceStr, int startPos, int endPos, Object tRegexResult, Object tRegexCompiledRegex,
+                        int groupCount) {
             this.sb = sb;
             this.input = input;
             this.replaceStr = replaceStr;
@@ -1473,6 +1514,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.endPos = endPos;
             this.tRegexResult = tRegexResult;
             this.tRegexCompiledRegex = tRegexCompiledRegex;
+            this.groupCount = groupCount;
         }
 
         @Override
@@ -1496,34 +1538,34 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Override
-        public void captureGroup(ParentNode node, int groupNumber, int literalStart, int literalEnd) {
-            TRegexResultAccessor resultAccessor = node.getResultAccessor();
-            int groupCount = node.getCompiledRegexAccessor().groupCount(tRegexCompiledRegex);
+        public void captureGroup(ParentNode parent, int groupNumber, int literalStart, int literalEnd) {
+            Node node = (Node) parent;
             if (groupNumber < groupCount) {
-                int start = resultAccessor.captureGroupStart(tRegexResult, groupNumber);
+                int start = TRegexResultAccessor.captureGroupStart(tRegexResult, groupNumber, node, parent.getGetStartNode());
                 if (start >= 0) {
-                    node.append(sb, input, start, resultAccessor.captureGroupEnd(tRegexResult, groupNumber));
+                    parent.append(sb, input, start, TRegexResultAccessor.captureGroupEnd(tRegexResult, groupNumber, node, parent.getGetEndNode()));
                 }
             } else if (groupNumber > 9 && groupNumber / 10 < groupCount) {
-                int start = resultAccessor.captureGroupStart(tRegexResult, groupNumber / 10);
+                int start = TRegexResultAccessor.captureGroupStart(tRegexResult, groupNumber / 10, node, parent.getGetStartNode());
                 if (start >= 0) {
-                    node.append(sb, input, start, resultAccessor.captureGroupEnd(tRegexResult, groupNumber / 10));
+                    parent.append(sb, input, start, TRegexResultAccessor.captureGroupEnd(tRegexResult, groupNumber / 10, node, parent.getGetEndNode()));
                 }
-                node.append(sb, replaceStr, literalStart + 2, literalEnd);
+                parent.append(sb, replaceStr, literalStart + 2, literalEnd);
             } else {
-                node.getInvalidGroupNumberProfile().enter();
-                node.append(sb, replaceStr, literalStart, literalEnd);
+                parent.getInvalidGroupNumberProfile().enter();
+                parent.append(sb, replaceStr, literalStart, literalEnd);
             }
         }
 
         @Override
         public void namedCaptureGroup(ParentNode node, TruffleString groupName) {
-            Object map = node.getCompiledRegexAccessor().namedCaptureGroups(tRegexCompiledRegex);
-            if (node.getNamedCaptureGroupsAccessor().hasGroup(map, groupName)) {
-                int groupNumber = node.getNamedCaptureGroupsAccessor().getGroupNumber(map, groupName);
-                int start = node.getResultAccessor().captureGroupStart(tRegexResult, groupNumber);
+            JSRegExpReplaceNode parent = (JSRegExpReplaceNode) node;
+            Object map = TRegexCompiledRegexAccessor.namedCaptureGroups(tRegexCompiledRegex, parent, parent.readGroupsNode);
+            if (TRegexNamedCaptureGroupsAccessor.hasGroup(map, groupName, parent.namedCaptureGroupInterop)) {
+                int groupNumber = TRegexNamedCaptureGroupsAccessor.getGroupNumber(map, groupName, parent.namedCaptureGroupInterop, parent.toIntNode, parent);
+                int start = TRegexResultAccessor.captureGroupStart(tRegexResult, groupNumber, parent, parent.getStartNode);
                 if (start >= 0) {
-                    node.append(sb, input, start, node.getResultAccessor().captureGroupEnd(tRegexResult, groupNumber));
+                    node.append(sb, input, start, TRegexResultAccessor.captureGroupEnd(tRegexResult, groupNumber, parent, parent.getEndNode));
                 }
             }
         }
@@ -1828,16 +1870,17 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     abstract static class CompiledRegexFlagPropertyAccessor extends JSBuiltinNode {
 
-        @Child TRegexUtil.TRegexCompiledRegexSingleFlagAccessor readNode;
+        private final String flagName;
 
         CompiledRegexFlagPropertyAccessor(JSContext context, JSBuiltin builtin, String flagName) {
             super(context, builtin);
-            readNode = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(flagName);
+            this.flagName = flagName;
         }
 
         @Specialization
-        Object doRegExp(JSRegExpObject obj) {
-            return readNode.get(JSRegExp.getCompiledRegex(obj));
+        Object doRegExp(JSRegExpObject obj,
+                        @Cached TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode readFlag) {
+            return readFlag.execute(this, JSRegExp.getCompiledRegex(obj), flagName);
         }
 
         @Specialization(guards = "isRegExpPrototype(obj)")

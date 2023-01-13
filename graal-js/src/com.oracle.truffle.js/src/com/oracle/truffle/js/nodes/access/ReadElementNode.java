@@ -116,6 +116,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InlinedProfileBuilder;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -1035,29 +1036,24 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class LazyRegexResultArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-        @Child private TRegexUtil.TRegexMaterializeResultNode materializeResultNode;
-        @Child private DynamicObjectLibrary lazyRegexResultNode;
-        @Child private DynamicObjectLibrary lazyRegexResultOriginalInputNode;
+
+        @Child private DynamicObjectLibrary lazyRegexResultNode = JSObjectUtil.createDispatched(JSAbstractArray.LAZY_REGEX_RESULT_ID);
+        @Child private DynamicObjectLibrary lazyRegexResultOriginalInputNode = JSObjectUtil.createDispatched(JSAbstractArray.LAZY_REGEX_ORIGINAL_INPUT_ID);
+        @Child private TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
+        @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
+        @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getEndNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
 
         LazyRegexResultArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
         }
 
-        private TRegexUtil.TRegexMaterializeResultNode getMaterializeResultNode() {
-            if (materializeResultNode == null || lazyRegexResultNode == null || lazyRegexResultOriginalInputNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                materializeResultNode = insert(TRegexUtil.TRegexMaterializeResultNode.create());
-                lazyRegexResultNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
-                lazyRegexResultOriginalInputNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
-            }
-            return materializeResultNode;
-        }
-
         @Override
         protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) array;
-            if (inBounds.profile(this, lazyRegexResultArray.hasElement(target, (int) index))) {
-                return LazyRegexResultArray.materializeGroup(context, getMaterializeResultNode(), target, (int) index, lazyRegexResultNode, lazyRegexResultOriginalInputNode);
+            int intIndex = (int) index;
+            if (inBounds.profile(this, lazyRegexResultArray.hasElement(target, intIndex))) {
+                return LazyRegexResultArray.materializeGroup(context, target, intIndex,
+                                lazyRegexResultNode, lazyRegexResultOriginalInputNode, null, substringNode, getStartNode, getEndNode);
             } else {
                 return readOutOfBounds(target, index, receiver, defaultValue, context);
             }
@@ -1065,25 +1061,21 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class LazyRegexResultIndicesArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-        @Child TRegexUtil.TRegexResultAccessor resultAccessor;
+
+        @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
+        @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getEndNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
 
         LazyRegexResultIndicesArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
         }
 
-        private TRegexUtil.TRegexResultAccessor getResultAccessor() {
-            if (resultAccessor == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                resultAccessor = insert(TRegexUtil.TRegexResultAccessor.create());
-            }
-            return resultAccessor;
-        }
-
         @Override
         protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             LazyRegexResultIndicesArray lazyRegexResultIndicesArray = (LazyRegexResultIndicesArray) array;
-            if (inBounds.profile(this, lazyRegexResultIndicesArray.hasElement(target, (int) index))) {
-                return LazyRegexResultIndicesArray.materializeGroup(context, getResultAccessor(), target, (int) index);
+            int intIndex = (int) index;
+            if (inBounds.profile(this, lazyRegexResultIndicesArray.hasElement(target, intIndex))) {
+                return LazyRegexResultIndicesArray.materializeGroup(context, target, intIndex,
+                                null, getStartNode, getEndNode);
             } else {
                 return readOutOfBounds(target, index, receiver, defaultValue, context);
             }

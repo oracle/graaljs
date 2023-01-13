@@ -210,6 +210,7 @@ import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexCompiledRegexAccessor;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 
 /**
@@ -2632,13 +2633,13 @@ public class JSRealm {
         this.embedderData = embedderData;
     }
 
-    public Object getStaticRegexResult(JSContext ctx, TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor) {
+    public Object getStaticRegexResult(JSContext ctx, Node node, TRegexUtil.InvokeExecMethodNode invokeExec) {
         CompilerAsserts.partialEvaluationConstant(ctx);
         assert ctx.isOptionRegexpStaticResult();
         if (staticRegexResultCompiledRegex != null && ctx.getRegExpStaticResultUnusedAssumption().isValid()) {
             // switch from lazy to eager static RegExp result
             ctx.getRegExpStaticResultUnusedAssumption().invalidate();
-            staticRegexResult = compiledRegexAccessor.exec(staticRegexResultCompiledRegex, staticRegexResultOriginalInputString, staticRegexResultFromIndex);
+            staticRegexResult = TRegexCompiledRegexAccessor.exec(staticRegexResultCompiledRegex, staticRegexResultOriginalInputString, staticRegexResultFromIndex, node, invokeExec);
         }
         if (staticRegexResult == null) {
             staticRegexResult = ctx.getTRegexEmptyResult();

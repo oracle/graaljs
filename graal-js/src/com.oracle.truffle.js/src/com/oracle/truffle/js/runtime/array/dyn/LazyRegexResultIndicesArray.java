@@ -54,8 +54,9 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.Constants;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeGetGroupBoundariesMethodNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
 
 public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
 
@@ -73,10 +74,11 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
         return (Object[]) arrayGetArray(object);
     }
 
-    public static Object materializeGroup(JSContext context, TRegexUtil.TRegexResultAccessor resultAccessor, JSDynamicObject object, int index) {
+    public static Object materializeGroup(JSContext context, JSDynamicObject object, int index,
+                    Node node, InvokeGetGroupBoundariesMethodNode getStartNode, InvokeGetGroupBoundariesMethodNode getEndNode) {
         Object[] internalArray = getArray(object);
         if (internalArray[index] == null) {
-            internalArray[index] = getIntIndicesArray(context, resultAccessor, getRegexResultSlow(object), index);
+            internalArray[index] = getIntIndicesArray(context, getRegexResultSlow(object), index, node, getStartNode, getEndNode);
         }
         return internalArray[index];
     }
@@ -86,19 +88,21 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
         return JSDynamicObject.getOrNull(object, JSRegExp.GROUPS_RESULT_ID);
     }
 
-    public static Object getIntIndicesArray(JSContext context, TRegexUtil.TRegexResultAccessor resultAccessor, Object regexResult, int index) {
-        final int beginIndex = resultAccessor.captureGroupStart(regexResult, index);
+    public static Object getIntIndicesArray(JSContext context, Object regexResult, int index,
+                    Node node, InvokeGetGroupBoundariesMethodNode getStartNode, InvokeGetGroupBoundariesMethodNode getEndNode) {
+        final int beginIndex = TRegexResultAccessor.captureGroupStart(regexResult, index, node, getStartNode);
         if (beginIndex == Constants.CAPTURE_GROUP_NO_MATCH) {
             assert index > 0;
             return Undefined.instance;
         }
-        int[] intArray = new int[]{beginIndex, resultAccessor.captureGroupEnd(regexResult, index)};
-        return JSArray.createConstantIntArray(context, JSRealm.get(null), intArray);
+        int[] intArray = new int[]{beginIndex, TRegexResultAccessor.captureGroupEnd(regexResult, index, node, getEndNode)};
+        return JSArray.createConstantIntArray(context, JSRealm.get(node), intArray);
     }
 
-    public ScriptArray createWritable(JSContext context, TRegexUtil.TRegexResultAccessor resultAccessor, JSDynamicObject object, long index, Object value) {
+    public ScriptArray createWritable(JSContext context, JSDynamicObject object, long index, Object value,
+                    Node node, InvokeGetGroupBoundariesMethodNode getStartNode, InvokeGetGroupBoundariesMethodNode getEndNode) {
         for (int i = 0; i < lengthInt(object); i++) {
-            materializeGroup(context, resultAccessor, object, i);
+            materializeGroup(context, object, i, node, getStartNode, getEndNode);
         }
         final Object[] internalArray = getArray(object);
         AbstractObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, internalArray.length, internalArray.length, internalArray, integrityLevel);
@@ -110,7 +114,8 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
 
     @Override
     public Object getElementInBounds(JSDynamicObject object, int index) {
-        return materializeGroup(JavaScriptLanguage.getCurrentLanguage().getJSContext(), TRegexUtil.TRegexResultAccessor.getUncached(), object, index);
+        return materializeGroup(JavaScriptLanguage.getCurrentLanguage().getJSContext(), object, index,
+                        null, InvokeGetGroupBoundariesMethodNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached());
     }
 
     @Override
@@ -125,7 +130,7 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
 
     @Override
     public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, Node node, CreateWritableProfileAccess profile) {
-        Object[] array = materializeFull(TRegexUtil.TRegexResultAccessor.getUncached(), object, lengthInt(object));
+        Object[] array = materializeFull(object, lengthInt(object), node);
         AbstractObjectArray newArray;
         newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, array.length, array.length, array, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
@@ -179,10 +184,11 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
         return new LazyRegexResultIndicesArray(newIntegrityLevel, cache);
     }
 
-    protected static Object[] materializeFull(TRegexUtil.TRegexResultAccessor resultAccessor, JSDynamicObject object, int groupCount) {
+    protected static Object[] materializeFull(JSDynamicObject object, int groupCount, Node node) {
         Object[] result = new Object[groupCount];
         for (int i = 0; i < groupCount; ++i) {
-            result[i] = materializeGroup(JavaScriptLanguage.getCurrentLanguage().getJSContext(), resultAccessor, object, i);
+            result[i] = materializeGroup(JavaScriptLanguage.getCurrentLanguage().getJSContext(), object, i,
+                            node, InvokeGetGroupBoundariesMethodNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached());
         }
         return result;
     }

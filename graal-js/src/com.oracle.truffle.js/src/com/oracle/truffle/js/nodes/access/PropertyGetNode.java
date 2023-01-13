@@ -122,8 +122,8 @@ import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
-import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeGetGroupBoundariesMethodNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResult;
 
 /**
  * ES6 9.1.8 [[Get]] (P, Receiver).
@@ -1813,8 +1813,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         private final JSContext context;
         private final int groupIndex;
-        @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
-        @Child private TRegexResultAccessor resultAccessor = TRegexResultAccessor.create();
+        @Child TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
+        @Child private InvokeGetGroupBoundariesMethodNode getStartNode = InvokeGetGroupBoundariesMethodNode.create();
+        @Child private InvokeGetGroupBoundariesMethodNode getEndNode = InvokeGetGroupBoundariesMethodNode.create();
         private final ConditionProfile isIndicesObject = ConditionProfile.create();
 
         public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, int groupIndex, JSContext context) {
@@ -1830,10 +1831,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             JSRegExpGroupsObject groups = (JSRegExpGroupsObject) store;
             Object regexResult = groups.getRegexResult();
             if (isIndicesObject.profile(groups.isIndices())) {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), resultAccessor, regexResult, groupIndex);
+                return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), regexResult, groupIndex,
+                                null, getStartNode, getEndNode);
             } else {
                 TruffleString input = groups.getInputString();
-                return materializeNode.materializeGroup(context, regexResult, groupIndex, input);
+                return TRegexMaterializeResult.materializeGroup(context, regexResult, groupIndex, input,
+                                null, substringNode, getStartNode, getEndNode);
             }
         }
     }

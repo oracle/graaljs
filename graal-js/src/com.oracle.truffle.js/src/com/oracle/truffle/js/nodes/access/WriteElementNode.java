@@ -67,6 +67,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -132,6 +133,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.InlinedProfileBuilder;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -997,7 +999,11 @@ public class WriteElementNode extends JSTargetableNode {
 
     private static class LazyRegexResultArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        @Child private TRegexUtil.TRegexMaterializeResultNode materializeResultNode = TRegexUtil.TRegexMaterializeResultNode.create();
+        @Child private DynamicObjectLibrary lazyRegexResultNode = JSObjectUtil.createDispatched(JSAbstractArray.LAZY_REGEX_RESULT_ID);
+        @Child private DynamicObjectLibrary lazyRegexResultOriginalInputNode = JSObjectUtil.createDispatched(JSAbstractArray.LAZY_REGEX_ORIGINAL_INPUT_ID);
+        @Child private TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
+        @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
+        @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getEndNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
 
         LazyRegexResultArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1006,7 +1012,8 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) cast(array);
-            ScriptArray newArray = lazyRegexResultArray.createWritable(root.context, materializeResultNode, target, index, value);
+            ScriptArray newArray = lazyRegexResultArray.createWritable(root.context, target, index, value,
+                            lazyRegexResultNode, lazyRegexResultOriginalInputNode, null, substringNode, getStartNode, getEndNode);
             if (inBoundsIf.profile(this, index >= 0 && index < 0x7fff_ffff)) {
                 return setArrayAndWrite(newArray, target, index, value, root);
             } else {
@@ -1018,7 +1025,8 @@ public class WriteElementNode extends JSTargetableNode {
 
     private static class LazyRegexResultIndicesArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        @Child private TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.create();
+        @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
+        @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getEndNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
 
         LazyRegexResultIndicesArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
@@ -1027,7 +1035,8 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
             LazyRegexResultIndicesArray lazyRegexResultIndicesArray = (LazyRegexResultIndicesArray) cast(array);
-            ScriptArray newArray = lazyRegexResultIndicesArray.createWritable(root.context, resultAccessor, target, index, value);
+            ScriptArray newArray = lazyRegexResultIndicesArray.createWritable(root.context, target, index, value,
+                            null, getStartNode, getEndNode);
             if (inBoundsIf.profile(this, index >= 0 && index < 0x7fff_ffff)) {
                 return setArrayAndWrite(newArray, target, index, value, root);
             } else {

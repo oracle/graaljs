@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -55,6 +57,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleString.SubstringByteIndexNode;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
@@ -64,7 +68,6 @@ import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadBooleanMe
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadIntMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadStringMemberNodeGen;
-import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropToIntNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InvokeExecMethodNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InvokeGetGroupBoundariesMethodNodeGen;
 
@@ -118,7 +121,6 @@ public final class TRegexUtil {
     }
 
     private static final String NUMBER_OF_REGEX_RESULT_TYPES = "9";
-    private static final int NUMBER_OF_REGEX_RESULT_TYPES_INT = 9;
 
     public static final class Constants {
         private Constants() {
@@ -276,9 +278,9 @@ public final class TRegexUtil {
         }
     }
 
-    @ImportStatic(JSGuards.class)
     @GenerateInline
     @GenerateUncached
+    @ImportStatic(JSGuards.class)
     public abstract static class InteropToStringNode extends Node {
 
         public abstract TruffleString execute(Node node, Object obj);
@@ -304,9 +306,9 @@ public final class TRegexUtil {
         }
     }
 
-    @ImportStatic(CompiledRegex.class)
     @GenerateInline
     @GenerateUncached
+    @ImportStatic(CompiledRegex.class)
     public abstract static class InvokeExecMethodNode extends Node {
 
         public abstract Object execute(Node node, Object compiledRegex, Object input, long fromIndex);
@@ -358,360 +360,170 @@ public final class TRegexUtil {
         }
     }
 
-    public static final class TRegexCompiledRegexAccessor extends Node {
-
-        @Child private InteropReadStringMemberNode readPatternNode;
-        @Child private InteropReadMemberNode readFlagsNode;
-        @Child private InvokeExecMethodNode invokeExecMethodNode;
-        @Child private InteropReadIntMemberNode readGroupCountNode;
-        @Child private InteropReadMemberNode readGroupsNode;
+    public static final class TRegexCompiledRegexAccessor {
 
         private TRegexCompiledRegexAccessor() {
         }
 
-        @NeverDefault
-        public static TRegexCompiledRegexAccessor create() {
-            return new TRegexCompiledRegexAccessor();
+        public static Object pattern(Object compiledRegexObject, Node node, InteropReadStringMemberNode readPattern) {
+            return readPattern.execute(node, compiledRegexObject, Props.CompiledRegex.PATTERN);
         }
 
-        public Object pattern(Object compiledRegexObject) {
-            return getReadPatternNode().execute(null, compiledRegexObject, Props.CompiledRegex.PATTERN);
+        public static Object flags(Object compiledRegexObject, Node node, InteropReadMemberNode readFlags) {
+            return readFlags.execute(node, compiledRegexObject, Props.CompiledRegex.FLAGS);
         }
 
-        public Object flags(Object compiledRegexObject) {
-            return getReadFlagsNode().execute(null, compiledRegexObject, Props.CompiledRegex.FLAGS);
+        public static Object exec(Object compiledRegexObject, Object input, long fromIndex, Node node, InvokeExecMethodNode invokeExec) {
+            return invokeExec.execute(node, compiledRegexObject, input, fromIndex);
         }
 
-        public Object exec(Object compiledRegexObject, Object input, long fromIndex) {
-            return getInvokeExecMethodNode().execute(null, compiledRegexObject, input, fromIndex);
+        public static int groupCount(Object regexResultObject, Node node, InteropReadIntMemberNode readGroupCount) {
+            return readGroupCount.execute(node, regexResultObject, Props.CompiledRegex.GROUP_COUNT);
         }
 
-        public int groupCount(Object regexResultObject) {
-            return getReadGroupCountNode().execute(null, regexResultObject, Props.CompiledRegex.GROUP_COUNT);
-        }
-
-        public Object namedCaptureGroups(Object compiledRegexObject) {
-            return getReadGroupsNode().execute(null, compiledRegexObject, Props.CompiledRegex.GROUPS);
-        }
-
-        private InteropReadStringMemberNode getReadPatternNode() {
-            if (readPatternNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readPatternNode = insert(InteropReadStringMemberNode.create());
-            }
-            return readPatternNode;
-        }
-
-        private InteropReadMemberNode getReadFlagsNode() {
-            if (readFlagsNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readFlagsNode = insert(InteropReadMemberNode.create());
-            }
-            return readFlagsNode;
-        }
-
-        private InvokeExecMethodNode getInvokeExecMethodNode() {
-            if (invokeExecMethodNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                invokeExecMethodNode = insert(InvokeExecMethodNode.create());
-            }
-            return invokeExecMethodNode;
-        }
-
-        private InteropReadIntMemberNode getReadGroupCountNode() {
-            if (readGroupCountNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readGroupCountNode = insert(InteropReadIntMemberNode.create());
-            }
-            return readGroupCountNode;
-        }
-
-        private InteropReadMemberNode getReadGroupsNode() {
-            if (readGroupsNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readGroupsNode = insert(InteropReadMemberNode.create());
-            }
-            return readGroupsNode;
+        public static Object namedCaptureGroups(Object compiledRegexObject, Node node, InteropReadMemberNode readGroups) {
+            return readGroups.execute(node, compiledRegexObject, Props.CompiledRegex.GROUPS);
         }
     }
 
-    public static final class TRegexNamedCaptureGroupsAccessor extends Node {
-
-        @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(NUMBER_OF_REGEX_RESULT_TYPES_INT);
-        @Child private InteropToIntNode toIntNode;
+    public static final class TRegexNamedCaptureGroupsAccessor {
 
         private TRegexNamedCaptureGroupsAccessor() {
         }
 
-        @NeverDefault
-        public static TRegexNamedCaptureGroupsAccessor create() {
-            return new TRegexNamedCaptureGroupsAccessor();
-        }
-
-        public boolean isNull(Object namedCaptureGroupsMap) {
+        public static boolean isNull(Object namedCaptureGroupsMap, InteropLibrary interop) {
             return interop.isNull(namedCaptureGroupsMap);
         }
 
-        public boolean hasGroup(Object namedCaptureGroupsMap, TruffleString name) {
+        public static boolean hasGroup(Object namedCaptureGroupsMap, TruffleString name, InteropLibrary interop) {
             return interop.isMemberReadable(namedCaptureGroupsMap, Strings.toJavaString(name));
         }
 
-        public int getGroupNumber(Object namedCaptureGroupsMap, TruffleString name) {
-            InteropToIntNode toInt = toIntNode;
-            if (toInt == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toIntNode = toInt = insert(InteropToIntNodeGen.create());
-            }
+        public static int getGroupNumber(Object namedCaptureGroupsMap, TruffleString name, InteropLibrary interop, InteropToIntNode toIntNode, Node node) {
             try {
-                return toInt.execute(null, interop.readMember(namedCaptureGroupsMap, Strings.toJavaString(name)));
+                return toIntNode.execute(node, interop.readMember(namedCaptureGroupsMap, Strings.toJavaString(name)));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }
 
-    public static final class TRegexFlagsAccessor extends Node {
-
-        @Child private InteropReadStringMemberNode readSourceNode;
-        @Child private InteropReadBooleanMemberNode readGlobalNode;
-        @Child private InteropReadBooleanMemberNode readMultilineNode;
-        @Child private InteropReadBooleanMemberNode readIgnoreCaseNode;
-        @Child private InteropReadBooleanMemberNode readStickyNode;
-        @Child private InteropReadBooleanMemberNode readUnicodeNode;
-        @Child private InteropReadBooleanMemberNode readDotAllNode;
-        @Child private InteropReadBooleanMemberNode readHasIndicesNode;
+    public static final class TRegexFlagsAccessor {
 
         private TRegexFlagsAccessor() {
         }
 
-        @NeverDefault
-        public static TRegexFlagsAccessor create() {
-            return new TRegexFlagsAccessor();
+        public static Object source(Object regexFlagsObject, Node node, InteropReadStringMemberNode readSourceNode) {
+            return readSourceNode.execute(node, regexFlagsObject, Props.Flags.SOURCE);
         }
 
-        public Object source(Object regexFlagsObject) {
-            return getReadSourceNode().execute(null, regexFlagsObject, Props.Flags.SOURCE);
+        public static boolean global(Object regexFlagsObject, Node node, InteropReadBooleanMemberNode readGlobalNode) {
+            return readGlobalNode.execute(node, regexFlagsObject, Props.Flags.GLOBAL);
         }
 
-        public boolean global(Object regexFlagsObject) {
-            return getReadGlobalNode().execute(null, regexFlagsObject, Props.Flags.GLOBAL);
+        public static boolean multiline(Object regexFlagsObject, Node node, InteropReadBooleanMemberNode readMultilineNode) {
+            return readMultilineNode.execute(node, regexFlagsObject, Props.Flags.MULTILINE);
         }
 
-        public boolean multiline(Object regexFlagsObject) {
-            return getReadMultilineNode().execute(null, regexFlagsObject, Props.Flags.MULTILINE);
+        public static boolean ignoreCase(Object regexFlagsObject, Node node, InteropReadBooleanMemberNode readIgnoreCaseNode) {
+            return readIgnoreCaseNode.execute(node, regexFlagsObject, Props.Flags.IGNORE_CASE);
         }
 
-        public boolean ignoreCase(Object regexFlagsObject) {
-            return getReadIgnoreCaseNode().execute(null, regexFlagsObject, Props.Flags.IGNORE_CASE);
+        public static boolean sticky(Object regexFlagsObject, Node node, InteropReadBooleanMemberNode readStickyNode) {
+            return readStickyNode.execute(node, regexFlagsObject, Props.Flags.STICKY);
         }
 
-        public boolean sticky(Object regexFlagsObject) {
-            return getReadStickyNode().execute(null, regexFlagsObject, Props.Flags.STICKY);
+        public static boolean unicode(Object regexFlagsObject, Node node, InteropReadBooleanMemberNode readUnicodeNode) {
+            return readUnicodeNode.execute(node, regexFlagsObject, Props.Flags.UNICODE);
         }
 
-        public boolean unicode(Object regexFlagsObject) {
-            return getReadUnicodeNode().execute(null, regexFlagsObject, Props.Flags.UNICODE);
+        public static boolean dotAll(Object regexFlagsObject, Node node, InteropReadBooleanMemberNode readDotAllNode) {
+            return readDotAllNode.execute(node, regexFlagsObject, Props.Flags.DOT_ALL);
         }
 
-        public boolean dotAll(Object regexFlagsObject) {
-            return getReadDotAllNode().execute(null, regexFlagsObject, Props.Flags.DOT_ALL);
-        }
-
-        public boolean hasIndices(Object regexFlagsObject) {
-            return getReadHasIndicesNode().execute(null, regexFlagsObject, Props.Flags.HAS_INDICES);
-        }
-
-        private InteropReadStringMemberNode getReadSourceNode() {
-            if (readSourceNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readSourceNode = insert(InteropReadStringMemberNode.create());
-            }
-            return readSourceNode;
-        }
-
-        private InteropReadBooleanMemberNode getReadGlobalNode() {
-            if (readGlobalNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readGlobalNode = insert(InteropReadBooleanMemberNode.create());
-            }
-            return readGlobalNode;
-        }
-
-        private InteropReadBooleanMemberNode getReadMultilineNode() {
-            if (readMultilineNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readMultilineNode = insert(InteropReadBooleanMemberNode.create());
-            }
-            return readMultilineNode;
-        }
-
-        private InteropReadBooleanMemberNode getReadIgnoreCaseNode() {
-            if (readIgnoreCaseNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readIgnoreCaseNode = insert(InteropReadBooleanMemberNode.create());
-            }
-            return readIgnoreCaseNode;
-        }
-
-        private InteropReadBooleanMemberNode getReadStickyNode() {
-            if (readStickyNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readStickyNode = insert(InteropReadBooleanMemberNode.create());
-            }
-            return readStickyNode;
-        }
-
-        private InteropReadBooleanMemberNode getReadUnicodeNode() {
-            if (readUnicodeNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readUnicodeNode = insert(InteropReadBooleanMemberNode.create());
-            }
-            return readUnicodeNode;
-        }
-
-        private InteropReadBooleanMemberNode getReadDotAllNode() {
-            if (readDotAllNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readDotAllNode = insert(InteropReadBooleanMemberNode.create());
-            }
-            return readDotAllNode;
-        }
-
-        private InteropReadBooleanMemberNode getReadHasIndicesNode() {
-            if (readHasIndicesNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readHasIndicesNode = insert(InteropReadBooleanMemberNode.create());
-            }
-            return readHasIndicesNode;
+        public static boolean hasIndices(Object regexFlagsObject, Node node, InteropReadBooleanMemberNode readHasIndicesNode) {
+            return readHasIndicesNode.execute(node, regexFlagsObject, Props.Flags.HAS_INDICES);
         }
     }
 
-    public static final class TRegexCompiledRegexSingleFlagAccessor extends Node {
+    @GenerateInline
+    @GenerateCached(false)
+    public abstract static class TRegexCompiledRegexSingleFlagAccessorNode extends Node {
 
-        private final String flag;
+        public abstract boolean execute(Node node, Object compiledRegex, String flag);
 
-        @Child private InteropReadMemberNode readFlagsObjectNode = InteropReadMemberNode.create();
-        @Child private InteropReadBooleanMemberNode readFlagNode = InteropReadBooleanMemberNode.create();
-
-        private TRegexCompiledRegexSingleFlagAccessor(String flag) {
-            this.flag = flag;
-        }
-
-        public static TRegexCompiledRegexSingleFlagAccessor create(String flag) {
-            return new TRegexCompiledRegexSingleFlagAccessor(flag);
-        }
-
-        public boolean get(Object compiledRegex) {
-            return readFlagNode.execute(null, readFlagsObjectNode.execute(null, compiledRegex, Props.CompiledRegex.FLAGS), flag);
+        @Specialization
+        static boolean get(Node node, Object compiledRegex, String flag,
+                        @Cached InteropReadMemberNode readFlagsObjectNode,
+                        @Cached InteropReadBooleanMemberNode readFlagNode) {
+            CompilerAsserts.partialEvaluationConstant(flag);
+            return readFlagNode.execute(node, readFlagsObjectNode.execute(node, compiledRegex, Props.CompiledRegex.FLAGS), flag);
         }
     }
 
-    public static final class TRegexResultAccessor extends Node {
+    public static final class TRegexResultAccessor {
 
-        private static final TRegexResultAccessor UNCACHED = new TRegexResultAccessor(false);
-
-        @Child private InteropReadBooleanMemberNode readIsMatchNode;
-        @Child private InvokeGetGroupBoundariesMethodNode getStartNode;
-        @Child private InvokeGetGroupBoundariesMethodNode getEndNode;
-
-        private TRegexResultAccessor(boolean cached) {
-            if (!cached) {
-                readIsMatchNode = InteropReadBooleanMemberNodeGen.getUncached();
-                getStartNode = InvokeGetGroupBoundariesMethodNodeGen.getUncached();
-                getEndNode = InvokeGetGroupBoundariesMethodNodeGen.getUncached();
-            }
+        private TRegexResultAccessor() {
         }
 
-        @NeverDefault
-        public static TRegexResultAccessor create() {
-            return new TRegexResultAccessor(true);
+        public static boolean isMatch(Object result, Node node, TRegexUtil.InteropReadBooleanMemberNode readIsMatch) {
+            return readIsMatch.execute(node, result, TRegexUtil.Props.RegexResult.IS_MATCH);
         }
 
-        public static TRegexResultAccessor getUncached() {
-            return UNCACHED;
+        public static int groupCount(Object compiledRegex, Node node, TRegexUtil.InteropReadIntMemberNode readGroupCount) {
+            return readGroupCount.execute(node, compiledRegex, Props.CompiledRegex.GROUP_COUNT);
         }
 
-        public boolean isMatch(Object regexResultObject) {
-            return getReadIsMatchNode().execute(null, regexResultObject, Props.RegexResult.IS_MATCH);
+        public static int captureGroupStart(Object result, int groupNumber, Node node, TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart) {
+            return getStart.execute(node, result, TRegexUtil.Props.RegexResult.GET_START, groupNumber);
         }
 
-        public int captureGroupStart(Object regexResultObject, int i) {
-            return getGetStartNode().execute(null, regexResultObject, Props.RegexResult.GET_START, i);
+        public static int captureGroupEnd(Object result, int groupNumber, Node node, TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd) {
+            return getEnd.execute(node, result, TRegexUtil.Props.RegexResult.GET_END, groupNumber);
         }
 
-        public int captureGroupEnd(Object regexResultObject, int i) {
-            return getGetEndNode().execute(null, regexResultObject, Props.RegexResult.GET_END, i);
+        public static int captureGroupLength(Object regexResultObject, int groupNumber, Node node,
+                        TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                        TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd) {
+            return captureGroupEnd(regexResultObject, groupNumber, node, getStart) - captureGroupStart(regexResultObject, groupNumber, node, getEnd);
         }
 
-        public int captureGroupLength(Object regexResultObject, int i) {
-            return captureGroupEnd(regexResultObject, i) - captureGroupStart(regexResultObject, i);
-        }
-
-        private InteropReadBooleanMemberNode getReadIsMatchNode() {
-            if (readIsMatchNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readIsMatchNode = insert(InteropReadBooleanMemberNode.create());
-            }
-            return readIsMatchNode;
-        }
-
-        private InvokeGetGroupBoundariesMethodNode getGetStartNode() {
-            if (getStartNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getStartNode = insert(InvokeGetGroupBoundariesMethodNode.create());
-            }
-            return getStartNode;
-        }
-
-        private InvokeGetGroupBoundariesMethodNode getGetEndNode() {
-            if (getEndNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getEndNode = insert(InvokeGetGroupBoundariesMethodNode.create());
-            }
-            return getEndNode;
-        }
     }
 
-    public static final class TRegexMaterializeResultNode extends Node {
+    public static final class TRegexMaterializeResult {
 
-        private static final TRegexMaterializeResultNode UNCACHED = new TRegexMaterializeResultNode(false);
-
-        @Child TRegexResultAccessor resultAccessor;
-        @Child TruffleString.SubstringByteIndexNode substringNode;
-
-        private TRegexMaterializeResultNode(boolean cached) {
-            resultAccessor = cached ? TRegexResultAccessor.create() : TRegexResultAccessor.getUncached();
-            substringNode = cached ? TruffleString.SubstringByteIndexNode.create() : TruffleString.SubstringByteIndexNode.getUncached();
+        private TRegexMaterializeResult() {
         }
 
-        public static TRegexMaterializeResultNode create() {
-            return new TRegexMaterializeResultNode(true);
+        public static Object materializeGroupUncached(Object regexResult, int i, TruffleString input) {
+            return TRegexMaterializeResult.materializeGroup(JavaScriptLanguage.get(null).getJSContext(), regexResult, i, input,
+                            null, SubstringByteIndexNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached());
         }
 
-        public static TRegexMaterializeResultNode getUncached() {
-            return UNCACHED;
-        }
-
-        public Object materializeGroup(JSContext context, Object regexResult, int i, TruffleString input) {
-            return materializeGroup(context, resultAccessor, substringNode, regexResult, i, input);
-        }
-
-        public static Object materializeGroup(JSContext context, TRegexResultAccessor accessor, TruffleString.SubstringByteIndexNode substringNode, Object regexResult, int i, TruffleString input) {
-            final int beginIndex = accessor.captureGroupStart(regexResult, i);
+        public static Object materializeGroup(JSContext context, Object regexResult, int i, TruffleString input,
+                        Node node, TruffleString.SubstringByteIndexNode substringNode, InvokeGetGroupBoundariesMethodNode getStart, InvokeGetGroupBoundariesMethodNode getEnd) {
+            final int beginIndex = TRegexResultAccessor.captureGroupStart(regexResult, i, node, getStart);
             if (beginIndex == Constants.CAPTURE_GROUP_NO_MATCH) {
                 assert i > 0;
                 return Undefined.instance;
             } else {
-                return Strings.substring(context, substringNode, input, beginIndex, accessor.captureGroupEnd(regexResult, i) - beginIndex);
+                int endIndex = TRegexResultAccessor.captureGroupEnd(regexResult, i, node, getEnd);
+                return Strings.substring(context, substringNode, input, beginIndex, endIndex - beginIndex);
             }
         }
 
-        public Object[] materializeFull(JSContext context, Object regexResult, int groupCount, TruffleString input) {
+        public static Object[] materializeFull(JSContext context, Object regexResult, int groupCount, TruffleString input,
+                        Node node, TruffleString.SubstringByteIndexNode substringNode, InvokeGetGroupBoundariesMethodNode getStart, InvokeGetGroupBoundariesMethodNode getEnd) {
             Object[] result = new Object[groupCount];
             for (int i = 0; i < groupCount; i++) {
-                result[i] = materializeGroup(context, regexResult, i, input);
+                result[i] = materializeGroup(context, regexResult, i, input, node, substringNode, getStart, getEnd);
             }
             return result;
+        }
+
+        public static Object[] materializeFullUncached(Object regexResult, int groupCount, TruffleString input) {
+            return materializeFull(JavaScriptLanguage.get(null).getJSContext(), regexResult, groupCount, input,
+                            null, SubstringByteIndexNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached());
         }
     }
 }
