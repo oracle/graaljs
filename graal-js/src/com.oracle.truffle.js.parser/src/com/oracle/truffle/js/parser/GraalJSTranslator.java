@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -143,6 +143,7 @@ import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.nodes.control.DiscardResultNode;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
+import com.oracle.truffle.js.nodes.control.GeneratorNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.control.ModuleYieldNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
@@ -694,7 +695,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     if (child != newChild) {
                         factory.fixNodeChild(parent, child, newChild);
                     }
-                    assert !(child instanceof ResumableNode) || newChild instanceof GeneratorWrapperNode || newChild instanceof SuspendNode : "resumable node not wrapped: " + child;
+                    assert !(child instanceof ResumableNode) || newChild instanceof GeneratorNode || newChild instanceof SuspendNode : "resumable node not wrapped: " + child;
                 }
             }
         }
