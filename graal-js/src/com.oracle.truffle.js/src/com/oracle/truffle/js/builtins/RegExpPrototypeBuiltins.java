@@ -58,11 +58,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
@@ -971,28 +969,12 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private TruffleStringBuilder.AppendSubstringByteIndexNode appendSubStringNode;
         @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
 
-        private final ConditionProfile unicodeProfile = ConditionProfile.create();
-        private final ConditionProfile globalProfile = ConditionProfile.create();
-        private final ConditionProfile stickyProfile = ConditionProfile.create();
-        private final ConditionProfile functionalReplaceProfile = ConditionProfile.create();
-        private final ConditionProfile lazyResultArrayProfile = ConditionProfile.create();
-        private final ConditionProfile noMatchProfile = ConditionProfile.create();
-        private final ConditionProfile validPositionProfile = ConditionProfile.create();
-        private final ConditionProfile hasNamedCaptureGroupsProfile = ConditionProfile.create();
-        private final BranchProfile dollarProfile = BranchProfile.create();
         final StringBuilderProfile stringBuilderProfile;
         final BranchProfile invalidGroupNumberProfile = BranchProfile.create();
-        private final ValueProfile compiledRegexProfile = ValueProfile.createIdentityProfile();
 
-        @Child private InteropReadBooleanMemberNode readGlobalNode = InteropReadBooleanMemberNode.create();
-        @Child private InteropReadBooleanMemberNode readStickyNode = InteropReadBooleanMemberNode.create();
-        @Child private InteropReadBooleanMemberNode readUnicodeNode = InteropReadBooleanMemberNode.create();
-        @Child private InteropReadBooleanMemberNode readIsMatchNode = InteropReadBooleanMemberNode.create();
         @Child private InvokeGetGroupBoundariesMethodNode getStartNode = InvokeGetGroupBoundariesMethodNode.create();
         @Child private InvokeGetGroupBoundariesMethodNode getEndNode = InvokeGetGroupBoundariesMethodNode.create();
-        @Child private InteropReadMemberNode readFlagsNode = InteropReadMemberNode.create();
         @Child private InteropReadMemberNode readGroupsNode = InteropReadMemberNode.create();
-        @Child private InteropReadIntMemberNode readGroupCount = InteropReadIntMemberNode.create();
         @Child private InteropLibrary namedCaptureGroupInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         @Child private InteropToIntNode toIntNode = InteropToIntNodeGen.create();
 
@@ -1010,50 +992,43 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "stringEquals(equalsNode, cachedReplaceValue, replaceValue)", limit = "1")
         protected Object replaceStringCached(JSDynamicObject rx, Object searchValue, @SuppressWarnings("unused") TruffleString replaceValue,
-                        @Bind("this") Node node,
                         @Cached("replaceValue") TruffleString cachedReplaceValue,
                         @Cached(value = "parseReplaceValueWithNCG(replaceValue)", dimensions = 1, neverDefault = true) ReplaceStringParser.Token[] cachedParsedReplaceValueWithNamedCG,
                         @Cached(value = "parseReplaceValueWithoutNCG(replaceValue)", dimensions = 1, neverDefault = true) ReplaceStringParser.Token[] cachedParsedReplaceValueWithoutNamedCG,
                         @Shared("toString1") @Cached JSToStringNode toString1Node,
                         @SuppressWarnings("unused") @Cached TruffleString.EqualNode equalsNode,
-                        @Cached @Shared("grow") InlinedBranchProfile growProfile,
-                        @Cached("create(getContext(), false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
-                        @Cached @Shared("advanceStringIndex") AdvanceStringIndexUnicodeNode advanceStringIndexUnicode) {
+                        @Cached @Shared("replaceInternal") ReplaceInternalNode replaceInternal,
+                        @Cached @Shared("replaceAccordingToSpec") ReplaceAccordingToSpecNode replaceAccordingToSpec) {
             checkObject(rx);
             TruffleString searchString = toString1Node.executeString(searchValue);
             if (isPristine(rx)) {
-                return replaceInternal(rx, searchString, cachedReplaceValue, cachedParsedReplaceValueWithNamedCG, cachedParsedReplaceValueWithoutNamedCG,
-                                node, execIgnoreLastIndexNode, advanceStringIndexUnicode);
+                return replaceInternal.execute(rx, searchString, cachedReplaceValue, cachedParsedReplaceValueWithNamedCG, cachedParsedReplaceValueWithoutNamedCG, getContext(), this);
             }
-            return replaceAccordingToSpec(rx, searchString, cachedReplaceValue, false,
-                            node, growProfile, advanceStringIndexUnicode);
+            return replaceAccordingToSpec.execute(rx, searchString, cachedReplaceValue, false, getContext(), this);
         }
 
         @Specialization(replaces = "replaceStringCached")
         protected Object replaceString(JSDynamicObject rx, Object searchValue, TruffleString replaceValue,
                         @Shared("toString1") @Cached JSToStringNode toString1Node,
-                        @Cached @Shared("grow") InlinedBranchProfile growProfile,
-                        @Cached("create(getContext(), false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
-                        @Cached @Shared("advanceStringIndex") AdvanceStringIndexUnicodeNode advanceStringIndexUnicode) {
+                        @Cached @Shared("replaceInternal") ReplaceInternalNode replaceInternal,
+                        @Cached @Shared("replaceAccordingToSpec") ReplaceAccordingToSpecNode replaceAccordingToSpec) {
             checkObject(rx);
             TruffleString searchString = toString1Node.executeString(searchValue);
             if (isPristine(rx)) {
-                return replaceInternal(rx, searchString, replaceValue, null, null,
-                                this, execIgnoreLastIndexNode, advanceStringIndexUnicode);
+                return replaceInternal.execute(rx, searchString, replaceValue, null, null, getContext(), this);
             }
-            return replaceAccordingToSpec(rx, searchString, replaceValue, false,
-                            this, growProfile, advanceStringIndexUnicode);
+            return replaceAccordingToSpec.execute(rx, searchString, replaceValue, false, getContext(), this);
         }
 
         @Specialization(replaces = "replaceString")
         protected Object replaceDynamic(JSDynamicObject rx, Object searchValue, Object replaceValue,
                         @Shared("toString1") @Cached JSToStringNode toString1Node,
-                        @Cached @Shared("grow") InlinedBranchProfile growProfile,
-                        @Cached("create(getContext(), false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
-                        @Cached @Shared("advanceStringIndex") AdvanceStringIndexUnicodeNode advanceStringIndexUnicode) {
+                        @Cached @Shared("replaceInternal") ReplaceInternalNode replaceInternal,
+                        @Cached @Shared("replaceAccordingToSpec") ReplaceAccordingToSpecNode replaceAccordingToSpec,
+                        @Cached InlinedConditionProfile functionalReplaceProfile) {
             checkObject(rx);
             TruffleString searchString = toString1Node.executeString(searchValue);
-            boolean functionalReplace = functionalReplaceProfile.profile(isCallableNode.executeBoolean(replaceValue));
+            boolean functionalReplace = functionalReplaceProfile.profile(this, isCallableNode.executeBoolean(replaceValue));
             Object replaceVal;
             if (functionalReplace) {
                 replaceVal = replaceValue;
@@ -1061,12 +1036,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 TruffleString replaceString = toString2(replaceValue);
                 replaceVal = replaceString;
                 if (isPristine(rx)) {
-                    return replaceInternal(rx, searchString, replaceString, null, null,
-                                    this, execIgnoreLastIndexNode, advanceStringIndexUnicode);
+                    return replaceInternal.execute(rx, searchString, replaceString, null, null, getContext(), this);
                 }
             }
-            return replaceAccordingToSpec(rx, searchString, replaceVal, functionalReplace,
-                            this, growProfile, advanceStringIndexUnicode);
+            return replaceAccordingToSpec.execute(rx, searchString, replaceVal, functionalReplace, getContext(), this);
         }
 
         @Fallback
@@ -1092,174 +1065,244 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return ReplaceStringParser.parse(getContext(), replaceValue, 100, parseNamedCG);
         }
 
-        private Object replaceInternal(JSDynamicObject rx, TruffleString s, TruffleString replaceString,
-                        ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG,
-                        Node node,
-                        JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
-                        AdvanceStringIndexUnicodeNode advanceStringIndexUnicode) {
-            Object tRegexCompiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegex(rx));
-            Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlagsNode);
-            boolean global = globalProfile.profile(TRegexFlagsAccessor.global(tRegexFlags, node, readGlobalNode));
-            boolean unicode = unicodeProfile.profile(TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicodeNode));
-            boolean sticky = stickyProfile.profile(TRegexFlagsAccessor.sticky(tRegexFlags, node, readStickyNode));
-            int length = Strings.length(s);
-            TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder(length + 16);
-            int lastMatchEnd = 0;
-            int matchStart = -1;
-            int lastIndex = sticky ? (int) toLength(getLastIndex(rx)) : 0;
-            Object lastRegexResult = null;
-            while (lastIndex <= length) {
-                Object tRegexResult = execIgnoreLastIndexNode.execute(rx, s, lastIndex);
-                if (noMatchProfile.profile(!TRegexResultAccessor.isMatch(tRegexResult, node, readIsMatchNode))) {
-                    if (matchStart < 0) {
-                        if (global || sticky) {
-                            setLastIndex(rx, 0);
+        @ImportStatic(JSRegExp.class)
+        protected abstract static class ReplaceInternalNode extends JavaScriptBaseNode {
+
+            protected abstract TruffleString execute(JSDynamicObject rx, TruffleString s, TruffleString replaceString,
+                            ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG,
+                            JSContext context, JSRegExpReplaceNode parent);
+
+            @Specialization(guards = {"getCompiledRegex(rx) == tRegexCompiledRegex"}, limit = "1")
+            protected static TruffleString doCached(JSDynamicObject rx, TruffleString s, TruffleString replaceString,
+                            ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG,
+                            JSContext context, JSRegExpReplaceNode parent,
+                            @Bind("this") Node node,
+                            @Cached("getCompiledRegex(rx)") Object tRegexCompiledRegex,
+                            @Cached("create(context, false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
+                            @Cached @Shared("advanceStringIndex") AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared("isUnicode") InlinedConditionProfile unicodeProfile,
+                            @Cached @Shared("isGlobal") InlinedConditionProfile globalProfile,
+                            @Cached @Shared("isSticky") InlinedConditionProfile stickyProfile,
+                            @Cached @Shared("noMatch") InlinedConditionProfile noMatchProfile,
+                            @Cached @Shared("hasNamedCG") InlinedConditionProfile hasNamedCaptureGroupsProfile,
+                            @Cached @Shared("dollar") InlinedBranchProfile dollarProfile,
+                            @Cached(inline = true) @Shared("global") InteropReadBooleanMemberNode readGlobal,
+                            @Cached(inline = true) @Shared("sticky") InteropReadBooleanMemberNode readSticky,
+                            @Cached(inline = true) @Shared("unicode") InteropReadBooleanMemberNode readUnicode,
+                            @Cached(inline = true) @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch,
+                            @Cached(inline = true) @Shared("groupStart") InvokeGetGroupBoundariesMethodNode getStart,
+                            @Cached(inline = true) @Shared("groupEnd") InvokeGetGroupBoundariesMethodNode getEnd,
+                            @Cached(inline = true) @Shared("flags") InteropReadMemberNode readFlags,
+                            @Cached(inline = true) @Shared("groups") InteropReadMemberNode readGroups,
+                            @Cached(inline = true) @Shared("groupCount") InteropReadIntMemberNode readGroupCount) {
+                Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlags);
+                boolean global = globalProfile.profile(node, TRegexFlagsAccessor.global(tRegexFlags, node, readGlobal));
+                boolean unicode = unicodeProfile.profile(node, TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode));
+                boolean sticky = stickyProfile.profile(node, TRegexFlagsAccessor.sticky(tRegexFlags, node, readSticky));
+                int length = Strings.length(s);
+                TruffleStringBuilder sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
+                int lastMatchEnd = 0;
+                int matchStart = -1;
+                int lastIndex = sticky ? (int) parent.toLength(parent.getLastIndex(rx)) : 0;
+                Object lastRegexResult = null;
+                while (lastIndex <= length) {
+                    Object tRegexResult = execIgnoreLastIndexNode.execute(rx, s, lastIndex);
+                    if (noMatchProfile.profile(node, !TRegexResultAccessor.isMatch(tRegexResult, node, readIsMatch))) {
+                        if (matchStart < 0) {
+                            if (global || sticky) {
+                                parent.setLastIndex(rx, 0);
+                            }
+                            return s;
                         }
-                        return s;
+                        break;
                     }
-                    break;
-                }
-                if (!getContext().getRegExpStaticResultUnusedAssumption().isValid()) {
-                    lastRegexResult = tRegexResult;
-                }
-                matchStart = TRegexResultAccessor.captureGroupStart(tRegexResult, 0, node, getStartNode);
-                int matchEnd = TRegexResultAccessor.captureGroupEnd(tRegexResult, 0, node, getEndNode);
-                assert matchStart >= 0 && matchStart <= length && matchStart >= lastMatchEnd;
-                append(sb, s, lastMatchEnd, matchStart);
-                Object namedCG = TRegexCompiledRegexAccessor.namedCaptureGroups(tRegexCompiledRegex, node, readGroupsNode);
-                boolean hasNamedCG = hasNamedCaptureGroupsProfile.profile(!namedCaptureGroupInterop.isNull(namedCG));
-                int groupCount = TRegexCompiledRegexAccessor.groupCount(tRegexCompiledRegex, node, readGroupCount);
-                if (parsedWithNamedCG == null) {
-                    ReplaceStringParser.process(getContext(), replaceString, groupCount, hasNamedCG, dollarProfile,
-                                    new ReplaceStringConsumerTRegex(sb, s, replaceString, matchStart, matchEnd, tRegexResult, tRegexCompiledRegex, groupCount), this);
-                } else {
-                    ReplaceStringParser.processParsed(hasNamedCG ? parsedWithNamedCG : parsedWithoutNamedCG,
-                                    new ReplaceStringConsumerTRegex(sb, s, replaceString, matchStart, matchEnd, tRegexResult, tRegexCompiledRegex, groupCount), this);
-                }
-                lastMatchEnd = matchEnd;
-                if (global) {
-                    if (matchStart == matchEnd) {
-                        lastIndex = unicode ? advanceStringIndexUnicode.execute(node, s, matchEnd) : matchEnd + 1;
+                    if (!context.getRegExpStaticResultUnusedAssumption().isValid()) {
+                        lastRegexResult = tRegexResult;
+                    }
+                    matchStart = TRegexResultAccessor.captureGroupStart(tRegexResult, 0, node, getStart);
+                    int matchEnd = TRegexResultAccessor.captureGroupEnd(tRegexResult, 0, node, getEnd);
+                    assert matchStart >= 0 && matchStart <= length && matchStart >= lastMatchEnd;
+                    parent.append(sb, s, lastMatchEnd, matchStart);
+                    Object namedCG = TRegexCompiledRegexAccessor.namedCaptureGroups(tRegexCompiledRegex, node, readGroups);
+                    boolean hasNamedCG = hasNamedCaptureGroupsProfile.profile(node, !parent.namedCaptureGroupInterop.isNull(namedCG));
+                    int groupCount = TRegexCompiledRegexAccessor.groupCount(tRegexCompiledRegex, node, readGroupCount);
+                    if (parsedWithNamedCG == null) {
+                        ReplaceStringParser.process(context, replaceString, groupCount, hasNamedCG,
+                                        new ReplaceStringConsumerTRegex(sb, s, replaceString, matchStart, matchEnd, tRegexResult, tRegexCompiledRegex, groupCount),
+                                        parent, node, dollarProfile);
                     } else {
-                        lastIndex = matchEnd;
+                        ReplaceStringParser.processParsed(hasNamedCG ? parsedWithNamedCG : parsedWithoutNamedCG,
+                                        new ReplaceStringConsumerTRegex(sb, s, replaceString, matchStart, matchEnd, tRegexResult, tRegexCompiledRegex, groupCount), parent);
                     }
-                } else {
-                    break;
+                    lastMatchEnd = matchEnd;
+                    if (global) {
+                        if (matchStart == matchEnd) {
+                            lastIndex = unicode ? advanceStringIndexUnicode.execute(node, s, matchEnd) : matchEnd + 1;
+                        } else {
+                            lastIndex = matchEnd;
+                        }
+                    } else {
+                        break;
+                    }
                 }
+                if (context.isOptionRegexpStaticResult() && matchStart >= 0) {
+                    JSRealm.get(node).setStaticRegexResult(context, tRegexCompiledRegex, s, matchStart, lastRegexResult);
+                }
+                if (global || sticky) {
+                    parent.setLastIndex(rx, sticky ? lastMatchEnd : 0);
+                }
+                if (lastMatchEnd < length) {
+                    parent.append(sb, s, lastMatchEnd, length);
+                }
+                return parent.builderToString(sb);
             }
-            if (getContext().isOptionRegexpStaticResult() && matchStart >= 0) {
-                getRealm().setStaticRegexResult(getContext(), tRegexCompiledRegex, s, matchStart, lastRegexResult);
+
+            @Specialization(replaces = "doCached")
+            protected static TruffleString doUncached(JSDynamicObject rx, TruffleString s, TruffleString replaceString,
+                            ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG,
+                            JSContext context, JSRegExpReplaceNode parent,
+                            @Bind("this") Node node,
+                            @Cached("create(context, false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
+                            @Cached @Shared("advanceStringIndex") AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared("isUnicode") InlinedConditionProfile unicodeProfile,
+                            @Cached @Shared("isGlobal") InlinedConditionProfile globalProfile,
+                            @Cached @Shared("isSticky") InlinedConditionProfile stickyProfile,
+                            @Cached @Shared("noMatch") InlinedConditionProfile noMatchProfile,
+                            @Cached @Shared("hasNamedCG") InlinedConditionProfile hasNamedCaptureGroupsProfile,
+                            @Cached @Shared("dollar") InlinedBranchProfile dollarProfile,
+                            @Cached(inline = true) @Shared("global") InteropReadBooleanMemberNode readGlobal,
+                            @Cached(inline = true) @Shared("sticky") InteropReadBooleanMemberNode readSticky,
+                            @Cached(inline = true) @Shared("unicode") InteropReadBooleanMemberNode readUnicode,
+                            @Cached(inline = true) @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch,
+                            @Cached(inline = true) @Shared("groupStart") InvokeGetGroupBoundariesMethodNode getStart,
+                            @Cached(inline = true) @Shared("groupEnd") InvokeGetGroupBoundariesMethodNode getEnd,
+                            @Cached(inline = true) @Shared("flags") InteropReadMemberNode readFlags,
+                            @Cached(inline = true) @Shared("groups") InteropReadMemberNode readGroups,
+                            @Cached(inline = true) @Shared("groupCount") InteropReadIntMemberNode readGroupCount) {
+                return doCached(rx, s, replaceString, parsedWithNamedCG, parsedWithoutNamedCG, context, parent, node, JSRegExp.getCompiledRegex(rx),
+                                execIgnoreLastIndexNode, advanceStringIndexUnicode, unicodeProfile, globalProfile, stickyProfile, noMatchProfile, hasNamedCaptureGroupsProfile, dollarProfile,
+                                readGlobal, readSticky, readUnicode, readIsMatch, getStart, getEnd, readFlags, readGroups, readGroupCount);
             }
-            if (global || sticky) {
-                setLastIndex(rx, sticky ? lastMatchEnd : 0);
-            }
-            if (lastMatchEnd < length) {
-                append(sb, s, lastMatchEnd, length);
-            }
-            return builderToString(sb);
         }
 
-        private Object replaceAccordingToSpec(JSDynamicObject rx, TruffleString s, Object replaceValue, boolean functionalReplace,
-                        Node node, InlinedBranchProfile growProfile, AdvanceStringIndexUnicodeNode advanceStringIndexUnicode) {
-            TruffleString replaceString = null;
-            JSDynamicObject replaceFunction = null;
-            if (functionalReplace) {
-                replaceFunction = (JSDynamicObject) replaceValue;
-            } else {
-                replaceString = (TruffleString) replaceValue;
-            }
-            TruffleString flags = getToStringNodeForFlags().executeString(getGetFlagsNode().getValue(rx));
-            boolean global = globalProfile.profile(Strings.indexOf(getStringIndexOfNode(), flags, 'g') != -1);
-            boolean fullUnicode = false;
-            if (global) {
-                fullUnicode = unicodeProfile.profile(Strings.indexOf(getStringIndexOfNode(), flags, 'u') != -1);
-                setLastIndex(rx, 0);
-            }
-            SimpleArrayList<JSDynamicObject> results = null;
-            if (functionalReplace) {
-                results = new SimpleArrayList<>();
-            }
-            int length = Strings.length(s);
-            TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder(length + 16);
-            int nextSourcePosition = 0;
-            int matchLength = -1;
-            while (true) {
-                JSDynamicObject result = (JSDynamicObject) regexExecIntl(rx, s);
-                if (noMatchProfile.profile(result == Null.instance)) {
-                    if (matchLength < 0) {
-                        return s;
-                    }
-                    break;
-                }
-                if (lazyResultArrayProfile.profile(isLazyResultArray(result))) {
-                    matchLength = getLazyLength(result);
+        @ImportStatic(JSRegExp.class)
+        protected abstract static class ReplaceAccordingToSpecNode extends JavaScriptBaseNode {
+
+            protected abstract TruffleString execute(JSDynamicObject rx, TruffleString s, Object replaceValue, boolean functionalReplace,
+                            JSContext context, JSRegExpReplaceNode parent);
+
+            @Specialization
+            protected static TruffleString replaceAccordingToSpec(JSDynamicObject rx, TruffleString s, Object replaceValue, boolean functionalReplace,
+                            JSContext context, JSRegExpReplaceNode parent,
+                            @Bind("this") Node node,
+                            @Cached InlinedBranchProfile growProfile,
+                            @Cached AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached InlinedConditionProfile unicodeProfile,
+                            @Cached InlinedConditionProfile globalProfile,
+                            @Cached InlinedConditionProfile noMatchProfile,
+                            @Cached InlinedConditionProfile lazyResultArrayProfile,
+                            @Cached InlinedConditionProfile validPositionProfile,
+                            @Cached InlinedBranchProfile dollarProfile) {
+                TruffleString replaceString = null;
+                JSDynamicObject replaceFunction = null;
+                if (functionalReplace) {
+                    replaceFunction = (JSDynamicObject) replaceValue;
                 } else {
-                    matchLength = processNonLazy(result);
+                    replaceString = (TruffleString) replaceValue;
+                }
+                TruffleString flags = parent.getToStringNodeForFlags().executeString(parent.getGetFlagsNode().getValue(rx));
+                boolean global = globalProfile.profile(node, Strings.indexOf(parent.getStringIndexOfNode(), flags, 'g') != -1);
+                boolean fullUnicode = false;
+                if (global) {
+                    fullUnicode = unicodeProfile.profile(node, Strings.indexOf(parent.getStringIndexOfNode(), flags, 'u') != -1);
+                    parent.setLastIndex(rx, 0);
+                }
+                SimpleArrayList<JSDynamicObject> results = null;
+                if (functionalReplace) {
+                    results = new SimpleArrayList<>();
+                }
+                int length = Strings.length(s);
+                TruffleStringBuilder sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
+                int nextSourcePosition = 0;
+                int matchLength = -1;
+                while (true) {
+                    JSDynamicObject result = (JSDynamicObject) parent.regexExecIntl(rx, s);
+                    if (noMatchProfile.profile(node, result == Null.instance)) {
+                        if (matchLength < 0) {
+                            return s;
+                        }
+                        break;
+                    }
+                    if (lazyResultArrayProfile.profile(node, parent.isLazyResultArray(result))) {
+                        matchLength = parent.getLazyLength(result);
+                    } else {
+                        matchLength = parent.processNonLazy(result);
+                    }
+                    if (functionalReplace) {
+                        results.add(result, node, growProfile);
+                    } else {
+                        int position = Math.max(Math.min(parent.toIntegerNode.executeInt(parent.getIndexNode.getValue(result)), Strings.length(s)), 0);
+                        if (validPositionProfile.profile(node, position >= nextSourcePosition)) {
+                            parent.append(sb, s, nextSourcePosition, position);
+                            Object namedCaptures = parent.getGroups(result);
+                            if (namedCaptures != Undefined.instance) {
+                                namedCaptures = parent.toObject(namedCaptures);
+                            }
+                            ReplaceStringParser.process(context, replaceString, (int) parent.toLength(parent.getLength(result)), namedCaptures != Undefined.instance,
+                                            new ReplaceStringConsumer(sb, s, replaceString, position, Math.min(position + matchLength, Strings.length(s)), result, (JSDynamicObject) namedCaptures),
+                                            parent, node, dollarProfile);
+                            nextSourcePosition = position + matchLength;
+                        }
+                    }
+                    if (global) {
+                        if (matchLength == 0) {
+                            long lastI = parent.toLength(parent.getLastIndex(rx));
+                            long nextIndex = lastI + 1;
+                            if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
+                                parent.setLastIndex(rx, fullUnicode ? advanceStringIndexUnicode.execute(node, s, (int) lastI) : (int) nextIndex);
+                            } else {
+                                parent.setLastIndex(rx, (double) nextIndex);
+                            }
+                        }
+                    } else {
+                        break;
+                    }
                 }
                 if (functionalReplace) {
-                    results.add(result, node, growProfile);
-                } else {
-                    int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), Strings.length(s)), 0);
-                    if (validPositionProfile.profile(position >= nextSourcePosition)) {
-                        append(sb, s, nextSourcePosition, position);
-                        Object namedCaptures = getGroups(result);
+                    for (int i = 0; i < results.size(); i++) {
+                        JSDynamicObject result = results.get(i);
+                        int position = Math.max(Math.min(parent.toIntegerNode.executeInt(parent.getIndexNode.getValue(result)), Strings.length(s)), 0);
+                        int resultsLength = (int) parent.toLength(parent.getLength(result));
+                        Object namedCaptures = parent.getGroups(result);
+                        Object[] arguments = new Object[resultsLength + 4 + (namedCaptures != Undefined.instance ? 1 : 0)];
+                        arguments[0] = Undefined.instance;
+                        arguments[1] = replaceFunction;
+                        for (int i1 = 0; i1 < resultsLength; i1++) {
+                            arguments[i1 + 2] = parent.read(result, i1);
+                        }
+                        arguments[resultsLength + 2] = position;
+                        arguments[resultsLength + 3] = s;
                         if (namedCaptures != Undefined.instance) {
-                            namedCaptures = toObject(namedCaptures);
+                            arguments[resultsLength + 4] = namedCaptures;
                         }
-                        ReplaceStringParser.process(getContext(), replaceString, (int) toLength(getLength(result)), namedCaptures != Undefined.instance, dollarProfile,
-                                        new ReplaceStringConsumer(sb, s, replaceString, position, Math.min(position + matchLength, Strings.length(s)), result, (JSDynamicObject) namedCaptures),
-                                        this);
-                        nextSourcePosition = position + matchLength;
-                    }
-                }
-                if (global) {
-                    if (matchLength == 0) {
-                        long lastI = toLength(getLastIndex(rx));
-                        long nextIndex = lastI + 1;
-                        if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
-                            setLastIndex(rx, fullUnicode ? advanceStringIndexUnicode.execute(node, s, (int) lastI) : (int) nextIndex);
-                        } else {
-                            setLastIndex(rx, (double) nextIndex);
-                        }
-                    }
-                } else {
-                    break;
-                }
-            }
-            if (functionalReplace) {
-                for (int i = 0; i < results.size(); i++) {
-                    JSDynamicObject result = results.get(i);
-                    int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), Strings.length(s)), 0);
-                    int resultsLength = (int) toLength(getLength(result));
-                    Object namedCaptures = getGroups(result);
-                    Object[] arguments = new Object[resultsLength + 4 + (namedCaptures != Undefined.instance ? 1 : 0)];
-                    arguments[0] = Undefined.instance;
-                    arguments[1] = replaceFunction;
-                    for (int i1 = 0; i1 < resultsLength; i1++) {
-                        arguments[i1 + 2] = read(result, i1);
-                    }
-                    arguments[resultsLength + 2] = position;
-                    arguments[resultsLength + 3] = s;
-                    if (namedCaptures != Undefined.instance) {
-                        arguments[resultsLength + 4] = namedCaptures;
-                    }
-                    Object callResult = callFunction(arguments);
-                    TruffleString replacement = toString2(callResult);
-                    if (validPositionProfile.profile(position >= nextSourcePosition)) {
-                        append(sb, s, nextSourcePosition, position);
-                        append(sb, replacement);
-                        if (lazyResultArrayProfile.profile(isLazyResultArray(result))) {
-                            nextSourcePosition = position + getLazyLength(result);
-                        } else {
-                            nextSourcePosition = position + Strings.length((TruffleString) read(result, 0));
+                        Object callResult = parent.callFunction(arguments);
+                        TruffleString replacement = parent.toString2(callResult);
+                        if (validPositionProfile.profile(node, position >= nextSourcePosition)) {
+                            parent.append(sb, s, nextSourcePosition, position);
+                            parent.append(sb, replacement);
+                            if (lazyResultArrayProfile.profile(node, parent.isLazyResultArray(result))) {
+                                nextSourcePosition = position + parent.getLazyLength(result);
+                            } else {
+                                nextSourcePosition = position + Strings.length((TruffleString) parent.read(result, 0));
+                            }
                         }
                     }
                 }
+                if (nextSourcePosition < length) {
+                    parent.append(sb, s, nextSourcePosition, length);
+                }
+                return parent.builderToString(sb);
             }
-            if (nextSourcePosition < length) {
-                append(sb, s, nextSourcePosition, length);
-            }
-            return builderToString(sb);
         }
 
         private int processNonLazy(JSDynamicObject result) {
