@@ -45,7 +45,8 @@ import java.util.Set;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
@@ -66,8 +67,6 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
     @Child private PropertySetNode setState;
     @Child private GetMethodNode getAsyncIteratorMethodNode;
 
-    private final ConditionProfile asyncToSync = ConditionProfile.create();
-
     protected GetAsyncIteratorNode(JSContext context, JavaScriptNode objectNode) {
         super(context, objectNode);
         this.setState = PropertySetNode.createSetHidden(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, context);
@@ -79,15 +78,17 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
     protected IteratorRecord doGetIterator(Object iteratedObject,
                     @Cached IsCallableNode isCallableNode,
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
-                    @Cached IsJSObjectNode isObjectNode) {
+                    @Cached IsJSObjectNode isObjectNode,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached InlinedConditionProfile asyncToSync) {
         Object method = getAsyncIteratorMethodNode.executeWithTarget(iteratedObject);
-        if (asyncToSync.profile(method == Undefined.instance)) {
+        if (asyncToSync.profile(this, method == Undefined.instance)) {
             Object syncMethod = getIteratorMethodNode().executeWithTarget(iteratedObject);
-            IteratorRecord syncIteratorRecord = getIterator(iteratedObject, syncMethod, isCallableNode, methodCallNode, isObjectNode);
+            IteratorRecord syncIteratorRecord = getIterator(iteratedObject, syncMethod, isCallableNode, methodCallNode, isObjectNode, errorBranch);
             JSObject asyncIterator = createAsyncFromSyncIterator(syncIteratorRecord);
             return IteratorRecord.create(asyncIterator, getNextMethodNode.getValue(asyncIterator), false);
         }
-        return getIterator(iteratedObject, method, isCallableNode, methodCallNode, isObjectNode);
+        return getIterator(iteratedObject, method, isCallableNode, methodCallNode, isObjectNode, errorBranch);
     }
 
     @Override
