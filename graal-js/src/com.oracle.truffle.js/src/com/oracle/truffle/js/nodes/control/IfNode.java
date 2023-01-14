@@ -40,61 +40,42 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import java.lang.invoke.MethodHandles;
 import java.util.Set;
-import java.util.concurrent.locks.Lock;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
-import com.oracle.truffle.api.dsl.InlineSupport.IntField;
-import com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanUnaryNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
-import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * 12.5 The if Statement.
  */
+
 @NodeInfo(shortName = "if")
-public final class IfNode extends StatementNode implements ResumableNode.WithIntState {
+abstract class AbstractIfNode extends StatementNode implements ResumableNode.WithIntState {
 
-    @Child private JavaScriptNode condition;
-    @Child private JavaScriptNode thenPart;
-    @Child private JavaScriptNode elsePart;
+    public abstract JavaScriptNode getThenPart();
 
-    @CompilationFinal @UnsafeAccessedField private int trueCount;
-    @CompilationFinal @UnsafeAccessedField private int falseCount;
+    public abstract JavaScriptNode getElsePart();
 
-    private static final InlinedCountingConditionProfile CONDITION_PROFILE = InlinedCountingConditionProfile.inline(InlineTarget.create(InlinedCountingConditionProfile.class,
-                    IntField.create(MethodHandles.lookup(), "trueCount"),
-                    IntField.create(MethodHandles.lookup(), "falseCount")));
+    public abstract JavaScriptNode getCondition();
 
-    public static IfNode create(JavaScriptNode condition, JavaScriptNode thenPart, JavaScriptNode elsePart) {
-        if (condition instanceof JSNotNode) {
-            // if (!a) {b()} => if (a) {} else {b(); }
-            JavaScriptNode operand = ((JSNotNode) condition).getOperand();
-            transferSourceSectionAddExpressionTag(condition, operand);
-            return new IfNode(operand, elsePart, thenPart);
-        }
-        return new IfNode(condition, thenPart, elsePart);
-    }
+    protected abstract AbstractIfNode copyWith(JavaScriptNode newCondition, JavaScriptNode newThenPart, JavaScriptNode newElsePart);
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -112,24 +93,24 @@ public final class IfNode extends StatementNode implements ResumableNode.WithInt
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (hasMaterializationTag(materializedTags) && materializationNeeded()) {
-            JavaScriptNode newCondition = JSTaggedExecutionNode.createForInput(condition, ControlFlowBranchTag.class,
+            JavaScriptNode newCondition = JSTaggedExecutionNode.createForInput(getCondition(), ControlFlowBranchTag.class,
                             JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()), materializedTags);
-            JavaScriptNode newThenPart = thenPart != null ? JSTaggedExecutionNode.createForInput(thenPart, JSTags.ControlFlowBlockTag.class, materializedTags) : null;
+            JavaScriptNode newThenPart = getThenPart() != null ? JSTaggedExecutionNode.createForInput(getThenPart(), JSTags.ControlFlowBlockTag.class, materializedTags) : null;
 
-            JavaScriptNode newElsePart = elsePart != null ? JSTaggedExecutionNode.createForInput(elsePart, JSTags.ControlFlowBlockTag.class, materializedTags) : null;
-            if (newCondition == condition && newThenPart == thenPart && newElsePart == elsePart) {
+            JavaScriptNode newElsePart = getElsePart() != null ? JSTaggedExecutionNode.createForInput(getElsePart(), JSTags.ControlFlowBlockTag.class, materializedTags) : null;
+            if (newCondition == getCondition() && newThenPart == getThenPart() && newElsePart == getElsePart()) {
                 return this;
             }
-            if (newCondition == condition) {
-                newCondition = cloneUninitialized(condition, materializedTags);
+            if (newCondition == getCondition()) {
+                newCondition = cloneUninitialized(getCondition(), materializedTags);
             }
-            if (newThenPart == thenPart) {
-                newThenPart = cloneUninitialized(thenPart, materializedTags);
+            if (newThenPart == getThenPart()) {
+                newThenPart = cloneUninitialized(getThenPart(), materializedTags);
             }
-            if (newElsePart == elsePart) {
-                newElsePart = cloneUninitialized(elsePart, materializedTags);
+            if (newElsePart == getElsePart()) {
+                newElsePart = cloneUninitialized(getElsePart(), materializedTags);
             }
-            JavaScriptNode newIf = IfNode.create(newCondition, newThenPart, newElsePart);
+            JavaScriptNode newIf = copyWith(newCondition, newThenPart, newElsePart);
             transferSourceSectionAndTags(this, newIf);
             return newIf;
         } else {
@@ -139,7 +120,7 @@ public final class IfNode extends StatementNode implements ResumableNode.WithInt
 
     private boolean materializationNeeded() {
         // If we are using tagged nodes, this node is already materialized.
-        return !(JSNodeUtil.isTaggedNode(condition) && (elsePart == null || JSNodeUtil.isTaggedNode(elsePart)) && (thenPart == null || JSNodeUtil.isTaggedNode(thenPart)));
+        return !(JSNodeUtil.isTaggedNode(getCondition()) && (getElsePart() == null || JSNodeUtil.isTaggedNode(getElsePart())) && (getThenPart() == null || JSNodeUtil.isTaggedNode(getThenPart())));
     }
 
     private static boolean hasMaterializationTag(Set<Class<? extends Tag>> materializedTags) {
@@ -147,27 +128,51 @@ public final class IfNode extends StatementNode implements ResumableNode.WithInt
                         materializedTags.contains(ControlFlowBlockTag.class);
     }
 
-    private IfNode(JavaScriptNode condition, JavaScriptNode thenPart, JavaScriptNode elsePart) {
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return isResultAlwaysOfType(getThenPart(), clazz) && isResultAlwaysOfType(getElsePart(), clazz);
+    }
+
+    private static boolean isResultAlwaysOfType(JavaScriptNode child, Class<?> clazz) {
+        if (child == null) {
+            return clazz == Undefined.class;
+        } else {
+            return child.isResultAlwaysOfType(clazz);
+        }
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return copyWith(cloneUninitialized(getCondition(), materializedTags), cloneUninitialized(getThenPart(), materializedTags), cloneUninitialized(getElsePart(), materializedTags));
+    }
+}
+
+public abstract class IfNode extends AbstractIfNode {
+
+    @Child @Executed protected JavaScriptNode condition;
+    @Child protected JavaScriptNode thenPart;
+    @Child protected JavaScriptNode elsePart;
+
+    public static IfNode create(JavaScriptNode condition, JavaScriptNode thenPart, JavaScriptNode elsePart) {
+        if (condition instanceof JSNotNode) {
+            // if (!a) {b()} => if (a) {} else {b(); }
+            JavaScriptNode operand = ((JSNotNode) condition).getOperand();
+            transferSourceSectionAddExpressionTag(condition, operand);
+            return IfNodeGen.create(operand, elsePart, thenPart);
+        }
+        return IfNodeGen.create(condition, thenPart, elsePart);
+    }
+
+    protected IfNode(JavaScriptNode condition, JavaScriptNode thenPart, JavaScriptNode elsePart) {
         this.condition = condition;
         this.thenPart = thenPart;
         this.elsePart = elsePart;
     }
 
-    public JavaScriptNode getThenPart() {
-        return thenPart;
-    }
-
-    public JavaScriptNode getElsePart() {
-        return elsePart;
-    }
-
-    public JavaScriptNode getCondition() {
-        return condition;
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        if (CONDITION_PROFILE.profile(this, executeCondition(frame))) {
+    @Specialization
+    protected Object doBoolean(VirtualFrame frame, boolean conditionResult,
+                    @Cached @Shared("profile") InlinedCountingConditionProfile conditionProfile) {
+        if (conditionProfile.profile(this, conditionResult)) {
             if (thenPart != null) {
                 return thenPart.execute(frame);
             } else {
@@ -182,23 +187,60 @@ public final class IfNode extends StatementNode implements ResumableNode.WithInt
         }
     }
 
-    @Override
-    public void executeVoid(VirtualFrame frame) {
-        if (CONDITION_PROFILE.profile(this, executeCondition(frame))) {
-            if (thenPart != null) {
-                thenPart.executeVoid(frame);
-            }
-        } else {
-            if (elsePart != null) {
-                elsePart.executeVoid(frame);
-            }
-        }
+    @Specialization(replaces = "doBoolean")
+    protected Object doObject(VirtualFrame frame, Object conditionResult,
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode,
+                    @Cached @Shared("profile") InlinedCountingConditionProfile conditionProfile) {
+        boolean booleanResult = toBooleanNode.executeBoolean(this, conditionResult);
+        return doBoolean(frame, booleanResult, conditionProfile);
     }
 
     @Override
-    public Object resume(VirtualFrame frame, int stateSlot) {
+    public JavaScriptNode getCondition() {
+        return condition;
+    }
+
+    @Override
+    public JavaScriptNode getThenPart() {
+        return thenPart;
+    }
+
+    @Override
+    public JavaScriptNode getElsePart() {
+        return elsePart;
+    }
+
+    @Override
+    protected AbstractIfNode copyWith(JavaScriptNode newCondition, JavaScriptNode newThenPart, JavaScriptNode newElsePart) {
+        return IfNode.create(newCondition, newThenPart, newElsePart);
+    }
+
+    @Override
+    public JavaScriptNode asResumableNode(int stateSlot) {
+        return GeneratorIfNodeGen.create(condition, thenPart, elsePart, stateSlot);
+    }
+}
+
+abstract class GeneratorIfNode extends AbstractIfNode implements GeneratorNode {
+
+    private final int stateSlot;
+    @Child protected JavaScriptNode condition;
+    @Child protected JavaScriptNode thenPart;
+    @Child protected JavaScriptNode elsePart;
+
+    protected GeneratorIfNode(JavaScriptNode condition, JavaScriptNode thenPart, JavaScriptNode elsePart, int stateSlot) {
+        this.stateSlot = stateSlot;
+        this.condition = condition;
+        this.thenPart = thenPart;
+        this.elsePart = elsePart;
+    }
+
+    @Specialization
+    protected Object doDefault(VirtualFrame frame,
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode,
+                    @Cached InlinedCountingConditionProfile conditionProfile) {
         int index = getStateAsIntAndReset(frame, stateSlot);
-        if (index == 0 && CONDITION_PROFILE.profile(this, executeCondition(frame)) || index == 1) {
+        if (index == 0 && conditionProfile.profile(this, toBooleanNode.executeBoolean(this, condition.execute(frame))) || index == 1) {
             try {
                 if (thenPart != null) {
                     return thenPart.execute(frame);
@@ -225,55 +267,22 @@ public final class IfNode extends StatementNode implements ResumableNode.WithInt
     }
 
     @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return isResultAlwaysOfType(thenPart, clazz) && isResultAlwaysOfType(elsePart, clazz);
-    }
-
-    private static boolean isResultAlwaysOfType(JavaScriptNode child, Class<?> clazz) {
-        if (child == null) {
-            return clazz == Undefined.class;
-        } else {
-            return child.isResultAlwaysOfType(clazz);
-        }
+    public JavaScriptNode getCondition() {
+        return condition;
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new IfNode(cloneUninitialized(condition, materializedTags), cloneUninitialized(thenPart, materializedTags), cloneUninitialized(elsePart, materializedTags));
+    public JavaScriptNode getThenPart() {
+        return thenPart;
     }
 
-    protected boolean executeCondition(VirtualFrame frame) {
-        try {
-            return condition.executeBoolean(frame);
-        } catch (UnexpectedResultException ex) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            JavaScriptNode node = insertToBoolean();
-            if (node instanceof JSConstantNode) {
-                try {
-                    return node.executeBoolean(frame);
-                } catch (UnexpectedResultException e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
-                }
-            } else if (node instanceof JSUnaryNode) {
-                return (boolean) ((JSUnaryNode) node).execute(frame, ex.getResult());
-            } else {
-                throw CompilerDirectives.shouldNotReachHere("Unexpected result node of JSToBooleanNode.create");
-            }
-        }
+    @Override
+    public JavaScriptNode getElsePart() {
+        return elsePart;
     }
 
-    private JavaScriptNode insertToBoolean() {
-        CompilerAsserts.neverPartOfCompilation();
-        Lock lock = getLock();
-        lock.lock();
-        JavaScriptNode cond = condition;
-        try {
-            if (!(cond instanceof JSToBooleanUnaryNode)) {
-                condition = cond = insert(JSToBooleanUnaryNode.create(cond));
-            }
-        } finally {
-            lock.unlock();
-        }
-        return cond;
+    @Override
+    protected AbstractIfNode copyWith(JavaScriptNode newCondition, JavaScriptNode newThenPart, JavaScriptNode newElsePart) {
+        return GeneratorIfNodeGen.create(newCondition, newThenPart, newElsePart, stateSlot);
     }
 }
