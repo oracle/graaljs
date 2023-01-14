@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -177,7 +177,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
 
         this.getIteratorNode = GetIteratorNode.createAsync(context, null);
         this.iteratorNextNode = IteratorNextNode.create();
-        this.iteratorCompleteNode = IteratorCompleteNode.create(context);
+        this.iteratorCompleteNode = IteratorCompleteNode.create();
         this.iteratorValueNode = IteratorValueNode.create();
         this.getThrowMethodNode = GetMethodNode.create(context, Strings.THROW);
         this.getReturnMethodNode = GetMethodNode.create(context, Strings.RETURN);

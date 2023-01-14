@@ -90,7 +90,7 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Object doIteratorNext(JSDynamicObject iterResult,
-                    @Cached(value = "createGetValueNode()", uncached = "uncachedGetValueNode()") PropertyGetNode getValueNode) {
+                    @Cached(value = "createGetValueNode()", uncached = "getNullNode()") PropertyGetNode getValueNode) {
         return getValueNode != null ? getValueNode.getValue(iterResult) : JSObject.get(iterResult, Strings.VALUE);
     }
 
@@ -128,9 +128,5 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
     @NeverDefault
     PropertyGetNode createGetValueNode() {
         return PropertyGetNode.create(Strings.VALUE, getLanguage().getJSContext());
-    }
-
-    static PropertyGetNode uncachedGetValueNode() {
-        return null;
     }
 }

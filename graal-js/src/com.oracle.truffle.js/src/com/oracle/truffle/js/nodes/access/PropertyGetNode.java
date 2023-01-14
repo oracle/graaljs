@@ -2187,4 +2187,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return new ObjectPropertyGetNode(property, receiverCheck);
         }
     }
+
+    public static PropertyGetNode getNullNode() {
+        return null;
+    }
 }

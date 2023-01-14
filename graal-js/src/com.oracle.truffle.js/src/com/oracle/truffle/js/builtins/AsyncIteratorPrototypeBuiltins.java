@@ -309,7 +309,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
                 this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
                 this.isObjectNode = IsObjectNode.create();
-                this.iteratorCompleteNode = IteratorCompleteNode.create(context);
+                this.iteratorCompleteNode = IteratorCompleteNode.create();
             }
 
             public abstract Object executeBody(VirtualFrame frame);
@@ -453,7 +453,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             AsyncIteratorGeneratorAwaitResumptionWithNextRootNode(JSContext context) {
                 super(context);
                 this.isObjectNode = IsObjectNode.create();
-                this.iteratorCompleteNode = IteratorCompleteNode.create(context);
+                this.iteratorCompleteNode = IteratorCompleteNode.create();
                 this.iteratorValueNode = IteratorValueNode.create();
             }
 

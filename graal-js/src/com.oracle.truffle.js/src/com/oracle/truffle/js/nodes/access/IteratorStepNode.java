@@ -61,7 +61,7 @@ public abstract class IteratorStepNode extends JavaScriptBaseNode {
     @Specialization
     protected static Object step(IteratorRecord iteratorRecord,
                     @Cached IteratorNextNode iteratorNextNode,
-                    @Cached("create(getLanguage().getJSContext())") IteratorCompleteNode iteratorCompleteNode) {
+                    @Cached IteratorCompleteNode iteratorCompleteNode) {
         Object result = iteratorNextNode.execute(iteratorRecord);
         Object done = iteratorCompleteNode.execute(result);
         if (done == Boolean.TRUE) {

@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
-import com.oracle.truffle.api.nodes.DenyReplace;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -53,34 +55,34 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 /**
  * ES6 7.4.2 IteratorNext(iterator, value).
  */
+@GenerateUncached
 public abstract class IteratorNextNode extends JavaScriptBaseNode {
-    @Child private JSFunctionCallNode methodCallNode;
-    @Child private IsObjectNode isObjectNode;
-    private final BranchProfile errorBranch;
 
-    protected IteratorNextNode(JSFunctionCallNode methodCallNode, IsObjectNode isObjectNode, BranchProfile errorBranch) {
-        this.methodCallNode = methodCallNode;
-        this.isObjectNode = isObjectNode;
-        this.errorBranch = errorBranch;
+    protected IteratorNextNode() {
     }
 
     public final Object execute(IteratorRecord iteratorRecord, Object value) {
-        Object nextMethod = iteratorRecord.getNextMethod();
-        JSDynamicObject iterator = iteratorRecord.getIterator();
-        Object result = methodCallNode.executeCall(JSArguments.createOneArg(iterator, nextMethod, value));
-        if (!isObjectNode.executeBoolean(result)) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorIteratorResultNotObject(result, this);
-        }
-        return result;
+        return execute(iteratorRecord, value, true);
     }
 
     public final Object execute(IteratorRecord iteratorRecord) {
+        return execute(iteratorRecord, null, false);
+    }
+
+    protected abstract Object execute(IteratorRecord iteratorRecord, Object value, boolean passValue);
+
+    @Specialization
+    protected final Object iteratorNext(IteratorRecord iteratorRecord, Object value, boolean passValue,
+                    @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode methodCallNode,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached InlinedBranchProfile errorBranch) {
         Object nextMethod = iteratorRecord.getNextMethod();
         JSDynamicObject iterator = iteratorRecord.getIterator();
-        Object result = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, nextMethod));
+        Object result = methodCallNode.executeCall(passValue
+                        ? JSArguments.createOneArg(iterator, nextMethod, value)
+                        : JSArguments.createZeroArg(iterator, nextMethod));
         if (!isObjectNode.executeBoolean(result)) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorIteratorResultNotObject(result, this);
         }
         return result;
@@ -88,30 +90,12 @@ public abstract class IteratorNextNode extends JavaScriptBaseNode {
 
     @NeverDefault
     public static IteratorNextNode create() {
-        return new Cached();
+        return IteratorNextNodeGen.create();
     }
 
+    @NeverDefault
     public static IteratorNextNode getUncached() {
-        return Uncached.INSTANCE;
+        return IteratorNextNodeGen.getUncached();
     }
 
-    static final class Cached extends IteratorNextNode {
-        Cached() {
-            super(JSFunctionCallNode.createCall(), IsObjectNode.create(), BranchProfile.create());
-        }
-    }
-
-    @DenyReplace
-    static final class Uncached extends IteratorNextNode {
-        static final Uncached INSTANCE = new Uncached();
-
-        private Uncached() {
-            super(JSFunctionCallNode.getUncachedCall(), IsObjectNode.getUncached(), BranchProfile.getUncached());
-        }
-
-        @Override
-        public boolean isAdoptable() {
-            return false;
-        }
-    }
 }
