@@ -54,6 +54,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -945,24 +946,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * This implements the RegExp.prototype.[@@replace] method.
      */
     public abstract static class JSRegExpReplaceNode extends RegExpPrototypeSymbolOperation implements ReplaceStringConsumerTRegex.ParentNode {
-        @Child private PropertyGetNode getFlagsNode;
-        @Child private JSToStringNode toStringNodeForFlags;
-        @Child TruffleString.ByteIndexOfCodePointNode stringIndexOfNode;
-        @Child private PropertyGetNode getLengthNode;
-        @Child private PropertyGetNode getIndexNode;
-        @Child private PropertyGetNode getGroupsNode;
-        @Child private DynamicObjectLibrary lazyRegexResultNode;
-        @Child private JSToLengthNode toLengthNode;
-        @Child private JSToIntegerAsIntNode toIntegerNode;
+
         @Child private JSToStringNode toString2Node;
         @Child private JSToStringNode toString3Node;
         @Child private JSToStringNode toString4Node;
-        @Child private JSFunctionCallNode functionCallNode;
         @Child private IsJSObjectNode isObjectNode;
         @Child private IsCallableNode isCallableNode;
         @Child private ReadElementNode readNamedCaptureGroupNode;
         @Child private JSToObjectNode toObjectNode;
-        @Child private HasHiddenKeyCacheNode hasLazyRegexResultNode;
         @Child private IsPristineObjectNode isPristineObjectNode;
 
         @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
@@ -980,13 +971,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         JSRegExpReplaceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getIndexNode = PropertyGetNode.create(JSRegExp.INDEX, false, context);
-            this.toIntegerNode = JSToIntegerAsIntNode.create();
             this.isObjectNode = IsJSObjectNode.create();
             this.isCallableNode = IsCallableNode.create();
-            this.hasLazyRegexResultNode = HasHiddenKeyCacheNode.create(JSArray.LAZY_REGEX_RESULT_ID);
             this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
-            this.lazyRegexResultNode = DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit);
         }
 
         @SuppressWarnings("truffle-static-method")
@@ -1080,6 +1067,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached("getCompiledRegex(rx)") Object tRegexCompiledRegex,
                             @Cached("create(context, false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
                             @Cached @Shared("advanceStringIndex") AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared("toLength") JSToLengthNode toLength,
                             @Cached @Shared("isUnicode") InlinedConditionProfile unicodeProfile,
                             @Cached @Shared("isGlobal") InlinedConditionProfile globalProfile,
                             @Cached @Shared("isSticky") InlinedConditionProfile stickyProfile,
@@ -1103,7 +1091,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 TruffleStringBuilder sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
                 int lastMatchEnd = 0;
                 int matchStart = -1;
-                int lastIndex = sticky ? (int) parent.toLength(parent.getLastIndex(rx)) : 0;
+                int lastIndex = sticky ? (int) toLength.executeLong(parent.getLastIndex(rx)) : 0;
                 Object lastRegexResult = null;
                 while (lastIndex <= length) {
                     Object tRegexResult = execIgnoreLastIndexNode.execute(rx, s, lastIndex);
@@ -1164,6 +1152,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Bind("this") Node node,
                             @Cached("create(context, false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
                             @Cached @Shared("advanceStringIndex") AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared("toLength") JSToLengthNode toLength,
                             @Cached @Shared("isUnicode") InlinedConditionProfile unicodeProfile,
                             @Cached @Shared("isGlobal") InlinedConditionProfile globalProfile,
                             @Cached @Shared("isSticky") InlinedConditionProfile stickyProfile,
@@ -1180,12 +1169,12 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached(inline = true) @Shared("groups") InteropReadMemberNode readGroups,
                             @Cached(inline = true) @Shared("groupCount") InteropReadIntMemberNode readGroupCount) {
                 return doCached(rx, s, replaceString, parsedWithNamedCG, parsedWithoutNamedCG, context, parent, node, JSRegExp.getCompiledRegex(rx),
-                                execIgnoreLastIndexNode, advanceStringIndexUnicode, unicodeProfile, globalProfile, stickyProfile, noMatchProfile, hasNamedCaptureGroupsProfile, dollarProfile,
+                                execIgnoreLastIndexNode, advanceStringIndexUnicode, toLength, unicodeProfile, globalProfile, stickyProfile, noMatchProfile, hasNamedCaptureGroupsProfile, dollarProfile,
                                 readGlobal, readSticky, readUnicode, readIsMatch, getStart, getEnd, readFlags, readGroups, readGroupCount);
             }
         }
 
-        @ImportStatic(JSRegExp.class)
+        @ImportStatic({JSRegExp.class, JSConfig.class, JSAbstractArray.class})
         protected abstract static class ReplaceAccordingToSpecNode extends JavaScriptBaseNode {
 
             protected abstract TruffleString execute(JSDynamicObject rx, TruffleString s, Object replaceValue, boolean functionalReplace,
@@ -1195,8 +1184,19 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected static TruffleString replaceAccordingToSpec(JSDynamicObject rx, TruffleString s, Object replaceValue, boolean functionalReplace,
                             JSContext context, JSRegExpReplaceNode parent,
                             @Bind("this") Node node,
-                            @Cached InlinedBranchProfile growProfile,
                             @Cached AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached JSToLengthNode toLength,
+                            @Cached JSToIntegerAsIntNode toIntegerNode,
+                            @Cached JSToStringNode toStringForFlagsNode,
+                            @Cached TruffleString.ByteIndexOfCodePointNode indexOfNode,
+                            @Cached("create(LENGTH, context)") PropertyGetNode getLength,
+                            @Cached("create(INDEX, context)") PropertyGetNode getIndexNode,
+                            @Cached("create(GROUPS, context)") PropertyGetNode getGroupsNode,
+                            @Cached("create(FLAGS, context)") PropertyGetNode getFlagsNode,
+                            @CachedLibrary(limit = "InteropLibraryLimit") DynamicObjectLibrary getLazyRegexResult,
+                            @Cached("create(LAZY_REGEX_RESULT_ID)") HasHiddenKeyCacheNode hasLazyRegexResult,
+                            @Cached("createCall()") JSFunctionCallNode callFunction,
+                            @Cached InlinedBranchProfile growProfile,
                             @Cached InlinedConditionProfile unicodeProfile,
                             @Cached InlinedConditionProfile globalProfile,
                             @Cached InlinedConditionProfile noMatchProfile,
@@ -1210,11 +1210,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 } else {
                     replaceString = (TruffleString) replaceValue;
                 }
-                TruffleString flags = parent.getToStringNodeForFlags().executeString(parent.getGetFlagsNode().getValue(rx));
-                boolean global = globalProfile.profile(node, Strings.indexOf(parent.getStringIndexOfNode(), flags, 'g') != -1);
+                TruffleString flags = toStringForFlagsNode.executeString(getFlagsNode.getValue(rx));
+                boolean global = globalProfile.profile(node, Strings.indexOf(indexOfNode, flags, 'g') != -1);
                 boolean fullUnicode = false;
                 if (global) {
-                    fullUnicode = unicodeProfile.profile(node, Strings.indexOf(parent.getStringIndexOfNode(), flags, 'u') != -1);
+                    fullUnicode = unicodeProfile.profile(node, Strings.indexOf(indexOfNode, flags, 'u') != -1);
                     parent.setLastIndex(rx, 0);
                 }
                 SimpleArrayList<JSDynamicObject> results = null;
@@ -1233,22 +1233,22 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         }
                         break;
                     }
-                    if (lazyResultArrayProfile.profile(node, parent.isLazyResultArray(result))) {
-                        matchLength = parent.getLazyLength(result);
+                    if (lazyResultArrayProfile.profile(node, isLazyResultArray(result, hasLazyRegexResult))) {
+                        matchLength = getLazyLength(result, getLazyRegexResult, parent);
                     } else {
-                        matchLength = parent.processNonLazy(result);
+                        matchLength = processNonLazy(result, toLength, getLength, parent);
                     }
                     if (functionalReplace) {
                         results.add(result, node, growProfile);
                     } else {
-                        int position = Math.max(Math.min(parent.toIntegerNode.executeInt(parent.getIndexNode.getValue(result)), Strings.length(s)), 0);
+                        int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), Strings.length(s)), 0);
                         if (validPositionProfile.profile(node, position >= nextSourcePosition)) {
                             parent.append(sb, s, nextSourcePosition, position);
-                            Object namedCaptures = parent.getGroups(result);
+                            Object namedCaptures = getGroupsNode.getValue(result);
                             if (namedCaptures != Undefined.instance) {
                                 namedCaptures = parent.toObject(namedCaptures);
                             }
-                            ReplaceStringParser.process(context, replaceString, (int) parent.toLength(parent.getLength(result)), namedCaptures != Undefined.instance,
+                            ReplaceStringParser.process(context, replaceString, (int) toLength.executeLong(getLength.getValue(result)), namedCaptures != Undefined.instance,
                                             new ReplaceStringConsumer(sb, s, replaceString, position, Math.min(position + matchLength, Strings.length(s)), result, (JSDynamicObject) namedCaptures),
                                             parent, node, dollarProfile);
                             nextSourcePosition = position + matchLength;
@@ -1256,7 +1256,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                     if (global) {
                         if (matchLength == 0) {
-                            long lastI = parent.toLength(parent.getLastIndex(rx));
+                            long lastI = toLength.executeLong(parent.getLastIndex(rx));
                             long nextIndex = lastI + 1;
                             if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
                                 parent.setLastIndex(rx, fullUnicode ? advanceStringIndexUnicode.execute(node, s, (int) lastI) : (int) nextIndex);
@@ -1271,27 +1271,26 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 if (functionalReplace) {
                     for (int i = 0; i < results.size(); i++) {
                         JSDynamicObject result = results.get(i);
-                        int position = Math.max(Math.min(parent.toIntegerNode.executeInt(parent.getIndexNode.getValue(result)), Strings.length(s)), 0);
-                        int resultsLength = (int) parent.toLength(parent.getLength(result));
-                        Object namedCaptures = parent.getGroups(result);
-                        Object[] arguments = new Object[resultsLength + 4 + (namedCaptures != Undefined.instance ? 1 : 0)];
-                        arguments[0] = Undefined.instance;
-                        arguments[1] = replaceFunction;
+                        int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), Strings.length(s)), 0);
+                        int resultsLength = (int) toLength.executeLong(getLength.getValue(result));
+                        Object namedCaptures = getGroupsNode.getValue(result);
+                        boolean hasNamedCG = namedCaptures != Undefined.instance;
+                        Object[] arguments = JSArguments.createInitial(Undefined.instance, replaceFunction, resultsLength + 2 + (hasNamedCG ? 1 : 0));
                         for (int i1 = 0; i1 < resultsLength; i1++) {
-                            arguments[i1 + 2] = parent.read(result, i1);
+                            JSArguments.setUserArgument(arguments, i1, parent.read(result, i1));
                         }
-                        arguments[resultsLength + 2] = position;
-                        arguments[resultsLength + 3] = s;
-                        if (namedCaptures != Undefined.instance) {
-                            arguments[resultsLength + 4] = namedCaptures;
+                        JSArguments.setUserArgument(arguments, resultsLength, position);
+                        JSArguments.setUserArgument(arguments, resultsLength + 1, s);
+                        if (hasNamedCG) {
+                            JSArguments.setUserArgument(arguments, resultsLength + 2, namedCaptures);
                         }
-                        Object callResult = parent.callFunction(arguments);
+                        Object callResult = callFunction.executeCall(arguments);
                         TruffleString replacement = parent.toString2(callResult);
                         if (validPositionProfile.profile(node, position >= nextSourcePosition)) {
                             parent.append(sb, s, nextSourcePosition, position);
                             parent.append(sb, replacement);
-                            if (lazyResultArrayProfile.profile(node, parent.isLazyResultArray(result))) {
-                                nextSourcePosition = position + parent.getLazyLength(result);
+                            if (lazyResultArrayProfile.profile(node, isLazyResultArray(result, hasLazyRegexResult))) {
+                                nextSourcePosition = position + getLazyLength(result, getLazyRegexResult, parent);
                             } else {
                                 nextSourcePosition = position + Strings.length((TruffleString) parent.read(result, 0));
                             }
@@ -1303,33 +1302,30 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 }
                 return parent.builderToString(sb);
             }
-        }
 
-        private int processNonLazy(JSDynamicObject result) {
-            int resultLength = (int) toLength(getLength(result));
-            TruffleString result0Str = toString3(read(result, 0));
-            write(result, 0, result0Str);
-            for (int n = 1; n < resultLength; n++) {
-                Object value = read(result, n);
-                if (value != Undefined.instance) {
-                    write(result, n, toString3(value));
+            private static boolean isLazyResultArray(JSDynamicObject result, HasHiddenKeyCacheNode hasLazyRegexResultNode) {
+                boolean isLazyResultArray = hasLazyRegexResultNode.executeHasHiddenKey(result);
+                assert isLazyResultArray == JSDynamicObject.hasProperty(result, JSArray.LAZY_REGEX_RESULT_ID);
+                return isLazyResultArray;
+            }
+
+            private static int getLazyLength(JSDynamicObject obj, DynamicObjectLibrary lazyRegexResultNode, JSRegExpReplaceNode parent) {
+                Object regexResult = JSAbstractArray.arrayGetRegexResult(obj, lazyRegexResultNode);
+                return TRegexResultAccessor.captureGroupLength(regexResult, 0, null, parent.getStartNode, parent.getEndNode);
+            }
+
+            private static int processNonLazy(JSDynamicObject result, JSToLengthNode toLength, PropertyGetNode getLength, JSRegExpReplaceNode parent) {
+                int resultLength = (int) toLength.executeLong(getLength.getValue(result));
+                TruffleString result0Str = parent.toString3(parent.read(result, 0));
+                parent.write(result, 0, result0Str);
+                for (int n = 1; n < resultLength; n++) {
+                    Object value = parent.read(result, n);
+                    if (value != Undefined.instance) {
+                        parent.write(result, n, parent.toString3(value));
+                    }
                 }
+                return Strings.length(result0Str);
             }
-            return Strings.length(result0Str);
-        }
-
-        private boolean isLazyResultArray(JSDynamicObject result) {
-            boolean isLazyResultArray = hasLazyRegexResultNode.executeHasHiddenKey(result);
-            assert isLazyResultArray == JSDynamicObject.hasProperty(result, JSArray.LAZY_REGEX_RESULT_ID);
-            return isLazyResultArray;
-        }
-
-        private Object callFunction(Object[] arguments) {
-            if (functionCallNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                functionCallNode = insert(JSFunctionCallNode.createCall());
-            }
-            return functionCallNode.executeCall(arguments);
         }
 
         private TruffleString toString2(Object obj) {
@@ -1356,65 +1352,12 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toString4Node.executeString(obj);
         }
 
-        private int getLazyLength(JSDynamicObject obj) {
-            Object regexResult = JSAbstractArray.arrayGetRegexResult(obj, lazyRegexResultNode);
-            return TRegexResultAccessor.captureGroupLength(regexResult, 0, null, getStartNode, getEndNode);
-        }
-
-        private PropertyGetNode getGetFlagsNode() {
-            if (getFlagsNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getFlagsNode = insert(PropertyGetNode.create(JSRegExp.FLAGS, getContext()));
-            }
-            return getFlagsNode;
-        }
-
-        private JSToStringNode getToStringNodeForFlags() {
-            if (toStringNodeForFlags == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toStringNodeForFlags = insert(JSToStringNode.create());
-            }
-            return toStringNodeForFlags;
-        }
-
-        private TruffleString.ByteIndexOfCodePointNode getStringIndexOfNode() {
-            if (stringIndexOfNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                stringIndexOfNode = insert(TruffleString.ByteIndexOfCodePointNode.create());
-            }
-            return stringIndexOfNode;
-        }
-
         private boolean isPristine(JSDynamicObject rx) {
             if (isPristineObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 isPristineObjectNode = insert(IsPristineObjectNode.createRegExpExecAndMatch(getContext()));
             }
             return isPristineObjectNode.execute(rx);
-        }
-
-        private Object getLength(Object obj) {
-            if (getLengthNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getLengthNode = insert(PropertyGetNode.create(JSArray.LENGTH, false, getContext()));
-            }
-            return getLengthNode.getValue(obj);
-        }
-
-        private long toLength(Object value) {
-            if (toLengthNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toLengthNode = insert(JSToLengthNode.create());
-            }
-            return toLengthNode.executeLong(value);
-        }
-
-        private Object getGroups(Object regexResult) {
-            if (getGroupsNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getGroupsNode = insert(PropertyGetNode.create(JSRegExp.GROUPS, false, getContext()));
-            }
-            return getGroupsNode.getValue(regexResult);
         }
 
         final Object readNamedCaptureGroup(Object namedCaptureGroups, Object groupNameStr) {
