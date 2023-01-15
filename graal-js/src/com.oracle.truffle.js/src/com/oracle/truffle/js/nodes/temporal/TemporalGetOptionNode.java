@@ -74,7 +74,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
     protected Object getOption(JSDynamicObject options, TruffleString property, OptionType types, List<?> values, Object fallback,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isFallbackProfile,
-                    @Cached JSToBooleanNode toBooleanNode,
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode,
                     @Cached JSToStringNode toStringNode,
                     @Cached JSToNumberNode toNumberNode) {
         assert JSRuntime.isObject(options);
@@ -93,7 +93,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
             type = types.getLast();
         }
         if (type.allowsBoolean()) {
-            value = toBooleanNode.executeBoolean(value);
+            value = toBooleanNode.executeBoolean(this, value);
         } else if (type.allowsNumber()) {
             // workaround as long as JSToStringNode cannot have an uncached version
             value = toNumberNode == null ? JSRuntime.toNumber(value) : toNumberNode.executeNumber(value);

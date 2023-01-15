@@ -522,7 +522,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         protected JSTemporalDurationObject until(Object thisObj, Object otherParam, Object optParam,
                         @Cached InlinedConditionProfile unitIsMonth,
                         @Cached JSToStringNode toStringNode,
-                        @Cached JSToBooleanNode toBooleanNode,
+                        @Cached(inline = true) JSToBooleanNode toBooleanNode,
                         @Cached JSToNumberNode toNumberNode,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached TemporalGetOptionNode getOptionNode,

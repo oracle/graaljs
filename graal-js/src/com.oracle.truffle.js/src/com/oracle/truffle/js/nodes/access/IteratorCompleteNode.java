@@ -61,11 +61,11 @@ public abstract class IteratorCompleteNode extends JavaScriptBaseNode {
     public abstract boolean execute(Object iterResult);
 
     @Specialization
-    protected static boolean iteratorComplete(Object iterResult,
+    protected boolean iteratorComplete(Object iterResult,
                     @Cached(value = "createGetDoneNode()", uncached = "getNullNode()") PropertyGetNode getDoneNode,
-                    @Cached JSToBooleanNode toBooleanNode) {
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode) {
         Object done = (getDoneNode != null) ? getDoneNode.getValue(iterResult) : JSRuntime.get(iterResult, Strings.DONE);
-        return toBooleanNode.executeBoolean(done);
+        return toBooleanNode.executeBoolean(this, done);
     }
 
     @NeverDefault

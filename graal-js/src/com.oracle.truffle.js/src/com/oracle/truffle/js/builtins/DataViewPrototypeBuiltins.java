@@ -220,12 +220,12 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization
         protected final Object doDataView(JSDataViewObject dataView, Object byteOffset, Object littleEndian,
                         @Cached JSToIndexNode toIndexNode,
-                        @Cached JSToBooleanNode toBooleanNode,
+                        @Cached(inline = true) JSToBooleanNode toBooleanNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedExactClassProfile bufferTypeProfile,
                         @Cached InlinedExactClassProfile arrayTypeProfile) {
             long getIndex = toIndexNode.executeLong(byteOffset);
-            boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(littleEndian);
+            boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(this, littleEndian);
 
             JSArrayBufferObject buffer = bufferTypeProfile.profile(this, JSDataView.getArrayBuffer(dataView));
             ensureNotDetached(buffer, errorBranch);
@@ -259,13 +259,13 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization
         protected Object doDataView(JSDataViewObject dataView, Object byteOffset, Object value, Object littleEndian,
                         @Cached JSToIndexNode toIndexNode,
-                        @Cached JSToBooleanNode toBooleanNode,
+                        @Cached(inline = true) JSToBooleanNode toBooleanNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedExactClassProfile bufferTypeProfile,
                         @Cached InlinedExactClassProfile arrayTypeProfile) {
             long getIndex = toIndexNode.executeLong(byteOffset);
             Object numberValue = factory.isBigInt() ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
-            boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(littleEndian);
+            boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(this, littleEndian);
 
             JSArrayBufferObject buffer = bufferTypeProfile.profile(this, JSDataView.getArrayBuffer(dataView));
             ensureNotDetached(buffer, errorBranch);

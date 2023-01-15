@@ -69,15 +69,15 @@ public abstract class IsRegExpNode extends JavaScriptBaseNode {
     @Specialization
     boolean doIsObject(JSDynamicObject obj,
                     @Cached IsJSObjectNode isObjectNode,
-                    @Cached JSToBooleanNode toBooleanNode,
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode,
                     @Cached("createIsJSRegExpNode()") IsJSClassNode isJSRegExpNode,
                     @Cached InlinedConditionProfile hasMatchSymbol) {
         if (!isObjectNode.executeBoolean(obj)) {
             return false;
         }
-        Object isRegExp = getSymbolMatchNode.getValue(obj);
-        if (hasMatchSymbol.profile(this, isRegExp != Undefined.instance)) {
-            return toBooleanNode.executeBoolean(isRegExp);
+        Object matcher = getSymbolMatchNode.getValue(obj);
+        if (hasMatchSymbol.profile(this, matcher != Undefined.instance)) {
+            return toBooleanNode.executeBoolean(this, matcher);
         } else {
             return isJSRegExpNode.executeBoolean(obj);
         }

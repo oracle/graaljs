@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -223,13 +224,14 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
-    protected boolean doOverloaded(Object a, Object b,
+    protected static boolean doOverloaded(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached("createHintDefault(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
-                    @Cached JSToBooleanNode toBooleanNode) {
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode) {
         if (a == b) {
             return true;
         } else {
-            return toBooleanNode.executeBoolean(overloadedOperatorNode.execute(a, b));
+            return toBooleanNode.executeBoolean(node, overloadedOperatorNode.execute(a, b));
         }
     }
 

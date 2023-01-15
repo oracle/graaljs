@@ -990,8 +990,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected boolean callBoolean(Object value, @Cached JSToBooleanNode toBoolean) {
-            return toBoolean.executeBoolean(value);
+        protected boolean callBoolean(Object value,
+                        @Cached(inline = true) JSToBooleanNode toBoolean) {
+            return toBoolean.executeBoolean(this, value);
         }
     }
 
@@ -1002,8 +1003,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructBoolean(JSDynamicObject newTarget, Object value,
-                        @Cached JSToBooleanNode toBoolean) {
-            return swapPrototype(JSBoolean.create(getContext(), getRealm(), toBoolean.executeBoolean(value)), newTarget);
+                        @Cached(inline = true) JSToBooleanNode toBoolean) {
+            return swapPrototype(JSBoolean.create(getContext(), getRealm(), toBoolean.executeBoolean(this, value)), newTarget);
         }
 
         @Override
@@ -3337,13 +3338,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSDynamicObject constructGlobal(JSDynamicObject newTarget, Object descriptor, Object[] args,
                         @Cached IsObjectNode isObjectNode,
-                        @Cached JSToBooleanNode toBooleanNode,
+                        @Cached(inline = true) JSToBooleanNode toBooleanNode,
                         @Cached JSToStringNode toStringNode,
                         @Cached ToWebAssemblyValueNode toWebAssemblyValueNode) {
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Global(): Argument 0 must be a global descriptor", this);
             }
-            boolean mutable = toBooleanNode.executeBoolean(getMutableNode.getValue(descriptor));
+            boolean mutable = toBooleanNode.executeBoolean(this, getMutableNode.getValue(descriptor));
             TruffleString valueType = toStringNode.executeString(getValueNode.getValue(descriptor));
             if (!JSWebAssemblyValueTypes.isValueType(valueType)) {
                 throw Errors.createTypeError("WebAssembly.Global(): Descriptor property 'value' must be a WebAssembly type (i32, i64, f32, f64, anyfunc, externref)", this);

@@ -127,7 +127,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
                     @Bind("this") Node node,
                     @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                     @Cached("createGetMethodHasInstance()") GetMethodNode getMethodHasInstanceNode,
-                    @Cached JSToBooleanNode toBooleanNode,
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode,
                     @Cached("createCall()") JSFunctionCallNode callHasInstanceNode,
                     @Cached IsCallableNode isCallableNode,
                     @Cached InlinedConditionProfile hasInstanceProfile,
@@ -144,7 +144,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
             hasInstance = getRealm().getOrdinaryHasInstanceFunction();
         }
         Object res = callHasInstanceNode.executeCall(JSArguments.createOneArg(target, hasInstance, obj));
-        return toBooleanNode.executeBoolean(res);
+        return toBooleanNode.executeBoolean(node, res);
     }
 
     @Specialization(guards = {"isNullOrUndefined(target)"})

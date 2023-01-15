@@ -84,14 +84,14 @@ public abstract class JSInteropGetIteratorNextNode extends JSInteropCallNode {
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Cached(value = "create(DONE, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode donePropertyGetNode,
                     @Cached(value = "create(VALUE, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode valuePropertyGetNode,
-                    @Cached JSToBooleanNode toBooleanNode,
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode,
                     @Cached ExportValueNode exportValueNode,
                     @Cached InlinedBranchProfile exceptionBranch) throws StopIterationException {
         Object iterResult = callNode.executeCall(JSArguments.createZeroArg(iterator.getIterator(), iterator.getNextMethod()));
         if (iterResult instanceof JSObject) {
             JSObject iterResultObject = (JSObject) iterResult;
             Object doneValue = getProperty(iterResultObject, donePropertyGetNode, Strings.DONE, Boolean.FALSE);
-            boolean done = toBooleanNode.executeBoolean(doneValue);
+            boolean done = toBooleanNode.executeBoolean(this, doneValue);
             if (done) {
                 if (stopValue != null) {
                     return stopValue;
