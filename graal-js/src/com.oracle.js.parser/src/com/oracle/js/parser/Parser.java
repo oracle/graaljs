@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1752,6 +1752,7 @@ public class Parser extends AbstractParser {
             int staticElementCount = 0;
             boolean hasPrivateMethods = false;
             boolean hasPrivateInstanceMethods = false;
+            boolean hasClassElementDecorators = false;
             for (;;) {
                 if (type == SEMICOLON) {
                     next();
@@ -1764,6 +1765,7 @@ public class Parser extends AbstractParser {
 
                 if (type == AT) {
                     classElementDecorators = decoratorList(yield, await);
+                    hasClassElementDecorators = true;
                 }
                 boolean isAutoAccessor = false;
                 if (isES2023() && type == ACCESSOR) {
@@ -1928,7 +1930,7 @@ public class Parser extends AbstractParser {
             classScope.close();
             classHeadScope.close();
             return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classDecorators, classScope,
-                            instanceFieldCount, staticElementCount, hasPrivateMethods, hasPrivateInstanceMethods);
+                            instanceFieldCount, staticElementCount, hasPrivateMethods, hasPrivateInstanceMethods, hasClassElementDecorators);
         } finally {
             lc.pop(classNode);
         }

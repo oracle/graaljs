@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -158,11 +158,12 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         this.isConstructorNode = IsConstructorNode.create();
         this.classDecorators = classDecorators;
         this.memberDecorators = memberDecorators;
+        boolean hasMemberDecorators = memberDecorators != null;
         this.setInitializersNode = PropertySetNode.createSetHidden(JSFunction.CLASS_INITIALIZERS_ID, context);
-        this.defineStaticMethodDecorators = initDecoratorsElementDefinitionNodes(context, this.staticMethodsCount, true);
-        this.defineInstanceMethodDecorators = initDecoratorsElementDefinitionNodes(context, this.instanceMethodsCount, false);
-        this.defineStaticElementDecorators = initDecoratorsElementDefinitionNodes(context, this.staticElementCount, true);
-        this.defineInstanceElementDecorators = initDecoratorsElementDefinitionNodes(context, this.instanceElementCount, false);
+        this.defineStaticMethodDecorators = hasMemberDecorators ? initDecoratorsElementDefinitionNodes(context, this.staticMethodsCount, true) : null;
+        this.defineInstanceMethodDecorators = hasMemberDecorators ? initDecoratorsElementDefinitionNodes(context, this.instanceMethodsCount, false) : null;
+        this.defineStaticElementDecorators = hasMemberDecorators ? initDecoratorsElementDefinitionNodes(context, this.staticElementCount, true) : null;
+        this.defineInstanceElementDecorators = hasMemberDecorators ? initDecoratorsElementDefinitionNodes(context, this.instanceElementCount, false) : null;
         this.staticExtraInitializersCallNode = JSFunctionCallNode.createCall();
     }
 
@@ -392,10 +393,13 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         if (staticMethods == null) {
             return;
         }
+        CompilerAsserts.partialEvaluationConstant(staticMethods.length);
         int i = 0;
         for (ClassElementDefinitionRecord m : staticMethods) {
             assert (m.isMethod() || m.isSetter() || m.isGetter());
-            defineStaticMethodDecorators[i++].executeDecorator(frame, proto, m, instanceExtraInitializers);
+            if (defineStaticMethodDecorators != null) {
+                defineStaticMethodDecorators[i++].executeDecorator(frame, proto, m, instanceExtraInitializers);
+            }
             getDefineMethodProperty().executeDefine(proto, m, false);
         }
     }
@@ -405,19 +409,23 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         if (instanceMethods == null) {
             return;
         }
+        CompilerAsserts.partialEvaluationConstant(instanceMethods.length);
         int i = 0;
         for (ClassElementDefinitionRecord m : instanceMethods) {
             assert instanceMethods.length == instanceMethodsCount;
-            defineInstanceMethodDecorators[i++].executeDecorator(frame, homeObject, m, extraInitializers);
+            if (defineInstanceMethodDecorators != null) {
+                defineInstanceMethodDecorators[i++].executeDecorator(frame, homeObject, m, extraInitializers);
+            }
             getDefineMethodProperty().executeDefine(homeObject, m, false);
         }
     }
 
     @ExplodeLoop
     private void applyDecoratorsStaticElements(VirtualFrame frame, ClassElementDefinitionRecord[] staticElements, List<Object> instanceExtraInitializers, JSDynamicObject proto) {
-        if (staticElements == null) {
+        if (defineStaticElementDecorators == null || staticElements == null) {
             return;
         }
+        CompilerAsserts.partialEvaluationConstant(staticElements.length);
         int i = 0;
         for (ClassElementDefinitionRecord f : staticElements) {
             if (!(f.isMethod() || f.isSetter() || f.isGetter())) {
@@ -428,9 +436,10 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
     @ExplodeLoop
     private void applyDecoratorsInstanceElements(VirtualFrame frame, ClassElementDefinitionRecord[] instanceFields, List<Object> instanceExtraInitializers, JSDynamicObject proto) {
-        if (instanceFields == null) {
+        if (defineInstanceElementDecorators == null || instanceFields == null) {
             return;
         }
+        CompilerAsserts.partialEvaluationConstant(instanceFields.length);
         int i = 0;
         for (ClassElementDefinitionRecord f : instanceFields) {
             defineInstanceElementDecorators[i++].executeDecorator(frame, proto, f, instanceExtraInitializers);
@@ -510,7 +519,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                     ObjectLiteralMemberNode memberNode = memberNodes[i];
                     boolean isStatic = memberNode.isStatic();
                     JSDynamicObject homeObject = isStatic ? constructor : proto;
-                    decorators = memberDecorators[i] != null ? memberDecorators[i].execute(frame) : null;
+                    decorators = memberDecorators != null && memberDecorators[i] != null ? memberDecorators[i].execute(frame) : null;
                     if (memberNode.isFieldOrStaticBlock()) {
                         ClassElementDefinitionRecord field = initField(frame, realm, decorators, memberNode, homeObject);
                         storeElement(indexes, staticElements, instanceElements, field, isStatic);

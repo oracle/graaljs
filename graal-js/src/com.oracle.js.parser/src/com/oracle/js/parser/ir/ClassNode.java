@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     private final int staticElementCount;
     private final boolean hasPrivateMethods;
     private final boolean hasPrivateInstanceMethods;
+    private final boolean hasClassElementDecorators;
 
     public static final TruffleString PRIVATE_CONSTRUCTOR_BINDING_NAME = ParserStrings.constant("#constructor");
 
@@ -71,9 +72,8 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
      * @param token token
      * @param finish finish
      */
-    public ClassNode(final long token, final int finish, final IdentNode ident, final Expression classHeritage, final ClassElement constructor, final List<ClassElement> classElements,
-                    final List<Expression> classDecorators,
-                    final Scope scope, final int instanceFieldCount, final int staticElementCount, final boolean hasPrivateMethods, final boolean hasPrivateInstanceMethods) {
+    public ClassNode(long token, int finish, IdentNode ident, Expression classHeritage, ClassElement constructor, List<ClassElement> classElements, List<Expression> classDecorators,
+                    Scope scope, int instanceFieldCount, int staticElementCount, boolean hasPrivateMethods, boolean hasPrivateInstanceMethods, boolean hasClassElementDecorators) {
         super(token, finish);
         this.ident = ident;
         this.classHeritage = classHeritage;
@@ -84,6 +84,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.staticElementCount = staticElementCount;
         this.hasPrivateMethods = hasPrivateMethods;
         this.hasPrivateInstanceMethods = hasPrivateInstanceMethods;
+        this.hasClassElementDecorators = hasClassElementDecorators;
         this.classDecorators = classDecorators;
         assert instanceFieldCount == elementCount(classElements, false);
         assert staticElementCount == elementCount(classElements, true);
@@ -101,6 +102,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.staticElementCount = elementCount(classElements, true);
         this.hasPrivateMethods = classNode.hasPrivateMethods;
         this.hasPrivateInstanceMethods = classNode.hasPrivateInstanceMethods;
+        this.hasClassElementDecorators = classNode.hasClassElementDecorators;
         this.classDecorators = classDecorators;
     }
 
@@ -234,6 +236,10 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
 
     public boolean hasPrivateInstanceMethods() {
         return hasPrivateInstanceMethods;
+    }
+
+    public boolean hasClassElementDecorators() {
+        return hasClassElementDecorators;
     }
 
     public boolean isAnonymous() {

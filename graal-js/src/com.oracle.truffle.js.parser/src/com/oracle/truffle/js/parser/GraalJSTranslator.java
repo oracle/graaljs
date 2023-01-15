@@ -3738,7 +3738,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
                 List<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
 
-                DecoratorListEvaluationNode[] decoratedElementNodes = transformClassElementsDecorators(classNode.getClassElements());
+                DecoratorListEvaluationNode[] decoratedElementNodes = classNode.hasClassElementDecorators() ? transformClassElementsDecorators(classNode.getClassElements()) : null;
                 JavaScriptNode[] classDecorators = transformClassDecorators(classNode.getDecorators());
 
                 JSWriteFrameSlotNode writeClassBinding = className == null ? null : (JSWriteFrameSlotNode) findScopeVar(className, true).createWriteNode(null);
