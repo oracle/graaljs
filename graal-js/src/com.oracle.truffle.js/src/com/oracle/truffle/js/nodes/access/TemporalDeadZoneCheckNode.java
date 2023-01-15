@@ -43,19 +43,19 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 
 public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     @Child private JavaScriptNode child;
     @Child private ScopeFrameNode levelFrameNode;
-    private final BranchProfile deadBranch = BranchProfile.create();
+    @CompilationFinal private boolean seenDead;
 
     private TemporalDeadZoneCheckNode(int slot, Object identifier, ScopeFrameNode levelFrameNode, JavaScriptNode child) {
         super(slot, identifier);
@@ -66,7 +66,10 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     private void checkNotDead(VirtualFrame frame) {
         Frame levelFrame = levelFrameNode.executeFrame(frame);
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, levelFrame.getTag(slot) == FrameSlotKind.Illegal.tag)) {
-            deadBranch.enter();
+            if (!seenDead) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                seenDead = true;
+            }
             throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
         }
     }
