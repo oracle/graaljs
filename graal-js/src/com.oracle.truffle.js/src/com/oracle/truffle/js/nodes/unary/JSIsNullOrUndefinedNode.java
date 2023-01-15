@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -172,6 +173,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
         return JSIsNullOrUndefinedNodeGen.create(value, false, false);
     }
 
+    @NeverDefault
     public static JSIsNullOrUndefinedNode create() {
         return JSIsNullOrUndefinedNodeGen.create(null, true, true);
     }
