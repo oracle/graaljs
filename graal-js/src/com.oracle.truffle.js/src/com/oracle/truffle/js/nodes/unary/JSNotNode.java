@@ -120,8 +120,8 @@ public abstract class JSNotNode extends JSUnaryNode {
 
     @Specialization
     protected boolean doNonBoolean(Object a,
-                    @Cached JSToBooleanNode toBooleanNode) {
-        return !toBooleanNode.executeBoolean(a);
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode) {
+        return !toBooleanNode.executeBoolean(this, a);
     }
 
     @Override

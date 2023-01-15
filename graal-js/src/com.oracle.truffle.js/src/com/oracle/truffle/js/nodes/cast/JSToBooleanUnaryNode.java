@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,14 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -159,8 +161,9 @@ public abstract class JSToBooleanUnaryNode extends JSUnaryNode {
 
     @Specialization(guards = "isForeignObject(value)")
     protected static boolean doForeignObject(Object value,
-                    @Cached JSToBooleanNode toBooleanNode) {
-        return toBooleanNode.executeBoolean(value);
+                    @Bind("this") Node node,
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode) {
+        return toBooleanNode.executeBoolean(node, value);
     }
 
     @Override
