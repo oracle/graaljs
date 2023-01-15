@@ -325,7 +325,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
         List<Object> staticExtraInitializers = new ArrayList<>();
         List<Object> instanceExtraInitializers = new ArrayList<>();
-        applyDecorators(frame,
+        applyDecoratorsAndDefineMethods(frame,
                         instanceElements,
                         instanceMethods,
                         instanceExtraInitializers,
@@ -364,10 +364,10 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         }
 
         List<Object> classExtraInitializers = new ArrayList<>();
-        return applyDecoratorsClassDefinition(frame, getClassName(), constructor, decorators, classExtraInitializers);
+        return applyDecoratorsToClassDefinition(frame, getClassName(), constructor, decorators, classExtraInitializers);
     }
 
-    private void applyDecorators(VirtualFrame frame,
+    private void applyDecoratorsAndDefineMethods(VirtualFrame frame,
                     ClassElementDefinitionRecord[] instanceElements,
                     ClassElementDefinitionRecord[] instanceMethods,
                     List<Object> instanceExtraInitializers,
@@ -376,10 +376,10 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                     ClassElementDefinitionRecord[] staticMethods,
                     JSDynamicObject constructor,
                     JSDynamicObject proto) {
-        applyDecoratorsStaticMethods(frame, staticMethods, staticExtraInitializers, constructor);
-        applyDecoratorsInstanceMethods(frame, instanceMethods, instanceExtraInitializers, proto);
-        applyDecoratorsStaticElements(frame, staticElements, staticExtraInitializers, constructor);
-        applyDecoratorsInstanceElements(frame, instanceElements, instanceExtraInitializers, proto);
+        applyDecoratorsAndDefineStaticMethods(frame, staticMethods, staticExtraInitializers, constructor);
+        applyDecoratorsAndDefineInstanceMethods(frame, instanceMethods, instanceExtraInitializers, proto);
+        applyDecoratorsToStaticElements(frame, staticElements, staticExtraInitializers, constructor);
+        applyDecoratorsToInstanceElements(frame, instanceElements, instanceExtraInitializers, proto);
     }
 
     private void executeStaticExtraInitializers(Object target, Object[] initializers) {
@@ -389,7 +389,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void applyDecoratorsStaticMethods(VirtualFrame frame, ClassElementDefinitionRecord[] staticMethods, List<Object> instanceExtraInitializers, JSDynamicObject proto) {
+    private void applyDecoratorsAndDefineStaticMethods(VirtualFrame frame, ClassElementDefinitionRecord[] staticMethods, List<Object> extraInitializers, JSDynamicObject proto) {
         if (staticMethods == null) {
             return;
         }
@@ -398,14 +398,14 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         for (ClassElementDefinitionRecord m : staticMethods) {
             assert (m.isMethod() || m.isSetter() || m.isGetter());
             if (defineStaticMethodDecorators != null) {
-                defineStaticMethodDecorators[i++].executeDecorator(frame, proto, m, instanceExtraInitializers);
+                defineStaticMethodDecorators[i++].executeDecorator(frame, proto, m, extraInitializers);
             }
             getDefineMethodProperty().executeDefine(proto, m, false);
         }
     }
 
     @ExplodeLoop
-    private void applyDecoratorsInstanceMethods(VirtualFrame frame, ClassElementDefinitionRecord[] instanceMethods, List<Object> extraInitializers, JSDynamicObject homeObject) {
+    private void applyDecoratorsAndDefineInstanceMethods(VirtualFrame frame, ClassElementDefinitionRecord[] instanceMethods, List<Object> extraInitializers, JSDynamicObject homeObject) {
         if (instanceMethods == null) {
             return;
         }
@@ -421,7 +421,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void applyDecoratorsStaticElements(VirtualFrame frame, ClassElementDefinitionRecord[] staticElements, List<Object> instanceExtraInitializers, JSDynamicObject proto) {
+    private void applyDecoratorsToStaticElements(VirtualFrame frame, ClassElementDefinitionRecord[] staticElements, List<Object> extraInitializers, JSDynamicObject proto) {
         if (defineStaticElementDecorators == null || staticElements == null) {
             return;
         }
@@ -429,20 +429,20 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         int i = 0;
         for (ClassElementDefinitionRecord f : staticElements) {
             if (!(f.isMethod() || f.isSetter() || f.isGetter())) {
-                defineStaticElementDecorators[i++].executeDecorator(frame, proto, f, instanceExtraInitializers);
+                defineStaticElementDecorators[i++].executeDecorator(frame, proto, f, extraInitializers);
             }
         }
     }
 
     @ExplodeLoop
-    private void applyDecoratorsInstanceElements(VirtualFrame frame, ClassElementDefinitionRecord[] instanceFields, List<Object> instanceExtraInitializers, JSDynamicObject proto) {
+    private void applyDecoratorsToInstanceElements(VirtualFrame frame, ClassElementDefinitionRecord[] instanceFields, List<Object> extraInitializers, JSDynamicObject proto) {
         if (defineInstanceElementDecorators == null || instanceFields == null) {
             return;
         }
         CompilerAsserts.partialEvaluationConstant(instanceFields.length);
         int i = 0;
         for (ClassElementDefinitionRecord f : instanceFields) {
-            defineInstanceElementDecorators[i++].executeDecorator(frame, proto, f, instanceExtraInitializers);
+            defineInstanceElementDecorators[i++].executeDecorator(frame, proto, f, extraInitializers);
         }
     }
 
@@ -475,7 +475,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         return decorators;
     }
 
-    private Object applyDecoratorsClassDefinition(VirtualFrame frame, Object name, JSObject constructor, Object[] decorators, List<Object> classExtraInitializers) {
+    private Object applyDecoratorsToClassDefinition(VirtualFrame frame, Object name, JSObject constructor, Object[] decorators, List<Object> classExtraInitializers) {
         if (this.classDecorators.length == 0) {
             return constructor;
         }
