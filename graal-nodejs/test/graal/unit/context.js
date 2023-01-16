@@ -40,6 +40,7 @@
  */
 
 var assert = require('assert');
+var child_process = require('child_process');
 var module = require('./_unit');
 
 describe('Context', function () {
@@ -82,5 +83,22 @@ describe('Context', function () {
     it.skipOnNode('should store Environment at index 32', function () {
         // If this test fails then GraalContext::kNodeContextEmbedderDataIndex should be updated
         assert.strictEqual(module.Context_IndexOfEnvironment(), 32);
+    });
+    describe.skipOnNode('IsCodeGenerationFromStringsAllowed', function () {
+        it('should return true by default', function () {
+            assert.ok(module.Context_IsCodeGenerationFromStringsAllowed());
+        });
+        it('should return false for --js.disable-eval', function () {
+            this.timeout(20000);
+            var result = child_process.spawnSync(process.execPath, [
+                '--js.disable-eval',
+                '--experimental-options',
+                '-p',
+                'require("' + __dirname + '/_unit").Context_IsCodeGenerationFromStringsAllowed()'
+            ]);
+            assert.strictEqual(result.stderr.toString(), '');
+            assert.strictEqual(result.stdout.toString(), 'false\n');
+            assert.strictEqual(result.status, 0);
+        });
     });
 });
