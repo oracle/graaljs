@@ -3859,8 +3859,7 @@ namespace v8 {
     }
 
     bool Context::IsCodeGenerationFromStringsAllowed() const {
-        TRACE
-        return true;
+        return reinterpret_cast<const GraalContext*> (this)->IsCodeGenerationFromStringsAllowed();
     }
 
     void AccessorSignature::CheckCast(class v8::Data* that) {}

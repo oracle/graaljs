@@ -2966,6 +2966,10 @@ public final class GraalJSAccess {
         ((JSRealm) context).getContext().setPromiseHook(hook);
     }
 
+    public boolean contextIsCodeGenerationFromStringsAllowed(Object context) {
+        return !((JSRealm) context).getContext().getContextOptions().isDisableEval();
+    }
+
     public void isolateRunMicrotasks() {
         pollWeakCallbackQueue(false);
         try {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -122,4 +122,9 @@ void GraalContext::SetPromiseHooks(v8::Local<v8::Function> init_hook, v8::Local<
     jobject java_after_hook = after_hook.IsEmpty() ? nullptr : reinterpret_cast<GraalFunction*> (*after_hook)->GetJavaObject();
     jobject java_resolve_hook = resolve_hook.IsEmpty() ? nullptr : reinterpret_cast<GraalFunction*> (*resolve_hook)->GetJavaObject();
     JNI_CALL_VOID(Isolate(), GraalAccessMethod::context_set_promise_hooks, GetJavaObject(), java_init_hook, java_before_hook, java_after_hook, java_resolve_hook);
+}
+
+bool GraalContext::IsCodeGenerationFromStringsAllowed() const {
+    JNI_CALL(jboolean, allowed, Isolate(), GraalAccessMethod::context_is_code_generation_from_strings_allowed, Boolean, GetJavaObject());
+    return allowed;
 }
