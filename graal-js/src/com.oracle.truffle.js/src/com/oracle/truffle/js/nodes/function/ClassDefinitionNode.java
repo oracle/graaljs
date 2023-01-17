@@ -466,9 +466,11 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         return defineMethodProperty;
     }
 
+    @ExplodeLoop
     private Object[] classDecoratorListEvaluation(VirtualFrame frame) {
+        CompilerAsserts.partialEvaluationConstant(classDecorators.length);
         Object[] decorators = new Object[classDecorators.length];
-        for (int i = 0; i < decorators.length; i++) {
+        for (int i = 0; i < classDecorators.length; i++) {
             Object maybeDecorator = classDecorators[i].execute(frame);
             decorators[decorators.length - i - 1] = maybeDecorator;
         }
