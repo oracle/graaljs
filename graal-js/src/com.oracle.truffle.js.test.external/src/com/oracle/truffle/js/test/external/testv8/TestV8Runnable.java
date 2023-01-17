@@ -262,7 +262,7 @@ public class TestV8Runnable extends TestRunnable {
 
         TestCallable tc = new TestCallable(suite, sources, toSource(file, module), file, ecmaVersion, extraOptions);
         if (!suite.getConfig().isPrintFullOutput()) {
-            tc.setOutput(DUMMY_OUTPUT_STREAM);
+            tc.setOutput(OutputStream.nullOutputStream());
         }
         try {
             tc.call();
@@ -392,12 +392,5 @@ public class TestV8Runnable extends TestRunnable {
     private static List<String> getFiles(List<String> scriptCode, String suiteLocation) {
         return getStrings(scriptCode, FILES_PREFIX, FILES_FIND_PATTERN, SPLIT_PATTERN).map(file -> Paths.get(suiteLocation, file).toString()).collect(Collectors.toList());
     }
-
-    private static final OutputStream DUMMY_OUTPUT_STREAM = new OutputStream() {
-
-        @Override
-        public void write(int b) throws IOException {
-        }
-    };
 
 }
