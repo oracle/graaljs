@@ -872,9 +872,13 @@
     "status" : "FAIL",
     "comment" : "Fails because of %HasFastProperties in code evaluated in ShadowRealm."
   }, {
+    "filePath" : "mjsunit/harmony/sharedarraybuffer-stress.js",
+    "runInIsolation" : true,
+    "comment" : "GC stress test"
+  }, {
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanup-on-detached-realm.js",
     "status" : "FAIL",
@@ -1120,7 +1124,8 @@
     "statusOverrides" : {
       "SVM" : "SKIP"
     },
-    "comment" : "GR-34371: Occasional segfault on SVM"
+    "runInIsolation" : true,
+    "comment" : "GR-34371: Occasional segfault on SVM; test with (expected) stack overflows"
   }, {
     "filePath" : "mjsunit/regress/regress-1115354.js",
     "status" : "FAIL",
@@ -1145,6 +1150,10 @@
     "filePath" : "mjsunit/regress/regress-1176504.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1189077.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
   }, {
     "filePath" : "mjsunit/regress/regress-119429.js",
     "runInIsolation" : true,
@@ -1752,6 +1761,10 @@
     "status" : "SKIP",
     "comment" : "stack overflow, recursion"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-662907.js",
+    "runInIsolation" : true,
+    "comment" : "slow test with gc()"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-669850.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1826,8 +1839,8 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-902672.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+    "status" : "SKIP",
+    "comment" : "Incorrect memory intensive test: expects a TypeError from Array.prototype.join.call({length: 2**32})."
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-906043.js",
     "status" : "FAIL",
@@ -1869,6 +1882,10 @@
     "filePath" : "mjsunit/regress/regress-crbug-980529.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-986187.js",
+    "runInIsolation" : true,
+    "comment" : "Triggers a hundred GCs."
   }, {
     "filePath" : "mjsunit/regress/regress-double-canonicalization.js",
     "status" : "PASS",
