@@ -828,6 +828,10 @@ public final class GraalJSAccess {
         return JSRuntime.typeof(value);
     }
 
+    public Object valueToDetailString(Object value) {
+        return JSRuntime.safeToString(value);
+    }
+
     public Object objectNew(Object context) {
         JSRealm jsRealm = (JSRealm) context;
         return JSOrdinary.create(jsRealm.getContext(), jsRealm);

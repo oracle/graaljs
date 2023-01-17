@@ -297,6 +297,7 @@
       { "name": "valueStrictEquals" },
       { "name": "valueToArrayIndex" },
       { "name": "valueToBoolean" },
+      { "name": "valueToDetailString" },
       { "name": "valueToInt32" },
       { "name": "valueToInteger" },
       { "name": "valueToNumber" },

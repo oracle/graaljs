@@ -1402,13 +1402,7 @@ namespace v8 {
     }
 
     MaybeLocal<String> Value::ToDetailString(Local<Context> context) const {
-        // TODO: Temporary, should be fixed soon
-        if (IsSymbol()) {
-            return String::NewFromUtf8(context->GetIsolate(), "Symbol()");
-        } else if (IsProxy()) {
-            return String::NewFromUtf8(context->GetIsolate(), "[object Object]");
-        }
-        return ToString(context);
+        return reinterpret_cast<const GraalValue*> (this)->ToDetailString(context);
     }
 
     Maybe<int32_t> Value::Int32Value(Local<Context> context) const {

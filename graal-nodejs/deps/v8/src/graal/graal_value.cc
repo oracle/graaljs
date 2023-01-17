@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -790,4 +790,12 @@ v8::Local<v8::String> GraalValue::TypeOf(v8::Isolate* isolate) {
     JNI_CALL(jobject, java_type, graal_isolate, GraalAccessMethod::value_type_of, Object, java_value);
     GraalString* graal_type = GraalString::Allocate(graal_isolate, java_type);
     return reinterpret_cast<v8::String*> (graal_type);
+}
+
+v8::MaybeLocal<v8::String> GraalValue::ToDetailString(v8::Local<v8::Context> context) const {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_string, graal_isolate, GraalAccessMethod::value_to_detail_string, Object, GetJavaObject());
+    GraalString* graal_string = GraalString::Allocate(graal_isolate, java_string);
+    v8::Local<v8::String> v8_string = reinterpret_cast<v8::String*> (graal_string);
+    return v8_string;
 }
