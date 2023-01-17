@@ -158,11 +158,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
         record.cleanDecorator();
     }
 
-    protected static boolean isGetterOrSetter(ClassElementDefinitionRecord record) {
-        return record.isGetter() || record.isSetter();
-    }
-
-    @Specialization(guards = {"hasDecorators(record)", "isGetterOrSetter(record)"})
+    @Specialization(guards = {"record.isGetter() || record.isSetter()", "hasDecorators(record)"})
     protected static void decorateGetterSetter(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
                     @Bind("this") Node node,
                     @Shared("createDecoratorContext") @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
