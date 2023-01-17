@@ -306,6 +306,24 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             decorators = resumptionRecord.decorators;
         }
 
+        return defineClassElements(frame, proto, constructor, decorators,
+                        instanceElements,
+                        instanceMethods,
+                        staticElements,
+                        staticMethods,
+                        startIndex,
+                        instanceElementIndex,
+                        instanceMethodIndex,
+                        staticElementIndex,
+                        staticMethodIndex,
+                        stateSlot,
+                        realm);
+    }
+
+    private Object defineClassElements(VirtualFrame frame, JSDynamicObject proto, JSObject constructor, Object[] decorators, ClassElementDefinitionRecord[] instanceElements,
+                    ClassElementDefinitionRecord[] instanceMethods, ClassElementDefinitionRecord[] staticElements, ClassElementDefinitionRecord[] staticMethods,
+                    int startIndex, int instanceElementIndex, int instanceMethodIndex, int staticElementIndex, int staticMethodIndex,
+                    int stateSlot, JSRealm realm) {
         initializeMembers(frame, proto, constructor,
                         instanceElements,
                         instanceMethods,
@@ -428,9 +446,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         CompilerAsserts.partialEvaluationConstant(staticElements.length);
         int i = 0;
         for (ClassElementDefinitionRecord f : staticElements) {
-            if (!(f.isMethod() || f.isSetter() || f.isGetter())) {
-                defineStaticElementDecorators[i++].executeDecorator(frame, proto, f, extraInitializers);
-            }
+            assert !(f.isMethod() || f.isSetter() || f.isGetter());
+            defineStaticElementDecorators[i++].executeDecorator(frame, proto, f, extraInitializers);
         }
     }
 
@@ -530,57 +547,55 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         if (isAutoAccessor(memberNode)) {
                             ClassElementDefinitionRecord autoAccessor = initAutoAccessor(frame, realm, decorators, memberNode, homeObject, key);
                             storeElement(indexes, staticElements, instanceElements, autoAccessor, isStatic);
-                        } else {
-                            if (isMethod(memberNode)) {
-                                Object value = memberNode.evaluateValue(frame, homeObject, key, realm);
-                                memberNode.evaluateWithKeyAndValue(frame, homeObject, key, value, realm);
+                        } else if (isMethod(memberNode)) {
+                            Object value = memberNode.evaluateValue(frame, homeObject, key, realm);
+                            memberNode.evaluateWithKeyAndValue(frame, homeObject, key, value, realm);
 
-                                ClassElementDefinitionRecord method;
-                                if (memberNode instanceof ObjectLiteralNode.PrivateMethodMemberNode) {
-                                    ObjectLiteralNode.PrivateMethodMemberNode privateMember = (ObjectLiteralNode.PrivateMethodMemberNode) memberNode;
+                            ClassElementDefinitionRecord method;
+                            if (memberNode instanceof ObjectLiteralNode.PrivateMethodMemberNode) {
+                                ObjectLiteralNode.PrivateMethodMemberNode privateMember = (ObjectLiteralNode.PrivateMethodMemberNode) memberNode;
+                                int slot = privateMember.getWritePrivateNode().getSlotIndex();
+                                int brandSlot = privateMember.getPrivateBrandSlotIndex();
+                                int blockSlot = defineConstructorMethodNode.getBlockScopeSlot();
+                                method = ClassElementDefinitionRecord.createPrivateMethod(context, key, slot, brandSlot, blockSlot, value, memberNode.isAnonymousFunctionDefinition(), decorators);
+                            } else {
+                                method = ClassElementDefinitionRecord.createPublicMethod(context, key, value, memberNode.isAnonymousFunctionDefinition(), decorators);
+                            }
+                            storeMethod(indexes, staticMethods, instanceMethods, method, isStatic);
+                        } else if (isAccessor(memberNode)) {
+                            // no need to eval 'value' for accessors: values are getter/setter.
+                            memberNode.evaluateWithKeyAndValue(frame, homeObject, key, null, realm);
+                            AccessorMemberNode accessorMember = (AccessorMemberNode) memberNode;
+                            assert accessorMember.hasGetter() || accessorMember.hasSetter();
+                            if (accessorMember.hasGetter()) {
+                                Object getter = accessorMember.evaluateGetter(frame, homeObject, key, realm);
+                                ClassElementDefinitionRecord element;
+                                if (memberNode instanceof ObjectLiteralNode.PrivateAccessorMemberNode) {
+                                    ObjectLiteralNode.PrivateAccessorMemberNode privateMember = (ObjectLiteralNode.PrivateAccessorMemberNode) memberNode;
                                     int slot = privateMember.getWritePrivateNode().getSlotIndex();
                                     int brandSlot = privateMember.getPrivateBrandSlotIndex();
                                     int blockSlot = defineConstructorMethodNode.getBlockScopeSlot();
-                                    method = ClassElementDefinitionRecord.createPrivateMethod(context, key, slot, brandSlot, blockSlot, value, memberNode.isAnonymousFunctionDefinition(), decorators);
+                                    element = ClassElementDefinitionRecord.createPrivateGetter(context, key, slot, brandSlot, blockSlot, getter, memberNode.isAnonymousFunctionDefinition(),
+                                                    decorators);
                                 } else {
-                                    method = ClassElementDefinitionRecord.createPublicMethod(context, key, value, memberNode.isAnonymousFunctionDefinition(), decorators);
+                                    element = ClassElementDefinitionRecord.createPublicGetter(context, key, getter, memberNode.isAnonymousFunctionDefinition(), decorators);
                                 }
-                                storeMethod(indexes, staticMethods, instanceMethods, method, isStatic);
-                            } else if (isAccessor(memberNode)) {
-                                // no need to eval 'value' for accessors: values are getter/setter.
-                                memberNode.evaluateWithKeyAndValue(frame, homeObject, key, null, realm);
-                                AccessorMemberNode accessorMember = (AccessorMemberNode) memberNode;
-                                assert accessorMember.hasGetter() || accessorMember.hasSetter();
-                                if (accessorMember.hasGetter()) {
-                                    Object getter = accessorMember.evaluateGetter(frame, homeObject, key, realm);
-                                    ClassElementDefinitionRecord element;
-                                    if (memberNode instanceof ObjectLiteralNode.PrivateAccessorMemberNode) {
-                                        ObjectLiteralNode.PrivateAccessorMemberNode privateMember = (ObjectLiteralNode.PrivateAccessorMemberNode) memberNode;
-                                        int slot = privateMember.getWritePrivateNode().getSlotIndex();
-                                        int brandSlot = privateMember.getPrivateBrandSlotIndex();
-                                        int blockSlot = defineConstructorMethodNode.getBlockScopeSlot();
-                                        element = ClassElementDefinitionRecord.createPrivateGetter(context, key, slot, brandSlot, blockSlot, getter, memberNode.isAnonymousFunctionDefinition(),
-                                                        decorators);
-                                    } else {
-                                        element = ClassElementDefinitionRecord.createPublicGetter(context, key, getter, memberNode.isAnonymousFunctionDefinition(), decorators);
-                                    }
-                                    storeMethod(indexes, staticMethods, instanceMethods, element, isStatic);
+                                storeMethod(indexes, staticMethods, instanceMethods, element, isStatic);
+                            }
+                            if (accessorMember.hasSetter()) {
+                                Object setter = accessorMember.evaluateSetter(frame, homeObject, key, realm);
+                                ClassElementDefinitionRecord element;
+                                if (memberNode instanceof ObjectLiteralNode.PrivateAccessorMemberNode) {
+                                    ObjectLiteralNode.PrivateAccessorMemberNode privateMember = (ObjectLiteralNode.PrivateAccessorMemberNode) memberNode;
+                                    int slot = privateMember.getWritePrivateNode().getSlotIndex();
+                                    int brandSlot = privateMember.getPrivateBrandSlotIndex();
+                                    int blockSlot = defineConstructorMethodNode.getBlockScopeSlot();
+                                    element = ClassElementDefinitionRecord.createPrivateSetter(context, key, slot, brandSlot, blockSlot, setter, memberNode.isAnonymousFunctionDefinition(),
+                                                    decorators);
+                                } else {
+                                    element = ClassElementDefinitionRecord.createPublicSetter(context, key, setter, memberNode.isAnonymousFunctionDefinition(), decorators);
                                 }
-                                if (accessorMember.hasSetter()) {
-                                    Object setter = accessorMember.evaluateSetter(frame, homeObject, key, realm);
-                                    ClassElementDefinitionRecord element;
-                                    if (memberNode instanceof ObjectLiteralNode.PrivateAccessorMemberNode) {
-                                        ObjectLiteralNode.PrivateAccessorMemberNode privateMember = (ObjectLiteralNode.PrivateAccessorMemberNode) memberNode;
-                                        int slot = privateMember.getWritePrivateNode().getSlotIndex();
-                                        int brandSlot = privateMember.getPrivateBrandSlotIndex();
-                                        int blockSlot = defineConstructorMethodNode.getBlockScopeSlot();
-                                        element = ClassElementDefinitionRecord.createPrivateSetter(context, key, slot, brandSlot, blockSlot, setter, memberNode.isAnonymousFunctionDefinition(),
-                                                        decorators);
-                                    } else {
-                                        element = ClassElementDefinitionRecord.createPublicSetter(context, key, setter, memberNode.isAnonymousFunctionDefinition(), decorators);
-                                    }
-                                    storeMethod(indexes, staticMethods, instanceMethods, element, isStatic);
-                                }
+                                storeMethod(indexes, staticMethods, instanceMethods, element, isStatic);
                             }
                         }
                     }
