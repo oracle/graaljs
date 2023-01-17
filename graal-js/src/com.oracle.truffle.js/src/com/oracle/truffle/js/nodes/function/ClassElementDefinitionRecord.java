@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.js.runtime.JSContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,64 +58,83 @@ public class ClassElementDefinitionRecord {
 
     private static final Object[] EMPTY = new Object[0];
 
-    protected final JSContext context;
-
     private final Kind kind;
     private final Object key;
     private final boolean anonymousFunctionDefinition;
     private final boolean isPrivate;
 
-    Object value;
-    private Object[] decorators;
+    /** The function for a method definition. */
+    private Object value;
+    /** The getter function for an accessor definition. */
     private Object getter;
+    /** The setter function for an accessor definition. */
     private Object setter;
+    /** The decorators applied to the class element, if any. */
+    private Object[] decorators;
     private List<Object> appendedInitializers;
+    /** The initializers of the field or accessor, if any. */
     private Object[] initializers;
 
-    public static ClassElementDefinitionRecord createField(JSContext context, Object key, Object value, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Field, context, key, value, isPrivate, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createField(Object key, Object value, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.Field, key, value, isPrivate, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPublicMethod(JSContext context, Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Method, context, key, value, false, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPublicMethod(Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.Method, key, value, false, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPublicGetter(JSContext context, Object key, Object getter, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Getter, context, key, getter, false, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPublicAccessor(Object key, Object getter, Object setter, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.Getter, key, null, getter, setter, false, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPublicSetter(JSContext context, Object key, Object setter, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Setter, context, key, setter, false, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPublicGetter(Object key, Object getter, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.Getter, key, getter, getter, null, false, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateMethod(JSContext context, Object key, int frameSlot, int brandSlot, int blockSlot, Object value, boolean anonymousFunctionDefinition,
+    public static ClassElementDefinitionRecord createPublicSetter(Object key, Object setter, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.Setter, key, setter, null, setter, false, anonymousFunctionDefinition, decorators);
+    }
+
+    public static ClassElementDefinitionRecord createPrivateMethod(Object key, int frameSlot, int brandSlot, int blockSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Method, key, value, null, null, frameSlot, brandSlot, blockSlot, anonymousFunctionDefinition, decorators);
+    }
+
+    public static ClassElementDefinitionRecord createPrivateAccessor(Object key, int frameSlot, int brandSlot, int blockSlot, Object getter, Object setter, boolean anonymousFunctionDefinition,
                     Object[] decorators) {
-        return new PrivateFrameBasedElementDefinitionRecord(Kind.Method, context, key, frameSlot, brandSlot, blockSlot, value, anonymousFunctionDefinition, decorators);
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, key, getter, getter, setter, frameSlot, brandSlot, blockSlot, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateGetter(JSContext context, Object key, int frameSlot, int brandSlot, int blockSlot, Object value, boolean anonymousFunctionDefinition,
-                    Object[] decorators) {
-        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, context, key, frameSlot, brandSlot, blockSlot, value, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateGetter(Object key, int frameSlot, int brandSlot, int blockSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, key, value, value, null, frameSlot, brandSlot, blockSlot, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateSetter(JSContext context, Object key, int frameSlot, int brandSlot, int blockSlot, Object value, boolean anonymousFunctionDefinition,
-                    Object[] decorators) {
-        return new PrivateFrameBasedElementDefinitionRecord(Kind.Setter, context, key, frameSlot, brandSlot, blockSlot, value, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateSetter(Object key, int frameSlot, int brandSlot, int blockSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Setter, key, value, null, value, frameSlot, brandSlot, blockSlot, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createAutoAccessor(JSContext context, Object key, HiddenKey backingStorageKey, Object value, boolean isPrivate, boolean anonymousFunctionDefinition,
-                    Object[] decorators) {
-        return new AutoAccessor(context, key, backingStorageKey, value, isPrivate, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter, boolean isPrivate,
+                    boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new AutoAccessor(key, backingStorageKey, value, getter, setter, isPrivate, anonymousFunctionDefinition, decorators);
     }
 
-    protected ClassElementDefinitionRecord(Kind kind, JSContext context, Object key, Object value, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
+    protected ClassElementDefinitionRecord(Kind kind, Object key, Object value, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
         this.kind = kind;
         this.key = key;
         this.value = value;
         this.anonymousFunctionDefinition = anonymousFunctionDefinition;
         this.decorators = decorators;
         this.isPrivate = isPrivate;
-        this.context = context;
+    }
+
+    protected ClassElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, boolean anonymousFunctionDefinition, boolean isPrivate, Object[] decorators) {
+        this.kind = kind;
+        this.key = key;
+        this.value = value;
+        this.getter = getter;
+        this.setter = setter;
+        this.anonymousFunctionDefinition = anonymousFunctionDefinition;
+        this.isPrivate = isPrivate;
+        this.decorators = decorators;
     }
 
     public final boolean isMethod() {
@@ -201,15 +219,20 @@ public class ClassElementDefinitionRecord {
         return setter;
     }
 
+    @Override
+    public String toString() {
+        return "ClassElementDefinitionRecord [kind=" + kind + ", key=" + key + ", value=" + value + ", getter=" + getter + ", setter=" + setter + "]";
+    }
+
     public static final class PrivateFrameBasedElementDefinitionRecord extends ClassElementDefinitionRecord {
 
         private final int keySlot;
         private final int brandSlot;
         private final int blockScopeSlot;
 
-        private PrivateFrameBasedElementDefinitionRecord(Kind kind, JSContext context, Object key, int keySlot, int brandSlot, int blockScopeSlot, Object value, boolean anonymousFunctionDefinition,
-                        Object[] decorators) {
-            super(kind, context, key, value, true, anonymousFunctionDefinition, decorators);
+        private PrivateFrameBasedElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, int keySlot, int brandSlot, int blockScopeSlot,
+                        boolean anonymousFunctionDefinition, Object[] decorators) {
+            super(kind, key, value, getter, setter, true, anonymousFunctionDefinition, decorators);
             this.keySlot = keySlot;
             this.brandSlot = brandSlot;
             this.blockScopeSlot = blockScopeSlot;
@@ -232,8 +255,8 @@ public class ClassElementDefinitionRecord {
 
         private final HiddenKey backingStorageKey;
 
-        protected AutoAccessor(JSContext context, Object key, HiddenKey backingStorageKey, Object value, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
-            super(Kind.AutoAccessor, context, key, value, isPrivate, anonymousFunctionDefinition, decorators);
+        protected AutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
+            super(Kind.AutoAccessor, key, value, getter, setter, isPrivate, anonymousFunctionDefinition, decorators);
             this.backingStorageKey = backingStorageKey;
         }
 

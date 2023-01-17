@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
+import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord;
 import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.NamedEvaluationTargetNode;
@@ -112,29 +114,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
         } else {
             return valueNode.execute(frame);
         }
-    }
-
-    public static boolean isAutoAccessor(ObjectLiteralMemberNode memberNode) {
-        return memberNode instanceof AutoAccessorDataMemberNode;
-    }
-
-    public static boolean isPrivateMethod(ObjectLiteralMemberNode memberNode) {
-        assert isMethod(memberNode);
-        return memberNode instanceof PrivateMethodMemberNode;
-    }
-
-    public static boolean isMethod(ObjectLiteralMemberNode memberNode) {
-        if (memberNode instanceof PrivateMethodMemberNode) {
-            return true;
-        }
-        if (memberNode instanceof AccessorMemberNode || memberNode instanceof AutoAccessorDataMemberNode) {
-            return false;
-        }
-        return !memberNode.isFieldOrStaticBlock();
-    }
-
-    public static boolean isAccessor(ObjectLiteralMemberNode memberNode) {
-        return memberNode instanceof AccessorMemberNode;
     }
 
     public static final class MakeMethodNode extends JavaScriptNode implements FunctionNameHolder.Delegate {
@@ -191,11 +170,11 @@ public class ObjectLiteralNode extends JavaScriptNode {
         protected final boolean isFieldOrStaticBlock;
         protected final boolean isAnonymousFunctionDefinition;
 
-        public ObjectLiteralMemberNode(boolean isStatic, int attributes) {
+        protected ObjectLiteralMemberNode(boolean isStatic, int attributes) {
             this(isStatic, false, attributes, false, false);
         }
 
-        public ObjectLiteralMemberNode(boolean isStatic, boolean isPrivate, int attributes, boolean isFieldOrStaticBlock, boolean isAnonymousFunctionDefinition) {
+        protected ObjectLiteralMemberNode(boolean isStatic, boolean isPrivate, int attributes, boolean isFieldOrStaticBlock, boolean isAnonymousFunctionDefinition) {
             assert attributes == (attributes & JSAttributes.ATTRIBUTES_MASK);
             this.isStatic = isStatic;
             this.isPrivate = isPrivate;
@@ -214,14 +193,14 @@ public class ObjectLiteralNode extends JavaScriptNode {
             throw Errors.shouldNotReachHere(getClass().getName());
         }
 
-        public Object evaluateValue(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject homeObject, @SuppressWarnings("unused") Object key,
-                        @SuppressWarnings("unused") JSRealm realm) {
+        @SuppressWarnings("unused")
+        public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators) {
             throw Errors.shouldNotReachHere();
         }
 
-        public void evaluateWithKeyAndValue(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject obj, @SuppressWarnings("unused") Object key,
-                        @SuppressWarnings("unused") Object value, @SuppressWarnings("unused") JSRealm realm) {
-            throw Errors.shouldNotReachHere(getClass().getName());
+        @SuppressWarnings("unused")
+        public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
+            throw Errors.shouldNotReachHere();
         }
 
         public final boolean isStatic() {
@@ -268,9 +247,52 @@ public class ObjectLiteralNode extends JavaScriptNode {
         public int getAttributes() {
             return attributes;
         }
+
+        public final boolean isAutoAccessor() {
+            return this instanceof AutoAccessorDataMemberNode;
+        }
+
+        public final boolean isPrivateMethod() {
+            return this instanceof PrivateMethodMemberNode;
+        }
+
+        public final boolean isMethod() {
+            if (this instanceof PrivateMethodMemberNode) {
+                return true;
+            }
+            if (this instanceof AccessorMemberNode || this instanceof AutoAccessorDataMemberNode) {
+                return false;
+            }
+            return !this.isFieldOrStaticBlock();
+        }
+
+        public final boolean isAccessor() {
+            return this instanceof AccessorMemberNode;
+        }
     }
 
-    private abstract static class CachingObjectLiteralMemberNode extends ObjectLiteralMemberNode {
+    /**
+     * Base class for object members that can be used as ES class elements.
+     */
+    public abstract static class ClassElementNode extends ObjectLiteralMemberNode {
+
+        protected ClassElementNode(boolean isStatic, boolean isPrivate, int attributes, boolean isFieldOrStaticBlock, boolean isAnonymousFunctionDefinition) {
+            super(isStatic, isPrivate, attributes, isFieldOrStaticBlock, isAnonymousFunctionDefinition);
+        }
+
+        protected ClassElementNode(boolean isStatic, int attributes) {
+            super(isStatic, attributes);
+        }
+
+        @Override
+        public abstract ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators);
+
+        @Override
+        public abstract void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement);
+
+    }
+
+    private abstract static class CachingObjectLiteralMemberNode extends ClassElementNode {
         protected final Object name;
         @Child private DynamicObjectLibrary dynamicObjectLibrary;
 
@@ -336,6 +358,20 @@ public class ObjectLiteralNode extends JavaScriptNode {
             this.backingStorageMagicSetNode = PropertySetNode.createSetHidden(STORAGE_KEY_MAGIC, getRealm().getContext());
         }
 
+        @Override
+        public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators) {
+            HiddenKey backingStorageKey = createBackingStorageKey(key);
+            JSFunctionObject setter = createAutoAccessorSetter(backingStorageKey);
+            JSFunctionObject getter = createAutoAccessorGetter(backingStorageKey);
+            executeWithGetterSetter(homeObject, key, getter, setter);
+            Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
+            return ClassElementDefinitionRecord.createAutoAccessor(key, backingStorageKey, value, getter, setter, isPrivate(), isAnonymousFunctionDefinition(), decorators);
+        }
+
+        @Override
+        public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
+        }
+
         private static HiddenKey checkAutoaccessorTarget(VirtualFrame frame, PropertyGetNode getMagicNode, DynamicObjectLibrary storageLibrary, Object thiz) {
             Object function = JSFrameUtil.getFunctionObject(frame);
             HiddenKey backingStorageKey = (HiddenKey) getMagicNode.getValue(function);
@@ -388,7 +424,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
         }
 
-        public void executeWithGetterSetter(JSDynamicObject obj, Object key, JSDynamicObject getterV, JSDynamicObject setterV) {
+        private void executeWithGetterSetter(JSDynamicObject obj, Object key, Object getterV, Object setterV) {
             DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary();
             Accessor accessor = new Accessor(getterV, setterV);
             dynamicObjectLib.putWithFlags(obj, key, accessor, attributes | JSProperty.ACCESSOR);
@@ -428,20 +464,25 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Override
         public void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
-            execute(receiver, value, name);
+            execute(receiver, name, value);
         }
 
         @Override
-        public Object evaluateValue(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm) {
-            return evaluateWithHomeObject(valueNode, frame, homeObject, realm);
+        public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators) {
+            Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
+            if (isFieldOrStaticBlock) {
+                return ClassElementDefinitionRecord.createField(key, value, isPrivate(), isAnonymousFunctionDefinition(), decorators);
+            } else {
+                return ClassElementDefinitionRecord.createPublicMethod(key, value, isAnonymousFunctionDefinition(), decorators);
+            }
         }
 
         @Override
-        public void evaluateWithKeyAndValue(VirtualFrame frame, JSDynamicObject obj, Object key, Object value, JSRealm realm) {
-            // NOP
+        public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
+            execute(homeObject, classElement.getKey(), classElement.getValue());
         }
 
-        private void execute(JSDynamicObject obj, Object value, Object key) {
+        private void execute(JSDynamicObject obj, Object key, Object value) {
             if (isFieldOrStaticBlock) {
                 return;
             }
@@ -459,10 +500,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
         boolean hasGetter();
 
         boolean hasSetter();
-
-        Object evaluateGetter(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm);
-
-        Object evaluateSetter(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm);
     }
 
     public static class ObjectLiteralAccessorMemberNode extends CachingObjectLiteralMemberNode implements AccessorMemberNode {
@@ -486,32 +523,43 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public Object evaluateGetter(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm) {
-            return evaluateWithHomeObject(getterNode, frame, homeObject, realm);
+        public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators) {
+            Object getterV = null;
+            Object setterV = null;
+            if (hasGetter()) {
+                getterV = evaluateWithHomeObject(getterNode, frame, homeObject, realm);
+            }
+            if (hasSetter()) {
+                setterV = evaluateWithHomeObject(setterNode, frame, homeObject, realm);
+            }
+            assert getterV != null || setterV != null;
+            if (hasGetter() && hasSetter()) {
+                return ClassElementDefinitionRecord.createPublicAccessor(key, getterV, setterV, isAnonymousFunctionDefinition, decorators);
+            } else if (hasGetter()) {
+                return ClassElementDefinitionRecord.createPublicGetter(key, getterV, isAnonymousFunctionDefinition, decorators);
+            } else {
+                assert hasSetter();
+                return ClassElementDefinitionRecord.createPublicSetter(key, setterV, isAnonymousFunctionDefinition, decorators);
+            }
         }
 
         @Override
-        public Object evaluateSetter(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm) {
-            return evaluateWithHomeObject(setterNode, frame, homeObject, realm);
+        public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
+            execute(homeObject, classElement.getGetter(), classElement.getSetter());
         }
 
         @Override
         public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             Object getterV = null;
             Object setterV = null;
-            if (getterNode != null) {
+            if (hasGetter()) {
                 getterV = evaluateWithHomeObject(getterNode, frame, homeObject, realm);
             }
-            if (setterNode != null) {
+            if (hasSetter()) {
                 setterV = evaluateWithHomeObject(setterNode, frame, homeObject, realm);
             }
             assert getterV != null || setterV != null;
             execute(receiver, getterV, setterV);
-        }
-
-        @Override
-        public void evaluateWithKeyAndValue(VirtualFrame frame, JSDynamicObject obj, Object key, Object value, JSRealm realm) {
-            // NOP
         }
 
         private void execute(JSDynamicObject obj, Object getterV, Object setterV) {
@@ -541,7 +589,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     }
 
-    public abstract static class ComputedObjectLiteralDataMemberNode extends ObjectLiteralMemberNode {
+    public abstract static class ComputedObjectLiteralDataMemberNode extends ClassElementNode {
         @Child private JavaScriptNode propertyKey;
         @Child protected JavaScriptNode valueNode;
         @Child private JSToPropertyKeyNode toPropertyKey;
@@ -592,8 +640,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return toPropertyKey.execute(key);
         }
 
-        @Override
-        public Object evaluateValue(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm) {
+        private Object evaluateValue(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm) {
             if (!isFieldOrStaticBlock && !isAnonymousFunctionDefinition && setFunctionName == null && !isMethodNode(valueNode)) {
                 return valueNode.execute(frame);
             } else {
@@ -611,8 +658,19 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public void evaluateWithKeyAndValue(VirtualFrame frame, JSDynamicObject obj, Object key, Object value, JSRealm realm) {
-            // NOP
+        public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators) {
+            Object value = evaluateValue(frame, homeObject, key, realm);
+            if (isFieldOrStaticBlock) {
+                return ClassElementDefinitionRecord.createField(key, value, isPrivate(), isAnonymousFunctionDefinition(), decorators);
+            } else {
+                return ClassElementDefinitionRecord.createPublicMethod(key, value, isAnonymousFunctionDefinition(), decorators);
+            }
+        }
+
+        @Override
+        public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
+            PropertyDescriptor propDesc = PropertyDescriptor.createData(classElement.getValue(), attributes);
+            JSRuntime.definePropertyOrThrow(homeObject, classElement.getKey(), propDesc);
         }
 
         @Override
@@ -622,7 +680,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
-    private static class ComputedObjectLiteralAccessorMemberNode extends ObjectLiteralMemberNode implements AccessorMemberNode {
+    private static class ComputedObjectLiteralAccessorMemberNode extends ClassElementNode implements AccessorMemberNode {
         @Child private JavaScriptNode propertyKey;
         @Child private JavaScriptNode getterNode;
         @Child private JavaScriptNode setterNode;
@@ -643,8 +701,38 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public void evaluateWithKeyAndValue(VirtualFrame frame, JSDynamicObject obj, Object key, Object value, JSRealm realm) {
-            // NOP
+        public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators) {
+            Object getterV = null;
+            Object setterV = null;
+            if (hasGetter()) {
+                getterV = evaluateWithHomeObject(getterNode, frame, homeObject, realm);
+                if (isGetterAnonymousFunction) {
+                    setFunctionName.execute(getterV, key, Strings.GET);
+                }
+            }
+            if (hasSetter()) {
+                setterV = evaluateWithHomeObject(setterNode, frame, homeObject, realm);
+                if (isSetterAnonymousFunction) {
+                    setFunctionName.execute(setterV, key, Strings.SET);
+                }
+            }
+            if (hasGetter() && hasSetter()) {
+                return ClassElementDefinitionRecord.createPublicAccessor(key, getterV, setterV, isGetterAnonymousFunction || isSetterAnonymousFunction, decorators);
+            } else if (hasGetter()) {
+                return ClassElementDefinitionRecord.createPublicGetter(key, getterV, isGetterAnonymousFunction, decorators);
+            } else {
+                assert hasSetter();
+                return ClassElementDefinitionRecord.createPublicSetter(key, setterV, isSetterAnonymousFunction, decorators);
+            }
+        }
+
+        @Override
+        public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
+            Object getter = classElement.getGetter();
+            Object setter = classElement.getSetter();
+            assert (getter != null || setter != null) && !(getter instanceof Accessor || setter instanceof Accessor);
+            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor(getter, setter, attributes);
+            JSRuntime.definePropertyOrThrow(homeObject, classElement.getKey(), propDesc);
         }
 
         @Override
@@ -652,13 +740,13 @@ public class ObjectLiteralNode extends JavaScriptNode {
             Object key = evaluateKey(frame);
             Object getterV = null;
             Object setterV = null;
-            if (getterNode != null) {
+            if (hasGetter()) {
                 getterV = evaluateWithHomeObject(getterNode, frame, homeObject, realm);
                 if (isGetterAnonymousFunction) {
                     setFunctionName.execute(getterV, key, Strings.GET);
                 }
             }
-            if (setterNode != null) {
+            if (hasSetter()) {
                 setterV = evaluateWithHomeObject(setterNode, frame, homeObject, realm);
                 if (isSetterAnonymousFunction) {
                     setFunctionName.execute(setterV, key, Strings.SET);
@@ -690,24 +778,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Override
         public boolean hasSetter() {
             return setterNode != null;
-        }
-
-        @Override
-        public Object evaluateGetter(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm) {
-            Object getterV = evaluateWithHomeObject(getterNode, frame, homeObject, realm);
-            if (isGetterAnonymousFunction) {
-                setFunctionName.execute(getterV, key, Strings.GET);
-            }
-            return getterV;
-        }
-
-        @Override
-        public Object evaluateSetter(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm) {
-            Object setterV = evaluateWithHomeObject(setterNode, frame, homeObject, realm);
-            if (isSetterAnonymousFunction) {
-                setFunctionName.execute(setterV, key, Strings.SET);
-            }
-            return setterV;
         }
     }
 
@@ -792,7 +862,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
-    private static class PrivateFieldMemberNode extends ObjectLiteralMemberNode {
+    private static class PrivateFieldMemberNode extends ClassElementNode {
         @Child private JavaScriptNode keyNode;
         @Child private JavaScriptNode valueNode;
         @Child private JSWriteFrameSlotNode writePrivateNode;
@@ -811,12 +881,22 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         public Object evaluateKey(VirtualFrame frame) {
+            writePrivateNode.execute(frame);
             return keyNode.execute(frame);
         }
 
         @Override
-        public Object evaluateValue(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm) {
-            return evaluateWithHomeObject(valueNode, frame, homeObject, realm);
+        public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators) {
+            Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
+            return ClassElementDefinitionRecord.createField(key, value, isPrivate(), isAnonymousFunctionDefinition(), decorators);
+        }
+
+        /**
+         * Nothing to do: private frame slot has already been assigned and actual field value
+         * initialization will be performed by {@link InitializeInstanceElementsNode}.
+         */
+        @Override
+        public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
         }
 
         @Override
@@ -826,7 +906,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
-    public static class PrivateMethodMemberNode extends ObjectLiteralMemberNode {
+    public static class PrivateMethodMemberNode extends ClassElementNode {
         @Child private JavaScriptNode valueNode;
         @Child private JSWriteFrameSlotNode writePrivateNode;
 
@@ -855,13 +935,17 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public Object evaluateValue(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm) {
-            return evaluateWithHomeObject(valueNode, frame, homeObject, realm);
+        public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators) {
+            int slot = getWritePrivateNode().getSlotIndex();
+            int brandSlot = getPrivateBrandSlotIndex();
+            Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
+            int blockSlot = -1; // TODO
+            return ClassElementDefinitionRecord.createPrivateMethod(key, slot, brandSlot, blockSlot, value, isAnonymousFunctionDefinition(), decorators);
         }
 
         @Override
-        public void evaluateWithKeyAndValue(VirtualFrame frame, JSDynamicObject obj, Object key, Object value, JSRealm realm) {
-            writePrivateNode.executeWrite(frame, value);
+        public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
+            writePrivateNode.executeWrite(frame, classElement.getValue());
         }
 
         @Override
@@ -877,7 +961,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
-    public static class PrivateAccessorMemberNode extends ObjectLiteralMemberNode implements AccessorMemberNode {
+    public static class PrivateAccessorMemberNode extends ClassElementNode implements AccessorMemberNode {
         @Child private JavaScriptNode getterNode;
         @Child private JavaScriptNode setterNode;
         @Child private JSWriteFrameSlotNode writePrivateNode;
@@ -906,18 +990,55 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public void evaluateWithKeyAndValue(VirtualFrame frame, JSDynamicObject obj, Object key, Object value, JSRealm realm) {
-            executeVoid(frame, obj, realm);
+        public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators) {
+            Object getter = null;
+            Object setter = null;
+            if (hasGetter()) {
+                getter = evaluateWithHomeObject(getterNode, frame, homeObject, realm);
+            }
+            if (hasSetter()) {
+                setter = evaluateWithHomeObject(setterNode, frame, homeObject, realm);
+            }
+            assert getter != null || setter != null;
+            int slot = getWritePrivateNode().getSlotIndex();
+            int brandSlot = getPrivateBrandSlotIndex();
+            int blockSlot = -1; // TODO
+            if (hasGetter() && hasSetter()) {
+                return ClassElementDefinitionRecord.createPrivateAccessor(key, slot, brandSlot, blockSlot, getter, setter, isAnonymousFunctionDefinition(), decorators);
+            } else if (hasGetter()) {
+                return ClassElementDefinitionRecord.createPrivateGetter(key, slot, brandSlot, blockSlot, getter, isAnonymousFunctionDefinition(), decorators);
+            } else {
+                assert hasSetter();
+                return ClassElementDefinitionRecord.createPrivateSetter(key, slot, brandSlot, blockSlot, setter, isAnonymousFunctionDefinition(), decorators);
+            }
+        }
+
+        @Override
+        public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
+            Object getter = classElement.getGetter();
+            Object setter = classElement.getSetter();
+            assert getter != null || setter != null;
+            Frame privateFrame = writePrivateNode.getLevelFrameNode().executeFrame(frame);
+            int slotIndex = writePrivateNode.getSlotIndex();
+            if (privateFrame.isObject(slotIndex)) {
+                Object previous = privateFrame.getObject(slotIndex);
+                if (previous instanceof Accessor) {
+                    getter = getter == null ? ((Accessor) previous).getGetter() : getter;
+                    setter = setter == null ? ((Accessor) previous).getSetter() : setter;
+                }
+            }
+            Accessor accessor = new Accessor(getter, setter);
+            writePrivateNode.executeWrite(frame, accessor);
         }
 
         @Override
         public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
             Object getter = null;
             Object setter = null;
-            if (getterNode != null) {
+            if (hasGetter()) {
                 getter = evaluateWithHomeObject(getterNode, frame, homeObject, realm);
             }
-            if (setterNode != null) {
+            if (hasSetter()) {
                 setter = evaluateWithHomeObject(setterNode, frame, homeObject, realm);
             }
 
@@ -940,16 +1061,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Override
         public boolean hasSetter() {
             return setterNode != null;
-        }
-
-        @Override
-        public Object evaluateGetter(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm) {
-            return evaluateWithHomeObject(getterNode, frame, homeObject, realm);
-        }
-
-        @Override
-        public Object evaluateSetter(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm) {
-            return evaluateWithHomeObject(setterNode, frame, homeObject, realm);
         }
     }
 

@@ -67,6 +67,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord;
 import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord.PrivateFrameBasedElementDefinitionRecord;
@@ -172,7 +173,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
                     @Cached @Shared("strEq") @SuppressWarnings("unused") TruffleString.EqualNode strEq,
                     @Cached("createMethodGetterFromFrameCached(record)") JSFunctionData valueGetterFunctionData,
                     @Cached("record.isPrivate()") boolean privateName) {
-        JSDynamicObject getter = JSFunction.create(getRealm(), valueGetterFunctionData, getScopeFrame(frame, record));
+        JSDynamicObject getter = JSFunction.create(getRealm(), valueGetterFunctionData, getScopeFrame(frame));
         return createContextObject(frame, cachedName, initializers, state, getter, null, privateName, METHOD_KIND);
     }
 
@@ -298,7 +299,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         JSDynamicObject function;
         if (record.isPrivate()) {
             PrivateFrameBasedElementDefinitionRecord methodRecord = (PrivateFrameBasedElementDefinitionRecord) record;
-            function = JSFunction.create(getRealm(), functionData, getScopeFrame(frame, methodRecord));
+            function = JSFunction.create(getRealm(), functionData, getScopeFrame(frame));
             int[] slots = {methodRecord.getKeySlot(), methodRecord.getBrandSlot()};
             setMagic.setValue(function, slots);
         } else {
@@ -308,12 +309,11 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         return function;
     }
 
-    private MaterializedFrame getScopeFrame(VirtualFrame frame, PrivateFrameBasedElementDefinitionRecord record) {
+    private MaterializedFrame getScopeFrame(VirtualFrame frame) {
         if (this.blockScopeSlot == -1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            blockScopeSlot = record.getBlockScopeSlot();
+            blockScopeSlot = JSFrameUtil.findRequiredFrameSlotIndex(frame.getFrameDescriptor(), ScopeFrameNode.BLOCK_SCOPE_IDENTIFIER);
         }
-        assert blockScopeSlot == record.getBlockScopeSlot() : "slot must not change";
         return JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
     }
 
