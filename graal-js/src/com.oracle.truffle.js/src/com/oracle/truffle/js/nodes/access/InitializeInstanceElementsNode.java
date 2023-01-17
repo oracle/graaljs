@@ -127,7 +127,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     @Specialization
     protected static Object withFields(Object target, Object constructor, ClassElementDefinitionRecord[] fields, JSFunctionObject[] initializers, Object brand,
                     @Cached(value = "createBrandAddNode(brand, context)", neverDefault = false) @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode,
-                    @Cached("createFieldNodes(fields, context)") DefineFieldNode[] fieldNodes,
+                    @Cached("createFieldNodes(fields, context)") InitializeFieldOrAccessorNode[] fieldNodes,
                     @Cached("createCall()") JSFunctionCallNode callInit) {
         privateBrandAdd(target, constructor, fields, initializers, brand, privateBrandAddNode);
 
@@ -137,13 +137,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         assert size == fields.length;
         for (int i = 0; i < size; i++) {
             ClassElementDefinitionRecord record = fields[i];
-            // run default initializer
-            Object initValue = fieldNodes[i].defineField(target, record);
-            // run decorators-defined initializers
-            Object[] fieldInitializers = record.getInitializers();
-            for (Object initializer : fieldInitializers) {
-                initValue = fieldNodes[i].defineFieldWithInitializer(target, record, initializer, initValue);
-            }
+            fieldNodes[i].defineField(target, record);
         }
         return target;
     }
@@ -181,10 +175,10 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     }
 
     @NeverDefault
-    static DefineFieldNode[] createFieldNodes(ClassElementDefinitionRecord[] fields, JSContext context) {
+    static InitializeFieldOrAccessorNode[] createFieldNodes(ClassElementDefinitionRecord[] fields, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         int size = fields.length;
-        DefineFieldNode[] fieldNodes = new DefineFieldNode[size];
+        InitializeFieldOrAccessorNode[] fieldNodes = new InitializeFieldOrAccessorNode[size];
         for (int i = 0; i < size; i++) {
             ClassElementDefinitionRecord field = fields[i];
             Object key = field.getKey();
@@ -202,19 +196,19 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             if (initializer != Undefined.instance) {
                 callNode = JSFunctionCallNode.createCall();
             }
-            fieldNodes[i] = new DefineFieldNode(writeNode, callNode, isAnonymousFunctionDefinition);
+            fieldNodes[i] = new InitializeFieldOrAccessorNode(writeNode, callNode, isAnonymousFunctionDefinition);
         }
         return fieldNodes;
     }
 
-    static final class DefineFieldNode extends JavaScriptBaseNode {
+    static final class InitializeFieldOrAccessorNode extends JavaScriptBaseNode {
         @Child Node writeNode;
         @Child JSFunctionCallNode callNode;
         @Child JSFunctionCallNode callInitializersNode;
 
         private final boolean isAnonymousFunctionDefinition;
 
-        DefineFieldNode(Node writeNode, JSFunctionCallNode callNode, boolean isAnonymousFunctionDefinition) {
+        InitializeFieldOrAccessorNode(Node writeNode, JSFunctionCallNode callNode, boolean isAnonymousFunctionDefinition) {
             this.writeNode = writeNode;
             this.callNode = callNode;
             this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
@@ -222,21 +216,28 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
 
         Object defineField(Object target, ClassElementDefinitionRecord record) {
             assert (callNode != null) == (record.getValue() != Undefined.instance);
-            Object value = Undefined.instance;
+            Object initValue = Undefined.instance;
+            // run default initializer
             if (callNode != null) {
                 Object initializer = record.getValue();
                 Object key = record.getKey();
-                value = callNode.executeCall(
-                                isAnonymousFunctionDefinition ? JSArguments.create(target, initializer, Undefined.instance, key) : JSArguments.createOneArg(target, initializer, Undefined.instance));
+                // In the case of an anonymous function definition, the property key is supplied as
+                // an extra internal, not user-visible, argument that is used for named evaluation.
+                initValue = callNode.executeCall(isAnonymousFunctionDefinition
+                                ? JSArguments.create(target, initializer, Undefined.instance, key)
+                                : JSArguments.createOneArg(target, initializer, Undefined.instance));
             }
-            return writeValue(target, record, value);
+            // run decorators-defined initializers
+            Object[] fieldInitializers = record.getInitializers();
+            for (Object initializer : fieldInitializers) {
+                initValue = callExtraInitializer(target, record, initializer, initValue);
+            }
+            return writeValue(target, record, initValue);
         }
 
-        Object defineFieldWithInitializer(Object target, ClassElementDefinitionRecord record, Object initializer, Object initValue) {
+        private Object callExtraInitializer(Object target, ClassElementDefinitionRecord record, Object initializer, Object initValue) {
             assert record.getInitializers().length > 0;
-            Object value = getInitializersCallNode().executeCall(
-                            isAnonymousFunctionDefinition ? JSArguments.create(target, initializer, initValue, record.getKey()) : JSArguments.createOneArg(target, initializer, initValue));
-            return writeValue(target, record, value);
+            return getInitializersCallNode().executeCall(JSArguments.createOneArg(target, initializer, initValue));
         }
 
         private JSFunctionCallNode getInitializersCallNode() {
