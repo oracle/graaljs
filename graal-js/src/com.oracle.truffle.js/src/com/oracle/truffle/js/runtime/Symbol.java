@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -57,7 +58,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.WeakMap;
-import java.util.Map;
 
 /**
  * @see JSSymbol
@@ -243,11 +243,12 @@ public final class Symbol implements TruffleObject {
 
     private Map<WeakMap, Object> invertedMap;
 
-    public Map<WeakMap, Object> getInvertedMap(){
+    public Map<WeakMap, Object> getInvertedMap() {
         return invertedMap;
     }
 
     public void setInvertedMap(Map<WeakMap, Object> invMap) {
-        invertedMap = invMap;
+        assert this.invertedMap == null;
+        this.invertedMap = invMap;
     }
 }

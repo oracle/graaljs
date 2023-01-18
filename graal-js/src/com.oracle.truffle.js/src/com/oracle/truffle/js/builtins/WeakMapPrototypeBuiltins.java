@@ -128,10 +128,10 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         protected static Object getInvertedMap(Object key, DynamicObjectLibrary library) {
-            if(key instanceof JSObject){
-                return library.getOrDefault((JSObject)key, WeakMap.INVERTED_WEAK_MAP_KEY, null);
-            } else if(key instanceof Symbol){
-                return ((Symbol)key).getInvertedMap();
+            if (key instanceof JSObject) {
+                return library.getOrDefault((JSObject) key, WeakMap.INVERTED_WEAK_MAP_KEY, null);
+            } else if (key instanceof Symbol) {
+                return ((Symbol) key).getInvertedMap();
             } else {
                 return null;
             }
@@ -142,16 +142,17 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             return CompilerDirectives.castExact(map, WeakHashMap.class);
         }
 
-        protected boolean canBeHeldWeakly(Object v){
-            if(v instanceof JSObject){
+        protected boolean canBeHeldWeakly(Object v) {
+            if (v instanceof JSObject) {
                 return true;
-            } else if(v instanceof Symbol && symbolsAllowed()){
+            } else if (v instanceof Symbol && symbolsAllowed()) {
                 Symbol s = (Symbol) v;
                 return !s.isRegistered();
             }
             return false;
         }
-        protected boolean symbolsAllowed(){
+
+        protected boolean symbolsAllowed() {
             return this.getContext().getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion;
         }
 
@@ -258,11 +259,11 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
                 mapPut(invertedMap, map, value);
             } else {
-                inverted = map.newInvertedMapWithEntry(key, value);
-                if(key instanceof JSObject){
-                    invertedSetter.put((JSObject) key, WeakMap.INVERTED_WEAK_MAP_KEY, inverted);
-                } else if(key instanceof Symbol){
-                    ((Symbol)key).setInvertedMap((Map<WeakMap, Object>) inverted);
+                Map<WeakMap, Object> newInvertedMap = map.newInvertedMapWithEntry(key, value);
+                if (key instanceof JSObject) {
+                    invertedSetter.put((JSObject) key, WeakMap.INVERTED_WEAK_MAP_KEY, newInvertedMap);
+                } else if (key instanceof Symbol) {
+                    ((Symbol) key).setInvertedMap(newInvertedMap);
                 }
             }
             return thisObj;

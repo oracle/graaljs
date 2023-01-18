@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,29 +56,28 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
  * JavaScript WeakMap that emulates ephemeron semantics by storing the value in the key itself
  * (i.e., in a hidden property within the key object).
  */
-public final class WeakMap implements Map<Object, Object>{
+public final class WeakMap implements Map<Object, Object> {
     public static final HiddenKey INVERTED_WEAK_MAP_KEY = new HiddenKey("InvertedWeakMap");
 
     public WeakMap() {
     }
 
     private static Object checkKey(Object key) {
-        if (key instanceof JSObject){
-            return (JSObject) key;
+        if (key instanceof JSObject) {
+            return key;
         } else if (key instanceof Symbol) {
-            return (Symbol) key;
+            return key;
         } else {
             throw new IllegalArgumentException("key must be instanceof JSObject or Symbol");
         }
-
     }
 
     @SuppressWarnings("unchecked")
     private static Map<WeakMap, Object> getInvertedMap(Object k) {
-        if(k instanceof JSObject){
+        if (k instanceof JSObject) {
             return (Map<WeakMap, Object>) JSDynamicObject.getOrNull((JSObject) k, INVERTED_WEAK_MAP_KEY);
-        } else if(k instanceof Symbol){
-            return ((Symbol)k).getInvertedMap();
+        } else if (k instanceof Symbol) {
+            return ((Symbol) k).getInvertedMap();
         } else {
             return null;
         }
@@ -86,10 +85,10 @@ public final class WeakMap implements Map<Object, Object>{
 
     private static Map<WeakMap, Object> putInvertedMap(Object k) {
         Map<WeakMap, Object> invertedMap = newInvertedMap();
-        if(k instanceof JSObject){
+        if (k instanceof JSObject) {
             JSObjectUtil.putHiddenProperty((JSObject) k, INVERTED_WEAK_MAP_KEY, invertedMap);
-        } else if(k instanceof Symbol){
-            ((Symbol)k).setInvertedMap(invertedMap);
+        } else if (k instanceof Symbol) {
+            ((Symbol) k).setInvertedMap(invertedMap);
         }
 
         return invertedMap;
