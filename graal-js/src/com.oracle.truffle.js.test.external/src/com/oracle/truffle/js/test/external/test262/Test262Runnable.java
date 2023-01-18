@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,9 +46,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -87,7 +85,7 @@ public class Test262Runnable extends TestRunnable {
     private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
     private static final Pattern SPLIT_PATTERN = Pattern.compile(",\\s*");
 
-    private static final Set<String> SUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+    private static final Set<String> SUPPORTED_FEATURES = featureSet(new String[]{
                     "AggregateError",
                     "Array.prototype.at",
                     "Array.prototype.flat",
@@ -215,9 +213,9 @@ public class Test262Runnable extends TestRunnable {
                     "globalThis",
                     "hashbang",
                     "host-gc-required",
-                    "intl-normative-optional",
                     "import-assertions",
                     "import.meta",
+                    "intl-normative-optional",
                     "json-modules",
                     "json-superset",
                     "legacy-regexp",
@@ -239,11 +237,12 @@ public class Test262Runnable extends TestRunnable {
                     "string-trimming",
                     "super",
                     "template",
+                    "top-level-await",
                     "u180e",
                     "well-formed-json-stringify",
-                    "top-level-await",
-    }));
-    private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+    });
+    private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
+                    "Array.fromAsync",
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
                     "String.prototype.isWellFormed",
@@ -255,18 +254,18 @@ public class Test262Runnable extends TestRunnable {
                     "resizable-arraybuffer",
                     "symbols-as-weakmap-keys",
                     "tail-call-optimization",
-    }));
-    private static final Set<String> ES2023_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+    });
+    private static final Set<String> ES2023_FEATURES = featureSet(new String[]{
                     "Atomics.waitAsync",
                     "Intl-enumeration",
                     "Intl.DateTimeFormat-extend-timezonename",
                     "Intl.Locale-info",
                     "Intl.NumberFormat-v3",
+                    "ShadowRealm",
                     "array-find-from-last",
                     "array-grouping",
                     "decorators",
-                    "ShadowRealm",
-    }));
+    });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);

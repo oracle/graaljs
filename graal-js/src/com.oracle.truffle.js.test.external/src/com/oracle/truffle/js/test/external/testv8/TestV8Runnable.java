@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -86,9 +85,8 @@ public class TestV8Runnable extends TestRunnable {
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
 
-    private static final Set<String> UNSUPPORTED_FLAGS = new HashSet<>(Arrays.asList(new String[]{
+    private static final Set<String> UNSUPPORTED_FLAGS = featureSet(new String[]{
                     "--experimental-d8-web-snapshot-api",
-                    "--experimental-web-snapshots",
                     "--experimental-wasm-bulk-memory",
                     "--experimental-wasm-compilation-hints",
                     "--experimental-wasm-eh",
@@ -98,8 +96,9 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-return-call",
                     "--experimental-wasm-simd",
                     "--experimental-wasm-threads",
-                    "--experimental-wasm-typed-funcref",
                     "--experimental-wasm-type-reflection",
+                    "--experimental-wasm-typed-funcref",
+                    "--experimental-web-snapshots",
                     "--expose-fast-api",
                     "--harmony-change-array-by-copy",
                     "--harmony-json-parse-with-source",
@@ -108,17 +107,17 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-struct",
                     "--harmony-symbol-as-weakmap-key",
                     "--wasm-staging"
-    }));
-    private static final Set<String> ES2023_FLAGS = new HashSet<>(Arrays.asList(new String[]{
+    });
+    private static final Set<String> ES2023_FLAGS = featureSet(new String[]{
                     "--harmony-array-find-last",
                     "--harmony-array-grouping",
                     "--harmony-atomics-waitasync",
-                    "--harmony_intl_enumeration",
-                    "--harmony_intl_locale_info",
-                    "--harmony_intl_more_timezone",
+                    "--harmony-intl-enumeration",
+                    "--harmony-intl-locale_info",
+                    "--harmony-intl-more_timezone",
                     "--harmony-intl-number-format-v3",
                     "--harmony-shadow-realm",
-    }));
+    });
 
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final String FILES_PREFIX = "// Files: ";
@@ -263,7 +262,7 @@ public class TestV8Runnable extends TestRunnable {
 
         TestCallable tc = new TestCallable(suite, sources, toSource(file, module), file, ecmaVersion, extraOptions);
         if (!suite.getConfig().isPrintFullOutput()) {
-            tc.setOutput(DUMMY_OUTPUT_STREAM);
+            tc.setOutput(OutputStream.nullOutputStream());
         }
         try {
             tc.call();
@@ -387,18 +386,11 @@ public class TestV8Runnable extends TestRunnable {
     }
 
     private static Set<String> getFlags(List<String> scriptCode) {
-        return getStrings(scriptCode, FLAGS_PREFIX, FLAGS_FIND_PATTERN, SPLIT_PATTERN).collect(Collectors.toSet());
+        return getStrings(scriptCode, FLAGS_PREFIX, FLAGS_FIND_PATTERN, SPLIT_PATTERN).map(f -> f.replace('_', '-')).collect(Collectors.toSet());
     }
 
     private static List<String> getFiles(List<String> scriptCode, String suiteLocation) {
         return getStrings(scriptCode, FILES_PREFIX, FILES_FIND_PATTERN, SPLIT_PATTERN).map(file -> Paths.get(suiteLocation, file).toString()).collect(Collectors.toList());
     }
-
-    private static final OutputStream DUMMY_OUTPUT_STREAM = new OutputStream() {
-
-        @Override
-        public void write(int b) throws IOException {
-        }
-    };
 
 }
