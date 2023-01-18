@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSWeakRefObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -101,18 +101,18 @@ public final class WeakRefPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSWeakRef(thisObj)")
-        protected JSDynamicObject deref(JSDynamicObject thisObj) {
+        @Specialization
+        protected Object deref(JSWeakRefObject thisObj) {
             Object referent = JSWeakRef.getInternalWeakRef(thisObj).get();
             if (referent != null) {
                 getContext().addWeakRefTargetToSet(referent);
-                return (JSDynamicObject) referent;
+                return referent;
             }
             return Undefined.instance;
         }
 
         @Specialization(guards = "!isJSWeakRef(thisObj)")
-        protected static JSDynamicObject notWeakRef(@SuppressWarnings("unused") Object thisObj) {
+        protected static Object notWeakRef(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeError("WeakRef expected");
         }
     }

@@ -46,6 +46,7 @@ import java.util.WeakHashMap;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -55,6 +56,7 @@ import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltinsFactory.JSWeakMapD
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltinsFactory.JSWeakMapGetNodeGen;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltinsFactory.JSWeakMapHasNodeGen;
 import com.oracle.truffle.js.builtins.WeakMapPrototypeBuiltinsFactory.JSWeakMapSetNodeGen;
+import com.oracle.truffle.js.builtins.helper.CanBeHeldWeaklyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -142,20 +144,6 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             return CompilerDirectives.castExact(map, WeakHashMap.class);
         }
 
-        protected boolean canBeHeldWeakly(Object v) {
-            if (v instanceof JSObject) {
-                return true;
-            } else if (v instanceof Symbol && symbolsAllowed()) {
-                Symbol s = (Symbol) v;
-                return !s.isRegistered();
-            }
-            return false;
-        }
-
-        protected boolean symbolsAllowed() {
-            return this.getContext().getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion;
-        }
-
     }
 
     /**
@@ -168,8 +156,9 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly(key)"})
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
         protected boolean delete(JSWeakMapObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @Cached InlinedConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
@@ -182,8 +171,9 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!canBeHeldWeakly(key)"})
-        protected static boolean deleteInvalidKey(JSWeakMapObject thisObj, Object key) {
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        protected static boolean deleteInvalidKey(JSWeakMapObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             return false;
         }
 
@@ -204,8 +194,9 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly(key)"})
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
         protected Object get(JSWeakMapObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @Cached InlinedConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
@@ -221,8 +212,9 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!canBeHeldWeakly(key)"})
-        protected static Object getInvalidKey(JSWeakMapObject thisObj, Object key) {
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        protected static Object getInvalidKey(JSWeakMapObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             return Undefined.instance;
         }
 
@@ -248,8 +240,9 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly(key)"})
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
         protected Object set(JSWeakMapObject thisObj, Object key, Object value,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedSetter,
                         @Cached InlinedConditionProfile hasInvertedProfile) {
@@ -270,8 +263,9 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!canBeHeldWeakly(key)"})
-        protected static Object setInvalidKey(JSWeakMapObject thisObj, Object key, Object value) {
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        protected static Object setInvalidKey(JSWeakMapObject thisObj, Object key, Object value,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             throw typeErrorKeyIsNotValid();
         }
 
@@ -297,8 +291,9 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly(key)"})
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
         protected boolean has(JSWeakMapObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @Cached InlinedConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
@@ -316,8 +311,9 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!canBeHeldWeakly(key)"})
-        protected static boolean hasInvalidKey(JSWeakMapObject thisObj, Object key) {
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        protected static boolean hasInvalidKey(JSWeakMapObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             return false;
         }
 

@@ -47,7 +47,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryCleanupSomeNodeGen;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryRegisterNodeGen;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryUnregisterNodeGen;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.builtins.helper.CanBeHeldWeaklyNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -119,10 +119,10 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
 
         @Specialization
         protected JSDynamicObject register(JSFinalizationRegistryObject thisObj, Object target, Object holdings, Object unregisterTokenArg,
+                        @Cached CanBeHeldWeaklyNode canBeHeldWeakly,
                         @Cached("createSameValue()") JSIdenticalNode sameValueNode,
-                        @Cached IsObjectNode isObjectNode,
                         @Cached InlinedBranchProfile errorBranch) {
-            if (!isObjectNode.executeBoolean(target)) {
+            if (!canBeHeldWeakly.execute(this, target)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("FinalizationRegistry.prototype.register: invalid target");
             }
@@ -131,7 +131,7 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
                 throw Errors.createTypeError("FinalizationRegistry.prototype.register: target and holdings must not be same");
             }
             Object unregisterToken = unregisterTokenArg;
-            if (!isObjectNode.executeBoolean(unregisterToken)) {
+            if (!canBeHeldWeakly.execute(this, unregisterToken)) {
                 if (unregisterToken != Undefined.instance) {
                     errorBranch.enter(this);
                     throw invalidUnregisterToken(unregisterToken);
@@ -160,9 +160,9 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
 
         @Specialization
         protected boolean unregister(JSFinalizationRegistryObject thisObj, Object unregisterToken,
-                        @Cached IsObjectNode isObjectNode,
+                        @Cached CanBeHeldWeaklyNode canBeHeldWeakly,
                         @Cached InlinedBranchProfile errorBranch) {
-            if (!isObjectNode.executeBoolean(unregisterToken)) {
+            if (!canBeHeldWeakly.execute(this, unregisterToken)) {
                 errorBranch.enter(this);
                 throw invalidUnregisterToken(unregisterToken);
             }
