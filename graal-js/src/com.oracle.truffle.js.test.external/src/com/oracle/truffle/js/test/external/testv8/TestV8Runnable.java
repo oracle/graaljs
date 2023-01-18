@@ -105,7 +105,6 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-rab-gsab",
                     "--harmony-regexp-unicode-sets",
                     "--harmony-struct",
-                    "--harmony-symbol-as-weakmap-key",
                     "--wasm-staging"
     });
     private static final Set<String> ES2023_FLAGS = featureSet(new String[]{
@@ -117,6 +116,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-intl-more_timezone",
                     "--harmony-intl-number-format-v3",
                     "--harmony-shadow-realm",
+                    "--harmony-symbol-as-weakmap-key",
     });
 
     private static final String FLAGS_PREFIX = "// Flags: ";

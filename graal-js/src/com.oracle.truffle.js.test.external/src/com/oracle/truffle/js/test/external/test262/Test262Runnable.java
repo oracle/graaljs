@@ -236,6 +236,7 @@ public class Test262Runnable extends TestRunnable {
                     "rest-parameters",
                     "string-trimming",
                     "super",
+                    "symbols-as-weakmap-keys",
                     "template",
                     "top-level-await",
                     "u180e",
@@ -252,7 +253,6 @@ public class Test262Runnable extends TestRunnable {
                     "regexp-duplicate-named-groups",
                     "regexp-v-flag",
                     "resizable-arraybuffer",
-                    "symbols-as-weakmap-keys",
                     "tail-call-optimization",
     });
     private static final Set<String> ES2023_FEATURES = featureSet(new String[]{
@@ -265,6 +265,7 @@ public class Test262Runnable extends TestRunnable {
                     "array-find-from-last",
                     "array-grouping",
                     "decorators",
+                    "symbols-as-weakmap-keys",
     });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
