@@ -101,7 +101,7 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
     protected static final Object PRESENT = new Object();
 
     protected static RuntimeException typeErrorKeyIsNotObject() {
-        throw Errors.createTypeError("WeakSet key must be an object or a symbol");
+        throw Errors.createTypeError("Invalid value used in weak set");
     }
 
     protected static RuntimeException typeErrorWeakSetExpected() {

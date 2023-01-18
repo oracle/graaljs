@@ -116,7 +116,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
     }
 
     protected static RuntimeException typeErrorKeyIsNotValid() {
-        throw Errors.createTypeError("WeakMap key must be an object or a symbol");
+        throw Errors.createTypeError("Invalid value used as weak map key");
     }
 
     protected static RuntimeException typeErrorWeakMapExpected() {
