@@ -62,16 +62,6 @@ public final class WeakMap implements Map<Object, Object> {
     public WeakMap() {
     }
 
-    private static Object checkKey(Object key) {
-        if (key instanceof JSObject) {
-            return key;
-        } else if (key instanceof Symbol) {
-            return key;
-        } else {
-            throw new IllegalArgumentException("key must be instanceof JSObject or Symbol");
-        }
-    }
-
     @SuppressWarnings("unchecked")
     private static Map<WeakMap, Object> getInvertedMap(Object k) {
         if (k instanceof JSObject) {
@@ -79,7 +69,7 @@ public final class WeakMap implements Map<Object, Object> {
         } else if (k instanceof Symbol) {
             return ((Symbol) k).getInvertedMap();
         } else {
-            return null;
+            throw new IllegalArgumentException("key must be instanceof JSObject or Symbol");
         }
     }
 
@@ -89,8 +79,9 @@ public final class WeakMap implements Map<Object, Object> {
             JSObjectUtil.putHiddenProperty((JSObject) k, INVERTED_WEAK_MAP_KEY, invertedMap);
         } else if (k instanceof Symbol) {
             ((Symbol) k).setInvertedMap(invertedMap);
+        } else {
+            throw new IllegalArgumentException("key must be instanceof JSObject or Symbol");
         }
-
         return invertedMap;
     }
 
@@ -109,32 +100,28 @@ public final class WeakMap implements Map<Object, Object> {
 
     @Override
     public boolean containsKey(Object key) {
-        Object k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         return invertedMap == null ? false : invertedMap.containsKey(this);
     }
 
     @Override
     public Object get(Object key) {
-        Object k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         return invertedMap == null ? null : invertedMap.get(this);
     }
 
     @Override
     public Object put(Object key, Object value) {
-        Object k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         if (invertedMap == null) {
-            invertedMap = putInvertedMap(k);
+            invertedMap = putInvertedMap(key);
         }
         return invertedMap.put(this, value);
     }
 
     @Override
     public Object remove(Object key) {
-        Object k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         return invertedMap == null ? null : invertedMap.remove(this);
     }
 
