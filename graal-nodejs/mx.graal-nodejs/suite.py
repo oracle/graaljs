@@ -1,6 +1,6 @@
 
 suite = {
-  "mxversion" : "5.264.0",
+  "mxversion" : "6.9.4",
   "name" : "graal-nodejs",
   "versionConflictResolution" : "latest",
 
@@ -81,7 +81,7 @@ suite = {
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "checkstyleVersion" : "8.36.1",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
@@ -94,7 +94,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "spotbugs" : "true",
       "checkstyle" : "com.oracle.truffle.trufflenode",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
     "coremodules" : {
