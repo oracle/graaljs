@@ -512,7 +512,10 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                     int startIndex, int instanceElementsIdx, int instanceMethodsIdx, int staticElementIdx, int staticMethodIdx,
                     int stateSlot, JSRealm realm) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
-        ClassElementDefinitionRecordIndexes indexes = new ClassElementDefinitionRecordIndexes(instanceElementsIdx, instanceMethodsIdx, staticElementIdx, staticMethodIdx);
+        int instanceElementIndex = instanceElementsIdx;
+        int instanceMethodIndex = instanceMethodsIdx;
+        int staticElementIndex = staticElementIdx;
+        int staticMethodIndex = staticMethodIdx;
         Object[] decorators = null;
         int i = 0;
         try {
@@ -526,15 +529,15 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                     ClassElementDefinitionRecord classElementDef = memberNode.evaluateClassElementDefinition(frame, homeObject, key, realm, decorators);
                     if (memberNode.isFieldOrStaticBlock() || memberNode.isAutoAccessor()) {
                         if (isStatic) {
-                            staticElements[indexes.staticElementIndex++] = classElementDef;
+                            staticElements[staticElementIndex++] = classElementDef;
                         } else {
-                            instanceElements[indexes.instanceElementIndex++] = classElementDef;
+                            instanceElements[instanceElementIndex++] = classElementDef;
                         }
                     } else {
                         if (isStatic) {
-                            staticMethods[indexes.staticMethodIndex++] = classElementDef;
+                            staticMethods[staticMethodIndex++] = classElementDef;
                         } else {
-                            instanceMethods[indexes.instanceMethodIndex++] = classElementDef;
+                            instanceMethods[instanceMethodIndex++] = classElementDef;
                         }
                     }
                 }
@@ -547,10 +550,10 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                             staticElements,
                             instanceMethods,
                             staticMethods,
-                            indexes.instanceElementIndex,
-                            indexes.staticElementIndex,
-                            indexes.instanceMethodIndex,
-                            indexes.staticMethodIndex,
+                            instanceElementIndex,
+                            staticElementIndex,
+                            instanceMethodIndex,
+                            staticMethodIndex,
                             decorators,
                             i));
             throw e;
@@ -592,20 +595,6 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         staticElementCount,
                         setPrivateBrandNode != null,
                         defineConstructorMethodNode.getBlockScopeSlot());
-    }
-
-    static class ClassElementDefinitionRecordIndexes {
-        int instanceElementIndex;
-        int instanceMethodIndex;
-        int staticElementIndex;
-        int staticMethodIndex;
-
-        ClassElementDefinitionRecordIndexes(int instanceElementsIdx, int instanceMethodsIdx, int staticElementIdx, int staticMethodIdx) {
-            this.instanceElementIndex = instanceElementsIdx;
-            this.instanceMethodIndex = instanceMethodsIdx;
-            this.staticElementIndex = staticElementIdx;
-            this.staticMethodIndex = staticMethodIdx;
-        }
     }
 
     static class ClassDefinitionResumptionRecord {
