@@ -217,18 +217,18 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         Object doCached(JSDynamicObject regExp, TruffleString input, long lastIndex,
                         @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
                         @Bind("this") Node node,
-                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled,
-                        @Cached(inline = true) @Shared("exec") InvokeExecMethodNode invokeExec,
-                        @Cached(inline = true) @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch) {
+                        @Cached @Shared InlinedConditionProfile areLegacyFeaturesEnabled,
+                        @Cached(inline = true) @Shared InvokeExecMethodNode invokeExec,
+                        @Cached(inline = true) @Shared InteropReadBooleanMemberNode readIsMatch) {
             return doExec(regExp, input, lastIndex, cachedCompiledRegex,
                             node, areLegacyFeaturesEnabled, invokeExec, readIsMatch);
         }
 
         @Specialization
         Object doGeneric(JSDynamicObject regExp, TruffleString input, long lastIndex,
-                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled,
-                        @Cached(inline = true) @Shared("exec") InvokeExecMethodNode invokeExec,
-                        @Cached(inline = true) @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch) {
+                        @Cached @Shared InlinedConditionProfile areLegacyFeaturesEnabled,
+                        @Cached(inline = true) @Shared InvokeExecMethodNode invokeExec,
+                        @Cached(inline = true) @Shared InteropReadBooleanMemberNode readIsMatch) {
             Object compiledRegex = JSRegExp.getCompiledRegex(regExp);
             return doExec(regExp, input, lastIndex, compiledRegex,
                             this, areLegacyFeaturesEnabled, invokeExec, readIsMatch);
@@ -342,18 +342,18 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         Object doCached(JSRegExpObject regExp, TruffleString input,
                         @Bind("this") Node node,
                         @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
-                        @Cached @Shared("invalidLastIndex") InlinedConditionProfile invalidLastIndex,
-                        @Cached @Shared("match") InlinedCountingConditionProfile match,
-                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled,
-                        @Cached @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch,
-                        @Cached @Shared("groupStart") InvokeGetGroupBoundariesMethodNode getStart,
-                        @Cached @Shared("groupEnd") InvokeGetGroupBoundariesMethodNode getEnd,
-                        @Cached @Shared("exec") InvokeExecMethodNode invokeExec,
-                        @Cached @Shared("flags") InteropReadMemberNode readFlags,
-                        @Cached @Shared("global") InteropReadBooleanMemberNode readGlobal,
-                        @Cached @Shared("sticky") InteropReadBooleanMemberNode readSticky,
-                        @Cached @Shared("hasIndices") InteropReadBooleanMemberNode readHasIndices,
-                        @Cached @Shared("groupCount") InteropReadIntMemberNode readGroupCount) {
+                        @Cached @Shared InlinedConditionProfile invalidLastIndex,
+                        @Cached @Shared InlinedCountingConditionProfile match,
+                        @Cached @Shared InlinedConditionProfile areLegacyFeaturesEnabled,
+                        @Cached @Shared InteropReadBooleanMemberNode readIsMatch,
+                        @Cached @Shared InvokeGetGroupBoundariesMethodNode getStart,
+                        @Cached @Shared InvokeGetGroupBoundariesMethodNode getEnd,
+                        @Cached @Shared InvokeExecMethodNode invokeExec,
+                        @Cached @Shared InteropReadMemberNode readFlags,
+                        @Cached @Shared InteropReadBooleanMemberNode readGlobal,
+                        @Cached @Shared InteropReadBooleanMemberNode readSticky,
+                        @Cached @Shared InteropReadBooleanMemberNode readHasIndices,
+                        @Cached @Shared InteropReadIntMemberNode readGroupCount) {
             return doExec(regExp, cachedCompiledRegex, input,
                             node, invalidLastIndex, match, areLegacyFeaturesEnabled, readIsMatch, getStart, getEnd, invokeExec, readFlags, readGlobal, readSticky, readHasIndices, readGroupCount);
         }
@@ -362,18 +362,18 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @Specialization(replaces = "doCached")
         Object doDynamic(JSRegExpObject regExp, TruffleString input,
                         @Bind("this") Node node,
-                        @Cached @Shared("invalidLastIndex") InlinedConditionProfile invalidLastIndex,
-                        @Cached @Shared("match") InlinedCountingConditionProfile match,
-                        @Cached @Shared("legacyFeaturesEnabled") InlinedConditionProfile areLegacyFeaturesEnabled,
-                        @Cached @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch,
-                        @Cached @Shared("groupStart") InvokeGetGroupBoundariesMethodNode getStart,
-                        @Cached @Shared("groupEnd") InvokeGetGroupBoundariesMethodNode getEnd,
-                        @Cached @Shared("exec") InvokeExecMethodNode invokeExec,
-                        @Cached @Shared("flags") InteropReadMemberNode readFlags,
-                        @Cached @Shared("global") InteropReadBooleanMemberNode readGlobal,
-                        @Cached @Shared("sticky") InteropReadBooleanMemberNode readSticky,
-                        @Cached @Shared("hasIndices") InteropReadBooleanMemberNode readHasIndices,
-                        @Cached @Shared("groupCount") InteropReadIntMemberNode readGroupCount) {
+                        @Cached @Shared InlinedConditionProfile invalidLastIndex,
+                        @Cached @Shared InlinedCountingConditionProfile match,
+                        @Cached @Shared InlinedConditionProfile areLegacyFeaturesEnabled,
+                        @Cached @Shared InteropReadBooleanMemberNode readIsMatch,
+                        @Cached @Shared InvokeGetGroupBoundariesMethodNode getStart,
+                        @Cached @Shared InvokeGetGroupBoundariesMethodNode getEnd,
+                        @Cached @Shared InvokeExecMethodNode invokeExec,
+                        @Cached @Shared InteropReadMemberNode readFlags,
+                        @Cached @Shared InteropReadBooleanMemberNode readGlobal,
+                        @Cached @Shared InteropReadBooleanMemberNode readSticky,
+                        @Cached @Shared InteropReadBooleanMemberNode readHasIndices,
+                        @Cached @Shared InteropReadIntMemberNode readGroupCount) {
             return doExec(regExp, JSRegExp.getCompiledRegex(regExp), input,
                             node, invalidLastIndex, match, areLegacyFeaturesEnabled, readIsMatch, getStart, getEnd, invokeExec, readFlags, readGlobal, readSticky, readHasIndices, readGroupCount);
         }

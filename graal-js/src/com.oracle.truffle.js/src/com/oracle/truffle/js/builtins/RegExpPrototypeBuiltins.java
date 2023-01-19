@@ -565,36 +565,36 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         JSDynamicObject splitIntLimit(JSDynamicObject rx, Object input, int limit,
-                        @Cached @Shared("toUInt32") JSToUInt32Node toUInt32,
-                        @Cached @Shared("limitZeroBranch") InlinedBranchProfile limitZeroBranch,
-                        @Cached @Shared("splitInternal") SplitInternalNode splitInternal,
-                        @Cached @Shared("splitAccordingToSpec") SplitAccordingToSpecNode splitAccordingToSpec) {
+                        @Cached @Shared JSToUInt32Node toUInt32,
+                        @Cached @Shared InlinedBranchProfile limitZeroBranch,
+                        @Cached @Shared SplitInternalNode splitInternal,
+                        @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
             return doSplit(rx, input, toUInt32.executeLong(limit),
                             this, limitZeroBranch, splitInternal, splitAccordingToSpec);
         }
 
         @Specialization
         JSDynamicObject splitLongLimit(JSDynamicObject rx, Object input, long limit,
-                        @Cached @Shared("toUInt32") JSToUInt32Node toUInt32,
-                        @Cached @Shared("limitZeroBranch") InlinedBranchProfile limitZeroBranch,
-                        @Cached @Shared("splitInternal") SplitInternalNode splitInternal,
-                        @Cached @Shared("splitAccordingToSpec") SplitAccordingToSpecNode splitAccordingToSpec) {
+                        @Cached @Shared JSToUInt32Node toUInt32,
+                        @Cached @Shared InlinedBranchProfile limitZeroBranch,
+                        @Cached @Shared SplitInternalNode splitInternal,
+                        @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
             return doSplit(rx, input, toUInt32.executeLong(limit),
                             this, limitZeroBranch, splitInternal, splitAccordingToSpec);
         }
 
         @Specialization(guards = "isUndefined(limit)")
         JSDynamicObject splitUndefinedLimit(JSDynamicObject rx, Object input, @SuppressWarnings("unused") Object limit,
-                        @Cached @Shared("limitZeroBranch") InlinedBranchProfile limitZeroBranch,
-                        @Cached @Shared("splitInternal") SplitInternalNode splitInternal,
-                        @Cached @Shared("splitAccordingToSpec") SplitAccordingToSpecNode splitAccordingToSpec) {
+                        @Cached @Shared InlinedBranchProfile limitZeroBranch,
+                        @Cached @Shared SplitInternalNode splitInternal,
+                        @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
             return doSplit(rx, input, JSRuntime.MAX_SAFE_INTEGER_LONG,
                             this, limitZeroBranch, splitInternal, splitAccordingToSpec);
         }
 
         @Specialization(guards = "!isUndefined(limit)")
         JSDynamicObject splitObjectLimit(JSDynamicObject rx, Object input, Object limit,
-                        @Cached @Shared("splitAccordingToSpec") SplitAccordingToSpecNode splitAccordingToSpec) {
+                        @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
             checkObject(rx);
             TruffleString str = toString1(input);
             JSDynamicObject constructor = getSpeciesConstructor(rx);
@@ -734,23 +734,23 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected static JSDynamicObject doCached(JSDynamicObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
                             @Bind("this") Node node,
                             @Cached("getCompiledRegex(rx)") Object tRegexCompiledRegex,
-                            @Cached(inline = true) @Shared("flags") InteropReadMemberNode readFlags,
-                            @Cached(inline = true) @Shared("sticky") InteropReadBooleanMemberNode readSticky,
-                            @Cached(inline = true) @Shared("unicode") InteropReadBooleanMemberNode readUnicode,
-                            @Cached @Shared("removeStickyFlag") RemoveStickyFlagNode removeStickyFlag,
-                            @Cached(inline = true) @Shared("isMatch") TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
-                            @Cached(inline = true) @Shared("groupCount") TRegexUtil.InteropReadIntMemberNode readGroupCount,
-                            @Cached(inline = true) @Shared("groupStart") TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
-                            @Cached(inline = true) @Shared("groupEnd") TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
-                            @Cached("createNew()") @Shared("construct") JSFunctionCallNode constructorCall,
-                            @Cached("create(context, false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndex,
-                            @Cached @Shared("substring") TruffleString.SubstringByteIndexNode substringNode,
-                            @Cached @Shared("advanceStringIndex") AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
-                            @Cached @Shared("sizeZero") InlinedConditionProfile sizeIsZero,
-                            @Cached @Shared("resultIsNull") InlinedConditionProfile resultIsNull,
-                            @Cached @Shared("isUnicode") InlinedConditionProfile isUnicode,
-                            @Cached @Shared("stickyFlagSet") InlinedConditionProfile stickyFlagSet,
-                            @Cached @Shared("prematureReturnBranch") InlinedBranchProfile prematureReturnBranch) {
+                            @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicode,
+                            @Cached @Shared RemoveStickyFlagNode removeStickyFlag,
+                            @Cached(inline = true) @Shared TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                            @Cached(inline = true) @Shared TRegexUtil.InteropReadIntMemberNode readGroupCount,
+                            @Cached(inline = true) @Shared TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                            @Cached(inline = true) @Shared TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
+                            @Cached("createNew()") @Shared JSFunctionCallNode constructorCall,
+                            @Cached("create(context, false)") @Shared JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndex,
+                            @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                            @Cached @Shared AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared InlinedConditionProfile sizeIsZero,
+                            @Cached @Shared InlinedConditionProfile resultIsNull,
+                            @Cached @Shared InlinedConditionProfile isUnicode,
+                            @Cached @Shared InlinedConditionProfile stickyFlagSet,
+                            @Cached @Shared InlinedBranchProfile prematureReturnBranch) {
                 Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlags);
                 boolean unicodeMatching = TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode);
                 JSRealm realm = JSRealm.get(node);
@@ -823,23 +823,23 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             @Specialization(replaces = "doCached")
             protected static JSDynamicObject doUncached(JSDynamicObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
                             @Bind("this") Node node,
-                            @Cached(inline = true) @Shared("flags") InteropReadMemberNode readFlags,
-                            @Cached(inline = true) @Shared("sticky") InteropReadBooleanMemberNode readSticky,
-                            @Cached(inline = true) @Shared("unicode") InteropReadBooleanMemberNode readUnicode,
-                            @Cached @Shared("removeStickyFlag") RemoveStickyFlagNode removeStickyFlag,
-                            @Cached(inline = true) @Shared("isMatch") TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
-                            @Cached(inline = true) @Shared("groupCount") TRegexUtil.InteropReadIntMemberNode readGroupCount,
-                            @Cached(inline = true) @Shared("groupStart") TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
-                            @Cached(inline = true) @Shared("groupEnd") TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
-                            @Cached("createNew()") @Shared("construct") JSFunctionCallNode constructorCall,
-                            @Cached("create(context, false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndex,
-                            @Cached @Shared("substring") TruffleString.SubstringByteIndexNode substringNode,
-                            @Cached @Shared("advanceStringIndex") AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
-                            @Cached @Shared("sizeZero") InlinedConditionProfile sizeIsZero,
-                            @Cached @Shared("resultIsNull") InlinedConditionProfile resultIsNull,
-                            @Cached @Shared("isUnicode") InlinedConditionProfile isUnicode,
-                            @Cached @Shared("stickyFlagSet") InlinedConditionProfile stickyFlagSet,
-                            @Cached @Shared("prematureReturnBranch") InlinedBranchProfile prematureReturnBranch) {
+                            @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicode,
+                            @Cached @Shared RemoveStickyFlagNode removeStickyFlag,
+                            @Cached(inline = true) @Shared TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                            @Cached(inline = true) @Shared TRegexUtil.InteropReadIntMemberNode readGroupCount,
+                            @Cached(inline = true) @Shared TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                            @Cached(inline = true) @Shared TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd,
+                            @Cached("createNew()") @Shared JSFunctionCallNode constructorCall,
+                            @Cached("create(context, false)") @Shared JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndex,
+                            @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                            @Cached @Shared AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared InlinedConditionProfile sizeIsZero,
+                            @Cached @Shared InlinedConditionProfile resultIsNull,
+                            @Cached @Shared InlinedConditionProfile isUnicode,
+                            @Cached @Shared InlinedConditionProfile stickyFlagSet,
+                            @Cached @Shared InlinedBranchProfile prematureReturnBranch) {
                 return doCached(rx, str, lim, context, parent, node, JSRegExp.getCompiledRegex(rx),
                                 readFlags, readSticky, readUnicode, removeStickyFlag, readIsMatch, readGroupCount, getStart, getEnd, constructorCall, execIgnoreLastIndex,
                                 substringNode, advanceStringIndexUnicode, sizeIsZero, resultIsNull, isUnicode, stickyFlagSet, prematureReturnBranch);
@@ -982,10 +982,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("replaceValue") TruffleString cachedReplaceValue,
                         @Cached(value = "parseReplaceValueWithNCG(replaceValue)", dimensions = 1, neverDefault = true) ReplaceStringParser.Token[] cachedParsedReplaceValueWithNamedCG,
                         @Cached(value = "parseReplaceValueWithoutNCG(replaceValue)", dimensions = 1, neverDefault = true) ReplaceStringParser.Token[] cachedParsedReplaceValueWithoutNamedCG,
-                        @Shared("toString1") @Cached JSToStringNode toString1Node,
+                        @Shared @Cached JSToStringNode toString1Node,
                         @SuppressWarnings("unused") @Cached TruffleString.EqualNode equalsNode,
-                        @Cached @Shared("replaceInternal") ReplaceInternalNode replaceInternal,
-                        @Cached @Shared("replaceAccordingToSpec") ReplaceAccordingToSpecNode replaceAccordingToSpec) {
+                        @Cached @Shared ReplaceInternalNode replaceInternal,
+                        @Cached @Shared ReplaceAccordingToSpecNode replaceAccordingToSpec) {
             checkObject(rx);
             TruffleString searchString = toString1Node.executeString(searchValue);
             if (isPristine(rx)) {
@@ -996,9 +996,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(replaces = "replaceStringCached")
         protected Object replaceString(JSDynamicObject rx, Object searchValue, TruffleString replaceValue,
-                        @Shared("toString1") @Cached JSToStringNode toString1Node,
-                        @Cached @Shared("replaceInternal") ReplaceInternalNode replaceInternal,
-                        @Cached @Shared("replaceAccordingToSpec") ReplaceAccordingToSpecNode replaceAccordingToSpec) {
+                        @Shared @Cached JSToStringNode toString1Node,
+                        @Cached @Shared ReplaceInternalNode replaceInternal,
+                        @Cached @Shared ReplaceAccordingToSpecNode replaceAccordingToSpec) {
             checkObject(rx);
             TruffleString searchString = toString1Node.executeString(searchValue);
             if (isPristine(rx)) {
@@ -1009,9 +1009,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(replaces = "replaceString")
         protected Object replaceDynamic(JSDynamicObject rx, Object searchValue, Object replaceValue,
-                        @Shared("toString1") @Cached JSToStringNode toString1Node,
-                        @Cached @Shared("replaceInternal") ReplaceInternalNode replaceInternal,
-                        @Cached @Shared("replaceAccordingToSpec") ReplaceAccordingToSpecNode replaceAccordingToSpec,
+                        @Shared @Cached JSToStringNode toString1Node,
+                        @Cached @Shared ReplaceInternalNode replaceInternal,
+                        @Cached @Shared ReplaceAccordingToSpecNode replaceAccordingToSpec,
                         @Cached InlinedConditionProfile functionalReplaceProfile) {
             checkObject(rx);
             TruffleString searchString = toString1Node.executeString(searchValue);
@@ -1065,24 +1065,24 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             JSContext context, JSRegExpReplaceNode parent,
                             @Bind("this") Node node,
                             @Cached("getCompiledRegex(rx)") Object tRegexCompiledRegex,
-                            @Cached("create(context, false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
-                            @Cached @Shared("advanceStringIndex") AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
-                            @Cached @Shared("toLength") JSToLengthNode toLength,
-                            @Cached @Shared("isUnicode") InlinedConditionProfile unicodeProfile,
-                            @Cached @Shared("isGlobal") InlinedConditionProfile globalProfile,
-                            @Cached @Shared("isSticky") InlinedConditionProfile stickyProfile,
-                            @Cached @Shared("noMatch") InlinedConditionProfile noMatchProfile,
-                            @Cached @Shared("hasNamedCG") InlinedConditionProfile hasNamedCaptureGroupsProfile,
-                            @Cached @Shared("dollar") InlinedBranchProfile dollarProfile,
-                            @Cached(inline = true) @Shared("global") InteropReadBooleanMemberNode readGlobal,
-                            @Cached(inline = true) @Shared("sticky") InteropReadBooleanMemberNode readSticky,
-                            @Cached(inline = true) @Shared("unicode") InteropReadBooleanMemberNode readUnicode,
-                            @Cached(inline = true) @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch,
-                            @Cached(inline = true) @Shared("groupStart") InvokeGetGroupBoundariesMethodNode getStart,
-                            @Cached(inline = true) @Shared("groupEnd") InvokeGetGroupBoundariesMethodNode getEnd,
-                            @Cached(inline = true) @Shared("flags") InteropReadMemberNode readFlags,
-                            @Cached(inline = true) @Shared("groups") InteropReadMemberNode readGroups,
-                            @Cached(inline = true) @Shared("groupCount") InteropReadIntMemberNode readGroupCount) {
+                            @Cached("create(context, false)") @Shared JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
+                            @Cached @Shared AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared JSToLengthNode toLength,
+                            @Cached @Shared InlinedConditionProfile unicodeProfile,
+                            @Cached @Shared InlinedConditionProfile globalProfile,
+                            @Cached @Shared InlinedConditionProfile stickyProfile,
+                            @Cached @Shared InlinedConditionProfile noMatchProfile,
+                            @Cached @Shared InlinedConditionProfile hasNamedCaptureGroupsProfile,
+                            @Cached @Shared InlinedBranchProfile dollarProfile,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readGlobal,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicode,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readIsMatch,
+                            @Cached(inline = true) @Shared InvokeGetGroupBoundariesMethodNode getStart,
+                            @Cached(inline = true) @Shared InvokeGetGroupBoundariesMethodNode getEnd,
+                            @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
+                            @Cached(inline = true) @Shared InteropReadMemberNode readGroups,
+                            @Cached(inline = true) @Shared InteropReadIntMemberNode readGroupCount) {
                 Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlags);
                 boolean global = globalProfile.profile(node, TRegexFlagsAccessor.global(tRegexFlags, node, readGlobal));
                 boolean unicode = unicodeProfile.profile(node, TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode));
@@ -1150,24 +1150,24 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG,
                             JSContext context, JSRegExpReplaceNode parent,
                             @Bind("this") Node node,
-                            @Cached("create(context, false)") @Shared("exec") JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
-                            @Cached @Shared("advanceStringIndex") AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
-                            @Cached @Shared("toLength") JSToLengthNode toLength,
-                            @Cached @Shared("isUnicode") InlinedConditionProfile unicodeProfile,
-                            @Cached @Shared("isGlobal") InlinedConditionProfile globalProfile,
-                            @Cached @Shared("isSticky") InlinedConditionProfile stickyProfile,
-                            @Cached @Shared("noMatch") InlinedConditionProfile noMatchProfile,
-                            @Cached @Shared("hasNamedCG") InlinedConditionProfile hasNamedCaptureGroupsProfile,
-                            @Cached @Shared("dollar") InlinedBranchProfile dollarProfile,
-                            @Cached(inline = true) @Shared("global") InteropReadBooleanMemberNode readGlobal,
-                            @Cached(inline = true) @Shared("sticky") InteropReadBooleanMemberNode readSticky,
-                            @Cached(inline = true) @Shared("unicode") InteropReadBooleanMemberNode readUnicode,
-                            @Cached(inline = true) @Shared("isMatch") InteropReadBooleanMemberNode readIsMatch,
-                            @Cached(inline = true) @Shared("groupStart") InvokeGetGroupBoundariesMethodNode getStart,
-                            @Cached(inline = true) @Shared("groupEnd") InvokeGetGroupBoundariesMethodNode getEnd,
-                            @Cached(inline = true) @Shared("flags") InteropReadMemberNode readFlags,
-                            @Cached(inline = true) @Shared("groups") InteropReadMemberNode readGroups,
-                            @Cached(inline = true) @Shared("groupCount") InteropReadIntMemberNode readGroupCount) {
+                            @Cached("create(context, false)") @Shared JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
+                            @Cached @Shared AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared JSToLengthNode toLength,
+                            @Cached @Shared InlinedConditionProfile unicodeProfile,
+                            @Cached @Shared InlinedConditionProfile globalProfile,
+                            @Cached @Shared InlinedConditionProfile stickyProfile,
+                            @Cached @Shared InlinedConditionProfile noMatchProfile,
+                            @Cached @Shared InlinedConditionProfile hasNamedCaptureGroupsProfile,
+                            @Cached @Shared InlinedBranchProfile dollarProfile,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readGlobal,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicode,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readIsMatch,
+                            @Cached(inline = true) @Shared InvokeGetGroupBoundariesMethodNode getStart,
+                            @Cached(inline = true) @Shared InvokeGetGroupBoundariesMethodNode getEnd,
+                            @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
+                            @Cached(inline = true) @Shared InteropReadMemberNode readGroups,
+                            @Cached(inline = true) @Shared InteropReadIntMemberNode readGroupCount) {
                 return doCached(rx, s, replaceString, parsedWithNamedCG, parsedWithoutNamedCG, context, parent, node, JSRegExp.getCompiledRegex(rx),
                                 execIgnoreLastIndexNode, advanceStringIndexUnicode, toLength, unicodeProfile, globalProfile, stickyProfile, noMatchProfile, hasNamedCaptureGroupsProfile, dollarProfile,
                                 readGlobal, readSticky, readUnicode, readIsMatch, getStart, getEnd, readFlags, readGroups, readGroupCount);
