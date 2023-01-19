@@ -105,7 +105,7 @@ local common_json = (import "common.json");
     ],
   },
 
-  local gateCmd = ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.SuppressAllWarnings=true', '--strict-mode', '--tags', '${TAGS}'],
+  local gateCmd = ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.ignoreCompilerWarnings=true', '--strict-mode', '--tags', '${TAGS}'],
 
   eclipse : {
     downloads+: {
