@@ -165,19 +165,17 @@ public class ObjectLiteralNode extends JavaScriptNode {
         public static final ObjectLiteralMemberNode[] EMPTY = {};
 
         protected final boolean isStatic;
-        protected final boolean isPrivate;
         protected final byte attributes;
         protected final boolean isFieldOrStaticBlock;
         protected final boolean isAnonymousFunctionDefinition;
 
         protected ObjectLiteralMemberNode(boolean isStatic, int attributes) {
-            this(isStatic, false, attributes, false, false);
+            this(isStatic, attributes, false, false);
         }
 
-        protected ObjectLiteralMemberNode(boolean isStatic, boolean isPrivate, int attributes, boolean isFieldOrStaticBlock, boolean isAnonymousFunctionDefinition) {
+        protected ObjectLiteralMemberNode(boolean isStatic, int attributes, boolean isFieldOrStaticBlock, boolean isAnonymousFunctionDefinition) {
             assert attributes == (attributes & JSAttributes.ATTRIBUTES_MASK);
             this.isStatic = isStatic;
-            this.isPrivate = isPrivate;
             this.attributes = (byte) attributes;
             this.isFieldOrStaticBlock = isFieldOrStaticBlock;
             this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
@@ -207,8 +205,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return isStatic;
         }
 
-        public final boolean isPrivate() {
-            return isPrivate;
+        public boolean isPrivate() {
+            return false;
         }
 
         public final boolean isFieldOrStaticBlock() {
@@ -276,8 +274,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
      */
     public abstract static class ClassElementNode extends ObjectLiteralMemberNode {
 
-        protected ClassElementNode(boolean isStatic, boolean isPrivate, int attributes, boolean isFieldOrStaticBlock, boolean isAnonymousFunctionDefinition) {
-            super(isStatic, isPrivate, attributes, isFieldOrStaticBlock, isAnonymousFunctionDefinition);
+        protected ClassElementNode(boolean isStatic, int attributes, boolean isFieldOrStaticBlock, boolean isAnonymousFunctionDefinition) {
+            super(isStatic, attributes, isFieldOrStaticBlock, isAnonymousFunctionDefinition);
         }
 
         protected ClassElementNode(boolean isStatic, int attributes) {
@@ -297,7 +295,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Child private DynamicObjectLibrary dynamicObjectLibrary;
 
         CachingObjectLiteralMemberNode(Object name, boolean isStatic, int attributes, boolean isFieldOrStaticBlock) {
-            super(isStatic, false, attributes, isFieldOrStaticBlock, false);
+            super(isStatic, attributes, isFieldOrStaticBlock, false);
             assert this instanceof AutoAccessorDataMemberNode || JSRuntime.isPropertyKey(name) || (name == null && isStatic && isFieldOrStaticBlock) : name;
             this.name = name;
         }
@@ -365,7 +363,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             JSFunctionObject getter = createAutoAccessorGetter(backingStorageKey);
             executeWithGetterSetter(homeObject, key, getter, setter);
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
-            return ClassElementDefinitionRecord.createAutoAccessor(key, backingStorageKey, value, getter, setter, isPrivate(), isAnonymousFunctionDefinition(), decorators);
+            return ClassElementDefinitionRecord.createAutoAccessor(key, backingStorageKey, value, getter, setter, false, isAnonymousFunctionDefinition(), decorators);
         }
 
         @Override
@@ -471,7 +469,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators) {
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
             if (isFieldOrStaticBlock) {
-                return ClassElementDefinitionRecord.createField(key, value, isPrivate(), isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createField(key, value, false, isAnonymousFunctionDefinition(), decorators);
             } else {
                 return ClassElementDefinitionRecord.createPublicMethod(key, value, isAnonymousFunctionDefinition(), decorators);
             }
@@ -591,7 +589,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Child protected SetFunctionNameNode setFunctionName;
 
         ComputedObjectLiteralDataMemberNode(JavaScriptNode key, boolean isStatic, int attributes, JavaScriptNode valueNode, boolean isField, boolean isAnonymousFunctionDefinition) {
-            super(isStatic, false, attributes, isField, isAnonymousFunctionDefinition);
+            super(isStatic, attributes, isField, isAnonymousFunctionDefinition);
             this.propertyKey = key;
             this.valueNode = valueNode;
             this.toPropertyKey = JSToPropertyKeyNode.create();
@@ -656,7 +654,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, Object key, JSRealm realm, Object[] decorators) {
             Object value = evaluateValue(frame, homeObject, key, realm);
             if (isFieldOrStaticBlock) {
-                return ClassElementDefinitionRecord.createField(key, value, isPrivate(), isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createField(key, value, false, isAnonymousFunctionDefinition(), decorators);
             } else {
                 return ClassElementDefinitionRecord.createPublicMethod(key, value, isAnonymousFunctionDefinition(), decorators);
             }
@@ -861,7 +859,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Child private JSWriteFrameSlotNode writePrivateNode;
 
         PrivateFieldMemberNode(JavaScriptNode key, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
-            super(isStatic, true, JSAttributes.getDefaultNotEnumerable(), true, false);
+            super(isStatic, JSAttributes.getDefaultNotEnumerable(), true, false);
             this.keyNode = key;
             this.valueNode = valueNode;
             this.writePrivateNode = writePrivateNode;
@@ -893,6 +891,11 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
+        public boolean isPrivate() {
+            return true;
+        }
+
+        @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new PrivateFieldMemberNode(JavaScriptNode.cloneUninitialized(keyNode, materializedTags), isStatic, JavaScriptNode.cloneUninitialized(valueNode, materializedTags),
                             JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags));
@@ -907,7 +910,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         private final int privateBrandSlotIndex;
 
         PrivateMethodMemberNode(TruffleString privateName, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode, int privateBrandSlotIndex) {
-            super(isStatic, true, JSAttributes.getDefaultNotEnumerable(), false, false);
+            super(isStatic, JSAttributes.getDefaultNotEnumerable(), false, false);
             this.privateName = privateName;
             this.valueNode = valueNode;
             this.writePrivateNode = writePrivateNode;
@@ -948,6 +951,11 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
+        public boolean isPrivate() {
+            return true;
+        }
+
+        @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new PrivateMethodMemberNode(privateName, isStatic, JavaScriptNode.cloneUninitialized(valueNode, materializedTags),
                             JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags), privateBrandSlotIndex);
@@ -962,7 +970,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         private final int privateBrandSlotIndex;
 
         PrivateAccessorMemberNode(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode, int privateBrandSlotIndex) {
-            super(isStatic, true, JSAttributes.getDefaultNotEnumerable(), false, false);
+            super(isStatic, JSAttributes.getDefaultNotEnumerable(), false, false);
             this.getterNode = getterNode;
             this.setterNode = setterNode;
             this.writePrivateNode = writePrivateNode;
@@ -1038,6 +1046,11 @@ public class ObjectLiteralNode extends JavaScriptNode {
             assert getter != null || setter != null;
             Accessor accessor = new Accessor(getter, setter);
             writePrivateNode.executeWrite(frame, accessor);
+        }
+
+        @Override
+        public boolean isPrivate() {
+            return true;
         }
 
         @Override
