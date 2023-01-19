@@ -497,9 +497,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
     }
 
     public interface AccessorMemberNode {
-        boolean hasGetter();
-
-        boolean hasSetter();
     }
 
     public static class ObjectLiteralAccessorMemberNode extends CachingObjectLiteralMemberNode implements AccessorMemberNode {
@@ -512,12 +509,10 @@ public class ObjectLiteralNode extends JavaScriptNode {
             this.setterNode = setter;
         }
 
-        @Override
         public boolean hasGetter() {
             return getterNode != null;
         }
 
-        @Override
         public boolean hasSetter() {
             return setterNode != null;
         }
@@ -770,12 +765,10 @@ public class ObjectLiteralNode extends JavaScriptNode {
                             JavaScriptNode.cloneUninitialized(getterNode, materializedTags), JavaScriptNode.cloneUninitialized(setterNode, materializedTags));
         }
 
-        @Override
         public boolean hasGetter() {
             return getterNode != null;
         }
 
-        @Override
         public boolean hasSetter() {
             return setterNode != null;
         }
@@ -1053,12 +1046,10 @@ public class ObjectLiteralNode extends JavaScriptNode {
                             JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags), privateBrandSlotIndex);
         }
 
-        @Override
         public boolean hasGetter() {
             return getterNode != null;
         }
 
-        @Override
         public boolean hasSetter() {
             return setterNode != null;
         }

@@ -60,7 +60,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.AccessorMemberNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -166,14 +165,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                 if (member.isMethod()) {
                     total++;
                 } else if (member.isAccessor()) {
-                    AccessorMemberNode accessor = (AccessorMemberNode) member;
-                    assert accessor.hasGetter() || accessor.hasSetter();
-                    if (accessor.hasGetter()) {
-                        total++;
-                    }
-                    if (accessor.hasSetter()) {
-                        total++;
-                    }
+                    total++;
                 }
             }
         }
@@ -558,7 +550,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                             i));
             throw e;
         }
-        assert indexes.instanceElementIndex == instanceElementCount && indexes.staticElementIndex == staticElementCount;
+        assert instanceElementIndex == instanceElementCount && instanceMethodIndex == instanceMethodsCount &&
+                        staticElementIndex == staticElementCount && staticMethodIndex == staticMethodsCount;
     }
 
     @Override
