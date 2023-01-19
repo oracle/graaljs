@@ -1563,14 +1563,14 @@ public final class TemporalUtil {
     public static JSTemporalPlainDateObject requireTemporalDate(Object obj, Node node, InlinedBranchProfile errorBranch) {
         if (!(obj instanceof JSTemporalPlainDateObject)) {
             errorBranch.enter(node);
-            throw TemporalErrors.createTypeErrorTemporalDateExpected();
+            throw TemporalErrors.createTypeErrorTemporalPlainDateExpected();
         }
         return (JSTemporalPlainDateObject) obj;
     }
 
     public static JSTemporalPlainDateObject requireTemporalDate(Object obj) {
         if (!(obj instanceof JSTemporalPlainDateObject)) {
-            throw TemporalErrors.createTypeErrorTemporalDateExpected();
+            throw TemporalErrors.createTypeErrorTemporalPlainDateExpected();
         }
         return (JSTemporalPlainDateObject) obj;
     }

@@ -134,7 +134,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     // 4.5.3
     public static JSDynamicObject toPartialTime(JSDynamicObject temporalTimeLike, IsObjectNode isObject, JSToIntegerThrowOnInfinityNode toInt, JSContext ctx) {
         if (!isObject.executeBoolean(temporalTimeLike)) {
-            throw TemporalErrors.createTypeErrorTemporalTimeExpected();
+            throw TemporalErrors.createTypeErrorTemporalPlainTimeExpected();
         }
         JSRealm realm = JSRealm.get(null);
         JSDynamicObject result = JSOrdinary.create(ctx, realm);

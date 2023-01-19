@@ -42,6 +42,8 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltinsFactory.JSTemporalPlainYearMonthCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltinsFactory.JSTemporalPlainYearMonthFromNodeGen;
@@ -101,8 +103,10 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected JSTemporalPlainYearMonthObject from(Object item, Object optParam,
                         @Cached("create(getContext())") ToTemporalYearMonthNode toTemporalYearMonthNode,
-                        @Cached TemporalGetOptionNode getOptionNode) {
-            JSDynamicObject options = getOptionsObject(optParam);
+                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedConditionProfile optionUndefined) {
+            JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
             if (isObject(item) && JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(item)) {
                 JSTemporalPlainYearMonthObject pmd = (JSTemporalPlainYearMonthObject) item;
                 TemporalUtil.toTemporalOverflow(options, getOptionNode);

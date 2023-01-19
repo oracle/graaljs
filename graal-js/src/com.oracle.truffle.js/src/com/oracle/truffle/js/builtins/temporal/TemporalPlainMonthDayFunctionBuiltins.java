@@ -42,6 +42,8 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayFunctionBuiltinsFactory.JSTemporalPlainMonthDayFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -89,15 +91,17 @@ public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.S
 
     public abstract static class JSTemporalPlainMonthDayFromNode extends JSTemporalBuiltinOperation {
 
-        public JSTemporalPlainMonthDayFromNode(JSContext context, JSBuiltin builtin) {
+        protected JSTemporalPlainMonthDayFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
         protected JSTemporalPlainMonthDayObject from(Object item, Object optParam,
                         @Cached("create(getContext())") ToTemporalMonthDayNode toTemporalMonthDayNode,
-                        @Cached TemporalGetOptionNode getOptionNode) {
-            JSDynamicObject options = getOptionsObject(optParam);
+                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedConditionProfile optionUndefined) {
+            JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
             if (isObject(item) && JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(item)) {
                 JSTemporalPlainMonthDayObject pmd = (JSTemporalPlainMonthDayObject) item;
                 TemporalUtil.toTemporalOverflow(options, getOptionNode);
