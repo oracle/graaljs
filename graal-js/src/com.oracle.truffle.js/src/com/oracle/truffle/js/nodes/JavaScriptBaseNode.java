@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -51,6 +52,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 
 @TypeSystemReference(JSTypes.class)
 @NodeInfo(language = "JavaScript", description = "The abstract base node for all JavaScript nodes")
+@GenerateInline(value = false, inherit = true)
 @ImportStatic(JSGuards.class)
 @Introspectable
 public abstract class JavaScriptBaseNode extends Node {
