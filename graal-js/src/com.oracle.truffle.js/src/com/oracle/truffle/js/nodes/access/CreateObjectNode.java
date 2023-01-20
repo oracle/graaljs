@@ -97,11 +97,11 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         return new CreateDictionaryObjectNode(context);
     }
 
-    public JSDynamicObject execute(VirtualFrame frame) {
+    public JSObject execute(VirtualFrame frame) {
         return executeWithRealm(frame, getRealm());
     }
 
-    public abstract JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm);
+    public abstract JSObject executeWithRealm(VirtualFrame frame, JSRealm realm);
 
     protected abstract CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
 
@@ -115,7 +115,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
+        public JSObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
             return JSOrdinary.create(context, realm);
         }
 
@@ -133,10 +133,10 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
             this.prototypeExpression = prototypeExpression;
         }
 
-        public abstract JSDynamicObject execute(JSDynamicObject prototype);
+        public abstract JSObject execute(JSDynamicObject prototype);
 
         @Override
-        public final JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
+        public final JSObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
             return execute(frame);
         }
 
@@ -158,7 +158,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"!context.isMultiContext()", "isValidPrototype(cachedPrototype)", "prototype == cachedPrototype"}, limit = "1")
-        final JSDynamicObject doCachedPrototype(@SuppressWarnings("unused") JSDynamicObject prototype,
+        final JSObject doCachedPrototype(@SuppressWarnings("unused") JSDynamicObject prototype,
                         @Cached("prototype") @SuppressWarnings("unused") JSDynamicObject cachedPrototype,
                         @Cached("getProtoChildShape(cachedPrototype)") Shape protoChildShape) {
             if (isPromiseObject()) {
@@ -171,23 +171,23 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"isOrdinaryObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
-        final JSDynamicObject doOrdinaryInstancePrototype(JSDynamicObject prototype,
+        final JSObject doOrdinaryInstancePrototype(JSDynamicObject prototype,
                         @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
-            JSDynamicObject object = JSOrdinary.createWithoutPrototype(context);
+            JSObject object = JSOrdinary.createWithoutPrototype(context);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
 
         @Specialization(guards = {"isPromiseObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
-        final JSDynamicObject doPromiseInstancePrototype(JSDynamicObject prototype,
+        final JSObject doPromiseInstancePrototype(JSDynamicObject prototype,
                         @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
-            JSDynamicObject object = JSPromise.createWithoutPrototype(context);
+            JSObject object = JSPromise.createWithoutPrototype(context);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
 
         @Specialization(guards = {"isOrdinaryObject() || isPromiseObject()", "!isValidPrototype(prototype)"})
-        final JSDynamicObject doNotJSObjectOrNull(@SuppressWarnings("unused") Object prototype) {
+        final JSObject doNotJSObjectOrNull(@SuppressWarnings("unused") Object prototype) {
             return JSOrdinary.create(context, getRealm());
         }
 
@@ -216,7 +216,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public JSDynamicObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
+        public JSObject executeWithRealm(VirtualFrame frame, JSRealm realm) {
             return JSDictionary.create(context, realm);
         }
 
