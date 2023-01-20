@@ -433,7 +433,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         ApplyDecoratorsToElementDefinition[] nodes = new ApplyDecoratorsToElementDefinition[size];
         for (int i = 0; i < size; i++) {
             if (memberDecorators[i] != null) {
-                nodes[i] = ApplyDecoratorsToElementDefinition.create(context, memberNodes[i].isStatic());
+                ObjectLiteralMemberNode memberNode = memberNodes[i];
+                nodes[i] = ApplyDecoratorsToElementDefinition.create(context, memberNode);
             }
         }
         return nodes;

@@ -57,6 +57,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.Record;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord;
@@ -81,11 +82,11 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 public abstract class ApplyDecoratorsToElementDefinition extends Node {
 
     protected final JSContext context;
-    private final boolean isStatic;
+    @Child CreateDecoratorContextObjectNode createDecoratorContextNode;
 
-    public ApplyDecoratorsToElementDefinition(JSContext context, boolean isStatic) {
-        this.isStatic = isStatic;
+    public ApplyDecoratorsToElementDefinition(JSContext context, CreateDecoratorContextObjectNode createDecoratorContextObjectNode) {
         this.context = context;
+        this.createDecoratorContextNode = createDecoratorContextObjectNode;
     }
 
     public abstract void executeDecorator(VirtualFrame frame,
@@ -93,8 +94,8 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     ClassElementDefinitionRecord record,
                     List<Object> extraInitializers);
 
-    public static ApplyDecoratorsToElementDefinition create(JSContext context, boolean isStatic) {
-        return ApplyDecoratorsToElementDefinitionNodeGen.create(context, isStatic);
+    public static ApplyDecoratorsToElementDefinition create(JSContext context, ObjectLiteralMemberNode member) {
+        return ApplyDecoratorsToElementDefinitionNodeGen.create(context, CreateDecoratorContextObjectNode.create(context, member));
     }
 
     @SuppressWarnings("unused")
@@ -105,7 +106,6 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
 
     @Specialization(guards = {"record.isField()", "record.hasDecorators()"})
     protected void decorateField(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
-                    @Shared("createDecoratorContext") @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
                     @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) {
@@ -137,7 +137,6 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
 
     @Specialization(guards = {"record.isMethod()", "record.hasDecorators()"})
     protected void decorateMethod(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
-                    @Shared("createDecoratorContext") @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
                     @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Cached InlinedConditionProfile isSymbolProfile,
@@ -158,10 +157,10 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
         record.cleanDecorator();
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"record.isGetter() || record.isSetter()", "record.hasDecorators()"})
-    protected static void decorateGetterSetter(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
+    protected void decorateGetterSetter(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
                     @Bind("this") Node node,
-                    @Shared("createDecoratorContext") @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
                     @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Cached("createSymbolToString()") JSToStringNode toStringNode,
@@ -191,10 +190,10 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
         record.cleanDecorator();
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"record.isAutoAccessor()", "record.hasDecorators()"})
-    protected static void decorateAuto(VirtualFrame frame, JSDynamicObject proto, ClassElementDefinitionRecord.AutoAccessor record, List<Object> extraInitializers,
+    protected void decorateAuto(VirtualFrame frame, JSDynamicObject proto, ClassElementDefinitionRecord.AutoAccessor record, List<Object> extraInitializers,
                     @Bind("this") Node node,
-                    @Shared("createDecoratorContext") @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
                     @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Cached("createGetterNode()") PropertyGetNode getGetterNode,
@@ -261,18 +260,16 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
     }
 
     @NeverDefault
-    protected CreateDecoratorContextObjectNode createDecoratorContextObjectNode() {
-        return CreateDecoratorContextObjectNode.create(context, isStatic);
-    }
-
     protected PropertyGetNode createGetterNode() {
         return PropertyGetNode.create(Strings.GET, context);
     }
 
+    @NeverDefault
     protected PropertyGetNode createSetterNode() {
         return PropertyGetNode.create(Strings.SET, context);
     }
 
+    @NeverDefault
     protected PropertyGetNode createInitNode() {
         return PropertyGetNode.create(Strings.INIT, context);
     }

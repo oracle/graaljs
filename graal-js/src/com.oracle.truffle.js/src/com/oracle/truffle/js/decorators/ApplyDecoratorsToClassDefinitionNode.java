@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,7 +69,7 @@ public class ApplyDecoratorsToClassDefinitionNode extends Node {
     }
 
     ApplyDecoratorsToClassDefinitionNode(JSContext context) {
-        this.createDecoratorContextObject = CreateDecoratorContextObjectNode.create(context, false);
+        this.createDecoratorContextObject = CreateDecoratorContextObjectNode.createForClass(context);
         this.callNode = JSFunctionCallNode.createCall();
         this.isCallableNode = IsCallableNode.create();
     }
@@ -79,7 +79,7 @@ public class ApplyDecoratorsToClassDefinitionNode extends Node {
         Object classDef = constructor;
         for (Object decorator : decorators) {
             Record state = new Record();
-            JSDynamicObject context = createDecoratorContextObject.evaluateClass(frame, className, extraInitializers, state);
+            JSDynamicObject context = createDecoratorContextObject(frame, className, extraInitializers, state);
             Object newDef = callNode.executeCall(JSArguments.create(Undefined.instance, decorator, classDef, context));
             state.finished = true;
             if (isCallableNode.executeBoolean(newDef)) {
@@ -90,5 +90,9 @@ public class ApplyDecoratorsToClassDefinitionNode extends Node {
             }
         }
         return classDef;
+    }
+
+    private JSDynamicObject createDecoratorContextObject(VirtualFrame frame, Object className, List<Object> extraInitializers, Record state) {
+        return createDecoratorContextObject.evaluateClass(frame, className, extraInitializers, state);
     }
 }
