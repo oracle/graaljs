@@ -480,8 +480,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                     boolean isStatic = memberNode.isStatic();
                     JSDynamicObject homeObject = isStatic ? constructor : proto;
                     decorators = memberDecorators != null && memberDecorators[i] != null ? memberDecorators[i].execute(frame) : null;
-                    Object key = memberNode.evaluateKey(frame);
-                    ClassElementDefinitionRecord classElementDef = memberNode.evaluateClassElementDefinition(frame, homeObject, key, realm, decorators);
+                    ClassElementDefinitionRecord classElementDef = memberNode.evaluateClassElementDefinition(frame, homeObject, realm, decorators);
                     if (memberNode.isFieldOrStaticBlock() || memberNode.isAutoAccessor()) {
                         if (isStatic) {
                             staticElements[staticElementIndex++] = classElementDef;
