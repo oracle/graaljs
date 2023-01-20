@@ -89,7 +89,7 @@ function inspectNode(snapshot) {
 }
 
 function isEdge(edge, { node_name, edge_name }) {
-  if (edge.name !== edge_name) {
+  if (edge_name !== undefined && edge.name !== edge_name) {
     return false;
   }
   // From our internal embedded graph
@@ -140,6 +140,22 @@ class State {
               'expected to find child ' +
               `${util.inspect(expectedEdge)} in ${inspectNode(rootNodes)}`);
           }
+        }
+      }
+
+      if (expectation.detachedness !== undefined) {
+        const matchedNodes = rootNodes.filter(
+          (node) => node.detachedness === expectation.detachedness);
+        if (loose) {
+          assert(matchedNodes.length >= rootNodes.length,
+                 `Expect to find at least ${rootNodes.length} with ` +
+                `detachedness ${expectation.detachedness}, ` +
+                `found ${matchedNodes.length}`);
+        } else {
+          assert.strictEqual(
+            matchedNodes.length, rootNodes.length,
+            `Expect to find ${rootNodes.length} with detachedness ` +
+            `${expectation.detachedness},  found ${matchedNodes.length}`);
         }
       }
     }

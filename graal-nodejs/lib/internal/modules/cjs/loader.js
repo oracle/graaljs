@@ -74,7 +74,7 @@ module.exports = {
   get hasLoadedAnyUserCJSModule() { return hasLoadedAnyUserCJSModule; }
 };
 
-const { NativeModule } = require('internal/bootstrap/loaders');
+const { BuiltinModule } = require('internal/bootstrap/loaders');
 const {
   maybeCacheSourceMap,
 } = require('internal/source_map/source_map_cache');
@@ -98,7 +98,7 @@ const { safeGetenv } = internalBinding('credentials');
 const {
   cjsConditions,
   hasEsmSyntax,
-  loadNativeModule,
+  loadBuiltinModule,
   makeRequireFunction,
   normalizeReferrerURL,
   stripBOM,
@@ -106,6 +106,7 @@ const {
 const { getOptionValue } = require('internal/options');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
+const shouldReportRequiredModules = process.env.WATCH_REPORT_DEPENDENCIES;
 // Do not eagerly grab .manifest, it may be in TDZ
 const policy = getOptionValue('--experimental-policy') ?
   require('internal/process/policy') :
@@ -186,6 +187,12 @@ function updateChildren(parent, child, scan) {
     ArrayPrototypePush(children, child);
 }
 
+function reportModuleToWatchMode(filename) {
+  if (shouldReportRequiredModules && process.send) {
+    process.send({ 'watch:require': filename });
+  }
+}
+
 const moduleParentCache = new SafeWeakMap();
 function Module(id = '', parent) {
   this.id = id;
@@ -199,9 +206,9 @@ function Module(id = '', parent) {
 }
 
 const builtinModules = [];
-for (const { 0: id, 1: mod } of NativeModule.map) {
+for (const { 0: id, 1: mod } of BuiltinModule.map) {
   if (mod.canBeRequiredByUsers &&
-    NativeModule.canBeRequiredWithoutScheme(id)) {
+    BuiltinModule.canBeRequiredWithoutScheme(id)) {
     ArrayPrototypePush(builtinModules, id);
   }
 }
@@ -209,7 +216,7 @@ for (const { 0: id, 1: mod } of NativeModule.map) {
 const allBuiltins = new SafeSet(
   ArrayPrototypeFlatMap(builtinModules, (bm) => [bm, `node:${bm}`])
 );
-NativeModule.getSchemeOnlyModuleNames().forEach((builtin) => allBuiltins.add(`node:${builtin}`));
+BuiltinModule.getSchemeOnlyModuleNames().forEach((builtin) => allBuiltins.add(`node:${builtin}`));
 
 ObjectFreeze(builtinModules);
 Module.builtinModules = builtinModules;
@@ -272,7 +279,7 @@ ObjectDefineProperty(Module, 'wrapper', {
 
 const isPreloadingDesc = { get() { return isPreloading; } };
 ObjectDefineProperty(Module.prototype, 'isPreloading', isPreloadingDesc);
-ObjectDefineProperty(NativeModule.prototype, 'isPreloading', isPreloadingDesc);
+ObjectDefineProperty(BuiltinModule.prototype, 'isPreloading', isPreloadingDesc);
 
 function getModuleParent() {
   return moduleParentCache.get(this);
@@ -497,7 +504,7 @@ function trySelf(parentPath, request) {
   try {
     return finalizeEsmResolution(packageExportsResolve(
       pathToFileURL(pkgPath + '/package.json'), expansion, pkg,
-      pathToFileURL(parentPath), cjsConditions), request, parentPath, pkgPath);
+      pathToFileURL(parentPath), cjsConditions), parentPath, pkgPath);
   } catch (e) {
     if (e.code === 'ERR_MODULE_NOT_FOUND')
       throw createEsmNotFoundErr(request, pkgPath + '/package.json');
@@ -521,7 +528,7 @@ function resolveExports(nmPath, request) {
     try {
       return finalizeEsmResolution(packageExportsResolve(
         pathToFileURL(pkgPath + '/package.json'), '.' + expansion, pkg, null,
-        cjsConditions), request, null, pkgPath);
+        cjsConditions), null, pkgPath);
     } catch (e) {
       if (e.code === 'ERR_MODULE_NOT_FOUND')
         throw createEsmNotFoundErr(request, pkgPath + '/package.json');
@@ -705,8 +712,8 @@ if (isWindows) {
 }
 
 Module._resolveLookupPaths = function(request, parent) {
-  if (NativeModule.canBeRequiredByUsers(request) &&
-      NativeModule.canBeRequiredWithoutScheme(request)) {
+  if (BuiltinModule.canBeRequiredByUsers(request) &&
+      BuiltinModule.canBeRequiredWithoutScheme(request)) {
     debug('looking for %j in []', request);
     return null;
   }
@@ -793,7 +800,7 @@ function getExportsForCircularRequire(module) {
 // Check the cache for the requested file.
 // 1. If a module already exists in the cache: return its exports object.
 // 2. If the module is native: call
-//    `NativeModule.prototype.compileForPublicLoader()` and return the exports.
+//    `BuiltinModule.prototype.compileForPublicLoader()` and return the exports.
 // 3. Otherwise, create a new module for the file and save it to the cache.
 //    Then have it load  the file contents before returning its exports
 //    object.
@@ -806,6 +813,7 @@ Module._load = function(request, parent, isMain) {
     // cache key names.
     relResolveCacheIdentifier = `${parent.path}\x00${request}`;
     const filename = relativeResolveCache[relResolveCacheIdentifier];
+    reportModuleToWatchMode(filename);
     if (filename !== undefined) {
       const cachedModule = Module._cache[filename];
       if (cachedModule !== undefined) {
@@ -822,7 +830,7 @@ Module._load = function(request, parent, isMain) {
     // Slice 'node:' prefix
     const id = StringPrototypeSlice(request, 5);
 
-    const module = loadNativeModule(id, request);
+    const module = loadBuiltinModule(id, request);
     if (!module?.canBeRequiredByUsers) {
       throw new ERR_UNKNOWN_BUILTIN_MODULE(request);
     }
@@ -844,9 +852,9 @@ Module._load = function(request, parent, isMain) {
     }
   }
 
-  const mod = loadNativeModule(filename, request);
+  const mod = loadBuiltinModule(filename, request);
   if (mod?.canBeRequiredByUsers &&
-      NativeModule.canBeRequiredWithoutScheme(filename)) {
+      BuiltinModule.canBeRequiredWithoutScheme(filename)) {
     return mod.exports;
   }
 
@@ -857,6 +865,8 @@ Module._load = function(request, parent, isMain) {
     process.mainModule = module;
     module.id = '.';
   }
+
+  reportModuleToWatchMode(filename);
 
   Module._cache[filename] = module;
   if (parent !== undefined) {
@@ -895,10 +905,10 @@ Module._resolveFilename = function(request, parent, isMain, options) {
   if (
     (
       StringPrototypeStartsWith(request, 'node:') &&
-      NativeModule.canBeRequiredByUsers(StringPrototypeSlice(request, 5))
+      BuiltinModule.canBeRequiredByUsers(StringPrototypeSlice(request, 5))
     ) || (
-      NativeModule.canBeRequiredByUsers(request) &&
-      NativeModule.canBeRequiredWithoutScheme(request)
+      BuiltinModule.canBeRequiredByUsers(request) &&
+      BuiltinModule.canBeRequiredWithoutScheme(request)
     )
   ) {
     return request;
@@ -947,7 +957,7 @@ Module._resolveFilename = function(request, parent, isMain, options) {
       try {
         return finalizeEsmResolution(
           packageImportsResolve(request, pathToFileURL(parentPath),
-                                cjsConditions), parentPath, request,
+                                cjsConditions), parentPath,
           pkg.path);
       } catch (e) {
         if (e.code === 'ERR_MODULE_NOT_FOUND')
@@ -988,18 +998,12 @@ Module._resolveFilename = function(request, parent, isMain, options) {
   throw err;
 };
 
-function finalizeEsmResolution(match, request, parentPath, pkgPath) {
-  const { resolved, exact } = match;
+function finalizeEsmResolution(resolved, parentPath, pkgPath) {
   if (RegExpPrototypeExec(encodedSepRegEx, resolved) !== null)
     throw new ERR_INVALID_MODULE_SPECIFIER(
       resolved, 'must not include encoded "/" or "\\" characters', parentPath);
   const filename = fileURLToPath(resolved);
-  let actual = tryFile(filename);
-  if (!exact && !actual) {
-    const exts = ObjectKeys(Module._extensions);
-    actual = tryExtensions(filename, exts, false) ||
-      tryPackage(filename, exts, false, request);
-  }
+  const actual = tryFile(filename);
   if (actual)
     return actual;
   const err = createEsmNotFoundErr(filename,
@@ -1334,9 +1338,9 @@ Module._preloadModules = function(requests) {
 };
 
 Module.syncBuiltinESMExports = function syncBuiltinESMExports() {
-  for (const mod of NativeModule.map.values()) {
+  for (const mod of BuiltinModule.map.values()) {
     if (mod.canBeRequiredByUsers &&
-        NativeModule.canBeRequiredWithoutScheme(mod.id)) {
+        BuiltinModule.canBeRequiredWithoutScheme(mod.id)) {
       mod.syncExports();
     }
   }

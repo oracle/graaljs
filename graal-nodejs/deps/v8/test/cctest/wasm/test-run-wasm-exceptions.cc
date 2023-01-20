@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "include/v8-function.h"
 #include "src/api/api-inl.h"
 #include "test/cctest/wasm/wasm-atomics-utils.h"
 #include "test/common/wasm/test-signatures.h"
@@ -564,7 +565,6 @@ WASM_EXEC_TEST(TryCatchTrapRemByZero) {
 }
 
 WASM_EXEC_TEST(TryCatchTrapTableFill) {
-  EXPERIMENTAL_FLAG_SCOPE(reftypes);
   int table_index = 0;
   int length = 10;  // OOB.
   int start = 10;   // OOB.

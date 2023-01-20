@@ -177,6 +177,11 @@ def files(action):
     else:
       output_lib = 'libnode.' + variables.get('shlib_suffix')
       action([output_prefix + output_lib], variables.get('libdir') + '/' + output_lib)
+  if 'true' == variables.get('node_use_dtrace'):
+    action(['out/Release/node.d'], 'lib/dtrace/node.d')
+
+  # behave similarly for systemtap
+  action(['src/node.stp'], 'share/systemtap/tapset/')
 
   action(['deps/v8/tools/gdbinit'], 'share/doc/node/')
   action(['deps/v8/tools/lldb_commands.py'], 'share/doc/node/')
@@ -202,10 +207,53 @@ def headers(action):
       'deps/v8/include/libplatform/libplatform-export.h',
       'deps/v8/include/libplatform/v8-tracing.h',
       'deps/v8/include/v8.h',
+      'deps/v8/include/v8-array-buffer.h',
+      'deps/v8/include/v8-callbacks.h',
+      'deps/v8/include/v8-container.h',
+      'deps/v8/include/v8-context.h',
+      'deps/v8/include/v8-data.h',
+      'deps/v8/include/v8-date.h',
+      'deps/v8/include/v8-debug.h',
+      'deps/v8/include/v8-embedder-heap.h',
+      'deps/v8/include/v8-embedder-state-scope.h',
+      'deps/v8/include/v8-exception.h',
+      'deps/v8/include/v8-extension.h',
+      'deps/v8/include/v8-external.h',
+      'deps/v8/include/v8-forward.h',
+      'deps/v8/include/v8-function-callback.h',
+      'deps/v8/include/v8-function.h',
+      'deps/v8/include/v8-initialization.h',
       'deps/v8/include/v8-internal.h',
+      'deps/v8/include/v8-isolate.h',
+      'deps/v8/include/v8-json.h',
+      'deps/v8/include/v8-local-handle.h',
+      'deps/v8/include/v8-locker.h',
+      'deps/v8/include/v8-maybe.h',
+      'deps/v8/include/v8-memory-span.h',
+      'deps/v8/include/v8-message.h',
+      'deps/v8/include/v8-microtask-queue.h',
+      'deps/v8/include/v8-microtask.h',
+      'deps/v8/include/v8-object.h',
+      'deps/v8/include/v8-persistent-handle.h',
       'deps/v8/include/v8-platform.h',
+      'deps/v8/include/v8-primitive-object.h',
+      'deps/v8/include/v8-primitive.h',
       'deps/v8/include/v8-profiler.h',
+      'deps/v8/include/v8-promise.h',
+      'deps/v8/include/v8-proxy.h',
+      'deps/v8/include/v8-regexp.h',
+      'deps/v8/include/v8-script.h',
+      'deps/v8/include/v8-snapshot.h',
+      'deps/v8/include/v8-statistics.h',
+      'deps/v8/include/v8-template.h',
+      'deps/v8/include/v8-traced-handle.h',
+      'deps/v8/include/v8-typed-array.h',
+      'deps/v8/include/v8-unwinder.h',
+      'deps/v8/include/v8-value-serializer.h',
+      'deps/v8/include/v8-value.h',
       'deps/v8/include/v8-version.h',
+      'deps/v8/include/v8-wasm.h',
+      'deps/v8/include/v8-weak-callback-info.h',
       'deps/v8/include/v8config.h',
     ]
     files_arg = [name for name in files_arg if name in v8_headers]

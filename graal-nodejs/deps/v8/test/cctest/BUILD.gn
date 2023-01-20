@@ -43,10 +43,9 @@ v8_executable("cctest") {
     ]
   }
 
-  # TODO(machenbach): Translate from gyp.
-  #["OS=="aix"", {
-  #  "ldflags": [ "-Wl,-bbigtoc" ],
-  #}],
+  if (current_os == "aix") {
+    ldflags = [ "-Wl,-bbigtoc" ]
+  }
 }
 
 v8_header_set("cctest_headers") {
@@ -89,6 +88,7 @@ v8_source_set("cctest_sources") {
     "compiler/function-tester.cc",
     "compiler/function-tester.h",
     "compiler/node-observer-tester.h",
+    "compiler/test-atomic-load-store-codegen.cc",
     "compiler/test-basic-block-profiler.cc",
     "compiler/test-branch-combine.cc",
     "compiler/test-calls-with-arraylike-or-spread.cc",
@@ -144,13 +144,11 @@ v8_source_set("cctest_sources") {
     "heap/test-compaction.cc",
     "heap/test-concurrent-allocation.cc",
     "heap/test-concurrent-marking.cc",
-    "heap/test-embedder-tracing.cc",
     "heap/test-external-string-tracker.cc",
     "heap/test-heap.cc",
     "heap/test-incremental-marking.cc",
     "heap/test-invalidated-slots.cc",
     "heap/test-iterators.cc",
-    "heap/test-lab.cc",
     "heap/test-mark-compact.cc",
     "heap/test-memory-measurement.cc",
     "heap/test-page-promotion.cc",
@@ -268,6 +266,7 @@ v8_source_set("cctest_sources") {
     "test-roots.cc",
     "test-sampler-api.cc",
     "test-serialize.cc",
+    "test-shared-strings.cc",
     "test-smi-lexicographic-compare.cc",
     "test-strings.cc",
     "test-strtod.cc",
@@ -275,6 +274,7 @@ v8_source_set("cctest_sources") {
     "test-swiss-name-dictionary-infra.cc",
     "test-swiss-name-dictionary.cc",
     "test-symbols.cc",
+    "test-temporal-parser.cc",
     "test-thread-termination.cc",
     "test-threads.cc",
     "test-trace-event.cc",
@@ -382,6 +382,12 @@ v8_source_set("cctest_sources") {
       "test-macro-assembler-riscv64.cc",
       "test-simple-riscv64.cc",
     ]
+  } else if (v8_current_cpu == "loong64") {
+    sources += [  ### gcmole(arch:loong64) ###
+      "test-assembler-loong64.cc",
+      "test-disasm-loong64.cc",
+      "test-macro-assembler-loong64.cc",
+    ]
   }
 
   if (v8_use_perfetto) {
@@ -479,7 +485,7 @@ v8_source_set("cctest_sources") {
       v8_current_cpu == "s390" || v8_current_cpu == "s390x" ||
       v8_current_cpu == "mips" || v8_current_cpu == "mips64" ||
       v8_current_cpu == "mipsel" || v8_current_cpu == "mipsel64" ||
-      v8_current_cpu == "riscv64") {
+      v8_current_cpu == "riscv64" || v8_current_cpu == "loong64") {
     # Disable fmadd/fmsub so that expected results match generated code in
     # RunFloat64MulAndFloat64Add1 and friends.
     if (!is_win) {

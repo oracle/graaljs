@@ -64,7 +64,7 @@ WasmCompilationResult WasmCompilationUnit::ExecuteImportWrapperCompilation(
   bool source_positions = is_asmjs_module(env->module);
   WasmCompilationResult result = compiler::CompileWasmImportCallWrapper(
       env, kind, sig, source_positions,
-      static_cast<int>(sig->parameter_count()));
+      static_cast<int>(sig->parameter_count()), wasm::kNoSuspend);
   return result;
 }
 
@@ -109,7 +109,8 @@ WasmCompilationResult WasmCompilationUnit::ExecuteFunctionCompilation(
       // them to be compiled for debugging, see documentation.
       if (V8_LIKELY(FLAG_wasm_tier_mask_for_testing == 0) ||
           func_index_ >= 32 ||
-          ((FLAG_wasm_tier_mask_for_testing & (1 << func_index_)) == 0)) {
+          ((FLAG_wasm_tier_mask_for_testing & (1 << func_index_)) == 0) ||
+          FLAG_liftoff_only) {
         // We do not use the debug side table, we only (optionally) pass it to
         // cover different code paths in Liftoff for testing.
         std::unique_ptr<DebugSideTable> unused_debug_sidetable;
@@ -127,6 +128,10 @@ WasmCompilationResult WasmCompilationUnit::ExecuteFunctionCompilation(
         if (result.succeeded()) break;
       }
 
+      // If --liftoff-only, do not fall back to turbofan, even if compilation
+      // failed.
+      if (FLAG_liftoff_only) break;
+
       // If Liftoff failed, fall back to turbofan.
       // TODO(wasm): We could actually stop or remove the tiering unit for this
       // function to avoid compiling it twice with TurboFan.
@@ -134,37 +139,13 @@ WasmCompilationResult WasmCompilationUnit::ExecuteFunctionCompilation(
 
     case ExecutionTier::kTurbofan:
       result = compiler::ExecuteTurbofanWasmCompilation(
-          env, func_body, func_index_, counters, detected);
+          env, wire_bytes_storage, func_body, func_index_, counters, detected);
       result.for_debugging = for_debugging_;
       break;
   }
 
   return result;
 }
-
-namespace {
-bool must_record_function_compilation(Isolate* isolate) {
-  return isolate->logger()->is_listening_to_code_events() ||
-         isolate->is_profiling();
-}
-
-PRINTF_FORMAT(3, 4)
-void RecordWasmHeapStubCompilation(Isolate* isolate, Handle<Code> code,
-                                   const char* format, ...) {
-  DCHECK(must_record_function_compilation(isolate));
-
-  base::ScopedVector<char> buffer(128);
-  va_list arguments;
-  va_start(arguments, format);
-  int len = base::VSNPrintF(buffer, format, arguments);
-  CHECK_LT(0, len);
-  va_end(arguments);
-  Handle<String> name_str =
-      isolate->factory()->NewStringFromAsciiChecked(buffer.begin());
-  PROFILE(isolate, CodeCreateEvent(CodeEventListener::STUB_TAG,
-                                   Handle<AbstractCode>::cast(code), name_str));
-}
-}  // namespace
 
 // static
 void WasmCompilationUnit::CompileWasmFunction(Isolate* isolate,
@@ -199,14 +180,21 @@ bool UseGenericWrapper(const FunctionSig* sig) {
   if (sig->returns().size() > 1) {
     return false;
   }
-  if (sig->returns().size() == 1 && sig->GetReturn(0).kind() != kI32 &&
-      sig->GetReturn(0).kind() != kI64 && sig->GetReturn(0).kind() != kF32 &&
-      sig->GetReturn(0).kind() != kF64) {
-    return false;
+  if (sig->returns().size() == 1) {
+    ValueType ret = sig->GetReturn(0);
+    if (ret.kind() == kS128) return false;
+    if (ret.is_reference()) {
+      if (ret.heap_representation() != wasm::HeapType::kAny &&
+          ret.heap_representation() != wasm::HeapType::kFunc) {
+        return false;
+      }
+    }
   }
   for (ValueType type : sig->parameters()) {
     if (type.kind() != kI32 && type.kind() != kI64 && type.kind() != kF32 &&
-        type.kind() != kF64) {
+        type.kind() != kF64 &&
+        !(type.is_reference() &&
+          type.heap_representation() == wasm::HeapType::kAny)) {
       return false;
     }
   }
@@ -243,17 +231,21 @@ void JSToWasmWrapperCompilationUnit::Execute() {
 }
 
 Handle<Code> JSToWasmWrapperCompilationUnit::Finalize() {
-  Handle<Code> code;
   if (use_generic_wrapper_) {
-    code = isolate_->builtins()->code_handle(Builtin::kGenericJSToWasmWrapper);
-  } else {
-    CompilationJob::Status status = job_->FinalizeJob(isolate_);
-    CHECK_EQ(status, CompilationJob::SUCCEEDED);
-    code = job_->compilation_info()->code();
+    return FromCodeT(
+        isolate_->builtins()->code_handle(Builtin::kGenericJSToWasmWrapper),
+        isolate_);
   }
-  if (!use_generic_wrapper_ && must_record_function_compilation(isolate_)) {
-    RecordWasmHeapStubCompilation(
-        isolate_, code, "%s", job_->compilation_info()->GetDebugName().get());
+
+  CompilationJob::Status status = job_->FinalizeJob(isolate_);
+  CHECK_EQ(status, CompilationJob::SUCCEEDED);
+  Handle<Code> code = job_->compilation_info()->code();
+  if (isolate_->logger()->is_listening_to_code_events() ||
+      isolate_->is_profiling()) {
+    Handle<String> name = isolate_->factory()->NewStringFromAsciiChecked(
+        job_->compilation_info()->GetDebugName().get());
+    PROFILE(isolate_, CodeCreateEvent(CodeEventListener::STUB_TAG,
+                                      Handle<AbstractCode>::cast(code), name));
   }
   return code;
 }

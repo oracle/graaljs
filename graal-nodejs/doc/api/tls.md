@@ -955,6 +955,13 @@ tlsSocket.once('session', (session) => {
 
 <!-- YAML
 added: v0.11.4
+changes:
+  - version: v18.4.0
+    pr-url: https://github.com/nodejs/node/pull/43054
+    description: The `family` property now returns a string instead of a number.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41431
+    description: The `family` property now returns a number instead of a string.
 -->
 
 * Returns: {Object}
@@ -1166,7 +1173,9 @@ certificate.
 
 <!-- YAML
 changes:
-  - version: v16.14.0
+  - version:
+      - v17.2.0
+      - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/39809
     description: Add fingerprint512.
   - version: v11.4.0
@@ -1439,6 +1448,12 @@ Returns the numeric representation of the remote port. For example, `443`.
 
 <!-- YAML
 added: v0.11.8
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `options` {Object}
@@ -1494,7 +1509,11 @@ decrease overall server throughput.
 <!-- YAML
 added: v0.8.4
 changes:
-  - version: v16.13.2
+  - version:
+      - v17.3.1
+      - v16.13.2
+      - v14.18.3
+      - v12.22.9
     pr-url: https://github.com/nodejs-private/node-private/pull/300
     description: Support for `uniformResourceIdentifier` subject alternative
                  names has been disabled in response to CVE-2021-44531.
@@ -1534,17 +1553,19 @@ was present (see [CVE-2021-44531][]). Applications that wish to accept
 <!-- YAML
 added: v0.11.3
 changes:
-  - version: v15.1.0
+  - version:
+      - v15.1.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/35753
     description: Added `onread` option.
   - version:
-    - v14.1.0
-    - v13.14.0
+      - v14.1.0
+      - v13.14.0
     pr-url: https://github.com/nodejs/node/pull/32786
     description: The `highWaterMark` option is accepted now.
   - version:
-     - v13.6.0
-     - v12.16.0
+      - v13.6.0
+      - v12.16.0
     pr-url: https://github.com/nodejs/node/pull/23188
     description: The `pskCallback` option is now supported.
   - version: v12.9.0
@@ -1557,8 +1578,8 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/27497
     description: The `enableTrace` option is now supported.
   - version:
-     - v11.8.0
-     - v10.16.0
+      - v11.8.0
+      - v10.16.0
     pr-url: https://github.com/nodejs/node/pull/25517
     description: The `timeout` option is supported now.
   - version: v8.0.0
@@ -1569,8 +1590,8 @@ changes:
     description: The `ALPNProtocols` option can be a `TypedArray` or
      `DataView` now.
   - version:
-    - v5.3.0
-    - v4.7.0
+      - v5.3.0
+      - v4.7.0
     pr-url: https://github.com/nodejs/node/pull/4246
     description: The `secureContext` option is supported now.
   - version: v5.0.0

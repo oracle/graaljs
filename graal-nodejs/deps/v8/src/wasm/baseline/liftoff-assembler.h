@@ -32,7 +32,9 @@ namespace wasm {
 
 enum LiftoffCondition {
   kEqual,
+  kEqualZero = kEqual,  // When used in a unary operation.
   kUnequal,
+  kNotEqualZero = kUnequal,  // When used in a unary operation.
   kSignedLessThan,
   kSignedLessEqual,
   kSignedGreaterThan,
@@ -43,8 +45,8 @@ enum LiftoffCondition {
   kUnsignedGreaterEqual
 };
 
-inline constexpr LiftoffCondition Negate(LiftoffCondition liftoff_cond) {
-  switch (liftoff_cond) {
+inline constexpr LiftoffCondition Negate(LiftoffCondition cond) {
+  switch (cond) {
     case kEqual:
       return kUnequal;
     case kUnequal:
@@ -65,6 +67,31 @@ inline constexpr LiftoffCondition Negate(LiftoffCondition liftoff_cond) {
       return kUnsignedLessThan;
     case kUnsignedGreaterThan:
       return kUnsignedLessEqual;
+  }
+}
+
+inline constexpr LiftoffCondition Flip(LiftoffCondition cond) {
+  switch (cond) {
+    case kEqual:
+      return kEqual;
+    case kUnequal:
+      return kUnequal;
+    case kSignedLessThan:
+      return kSignedGreaterThan;
+    case kSignedLessEqual:
+      return kSignedGreaterEqual;
+    case kSignedGreaterEqual:
+      return kSignedLessEqual;
+    case kSignedGreaterThan:
+      return kSignedLessThan;
+    case kUnsignedLessThan:
+      return kUnsignedGreaterThan;
+    case kUnsignedLessEqual:
+      return kUnsignedGreaterEqual;
+    case kUnsignedGreaterEqual:
+      return kUnsignedLessEqual;
+    case kUnsignedGreaterThan:
+      return kUnsignedLessThan;
   }
 }
 
@@ -121,6 +148,7 @@ class LiftoffAssembler : public TurboAssembler {
     }
 
     int offset() const { return spill_offset_; }
+    void set_offset(int offset) { spill_offset_ = offset; }
 
     Register gp_reg() const { return reg().gp(); }
     DoubleRegister fp_reg() const { return reg().fp(); }
@@ -191,9 +219,10 @@ class LiftoffAssembler : public TurboAssembler {
                                   /*out*/ LiftoffRegList* spills,
                                   SpillLocation spill_location);
 
-    void DefineSafepoint(Safepoint& safepoint);
+    void DefineSafepoint(SafepointTableBuilder::Safepoint& safepoint);
 
-    void DefineSafepointWithCalleeSavedRegisters(Safepoint& safepoint);
+    void DefineSafepointWithCalleeSavedRegisters(
+        SafepointTableBuilder::Safepoint& safepoint);
 
     base::SmallVector<VarState, 8> stack_state;
     LiftoffRegList used_registers;
@@ -464,12 +493,16 @@ class LiftoffAssembler : public TurboAssembler {
   // stack, so that we can merge different values on the back-edge.
   void PrepareLoopArgs(int num);
 
-  int NextSpillOffset(ValueKind kind) {
-    int offset = TopSpillOffset() + SlotSizeForType(kind);
+  V8_INLINE static int NextSpillOffset(ValueKind kind, int top_spill_offset) {
+    int offset = top_spill_offset + SlotSizeForType(kind);
     if (NeedsAlignment(kind)) {
       offset = RoundUp(offset, SlotSizeForType(kind));
     }
     return offset;
+  }
+
+  int NextSpillOffset(ValueKind kind) {
+    return NextSpillOffset(kind, TopSpillOffset());
   }
 
   int TopSpillOffset() const {
@@ -662,15 +695,17 @@ class LiftoffAssembler : public TurboAssembler {
   inline static bool NeedsAlignment(ValueKind kind);
 
   inline void LoadConstant(LiftoffRegister, WasmValue,
-                           RelocInfo::Mode rmode = RelocInfo::NONE);
+                           RelocInfo::Mode rmode = RelocInfo::NO_INFO);
   inline void LoadInstanceFromFrame(Register dst);
   inline void LoadFromInstance(Register dst, Register instance, int offset,
                                int size);
   inline void LoadTaggedPointerFromInstance(Register dst, Register instance,
                                             int offset);
+  inline void LoadExternalPointer(Register dst, Register instance, int offset,
+                                  ExternalPointerTag tag,
+                                  Register isolate_root);
   inline void SpillInstance(Register instance);
   inline void ResetOSRTarget();
-  inline void FillInstanceInto(Register dst);
   inline void LoadTaggedPointer(Register dst, Register src_addr,
                                 Register offset_reg, int32_t offset_imm,
                                 LiftoffRegList pinned);
@@ -703,6 +738,7 @@ class LiftoffAssembler : public TurboAssembler {
       emit_i32_sari(dst.gp(), dst.gp(), kSmiTagSize);
     }
   }
+  inline void IncrementSmi(LiftoffRegister dst, int offset);
   inline void Load(LiftoffRegister dst, Register src_addr, Register offset_reg,
                    uintptr_t offset_imm, LoadType type, LiftoffRegList pinned,
                    uint32_t* protected_load_pc = nullptr,
@@ -851,7 +887,7 @@ class LiftoffAssembler : public TurboAssembler {
   inline void emit_i64_ctz(LiftoffRegister dst, LiftoffRegister src);
   inline bool emit_i64_popcnt(LiftoffRegister dst, LiftoffRegister src);
 
-  inline void emit_u32_to_intptr(Register dst, Register src);
+  inline void emit_u32_to_uintptr(Register dst, Register src);
 
   void emit_ptrsize_add(Register dst, Register lhs, Register rhs) {
     if (kSystemPointerSize == 8) {
@@ -975,8 +1011,10 @@ class LiftoffAssembler : public TurboAssembler {
 
   inline void emit_cond_jump(LiftoffCondition, Label*, ValueKind value,
                              Register lhs, Register rhs = no_reg);
-  inline void emit_i32_cond_jumpi(LiftoffCondition liftoff_cond, Label* label,
-                                  Register lhs, int imm);
+  inline void emit_i32_cond_jumpi(LiftoffCondition, Label*, Register lhs,
+                                  int imm);
+  inline void emit_i32_subi_jump_negative(Register value, int subtrahend,
+                                          Label* result_negative);
   // Set {dst} to 1 if condition holds, 0 otherwise.
   inline void emit_i32_eqz(Register dst, Register src);
   inline void emit_i32_set_cond(LiftoffCondition, Register dst, Register lhs,
@@ -1424,10 +1462,9 @@ class LiftoffAssembler : public TurboAssembler {
   inline void PushRegisters(LiftoffRegList);
   inline void PopRegisters(LiftoffRegList);
 
-  inline void RecordSpillsInSafepoint(Safepoint& safepoint,
-                                      LiftoffRegList all_spills,
-                                      LiftoffRegList ref_spills,
-                                      int spill_offset);
+  inline void RecordSpillsInSafepoint(
+      SafepointTableBuilder::Safepoint& safepoint, LiftoffRegList all_spills,
+      LiftoffRegList ref_spills, int spill_offset);
 
   inline void DropStackSlotsAndRet(uint32_t num_stack_slots);
 
@@ -1456,12 +1493,12 @@ class LiftoffAssembler : public TurboAssembler {
   // Instrumentation for shadow-stack-compatible OSR on x64.
   inline void MaybeOSR();
 
-  // Set the i32 at address dst to 1 if src is a NaN.
+  // Set the i32 at address dst to a non-zero value if src is a NaN.
   inline void emit_set_if_nan(Register dst, DoubleRegister src, ValueKind kind);
 
   // Set the i32 at address dst to a non-zero value if src contains a NaN.
-  inline void emit_s128_set_if_nan(Register dst, DoubleRegister src,
-                                   Register tmp_gp, DoubleRegister tmp_fp,
+  inline void emit_s128_set_if_nan(Register dst, LiftoffRegister src,
+                                   Register tmp_gp, LiftoffRegister tmp_s128,
                                    ValueKind lane_kind);
 
   ////////////////////////////////////
@@ -1506,6 +1543,10 @@ class LiftoffAssembler : public TurboAssembler {
  private:
   LiftoffRegister LoadI64HalfIntoRegister(VarState slot, RegPairHalf half);
 
+  V8_NOINLINE LiftoffRegister SpillOneRegister(LiftoffRegList candidates);
+  // Spill one or two fp registers to get a pair of adjacent fp registers.
+  LiftoffRegister SpillAdjacentFpRegisters(LiftoffRegList pinned);
+
   uint32_t num_locals_ = 0;
   static constexpr uint32_t kInlineLocalKinds = 16;
   union {
@@ -1521,10 +1562,6 @@ class LiftoffAssembler : public TurboAssembler {
   int ool_spill_space_size_ = 0;
   LiftoffBailoutReason bailout_reason_ = kSuccess;
   const char* bailout_detail_ = nullptr;
-
-  V8_NOINLINE LiftoffRegister SpillOneRegister(LiftoffRegList candidates);
-  // Spill one or two fp registers to get a pair of adjacent fp registers.
-  LiftoffRegister SpillAdjacentFpRegisters(LiftoffRegList pinned);
 };
 
 std::ostream& operator<<(std::ostream& os, LiftoffAssembler::VarState);
@@ -1555,8 +1592,7 @@ void EmitI64IndependentHalfOperation(LiftoffAssembler* assm,
     return;
   }
   // Otherwise, we need a temporary register.
-  Register tmp =
-      assm->GetUnusedRegister(kGpReg, LiftoffRegList::ForRegs(lhs, rhs)).gp();
+  Register tmp = assm->GetUnusedRegister(kGpReg, LiftoffRegList{lhs, rhs}).gp();
   (assm->*op)(tmp, lhs.low_gp(), rhs.low_gp());
   (assm->*op)(dst.high_gp(), lhs.high_gp(), rhs.high_gp());
   assm->Move(dst.low_gp(), tmp, kI32);
@@ -1583,8 +1619,7 @@ void EmitI64IndependentHalfOperationImm(LiftoffAssembler* assm,
     return;
   }
   // Otherwise, we need a temporary register.
-  Register tmp =
-      assm->GetUnusedRegister(kGpReg, LiftoffRegList::ForRegs(lhs)).gp();
+  Register tmp = assm->GetUnusedRegister(kGpReg, LiftoffRegList{lhs}).gp();
   (assm->*op)(tmp, lhs.low_gp(), low_word);
   (assm->*op)(dst.high_gp(), lhs.high_gp(), high_word);
   assm->Move(dst.low_gp(), tmp, kI32);
@@ -1625,6 +1660,10 @@ void LiftoffAssembler::emit_i64_xori(LiftoffRegister dst, LiftoffRegister lhs,
                                      int32_t imm) {
   liftoff::EmitI64IndependentHalfOperationImm<&LiftoffAssembler::emit_i32_xori>(
       this, dst, lhs, imm);
+}
+
+void LiftoffAssembler::emit_u32_to_uintptr(Register dst, Register src) {
+  // This is a no-op on 32-bit systems.
 }
 
 #endif  // V8_TARGET_ARCH_32_BIT
@@ -1711,6 +1750,8 @@ bool CheckCompatibleStackSlotTypes(ValueKind a, ValueKind b);
 #include "src/wasm/baseline/mips/liftoff-assembler-mips.h"
 #elif V8_TARGET_ARCH_MIPS64
 #include "src/wasm/baseline/mips64/liftoff-assembler-mips64.h"
+#elif V8_TARGET_ARCH_LOONG64
+#include "src/wasm/baseline/loong64/liftoff-assembler-loong64.h"
 #elif V8_TARGET_ARCH_S390
 #include "src/wasm/baseline/s390/liftoff-assembler-s390.h"
 #elif V8_TARGET_ARCH_RISCV64

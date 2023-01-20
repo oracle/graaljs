@@ -62,8 +62,6 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kSSEFloat32Sub:
     case kSSEFloat32Mul:
     case kSSEFloat32Div:
-    case kSSEFloat32Abs:
-    case kSSEFloat32Neg:
     case kSSEFloat32Sqrt:
     case kSSEFloat32Round:
     case kSSEFloat32ToFloat64:
@@ -73,8 +71,6 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kSSEFloat64Mul:
     case kSSEFloat64Div:
     case kSSEFloat64Mod:
-    case kSSEFloat64Abs:
-    case kSSEFloat64Neg:
     case kSSEFloat64Sqrt:
     case kSSEFloat64Round:
     case kSSEFloat32Max:
@@ -114,10 +110,10 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kAVXFloat64Sub:
     case kAVXFloat64Mul:
     case kAVXFloat64Div:
-    case kAVXFloat64Abs:
-    case kAVXFloat64Neg:
-    case kAVXFloat32Abs:
-    case kAVXFloat32Neg:
+    case kX64Float64Abs:
+    case kX64Float64Neg:
+    case kX64Float32Abs:
+    case kX64Float32Neg:
     case kX64BitcastFI:
     case kX64BitcastDL:
     case kX64BitcastIF:
@@ -130,6 +126,10 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kX64Pinsrw:
     case kX64Pinsrd:
     case kX64Pinsrq:
+    case kX64Cvttps2dq:
+    case kX64Cvttpd2dq:
+    case kX64I32x4TruncF64x2UZero:
+    case kX64I32x4TruncF32x4U:
     case kX64F64x2Splat:
     case kX64F64x2ExtractLane:
     case kX64F64x2ReplaceLane:
@@ -148,8 +148,8 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kX64F64x2Le:
     case kX64F64x2Qfma:
     case kX64F64x2Qfms:
-    case kX64F64x2Pmin:
-    case kX64F64x2Pmax:
+    case kX64Minpd:
+    case kX64Maxpd:
     case kX64F64x2Round:
     case kX64F64x2ConvertLowI32x4S:
     case kX64F64x2ConvertLowI32x4U:
@@ -176,8 +176,8 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kX64F32x4Le:
     case kX64F32x4Qfma:
     case kX64F32x4Qfms:
-    case kX64F32x4Pmin:
-    case kX64F32x4Pmax:
+    case kX64Minps:
+    case kX64Maxps:
     case kX64F32x4Round:
     case kX64F32x4DemoteF64x2Zero:
     case kX64I64x2Splat:
@@ -349,6 +349,7 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kX64S8x2Reverse:
     case kX64V128AnyTrue:
     case kX64I8x16AllTrue:
+    case kX64Pblendvb:
       return (instr->addressing_mode() == kMode_None)
                  ? kNoOpcodeFlags
                  : kIsLoadOperation | kHasSideEffect;
@@ -395,6 +396,8 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kX64MovqDecompressTaggedPointer:
     case kX64MovqDecompressAnyTagged:
     case kX64MovqCompressTagged:
+    case kX64MovqDecodeSandboxedPointer:
+    case kX64MovqEncodeSandboxedPointer:
     case kX64Movq:
     case kX64Movsd:
     case kX64Movss:
@@ -422,33 +425,13 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kX64LFence:
       return kHasSideEffect;
 
-    case kX64Word64AtomicAddUint8:
-    case kX64Word64AtomicAddUint16:
-    case kX64Word64AtomicAddUint32:
+    case kX64Word64AtomicStoreWord64:
     case kX64Word64AtomicAddUint64:
-    case kX64Word64AtomicSubUint8:
-    case kX64Word64AtomicSubUint16:
-    case kX64Word64AtomicSubUint32:
     case kX64Word64AtomicSubUint64:
-    case kX64Word64AtomicAndUint8:
-    case kX64Word64AtomicAndUint16:
-    case kX64Word64AtomicAndUint32:
     case kX64Word64AtomicAndUint64:
-    case kX64Word64AtomicOrUint8:
-    case kX64Word64AtomicOrUint16:
-    case kX64Word64AtomicOrUint32:
     case kX64Word64AtomicOrUint64:
-    case kX64Word64AtomicXorUint8:
-    case kX64Word64AtomicXorUint16:
-    case kX64Word64AtomicXorUint32:
     case kX64Word64AtomicXorUint64:
-    case kX64Word64AtomicExchangeUint8:
-    case kX64Word64AtomicExchangeUint16:
-    case kX64Word64AtomicExchangeUint32:
     case kX64Word64AtomicExchangeUint64:
-    case kX64Word64AtomicCompareExchangeUint8:
-    case kX64Word64AtomicCompareExchangeUint16:
-    case kX64Word64AtomicCompareExchangeUint32:
     case kX64Word64AtomicCompareExchangeUint64:
       return kHasSideEffect;
 
@@ -472,18 +455,18 @@ int InstructionScheduler::GetInstructionLatency(const Instruction* instr) {
     case kX64Imul32:
     case kX64ImulHigh32:
     case kX64UmulHigh32:
+    case kX64Float32Abs:
+    case kX64Float32Neg:
+    case kX64Float64Abs:
+    case kX64Float64Neg:
     case kSSEFloat32Cmp:
     case kSSEFloat32Add:
     case kSSEFloat32Sub:
-    case kSSEFloat32Abs:
-    case kSSEFloat32Neg:
     case kSSEFloat64Cmp:
     case kSSEFloat64Add:
     case kSSEFloat64Sub:
     case kSSEFloat64Max:
     case kSSEFloat64Min:
-    case kSSEFloat64Abs:
-    case kSSEFloat64Neg:
       return 3;
     case kSSEFloat32Mul:
     case kSSEFloat32ToFloat64:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,13 +51,12 @@ public:
     inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct);
     inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct, void* placement);
     size_t ByteLength() const;
+    void* Data() const;
     bool IsArrayBuffer() const;
     inline bool IsDirect() const;
-    bool IsExternal() const;
     void Detach();
     std::shared_ptr<v8::BackingStore> GetBackingStore();
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, size_t byte_length);
-    static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, void* data, size_t byte_length, v8::ArrayBufferCreationMode mode);
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, std::shared_ptr<v8::BackingStore> backing_store);
 protected:
     inline GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer, bool direct);

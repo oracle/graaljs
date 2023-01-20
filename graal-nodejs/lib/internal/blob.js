@@ -78,6 +78,7 @@ let ReadableStream;
 let URL;
 
 const enc = new TextEncoder();
+let dec;
 
 // Yes, lazy loading is annoying but because of circular
 // references between the url, internal/blob, and buffer
@@ -89,6 +90,7 @@ function lazyURL(id) {
 }
 
 function lazyReadableStream(options) {
+  // eslint-disable-next-line no-global-assign
   ReadableStream ??=
     require('internal/webstreams/readablestream').ReadableStream;
   return new ReadableStream(options);
@@ -310,7 +312,8 @@ class Blob {
     if (!isBlob(this))
       throw new ERR_INVALID_THIS('Blob');
 
-    const dec = new TextDecoder();
+    dec ??= new TextDecoder();
+
     return dec.decode(await this.arrayBuffer());
   }
 

@@ -214,7 +214,7 @@ FrameState CreateJavaScriptBuiltinContinuationFrameState(
     ContinuationFrameStateMode mode) {
   // Depending on {mode}, final parameters are added by the deoptimizer
   // and aren't explicitly passed in the frame state.
-  DCHECK_EQ(Builtins::GetStackParameterCount(name) + 1,  // add receiver
+  DCHECK_EQ(Builtins::GetStackParameterCount(name),
             stack_parameter_count + DeoptimizerParameterCountFor(mode));
 
   Node* argc = jsgraph->Constant(Builtins::GetStackParameterCount(name));

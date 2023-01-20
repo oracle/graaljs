@@ -58,7 +58,9 @@ executed in specific contexts.
 <!-- YAML
 added: v0.3.1
 changes:
-  - version: v16.12.0
+  - version:
+    - v17.0.0
+    - v16.12.0
     pr-url: https://github.com/nodejs/node/pull/40249
     description: Added support for import assertions to the
                  `importModuleDynamically` parameter.
@@ -689,7 +691,9 @@ defined in the ECMAScript specification.
 
 <!-- YAML
 changes:
-  - version: v16.12.0
+  - version:
+    - v17.0.0
+    - v16.12.0
     pr-url: https://github.com/nodejs/node/pull/40249
     description: Added support for import assertions to the
                  `importModuleDynamically` parameter.
@@ -923,7 +927,9 @@ const vm = require('node:vm');
 <!-- YAML
 added: v10.10.0
 changes:
-  - version: v16.12.0
+  - version:
+    - v17.0.0
+    - v16.12.0
     pr-url: https://github.com/nodejs/node/pull/40249
     description: Added support for import assertions to the
                  `importModuleDynamically` parameter.
@@ -1149,7 +1155,9 @@ vm.measureMemory({ mode: 'detailed', execution: 'eager' })
 <!-- YAML
 added: v0.3.1
 changes:
-  - version: v16.12.0
+  - version:
+    - v17.0.0
+    - v16.12.0
     pr-url: https://github.com/nodejs/node/pull/40249
     description: Added support for import assertions to the
                  `importModuleDynamically` parameter.
@@ -1225,7 +1233,9 @@ console.log(contextObject);
 <!-- YAML
 added: v0.3.1
 changes:
-  - version: v16.12.0
+  - version:
+    - v17.0.0
+    - v16.12.0
     pr-url: https://github.com/nodejs/node/pull/40249
     description: Added support for import assertions to the
                  `importModuleDynamically` parameter.
@@ -1326,7 +1336,9 @@ console.log(contextObject);
 <!-- YAML
 added: v0.3.1
 changes:
-  - version: v16.12.0
+  - version:
+    - v17.0.0
+    - v16.12.0
     pr-url: https://github.com/nodejs/node/pull/40249
     description: Added support for import assertions to the
                  `importModuleDynamically` parameter.

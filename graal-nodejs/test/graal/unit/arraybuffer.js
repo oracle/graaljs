@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,15 +59,13 @@ describe('ArrayBuffer', function () {
     describe('Detach', function () {
         it('should set byteLength to 0', function () {
             var buffer = new ArrayBuffer(10);
-            module.ArrayBuffer_Externalize(buffer);
             module.ArrayBuffer_Detach(buffer);
             assert.strictEqual(buffer.byteLength, 0);
         });
         it('should set content to null', function () {
             var buffer = new ArrayBuffer(10);
-            module.ArrayBuffer_Externalize(buffer);
             module.ArrayBuffer_Detach(buffer);
-            assert.strictEqual(module.ArrayBuffer_GetContentsDataPointerIsNull(buffer), true);
+            assert.strictEqual(module.ArrayBuffer_GetBackingStoreDataPointerIsNull(buffer), true);
         });
         typedArrays.forEach(function (type) {
             it(type + '::New() can be used on a detached buffer', function () {
@@ -78,14 +76,14 @@ describe('ArrayBuffer', function () {
             });
         });
     });
-    describe('GetContents', function () {
+    describe('GetBackingStore', function () {
         it('should work on a regular buffer', function() {
             var buffer = new ArrayBuffer(6);
             var array = new Uint8Array(buffer);
             for (var i = 0; i < 6; i++) {
                 array[i] = 2 * (i + 1);
             }
-            var sum = module.ArrayBuffer_GetContentsSum(buffer);
+            var sum = module.ArrayBuffer_GetBackingStoreSum(buffer);
             assert.strictEqual(sum, 42);
         });
         if (typeof java !== 'undefined') {
@@ -94,7 +92,7 @@ describe('ArrayBuffer', function () {
                 for (var i = 1; i <= 6; i++) {
                     buffer.put(2 * i);
                 }
-                var sum = module.ArrayBuffer_GetContentsSum(new ArrayBuffer(buffer));
+                var sum = module.ArrayBuffer_GetBackingStoreSum(new ArrayBuffer(buffer));
                 assert.strictEqual(sum, 42);
             });
         }

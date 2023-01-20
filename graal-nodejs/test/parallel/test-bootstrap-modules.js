@@ -12,6 +12,7 @@ const expectedModules = new Set([
   'Internal Binding async_wrap',
   'Internal Binding block_list',
   'Internal Binding buffer',
+  'Internal Binding builtins',
   'Internal Binding config',
   'Internal Binding constants',
   'Internal Binding contextify',
@@ -24,7 +25,6 @@ const expectedModules = new Set([
   'Internal Binding mksnapshot',
   'Internal Binding messaging',
   'Internal Binding module_wrap',
-  'Internal Binding native_module',
   'Internal Binding options',
   'Internal Binding performance',
   'Internal Binding pipe_wrap',
@@ -43,6 +43,7 @@ const expectedModules = new Set([
   'Internal Binding util',
   'Internal Binding uv',
   'Internal Binding v8',
+  'Internal Binding wasm_web_api',
   'Internal Binding worker',
   'NativeModule buffer',
   'NativeModule events',
@@ -51,12 +52,12 @@ const expectedModules = new Set([
   'NativeModule internal/assert',
   'NativeModule internal/async_hooks',
   'NativeModule internal/blocklist',
-  'NativeModule internal/bootstrap/pre_execution',
   'NativeModule internal/buffer',
   'NativeModule internal/console/constructor',
   'NativeModule internal/console/global',
   'NativeModule internal/constants',
   'NativeModule internal/dtrace',
+  'NativeModule internal/dns/utils',
   'NativeModule internal/encoding',
   'NativeModule internal/errors',
   'NativeModule internal/event_target',
@@ -106,6 +107,7 @@ const expectedModules = new Set([
   'NativeModule internal/process/esm_loader',
   'NativeModule internal/process/execution',
   'NativeModule internal/process/per_thread',
+  'NativeModule internal/process/pre_execution',
   'NativeModule internal/process/promises',
   'NativeModule internal/process/report',
   'NativeModule internal/process/signal',
@@ -113,6 +115,9 @@ const expectedModules = new Set([
   'NativeModule internal/process/warning',
   'NativeModule internal/promise_hooks',
   'NativeModule internal/querystring',
+  'NativeModule internal/readline/callbacks',
+  'NativeModule internal/readline/interface',
+  'NativeModule internal/readline/utils',
   'NativeModule internal/socketaddress',
   'NativeModule internal/source_map/source_map_cache',
   'NativeModule internal/stream_base_commons',
@@ -132,6 +137,7 @@ const expectedModules = new Set([
   'NativeModule internal/streams/transform',
   'NativeModule internal/streams/utils',
   'NativeModule internal/streams/writable',
+  'NativeModule internal/structured_clone',
   'NativeModule internal/timers',
   'NativeModule internal/url',
   'NativeModule internal/util',
@@ -143,6 +149,15 @@ const expectedModules = new Set([
   'NativeModule internal/util/types',
   'NativeModule internal/validators',
   'NativeModule internal/vm/module',
+  'NativeModule internal/wasm_web_api',
+  'NativeModule internal/webstreams/adapters',
+  'NativeModule internal/webstreams/compression',
+  'NativeModule internal/webstreams/encoding',
+  'NativeModule internal/webstreams/queuingstrategies',
+  'NativeModule internal/webstreams/readablestream',
+  'NativeModule internal/webstreams/transformstream',
+  'NativeModule internal/webstreams/util',
+  'NativeModule internal/webstreams/writablestream',
   'NativeModule internal/worker/io',
   'NativeModule internal/worker/js_transferable',
   'Internal Binding blob',
@@ -161,7 +176,6 @@ const expectedModules = new Set([
   'NativeModule v8',
   'NativeModule internal/v8/startup_snapshot',
   'NativeModule vm',
-  'NativeModule diagnostics_channel',
 ]);
 
 if (!common.isMainThread) {
@@ -205,6 +219,26 @@ if (process.features.inspector) {
 
 if (process.env.NODE_V8_COVERAGE) {
   expectedModules.add('Internal Binding profiler');
+}
+
+if (common.hasCrypto) {
+  expectedModules.add('Internal Binding crypto');
+  expectedModules.add('NativeModule crypto');
+  expectedModules.add('NativeModule internal/crypto/certificate');
+  expectedModules.add('NativeModule internal/crypto/cipher');
+  expectedModules.add('NativeModule internal/crypto/diffiehellman');
+  expectedModules.add('NativeModule internal/crypto/hash');
+  expectedModules.add('NativeModule internal/crypto/hashnames');
+  expectedModules.add('NativeModule internal/crypto/hkdf');
+  expectedModules.add('NativeModule internal/crypto/keygen');
+  expectedModules.add('NativeModule internal/crypto/keys');
+  expectedModules.add('NativeModule internal/crypto/pbkdf2');
+  expectedModules.add('NativeModule internal/crypto/random');
+  expectedModules.add('NativeModule internal/crypto/scrypt');
+  expectedModules.add('NativeModule internal/crypto/sig');
+  expectedModules.add('NativeModule internal/crypto/util');
+  expectedModules.add('NativeModule internal/crypto/x509');
+  expectedModules.add('NativeModule internal/streams/lazy_transform');
 }
 
 const { internalBinding } = require('internal/test/binding');

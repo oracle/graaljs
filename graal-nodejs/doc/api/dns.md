@@ -99,7 +99,9 @@ The following methods from the `node:dns` module are available:
 <!-- YAML
 added: v8.3.0
 changes:
-  - version: v16.7.0
+  - version:
+      - v16.7.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/39610
     description: The `options` object now accepts a `tries` option.
   - version: v12.18.3
@@ -128,7 +130,9 @@ callbacks will be called with an error with code `ECANCELLED`.
 ### `resolver.setLocalAddress([ipv4][, ipv6])`
 
 <!-- YAML
-added: v15.1.0
+added:
+  - v15.1.0
+  - v14.17.0
 -->
 
 * `ipv4` {string} A string representation of an IPv4 address.
@@ -175,6 +179,19 @@ section if a custom port is used.
 <!-- YAML
 added: v0.1.90
 changes:
+  - version: v18.4.0
+    pr-url: https://github.com/nodejs/node/pull/43054
+    description: For compatibility with `node:net`, when passing an option
+                 object the `family` option can be the string `'IPv4'` or the
+                 string `'IPv6'`.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
+  - version: v17.0.0
+    pr-url: https://github.com/nodejs/node/pull/39987
+    description: The `verbatim` options defaults to `true` now.
   - version: v8.5.0
     pr-url: https://github.com/nodejs/node/pull/14731
     description: The `verbatim` option is supported now.
@@ -185,9 +202,10 @@ changes:
 
 * `hostname` {string}
 * `options` {integer | Object}
-  * `family` {integer} The record family. Must be `4`, `6`, or `0`. The value
-    `0` indicates that IPv4 and IPv6 addresses are both returned. **Default:**
-    `0`.
+  * `family` {integer|string} The record family. Must be `4`, `6`, or `0`. For
+    backward compatibility reasons,`'IPv4'` and `'IPv6'` are interpreted as `4`
+    and `6` respectively. The value `0` indicates that IPv4 and IPv6 addresses
+    are both returned. **Default:** `0`.
   * `hints` {number} One or more [supported `getaddrinfo` flags][]. Multiple
     flags may be passed by bitwise `OR`ing their values.
   * `all` {boolean} When `true`, the callback returns all resolved addresses in
@@ -195,10 +213,9 @@ changes:
   * `verbatim` {boolean} When `true`, the callback receives IPv4 and IPv6
     addresses in the order the DNS resolver returned them. When `false`,
     IPv4 addresses are placed before IPv6 addresses.
-    **Default:** currently `false` (addresses are reordered) but this is
-    expected to change in the not too distant future. Default value is
+    **Default:** `true` (addresses are not reordered). Default value is
     configurable using [`dns.setDefaultResultOrder()`][] or
-    [`--dns-result-order`][]. New code should use `{ verbatim: true }`.
+    [`--dns-result-order`][].
 * `callback` {Function}
   * `err` {Error}
   * `address` {string} A string representation of an IPv4 or IPv6 address.
@@ -208,8 +225,8 @@ changes:
 
 Resolves a host name (e.g. `'nodejs.org'`) into the first found A (IPv4) or
 AAAA (IPv6) record. All `option` properties are optional. If `options` is an
-integer, then it must be `4` or `6` – if `options` is not provided, then IPv4
-and IPv6 addresses are both returned if found.
+integer, then it must be `4` or `6` – if `options` is `0` or not provided, then
+IPv4 and IPv6 addresses are both returned if found.
 
 With the `all` option set to `true`, the arguments for `callback` change to
 `(err, addresses)`, with `addresses` being an array of objects with the
@@ -276,6 +293,12 @@ The following flags can be passed as hints to [`dns.lookup()`][].
 
 <!-- YAML
 added: v0.11.14
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `address` {string}
@@ -309,6 +332,12 @@ If this method is invoked as its [`util.promisify()`][]ed version, it returns a
 
 <!-- YAML
 added: v0.1.27
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `hostname` {string} Host name to resolve.
@@ -345,6 +374,11 @@ On error, `err` is an [`Error`][] object, where `err.code` is one of the
 <!-- YAML
 added: v0.1.16
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v7.2.0
     pr-url: https://github.com/nodejs/node/pull/9296
     description: This method now supports passing `options`,
@@ -371,6 +405,11 @@ will contain an array of IPv4 addresses (e.g.
 <!-- YAML
 added: v0.1.16
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v7.2.0
     pr-url: https://github.com/nodejs/node/pull/9296
     description: This method now supports passing `options`,
@@ -392,6 +431,15 @@ Uses the DNS protocol to resolve IPv6 addresses (`AAAA` records) for the
 will contain an array of IPv6 addresses.
 
 ## `dns.resolveAny(hostname, callback)`
+
+<!-- YAML
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
+-->
 
 * `hostname` {string}
 * `callback` {Function}
@@ -445,6 +493,12 @@ queries. It may be better to call individual methods like [`dns.resolve4()`][],
 
 <!-- YAML
 added: v0.3.2
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `hostname` {string}
@@ -460,7 +514,15 @@ will contain an array of canonical name records available for the `hostname`
 ## `dns.resolveCaa(hostname, callback)`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.17.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `hostname` {string}
@@ -478,6 +540,12 @@ available for the `hostname` (e.g. `[{critical: 0, iodef:
 
 <!-- YAML
 added: v0.1.27
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `hostname` {string}
@@ -494,6 +562,12 @@ property (e.g. `[{priority: 10, exchange: 'mx.example.com'}, ...]`).
 
 <!-- YAML
 added: v0.9.12
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `hostname` {string}
@@ -529,6 +603,12 @@ function will contain an array of objects with the following properties:
 
 <!-- YAML
 added: v0.1.90
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `hostname` {string}
@@ -545,6 +625,12 @@ contain an array of name server records available for `hostname`
 
 <!-- YAML
 added: v6.0.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `hostname` {string}
@@ -560,6 +646,12 @@ be an array of strings containing the reply records.
 
 <!-- YAML
 added: v0.11.10
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `hostname` {string}
@@ -597,6 +689,12 @@ be an object with the following properties:
 
 <!-- YAML
 added: v0.1.27
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `hostname` {string}
@@ -628,6 +726,12 @@ be an array of objects with the following properties:
 
 <!-- YAML
 added: v0.1.27
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 <!--lint disable no-undefined-references list-item-bullet-indent-->
@@ -666,7 +770,9 @@ one of the [DNS error codes][].
 ## `dns.setDefaultResultOrder(order)`
 
 <!-- YAML
-added: v16.4.0
+added:
+  - v16.4.0
+  - v14.18.0
 -->
 
 * `order` {string} must be `'ipv4first'` or `'verbatim'`.
@@ -789,7 +895,9 @@ The following methods from the `dnsPromises` API are available:
 ### `resolver.cancel()`
 
 <!-- YAML
-added: v15.3.0
+added:
+  - v15.3.0
+  - v14.17.0
 -->
 
 Cancel all outstanding DNS queries made by this resolver. The corresponding
@@ -1028,7 +1136,9 @@ Here is an example of the result object:
 ### `dnsPromises.resolveCaa(hostname)`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.17.0
 -->
 
 * `hostname` {string}
@@ -1215,7 +1325,9 @@ is one of the [DNS error codes][].
 ### `dnsPromises.setDefaultResultOrder(order)`
 
 <!-- YAML
-added: v16.4.0
+added:
+  - v16.4.0
+  - v14.18.0
 -->
 
 * `order` {string} must be `'ipv4first'` or `'verbatim'`.
@@ -1335,8 +1447,8 @@ use libuv's threadpool.
 As a result, these functions cannot have the same negative impact on other
 processing that happens on libuv's threadpool that [`dns.lookup()`][] can have.
 
-They do not use the same set of configuration files than what [`dns.lookup()`][]
-uses. For instance, _they do not use the configuration from `/etc/hosts`_.
+They do not use the same set of configuration files that [`dns.lookup()`][]
+uses. For instance, they do not use the configuration from `/etc/hosts`.
 
 [DNS error codes]: #error-codes
 [Domain Name System (DNS)]: https://en.wikipedia.org/wiki/Domain_Name_System

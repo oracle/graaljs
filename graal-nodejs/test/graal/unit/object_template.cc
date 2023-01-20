@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,7 +94,7 @@ EXPORT_TO_JS(Set) {
     Local<Context> context = isolate->GetCurrentContext();
     Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
 
-    Local<String> name = args[0].As<String>(); //TODO should be Local<Name>
+    Local<Name> name = args[0].As<Name>();
     Local<Data> value = args[1];
 
     objectTemplate->Set(name, value); //TODO also set PropertyAttributes
@@ -108,7 +108,7 @@ EXPORT_TO_JS(CreateWithAccessor) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
-    Local<String> name = args[0].As<String>(); //TODO should be Local<Name>
+    Local<Name> name = args[0].As<Name>();
     objectTemplate->SetAccessor(name, SimpleAccessorGetter, SimpleAccessorSetter);
     args.GetReturnValue().Set(objectTemplate->NewInstance(context).ToLocalChecked());
 }

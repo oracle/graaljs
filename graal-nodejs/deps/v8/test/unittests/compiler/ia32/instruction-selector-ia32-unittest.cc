@@ -95,7 +95,7 @@ TEST_F(InstructionSelectorTest, ChangeFloat32ToFloat64WithParameter) {
   m.Return(m.ChangeFloat32ToFloat64(m.Parameter(0)));
   Stream s = m.Build();
   ASSERT_EQ(1U, s.size());
-  EXPECT_EQ(kSSEFloat32ToFloat64, s[0]->arch_opcode());
+  EXPECT_EQ(kIA32Float32ToFloat64, s[0]->arch_opcode());
   EXPECT_EQ(1U, s[0]->InputCount());
   EXPECT_EQ(1U, s[0]->OutputCount());
 }
@@ -106,7 +106,7 @@ TEST_F(InstructionSelectorTest, TruncateFloat64ToFloat32WithParameter) {
   m.Return(m.TruncateFloat64ToFloat32(m.Parameter(0)));
   Stream s = m.Build();
   ASSERT_EQ(1U, s.size());
-  EXPECT_EQ(kSSEFloat64ToFloat32, s[0]->arch_opcode());
+  EXPECT_EQ(kIA32Float64ToFloat32, s[0]->arch_opcode());
   EXPECT_EQ(1U, s[0]->InputCount());
   EXPECT_EQ(1U, s[0]->OutputCount());
 }
@@ -161,7 +161,7 @@ TEST_F(InstructionSelectorTest, ChangeUint32ToFloat64WithParameter) {
   m.Return(m.ChangeUint32ToFloat64(m.Parameter(0)));
   Stream s = m.Build();
   ASSERT_EQ(1U, s.size());
-  EXPECT_EQ(kSSEUint32ToFloat64, s[0]->arch_opcode());
+  EXPECT_EQ(kIA32Uint32ToFloat64, s[0]->arch_opcode());
 }
 
 
@@ -321,8 +321,8 @@ INSTANTIATE_TEST_SUITE_P(InstructionSelectorTest,
 
 class AddressingModeUnitTest : public InstructionSelectorTest {
  public:
-  AddressingModeUnitTest() : m(NULL) { Reset(); }
-  ~AddressingModeUnitTest() { delete m; }
+  AddressingModeUnitTest() : m(nullptr) { Reset(); }
+  ~AddressingModeUnitTest() override { delete m; }
 
   void Run(Node* base, Node* load_index, Node* store_index,
            AddressingMode mode) {
@@ -743,7 +743,7 @@ TEST_F(InstructionSelectorTest, Float32Abs) {
     m.Return(n);
     Stream s = m.Build();
     ASSERT_EQ(1U, s.size());
-    EXPECT_EQ(kSSEFloat32Abs, s[0]->arch_opcode());
+    EXPECT_EQ(kFloat32Abs, s[0]->arch_opcode());
     ASSERT_EQ(1U, s[0]->InputCount());
     EXPECT_EQ(s.ToVreg(p0), s.ToVreg(s[0]->InputAt(0)));
     ASSERT_EQ(1U, s[0]->OutputCount());
@@ -758,7 +758,7 @@ TEST_F(InstructionSelectorTest, Float32Abs) {
     m.Return(n);
     Stream s = m.Build(AVX);
     ASSERT_EQ(1U, s.size());
-    EXPECT_EQ(kAVXFloat32Abs, s[0]->arch_opcode());
+    EXPECT_EQ(kFloat32Abs, s[0]->arch_opcode());
     ASSERT_EQ(1U, s[0]->InputCount());
     EXPECT_EQ(s.ToVreg(p0), s.ToVreg(s[0]->InputAt(0)));
     ASSERT_EQ(1U, s[0]->OutputCount());
@@ -776,7 +776,7 @@ TEST_F(InstructionSelectorTest, Float64Abs) {
     m.Return(n);
     Stream s = m.Build();
     ASSERT_EQ(1U, s.size());
-    EXPECT_EQ(kSSEFloat64Abs, s[0]->arch_opcode());
+    EXPECT_EQ(kFloat64Abs, s[0]->arch_opcode());
     ASSERT_EQ(1U, s[0]->InputCount());
     EXPECT_EQ(s.ToVreg(p0), s.ToVreg(s[0]->InputAt(0)));
     ASSERT_EQ(1U, s[0]->OutputCount());
@@ -791,7 +791,7 @@ TEST_F(InstructionSelectorTest, Float64Abs) {
     m.Return(n);
     Stream s = m.Build(AVX);
     ASSERT_EQ(1U, s.size());
-    EXPECT_EQ(kAVXFloat64Abs, s[0]->arch_opcode());
+    EXPECT_EQ(kFloat64Abs, s[0]->arch_opcode());
     ASSERT_EQ(1U, s[0]->InputCount());
     EXPECT_EQ(s.ToVreg(p0), s.ToVreg(s[0]->InputAt(0)));
     ASSERT_EQ(1U, s[0]->OutputCount());
@@ -812,10 +812,10 @@ TEST_F(InstructionSelectorTest, Float64BinopArithmetic) {
     m.Return(ret);
     Stream s = m.Build(AVX);
     ASSERT_EQ(4U, s.size());
-    EXPECT_EQ(kAVXFloat64Add, s[0]->arch_opcode());
-    EXPECT_EQ(kAVXFloat64Mul, s[1]->arch_opcode());
-    EXPECT_EQ(kAVXFloat64Sub, s[2]->arch_opcode());
-    EXPECT_EQ(kAVXFloat64Div, s[3]->arch_opcode());
+    EXPECT_EQ(kFloat64Add, s[0]->arch_opcode());
+    EXPECT_EQ(kFloat64Mul, s[1]->arch_opcode());
+    EXPECT_EQ(kFloat64Sub, s[2]->arch_opcode());
+    EXPECT_EQ(kFloat64Div, s[3]->arch_opcode());
   }
   {
     StreamBuilder m(this, MachineType::Float64(), MachineType::Float64(),
@@ -827,10 +827,10 @@ TEST_F(InstructionSelectorTest, Float64BinopArithmetic) {
     m.Return(ret);
     Stream s = m.Build();
     ASSERT_EQ(4U, s.size());
-    EXPECT_EQ(kSSEFloat64Add, s[0]->arch_opcode());
-    EXPECT_EQ(kSSEFloat64Mul, s[1]->arch_opcode());
-    EXPECT_EQ(kSSEFloat64Sub, s[2]->arch_opcode());
-    EXPECT_EQ(kSSEFloat64Div, s[3]->arch_opcode());
+    EXPECT_EQ(kFloat64Add, s[0]->arch_opcode());
+    EXPECT_EQ(kFloat64Mul, s[1]->arch_opcode());
+    EXPECT_EQ(kFloat64Sub, s[2]->arch_opcode());
+    EXPECT_EQ(kFloat64Div, s[3]->arch_opcode());
   }
 }
 
@@ -899,6 +899,31 @@ TEST_F(InstructionSelectorTest, SIMDSplatZero) {
     ASSERT_EQ(0U, s[0]->InputCount());
     EXPECT_EQ(1U, s[0]->OutputCount());
   }
+}
+
+TEST_F(InstructionSelectorTest, Int32AddMinNegativeDisplacement) {
+  // This test case is simplified from a Wasm fuzz test in
+  // https://crbug.com/1091892. The key here is that we match on a
+  // sequence like: Int32Add(Int32Sub(-524288, -2147483648), -26048), which
+  // matches on an EmitLea, with -2147483648 as the displacement. Since we
+  // have a Int32Sub node, it sets kNegativeDisplacement, and later we try to
+  // negate -2147483648, which overflows.
+  StreamBuilder m(this, MachineType::Int32());
+  Node* const c0 = m.Int32Constant(-524288);
+  Node* const c1 = m.Int32Constant(std::numeric_limits<int32_t>::min());
+  Node* const c2 = m.Int32Constant(-26048);
+  Node* const a0 = m.Int32Sub(c0, c1);
+  Node* const a1 = m.Int32Add(a0, c2);
+  m.Return(a1);
+  Stream s = m.Build();
+  ASSERT_EQ(1U, s.size());
+
+  EXPECT_EQ(kIA32Lea, s[0]->arch_opcode());
+  ASSERT_EQ(2U, s[0]->InputCount());
+  EXPECT_EQ(kMode_MRI, s[0]->addressing_mode());
+  EXPECT_TRUE(s[0]->InputAt(1)->IsImmediate());
+  EXPECT_EQ(2147457600,
+            ImmediateOperand::cast(s[0]->InputAt(1))->inline_int32_value());
 }
 
 struct SwizzleConstants {

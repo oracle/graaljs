@@ -68,7 +68,7 @@ added:
   - v15.12.0
   - v14.18.0
 changes:
-  - version: v16.15.0
+  - version: v17.5.0
     pr-url: https://github.com/nodejs/node/pull/41272
     description: No longer experimental.
 -->
@@ -298,7 +298,7 @@ added:
   - v15.12.0
   - v14.18.0
 changes:
-  - version: v16.15.0
+  - version: v17.5.0
     pr-url: https://github.com/nodejs/node/pull/41272
     description: No longer experimental.
 -->
@@ -351,9 +351,11 @@ if (isMainThread) {
 
 <!-- YAML
 added: v15.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41271
+    description: No longer experimental.
 -->
-
-> Stability: 1 - Experimental
 
 Instances of `BroadcastChannel` allow asynchronous one-to-many communication
 with all other `BroadcastChannel` instances bound to the same channel name.
@@ -562,10 +564,14 @@ are part of the channel.
 <!-- YAML
 added: v10.5.0
 changes:
-  - version: v15.14.0
+  - version:
+      - v15.14.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37917
     description: Add 'BlockList' to the list of cloneable types.
-  - version: v15.9.0
+  - version:
+      - v15.9.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37155
     description: Add 'Histogram' types to the list of cloneable types.
   - version: v15.6.0
@@ -760,7 +766,7 @@ port2.postMessage(new URL('https://example.org'));
 ### `port.hasRef()`
 
 <!-- YAML
-added: v16.17.0
+added: v18.1.0
 -->
 
 > Stability: 1 - Experimental
@@ -1078,6 +1084,7 @@ immediately with an [`ERR_WORKER_NOT_RUNNING`][] error.
 <!-- YAML
 added:
   - v15.1.0
+  - v14.17.0
   - v12.22.0
 -->
 
@@ -1089,6 +1096,7 @@ instance. Similar to [`perf_hooks.performance`][].
 <!-- YAML
 added:
   - v15.1.0
+  - v14.17.0
   - v12.22.0
 -->
 

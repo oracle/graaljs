@@ -1,6 +1,6 @@
 # Corepack
 
-<!-- introduced_in=v16.9.0 -->
+<!-- introduced_in=v14.19.0 -->
 
 <!-- type=misc -->
 
@@ -62,6 +62,13 @@ package manager version you wish to set:
 
 ```bash
 corepack prepare yarn@x.y.z --activate
+```
+
+Alternately, a tag or range may be used:
+
+```bash
+corepack prepare pnpm@latest --activate
+corepack prepare yarn@stable --activate
 ```
 
 ### Offline workflow

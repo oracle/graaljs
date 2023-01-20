@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1045,6 +1045,30 @@ describe('Value - other methods', function () {
             var r = Proxy.revocable(function() {}, {});
             r.revoke();
             assert.strictEqual(module.Value_TypeOf(r.proxy), "function");
+        });
+    });
+    describe('ToDetailString', function () {
+        it('should be identity for strings', function () {
+            assert.strictEqual(module.Value_ToDetailString("foo"), "foo");
+        });
+        it('should work for symbols', function () {
+            assert.strictEqual(module.Value_ToDetailString(Symbol.toPrimitive), "Symbol(Symbol.toPrimitive)");
+        });
+        it('should work for proxies', function () {
+            module.Value_ToDetailString(new Proxy(function() {}, {}));
+        });
+        it('should have no side-effects', function () {
+            var sideEffect = false;
+            var o = {
+                toString() {
+                    sideEffect = true;
+                },
+                valueOf() {
+                    sideEffect = true;
+                }
+            };
+            module.Value_ToDetailString(o);
+            assert.ok(!sideEffect);
         });
     });
 });

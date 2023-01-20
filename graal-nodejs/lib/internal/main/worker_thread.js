@@ -31,8 +31,9 @@ const {
   initializeReport,
   initializeSourceMapsHandlers,
   loadPreloadModules,
-  setupTraceCategoryState
-} = require('internal/bootstrap/pre_execution');
+  setupTraceCategoryState,
+  markBootstrapComplete
+} = require('internal/process/pre_execution');
 
 // Passed by Graal.js init phase during global module loading.
 const SharedMemMessagingInit = typeof graalExtension === 'undefined' ? arguments[arguments.length - 1] : graalExtension;
@@ -142,6 +143,9 @@ port.on('message', (message) => {
     }
     initializeDeprecations();
     initializeWASI();
+
+    require('internal/dns/utils').initializeDns();
+
     initializeCJSLoader();
     initializeESMLoader();
 

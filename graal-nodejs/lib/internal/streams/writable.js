@@ -46,7 +46,7 @@ const { Buffer } = require('buffer');
 const destroyImpl = require('internal/streams/destroy');
 
 const {
-  addAbortSignalNoValidate,
+  addAbortSignal,
 } = require('internal/streams/add-abort-signal');
 
 const {
@@ -250,8 +250,9 @@ function Writable(options) {
 
     if (typeof options.construct === 'function')
       this._construct = options.construct;
+
     if (options.signal)
-      addAbortSignalNoValidate(options.signal, this);
+      addAbortSignal(options.signal, this);
   }
 
   Stream.call(this, options);
@@ -516,12 +517,12 @@ function errorBuffer(state) {
     const { chunk, callback } = state.buffered[n];
     const len = state.objectMode ? 1 : chunk.length;
     state.length -= len;
-    callback(new ERR_STREAM_DESTROYED('write'));
+    callback(state.errored ?? new ERR_STREAM_DESTROYED('write'));
   }
 
   const onfinishCallbacks = state[kOnFinished].splice(0);
   for (let i = 0; i < onfinishCallbacks.length; i++) {
-    onfinishCallbacks[i](new ERR_STREAM_DESTROYED('end'));
+    onfinishCallbacks[i](state.errored ?? new ERR_STREAM_DESTROYED('end'));
   }
 
   resetBuffer(state);
@@ -651,6 +652,7 @@ Writable.prototype.end = function(chunk, encoding, cb) {
 
 function needFinish(state) {
   return (state.ending &&
+          !state.destroyed &&
           state.constructed &&
           state.length === 0 &&
           !state.errored &&
@@ -693,24 +695,7 @@ function callFinal(stream, state) {
   state.pendingcb++;
 
   try {
-    const result = stream._final(onFinish);
-    if (result != null) {
-      const then = result.then;
-      if (typeof then === 'function') {
-        then.call(
-          result,
-          function() {
-            if (!called) {
-              process.nextTick(onFinish, null);
-            }
-          },
-          function(err) {
-            if (!called) {
-              process.nextTick(onFinish, err);
-            }
-          });
-      }
-    }
+    stream._final(onFinish);
   } catch (err) {
     onFinish(err);
   }
@@ -733,11 +718,18 @@ function prefinish(stream, state) {
 function finishMaybe(stream, state, sync) {
   if (needFinish(state)) {
     prefinish(stream, state);
-    if (state.pendingcb === 0 && needFinish(state)) {
-      state.pendingcb++;
+    if (state.pendingcb === 0) {
       if (sync) {
-        process.nextTick(finish, stream, state);
-      } else {
+        state.pendingcb++;
+        process.nextTick((stream, state) => {
+          if (needFinish(state)) {
+            finish(stream, state);
+          } else {
+            state.pendingcb--;
+          }
+        }, stream, state);
+      } else if (needFinish(state)) {
+        state.pendingcb++;
         finish(stream, state);
       }
     }
@@ -772,6 +764,13 @@ function finish(stream, state) {
 }
 
 ObjectDefineProperties(Writable.prototype, {
+
+  closed: {
+    __proto__: null,
+    get() {
+      return this._writableState ? this._writableState.closed : false;
+    }
+  },
 
   destroyed: {
     __proto__: null,
@@ -863,6 +862,14 @@ ObjectDefineProperties(Writable.prototype, {
     }
   },
 
+  errored: {
+    __proto__: null,
+    enumerable: false,
+    get() {
+      return this._writableState ? this._writableState.errored : null;
+    }
+  },
+
   writableAborted: {
     __proto__: null,
     enumerable: false,
@@ -898,4 +905,23 @@ Writable.prototype._destroy = function(err, cb) {
 
 Writable.prototype[EE.captureRejectionSymbol] = function(err) {
   this.destroy(err);
+};
+
+let webStreamsAdapters;
+
+// Lazy to avoid circular references
+function lazyWebStreams() {
+  if (webStreamsAdapters === undefined)
+    webStreamsAdapters = require('internal/webstreams/adapters');
+  return webStreamsAdapters;
+}
+
+Writable.fromWeb = function(writableStream, options) {
+  return lazyWebStreams().newStreamWritableFromWritableStream(
+    writableStream,
+    options);
+};
+
+Writable.toWeb = function(streamWritable) {
+  return lazyWebStreams().newWritableStreamFromStreamWritable(streamWritable);
 };

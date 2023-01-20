@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,7 @@ describe('Other', function () {
     it('should be possible to redefine process.env.FOO', function () {
         // inspired by a test of 'sinon' Node.js package
         process.env.FOO = 'bar';
-        Object.defineProperty(process.env, 'FOO', {value: 'baz', enumerable: true, configurable: true});
+        Object.defineProperty(process.env, 'FOO', {value: 'baz', enumerable: true, configurable: true, writable: true});
         assert.strictEqual(process.env.FOO, 'baz');
     });
     if (typeof Java !== 'undefined') {

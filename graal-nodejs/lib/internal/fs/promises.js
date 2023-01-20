@@ -9,6 +9,7 @@ const {
   Promise,
   PromisePrototypeThen,
   PromiseResolve,
+  PromiseReject,
   SafeArrayIterator,
   SafePromisePrototypeFinally,
   Symbol,
@@ -31,9 +32,11 @@ const {
   codes: {
     ERR_FS_FILE_TOO_LARGE,
     ERR_INVALID_ARG_VALUE,
+    ERR_INVALID_STATE,
     ERR_METHOD_NOT_IMPLEMENTED,
   },
   AbortError,
+  aggregateTwoErrors,
 } = require('internal/errors');
 const { isArrayBufferView } = require('internal/util/types');
 const { rimrafPromises } = require('internal/fs/rimraf');
@@ -83,6 +86,7 @@ const {
   promisify,
 } = require('internal/util');
 const { EventEmitterMixin } = require('internal/event_target');
+const { StringDecoder } = require('string_decoder');
 const { watch } = require('internal/fs/watchers');
 const { isIterable } = require('internal/streams/utils');
 const assert = require('internal/assert');
@@ -95,11 +99,21 @@ const kCloseResolve = Symbol('kCloseResolve');
 const kCloseReject = Symbol('kCloseReject');
 const kRef = Symbol('kRef');
 const kUnref = Symbol('kUnref');
+const kLocked = Symbol('kLocked');
 
 const { kUsePromises } = binding;
+const { Interface } = require('internal/readline/interface');
 const {
   JSTransferable, kDeserialize, kTransfer, kTransferList
 } = require('internal/worker/js_transferable');
+
+const {
+  newReadableStreamFromStreamBase,
+} = require('internal/webstreams/adapters');
+
+const {
+  readableStreamCancel,
+} = require('internal/webstreams/readablestream');
 
 const getDirectoryEntriesPromise = promisify(getDirents);
 const validateRmOptionsPromise = promisify(validateRmOptions);
@@ -168,6 +182,13 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
     return fsCall(readFile, this, options);
   }
 
+  readLines(options = undefined) {
+    return new Interface({
+      input: this.createReadStream(options),
+      crlfDelay: Infinity,
+    });
+  }
+
   stat(options) {
     return fsCall(fstat, this, options);
   }
@@ -224,6 +245,33 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
     this.emit('close');
     return this[kClosePromise];
   };
+
+  /**
+   * @typedef {import('../webstreams/readablestream').ReadableStream
+   * } ReadableStream
+   * @returns {ReadableStream}
+   */
+  readableWebStream() {
+    if (this[kFd] === -1)
+      throw new ERR_INVALID_STATE('The FileHandle is closed');
+    if (this[kClosePromise])
+      throw new ERR_INVALID_STATE('The FileHandle is closing');
+    if (this[kLocked])
+      throw new ERR_INVALID_STATE('The FileHandle is locked');
+    this[kLocked] = true;
+
+    const readable = newReadableStreamFromStreamBase(
+      this[kHandle],
+      undefined,
+      { ondone: () => this[kUnref]() });
+
+    this[kRef]();
+    this.once('close', () => {
+      readableStreamCancel(readable);
+    });
+
+    return readable;
+  }
 
   /**
    * @typedef {import('./streams').ReadStream
@@ -302,6 +350,19 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
   }
 }
 
+async function handleFdClose(fileOpPromise, closeFunc) {
+  return PromisePrototypeThen(
+    fileOpPromise,
+    (result) => PromisePrototypeThen(closeFunc(), () => result),
+    (opError) =>
+      PromisePrototypeThen(
+        closeFunc(),
+        () => PromiseReject(opError),
+        (closeError) => PromiseReject(aggregateTwoErrors(closeError, opError))
+      )
+  );
+}
+
 async function fsCall(fn, handle, ...args) {
   assert(handle[kRefs] !== undefined,
          'handle must be an instance of FileHandle');
@@ -364,6 +425,8 @@ async function writeFileHandle(filehandle, data, signal, encoding) {
 
 async function readFileHandle(filehandle, options) {
   const signal = options?.signal;
+  const encoding = options?.encoding;
+  const decoder = encoding && new StringDecoder(encoding);
 
   checkAborted(signal);
 
@@ -371,56 +434,74 @@ async function readFileHandle(filehandle, options) {
 
   checkAborted(signal);
 
-  let size;
+  let size = 0;
+  let length = 0;
   if ((statFields[1/* mode */] & S_IFMT) === S_IFREG) {
     size = statFields[8/* size */];
-  } else {
-    size = 0;
+    length = encoding ? MathMin(size, kReadFileBufferLength) : size;
+  }
+  if (length === 0) {
+    length = kReadFileUnknownBufferLength;
   }
 
   if (size > kIoMaxLength)
     throw new ERR_FS_FILE_TOO_LARGE(size);
 
-  let endOfFile = false;
   let totalRead = 0;
-  const noSize = size === 0;
-  const buffers = [];
-  const fullBuffer = noSize ? undefined : Buffer.allocUnsafeSlow(size);
-  do {
+  let buffer = Buffer.allocUnsafeSlow(length);
+  let result = '';
+  let offset = 0;
+  let buffers;
+  const chunkedRead = length > kReadFileBufferLength;
+
+  while (true) {
     checkAborted(signal);
-    let buffer;
-    let offset;
-    let length;
-    if (noSize) {
-      buffer = Buffer.allocUnsafeSlow(kReadFileUnknownBufferLength);
-      offset = 0;
-      length = kReadFileUnknownBufferLength;
-    } else {
-      buffer = fullBuffer;
-      offset = totalRead;
+
+    if (chunkedRead) {
       length = MathMin(size - totalRead, kReadFileBufferLength);
     }
 
     const bytesRead = (await binding.read(filehandle.fd, buffer, offset,
-                                          length, -1, kUsePromises)) || 0;
+                                          length, -1, kUsePromises)) ?? 0;
     totalRead += bytesRead;
-    endOfFile = bytesRead === 0 || totalRead === size;
-    if (noSize && bytesRead > 0) {
-      const isBufferFull = bytesRead === kReadFileUnknownBufferLength;
-      const chunkBuffer = isBufferFull ? buffer : buffer.slice(0, bytesRead);
-      ArrayPrototypePush(buffers, chunkBuffer);
+
+    if (bytesRead === 0 ||
+        totalRead === size ||
+        (bytesRead !== buffer.length && !chunkedRead)) {
+      const singleRead = bytesRead === totalRead;
+
+      const bytesToCheck = chunkedRead ? totalRead : bytesRead;
+
+      if (bytesToCheck !== buffer.length) {
+        buffer = buffer.subarray(0, bytesToCheck);
+      }
+
+      if (!encoding) {
+        if (size === 0 && !singleRead) {
+          ArrayPrototypePush(buffers, buffer);
+          return Buffer.concat(buffers, totalRead);
+        }
+        return buffer;
+      }
+
+      if (singleRead) {
+        return buffer.toString(encoding);
+      }
+      result += decoder.end(buffer);
+      return result;
     }
-  } while (!endOfFile);
 
-  let result;
-  if (size > 0) {
-    result = totalRead === size ? fullBuffer : fullBuffer.slice(0, totalRead);
-  } else {
-    result = buffers.length === 1 ? buffers[0] : Buffer.concat(buffers,
-                                                               totalRead);
+    if (encoding) {
+      result += decoder.write(buffer);
+    } else if (size !== 0) {
+      offset = totalRead;
+    } else {
+      buffers ??= [];
+      // Unknown file size requires chunks.
+      ArrayPrototypePush(buffers, buffer);
+      buffer = Buffer.allocUnsafeSlow(kReadFileUnknownBufferLength);
+    }
   }
-
-  return options.encoding ? result.toString(options.encoding) : result;
 }
 
 // All of the functions are defined as async in order to ensure that errors
@@ -584,7 +665,7 @@ async function rename(oldPath, newPath) {
 
 async function truncate(path, len = 0) {
   const fd = await open(path, 'r+');
-  return SafePromisePrototypeFinally(ftruncate(fd, len), fd.close);
+  return handleFdClose(ftruncate(fd, len), fd.close);
 }
 
 async function ftruncate(handle, len = 0) {
@@ -715,7 +796,7 @@ async function lchmod(path, mode) {
     throw new ERR_METHOD_NOT_IMPLEMENTED('lchmod()');
 
   const fd = await open(path, O_WRONLY | O_SYMLINK);
-  return SafePromisePrototypeFinally(fchmod(fd, mode), fd.close);
+  return handleFdClose(fchmod(fd, mode), fd.close);
 }
 
 async function lchown(path, uid, gid) {
@@ -793,7 +874,7 @@ async function writeFile(path, data, options) {
   checkAborted(options.signal);
 
   const fd = await open(path, flag, options.mode);
-  return SafePromisePrototypeFinally(
+  return handleFdClose(
     writeFileHandle(fd, data, options.signal, options.encoding), fd.close);
 }
 
@@ -818,7 +899,7 @@ async function readFile(path, options) {
   checkAborted(options.signal);
 
   const fd = await open(path, flag, 0o666);
-  return SafePromisePrototypeFinally(readFileHandle(fd, options), fd.close);
+  return handleFdClose(readFileHandle(fd, options), fd.close);
 }
 
 module.exports = {

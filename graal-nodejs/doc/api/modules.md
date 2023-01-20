@@ -320,7 +320,9 @@ irrespective of whether or not `./foo` and `./FOO` are the same file.
 
 <!-- YAML
 changes:
-  - version: v16.0.0
+  - version:
+      - v16.0.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37246
     description: Added `node:` import support to `require(...)`.
 -->
@@ -705,8 +707,8 @@ This does not apply to [native addons][], for which reloading will result in an
 error.
 
 Adding or replacing entries is also possible. This cache is checked before
-native modules and if a name matching a native module is added to the cache,
-only `node:`-prefixed require calls are going to receive the native module.
+built-in modules and if a name matching a built-in module is added to the cache,
+only `node:`-prefixed require calls are going to receive the built-in module.
 Use with care!
 
 <!-- eslint-disable node-core/no-duplicate-requires -->
@@ -718,7 +720,7 @@ const realFs = require('node:fs');
 const fakeFs = {};
 require.cache.fs = { exports: fakeFs };
 
-assert.strictEqual(require('node:fs'), fakeFs);
+assert.strictEqual(require('fs'), fakeFs);
 assert.strictEqual(require('node:fs'), realFs);
 ```
 
@@ -982,7 +984,9 @@ filename.
 ### `module.isPreloading`
 
 <!-- YAML
-added: v15.4.0
+added:
+  - v15.4.0
+  - v14.17.0
 -->
 
 * Type: {boolean} `true` if the module is running during the Node.js preload

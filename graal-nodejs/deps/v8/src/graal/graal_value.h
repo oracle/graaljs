@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -172,6 +172,7 @@ public:
     bool StrictEquals(v8::Local<v8::Value> that) const;
     bool InstanceOf(v8::Local<v8::Object> object);
     v8::Local<v8::String> TypeOf(v8::Isolate* isolate);
+    v8::MaybeLocal<v8::String> ToDetailString(v8::Local<v8::Context> context) const;
 };
 
 #endif /* GRAAL_VALUE_H_ */

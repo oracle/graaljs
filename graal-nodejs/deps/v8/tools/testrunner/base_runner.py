@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# for py2/py3 compatibility
-from __future__ import print_function
 from functools import reduce
 
 from collections import OrderedDict, namedtuple
@@ -113,7 +111,8 @@ SLOW_ARCHS = [
   "mips64el",
   "s390",
   "s390x",
-  "riscv64"
+  "riscv64",
+  "loong64"
 ]
 
 
@@ -191,8 +190,11 @@ class BuildConfig(object):
     self.lite_mode = build_config['v8_enable_lite_mode']
     self.pointer_compression = build_config['v8_enable_pointer_compression']
     self.pointer_compression_shared_cage = build_config['v8_enable_pointer_compression_shared_cage']
+    self.shared_ro_heap = build_config['v8_enable_shared_ro_heap']
+    self.sandbox = build_config['v8_enable_sandbox']
     self.third_party_heap = build_config['v8_enable_third_party_heap']
     self.webassembly = build_config['v8_enable_webassembly']
+    self.dict_property_const_tracking = build_config['v8_dict_property_const_tracking']
     # Export only for MIPS target
     if self.arch in ['mips', 'mipsel', 'mips64', 'mips64el']:
       self.mips_arch_variant = build_config['mips_arch_variant']
@@ -234,10 +236,14 @@ class BuildConfig(object):
       detected_options.append('pointer_compression')
     if self.pointer_compression_shared_cage:
       detected_options.append('pointer_compression_shared_cage')
+    if self.sandbox:
+      detected_options.append('sandbox')
     if self.third_party_heap:
       detected_options.append('third_party_heap')
     if self.webassembly:
       detected_options.append('webassembly')
+    if self.dict_property_const_tracking:
+      detected_options.append('dict_property_const_tracking')
 
     return '\n'.join(detected_options)
 
@@ -267,6 +273,7 @@ class BaseTestRunner(object):
     self.build_config = None
     self.mode_options = None
     self.target_os = None
+    self.infra_staging = False
 
   @property
   def framework_name(self):
@@ -279,6 +286,7 @@ class BaseTestRunner(object):
     try:
       parser = self._create_parser()
       options, args = self._parse_args(parser, sys_args)
+      self.infra_staging = options.infra_staging
       if options.swarming:
         # Swarming doesn't print how isolated commands are called. Lets make
         # this less cryptic by printing it ourselves.
@@ -348,6 +356,13 @@ class BaseTestRunner(object):
                       help="How long should fuzzer run")
     parser.add_option("--swarming", default=False, action="store_true",
                       help="Indicates running test driver on swarming.")
+    parser.add_option('--infra-staging', help='Use new test runner features',
+                      dest='infra_staging', default=None,
+                      action='store_true')
+    parser.add_option('--no-infra-staging',
+                      help='Opt out of new test runner features',
+                      dest='infra_staging', default=None,
+                      action='store_false')
 
     parser.add_option("-j", help="The number of parallel tasks to run",
                       default=0, type=int)
@@ -363,7 +378,7 @@ class BaseTestRunner(object):
 
     # Progress
     parser.add_option("-p", "--progress",
-                      choices=list(PROGRESS_INDICATORS), default="mono",
+                      choices=list(PROGRESS_INDICATORS.keys()), default="mono",
                       help="The style of progress indicator (verbose, dots, "
                            "color, mono)")
     parser.add_option("--json-test-results",
@@ -520,7 +535,7 @@ class BaseTestRunner(object):
         options.j = multiprocessing.cpu_count()
 
     options.command_prefix = shlex.split(options.command_prefix)
-    options.extra_flags = sum(map(shlex.split, options.extra_flags), [])
+    options.extra_flags = sum(list(map(shlex.split, options.extra_flags)), [])
 
   def _process_options(self, options):
     pass
@@ -607,7 +622,7 @@ class BaseTestRunner(object):
     def expand_test_group(name):
       return TEST_MAP.get(name, [name])
 
-    return reduce(list.__add__, map(expand_test_group, args), [])
+    return reduce(list.__add__, list(map(expand_test_group, args)), [])
 
   def _args_to_suite_names(self, args, test_root):
     # Use default tests if no test configuration was provided at the cmd line.
@@ -655,7 +670,7 @@ class BaseTestRunner(object):
 
     no_simd_hardware = any(
         i in options.extra_flags for i in ['--noenable-sse3',
-                                           '--no-enable-sse3'
+                                           '--no-enable-sse3',
                                            '--noenable-ssse3',
                                            '--no-enable-ssse3',
                                            '--noenable-sse4-1',
@@ -665,6 +680,9 @@ class BaseTestRunner(object):
     if self.build_config.arch == 'mips64el' or \
        self.build_config.arch == 'mipsel':
        no_simd_hardware = not simd_mips
+
+    if self.build_config.arch == 'loong64':
+       no_simd_hardware = True
 
     # S390 hosts without VEF1 do not support Simd.
     if self.build_config.arch == 's390x' and \
@@ -716,6 +734,11 @@ class BaseTestRunner(object):
       "lite_mode": self.build_config.lite_mode,
       "pointer_compression": self.build_config.pointer_compression,
       "pointer_compression_shared_cage": self.build_config.pointer_compression_shared_cage,
+      "no_js_shared_memory": (not self.build_config.shared_ro_heap) or
+                             (self.build_config.pointer_compression and
+                              not self.build_config.pointer_compression_shared_cage),
+      "sandbox": self.build_config.sandbox,
+      "dict_property_const_tracking": self.build_config.dict_property_const_tracking,
     }
 
   def _runner_flags(self):
@@ -762,7 +785,7 @@ class BaseTestRunner(object):
     raise NotImplementedError()
 
   def _prepare_procs(self, procs):
-    procs = filter(None, procs)
+    procs = list([_f for _f in procs if _f])
     for i in range(0, len(procs) - 1):
       procs[i].connect_to(procs[i + 1])
     procs[0].setup()

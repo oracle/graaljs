@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,7 +103,7 @@ import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
  */
 public class Serializer {
     static final byte VERSION = (byte) 0xFF; // SerializationTag::kVersion
-    static final byte LATEST_VERSION = (byte) 13; // kLatestVersion
+    static final byte LATEST_VERSION = (byte) 15; // kLatestVersion
     static final String NATIVE_UTF16_ENCODING = (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) ? "UTF-16BE" : "UTF-16LE";
 
     public static final TruffleString COULD_NOT_BE_CLONED = Strings.constant(" could not be cloned.");

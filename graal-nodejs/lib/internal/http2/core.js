@@ -121,7 +121,7 @@ const {
 } = require('internal/errors');
 const {
   isUint32,
-  validateCallback,
+  validateFunction,
   validateInt32,
   validateInteger,
   validateNumber,
@@ -359,10 +359,12 @@ function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
       handle.destroy();
       return;
     }
-    const opts = { readable: !endOfStream };
     // session[kType] can be only one of two possible values
     if (type === NGHTTP2_SESSION_SERVER) {
-      stream = new ServerHttp2Stream(session, handle, id, opts, obj);
+      stream = new ServerHttp2Stream(session, handle, id, {}, obj);
+      if (endOfStream) {
+        stream.push(null);
+      }
       if (obj[HTTP2_HEADER_METHOD] === HTTP2_METHOD_HEAD) {
         // For head requests, there must not be a body...
         // end the writable side immediately.
@@ -370,7 +372,10 @@ function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
         stream[kState].flags |= STREAM_FLAGS_HEAD_REQUEST;
       }
     } else {
-      stream = new ClientHttp2Stream(session, handle, id, opts);
+      stream = new ClientHttp2Stream(session, handle, id, {});
+      if (endOfStream) {
+        stream.push(null);
+      }
       stream.end();
     }
     if (endOfStream)
@@ -1373,7 +1378,7 @@ class Http2Session extends EventEmitter {
     if (payload && payload.length !== 8) {
       throw new ERR_HTTP2_PING_LENGTH();
     }
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
 
     const cb = pingCallback(callback);
     if (this.connecting || this.closed) {
@@ -1471,7 +1476,7 @@ class Http2Session extends EventEmitter {
     validateSettings(settings);
 
     if (callback) {
-      validateCallback(callback);
+      validateFunction(callback, 'callback');
     }
     debugSessionObj(this, 'sending settings');
 
@@ -2274,7 +2279,7 @@ class Http2Stream extends Duplex {
     validateInteger(code, 'code', 0, kMaxInt);
 
     if (callback !== undefined) {
-      validateCallback(callback);
+      validateFunction(callback, 'callback');
     }
 
     if (this.closed)
@@ -2677,7 +2682,7 @@ class ServerHttp2Stream extends Http2Stream {
       options = undefined;
     }
 
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
 
     assertIsObject(options, 'options');
     options = { ...options };
@@ -2698,7 +2703,6 @@ class ServerHttp2Stream extends Http2Stream {
     let headRequest = false;
     if (headers[HTTP2_HEADER_METHOD] === HTTP2_METHOD_HEAD)
       headRequest = options.endStream = true;
-    options.readable = false;
 
     const headersList = mapToHeaders(headers);
 
@@ -2725,6 +2729,8 @@ class ServerHttp2Stream extends Http2Stream {
     const id = ret.id();
     const stream = new ServerHttp2Stream(session, ret, id, options, headers);
     stream[kSentHeaders] = headers;
+
+    stream.push(null);
 
     if (options.endStream)
       stream.end();
@@ -3140,7 +3146,7 @@ class Http2SecureServer extends TLSServer {
   setTimeout(msecs, callback) {
     this.timeout = msecs;
     if (callback !== undefined) {
-      validateCallback(callback);
+      validateFunction(callback, 'callback');
       this.on('timeout', callback);
     }
     return this;
@@ -3167,7 +3173,7 @@ class Http2Server extends NETServer {
   setTimeout(msecs, callback) {
     this.timeout = msecs;
     if (callback !== undefined) {
-      validateCallback(callback);
+      validateFunction(callback, 'callback');
       this.on('timeout', callback);
     }
     return this;

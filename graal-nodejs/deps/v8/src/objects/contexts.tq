@@ -3,12 +3,10 @@
 // found in the LICENSE file.
 
 @abstract
-@export
-@customCppClass
 // We normally don't generate a BodyDescriptor for an abstact class, but here we
 // do since all context classes share the same BodyDescriptor.
 @generateBodyDescriptor
-class Context extends HeapObject {
+extern class Context extends HeapObject {
   macro GetScopeInfo(): ScopeInfo {
     return *ContextSlot(this, ContextSlot::SCOPE_INFO_INDEX);
   }
@@ -61,11 +59,12 @@ type Slot<Container : type extends Context, T : type extends Object> extends
 // slot has the right type already.
 macro InitContextSlot<
     ArgumentContext: type, AnnotatedContext: type, T: type, U: type>(
-    context: ArgumentContext, index: Slot<AnnotatedContext, T>, value: U) {
+    context: ArgumentContext, index: Slot<AnnotatedContext, T>,
+    value: U): void {
   // Make sure the arguments have the right type.
   const context: AnnotatedContext = context;
   const value: T = value;
-  assert(TaggedEqual(context.elements[index], kInitialContextSlotValue));
+  dcheck(TaggedEqual(context.elements[index], kInitialContextSlotValue));
   context.elements[index] = value;
 }
 
@@ -159,6 +158,8 @@ extern enum ContextSlot extends intptr constexpr 'Context::Field' {
   BOUND_FUNCTION_WITH_CONSTRUCTOR_MAP_INDEX: Slot<NativeContext, Map>,
   BOUND_FUNCTION_WITHOUT_CONSTRUCTOR_MAP_INDEX: Slot<NativeContext, Map>,
 
+  WRAPPED_FUNCTION_MAP_INDEX: Slot<NativeContext, Map>,
+
   MIN_CONTEXT_SLOTS,
   ...
 }
@@ -179,17 +180,17 @@ macro LoadContextElement(c: Context, i: constexpr int32): Object {
 }
 
 @export
-macro StoreContextElement(c: Context, i: intptr, o: Object) {
+macro StoreContextElement(c: Context, i: intptr, o: Object): void {
   c.elements[i] = o;
 }
 
 @export
-macro StoreContextElement(c: Context, i: Smi, o: Object) {
+macro StoreContextElement(c: Context, i: Smi, o: Object): void {
   c.elements[i] = o;
 }
 
 @export
-macro StoreContextElement(c: Context, i: constexpr int32, o: Object) {
+macro StoreContextElement(c: Context, i: constexpr int32, o: Object): void {
   c.elements[i] = o;
 }
 

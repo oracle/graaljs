@@ -6,17 +6,18 @@
 
 #include "src/regexp/regexp-interpreter.h"
 
-#include "src/ast/ast.h"
 #include "src/base/small-vector.h"
 #include "src/base/strings.h"
+#include "src/execution/isolate.h"
 #include "src/logging/counters.h"
 #include "src/objects/js-regexp-inl.h"
-#include "src/objects/objects-inl.h"
+#include "src/objects/string-inl.h"
 #include "src/regexp/regexp-bytecodes.h"
 #include "src/regexp/regexp-macro-assembler.h"
 #include "src/regexp/regexp-stack.h"  // For kMaximumStackSize.
 #include "src/regexp/regexp.h"
 #include "src/strings/unicode.h"
+#include "src/utils/memcopy.h"
 #include "src/utils/utils.h"
 
 #ifdef V8_INTL_SUPPORT
@@ -1059,12 +1060,12 @@ IrregexpInterpreter::Result IrregexpInterpreter::Match(
   if (FLAG_regexp_tier_up) regexp.TierUpTick();
 
   bool is_one_byte = String::IsOneByteRepresentationUnderneath(subject_string);
-  ByteArray code_array = ByteArray::cast(regexp.Bytecode(is_one_byte));
-  int total_register_count = regexp.MaxRegisterCount();
+  ByteArray code_array = ByteArray::cast(regexp.bytecode(is_one_byte));
+  int total_register_count = regexp.max_register_count();
 
   return MatchInternal(isolate, code_array, subject_string, output_registers,
                        output_register_count, total_register_count,
-                       start_position, call_origin, regexp.BacktrackLimit());
+                       start_position, call_origin, regexp.backtrack_limit());
 }
 
 IrregexpInterpreter::Result IrregexpInterpreter::MatchInternal(
@@ -1073,6 +1074,9 @@ IrregexpInterpreter::Result IrregexpInterpreter::MatchInternal(
     int start_position, RegExp::CallOrigin call_origin,
     uint32_t backtrack_limit) {
   DCHECK(subject_string.IsFlat());
+
+  // TODO(chromium:1262676): Remove this CHECK once fixed.
+  CHECK(code_array.IsByteArray());
 
   // Note: Heap allocation *is* allowed in two situations if calling from
   // Runtime:
@@ -1084,6 +1088,10 @@ IrregexpInterpreter::Result IrregexpInterpreter::MatchInternal(
 
   base::uc16 previous_char = '\n';
   String::FlatContent subject_content = subject_string.GetFlatContent(no_gc);
+  // Because interrupts can result in GC and string content relocation, the
+  // checksum verification in FlatContent may fail even though this code is
+  // safe. See (2) above.
+  subject_content.UnsafeDisableChecksumVerification();
   if (subject_content.IsOneByte()) {
     base::Vector<const uint8_t> subject_vector =
         subject_content.ToOneByteVector();
@@ -1110,7 +1118,7 @@ IrregexpInterpreter::Result IrregexpInterpreter::MatchInternal(
 // builtin.
 IrregexpInterpreter::Result IrregexpInterpreter::MatchForCallFromJs(
     Address subject, int32_t start_position, Address, Address,
-    int* output_registers, int32_t output_register_count, Address,
+    int* output_registers, int32_t output_register_count,
     RegExp::CallOrigin call_origin, Isolate* isolate, Address regexp) {
   DCHECK_NOT_NULL(isolate);
   DCHECK_NOT_NULL(output_registers);

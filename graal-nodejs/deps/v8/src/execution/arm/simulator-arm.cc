@@ -114,14 +114,10 @@ bool ArmDebugger::GetValue(const char* desc, int32_t* value) {
   if (regnum != kNoRegister) {
     *value = GetRegisterValue(regnum);
     return true;
-  } else {
-    if (strncmp(desc, "0x", 2) == 0) {
-      return SScanF(desc + 2, "%x", reinterpret_cast<uint32_t*>(value)) == 1;
-    } else {
-      return SScanF(desc, "%u", reinterpret_cast<uint32_t*>(value)) == 1;
-    }
   }
-  return false;
+  if (strncmp(desc, "0x", 2) == 0)
+    return SScanF(desc + 2, "%x", reinterpret_cast<uint32_t*>(value)) == 1;
+  return SScanF(desc, "%u", reinterpret_cast<uint32_t*>(value)) == 1;
 }
 
 bool ArmDebugger::GetVFPSingleValue(const char* desc, float* value) {
@@ -1143,9 +1139,9 @@ uintptr_t Simulator::StackLimit(uintptr_t c_limit) const {
     return reinterpret_cast<uintptr_t>(get_sp());
   }
 
-  // Otherwise the limit is the JS stack. Leave a safety margin of 1024 bytes
+  // Otherwise the limit is the JS stack. Leave a safety margin of 4 KiB
   // to prevent overrunning the stack when pushing values.
-  return reinterpret_cast<uintptr_t>(stack_) + 1024;
+  return reinterpret_cast<uintptr_t>(stack_) + 4 * KB;
 }
 
 // Unsupported instructions use Format to print an error and stop execution.
@@ -1192,7 +1188,6 @@ bool Simulator::ConditionallyExecute(Instruction* instr) {
     default:
       UNREACHABLE();
   }
-  return false;
 }
 
 // Calculate and set the Negative and Zero flags.
@@ -1314,7 +1309,6 @@ int32_t Simulator::GetShiftRm(Instruction* instr, bool* carry_out) {
     // by immediate
     if ((shift == ROR) && (shift_amount == 0)) {
       UNIMPLEMENTED();
-      return result;
     } else if (((shift == LSR) || (shift == ASR)) && (shift_amount == 0)) {
       shift_amount = 32;
     }
@@ -1373,7 +1367,6 @@ int32_t Simulator::GetShiftRm(Instruction* instr, bool* carry_out) {
 
       default: {
         UNREACHABLE();
-        break;
       }
     }
   } else {
@@ -1451,7 +1444,6 @@ int32_t Simulator::GetShiftRm(Instruction* instr, bool* carry_out) {
 
       default: {
         UNREACHABLE();
-        break;
       }
     }
   }
@@ -1486,7 +1478,6 @@ int32_t Simulator::ProcessPU(Instruction* instr, int num_regs, int reg_size,
   switch (instr->PUField()) {
     case da_x: {
       UNIMPLEMENTED();
-      break;
     }
     case ia_x: {
       *start_address = rn_val;
@@ -1604,11 +1595,11 @@ void Simulator::HandleVList(Instruction* instr) {
 // 64-bit value. With the code below we assume that all runtime calls return
 // 64 bits of result. If they don't, the r1 result register contains a bogus
 // value, which is fine because it is caller-saved.
-using SimulatorRuntimeCall = int64_t (*)(int32_t arg0, int32_t arg1,
-                                         int32_t arg2, int32_t arg3,
-                                         int32_t arg4, int32_t arg5,
-                                         int32_t arg6, int32_t arg7,
-                                         int32_t arg8, int32_t arg9);
+using SimulatorRuntimeCall = int64_t (*)(
+    int32_t arg0, int32_t arg1, int32_t arg2, int32_t arg3, int32_t arg4,
+    int32_t arg5, int32_t arg6, int32_t arg7, int32_t arg8, int32_t arg9,
+    int32_t arg10, int32_t arg11, int32_t arg12, int32_t arg13, int32_t arg14,
+    int32_t arg15, int32_t arg16, int32_t arg17, int32_t arg18, int32_t arg19);
 
 // These prototypes handle the four types of FP calls.
 using SimulatorRuntimeCompareCall = int64_t (*)(double darg0, double darg1);
@@ -1633,10 +1624,15 @@ using SimulatorRuntimeProfilingGetterCall = void (*)(int32_t arg0, int32_t arg1,
 int64_t UnsafeGenericFunctionCall(intptr_t function, int32_t arg0, int32_t arg1,
                                   int32_t arg2, int32_t arg3, int32_t arg4,
                                   int32_t arg5, int32_t arg6, int32_t arg7,
-                                  int32_t arg8, int32_t arg9) {
+                                  int32_t arg8, int32_t arg9, int32_t arg10,
+                                  int32_t arg11, int32_t arg12, int32_t arg13,
+                                  int32_t arg14, int32_t arg15, int32_t arg16,
+                                  int32_t arg17, int32_t arg18, int32_t arg19) {
   SimulatorRuntimeCall target =
       reinterpret_cast<SimulatorRuntimeCall>(function);
-  return target(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+  return target(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9,
+                arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18,
+                arg19);
 }
 void UnsafeDirectApiCall(intptr_t function, int32_t arg0) {
   SimulatorRuntimeDirectApiCall target =
@@ -1677,7 +1673,17 @@ void Simulator::SoftwareInterrupt(Instruction* instr) {
       int32_t arg7 = stack_pointer[3];
       int32_t arg8 = stack_pointer[4];
       int32_t arg9 = stack_pointer[5];
-      STATIC_ASSERT(kMaxCParameters == 10);
+      int32_t arg10 = stack_pointer[6];
+      int32_t arg11 = stack_pointer[7];
+      int32_t arg12 = stack_pointer[8];
+      int32_t arg13 = stack_pointer[9];
+      int32_t arg14 = stack_pointer[10];
+      int32_t arg15 = stack_pointer[11];
+      int32_t arg16 = stack_pointer[12];
+      int32_t arg17 = stack_pointer[13];
+      int32_t arg18 = stack_pointer[14];
+      int32_t arg19 = stack_pointer[15];
+      STATIC_ASSERT(kMaxCParameters == 20);
 
       bool fp_call =
           (redirection->type() == ExternalReference::BUILTIN_FP_FP_CALL) ||
@@ -1717,7 +1723,6 @@ void Simulator::SoftwareInterrupt(Instruction* instr) {
               break;
             default:
               UNREACHABLE();
-              break;
           }
           if (!stack_aligned) {
             PrintF(" with unaligned stack %08x\n", get_register(sp));
@@ -1769,7 +1774,6 @@ void Simulator::SoftwareInterrupt(Instruction* instr) {
           }
           default:
             UNREACHABLE();
-            break;
         }
         if (::v8::internal::FLAG_trace_sim || !stack_aligned) {
           switch (redirection->type()) {
@@ -1783,7 +1787,6 @@ void Simulator::SoftwareInterrupt(Instruction* instr) {
               break;
             default:
               UNREACHABLE();
-              break;
           }
         }
       } else if (redirection->type() == ExternalReference::DIRECT_API_CALL) {
@@ -1847,23 +1850,38 @@ void Simulator::SoftwareInterrupt(Instruction* instr) {
 #endif
       } else {
         // builtin call.
+        // FAST_C_CALL is temporarily handled here as well, because we lack
+        // proper support for direct C calls with FP params in the simulator.
+        // The generic BUILTIN_CALL path assumes all parameters are passed in
+        // the GP registers, thus supporting calling the slow callback without
+        // crashing. The reason for that is that in the mjsunit tests we check
+        // the `fast_c_api.supports_fp_params` (which is false on non-simulator
+        // builds for arm/arm64), thus we expect that the slow path will be
+        // called. And since the slow path passes the arguments as a `const
+        // FunctionCallbackInfo<Value>&` (which is a GP argument), the call is
+        // made correctly.
         DCHECK(redirection->type() == ExternalReference::BUILTIN_CALL ||
-               redirection->type() == ExternalReference::BUILTIN_CALL_PAIR);
+               redirection->type() == ExternalReference::BUILTIN_CALL_PAIR ||
+               redirection->type() == ExternalReference::FAST_C_CALL);
         if (::v8::internal::FLAG_trace_sim || !stack_aligned) {
           PrintF(
               "Call to host function at %p "
-              "args %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x",
+              "args %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, "
+              "%08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, "
+              "%08x",
               reinterpret_cast<void*>(external), arg0, arg1, arg2, arg3, arg4,
-              arg5, arg6, arg7, arg8, arg9);
+              arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14,
+              arg15, arg16, arg17, arg18, arg19);
           if (!stack_aligned) {
             PrintF(" with unaligned stack %08x\n", get_register(sp));
           }
           PrintF("\n");
         }
         CHECK(stack_aligned);
-        int64_t result =
-            UnsafeGenericFunctionCall(external, arg0, arg1, arg2, arg3, arg4,
-                                      arg5, arg6, arg7, arg8, arg9);
+        int64_t result = UnsafeGenericFunctionCall(
+            external, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8,
+            arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18,
+            arg19);
 #ifdef DEBUG
         TrashCallerSaveRegisters();
 #endif
@@ -2121,7 +2139,6 @@ void Simulator::DecodeType01(Instruction* instr) {
               }
               default:
                 UNREACHABLE();
-                break;
             }
           } else {
             // The instruction is documented as strex rd, rt, [rn], but the
@@ -2165,7 +2182,6 @@ void Simulator::DecodeType01(Instruction* instr) {
               }
               default:
                 UNREACHABLE();
-                break;
             }
           }
         } else {
@@ -2219,7 +2235,6 @@ void Simulator::DecodeType01(Instruction* instr) {
           default: {
             // The PU field is a 2-bit field.
             UNREACHABLE();
-            break;
           }
         }
       } else {
@@ -2262,7 +2277,6 @@ void Simulator::DecodeType01(Instruction* instr) {
           default: {
             // The PU field is a 2-bit field.
             UNREACHABLE();
-            break;
           }
         }
       }
@@ -2600,7 +2614,6 @@ void Simulator::DecodeType01(Instruction* instr) {
 
       default: {
         UNREACHABLE();
-        break;
       }
     }
   }
@@ -2680,7 +2693,6 @@ void Simulator::DecodeType3(Instruction* instr) {
       DCHECK(!instr->HasW());
       Format(instr, "'memop'cond'b 'rd, ['rn], -'shift_rm");
       UNIMPLEMENTED();
-      break;
     }
     case ia_x: {
       if (instr->Bit(4) == 0) {
@@ -2714,10 +2726,8 @@ void Simulator::DecodeType3(Instruction* instr) {
               break;
             case 1:
               UNIMPLEMENTED();
-              break;
             case 2:
               UNIMPLEMENTED();
-              break;
             case 3: {
               // Usat.
               int32_t sat_pos = instr->Bits(20, 16);
@@ -2746,7 +2756,6 @@ void Simulator::DecodeType3(Instruction* instr) {
           switch (instr->Bits(22, 21)) {
             case 0:
               UNIMPLEMENTED();
-              break;
             case 1:
               if (instr->Bits(9, 6) == 1) {
                 if (instr->Bit(20) == 0) {
@@ -3442,7 +3451,6 @@ void Simulator::DecodeTypeVFP(Instruction* instr) {
           }
           default:
             UNREACHABLE();
-            break;
         }
         set_neon_register(vd, q_data);
       }
@@ -4433,7 +4441,6 @@ void Simulator::DecodeAdvancedSIMDTwoOrThreeRegisters(Instruction* instr) {
             }
             default:
               UNREACHABLE();
-              break;
           }
           break;
         }
@@ -4469,13 +4476,11 @@ void Simulator::DecodeAdvancedSIMDTwoOrThreeRegisters(Instruction* instr) {
             }
             default:
               UNREACHABLE();
-              break;
           }
           break;
         }
         default:
           UNREACHABLE();
-          break;
       }
     } else if (opc1 == 0 && (opc2 == 0b0100 || opc2 == 0b0101)) {
       DCHECK_EQ(1, instr->Bit(6));  // Only support Q regs.
@@ -4625,7 +4630,6 @@ void Simulator::DecodeAdvancedSIMDTwoOrThreeRegisters(Instruction* instr) {
             break;
           default:
             UNIMPLEMENTED();
-            break;
         }
       }
     } else if (opc1 == 0b01 && (opc2 & 0b0111) == 0b111) {
@@ -4654,7 +4658,6 @@ void Simulator::DecodeAdvancedSIMDTwoOrThreeRegisters(Instruction* instr) {
             break;
           default:
             UNIMPLEMENTED();
-            break;
         }
       }
     } else if (opc1 == 0b10 && opc2 == 0b0001) {
@@ -4674,7 +4677,6 @@ void Simulator::DecodeAdvancedSIMDTwoOrThreeRegisters(Instruction* instr) {
             break;
           default:
             UNREACHABLE();
-            break;
         }
       } else {
         int Vd = instr->VFPDRegValue(kDoublePrecision);
@@ -4692,7 +4694,6 @@ void Simulator::DecodeAdvancedSIMDTwoOrThreeRegisters(Instruction* instr) {
             break;
           default:
             UNREACHABLE();
-            break;
         }
       }
     } else if (opc1 == 0b10 && (opc2 & 0b1110) == 0b0010) {
@@ -4714,7 +4715,6 @@ void Simulator::DecodeAdvancedSIMDTwoOrThreeRegisters(Instruction* instr) {
               break;
             default:
               UNREACHABLE();
-              break;
           }
         } else {
           // vuzp.<size> Qd, Qm.
@@ -4730,7 +4730,6 @@ void Simulator::DecodeAdvancedSIMDTwoOrThreeRegisters(Instruction* instr) {
               break;
             default:
               UNREACHABLE();
-              break;
           }
         }
       } else {
@@ -4747,10 +4746,8 @@ void Simulator::DecodeAdvancedSIMDTwoOrThreeRegisters(Instruction* instr) {
               break;
             case Neon32:
               UNIMPLEMENTED();
-              break;
             default:
               UNREACHABLE();
-              break;
           }
         } else {
           // vuzp.<size> Dd, Dm.
@@ -4763,10 +4760,8 @@ void Simulator::DecodeAdvancedSIMDTwoOrThreeRegisters(Instruction* instr) {
               break;
             case Neon32:
               UNIMPLEMENTED();
-              break;
             default:
               UNREACHABLE();
-              break;
           }
         }
       }
@@ -4811,7 +4806,6 @@ void Simulator::DecodeAdvancedSIMDTwoOrThreeRegisters(Instruction* instr) {
         }
         case Neon64:
           UNREACHABLE();
-          break;
       }
     } else if (opc1 == 0b10 && instr->Bit(10) == 1) {
       // vrint<q>.<dt> <Dd>, <Dm>
@@ -5078,7 +5072,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (!u && opc == 1 && sz == 2 && q && op1) {
       // vmov Qd, Qm.
@@ -5134,7 +5127,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (!u && opc == 3) {
       // vcge/vcgt.s<size> Qd, Qm, Qn.
@@ -5152,7 +5144,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (!u && opc == 4 && !op1) {
       // vshl s<size> Qd, Qm, Qn.
@@ -5172,7 +5163,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (!u && opc == 6) {
       // vmin/vmax.s<size> Qd, Qm, Qn.
@@ -5190,7 +5180,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (!u && opc == 8 && op1) {
       // vtst.i<size> Qd, Qm, Qn.
@@ -5207,7 +5196,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (!u && opc == 8 && !op1) {
       // vadd.i<size> Qd, Qm, Qn.
@@ -5241,7 +5229,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (!u && opc == 0xA) {
       // vpmin/vpmax.s<size> Dd, Dm, Dn.
@@ -5259,7 +5246,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (!u && opc == 0xB) {
       // vpadd.i<size> Dd, Dm, Dn.
@@ -5276,7 +5262,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (!u && opc == 0xD && !op1) {
       float src1[4], src2[4];
@@ -5347,7 +5332,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (u && opc == 1 && sz == 1 && op1) {
       // vbsl.size Qd, Qm, Qn.
@@ -5388,7 +5372,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (u && opc == 2 && op1) {
       // vqsub.u<size> Qd, Qm, Qn.
@@ -5405,7 +5388,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (u && opc == 3) {
       // vcge/vcgt.u<size> Qd, Qm, Qn.
@@ -5423,7 +5405,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (u && opc == 4 && !op1) {
       // vshl u<size> Qd, Qm, Qn.
@@ -5443,7 +5424,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (u && opc == 6) {
       // vmin/vmax.u<size> Qd, Qm, Qn.
@@ -5461,7 +5441,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (u && opc == 8 && !op1) {
       // vsub.size Qd, Qm, Qn.
@@ -5495,7 +5474,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (u && opc == 0xA) {
       // vpmin/vpmax.u<size> Dd, Dm, Dn.
@@ -5513,7 +5491,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
           break;
         default:
           UNREACHABLE();
-          break;
       }
     } else if (u && opc == 0xD && sz == 0 && q && op1) {
       // vmul.f32 Qd, Qn, Qm
@@ -5658,7 +5635,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
               break;
             default:
               UNIMPLEMENTED();
-              break;
           }
         } else {
           // vmovl signed
@@ -5677,7 +5653,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
               break;
             default:
               UNIMPLEMENTED();
-              break;
           }
         }
       } else if (!u && imm3H_L != 0 && opc == 0b0101) {
@@ -5721,7 +5696,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
             break;
           default:
             UNREACHABLE();
-            break;
         }
       } else if (u && imm3H_L != 0 && opc == 0b0101) {
         // vsli.<size> Dd, Dm, shift
@@ -5743,7 +5717,6 @@ void Simulator::DecodeAdvancedSIMDDataProcessing(Instruction* instr) {
             break;
           default:
             UNREACHABLE();
-            break;
         }
       }
     }
@@ -5807,7 +5780,6 @@ void Simulator::DecodeAdvancedSIMDLoadStoreMultipleStructures(
       break;
     default:
       UNIMPLEMENTED();
-      break;
   }
   if (instr->Bit(21)) {
     // vld1
@@ -5993,7 +5965,6 @@ void Simulator::DecodeFloatingPointDataProcessing(Instruction* instr) {
               break;
             default:
               UNREACHABLE();  // Case analysis is exhaustive.
-              break;
           }
           dd_value = canonicalizeNaN(dd_value);
           set_d_register_from_double(vd, dd_value);
@@ -6019,7 +5990,6 @@ void Simulator::DecodeFloatingPointDataProcessing(Instruction* instr) {
               break;
             default:
               UNREACHABLE();  // Case analysis is exhaustive.
-              break;
           }
           sd_value = canonicalizeNaN(sd_value);
           set_s_register_from_float(d, sd_value);
@@ -6111,7 +6081,6 @@ void Simulator::DecodeFloatingPointDataProcessing(Instruction* instr) {
             break;
           default:
             UNREACHABLE();  // Case analysis is exhaustive.
-            break;
         }
         if (instr->SzValue() == 0x1) {
           int n = instr->VFPNRegValue(kDoublePrecision);
@@ -6132,7 +6101,6 @@ void Simulator::DecodeFloatingPointDataProcessing(Instruction* instr) {
       break;
     default:
       UNIMPLEMENTED();
-      break;
   }
 }
 
@@ -6201,7 +6169,6 @@ void Simulator::InstructionDecode(Instruction* instr) {
       }
       default: {
         UNIMPLEMENTED();
-        break;
       }
     }
   }

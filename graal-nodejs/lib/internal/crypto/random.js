@@ -43,7 +43,7 @@ const {
 const {
   validateNumber,
   validateBoolean,
-  validateCallback,
+  validateFunction,
   validateInt32,
   validateObject,
   validateUint32,
@@ -93,7 +93,7 @@ function assertSize(size, elementSize, offset, length) {
 function randomBytes(size, callback) {
   size = assertSize(size, 1, 0, Infinity);
   if (callback !== undefined) {
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
   }
 
   const buf = new FastBuffer(size);
@@ -163,7 +163,7 @@ function randomFill(buf, offset, size, callback) {
     callback = size;
     size = buf.length - offset;
   } else {
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
   }
 
   offset = assertOffset(offset, elementSize, buf.byteLength);
@@ -216,7 +216,7 @@ function randomInt(min, max, callback) {
 
   const isSync = typeof callback === 'undefined';
   if (!isSync) {
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
   }
   if (!NumberIsSafeInteger(min)) {
     throw new ERR_INVALID_ARG_TYPE('min', 'a safe integer', min);
@@ -467,7 +467,7 @@ function generatePrime(size, options, callback) {
     callback = options;
     options = kEmptyObject;
   }
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   const job = createRandomPrimeJob(kCryptoJobAsync, size, options);
   job.ondone = (err, prime) => {
@@ -527,7 +527,7 @@ function checkPrime(candidate, options = kEmptyObject, callback) {
     callback = options;
     options = kEmptyObject;
   }
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
   validateObject(options, 'options');
   const {
     checks = 0,

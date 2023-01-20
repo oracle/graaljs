@@ -11,6 +11,7 @@ namespace compiler {
 
 // PPC-specific opcodes that specify which assembly sequence to emit.
 // Most opcodes specify a single instruction.
+
 #define TARGET_ARCH_OPCODE_LIST(V)   \
   V(PPC_Peek)                        \
   V(PPC_Sync)                        \
@@ -138,17 +139,6 @@ namespace compiler {
   V(PPC_StoreSimd128)                \
   V(PPC_ByteRev32)                   \
   V(PPC_ByteRev64)                   \
-  V(PPC_CompressSigned)              \
-  V(PPC_CompressPointer)             \
-  V(PPC_CompressAny)                 \
-  V(PPC_AtomicStoreUint8)            \
-  V(PPC_AtomicStoreUint16)           \
-  V(PPC_AtomicStoreWord32)           \
-  V(PPC_AtomicStoreWord64)           \
-  V(PPC_AtomicLoadUint8)             \
-  V(PPC_AtomicLoadUint16)            \
-  V(PPC_AtomicLoadWord32)            \
-  V(PPC_AtomicLoadWord64)            \
   V(PPC_AtomicExchangeUint8)         \
   V(PPC_AtomicExchangeUint16)        \
   V(PPC_AtomicExchangeWord32)        \

@@ -15,9 +15,9 @@
 #include "src/execution/frames.h"
 #include "src/execution/isolate-inl.h"
 #include "src/logging/runtime-call-stats-scope.h"
+#include "src/objects/call-site-info-inl.h"
 #include "src/objects/foreign-inl.h"
 #include "src/objects/js-array-inl.h"
-#include "src/objects/stack-frame-info-inl.h"
 #include "src/objects/struct-inl.h"
 #include "src/parsing/parse-info.h"
 #include "src/parsing/parsing.h"
@@ -106,55 +106,55 @@ void MessageHandler::ReportMessage(Isolate* isolate, const MessageLocation* loc,
                                    Handle<JSMessageObject> message) {
   v8::Local<v8::Message> api_message_obj = v8::Utils::MessageToLocal(message);
 
-  if (api_message_obj->ErrorLevel() == v8::Isolate::kMessageError) {
-    // We are calling into embedder's code which can throw exceptions.
-    // Thus we need to save current exception state, reset it to the clean one
-    // and ignore scheduled exceptions callbacks can throw.
-
-    // We pass the exception object into the message handler callback though.
-    Object exception_object = ReadOnlyRoots(isolate).undefined_value();
-    if (isolate->has_pending_exception()) {
-      exception_object = isolate->pending_exception();
-    }
-    Handle<Object> exception(exception_object, isolate);
-
-    Isolate::ExceptionScope exception_scope(isolate);
-    isolate->clear_pending_exception();
-    isolate->set_external_caught_exception(false);
-
-    // Turn the exception on the message into a string if it is an object.
-    if (message->argument().IsJSObject()) {
-      HandleScope scope(isolate);
-      Handle<Object> argument(message->argument(), isolate);
-
-      MaybeHandle<Object> maybe_stringified;
-      Handle<Object> stringified;
-      // Make sure we don't leak uncaught internally generated Error objects.
-      if (argument->IsJSError()) {
-        maybe_stringified = Object::NoSideEffectsToString(isolate, argument);
-      } else {
-        v8::TryCatch catcher(reinterpret_cast<v8::Isolate*>(isolate));
-        catcher.SetVerbose(false);
-        catcher.SetCaptureMessage(false);
-
-        maybe_stringified = Object::ToString(isolate, argument);
-      }
-
-      if (!maybe_stringified.ToHandle(&stringified)) {
-        DCHECK(isolate->has_pending_exception());
-        isolate->clear_pending_exception();
-        isolate->set_external_caught_exception(false);
-        stringified =
-            isolate->factory()->NewStringFromAsciiChecked("exception");
-      }
-      message->set_argument(*stringified);
-    }
-
-    v8::Local<v8::Value> api_exception_obj = v8::Utils::ToLocal(exception);
-    ReportMessageNoExceptions(isolate, loc, message, api_exception_obj);
-  } else {
+  if (api_message_obj->ErrorLevel() != v8::Isolate::kMessageError) {
     ReportMessageNoExceptions(isolate, loc, message, v8::Local<v8::Value>());
+    return;
   }
+
+  // We are calling into embedder's code which can throw exceptions.
+  // Thus we need to save current exception state, reset it to the clean one
+  // and ignore scheduled exceptions callbacks can throw.
+
+  // We pass the exception object into the message handler callback though.
+  Object exception_object = ReadOnlyRoots(isolate).undefined_value();
+  if (isolate->has_pending_exception()) {
+    exception_object = isolate->pending_exception();
+  }
+  Handle<Object> exception(exception_object, isolate);
+
+  Isolate::ExceptionScope exception_scope(isolate);
+  isolate->clear_pending_exception();
+  isolate->set_external_caught_exception(false);
+
+  // Turn the exception on the message into a string if it is an object.
+  if (message->argument().IsJSObject()) {
+    HandleScope scope(isolate);
+    Handle<Object> argument(message->argument(), isolate);
+
+    MaybeHandle<Object> maybe_stringified;
+    Handle<Object> stringified;
+    // Make sure we don't leak uncaught internally generated Error objects.
+    if (argument->IsJSError()) {
+      maybe_stringified = Object::NoSideEffectsToString(isolate, argument);
+    } else {
+      v8::TryCatch catcher(reinterpret_cast<v8::Isolate*>(isolate));
+      catcher.SetVerbose(false);
+      catcher.SetCaptureMessage(false);
+
+      maybe_stringified = Object::ToString(isolate, argument);
+    }
+
+    if (!maybe_stringified.ToHandle(&stringified)) {
+      DCHECK(isolate->has_pending_exception());
+      isolate->clear_pending_exception();
+      isolate->set_external_caught_exception(false);
+      stringified = isolate->factory()->exception_string();
+    }
+    message->set_argument(*stringified);
+  }
+
+  v8::Local<v8::Value> api_exception_obj = v8::Utils::ToLocal(exception);
+  ReportMessageNoExceptions(isolate, loc, message, api_exception_obj);
 }
 
 void MessageHandler::ReportMessageNoExceptions(
@@ -223,18 +223,17 @@ MaybeHandle<JSArray> GetStackFrames(Isolate* isolate,
   Handle<JSFunction> constructor = isolate->callsite_function();
   Handle<FixedArray> sites = isolate->factory()->NewFixedArray(frame_count);
   for (int i = 0; i < frame_count; ++i) {
-    Handle<StackFrameInfo> frame(StackFrameInfo::cast(frames->get(i)), isolate);
+    Handle<CallSiteInfo> frame(CallSiteInfo::cast(frames->get(i)), isolate);
     Handle<JSObject> site;
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, site,
         JSObject::New(constructor, constructor, Handle<AllocationSite>::null()),
         JSArray);
-    RETURN_ON_EXCEPTION(
-        isolate,
-        JSObject::SetOwnPropertyIgnoreAttributes(
-            site, isolate->factory()->call_site_frame_info_symbol(), frame,
-            DONT_ENUM),
-        JSArray);
+    RETURN_ON_EXCEPTION(isolate,
+                        JSObject::SetOwnPropertyIgnoreAttributes(
+                            site, isolate->factory()->call_site_info_symbol(),
+                            frame, DONT_ENUM),
+                        JSArray);
     sites->set(i, *site);
   }
 
@@ -261,10 +260,10 @@ MaybeHandle<Object> AppendErrorString(Isolate* isolate, Handle<Object> error,
       DCHECK(isolate->has_pending_exception());
       isolate->clear_pending_exception();
       isolate->set_external_caught_exception(false);
-      builder->AppendCString("<error>");
+      builder->AppendCStringLiteral("<error>");
     } else {
       // Formatted thrown exception successfully, append it.
-      builder->AppendCString("<error: ");
+      builder->AppendCStringLiteral("<error: ");
       builder->AppendString(err_str.ToHandleChecked());
       builder->AppendCharacter('>');
     }
@@ -297,6 +296,9 @@ class V8_NODISCARD PrepareStackTraceScope {
 MaybeHandle<Object> ErrorUtils::FormatStackTrace(Isolate* isolate,
                                                  Handle<JSObject> error,
                                                  Handle<Object> raw_stack) {
+  if (FLAG_correctness_fuzzer_suppressions) {
+    return isolate->factory()->empty_string();
+  }
   DCHECK(raw_stack->IsFixedArray());
   Handle<FixedArray> elems = Handle<FixedArray>::cast(raw_stack);
 
@@ -361,17 +363,16 @@ MaybeHandle<Object> ErrorUtils::FormatStackTrace(Isolate* isolate,
   }
 
   // Otherwise, run our internal formatting logic.
-
   IncrementalStringBuilder builder(isolate);
 
   RETURN_ON_EXCEPTION(isolate, AppendErrorString(isolate, error, &builder),
                       Object);
 
   for (int i = 0; i < elems->length(); ++i) {
-    builder.AppendCString("\n    at ");
+    builder.AppendCStringLiteral("\n    at ");
 
-    Handle<StackFrameInfo> frame(StackFrameInfo::cast(elems->get(i)), isolate);
-    SerializeStackFrameInfo(isolate, frame, &builder);
+    Handle<CallSiteInfo> frame(CallSiteInfo::cast(elems->get(i)), isolate);
+    SerializeCallSiteInfo(isolate, frame, &builder);
 
     if (isolate->has_pending_exception()) {
       // CallSite.toString threw. Parts of the current frame might have been
@@ -388,12 +389,12 @@ MaybeHandle<Object> ErrorUtils::FormatStackTrace(Isolate* isolate,
       if (exception_string.is_null()) {
         // Formatting the thrown exception threw again, give up.
 
-        builder.AppendCString("<error>");
+        builder.AppendCStringLiteral("<error>");
       } else {
         // Formatted thrown exception successfully, append it.
-        builder.AppendCString("<error: ");
+        builder.AppendCStringLiteral("<error: ");
         builder.AppendString(exception_string.ToHandleChecked());
-        builder.AppendCString("<error>");
+        builder.AppendCStringLiteral("<error>");
       }
     }
   }
@@ -499,7 +500,7 @@ MaybeHandle<JSObject> ErrorUtils::Construct(Isolate* isolate,
 
   return ErrorUtils::Construct(isolate, target, new_target, message, options,
                                mode, caller,
-                               ErrorUtils::StackTraceCollection::kDetailed);
+                               ErrorUtils::StackTraceCollection::kEnabled);
 }
 
 MaybeHandle<JSObject> ErrorUtils::Construct(
@@ -556,7 +557,8 @@ MaybeHandle<JSObject> ErrorUtils::Construct(
     Handle<Name> cause_string = isolate->factory()->cause_string();
     if (options->IsJSReceiver()) {
       Handle<JSReceiver> js_options = Handle<JSReceiver>::cast(options);
-      Maybe<bool> has_cause = JSObject::HasProperty(js_options, cause_string);
+      Maybe<bool> has_cause =
+          JSObject::HasProperty(isolate, js_options, cause_string);
       if (has_cause.IsNothing()) {
         DCHECK((isolate)->has_pending_exception());
         return MaybeHandle<JSObject>();
@@ -575,16 +577,12 @@ MaybeHandle<JSObject> ErrorUtils::Construct(
   }
 
   switch (stack_trace_collection) {
-    case StackTraceCollection::kDetailed:
-      RETURN_ON_EXCEPTION(
-          isolate, isolate->CaptureAndSetDetailedStackTrace(err), JSObject);
-      V8_FALLTHROUGH;
-    case StackTraceCollection::kSimple:
-      RETURN_ON_EXCEPTION(
-          isolate, isolate->CaptureAndSetSimpleStackTrace(err, mode, caller),
-          JSObject);
+    case StackTraceCollection::kEnabled:
+      RETURN_ON_EXCEPTION(isolate,
+                          isolate->CaptureAndSetErrorStack(err, mode, caller),
+                          JSObject);
       break;
-    case StackTraceCollection::kNone:
+    case StackTraceCollection::kDisabled:
       break;
   }
   return err;
@@ -657,7 +655,7 @@ MaybeHandle<String> ErrorUtils::ToString(Isolate* isolate,
   // the code unit 0x0020 (SPACE), and msg.
   IncrementalStringBuilder builder(isolate);
   builder.AppendString(name);
-  builder.AppendCString(": ");
+  builder.AppendCStringLiteral(": ");
   builder.AppendString(msg);
 
   Handle<String> result;
@@ -710,7 +708,7 @@ Handle<JSObject> ErrorUtils::MakeGenericError(
   // The call below can't fail because constructor is a builtin.
   DCHECK(constructor->shared().HasBuiltinId());
   return ErrorUtils::Construct(isolate, constructor, constructor, msg, options,
-                               mode, no_caller, StackTraceCollection::kDetailed)
+                               mode, no_caller, StackTraceCollection::kEnabled)
       .ToHandleChecked();
 }
 
@@ -744,7 +742,7 @@ Handle<String> BuildDefaultCallSite(Isolate* isolate, Handle<Object> object) {
 
   builder.AppendString(Object::TypeOf(isolate, object));
   if (object->IsString()) {
-    builder.AppendCString(" \"");
+    builder.AppendCStringLiteral(" \"");
     Handle<String> string = Handle<String>::cast(object);
     // This threshold must be sufficiently far below String::kMaxLength that
     // the {builder}'s result can never exceed that limit.
@@ -755,20 +753,17 @@ Handle<String> BuildDefaultCallSite(Isolate* isolate, Handle<Object> object) {
       string = isolate->factory()->NewProperSubString(string, 0,
                                                       kMaxPrintedStringLength);
       builder.AppendString(string);
-      builder.AppendCString("<...>");
+      builder.AppendCStringLiteral("<...>");
     }
-    builder.AppendCString("\"");
+    builder.AppendCStringLiteral("\"");
   } else if (object->IsNull(isolate)) {
-    builder.AppendCString(" ");
-    builder.AppendString(isolate->factory()->null_string());
+    builder.AppendCStringLiteral(" null");
   } else if (object->IsTrue(isolate)) {
-    builder.AppendCString(" ");
-    builder.AppendString(isolate->factory()->true_string());
+    builder.AppendCStringLiteral(" true");
   } else if (object->IsFalse(isolate)) {
-    builder.AppendCString(" ");
-    builder.AppendString(isolate->factory()->false_string());
+    builder.AppendCStringLiteral(" false");
   } else if (object->IsNumber()) {
-    builder.AppendCString(" ");
+    builder.AppendCharacter(' ');
     builder.AppendString(isolate->factory()->NumberToString(object));
   }
 
@@ -781,8 +776,9 @@ Handle<String> RenderCallSite(Isolate* isolate, Handle<Object> object,
   if (ComputeLocation(isolate, location)) {
     UnoptimizedCompileFlags flags = UnoptimizedCompileFlags::ForFunctionCompile(
         isolate, *location->shared());
-    UnoptimizedCompileState compile_state(isolate);
-    ParseInfo info(isolate, flags, &compile_state);
+    UnoptimizedCompileState compile_state;
+    ReusableUnoptimizedCompileState reusable_state(isolate);
+    ParseInfo info(isolate, flags, &compile_state, &reusable_state);
     if (parsing::ParseAny(&info, location->shared(), isolate,
                           parsing::ReportStatisticsMode::kNo)) {
       info.ast_value_factory()->Internalize(isolate);
@@ -820,11 +816,11 @@ MessageTemplate UpdateErrorTemplate(CallPrinter::ErrorHint hint,
 Handle<JSObject> ErrorUtils::NewIteratorError(Isolate* isolate,
                                               Handle<Object> source) {
   MessageLocation location;
-  CallPrinter::ErrorHint hint = CallPrinter::kNone;
+  CallPrinter::ErrorHint hint = CallPrinter::ErrorHint::kNone;
   Handle<String> callsite = RenderCallSite(isolate, source, &location, &hint);
   MessageTemplate id = MessageTemplate::kNotIterableNoSymbolLoad;
 
-  if (hint == CallPrinter::kNone) {
+  if (hint == CallPrinter::ErrorHint::kNone) {
     Handle<Symbol> iterator_symbol = isolate->factory()->iterator_symbol();
     return isolate->factory()->NewTypeError(id, callsite, iterator_symbol);
   }
@@ -840,8 +836,9 @@ Object ErrorUtils::ThrowSpreadArgError(Isolate* isolate, MessageTemplate id,
   if (ComputeLocation(isolate, &location)) {
     UnoptimizedCompileFlags flags = UnoptimizedCompileFlags::ForFunctionCompile(
         isolate, *location.shared());
-    UnoptimizedCompileState compile_state(isolate);
-    ParseInfo info(isolate, flags, &compile_state);
+    UnoptimizedCompileState compile_state;
+    ReusableUnoptimizedCompileState reusable_state(isolate);
+    ParseInfo info(isolate, flags, &compile_state, &reusable_state);
     if (parsing::ParseAny(&info, location.shared(), isolate,
                           parsing::ReportStatisticsMode::kNo)) {
       info.ast_value_factory()->Internalize(isolate);
@@ -870,7 +867,7 @@ Object ErrorUtils::ThrowSpreadArgError(Isolate* isolate, MessageTemplate id,
 Handle<JSObject> ErrorUtils::NewCalledNonCallableError(Isolate* isolate,
                                                        Handle<Object> source) {
   MessageLocation location;
-  CallPrinter::ErrorHint hint = CallPrinter::kNone;
+  CallPrinter::ErrorHint hint = CallPrinter::ErrorHint::kNone;
   Handle<String> callsite = RenderCallSite(isolate, source, &location, &hint);
   MessageTemplate id = MessageTemplate::kCalledNonCallable;
   id = UpdateErrorTemplate(hint, id);
@@ -880,7 +877,7 @@ Handle<JSObject> ErrorUtils::NewCalledNonCallableError(Isolate* isolate,
 Handle<JSObject> ErrorUtils::NewConstructedNonConstructable(
     Isolate* isolate, Handle<Object> source) {
   MessageLocation location;
-  CallPrinter::ErrorHint hint = CallPrinter::kNone;
+  CallPrinter::ErrorHint hint = CallPrinter::ErrorHint::kNone;
   Handle<String> callsite = RenderCallSite(isolate, source, &location, &hint);
   MessageTemplate id = MessageTemplate::kNotConstructor;
   return isolate->factory()->NewTypeError(id, callsite);
@@ -916,8 +913,9 @@ Object ErrorUtils::ThrowLoadFromNullOrUndefined(Isolate* isolate,
 
     UnoptimizedCompileFlags flags = UnoptimizedCompileFlags::ForFunctionCompile(
         isolate, *location.shared());
-    UnoptimizedCompileState compile_state(isolate);
-    ParseInfo info(isolate, flags, &compile_state);
+    UnoptimizedCompileState compile_state;
+    ReusableUnoptimizedCompileState reusable_state(isolate);
+    ParseInfo info(isolate, flags, &compile_state, &reusable_state);
     if (parsing::ParseAny(&info, location.shared(), isolate,
                           parsing::ReportStatisticsMode::kNo)) {
       info.ast_value_factory()->Internalize(isolate);
@@ -973,7 +971,6 @@ Object ErrorUtils::ThrowLoadFromNullOrUndefined(Isolate* isolate,
                                                callsite, object);
     }
   } else {
-    Handle<Object> key_handle;
     if (!key.ToHandle(&key_handle) ||
         !maybe_property_name.ToHandle(&property_name)) {
       error = isolate->factory()->NewTypeError(
@@ -993,6 +990,70 @@ Object ErrorUtils::ThrowLoadFromNullOrUndefined(Isolate* isolate,
     isolate->Throw(*error);
   }
   return ReadOnlyRoots(isolate).exception();
+}
+
+// static
+MaybeHandle<Object> ErrorUtils::GetFormattedStack(
+    Isolate* isolate, Handle<JSObject> error_object) {
+  TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("v8.stack_trace"), __func__);
+
+  Handle<Object> error_stack = JSReceiver::GetDataProperty(
+      isolate, error_object, isolate->factory()->error_stack_symbol());
+  if (error_stack->IsErrorStackData()) {
+    Handle<ErrorStackData> error_stack_data =
+        Handle<ErrorStackData>::cast(error_stack);
+    if (error_stack_data->HasFormattedStack()) {
+      return handle(error_stack_data->formatted_stack(), isolate);
+    }
+    ErrorStackData::EnsureStackFrameInfos(isolate, error_stack_data);
+    Handle<Object> formatted_stack;
+    ASSIGN_RETURN_ON_EXCEPTION(
+        isolate, formatted_stack,
+        FormatStackTrace(isolate, error_object,
+                         handle(error_stack_data->call_site_infos(), isolate)),
+        Object);
+    error_stack_data->set_formatted_stack(*formatted_stack);
+    return formatted_stack;
+  }
+
+  if (error_stack->IsFixedArray()) {
+    Handle<Object> formatted_stack;
+    ASSIGN_RETURN_ON_EXCEPTION(
+        isolate, formatted_stack,
+        FormatStackTrace(isolate, error_object,
+                         Handle<FixedArray>::cast(error_stack)),
+        Object);
+    RETURN_ON_EXCEPTION(
+        isolate,
+        JSObject::SetProperty(isolate, error_object,
+                              isolate->factory()->error_stack_symbol(),
+                              formatted_stack, StoreOrigin::kMaybeKeyed,
+                              Just(ShouldThrow::kThrowOnError)),
+        Object);
+    return formatted_stack;
+  }
+
+  return error_stack;
+}
+
+// static
+void ErrorUtils::SetFormattedStack(Isolate* isolate,
+                                   Handle<JSObject> error_object,
+                                   Handle<Object> formatted_stack) {
+  Handle<Object> error_stack = JSReceiver::GetDataProperty(
+      isolate, error_object, isolate->factory()->error_stack_symbol());
+  if (error_stack->IsErrorStackData()) {
+    Handle<ErrorStackData> error_stack_data =
+        Handle<ErrorStackData>::cast(error_stack);
+    ErrorStackData::EnsureStackFrameInfos(isolate, error_stack_data);
+    error_stack_data->set_formatted_stack(*formatted_stack);
+  } else {
+    JSObject::SetProperty(isolate, error_object,
+                          isolate->factory()->error_stack_symbol(),
+                          formatted_stack, StoreOrigin::kMaybeKeyed,
+                          Just(ShouldThrow::kThrowOnError))
+        .Check();
+  }
 }
 
 }  // namespace internal

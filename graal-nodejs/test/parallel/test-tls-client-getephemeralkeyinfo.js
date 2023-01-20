@@ -38,7 +38,7 @@ function test(size, type, name, cipher) {
 
   server.on('close', common.mustSucceed());
 
-  server.listen(0, '127.0.0.1', common.mustCall(() => {
+  server.listen(0, common.mustCall(() => {
     const client = tls.connect({
       port: server.address().port,
       rejectUnauthorized: false

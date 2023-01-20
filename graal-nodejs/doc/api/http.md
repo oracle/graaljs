@@ -117,7 +117,9 @@ http.get({
 <!-- YAML
 added: v0.3.4
 changes:
-  - version: v15.6.0
+  - version:
+      - v15.6.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/36685
     description: Change the default scheduling from 'fifo' to 'lifo'.
   - version:
@@ -299,7 +301,7 @@ removed from the array on `'timeout'`.
 <!-- YAML
 added: v0.11.4
 changes:
-  - version: v16.15.0
+  - version: v17.7.0
     pr-url: https://github.com/nodejs/node/pull/41906
     description: The `options` parameter is now optional.
 -->
@@ -430,7 +432,9 @@ identified by `code:` [`'ERR_HTTP_CONTENT_LENGTH_MISMATCH'`][].
 
 <!-- YAML
 added: v1.4.1
-deprecated: v16.12.0
+deprecated:
+  - v17.0.0
+  - v16.12.0
 -->
 
 > Stability: 0 - Deprecated. Listen for the `'close'` event instead.
@@ -700,7 +704,9 @@ in the response to be dropped and the socket to be destroyed.
 
 <!-- YAML
 added: v0.11.14
-deprecated: v16.12.0
+deprecated:
+  - v17.0.0
+  - v16.12.0
 changes:
   - version: v11.0.0
     pr-url: https://github.com/nodejs/node/pull/20230
@@ -903,7 +909,9 @@ const headers = request.getHeaders();
 ### `request.getRawHeaderNames()`
 
 <!-- YAML
-added: v15.13.0
+added:
+  - v15.13.0
+  - v14.17.0
 -->
 
 * Returns: {string\[]}
@@ -1301,8 +1309,9 @@ type other than {net.Socket}.
 
 Default behavior is to try close the socket with a HTTP '400 Bad Request',
 or a HTTP '431 Request Header Fields Too Large' in the case of a
-[`HPE_HEADER_OVERFLOW`][] error. If the socket is not writable or has already
-written data it is immediately destroyed.
+[`HPE_HEADER_OVERFLOW`][] error. If the socket is not writable or headers
+of the current attached [`http.ServerResponse`][] has been sent, it is
+immediately destroyed.
 
 `socket` is the [`net.Socket`][] object that the error originated from.
 
@@ -1403,7 +1412,7 @@ type other than {net.Socket}.
 ### Event: `'dropRequest'`
 
 <!-- YAML
-added: v16.17.0
+added: v18.7.0
 -->
 
 * `request` {http.IncomingMessage} Arguments for the HTTP request, as it is in
@@ -1463,6 +1472,23 @@ added: v0.1.90
 
 Stops the server from accepting new connections. See [`net.Server.close()`][].
 
+### `server.closeAllConnections()`
+
+<!-- YAML
+added: v18.2.0
+-->
+
+Closes all connections connected to this server.
+
+### `server.closeIdleConnections()`
+
+<!-- YAML
+added: v18.2.0
+-->
+
+Closes all connections connected to this server which are not sending a request
+or waiting for a response.
+
 ### `server.headersTimeout`
 
 <!-- YAML
@@ -1476,15 +1502,12 @@ added:
 Limit the amount of time the parser will wait to receive the complete HTTP
 headers.
 
-In case of inactivity, the rules defined in [`server.timeout`][] apply. However,
-that inactivity based timeout would still allow the connection to be kept open
-if the headers are being sent very slowly (by default, up to a byte per 2
-minutes). In order to prevent this, whenever header data arrives an additional
-check is made that more than `server.headersTimeout` milliseconds has not
-passed since the connection was established. If the check fails, a `'timeout'`
-event is emitted on the server object, and (by default) the socket is destroyed.
-See [`server.timeout`][] for more information on how timeout behavior can be
-customized.
+If the timeout expires, the server responds with status 408 without
+forwarding the request to the request listener and then closes the connection.
+
+It must be set to a non-zero value (e.g. 120 seconds) to protect against
+potential Denial-of-Service attacks in case the server is deployed without a
+reverse proxy in front.
 
 ### `server.listen()`
 
@@ -1513,9 +1536,14 @@ Limits maximum incoming headers count. If set to 0, no limit will be applied.
 
 <!-- YAML
 added: v14.11.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41263
+    description: The default request timeout changed
+                 from no timeout to 300s (5 minutes).
 -->
 
-* {number} **Default:** `0`
+* {number} **Default:** `300000`
 
 Sets the timeout value in milliseconds for receiving the entire request from
 the client.
@@ -2093,9 +2121,49 @@ buffer. Returns `false` if all or part of the data was queued in user memory.
 added: v0.3.0
 -->
 
-Sends a HTTP/1.1 100 Continue message to the client, indicating that
+Sends an HTTP/1.1 100 Continue message to the client, indicating that
 the request body should be sent. See the [`'checkContinue'`][] event on
 `Server`.
+
+### `response.writeEarlyHints(hints[, callback])`
+
+<!-- YAML
+added: v18.11.0
+changes:
+  - version: v18.11.0
+    pr-url: https://github.com/nodejs/node/pull/44820
+    description: Allow passing hints as an object.
+-->
+
+* `hints` {Object}
+* `callback` {Function}
+
+Sends an HTTP/1.1 103 Early Hints message to the client with a Link header,
+indicating that the user agent can preload/preconnect the linked resources.
+The `hints` is an object containing the values of headers to be sent with
+early hints message. The optional `callback` argument will be called when
+the response message has been written.
+
+**Example**
+
+```js
+const earlyHintsLink = '</styles.css>; rel=preload; as=style';
+response.writeEarlyHints({
+  'link': earlyHintsLink,
+});
+
+const earlyHintsLinks = [
+  '</styles.css>; rel=preload; as=style',
+  '</scripts.js>; rel=preload; as=script',
+];
+response.writeEarlyHints({
+  'link': earlyHintsLinks,
+  'x-trace-id': 'id for diagnostics'
+});
+
+const earlyHintsCallback = () => console.log('early hints message sent');
+response.writeEarlyHints(earlyHintsLinks, earlyHintsCallback);
+```
 
 ### `response.writeHead(statusCode[, statusMessage][, headers])`
 
@@ -2222,7 +2290,9 @@ may be reused multiple times in case of keep-alive.
 
 <!-- YAML
 added: v0.3.8
-deprecated: v16.12.0
+deprecated:
+  - v17.0.0
+  - v16.12.0
 -->
 
 > Stability: 0 - Deprecated. Listen for `'close'` event instead.
@@ -2246,7 +2316,9 @@ Emitted when the request has been completed.
 
 <!-- YAML
 added: v10.1.0
-deprecated: v16.12.0
+deprecated:
+  - v17.0.0
+  - v16.12.0
 -->
 
 > Stability: 0 - Deprecated. Check `message.destroyed` from {stream.Readable}.
@@ -2357,7 +2429,7 @@ header name:
 ### `message.headersDistinct`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 * {Object}
@@ -2509,7 +2581,7 @@ The request/response trailers object. Only populated at the `'end'` event.
 ### `message.trailersDistinct`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 * {Object}
@@ -2632,7 +2704,7 @@ will result in a `TypeError` being thrown.
 ### `outgoingMessage.appendHeader(name, value)`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 * `name` {string} Header name
@@ -2655,7 +2727,9 @@ a single time with values joined using `; `.
 
 <!-- YAML
 added: v0.3.0
-deprecated: v15.12.0
+deprecated:
+  - v15.12.0
+  - v14.17.1
 -->
 
 > Stability: 0 - Deprecated: Use [`outgoingMessage.socket`][] instead.
@@ -2997,7 +3071,14 @@ Found'`.
 <!-- YAML
 added: v0.1.13
 changes:
-  - version: v16.15.0
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41263
+    description: The `requestTimeout`, `headersTimeout`, `keepAliveTimeout`, and
+                 `connectionsCheckingInterval` options are supported now.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42163
+    description: The `noDelay` option now defaults to `true`.
+  - version: v17.7.0
     pr-url: https://github.com/nodejs/node/pull/41310
     description: The `noDelay`, `keepAlive` and `keepAliveInitialDelay`
                  options are supported now.
@@ -3024,6 +3105,22 @@ changes:
   * `ServerResponse` {http.ServerResponse} Specifies the `ServerResponse` class
     to be used. Useful for extending the original `ServerResponse`. **Default:**
     `ServerResponse`.
+  * `requestTimeout`: Sets the timeout value in milliseconds for receiving
+    the entire request from the client.
+    See [`server.requestTimeout`][] for more information.
+    **Default:** `300000`.
+  * `headersTimeout`: Sets the timeout value in milliseconds for receiving
+    the complete HTTP headers from the client.
+    See [`server.headersTimeout`][] for more information.
+    **Default:** `60000`.
+  * `keepAliveTimeout`: The number of milliseconds of inactivity a server
+    needs to wait for additional incoming data, after it has finished writing
+    the last response, before a socket will be destroyed.
+    See [`server.keepAliveTimeout`][] for more information.
+    **Default:** `5000`.
+  * `connectionsCheckingInterval`: Sets the interval value in milliseconds to
+    check for request and headers timeout in incomplete requests.
+    **Default:** `30000`.
   * `insecureHTTPParser` {boolean} Use an insecure HTTP parser that accepts
     invalid HTTP headers when `true`. Using the insecure parser should be
     avoided. See [`--insecure-http-parser`][] for more information.
@@ -3034,7 +3131,7 @@ changes:
     **Default:** 16384 (16 KiB).
   * `noDelay` {boolean} If set to `true`, it disables the use of Nagle's
     algorithm immediately after a new incoming connection is received.
-    **Default:** `false`.
+    **Default:** `true`.
   * `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality
     on the socket immediately after a new incoming connection is received,
     similarly on what is done in \[`socket.setKeepAlive([enable][, initialDelay])`]\[`socket.setKeepAlive(enable, initialDelay)`].
@@ -3203,7 +3300,9 @@ This can be overridden for servers and client requests by passing the
 <!-- YAML
 added: v0.3.6
 changes:
-  - version: v16.7.0
+  - version:
+      - v16.7.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/39310
     description: When using a `URL` object parsed username and
                  password will now be properly URI decoded.
@@ -3564,7 +3663,7 @@ try {
 ## `http.setMaxIdleHTTPParsers`
 
 <!-- YAML
-added: v16.18.0
+added: v18.8.0
 -->
 
 * {number}
@@ -3633,7 +3732,10 @@ Set the maximum number of idle HTTP parsers. **Default:** `1000`.
 [`response.write(data, encoding)`]: #responsewritechunk-encoding-callback
 [`response.writeContinue()`]: #responsewritecontinue
 [`response.writeHead()`]: #responsewriteheadstatuscode-statusmessage-headers
+[`server.headersTimeout`]: #serverheaderstimeout
+[`server.keepAliveTimeout`]: #serverkeepalivetimeout
 [`server.listen()`]: net.md#serverlisten
+[`server.requestTimeout`]: #serverrequesttimeout
 [`server.timeout`]: #servertimeout
 [`setHeader(name, value)`]: #requestsetheadername-value
 [`socket.connect()`]: net.md#socketconnectoptions-connectlistener

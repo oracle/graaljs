@@ -1,9 +1,9 @@
 'use strict';
 const {
+  RegExpPrototypeExec,
   ObjectPrototypeHasOwnProperty,
   PromisePrototypeThen,
   PromiseResolve,
-  RegExpPrototypeExec,
   StringPrototypeSlice,
 } = primordials;
 const { basename, extname, relative } = require('path');
@@ -32,6 +32,10 @@ const protocolHandlers = {
   'node:'() { return 'builtin'; },
 };
 
+/**
+ * @param {URL} parsed
+ * @returns {string | null}
+ */
 function getDataProtocolModuleFormat(parsed) {
   const { 1: mime } = RegExpPrototypeExec(
     /^([^/]+\/[^;,]+)(?:[^,]*?)(;base64)?,/,

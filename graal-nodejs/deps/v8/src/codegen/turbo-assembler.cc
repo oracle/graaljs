@@ -7,9 +7,10 @@
 #include "src/builtins/builtins.h"
 #include "src/builtins/constants-table-builder.h"
 #include "src/codegen/external-reference-encoder.h"
+#include "src/common/globals.h"
 #include "src/execution/isolate-data.h"
 #include "src/execution/isolate-inl.h"
-#include "src/snapshot/embedded/embedded-data.h"
+#include "src/snapshot/embedded/embedded-data-inl.h"
 
 namespace v8 {
 namespace internal {
@@ -97,7 +98,7 @@ int32_t TurboAssemblerBase::RootRegisterOffsetForRootIndex(
 
 // static
 int32_t TurboAssemblerBase::RootRegisterOffsetForBuiltin(Builtin builtin) {
-  return IsolateData::builtin_slot_offset(builtin);
+  return IsolateData::BuiltinSlotOffset(builtin);
 }
 
 // static

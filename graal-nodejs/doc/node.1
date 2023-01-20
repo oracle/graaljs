@@ -139,9 +139,6 @@ Requires Node.js to be built with
 .It Fl -enable-source-maps
 Enable Source Map V3 support for stack traces.
 .
-.It Fl -experimental-fetch
-Enable experimental support for the Fetch API.
-.
 .It Fl -experimental-global-customevent
 Expose the CustomEvent on the global scope.
 .
@@ -161,6 +158,9 @@ Enable experimental support for loading modules using `import` over `https:`.
 .
 .It Fl -experimental-policy
 Use the specified file as a security policy.
+.
+.It Fl -no-experimental-fetch
+Disable experimental support for the Fetch API.
 .
 .It Fl -no-experimental-repl-await
 Disable top-level await keyword support in REPL.
@@ -282,6 +282,9 @@ It is kept for compatibility.
 .It Fl -no-deprecation
 Silence deprecation warnings.
 .
+.It Fl -no-extra-info-on-fatal-exception
+Hide extra information on fatal exception that causes exit.
+.
 .It Fl -no-force-async-hooks-checks
 Disable runtime checks for `async_hooks`.
 These will still be enabled dynamically when `async_hooks` is enabled.
@@ -384,6 +387,10 @@ Specify the minimum allocation from the OpenSSL secure heap. The default is 2. T
 .It Fl -test
 Starts the Node.js command line test runner.
 .
+.It Fl -test-name-pattern
+A regular expression that configures the test runner to only execute tests
+whose name matches the provided pattern.
+.
 .It Fl -test-only
 Configures the test runner to only execute top level tests that have the `only`
 option set.
@@ -479,6 +486,9 @@ Track heap object allocations for heap snapshots.
 .
 .It Fl -unhandled-rejections=mode
 Define the behavior for unhandled rejections. Can be one of `strict` (raise an error), `warn` (enforce warnings) or `none` (silence warnings).
+.
+.It Fl -update-assert-snapshot
+Updates snapshot files used by `assert.snapshot()`.
 .
 .It Fl -use-bundled-ca , Fl -use-openssl-ca
 Use bundled Mozilla CA store as supplied by current Node.js version or use OpenSSL's default CA store.

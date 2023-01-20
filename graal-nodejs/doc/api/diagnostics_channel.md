@@ -151,7 +151,7 @@ const channel = diagnostics_channel.channel('my-channel');
 
 <!-- YAML
 added:
- - v16.17.0
+ - v18.7.0
 -->
 
 * `name` {string|symbol} The channel name
@@ -183,7 +183,7 @@ diagnostics_channel.subscribe('my-channel', (message, name) => {
 
 <!-- YAML
 added:
- - v16.17.0
+ - v18.7.0
 -->
 
 * `name` {string|symbol} The channel name
@@ -308,7 +308,7 @@ channel.publish({
 added:
  - v15.1.0
  - v14.17.0
-deprecated: v16.17.0
+deprecated: v18.7.0
 -->
 
 > Stability: 0 - Deprecated: Use [`diagnostics_channel.subscribe(name, onMessage)`][]
@@ -347,9 +347,12 @@ channel.subscribe((message, name) => {
 added:
  - v15.1.0
  - v14.17.0
-deprecated: v16.17.0
+deprecated: v18.7.0
 changes:
-  - version: v16.14.0
+  - version:
+    - v17.1.0
+    - v16.14.0
+    - v14.19.0
     pr-url: https://github.com/nodejs/node/pull/40433
     description: Added return value. Added to channels without subscribers.
 -->
@@ -425,8 +428,6 @@ Emitted when server receives a request.
 
 Emitted when server sends a response.
 
-#### NET
-
 `net.client.socket`
 
 * `socket` {net.Socket}
@@ -439,40 +440,13 @@ Emitted when a new TCP or pipe client socket is created.
 
 Emitted when a new TCP or pipe connection is received.
 
-#### UDP
-
 `udp.socket`
 
 * `socket` {dgram.Socket}
 
 Emitted when a new UDP socket is created.
 
-#### Process
-
-<!-- YAML
-added: v16.18.0
--->
-
-`child_process`
-
-* `process` {ChildProcess}
-
-Emitted when a new process is created.
-
-#### Worker Thread
-
-<!-- YAML
-added: v16.18.0
--->
-
-`worker_threads`
-
-* `worker` [`Worker`][]
-
-Emitted when a new thread is created.
-
 [`'uncaughtException'`]: process.md#event-uncaughtexception
-[`Worker`]: worker_threads.md#class-worker
 [`channel.subscribe(onMessage)`]: #channelsubscribeonmessage
 [`diagnostics_channel.channel(name)`]: #diagnostics_channelchannelname
 [`diagnostics_channel.subscribe(name, onMessage)`]: #diagnostics_channelsubscribename-onmessage

@@ -11,7 +11,7 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 * Implemented the [ShadowRealm](https://github.com/tc39/proposal-shadowrealm) proposal. It is available behind the experimental option `--js.shadow-realm`.
 * Removed experimental option `v8-legacy-const`.
 * Removed non-standard `SharedArrayBuffer.isView`.
-* Updated Node.js to version 16.18.1.
+* Updated Node.js to version 18.12.1.
 
 ## Version 22.3.0
 * Implemented the [WebAssembly multi-value](https://github.com/WebAssembly/multi-value) proposal.

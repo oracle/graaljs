@@ -7,6 +7,8 @@
 
 #include "src/base/macros.h"
 #include "src/base/platform/mutex.h"
+#include "src/codegen/optimized-compilation-info.h"
+#include "src/common/globals.h"
 #include "src/handles/handles-inl.h"
 #include "src/heap/heap-write-barrier-inl.h"
 #include "src/objects/debug-objects-inl.h"
@@ -91,23 +93,10 @@ void PreparseData::set_child(int index, PreparseData value,
 TQ_OBJECT_CONSTRUCTORS_IMPL(UncompiledData)
 TQ_OBJECT_CONSTRUCTORS_IMPL(UncompiledDataWithoutPreparseData)
 TQ_OBJECT_CONSTRUCTORS_IMPL(UncompiledDataWithPreparseData)
-
-TQ_OBJECT_CONSTRUCTORS_IMPL(BaselineData)
+TQ_OBJECT_CONSTRUCTORS_IMPL(UncompiledDataWithoutPreparseDataWithJob)
+TQ_OBJECT_CONSTRUCTORS_IMPL(UncompiledDataWithPreparseDataAndJob)
 
 TQ_OBJECT_CONSTRUCTORS_IMPL(InterpreterData)
-
-ACCESSORS(InterpreterData, raw_interpreter_trampoline, CodeT,
-          kInterpreterTrampolineOffset)
-
-DEF_GETTER(InterpreterData, interpreter_trampoline, Code) {
-  return FromCodeT(raw_interpreter_trampoline(cage_base));
-}
-
-void InterpreterData::set_interpreter_trampoline(Code code,
-                                                 WriteBarrierMode mode) {
-  set_raw_interpreter_trampoline(ToCodeT(code), mode);
-}
-
 TQ_OBJECT_CONSTRUCTORS_IMPL(SharedFunctionInfo)
 NEVER_READ_ONLY_SPACE_IMPL(SharedFunctionInfo)
 DEFINE_DEOPT_ELEMENT_ACCESSORS(SharedFunctionInfo, Object)
@@ -130,13 +119,36 @@ DEF_ACQUIRE_GETTER(SharedFunctionInfo,
   return value;
 }
 
-RENAME_UINT16_TORQUE_ACCESSORS(SharedFunctionInfo,
-                               internal_formal_parameter_count,
-                               formal_parameter_count)
-RENAME_UINT16_TORQUE_ACCESSORS(SharedFunctionInfo, raw_function_token_offset,
-                               function_token_offset)
+uint16_t SharedFunctionInfo::internal_formal_parameter_count_with_receiver()
+    const {
+  const uint16_t param_count = TorqueGeneratedClass::formal_parameter_count();
+  return param_count;
+}
 
-IMPLICIT_TAG_RELAXED_INT32_ACCESSORS(SharedFunctionInfo, flags, kFlagsOffset)
+uint16_t SharedFunctionInfo::internal_formal_parameter_count_without_receiver()
+    const {
+  const uint16_t param_count = TorqueGeneratedClass::formal_parameter_count();
+  if (param_count == kDontAdaptArgumentsSentinel) return param_count;
+  return param_count - kJSArgcReceiverSlots;
+}
+
+void SharedFunctionInfo::set_internal_formal_parameter_count(int value) {
+  DCHECK_EQ(value, static_cast<uint16_t>(value));
+  DCHECK_GE(value, kJSArgcReceiverSlots);
+  TorqueGeneratedClass::set_formal_parameter_count(value);
+}
+
+RENAME_PRIMITIVE_TORQUE_ACCESSORS(SharedFunctionInfo, raw_function_token_offset,
+                                  function_token_offset, uint16_t)
+
+RELAXED_INT32_ACCESSORS(SharedFunctionInfo, flags, kFlagsOffset)
+int32_t SharedFunctionInfo::relaxed_flags() const {
+  return flags(kRelaxedLoad);
+}
+void SharedFunctionInfo::set_relaxed_flags(int32_t flags) {
+  return set_flags(flags, kRelaxedStore);
+}
+
 UINT8_ACCESSORS(SharedFunctionInfo, flags2, kFlags2Offset)
 
 bool SharedFunctionInfo::HasSharedName() const {
@@ -188,7 +200,7 @@ AbstractCode SharedFunctionInfo::abstract_code(IsolateT* isolate) {
   if (HasBytecodeArray()) {
     return AbstractCode::cast(GetBytecodeArray(isolate));
   } else {
-    return AbstractCode::cast(GetCode());
+    return AbstractCode::cast(FromCodeT(GetCode()));
   }
 }
 
@@ -212,7 +224,7 @@ bool SharedFunctionInfo::AreSourcePositionsAvailable(IsolateT* isolate) const {
 
 template <typename IsolateT>
 SharedFunctionInfo::Inlineability SharedFunctionInfo::GetInlineability(
-    IsolateT* isolate, bool is_turboprop) const {
+    IsolateT* isolate) const {
   if (!script().IsScript()) return kHasNoScript;
 
   if (GetIsolate()->is_precise_binary_code_coverage() &&
@@ -220,8 +232,6 @@ SharedFunctionInfo::Inlineability SharedFunctionInfo::GetInlineability(
     // We may miss invocations if this function is inlined.
     return kNeedsBinaryCoverage;
   }
-
-  if (optimization_disabled()) return kHasOptimizationDisabled;
 
   // Built-in functions are handled by the JSCallReducer.
   if (HasBuiltinId()) return kIsBuiltin;
@@ -233,15 +243,13 @@ SharedFunctionInfo::Inlineability SharedFunctionInfo::GetInlineability(
   // inline.
   if (!HasBytecodeArray()) return kHasNoBytecode;
 
-  int max_inlined_size = FLAG_max_inlined_bytecode_size;
-  if (is_turboprop) {
-    max_inlined_size = max_inlined_size / FLAG_turboprop_inline_scaling_factor;
-  }
-  if (GetBytecodeArray(isolate).length() > max_inlined_size) {
+  if (GetBytecodeArray(isolate).length() > FLAG_max_inlined_bytecode_size) {
     return kExceedsBytecodeLimit;
   }
 
   if (HasBreakInfo()) return kMayContainBreakPoints;
+
+  if (optimization_disabled()) return kHasOptimizationDisabled;
 
   return kIsInlineable;
 }
@@ -253,48 +261,64 @@ BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags2,
                     has_static_private_methods_or_accessors,
                     SharedFunctionInfo::HasStaticPrivateMethodsOrAccessorsBit)
 
-BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags, syntax_kind,
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags2, maglev_compilation_failed,
+                    SharedFunctionInfo::MaglevCompilationFailedBit)
+
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, relaxed_flags, syntax_kind,
                     SharedFunctionInfo::FunctionSyntaxKindBits)
 
-BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags, allows_lazy_compilation,
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, relaxed_flags, allows_lazy_compilation,
                     SharedFunctionInfo::AllowLazyCompilationBit)
-BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags, has_duplicate_parameters,
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, relaxed_flags, has_duplicate_parameters,
                     SharedFunctionInfo::HasDuplicateParametersBit)
 
-BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags, native,
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, relaxed_flags, native,
                     SharedFunctionInfo::IsNativeBit)
 #if V8_ENABLE_WEBASSEMBLY
-BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags, is_asm_wasm_broken,
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, relaxed_flags, is_asm_wasm_broken,
                     SharedFunctionInfo::IsAsmWasmBrokenBit)
 #endif  // V8_ENABLE_WEBASSEMBLY
-BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags,
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, relaxed_flags,
                     requires_instance_members_initializer,
                     SharedFunctionInfo::RequiresInstanceMembersInitializerBit)
 
-BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags, name_should_print_as_anonymous,
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, relaxed_flags,
+                    name_should_print_as_anonymous,
                     SharedFunctionInfo::NameShouldPrintAsAnonymousBit)
-BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags, has_reported_binary_coverage,
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, relaxed_flags,
+                    has_reported_binary_coverage,
                     SharedFunctionInfo::HasReportedBinaryCoverageBit)
 
-BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags, is_toplevel,
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, relaxed_flags, is_toplevel,
                     SharedFunctionInfo::IsTopLevelBit)
-BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags, properties_are_final,
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, relaxed_flags, properties_are_final,
                     SharedFunctionInfo::PropertiesAreFinalBit)
-BIT_FIELD_ACCESSORS(SharedFunctionInfo, flags,
+BIT_FIELD_ACCESSORS(SharedFunctionInfo, relaxed_flags,
                     private_name_lookup_skips_outer_class,
                     SharedFunctionInfo::PrivateNameLookupSkipsOuterClassBit)
 
 bool SharedFunctionInfo::optimization_disabled() const {
-  return disable_optimization_reason() != BailoutReason::kNoReason;
+  return disabled_optimization_reason() != BailoutReason::kNoReason;
 }
 
-BailoutReason SharedFunctionInfo::disable_optimization_reason() const {
-  return DisabledOptimizationReasonBits::decode(flags());
+BailoutReason SharedFunctionInfo::disabled_optimization_reason() const {
+  return DisabledOptimizationReasonBits::decode(flags(kRelaxedLoad));
+}
+
+OSRCodeCacheStateOfSFI SharedFunctionInfo::osr_code_cache_state() const {
+  return OsrCodeCacheStateBits::decode(flags(kRelaxedLoad));
+}
+
+void SharedFunctionInfo::set_osr_code_cache_state(
+    OSRCodeCacheStateOfSFI state) {
+  int hints = flags(kRelaxedLoad);
+  hints = OsrCodeCacheStateBits::update(hints, state);
+  set_flags(hints, kRelaxedStore);
 }
 
 LanguageMode SharedFunctionInfo::language_mode() const {
   STATIC_ASSERT(LanguageModeSize == 2);
-  return construct_language_mode(IsStrictBit::decode(flags()));
+  return construct_language_mode(IsStrictBit::decode(flags(kRelaxedLoad)));
 }
 
 void SharedFunctionInfo::set_language_mode(LanguageMode language_mode) {
@@ -302,22 +326,22 @@ void SharedFunctionInfo::set_language_mode(LanguageMode language_mode) {
   // We only allow language mode transitions that set the same language mode
   // again or go up in the chain:
   DCHECK(is_sloppy(this->language_mode()) || is_strict(language_mode));
-  int hints = flags();
+  int hints = flags(kRelaxedLoad);
   hints = IsStrictBit::update(hints, is_strict(language_mode));
-  set_flags(hints);
+  set_flags(hints, kRelaxedStore);
   UpdateFunctionMapIndex();
 }
 
 FunctionKind SharedFunctionInfo::kind() const {
   STATIC_ASSERT(FunctionKindBits::kSize == kFunctionKindBitSize);
-  return FunctionKindBits::decode(flags());
+  return FunctionKindBits::decode(flags(kRelaxedLoad));
 }
 
 void SharedFunctionInfo::set_kind(FunctionKind kind) {
-  int hints = flags();
+  int hints = flags(kRelaxedLoad);
   hints = FunctionKindBits::update(hints, kind);
   hints = IsClassConstructorBit::update(hints, IsClassConstructor(kind));
-  set_flags(hints);
+  set_flags(hints, kRelaxedStore);
   UpdateFunctionMapIndex();
 }
 
@@ -326,7 +350,7 @@ bool SharedFunctionInfo::is_wrapped() const {
 }
 
 bool SharedFunctionInfo::construct_as_builtin() const {
-  return ConstructAsBuiltinBit::decode(flags());
+  return ConstructAsBuiltinBit::decode(flags(kRelaxedLoad));
 }
 
 void SharedFunctionInfo::CalculateConstructAsBuiltin() {
@@ -340,15 +364,15 @@ void SharedFunctionInfo::CalculateConstructAsBuiltin() {
     uses_builtins_construct_stub = true;
   }
 
-  int f = flags();
+  int f = flags(kRelaxedLoad);
   f = ConstructAsBuiltinBit::update(f, uses_builtins_construct_stub);
-  set_flags(f);
+  set_flags(f, kRelaxedStore);
 }
 
 int SharedFunctionInfo::function_map_index() const {
   // Note: Must be kept in sync with the FastNewClosure builtin.
-  int index =
-      Context::FIRST_FUNCTION_MAP_INDEX + FunctionMapIndexBits::decode(flags());
+  int index = Context::FIRST_FUNCTION_MAP_INDEX +
+              FunctionMapIndexBits::decode(flags(kRelaxedLoad));
   DCHECK_LE(index, Context::LAST_FUNCTION_MAP_INDEX);
   return index;
 }
@@ -359,7 +383,8 @@ void SharedFunctionInfo::set_function_map_index(int index) {
   DCHECK_LE(Context::FIRST_FUNCTION_MAP_INDEX, index);
   DCHECK_LE(index, Context::LAST_FUNCTION_MAP_INDEX);
   index -= Context::FIRST_FUNCTION_MAP_INDEX;
-  set_flags(FunctionMapIndexBits::update(flags(), index));
+  set_flags(FunctionMapIndexBits::update(flags(kRelaxedLoad), index),
+            kRelaxedStore);
 }
 
 void SharedFunctionInfo::clear_padding() {
@@ -378,21 +403,24 @@ void SharedFunctionInfo::DontAdaptArguments() {
   // TODO(leszeks): Revise this DCHECK now that the code field is gone.
   DCHECK(!HasWasmExportedFunctionData());
 #endif  // V8_ENABLE_WEBASSEMBLY
-  set_internal_formal_parameter_count(kDontAdaptArgumentsSentinel);
+  TorqueGeneratedClass::set_formal_parameter_count(kDontAdaptArgumentsSentinel);
 }
 
-bool SharedFunctionInfo::IsInterpreted() const { return HasBytecodeArray(); }
+bool SharedFunctionInfo::IsDontAdaptArguments() const {
+  return TorqueGeneratedClass::formal_parameter_count() ==
+         kDontAdaptArgumentsSentinel;
+}
 
-ScopeInfo SharedFunctionInfo::scope_info(AcquireLoadTag tag) const {
-  Object maybe_scope_info = name_or_scope_info(tag);
-  if (maybe_scope_info.IsScopeInfo()) {
+DEF_ACQUIRE_GETTER(SharedFunctionInfo, scope_info, ScopeInfo) {
+  Object maybe_scope_info = name_or_scope_info(cage_base, kAcquireLoad);
+  if (maybe_scope_info.IsScopeInfo(cage_base)) {
     return ScopeInfo::cast(maybe_scope_info);
   }
   return GetReadOnlyRoots().empty_scope_info();
 }
 
-ScopeInfo SharedFunctionInfo::scope_info() const {
-  return scope_info(kAcquireLoad);
+DEF_GETTER(SharedFunctionInfo, scope_info, ScopeInfo) {
+  return scope_info(cage_base, kAcquireLoad);
 }
 
 void SharedFunctionInfo::SetScopeInfo(ScopeInfo scope_info,
@@ -484,8 +512,8 @@ IsCompiledScope SharedFunctionInfo::is_compiled_scope(IsolateT* isolate) const {
 IsCompiledScope::IsCompiledScope(const SharedFunctionInfo shared,
                                  Isolate* isolate)
     : is_compiled_(shared.is_compiled()) {
-  if (shared.HasBaselineData()) {
-    retain_code_ = handle(shared.baseline_data(), isolate);
+  if (shared.HasBaselineCode()) {
+    retain_code_ = handle(shared.baseline_code(kAcquireLoad), isolate);
   } else if (shared.HasBytecodeArray()) {
     retain_code_ = handle(shared.GetBytecodeArray(isolate), isolate);
   } else {
@@ -498,8 +526,9 @@ IsCompiledScope::IsCompiledScope(const SharedFunctionInfo shared,
 IsCompiledScope::IsCompiledScope(const SharedFunctionInfo shared,
                                  LocalIsolate* isolate)
     : is_compiled_(shared.is_compiled()) {
-  if (shared.HasBaselineData()) {
-    retain_code_ = isolate->heap()->NewPersistentHandle(shared.baseline_data());
+  if (shared.HasBaselineCode()) {
+    retain_code_ = isolate->heap()->NewPersistentHandle(
+        shared.baseline_code(kAcquireLoad));
   } else if (shared.HasBytecodeArray()) {
     retain_code_ =
         isolate->heap()->NewPersistentHandle(shared.GetBytecodeArray(isolate));
@@ -530,8 +559,7 @@ FunctionTemplateInfo SharedFunctionInfo::get_api_func_data() const {
 
 bool SharedFunctionInfo::HasBytecodeArray() const {
   Object data = function_data(kAcquireLoad);
-  return data.IsBytecodeArray() || data.IsInterpreterData() ||
-         data.IsBaselineData();
+  return data.IsBytecodeArray() || data.IsInterpreterData() || data.IsCodeT();
 }
 
 template <typename IsolateT>
@@ -547,40 +575,14 @@ BytecodeArray SharedFunctionInfo::GetBytecodeArray(IsolateT* isolate) const {
   return GetActiveBytecodeArray();
 }
 
-DEF_GETTER(BaselineData, baseline_code, Code) {
-  return FromCodeT(TorqueGeneratedClass::baseline_code(cage_base));
-}
-
-void BaselineData::set_baseline_code(Code code, WriteBarrierMode mode) {
-  return TorqueGeneratedClass::set_baseline_code(ToCodeT(code), mode);
-}
-
-BytecodeArray BaselineData::GetActiveBytecodeArray() const {
-  Object data = this->data();
-  if (data.IsBytecodeArray()) {
-    return BytecodeArray::cast(data);
-  } else {
-    DCHECK(data.IsInterpreterData());
-    return InterpreterData::cast(data).bytecode_array();
-  }
-}
-
-void BaselineData::SetActiveBytecodeArray(BytecodeArray bytecode) {
-  Object data = this->data();
-  if (data.IsBytecodeArray()) {
-    set_data(bytecode);
-  } else {
-    DCHECK(data.IsInterpreterData());
-    InterpreterData::cast(data).set_bytecode_array(bytecode);
-  }
-}
-
 BytecodeArray SharedFunctionInfo::GetActiveBytecodeArray() const {
   Object data = function_data(kAcquireLoad);
+  if (data.IsCodeT()) {
+    CodeT baseline_code = CodeT::cast(data);
+    data = baseline_code.bytecode_or_interpreter_data();
+  }
   if (data.IsBytecodeArray()) {
     return BytecodeArray::cast(data);
-  } else if (data.IsBaselineData()) {
-    return baseline_data().GetActiveBytecodeArray();
   } else {
     DCHECK(data.IsInterpreterData());
     return InterpreterData::cast(data).bytecode_array();
@@ -588,11 +590,13 @@ BytecodeArray SharedFunctionInfo::GetActiveBytecodeArray() const {
 }
 
 void SharedFunctionInfo::SetActiveBytecodeArray(BytecodeArray bytecode) {
+  // We don't allow setting the active bytecode array on baseline-optimized
+  // functions. They should have been flushed earlier.
+  DCHECK(!HasBaselineCode());
+
   Object data = function_data(kAcquireLoad);
   if (data.IsBytecodeArray()) {
     set_function_data(bytecode, kReleaseStore);
-  } else if (data.IsBaselineData()) {
-    baseline_data().SetActiveBytecodeArray(bytecode);
   } else {
     DCHECK(data.IsInterpreterData());
     interpreter_data().set_bytecode_array(bytecode);
@@ -618,12 +622,13 @@ bool SharedFunctionInfo::ShouldFlushCode(
   // check if it is old. Note, this is done this way since this function can be
   // called by the concurrent marker.
   Object data = function_data(kAcquireLoad);
-  if (data.IsBaselineData()) {
+  if (data.IsCodeT()) {
+    CodeT baseline_code = CodeT::cast(data);
+    DCHECK_EQ(baseline_code.kind(), CodeKind::BASELINE);
     // If baseline code flushing isn't enabled and we have baseline data on SFI
     // we cannot flush baseline / bytecode.
     if (!IsBaselineCodeFlushingEnabled(code_flush_mode)) return false;
-    data =
-        ACQUIRE_READ_FIELD(BaselineData::cast(data), BaselineData::kDataOffset);
+    data = baseline_code.bytecode_or_interpreter_data();
   } else if (!IsByteCodeFlushingEnabled(code_flush_mode)) {
     // If bytecode flushing isn't enabled and there is no baseline code there is
     // nothing to flush.
@@ -638,47 +643,63 @@ bool SharedFunctionInfo::ShouldFlushCode(
   return bytecode.IsOld();
 }
 
-Code SharedFunctionInfo::InterpreterTrampoline() const {
+CodeT SharedFunctionInfo::InterpreterTrampoline() const {
   DCHECK(HasInterpreterData());
   return interpreter_data().interpreter_trampoline();
 }
 
 bool SharedFunctionInfo::HasInterpreterData() const {
   Object data = function_data(kAcquireLoad);
-  if (data.IsBaselineData()) data = BaselineData::cast(data).data();
+  if (data.IsCodeT()) {
+    CodeT baseline_code = CodeT::cast(data);
+    DCHECK_EQ(baseline_code.kind(), CodeKind::BASELINE);
+    data = baseline_code.bytecode_or_interpreter_data();
+  }
   return data.IsInterpreterData();
 }
 
 InterpreterData SharedFunctionInfo::interpreter_data() const {
   DCHECK(HasInterpreterData());
   Object data = function_data(kAcquireLoad);
-  if (data.IsBaselineData()) data = BaselineData::cast(data).data();
+  if (data.IsCodeT()) {
+    CodeT baseline_code = CodeT::cast(data);
+    DCHECK_EQ(baseline_code.kind(), CodeKind::BASELINE);
+    data = baseline_code.bytecode_or_interpreter_data();
+  }
   return InterpreterData::cast(data);
 }
 
 void SharedFunctionInfo::set_interpreter_data(
     InterpreterData interpreter_data) {
   DCHECK(FLAG_interpreted_frames_native_stack);
-  DCHECK(!HasBaselineData());
+  DCHECK(!HasBaselineCode());
   set_function_data(interpreter_data, kReleaseStore);
 }
 
-bool SharedFunctionInfo::HasBaselineData() const {
-  return function_data(kAcquireLoad).IsBaselineData();
+bool SharedFunctionInfo::HasBaselineCode() const {
+  Object data = function_data(kAcquireLoad);
+  if (data.IsCodeT()) {
+    DCHECK_EQ(CodeT::cast(data).kind(), CodeKind::BASELINE);
+    return true;
+  }
+  return false;
 }
 
-BaselineData SharedFunctionInfo::baseline_data() const {
-  DCHECK(HasBaselineData());
-  return BaselineData::cast(function_data(kAcquireLoad));
+CodeT SharedFunctionInfo::baseline_code(AcquireLoadTag) const {
+  DCHECK(HasBaselineCode());
+  return CodeT::cast(function_data(kAcquireLoad));
 }
 
-void SharedFunctionInfo::set_baseline_data(BaselineData baseline_data) {
-  set_function_data(baseline_data, kReleaseStore);
+void SharedFunctionInfo::set_baseline_code(CodeT baseline_code,
+                                           ReleaseStoreTag) {
+  DCHECK_EQ(baseline_code.kind(), CodeKind::BASELINE);
+  set_function_data(baseline_code, kReleaseStore);
 }
 
-void SharedFunctionInfo::flush_baseline_data() {
-  DCHECK(HasBaselineData());
-  set_function_data(baseline_data().data(), kReleaseStore);
+void SharedFunctionInfo::FlushBaselineCode() {
+  DCHECK(HasBaselineCode());
+  set_function_data(baseline_code(kAcquireLoad).bytecode_or_interpreter_data(),
+                    kReleaseStore);
 }
 
 #if V8_ENABLE_WEBASSEMBLY
@@ -696,6 +717,10 @@ bool SharedFunctionInfo::HasWasmJSFunctionData() const {
 
 bool SharedFunctionInfo::HasWasmCapiFunctionData() const {
   return function_data(kAcquireLoad).IsWasmCapiFunctionData();
+}
+
+bool SharedFunctionInfo::HasWasmOnFulfilledData() const {
+  return function_data(kAcquireLoad).IsWasmOnFulfilledData();
 }
 
 AsmWasmData SharedFunctionInfo::asm_wasm_data() const {
@@ -780,6 +805,17 @@ bool SharedFunctionInfo::HasUncompiledDataWithoutPreparseData() const {
   return function_data(kAcquireLoad).IsUncompiledDataWithoutPreparseData();
 }
 
+void SharedFunctionInfo::ClearUncompiledDataJobPointer() {
+  UncompiledData uncompiled_data = this->uncompiled_data();
+  if (uncompiled_data.IsUncompiledDataWithPreparseDataAndJob()) {
+    UncompiledDataWithPreparseDataAndJob::cast(uncompiled_data)
+        .set_job(kNullAddress);
+  } else if (uncompiled_data.IsUncompiledDataWithoutPreparseDataWithJob()) {
+    UncompiledDataWithoutPreparseDataWithJob::cast(uncompiled_data)
+        .set_job(kNullAddress);
+  }
+}
+
 void SharedFunctionInfo::ClearPreparseData() {
   DCHECK(HasUncompiledDataWithPreparseData());
   UncompiledDataWithPreparseData data = uncompiled_data_with_preparse_data();
@@ -820,9 +856,9 @@ void UncompiledData::InitAfterBytecodeFlush(
   set_end_position(end_position);
 }
 
-HeapObject SharedFunctionInfo::script() const {
-  HeapObject maybe_script = script_or_debug_info(kAcquireLoad);
-  if (maybe_script.IsDebugInfo()) {
+DEF_GETTER(SharedFunctionInfo, script, HeapObject) {
+  HeapObject maybe_script = script_or_debug_info(cage_base, kAcquireLoad);
+  if (maybe_script.IsDebugInfo(cage_base)) {
     return DebugInfo::cast(maybe_script).script();
   }
   return maybe_script;
@@ -898,11 +934,11 @@ bool SharedFunctionInfo::CanDiscardCompiled() const {
   if (HasAsmWasmData()) return true;
 #endif  // V8_ENABLE_WEBASSEMBLY
   return HasBytecodeArray() || HasUncompiledDataWithPreparseData() ||
-         HasBaselineData();
+         HasBaselineCode();
 }
 
 bool SharedFunctionInfo::is_class_constructor() const {
-  return IsClassConstructorBit::decode(flags());
+  return IsClassConstructorBit::decode(flags(kRelaxedLoad));
 }
 
 void SharedFunctionInfo::set_are_properties_final(bool value) {

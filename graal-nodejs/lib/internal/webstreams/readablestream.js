@@ -28,6 +28,7 @@ const {
 } = primordials;
 
 const {
+  AbortError,
   codes: {
     ERR_ILLEGAL_CONSTRUCTOR,
     ERR_INVALID_ARG_VALUE,
@@ -59,6 +60,7 @@ const {
 } = require('v8');
 
 const {
+  validateBuffer,
   validateObject,
 } = require('internal/validators');
 
@@ -102,6 +104,8 @@ const {
   extractHighWaterMark,
   extractSizeAlgorithm,
   lazyTransfer,
+  isDetachedBuffer,
+  isViewedArrayBufferDetached,
   isBrandCheck,
   resetQueue,
   setPromiseHandled,
@@ -135,6 +139,7 @@ const kClose = Symbol('kClose');
 const kChunk = Symbol('kChunk');
 const kError = Symbol('kError');
 const kPull = Symbol('kPull');
+const kRelease = Symbol('kRelease');
 
 /**
  * @typedef {import('../abort_controller').AbortSignal} AbortSignal
@@ -659,10 +664,12 @@ class ReadableStreamBYOBRequest {
     const viewBuffer = ArrayBufferViewGetBuffer(view);
     const viewBufferByteLength = ArrayBufferGetByteLength(viewBuffer);
 
-    if (viewByteLength === 0 || viewBufferByteLength === 0) {
-      throw new ERR_INVALID_STATE.TypeError(
-        'View ArrayBuffer is zero-length or detached');
+    if (isDetachedBuffer(viewBuffer)) {
+      throw new ERR_INVALID_STATE.TypeError('Viewed ArrayBuffer is detached');
     }
+
+    assert(viewByteLength > 0);
+    assert(viewBufferByteLength > 0);
 
     readableByteStreamControllerRespond(controller, bytesWritten);
   }
@@ -680,6 +687,12 @@ class ReadableStreamBYOBRequest {
     if (controller === undefined) {
       throw new ERR_INVALID_STATE.TypeError(
         'This BYOB request has been invalidated');
+    }
+
+    validateBuffer(view, 'view');
+
+    if (isViewedArrayBufferDetached(view)) {
+      throw new ERR_INVALID_STATE.TypeError('Viewed ArrayBuffer is detached');
     }
 
     readableByteStreamControllerRespondWithNewView(controller, view);
@@ -800,11 +813,7 @@ class ReadableStreamDefaultReader {
       throw new ERR_INVALID_THIS('ReadableStreamDefaultReader');
     if (this[kState].stream === undefined)
       return;
-    if (this[kState].readRequests.length) {
-      throw new ERR_INVALID_STATE.TypeError(
-        'Cannot release with pending read requests');
-    }
-    readableStreamReaderGenericRelease(this);
+    readableStreamDefaultReaderRelease(this);
   }
 
   /**
@@ -891,6 +900,7 @@ class ReadableStreamBYOBReader {
           ],
           view));
     }
+
     const viewByteLength = ArrayBufferViewGetByteLength(view);
     const viewBuffer = ArrayBufferViewGetBuffer(view);
     const viewBufferByteLength = ArrayBufferGetByteLength(viewBuffer);
@@ -898,8 +908,11 @@ class ReadableStreamBYOBReader {
     if (viewByteLength === 0 || viewBufferByteLength === 0) {
       return PromiseReject(
         new ERR_INVALID_STATE.TypeError(
-          'View ArrayBuffer is zero-length or detached'));
+          'View or Viewed ArrayBuffer is zero-length or detached',
+        ),
+      );
     }
+
     // Supposed to assert here that the view's buffer is not
     // detached, but there's no API available to use to check that.
     if (this[kState].stream === undefined) {
@@ -917,11 +930,7 @@ class ReadableStreamBYOBReader {
       throw new ERR_INVALID_THIS('ReadableStreamBYOBReader');
     if (this[kState].stream === undefined)
       return;
-    if (this[kState].readIntoRequests.length) {
-      throw new ERR_INVALID_STATE.TypeError(
-        'Cannot release with pending read requests');
-    }
-    readableStreamReaderGenericRelease(this);
+    readableStreamBYOBReaderRelease(this);
   }
 
   /**
@@ -1010,6 +1019,8 @@ class ReadableStreamDefaultController {
   [kPull](readRequest) {
     readableStreamDefaultControllerPullSteps(this, readRequest);
   }
+
+  [kRelease]() {}
 
   [kInspect](depth, options) {
     return customInspect(depth, options, this[kType], { });
@@ -1133,6 +1144,17 @@ class ReadableByteStreamController {
 
   [kPull](readRequest) {
     readableByteStreamControllerPullSteps(this, readRequest);
+  }
+
+  [kRelease]() {
+    const {
+      pendingPullIntos,
+    } = this[kState];
+    if (pendingPullIntos.length > 0) {
+      const firstPendingPullInto = pendingPullIntos[0];
+      firstPendingPullInto.type = 'none';
+      this[kState].pendingPullIntos = [firstPendingPullInto];
+    }
   }
 
   [kInspect](depth, options) {
@@ -1293,8 +1315,14 @@ function readableStreamPipeTo(
   }
 
   function abortAlgorithm() {
-    // Cannot use the AbortError class here. It must be a DOMException
-    const error = new DOMException('The operation was aborted', 'AbortError');
+    let error;
+    if (signal.reason instanceof AbortError) {
+      // Cannot use the AbortError class here. It must be a DOMException.
+      error = new DOMException(signal.reason.message, 'AbortError');
+    } else {
+      error = signal.reason;
+    }
+
     const actions = [];
     if (!preventAbort) {
       ArrayPrototypePush(
@@ -1549,6 +1577,7 @@ function readableByteStreamTee(stream) {
 
   function pullWithDefaultReader() {
     if (isReadableStreamBYOBReader(reader)) {
+      readableStreamBYOBReaderRelease(reader);
       reader = new ReadableStreamDefaultReader(stream);
       forwardReaderError(reader);
     }
@@ -1627,6 +1656,7 @@ function readableByteStreamTee(stream) {
 
   function pullWithBYOBReader(view, forBranch2) {
     if (isReadableStreamDefaultReader(reader)) {
+      readableStreamDefaultReaderRelease(reader);
       reader = new ReadableStreamBYOBReader(stream);
       forwardReaderError(reader);
     }
@@ -1995,6 +2025,36 @@ function readableStreamReaderGenericInitialize(reader, stream) {
   }
 }
 
+function readableStreamDefaultReaderRelease(reader) {
+  readableStreamReaderGenericRelease(reader);
+  readableStreamDefaultReaderErrorReadRequests(
+    reader,
+    new ERR_INVALID_STATE.TypeError('Releasing reader')
+  );
+}
+
+function readableStreamDefaultReaderErrorReadRequests(reader, e) {
+  for (let n = 0; n < reader[kState].readRequests.length; ++n) {
+    reader[kState].readRequests[n][kError](e);
+  }
+  reader[kState].readRequests = [];
+}
+
+function readableStreamBYOBReaderRelease(reader) {
+  readableStreamReaderGenericRelease(reader);
+  readableStreamBYOBReaderErrorReadIntoRequests(
+    reader,
+    new ERR_INVALID_STATE.TypeError('Releasing reader')
+  );
+}
+
+function readableStreamBYOBReaderErrorReadIntoRequests(reader, e) {
+  for (let n = 0; n < reader[kState].readIntoRequests.length; ++n) {
+    reader[kState].readIntoRequests[n][kError](e);
+  }
+  reader[kState].readIntoRequests = [];
+}
+
 function readableStreamReaderGenericRelease(reader) {
   const {
     stream,
@@ -2014,6 +2074,9 @@ function readableStreamReaderGenericRelease(reader) {
     };
   }
   setPromiseHandled(reader[kState].close.promise);
+
+  stream[kState].controller[kRelease]();
+
   stream[kState].reader = undefined;
   reader[kState].stream = undefined;
 }
@@ -2319,6 +2382,8 @@ function readableByteStreamControllerClose(controller) {
 
 function readableByteStreamControllerCommitPullIntoDescriptor(stream, desc) {
   assert(stream[kState].state !== 'errored');
+  assert(desc.type !== 'none');
+
   let done = false;
   if (stream[kState].state === 'closed') {
     desc.bytesFilled = 0;
@@ -2528,6 +2593,9 @@ function readableByteStreamControllerRespond(controller, bytesWritten) {
 
 function readableByteStreamControllerRespondInClosedState(controller, desc) {
   assert(!desc.bytesFilled);
+  if (desc.type === 'none') {
+    readableByteStreamControllerShiftPendingPullInto(controller);
+  }
   const {
     stream,
   } = controller[kState];
@@ -2573,20 +2641,28 @@ function readableByteStreamControllerEnqueue(controller, chunk) {
   if (pendingPullIntos.length) {
     const firstPendingPullInto = pendingPullIntos[0];
 
-    const pendingBufferByteLength =
-      ArrayBufferGetByteLength(firstPendingPullInto.buffer);
-    if (pendingBufferByteLength === 0) {
+    if (isDetachedBuffer(firstPendingPullInto.buffer)) {
       throw new ERR_INVALID_STATE.TypeError(
-        'Destination ArrayBuffer is zero-length or detached');
+        'Destination ArrayBuffer is detached',
+      );
     }
 
-    firstPendingPullInto.buffer =
-      transferArrayBuffer(firstPendingPullInto.buffer);
+    readableByteStreamControllerInvalidateBYOBRequest(controller);
+
+    firstPendingPullInto.buffer = transferArrayBuffer(
+      firstPendingPullInto.buffer
+    );
+
+    if (firstPendingPullInto.type === 'none') {
+      readableByteStreamControllerEnqueueDetachedPullIntoToQueue(
+        controller,
+        firstPendingPullInto
+      );
+    }
   }
 
-  readableByteStreamControllerInvalidateBYOBRequest(controller);
-
   if (readableStreamHasDefaultReader(stream)) {
+    readableByteStreamControllerProcessReadRequestsUsingQueue(controller);
     if (!readableStreamGetNumReadRequests(stream)) {
       readableByteStreamControllerEnqueueChunkToQueue(
         controller,
@@ -2595,6 +2671,10 @@ function readableByteStreamControllerEnqueue(controller, chunk) {
         byteLength);
     } else {
       assert(!queue.length);
+      if (pendingPullIntos.length) {
+        assert(pendingPullIntos[0].type === 'default');
+        readableByteStreamControllerShiftPendingPullInto(controller);
+      }
       const transferredView =
         new Uint8Array(transferredBuffer, byteOffset, byteLength);
       readableStreamFulfillReadRequest(stream, transferredView, false);
@@ -2618,6 +2698,31 @@ function readableByteStreamControllerEnqueue(controller, chunk) {
   readableByteStreamControllerCallPullIfNeeded(controller);
 }
 
+function readableByteStreamControllerEnqueueClonedChunkToQueue(
+  controller,
+  buffer,
+  byteOffset,
+  byteLength
+) {
+  let cloneResult;
+  try {
+    cloneResult = ArrayBufferPrototypeSlice(
+      buffer,
+      byteOffset,
+      byteOffset + byteLength
+    );
+  } catch (error) {
+    readableByteStreamControllerError(controller, error);
+    throw error;
+  }
+  readableByteStreamControllerEnqueueChunkToQueue(
+    controller,
+    cloneResult,
+    0,
+    byteLength
+  );
+}
+
 function readableByteStreamControllerEnqueueChunkToQueue(
   controller,
   buffer,
@@ -2631,6 +2736,29 @@ function readableByteStreamControllerEnqueueChunkToQueue(
       byteLength,
     });
   controller[kState].queueTotalSize += byteLength;
+}
+
+function readableByteStreamControllerEnqueueDetachedPullIntoToQueue(
+  controller,
+  desc
+) {
+  const {
+    buffer,
+    byteOffset,
+    bytesFilled,
+    type,
+  } = desc;
+  assert(type === 'none');
+
+  if (bytesFilled > 0) {
+    readableByteStreamControllerEnqueueClonedChunkToQueue(
+      controller,
+      buffer,
+      byteOffset,
+      bytesFilled
+    );
+  }
+  readableByteStreamControllerShiftPendingPullInto(controller);
 }
 
 function readableByteStreamControllerFillPullIntoDescriptorFromQueue(
@@ -2728,6 +2856,7 @@ function readableByteStreamControllerRespondInReadableState(
     buffer,
     bytesFilled,
     byteLength,
+    type,
   } = desc;
 
   if (bytesFilled + bytesWritten > byteLength)
@@ -2737,6 +2866,17 @@ function readableByteStreamControllerRespondInReadableState(
     controller,
     bytesWritten,
     desc);
+
+  if (type === 'none') {
+    readableByteStreamControllerEnqueueDetachedPullIntoToQueue(
+      controller,
+      desc
+    );
+    readableByteStreamControllerProcessPullIntoDescriptorsUsingQueue(
+      controller
+    );
+    return;
+  }
 
   if (desc.bytesFilled < desc.elementSize)
     return;
@@ -2776,20 +2916,19 @@ function readableByteStreamControllerRespondWithNewView(controller, view) {
   const desc = pendingPullIntos[0];
   assert(stream[kState].state !== 'errored');
 
-  if (!isArrayBufferView(view)) {
-    throw new ERR_INVALID_ARG_TYPE(
-      'view',
-      [
-        'Buffer',
-        'TypedArray',
-        'DataView',
-      ],
-      view);
-  }
   const viewByteLength = ArrayBufferViewGetByteLength(view);
   const viewByteOffset = ArrayBufferViewGetByteOffset(view);
   const viewBuffer = ArrayBufferViewGetBuffer(view);
   const viewBufferByteLength = ArrayBufferGetByteLength(viewBuffer);
+
+  if (stream[kState].state === 'closed') {
+    if (viewByteLength !== 0)
+      throw new ERR_INVALID_STATE.TypeError('View is not zero-length');
+  } else {
+    assert(stream[kState].state === 'readable');
+    if (viewByteLength === 0)
+      throw new ERR_INVALID_STATE.TypeError('View is zero-length');
+  }
 
   const {
     byteOffset,
@@ -2858,25 +2997,56 @@ function readableByteStreamControllerCancelSteps(controller, reason) {
   return result;
 }
 
+function readableByteStreamControllerFillReadRequestFromQueue(controller, readRequest) {
+  const {
+    queue,
+    queueTotalSize,
+  } = controller[kState];
+  assert(queueTotalSize > 0);
+  const {
+    buffer,
+    byteOffset,
+    byteLength,
+  } = ArrayPrototypeShift(queue);
+
+  controller[kState].queueTotalSize -= byteLength;
+  readableByteStreamControllerHandleQueueDrain(controller);
+  const view = new Uint8Array(buffer, byteOffset, byteLength);
+  readRequest[kChunk](view);
+}
+
+function readableByteStreamControllerProcessReadRequestsUsingQueue(controller) {
+  const {
+    stream,
+    queueTotalSize,
+  } = controller[kState];
+  const { reader } = stream[kState];
+  assert(isReadableStreamDefaultReader(reader));
+
+  while (reader[kState].readRequests.length > 0) {
+    if (queueTotalSize === 0) {
+      return;
+    }
+    readableByteStreamControllerFillReadRequestFromQueue(
+      controller,
+      ArrayPrototypeShift(reader[kState].readRequests),
+    );
+  }
+}
+
 function readableByteStreamControllerPullSteps(controller, readRequest) {
   const {
     pendingPullIntos,
-    queue,
     queueTotalSize,
     stream,
   } = controller[kState];
   assert(readableStreamHasDefaultReader(stream));
   if (queueTotalSize) {
     assert(!readableStreamGetNumReadRequests(stream));
-    const {
-      buffer,
-      byteOffset,
-      byteLength,
-    } = ArrayPrototypeShift(queue);
-    controller[kState].queueTotalSize -= byteLength;
-    readableByteStreamControllerHandleQueueDrain(controller);
-    const view = new Uint8Array(buffer, byteOffset, byteLength);
-    readRequest[kChunk](view);
+    readableByteStreamControllerFillReadRequestFromQueue(
+      controller,
+      readRequest
+    );
     return;
   }
   const {

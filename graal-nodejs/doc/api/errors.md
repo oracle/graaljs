@@ -705,6 +705,13 @@ A special type of error that can be triggered whenever Node.js detects an
 exceptional logic violation that should never occur. These are raised typically
 by the `node:assert` module.
 
+<a id="ERR_ASSERT_SNAPSHOT_NOT_SUPPORTED"></a>
+
+### `ERR_ASSERT_SNAPSHOT_NOT_SUPPORTED`
+
+An attempt was made to use `assert.snapshot()` in an environment that
+does not support snapshots, such as the REPL, or when using `node --eval`.
+
 <a id="ERR_ASYNC_CALLBACK"></a>
 
 ### `ERR_ASYNC_CALLBACK`
@@ -788,12 +795,16 @@ STDERR/STDOUT, and the data's length is longer than the `maxBuffer` option.
 ### `ERR_CLOSED_MESSAGE_PORT`
 
 <!--
-added: v16.2.0
+added:
+  - v16.2.0
+  - v14.17.1
 changes:
   - version: 11.12.0
     pr-url: https://github.com/nodejs/node/pull/26487
     description: The error message was removed.
-  - version: v16.2.0
+  - version:
+      - v16.2.0
+      - v14.17.1
     pr-url: https://github.com/nodejs/node/pull/38510
     description: The error message was reintroduced.
 -->
@@ -1126,7 +1137,9 @@ An unknown Diffie-Hellman group name was given. See
 ### `ERR_CRYPTO_UNSUPPORTED_OPERATION`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 An attempt to invoke an unsupported crypto operation was made.
@@ -1136,7 +1149,9 @@ An attempt to invoke an unsupported crypto operation was made.
 ### `ERR_DEBUGGER_ERROR`
 
 <!-- YAML
-added: v16.4.0
+added:
+  - v16.4.0
+  - v14.17.4
 -->
 
 An error occurred with the [debugger][].
@@ -1146,7 +1161,9 @@ An error occurred with the [debugger][].
 ### `ERR_DEBUGGER_STARTUP_ERROR`
 
 <!-- YAML
-added: v16.4.0
+added:
+  - v16.4.0
+  - v14.17.4
 -->
 
 The [debugger][] timed out waiting for the required host/port to be free.
@@ -1156,7 +1173,9 @@ The [debugger][] timed out waiting for the required host/port to be free.
 ### `ERR_DLOPEN_DISABLED`
 
 <!-- YAML
-added: v16.10.0
+added:
+  - v16.10.0
+  - v14.19.0
 -->
 
 Loading native addons has been disabled using [`--no-addons`][].
@@ -1746,7 +1765,9 @@ An attempt was made to construct an object using a non-public constructor.
 ### `ERR_IMPORT_ASSERTION_TYPE_FAILED`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.1.0
+  - v16.14.0
 -->
 
 An import assertion has failed, preventing the specified module to be imported.
@@ -1756,7 +1777,9 @@ An import assertion has failed, preventing the specified module to be imported.
 ### `ERR_IMPORT_ASSERTION_TYPE_MISSING`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.1.0
+  - v16.14.0
 -->
 
 An import assertion is missing, preventing the specified module to be imported.
@@ -1766,7 +1789,9 @@ An import assertion is missing, preventing the specified module to be imported.
 ### `ERR_IMPORT_ASSERTION_TYPE_UNSUPPORTED`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.1.0
+  - v16.14.0
 -->
 
 An import assertion is not supported by this version of Node.js.
@@ -1880,12 +1905,6 @@ less than -1 should never happen.
 A swap was performed on a `Buffer` but its size was not compatible with the
 operation.
 
-<a id="ERR_INVALID_CALLBACK"></a>
-
-### `ERR_INVALID_CALLBACK`
-
-A callback function was required but was not been provided to a Node.js API.
-
 <a id="ERR_INVALID_CHAR"></a>
 
 ### `ERR_INVALID_CHAR`
@@ -1953,7 +1972,9 @@ An IP address is not valid.
 ### `ERR_INVALID_MODULE`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 An attempt was made to load a module that does not exist or was otherwise not
@@ -1965,6 +1986,13 @@ valid.
 
 The imported module string is an invalid URL, package name, or package subpath
 specifier.
+
+<a id="ERR_INVALID_OBJECT_DEFINE_PROPERTY"></a>
+
+### `ERR_INVALID_OBJECT_DEFINE_PROPERTY`
+
+An error occurred while setting an invalid attribute on the property of
+an object.
 
 <a id="ERR_INVALID_PACKAGE_CONFIG"></a>
 
@@ -2086,10 +2114,10 @@ An invalid URI was passed.
 
 ### `ERR_INVALID_URL`
 
-An invalid URL was passed to the [WHATWG][WHATWG URL API]
-[`URL` constructor][`new URL(input)`] to be parsed. The thrown error object
-typically has an additional property `'input'` that contains the URL that failed
-to parse.
+An invalid URL was passed to the [WHATWG][WHATWG URL API] [`URL`
+constructor][`new URL(input)`] or the legacy [`url.parse()`][] to be parsed.
+The thrown error object typically has an additional property `'input'` that
+contains the URL that failed to parse.
 
 <a id="ERR_INVALID_URL_SCHEME"></a>
 
@@ -2135,7 +2163,7 @@ for more information.
 ### `ERR_LOADER_CHAIN_INCOMPLETE`
 
 <!-- YAML
-added: v16.17.0
+added: v18.6.0
 -->
 
 An ESM loader hook returned without calling `next()` and without explicitly
@@ -2405,7 +2433,7 @@ cannot be imported through the package resolution, unless using an absolute URL.
 ### `ERR_PARSE_ARGS_INVALID_OPTION_VALUE`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 When `strict` set to `true`, thrown by [`util.parseArgs()`][] if a {boolean}
@@ -2417,7 +2445,7 @@ value is provided for an option of type {boolean}.
 ### `ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 Thrown by [`util.parseArgs()`][], when a positional argument is provided and
@@ -2428,7 +2456,7 @@ Thrown by [`util.parseArgs()`][], when a positional argument is provided and
 ### `ERR_PARSE_ARGS_UNKNOWN_OPTION`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 When `strict` set to `true`, thrown by [`util.parseArgs()`][] if an argument
@@ -2892,6 +2920,14 @@ import 'package-name'; // supported
 
 `import` with URL schemes other than `file` and `data` is unsupported.
 
+<a id="ERR_USE_AFTER_CLOSE"></a>
+
+### `ERR_USE_AFTER_CLOSE`
+
+> Stability: 1 - Experimental
+
+An attempt was made to use something that was already closed.
+
 <a id="ERR_VALID_PERFORMANCE_ENTRY_TYPE"></a>
 
 ### `ERR_VALID_PERFORMANCE_ENTRY_TYPE`
@@ -2965,6 +3001,17 @@ The WASI instance has already started.
 ### `ERR_WASI_NOT_STARTED`
 
 The WASI instance has not been started.
+
+<a id="ERR_WEBASSEMBLY_RESPONSE"></a>
+
+### `ERR_WEBASSEMBLY_RESPONSE`
+
+<!-- YAML
+added: v18.1.0
+-->
+
+The `Response` that has been passed to `WebAssembly.compileStreaming` or to
+`WebAssembly.instantiateStreaming` is not a valid WebAssembly response.
 
 <a id="ERR_WORKER_INIT_FAILED"></a>
 
@@ -3415,7 +3462,7 @@ The module must be successfully linked before instantiation.
 
 <!-- YAML
 added: v10.0.0
-removed: v16.17.0
+removed: v18.1.0
 -->
 
 The linker function returned a module for which linking has failed.
@@ -3524,6 +3571,7 @@ The native call from `process.cpuUsage` could not be processed.
 [`stream.write()`]: stream.md#writablewritechunk-encoding-callback
 [`subprocess.kill()`]: child_process.md#subprocesskillsignal
 [`subprocess.send()`]: child_process.md#subprocesssendmessage-sendhandle-options-callback
+[`url.parse()`]: url.md#urlparseurlstring-parsequerystring-slashesdenotehost
 [`util.getSystemErrorName(error.errno)`]: util.md#utilgetsystemerrornameerr
 [`util.inspect()`]: util.md#utilinspectobject-options
 [`util.parseArgs()`]: util.md#utilparseargsconfig

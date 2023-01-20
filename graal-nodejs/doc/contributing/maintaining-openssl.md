@@ -3,7 +3,7 @@
 This document describes how to update `deps/openssl/`.
 
 If you need to provide updates across all active release lines you will
-currently need to generate three PRs as follows:
+currently need to generate four PRs as follows:
 
 * a PR for `main` which is generated following the instructions
   below for OpenSSL 3.x.x.
@@ -11,11 +11,6 @@ currently need to generate three PRs as follows:
   of this guide.
 * a PR for 14.x following the instructions in the v14.x-staging version
   of this guide.
-* a PR which uses the same commit from the second PR to apply the
-  updates to the openssl source code, with a new commit generated
-  by following steps 2 onwards on the 12.x line. This is
-  necessary because the configuration files have embedded timestamps
-  which lead to merge conflicts if cherry-picked from the second PR.
 
 ## Use of the quictls/openssl fork
 
@@ -55,15 +50,16 @@ NASM version 2.11.08
 
 ## 1. Obtain and extract new OpenSSL sources
 
-Get a new source from <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1j+quic>
+Get a new source from <https://github.com/quictls/openssl/tree/openssl-3.0.5+quic>
 and copy all files into `deps/openssl/openssl`. Then add all files and commit
 them. (The link above, and the branch, will change with each new OpenSSL
 release).
 
+### OpenSSL 3.x.x
+
 ```console
 % git clone https://github.com/quictls/openssl
 % cd openssl
-% git checkout OpenSSL_1_1_1j+quic
 % cd ../node/deps/openssl
 % rm -rf openssl
 % cp -R ../../../openssl openssl
@@ -72,19 +68,16 @@ release).
 % git commit openssl
 ```
 
-The commit message can be written as (with the openssl version set
-to the relevant value):
-
 ```text
-deps: upgrade openssl sources to OpenSSL_1_1_1j
+deps: upgrade openssl sources to quictls/openssl-3.0.5+quic
 
 This updates all sources in deps/openssl/openssl by:
-    $ git clone https://github.com/quictls/openssl
+    $ git clone git@github.com:quictls/openssl.git
     $ cd openssl
-    $ git checkout OpenSSL_1_1_1j+quic
+    $ git checkout openssl-3.0.5+quic
     $ cd ../node/deps/openssl
     $ rm -rf openssl
-    $ cp -R ../openssl openssl
+    $ cp -R ../../../openssl openssl
     $ rm -rf openssl/.git* openssl/.travis*
     $ git add --all openssl
     $ git commit openssl
@@ -100,6 +93,7 @@ Use `make` to regenerate all platform dependent files in
 % make gen-openssl
 
 # On Linux machines
+% make -C deps/openssl/config clean
 % make -C deps/openssl/config
 ```
 
@@ -137,34 +131,17 @@ files if they are changed before committing:
 
 ```console
 % git add deps/openssl/config/archs
-% git add deps/openssl/openssl/include/crypto/bn_conf.h
-% git add deps/openssl/openssl/include/crypto/dso_conf.h
-% git add deps/openssl/openssl/include/openssl/opensslconf.h
+% git add deps/openssl/openssl
 % git commit
 ```
 
 The commit message can be written as (with the openssl version set
 to the relevant value):
 
-### OpenSSL 1.1.1
+### OpenSSL 3.x.x
 
 ```text
- deps: update archs files for OpenSSL-1.1.1
-
- After an OpenSSL source update, all the config files need to be
- regenerated and committed by:
-    $ make -C deps/openssl/config
-    $ git add deps/openssl/config/archs
-    $ git add deps/openssl/openssl/include/crypto/bn_conf.h
-    $ git add deps/openssl/openssl/include/crypto/dso_conf.h
-    $ git add deps/openssl/openssl/include/openssl/opensslconf.h
-    $ git commit
-```
-
-### OpenSSL 3.0.0
-
-```text
-deps: update archs files for quictls/openssl-3.0.0-alpha-16
+deps: update archs files for quictls/openssl-3.0.5+quic
 
 After an OpenSSL source update, all the config files need to be
 regenerated and committed by:

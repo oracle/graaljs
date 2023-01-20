@@ -814,51 +814,6 @@ $ node other.js
 42
 ```
 
-### Subpath folder mappings
-
-<!-- YAML
-changes:
-  - version: v16.0.0
-    pr-url: https://github.com/nodejs/node/pull/37215
-    description: Runtime deprecation.
-  - version: v15.1.0
-    pr-url: https://github.com/nodejs/node/pull/35747
-    description: Runtime deprecation for self-referencing imports.
-  - version:
-    - v14.13.0
-    - v12.20.0
-    pr-url: https://github.com/nodejs/node/pull/34718
-    description: Documentation-only deprecation.
--->
-
-> Stability: 0 - Deprecated: Use subpath patterns instead.
-
-Before subpath patterns were supported, a trailing `"/"` suffix was used to
-support folder mappings:
-
-```json
-{
-  "exports": {
-    "./features/": "./features/"
-  }
-}
-```
-
-_This feature will be removed in a future release._
-
-Instead, use direct [subpath patterns][]:
-
-```json
-{
-  "exports": {
-    "./features/*": "./features/*.js"
-  }
-}
-```
-
-The benefit of patterns over folder exports is that packages can always be
-imported by consumers without subpath file extensions being necessary.
-
 ## Dual CommonJS/ES module packages
 
 Prior to the introduction of support for ES modules in Node.js, it was a common
@@ -1199,7 +1154,9 @@ require('./path/to/directory');
 ### `"packageManager"`
 
 <!-- YAML
-added: v16.9.0
+added:
+  - v16.9.0
+  - v14.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -1385,7 +1342,6 @@ This field defines [subpath imports][] for the current package.
 [self-reference]: #self-referencing-a-package-using-its-name
 [subpath exports]: #subpath-exports
 [subpath imports]: #subpath-imports
-[subpath patterns]: #subpath-patterns
 [supported package managers]: corepack.md#supported-package-managers
 [the dual CommonJS/ES module packages section]: #dual-commonjses-module-packages
 [the full specifier path]: esm.md#mandatory-file-extensions

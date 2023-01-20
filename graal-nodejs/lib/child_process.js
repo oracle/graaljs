@@ -32,6 +32,7 @@ const {
   ArrayPrototypeSort,
   ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
+  ArrayPrototypePushApply,
   NumberIsInteger,
   ObjectAssign,
   ObjectDefineProperty,
@@ -76,7 +77,9 @@ const { getValidatedPath } = require('internal/fs/utils');
 const {
   isInt32,
   validateAbortSignal,
+  validateArray,
   validateBoolean,
+  validateFunction,
   validateObject,
   validateString,
 } = require('internal/validators');
@@ -122,20 +125,18 @@ function fork(modulePath, args = [], options) {
 
   if (args == null) {
     args = [];
-  } else if (typeof args !== 'object') {
-    throw new ERR_INVALID_ARG_VALUE('args', args);
-  } else if (!ArrayIsArray(args)) {
+  } else if (typeof args === 'object' && !ArrayIsArray(args)) {
     options = args;
     args = [];
+  } else {
+    validateArray(args, 'args');
   }
 
-  if (options == null) {
-    options = {};
-  } else if (typeof options !== 'object') {
-    throw new ERR_INVALID_ARG_VALUE('options', options);
-  } else {
-    options = { ...options };
+  if (options != null) {
+    validateObject(options, 'options');
   }
+  options = { ...options, shell: false };
+  options.execPath = options.execPath || process.execPath;
 
   // Prepare arguments for fork:
   execArgv = options.execArgv || process.execArgv;
@@ -162,9 +163,6 @@ function fork(modulePath, args = [], options) {
   } else if (!ArrayPrototypeIncludes(options.stdio, 'ipc')) {
     throw new ERR_CHILD_PROCESS_IPC_REQUIRED('options.stdio');
   }
-
-  options.execPath = options.execPath || process.execPath;
-  options.shell = false;
 
   return spawn(options.execPath, args, options);
 }
@@ -254,6 +252,45 @@ ObjectDefineProperty(exec, promisify.custom, {
   value: customPromiseExecFunction(exec)
 });
 
+function normalizeExecFileArgs(file, args, options, callback) {
+  if (ArrayIsArray(args)) {
+    args = ArrayPrototypeSlice(args);
+  } else if (args != null && typeof args === 'object') {
+    callback = options;
+    options = args;
+    args = null;
+  } else if (typeof args === 'function') {
+    callback = args;
+    options = null;
+    args = null;
+  }
+
+  if (args == null) {
+    args = [];
+  }
+
+  if (typeof options === 'function') {
+    callback = options;
+  } else if (options != null) {
+    validateObject(options, 'options');
+  }
+
+  if (options == null) {
+    options = kEmptyObject;
+  }
+
+  if (callback != null) {
+    validateFunction(callback, 'callback');
+  }
+
+  // Validate argv0, if present.
+  if (options.argv0 != null) {
+    validateString(options.argv0, 'options.argv0');
+  }
+
+  return { file, args, options, callback };
+}
+
 /**
  * Spawns the specified file as a shell.
  * @param {string} file
@@ -279,35 +316,8 @@ ObjectDefineProperty(exec, promisify.custom, {
  *   ) => any} [callback]
  * @returns {ChildProcess}
  */
-function execFile(file, args = [], options, callback) {
-  if (args == null) {
-    args = [];
-  } else if (typeof args === 'object') {
-    if (!ArrayIsArray(args)) {
-      callback = options;
-      options = args;
-      args = [];
-    }
-  } else if (typeof args === 'function') {
-    callback = args;
-    options = {};
-    args = [];
-  } else {
-    throw new ERR_INVALID_ARG_VALUE('args', args);
-  }
-
-  if (options == null) {
-    options = {};
-  } else if (typeof options === 'function') {
-    callback = options;
-    options = {};
-  } else if (typeof options !== 'object') {
-    throw new ERR_INVALID_ARG_VALUE('options', options);
-  }
-
-  if (callback && typeof callback !== 'function') {
-    throw new ERR_INVALID_ARG_VALUE('callback', callback);
-  }
+function execFile(file, args, options, callback) {
+  ({ file, args, options, callback } = normalizeExecFileArgs(file, args, options, callback));
 
   options = {
     encoding: 'utf8',
@@ -395,7 +405,7 @@ function execFile(file, args = [], options, callback) {
       return;
     }
 
-    if (args.length !== 0)
+    if (args?.length)
       cmd += ` ${ArrayPrototypeJoin(args, ' ')}`;
 
     if (!ex) {
@@ -875,7 +885,7 @@ function checkExecSyncError(ret, args, cmd) {
 
 /**
  * Spawns a file as a shell synchronously.
- * @param {string} command
+ * @param {string} file
  * @param {string[]} [args]
  * @param {{
  *   cwd?: string;
@@ -893,17 +903,18 @@ function checkExecSyncError(ret, args, cmd) {
  *   }} [options]
  * @returns {Buffer | string}
  */
-function execFileSync(command, args, options) {
-  options = normalizeSpawnArguments(command, args, options);
+function execFileSync(file, args, options) {
+  ({ file, args, options } = normalizeExecFileArgs(file, args, options));
 
   const inheritStderr = !options.stdio;
-  const ret = spawnSync(options.file,
-                        ArrayPrototypeSlice(options.args, 1), options);
+  const ret = spawnSync(file, args, options);
 
   if (inheritStderr && ret.stderr)
     process.stderr.write(ret.stderr);
 
-  const err = checkExecSyncError(ret, options.args, undefined);
+  const errArgs = [options.argv0 || file];
+  ArrayPrototypePushApply(errArgs, args);
+  const err = checkExecSyncError(ret, errArgs);
 
   if (err)
     throw err;

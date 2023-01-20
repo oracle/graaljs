@@ -325,7 +325,7 @@ const callsfunc = tracker.calls(func);
 ### `tracker.getCalls(fn)`
 
 <!-- YAML
-added: v16.18.0
+added: v18.8.0
 -->
 
 * `fn` {Function}.
@@ -439,7 +439,7 @@ tracker.report();
 ### `tracker.reset([fn])`
 
 <!-- YAML
-added: v16.18.0
+added: v18.8.0
 -->
 
 * `fn` {Function} a tracked function to reset.
@@ -542,7 +542,12 @@ An alias of [`assert.ok()`][].
 <!-- YAML
 added: v0.1.21
 changes:
-  - version: v16.0.0
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41020
+    description: Regular expressions lastIndex property is now compared as well.
+  - version:
+      - v16.0.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38113
     description: In Legacy assertion mode, changed status from Deprecated to
                  Legacy.
@@ -561,18 +566,18 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/12142
     description: The `Set` and `Map` content is also compared.
   - version:
-    - v6.4.0
-    - v4.7.1
+      - v6.4.0
+      - v4.7.1
     pr-url: https://github.com/nodejs/node/pull/8002
     description: Typed array slices are handled correctly now.
   - version:
-    - v6.1.0
-    - v4.5.0
+      - v6.1.0
+      - v4.5.0
     pr-url: https://github.com/nodejs/node/pull/6432
     description: Objects with circular references can be used as inputs now.
   - version:
-    - v5.10.1
-    - v4.4.3
+      - v5.10.1
+      - v4.4.3
     pr-url: https://github.com/nodejs/node/pull/5910
     description: Handle non-`Uint8Array` typed arrays correctly.
 -->
@@ -614,6 +619,8 @@ are also recursively evaluated by the following rules.
   objects.
 * [`Symbol`][] properties are not compared.
 * [`WeakMap`][] and [`WeakSet`][] comparison does not rely on their values.
+* [`RegExp`][] lastIndex, flags, and source are always compared, even if these
+  are not enumerable properties.
 
 The following example does not throw an [`AssertionError`][] because the
 primitives are compared using the [`==` operator][].
@@ -716,6 +723,9 @@ parameter is an instance of an [`Error`][] then it will be thrown instead of the
 <!-- YAML
 added: v1.2.0
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41020
+    description: Regular expressions lastIndex property is now compared as well.
   - version: v9.0.0
     pr-url: https://github.com/nodejs/node/pull/15169
     description: Enumerable symbol properties are now compared.
@@ -770,6 +780,8 @@ are recursively evaluated also by the following rules.
   reference.
 * [`WeakMap`][] and [`WeakSet`][] comparison does not rely on their values. See
   below for further details.
+* [`RegExp`][] lastIndex, flags, and source are always compared, even if these
+  are not enumerable properties.
 
 ```mjs
 import assert from 'node:assert/strict';
@@ -1207,7 +1219,9 @@ assert.doesNotThrow(
 <!-- YAML
 added: v0.1.21
 changes:
-  - version: v16.0.0
+  - version:
+      - v16.0.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38113
     description: In Legacy assertion mode, changed status from Deprecated to
                  Legacy.
@@ -1540,7 +1554,9 @@ instance of an [`Error`][] then it will be thrown instead of the
 <!-- YAML
 added: v0.1.21
 changes:
-  - version: v16.0.0
+  - version:
+      - v16.0.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38113
     description: In Legacy assertion mode, changed status from Deprecated to
                  Legacy.
@@ -1555,18 +1571,18 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/12142
     description: The `Set` and `Map` content is also compared.
   - version:
-    - v6.4.0
-    - v4.7.1
+      - v6.4.0
+      - v4.7.1
     pr-url: https://github.com/nodejs/node/pull/8002
     description: Typed array slices are handled correctly now.
   - version:
-    - v6.1.0
-    - v4.5.0
+      - v6.1.0
+      - v4.5.0
     pr-url: https://github.com/nodejs/node/pull/6432
     description: Objects with circular references can be used as inputs now.
   - version:
-    - v5.10.1
-    - v4.4.3
+      - v5.10.1
+      - v4.4.3
     pr-url: https://github.com/nodejs/node/pull/5910
     description: Handle non-`Uint8Array` typed arrays correctly.
 -->
@@ -1722,7 +1738,9 @@ instead of the [`AssertionError`][].
 <!-- YAML
 added: v0.1.21
 changes:
-  - version: v16.0.0
+  - version:
+      - v16.0.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38113
     description: In Legacy assertion mode, changed status from Deprecated to
                  Legacy.
@@ -2070,6 +2088,48 @@ argument, then `error` is assumed to be omitted and the string will be used for
 `message` instead. This can lead to easy-to-miss mistakes. Please read the
 example in [`assert.throws()`][] carefully if using a string as the second
 argument gets considered.
+
+## `assert.snapshot(value, name)`
+
+<!-- YAML
+added: v18.8.0
+-->
+
+> Stability: 1 - Experimental
+
+* `value` {any} the value to snapshot.
+* `name` {string} the name of the snapshot.
+* Returns: {Promise}
+
+Reads the `name` snapshot from a file and compares `value` to the snapshot.
+`value` is serialized with [`util.inspect()`][]. If the value is not strictly
+equal to the snapshot, `assert.snapshot()` returns a rejected `Promise` with an
+[`AssertionError`][].
+
+The snapshot filename uses the same basename as the application's main
+entrypoint with a `.snapshot` extension. If the snapshot file does not exist,
+it is created. The [`--update-assert-snapshot`][] command line flag can be used
+to force the update of an existing snapshot.
+
+```mjs
+import assert from 'node:assert/strict';
+
+// Assuming that the application's main entrypoint is app.mjs, this reads the
+// 'snapshotName' snapshot from app.snapshot and strictly compares its value
+// to `util.inspect('value')`.
+await assert.snapshot('value', 'snapshotName');
+```
+
+```cjs
+const assert = require('node:assert/strict');
+
+(async () => {
+  // Assuming that the application's main entrypoint is app.js, this reads the
+  // 'snapshotName' snapshot from app.snapshot and strictly compares its value
+  // to `util.inspect('value')`.
+  await assert.snapshot('value', 'snapshotName');
+})();
+```
 
 ## `assert.strictEqual(actual, expected[, message])`
 
@@ -2507,6 +2567,7 @@ argument.
 [Object wrappers]: https://developer.mozilla.org/en-US/docs/Glossary/Primitive#Primitive_wrapper_objects_in_JavaScript
 [Object.prototype.toString()]: https://tc39.github.io/ecma262/#sec-object.prototype.tostring
 [`!=` operator]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Inequality
+[`--update-assert-snapshot`]: cli.md#--update-assert-snapshot
 [`===` operator]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Strict_equality
 [`==` operator]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Equality
 [`AssertionError`]: #class-assertassertionerror
@@ -2538,5 +2599,6 @@ argument.
 [`process.on('exit')`]: process.md#event-exit
 [`tracker.calls()`]: #trackercallsfn-exact
 [`tracker.verify()`]: #trackerverify
+[`util.inspect()`]: util.md#utilinspectobject-options
 [enumerable "own" properties]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Enumerability_and_ownership_of_properties
 [prototype-spec]: https://tc39.github.io/ecma262/#sec-ordinary-object-internal-methods-and-internal-slots

@@ -21,6 +21,19 @@ const { readFileSync } = require('fs');
   );
 }
 
+// `findSourceMap()` should return undefined when no source map is found.
+{
+  const files = [
+    __filename,
+    '',
+    'invalid-file',
+  ];
+  for (const file of files) {
+    const sourceMap = findSourceMap(file);
+    assert.strictEqual(sourceMap, undefined);
+  }
+}
+
 // findSourceMap() can lookup source-maps based on URIs, in the
 // non-exceptional case.
 {
@@ -111,6 +124,27 @@ const { readFileSync } = require('fs');
   const result = sourceMap.findEntry(0, 5);
   assert.strictEqual(typeof result, 'object');
   assert.strictEqual(Object.keys(result).length, 0);
+}
+
+// SourceMap can be instantiated with Index Source Map V3 object as payload.
+{
+  const payload = JSON.parse(readFileSync(
+    require.resolve('../fixtures/source-map/disk-index.map'), 'utf8'
+  ));
+  const sourceMap = new SourceMap(payload);
+  const {
+    originalLine,
+    originalColumn,
+    originalSource
+  } = sourceMap.findEntry(0, 29);
+  assert.strictEqual(originalLine, 2);
+  assert.strictEqual(originalColumn, 4);
+  assert(originalSource.endsWith('section.js'));
+  // The stored payload should be a clone:
+  assert.strictEqual(payload.mappings, sourceMap.payload.mappings);
+  assert.notStrictEqual(payload, sourceMap.payload);
+  assert.strictEqual(payload.sources[0], sourceMap.payload.sources[0]);
+  assert.notStrictEqual(payload.sources, sourceMap.payload.sources);
 }
 
 // Test various known decodings to ensure decodeVLQ works correctly.

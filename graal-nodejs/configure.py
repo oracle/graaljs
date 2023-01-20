@@ -198,11 +198,6 @@ parser.add_argument("--openssl-no-asm",
     default=None,
     help="Do not build optimized assembly for OpenSSL")
 
-parser.add_argument('--openssl-fips',
-    action='store',
-    dest='openssl_fips',
-    help='Build OpenSSL using FIPS canister .o file in supplied folder')
-
 parser.add_argument('--openssl-is-fips',
     action='store_true',
     dest='openssl_is_fips',
@@ -744,7 +739,8 @@ parser.add_argument('--no-browser-globals',
     dest='no_browser_globals',
     default=None,
     help='do not export browser globals like setTimeout, console, etc. ' +
-         '(This mode is not officially supported for regular applications)')
+         '(This mode is deprecated and not officially supported for regular ' +
+         'applications)')
 
 parser.add_argument('--without-inspector',
     action='store_true',
@@ -824,6 +820,13 @@ parser.add_argument('--v8-enable-hugepage',
     default=None,
     help='Enable V8 transparent hugepage support. This feature is only '+
          'available on Linux platform.')
+
+parser.add_argument('--v8-enable-short-builtin-calls',
+    action='store_true',
+    dest='v8_enable_short_builtin_calls',
+    default=None,
+    help='Enable V8 short builtin calls support. This feature is enabled '+
+         'on x86_64 platform by default.')
 
 parser.add_argument('--node-builtin-modules-path',
     action='store',
@@ -1133,6 +1136,7 @@ def host_arch_cc():
     '__s390x__'   : 's390x',
     '__sparc__'   : 'sparcv9',
     '__riscv'     : 'riscv',
+    '__loongarch64': 'loong64',
   }
 
   rtn = 'ia32' # default
@@ -1291,7 +1295,7 @@ def configure_node(o):
     o['variables']['node_use_node_snapshot'] = b(
       not cross_compiling and not options.shared)
 
-  if options.without_node_code_cache or options.node_builtin_modules_path:
+  if options.without_node_code_cache or options.without_node_snapshot or options.node_builtin_modules_path:
     o['variables']['node_use_node_code_cache'] = 'false'
   else:
     # TODO(refack): fix this when implementing embedded code-cache when cross-compiling.
@@ -1507,6 +1511,7 @@ def configure_library(lib, output, pkgname=None):
 
 def configure_v8(o):
   o['variables']['v8_enable_webassembly'] = 1
+  o['variables']['v8_enable_javascript_promise_hooks'] = 1
   o['variables']['v8_enable_lite_mode'] = 1 if options.v8_lite_mode else 0
   o['variables']['v8_enable_gdbjit'] = 1 if options.gdb else 0
   o['variables']['v8_no_strict_aliasing'] = 1  # Work around compiler bugs.
@@ -1518,6 +1523,7 @@ def configure_v8(o):
   o['variables']['v8_use_siphash'] = 0 if options.without_siphash else 1
   o['variables']['v8_enable_pointer_compression'] = 1 if options.enable_pointer_compression else 0
   o['variables']['v8_enable_31bit_smis_on_64bit_arch'] = 1 if options.enable_pointer_compression else 0
+  o['variables']['v8_enable_shared_ro_heap'] = 0 if options.enable_pointer_compression else 1
   o['variables']['v8_trace_maps'] = 1 if options.trace_maps else 0
   o['variables']['node_use_v8_platform'] = b(not options.without_v8_platform)
   o['variables']['node_use_bundled_v8'] = b(not options.without_bundled_v8)
@@ -1532,6 +1538,8 @@ def configure_v8(o):
   if flavor != 'linux' and options.v8_enable_hugepage:
     raise Exception('--v8-enable-hugepage is supported only on linux.')
   o['variables']['v8_enable_hugepage'] = 1 if options.v8_enable_hugepage else 0
+  if options.v8_enable_short_builtin_calls or o['variables']['target_arch'] == 'x64':
+    o['variables']['v8_enable_short_builtin_calls'] = 1
 
 def configure_openssl(o):
   variables = o['variables']
@@ -1540,8 +1548,7 @@ def configure_openssl(o):
   variables['node_shared_ngtcp2'] = b(options.shared_ngtcp2)
   variables['node_shared_nghttp3'] = b(options.shared_nghttp3)
   variables['openssl_is_fips'] = b(options.openssl_is_fips)
-  variables['openssl_fips'] = ''
-  variables['openssl_quic'] = b(True)
+  variables['node_fipsinstall'] = b(False)
 
   if options.openssl_no_asm:
     variables['openssl_no_asm'] = 1
@@ -1555,8 +1562,8 @@ def configure_openssl(o):
       without_ssl_error('--shared-openssl')
     if options.openssl_no_asm:
       without_ssl_error('--openssl-no-asm')
-    if options.openssl_fips:
-      without_ssl_error('--openssl-fips')
+    if options.openssl_is_fips:
+      without_ssl_error('--openssl-is-fips')
     if options.openssl_default_cipher_list:
       without_ssl_error('--openssl-default-cipher-list')
     return
@@ -1596,17 +1603,20 @@ def configure_openssl(o):
   if options.openssl_no_asm and options.shared_openssl:
     error('--openssl-no-asm is incompatible with --shared-openssl')
 
-  if options.openssl_fips or options.openssl_fips == '':
-     error('FIPS is not supported in this version of Node.js')
-
-  if options.openssl_is_fips and not options.shared_openssl:
-    error('--openssl-is-fips is only available with --shared-openssl')
-
   if options.openssl_is_fips:
     o['defines'] += ['OPENSSL_FIPS']
 
+  if options.openssl_is_fips and not options.shared_openssl:
+    variables['node_fipsinstall'] = b(True)
+
   if options.shared_openssl:
-    variables['openssl_quic'] = b(getsharedopensslhasquic.get_has_quic(options.__dict__['shared_openssl_includes']))
+    has_quic = getsharedopensslhasquic.get_has_quic(options.__dict__['shared_openssl_includes'])
+  else:
+    has_quic = getsharedopensslhasquic.get_has_quic('deps/openssl/openssl/include')
+
+  variables['openssl_quic'] = b(has_quic)
+  if has_quic:
+    o['defines'] += ['NODE_OPENSSL_HAS_QUIC']
 
   configure_library('openssl', o)
 
@@ -2063,15 +2073,6 @@ variables = output['variables']
 del output['variables']
 variables['is_debug'] = B(options.debug)
 
-# make_global_settings for special FIPS linking
-# should not be used to compile modules in node-gyp
-config_fips = { 'make_global_settings' : [] }
-if 'make_fips_settings' in output:
-  config_fips['make_global_settings'] = output['make_fips_settings']
-  del output['make_fips_settings']
-  write('config_fips.gypi', do_not_edit +
-        pprint.pformat(config_fips, indent=2) + '\n')
-
 # make_global_settings should be a root level element too
 if 'make_global_settings' in output:
   make_global_settings = output['make_global_settings']
@@ -2130,6 +2131,7 @@ write('config.mk', do_not_edit + config_str)
 
 
 gyp_args = ['--no-parallel', '-Dconfiguring_node=1']
+gyp_args += ['-Dbuild_type=' + config['BUILDTYPE']]
 
 if options.use_ninja:
   gyp_args += ['-f', 'ninja-' + flavor]

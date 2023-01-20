@@ -1,10 +1,12 @@
 #include "node.h"
+#include "node_builtins.h"
 #include "node_context_data.h"
 #include "node_errors.h"
 #include "node_internals.h"
-#include "node_native_module_env.h"
+#include "node_options-inl.h"
 #include "node_platform.h"
 #include "node_v8_platform-inl.h"
+#include "node_wasm_web_api.h"
 #include "uv.h"
 
 #if HAVE_INSPECTOR
@@ -255,6 +257,13 @@ void SetIsolateMiscHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
   isolate->SetModifyCodeGenerationFromStringsCallback(
       ModifyCodeGenerationFromStrings);
 
+  Mutex::ScopedLock lock(node::per_process::cli_options_mutex);
+  if (per_process::cli_options->get_per_isolate_options()
+          ->get_per_env_options()
+          ->experimental_fetch) {
+    isolate->SetWasmStreamingCallback(wasm_web_api::StartStreamingCompilation);
+  }
+
   if ((s.flags & SHOULD_NOT_SET_PROMISE_REJECTION_CALLBACK) == 0) {
     auto* promise_reject_cb = s.promise_reject_callback ?
       s.promise_reject_callback : PromiseRejectCallback;
@@ -437,17 +446,14 @@ MaybeLocal<Value> LoadEnvironment(
 
         // TODO(addaleax): Avoid having a global table for all scripts.
         std::string name = "embedder_main_" + std::to_string(env->thread_id());
-        native_module::NativeModuleEnv::Add(
-            name.c_str(),
-            UnionBytes(**main_utf16, main_utf16->length()));
+        builtins::BuiltinLoader::Add(
+            name.c_str(), UnionBytes(**main_utf16, main_utf16->length()));
         env->set_main_utf16(std::move(main_utf16));
-        std::vector<Local<String>> params = {
-            env->process_string(),
-            env->require_string()};
-        std::vector<Local<Value>> args = {
-            env->process_object(),
-            env->native_module_require()};
-        return ExecuteBootstrapper(env, name.c_str(), &params, &args);
+        // Arguments must match the parameters specified in
+        // BuiltinLoader::LookupAndCompile().
+        std::vector<Local<Value>> args = {env->process_object(),
+                                          env->builtin_module_require()};
+        return ExecuteBootstrapper(env, name.c_str(), &args);
       });
 }
 
@@ -482,7 +488,8 @@ MultiIsolatePlatform* CreatePlatform(
 MultiIsolatePlatform* CreatePlatform(
     int thread_pool_size,
     v8::TracingController* tracing_controller) {
-  return MultiIsolatePlatform::Create(thread_pool_size, tracing_controller)
+  return MultiIsolatePlatform::Create(thread_pool_size,
+                                      tracing_controller)
       .release();
 }
 
@@ -492,8 +499,11 @@ void FreePlatform(MultiIsolatePlatform* platform) {
 
 std::unique_ptr<MultiIsolatePlatform> MultiIsolatePlatform::Create(
     int thread_pool_size,
-    v8::TracingController* tracing_controller) {
-  return std::make_unique<NodePlatform>(thread_pool_size, tracing_controller);
+    v8::TracingController* tracing_controller,
+    v8::PageAllocator* page_allocator) {
+  return std::make_unique<NodePlatform>(thread_pool_size,
+                                        tracing_controller,
+                                        page_allocator);
 }
 
 MaybeLocal<Object> GetPerContextExports(Local<Context> context) {
@@ -512,7 +522,7 @@ MaybeLocal<Object> GetPerContextExports(Local<Context> context) {
 
   Local<Object> exports = Object::New(isolate);
   if (context->Global()->SetPrivate(context, key, exports).IsNothing() ||
-      !InitializePrimordials(context))
+      InitializePrimordials(context).IsNothing())
     return MaybeLocal<Object>();
   return handle_scope.Escape(exports);
 }
@@ -525,7 +535,7 @@ Local<Context> NewContext(Isolate* isolate,
   auto context = Context::New(isolate, nullptr, object_template);
   if (context.IsEmpty()) return context;
 
-  if (!InitializeContext(context)) {
+  if (InitializeContext(context).IsNothing()) {
     return Local<Context>();
   }
 
@@ -542,50 +552,21 @@ Maybe<bool> InitializeContextRuntime(Local<Context> context) {
   Isolate* isolate = context->GetIsolate();
   HandleScope handle_scope(isolate);
 
-  // Delete `Intl.v8BreakIterator`
-  // https://github.com/nodejs/node/issues/14909
-  {
-    Local<String> intl_string =
-      FIXED_ONE_BYTE_STRING(isolate, "Intl");
-    Local<String> break_iter_string =
-      FIXED_ONE_BYTE_STRING(isolate, "v8BreakIterator");
+  // When `IsCodeGenerationFromStringsAllowed` is true, V8 takes the fast path
+  // and ignores the ModifyCodeGenerationFromStrings callback. Set it to false
+  // to delegate the code generation validation to
+  // node::ModifyCodeGenerationFromStrings.
+  // The `IsCodeGenerationFromStringsAllowed` can be refreshed by V8 according
+  // to the runtime flags, propagate the value to the embedder data.
+  bool is_code_generation_from_strings_allowed =
+      context->IsCodeGenerationFromStringsAllowed();
+  context->AllowCodeGenerationFromStrings(false);
+  context->SetEmbedderData(
+      ContextEmbedderIndex::kAllowCodeGenerationFromStrings,
+      is_code_generation_from_strings_allowed ? True(isolate) : False(isolate));
 
-    Local<Value> intl_v;
-    if (!context->Global()
-        ->Get(context, intl_string)
-        .ToLocal(&intl_v)) {
-      return Nothing<bool>();
-    }
-
-    if (intl_v->IsObject() &&
-        intl_v.As<Object>()
-          ->Delete(context, break_iter_string)
-          .IsNothing()) {
-      return Nothing<bool>();
-    }
-  }
-
-  // Delete `Atomics.wake`
-  // https://github.com/nodejs/node/issues/21219
-  {
-    Local<String> atomics_string =
-      FIXED_ONE_BYTE_STRING(isolate, "Atomics");
-    Local<String> wake_string =
-      FIXED_ONE_BYTE_STRING(isolate, "wake");
-
-    Local<Value> atomics_v;
-    if (!context->Global()
-        ->Get(context, atomics_string)
-        .ToLocal(&atomics_v)) {
-      return Nothing<bool>();
-    }
-
-    if (atomics_v->IsObject() &&
-        atomics_v.As<Object>()
-          ->Delete(context, wake_string)
-          .IsNothing()) {
-      return Nothing<bool>();
-    }
+  if (per_process::cli_options->disable_proto == "") {
+    return Just(true);
   }
 
   // Remove __proto__
@@ -647,19 +628,48 @@ Maybe<bool> InitializeContextRuntime(Local<Context> context) {
   return Just(true);
 }
 
-bool InitializeContextForSnapshot(Local<Context> context) {
+Maybe<bool> InitializeBaseContextForSnapshot(Local<Context> context) {
   Isolate* isolate = context->GetIsolate();
   HandleScope handle_scope(isolate);
 
-  context->AllowCodeGenerationFromStrings(false);
-  context->SetEmbedderData(
-      ContextEmbedderIndex::kAllowCodeGenerationFromStrings, True(isolate));
+  // Delete `Intl.v8BreakIterator`
+  // https://github.com/nodejs/node/issues/14909
+  {
+    Context::Scope context_scope(context);
+    Local<String> intl_string = FIXED_ONE_BYTE_STRING(isolate, "Intl");
+    Local<String> break_iter_string =
+        FIXED_ONE_BYTE_STRING(isolate, "v8BreakIterator");
+
+    Local<Value> intl_v;
+    if (!context->Global()->Get(context, intl_string).ToLocal(&intl_v)) {
+      return Nothing<bool>();
+    }
+
+    if (intl_v->IsObject() &&
+        intl_v.As<Object>()->Delete(context, break_iter_string).IsNothing()) {
+      return Nothing<bool>();
+    }
+  }
+  return Just(true);
+}
+
+Maybe<bool> InitializeMainContextForSnapshot(Local<Context> context) {
+  Isolate* isolate = context->GetIsolate();
+  HandleScope handle_scope(isolate);
+
+  // Initialize the default values.
   context->SetEmbedderData(ContextEmbedderIndex::kAllowWasmCodeGeneration,
                            True(isolate));
+  context->SetEmbedderData(
+      ContextEmbedderIndex::kAllowCodeGenerationFromStrings, True(isolate));
+
+  if (InitializeBaseContextForSnapshot(context).IsNothing()) {
+    return Nothing<bool>();
+  }
   return InitializePrimordials(context);
 }
 
-bool InitializePrimordials(Local<Context> context) {
+Maybe<bool> InitializePrimordials(Local<Context> context) {
   // Run per-context JS files.
   Isolate* isolate = context->GetIsolate();
   Context::Scope context_scope(context);
@@ -667,15 +677,13 @@ bool InitializePrimordials(Local<Context> context) {
 
   Local<String> primordials_string =
       FIXED_ONE_BYTE_STRING(isolate, "primordials");
-  Local<String> global_string = FIXED_ONE_BYTE_STRING(isolate, "global");
-  Local<String> exports_string = FIXED_ONE_BYTE_STRING(isolate, "exports");
 
   // Create primordials first and make it available to per-context scripts.
   Local<Object> primordials = Object::New(isolate);
-  if (!primordials->SetPrototype(context, Null(isolate)).FromJust() ||
+  if (primordials->SetPrototype(context, Null(isolate)).IsNothing() ||
       !GetPerContextExports(context).ToLocal(&exports) ||
-      !exports->Set(context, primordials_string, primordials).FromJust()) {
-    return false;
+      exports->Set(context, primordials_string, primordials).IsNothing()) {
+    return Nothing<bool>();
   }
 
   static const char* context_files[] = {"internal/per_context/primordials",
@@ -684,34 +692,33 @@ bool InitializePrimordials(Local<Context> context) {
                                         nullptr};
 
   for (const char** module = context_files; *module != nullptr; module++) {
-    std::vector<Local<String>> parameters = {
-        global_string, exports_string, primordials_string};
-    Local<Value> arguments[] = {context->Global(), exports, primordials};
+    // Arguments must match the parameters specified in
+    // BuiltinLoader::LookupAndCompile().
+    Local<Value> arguments[] = {exports, primordials};
     MaybeLocal<Function> maybe_fn =
-        native_module::NativeModuleEnv::LookupAndCompile(
-            context, *module, &parameters, nullptr);
+        builtins::BuiltinLoader::LookupAndCompile(context, *module, nullptr);
     Local<Function> fn;
     if (!maybe_fn.ToLocal(&fn)) {
-      return false;
+      return Nothing<bool>();
     }
     MaybeLocal<Value> result =
         fn->Call(context, Undefined(isolate), arraysize(arguments), arguments);
     // Execution failed during context creation.
-    // TODO(joyeecheung): deprecate this signature and return a MaybeLocal.
     if (result.IsEmpty()) {
-      return false;
+      return Nothing<bool>();
     }
   }
 
-  return true;
+  return Just(true);
 }
 
-bool InitializeContext(Local<Context> context) {
-  if (!InitializeContextForSnapshot(context)) {
-    return false;
+// This initializes the main context (i.e. vm contexts are not included).
+Maybe<bool> InitializeContext(Local<Context> context) {
+  if (InitializeMainContextForSnapshot(context).IsNothing()) {
+    return Nothing<bool>();
   }
 
-  return InitializeContextRuntime(context).IsJust();
+  return InitializeContextRuntime(context);
 }
 
 uv_loop_t* GetCurrentEventLoop(Isolate* isolate) {

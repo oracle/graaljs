@@ -168,6 +168,12 @@ event loop is doing.
 
 <!-- YAML
 added: v0.9.1
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `callback` {Function} The function to call at the end of this turn of
@@ -193,6 +199,12 @@ This method has a custom variant for promises that is available using
 
 <!-- YAML
 added: v0.0.1
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `callback` {Function} The function to call when the timer elapses.
@@ -215,6 +227,12 @@ This method has a custom variant for promises that is available using
 
 <!-- YAML
 added: v0.0.1
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `callback` {Function} The function to call when the timer elapses.
@@ -471,7 +489,9 @@ const interval = 100;
 ### `timersPromises.scheduler.wait(delay[, options])`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.3.0
+  - v16.14.0
 -->
 
 > Stability: 1 - Experimental
@@ -499,7 +519,9 @@ await scheduler.wait(1000); // Wait one second before continuing
 ### `timersPromises.scheduler.yield()`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.3.0
+  - v16.14.0
 -->
 
 > Stability: 1 - Experimental

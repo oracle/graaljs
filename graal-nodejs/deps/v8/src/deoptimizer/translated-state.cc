@@ -28,10 +28,9 @@ using base::ReadUnalignedValue;
 
 namespace internal {
 
-void TranslationArrayPrintSingleFrame(std::ostream& os,
-                                      TranslationArray translation_array,
-                                      int translation_index,
-                                      FixedArray literal_array) {
+void TranslationArrayPrintSingleFrame(
+    std::ostream& os, TranslationArray translation_array, int translation_index,
+    DeoptimizationLiteralArray literal_array) {
   DisallowGarbageCollection gc_oh_noes;
   TranslationArrayIterator iterator(translation_array, translation_index);
   disasm::NameConverter converter;
@@ -517,7 +516,8 @@ Handle<Object> TranslatedValue::GetValue() {
     // headers.
     // TODO(hpayer): Find a cleaner way to support a group of
     // non-fully-initialized objects.
-    isolate()->heap()->mark_compact_collector()->EnsureSweepingCompleted();
+    isolate()->heap()->mark_compact_collector()->EnsureSweepingCompleted(
+        MarkCompactCollector::SweepingForcedFinalizationMode::kV8Only);
 
     // 2. Initialize the objects. If we have allocated only byte arrays
     //    for some objects, we now overwrite the byte arrays with the
@@ -678,15 +678,6 @@ TranslatedFrame TranslatedFrame::JavaScriptBuiltinContinuationWithCatchFrame(
   return frame;
 }
 
-namespace {
-
-uint16_t InternalFormalParameterCountWithReceiver(SharedFunctionInfo sfi) {
-  static constexpr int kTheReceiver = 1;
-  return sfi.internal_formal_parameter_count() + kTheReceiver;
-}
-
-}  // namespace
-
 int TranslatedFrame::GetValueCount() {
   // The function is added to all frame state descriptors in
   // InstructionSelector::AddInputsToFrameStateDescriptor.
@@ -695,7 +686,7 @@ int TranslatedFrame::GetValueCount() {
   switch (kind()) {
     case kUnoptimizedFunction: {
       int parameter_count =
-          InternalFormalParameterCountWithReceiver(raw_shared_info_);
+          raw_shared_info_.internal_formal_parameter_count_with_receiver();
       static constexpr int kTheContext = 1;
       static constexpr int kTheAccumulator = 1;
       return height() + parameter_count + kTheContext + kTheFunction +
@@ -734,8 +725,8 @@ void TranslatedFrame::Handlify() {
 }
 
 TranslatedFrame TranslatedState::CreateNextTranslatedFrame(
-    TranslationArrayIterator* iterator, FixedArray literal_array, Address fp,
-    FILE* trace_file) {
+    TranslationArrayIterator* iterator,
+    DeoptimizationLiteralArray literal_array, Address fp, FILE* trace_file) {
   TranslationOpcode opcode = TranslationOpcodeFromInt(iterator->Next());
   switch (opcode) {
     case TranslationOpcode::INTERPRETED_FRAME: {
@@ -748,7 +739,8 @@ TranslatedFrame TranslatedState::CreateNextTranslatedFrame(
       if (trace_file != nullptr) {
         std::unique_ptr<char[]> name = shared_info.DebugNameCStr();
         PrintF(trace_file, "  reading input frame %s", name.get());
-        int arg_count = InternalFormalParameterCountWithReceiver(shared_info);
+        int arg_count =
+            shared_info.internal_formal_parameter_count_with_receiver();
         PrintF(trace_file,
                " => bytecode_offset=%d, args=%d, height=%d, retval=%i(#%i); "
                "inputs:\n",
@@ -967,8 +959,8 @@ void TranslatedState::CreateArgumentsElementsTranslatedValues(
 // TranslationArrayIterator.
 int TranslatedState::CreateNextTranslatedValue(
     int frame_index, TranslationArrayIterator* iterator,
-    FixedArray literal_array, Address fp, RegisterValues* registers,
-    FILE* trace_file) {
+    DeoptimizationLiteralArray literal_array, Address fp,
+    RegisterValues* registers, FILE* trace_file) {
   disasm::NameConverter converter;
 
   TranslatedFrame& frame = frames_[frame_index];
@@ -1288,25 +1280,28 @@ Address TranslatedState::DecompressIfNeeded(intptr_t value) {
 
 TranslatedState::TranslatedState(const JavaScriptFrame* frame)
     : purpose_(kFrameInspection) {
-  int deopt_index = Safepoint::kNoDeoptimizationIndex;
+  int deopt_index = SafepointEntry::kNoDeoptIndex;
   DeoptimizationData data =
       static_cast<const OptimizedFrame*>(frame)->GetDeoptimizationData(
           &deopt_index);
-  DCHECK(!data.is_null() && deopt_index != Safepoint::kNoDeoptimizationIndex);
+  DCHECK(!data.is_null() && deopt_index != SafepointEntry::kNoDeoptIndex);
   TranslationArrayIterator it(data.TranslationByteArray(),
                               data.TranslationIndex(deopt_index).value());
   int actual_argc = frame->GetActualArgumentCount();
   Init(frame->isolate(), frame->fp(), frame->fp(), &it, data.LiteralArray(),
        nullptr /* registers */, nullptr /* trace file */,
-       frame->function().shared().internal_formal_parameter_count(),
+       frame->function()
+           .shared()
+           .internal_formal_parameter_count_without_receiver(),
        actual_argc);
 }
 
 void TranslatedState::Init(Isolate* isolate, Address input_frame_pointer,
                            Address stack_frame_pointer,
                            TranslationArrayIterator* iterator,
-                           FixedArray literal_array, RegisterValues* registers,
-                           FILE* trace_file, int formal_parameter_count,
+                           DeoptimizationLiteralArray literal_array,
+                           RegisterValues* registers, FILE* trace_file,
+                           int formal_parameter_count,
                            int actual_argument_count) {
   DCHECK(frames_.empty());
 
@@ -1849,9 +1844,10 @@ void TranslatedState::InitializeJSObjectAt(
     Handle<Map> map, const DisallowGarbageCollection& no_gc) {
   Handle<HeapObject> object_storage = Handle<HeapObject>::cast(slot->storage_);
   DCHECK_EQ(TranslatedValue::kCapturedObject, slot->kind());
+  int children_count = slot->GetChildrenCount();
 
   // The object should have at least a map and some payload.
-  CHECK_GE(slot->GetChildrenCount(), 2);
+  CHECK_GE(children_count, 2);
 
   // Notify the concurrent marker about the layout change.
   isolate()->heap()->NotifyObjectLayoutChange(*object_storage, no_gc);
@@ -1868,8 +1864,8 @@ void TranslatedState::InitializeJSObjectAt(
   // For all the other fields we first look at the fixed array and check the
   // marker to see if we store an unboxed double.
   DCHECK_EQ(kTaggedSize, JSObject::kPropertiesOrHashOffset);
-  for (int i = 2; i < slot->GetChildrenCount(); i++) {
-    TranslatedValue* slot = GetResolvedSlotAndAdvance(frame, value_index);
+  for (int i = 2; i < children_count; i++) {
+    slot = GetResolvedSlotAndAdvance(frame, value_index);
     // Read out the marker and ensure the field is consistent with
     // what the markers in the storage say (note that all heap numbers
     // should be fully initialized by now).
@@ -1895,10 +1891,11 @@ void TranslatedState::InitializeObjectWithTaggedFieldsAt(
     TranslatedFrame* frame, int* value_index, TranslatedValue* slot,
     Handle<Map> map, const DisallowGarbageCollection& no_gc) {
   Handle<HeapObject> object_storage = Handle<HeapObject>::cast(slot->storage_);
+  int children_count = slot->GetChildrenCount();
 
   // Skip the writes if we already have the canonical empty fixed array.
   if (*object_storage == ReadOnlyRoots(isolate()).empty_fixed_array()) {
-    CHECK_EQ(2, slot->GetChildrenCount());
+    CHECK_EQ(2, children_count);
     Handle<Object> length_value = GetValueAndAdvance(frame, value_index);
     CHECK_EQ(*length_value, Smi::FromInt(0));
     return;
@@ -1908,8 +1905,8 @@ void TranslatedState::InitializeObjectWithTaggedFieldsAt(
   isolate()->heap()->NotifyObjectLayoutChange(*object_storage, no_gc);
 
   // Write the fields to the object.
-  for (int i = 1; i < slot->GetChildrenCount(); i++) {
-    TranslatedValue* slot = GetResolvedSlotAndAdvance(frame, value_index);
+  for (int i = 1; i < children_count; i++) {
+    slot = GetResolvedSlotAndAdvance(frame, value_index);
     int offset = i * kTaggedSize;
     uint8_t marker = object_storage->ReadField<uint8_t>(offset);
     Handle<Object> field_value;
@@ -1977,21 +1974,21 @@ TranslatedFrame* TranslatedState::GetArgumentsInfoFromJSFrameIndex(
         // be shown in a stack trace.
         if (frames_[i].kind() ==
                 TranslatedFrame::kJavaScriptBuiltinContinuation &&
-            frames_[i].shared_info()->internal_formal_parameter_count() ==
-                kDontAdaptArgumentsSentinel) {
+            frames_[i].shared_info()->IsDontAdaptArguments()) {
           DCHECK(frames_[i].shared_info()->IsApiFunction());
 
           // The argument count for this special case is always the second
           // to last value in the TranslatedFrame. It should also always be
-          // {1}, as the GenericLazyDeoptContinuation builtin only has one
-          // argument (the receiver).
+          // {1}, as the GenericLazyDeoptContinuation builtin has one explicit
+          // argument (the result).
           static constexpr int kTheContext = 1;
           const int height = frames_[i].height() + kTheContext;
           *args_count = frames_[i].ValueAt(height - 1)->GetSmiValue();
-          DCHECK_EQ(*args_count, 1);
+          DCHECK_EQ(*args_count, JSParameterCount(1));
         } else {
-          *args_count = InternalFormalParameterCountWithReceiver(
-              *frames_[i].shared_info());
+          *args_count = frames_[i]
+                            .shared_info()
+                            ->internal_formal_parameter_count_with_receiver();
         }
         return &(frames_[i]);
       }
@@ -2124,9 +2121,9 @@ bool TranslatedState::DoUpdateFeedback() {
   return false;
 }
 
-void TranslatedState::ReadUpdateFeedback(TranslationArrayIterator* iterator,
-                                         FixedArray literal_array,
-                                         FILE* trace_file) {
+void TranslatedState::ReadUpdateFeedback(
+    TranslationArrayIterator* iterator,
+    DeoptimizationLiteralArray literal_array, FILE* trace_file) {
   CHECK_EQ(TranslationOpcode::UPDATE_FEEDBACK,
            TranslationOpcodeFromInt(iterator->Next()));
   feedback_vector_ = FeedbackVector::cast(literal_array.get(iterator->Next()));

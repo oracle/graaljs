@@ -361,14 +361,12 @@ T* UncheckedRealloc(T* pointer, size_t n) {
 // As per spec realloc behaves like malloc if passed nullptr.
 template <typename T>
 inline T* UncheckedMalloc(size_t n) {
-  if (n == 0) n = 1;
   return UncheckedRealloc<T>(nullptr, n);
 }
 
 template <typename T>
 inline T* UncheckedCalloc(size_t n) {
-  if (n == 0) n = 1;
-  MultiplyWithOverflowCheck(sizeof(T), n);
+  if (MultiplyWithOverflowCheck(sizeof(T), n) == 0) return nullptr;
   return static_cast<T*>(calloc(n, sizeof(T)));
 }
 
@@ -404,7 +402,7 @@ inline char* UncheckedCalloc(size_t n) { return UncheckedCalloc<char>(n); }
 void ThrowErrStringTooLong(v8::Isolate* isolate);
 
 v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
-                                    const std::string& str,
+                                    std::string_view str,
                                     v8::Isolate* isolate) {
   if (isolate == nullptr) isolate = context->GetIsolate();
   if (UNLIKELY(str.size() >= static_cast<size_t>(v8::String::kMaxLength))) {
@@ -435,6 +433,25 @@ v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
   }
 
   return handle_scope.Escape(array);
+}
+
+template <typename T>
+v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
+                                    const std::set<T>& set,
+                                    v8::Isolate* isolate) {
+  if (isolate == nullptr) isolate = context->GetIsolate();
+  v8::Local<v8::Set> set_js = v8::Set::New(isolate);
+  v8::HandleScope handle_scope(isolate);
+
+  for (const T& entry : set) {
+    v8::Local<v8::Value> value;
+    if (!ToV8Value(context, entry, isolate).ToLocal(&value))
+      return {};
+    if (set_js->Add(context, value).IsEmpty())
+      return {};
+  }
+
+  return set_js;
 }
 
 template <typename T, typename U>
@@ -519,8 +536,7 @@ void ArrayBufferViewContents<T, S>::Read(v8::Local<v8::ArrayBufferView> abv) {
   static_assert(sizeof(T) == 1, "Only supports one-byte data at the moment");
   length_ = abv->ByteLength();
   if (length_ > sizeof(stack_storage_) || abv->HasBuffer()) {
-    data_ = static_cast<T*>(abv->Buffer()->GetBackingStore()->Data()) +
-        abv->ByteOffset();
+    data_ = static_cast<T*>(abv->Buffer()->Data()) + abv->ByteOffset();
   } else {
     abv->CopyContents(stack_storage_, sizeof(stack_storage_));
     data_ = stack_storage_;

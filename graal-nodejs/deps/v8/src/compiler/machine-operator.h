@@ -8,6 +8,7 @@
 #include "src/base/compiler-specific.h"
 #include "src/base/enum-set.h"
 #include "src/base/flags.h"
+#include "src/codegen/atomic-memory-order.h"
 #include "src/codegen/machine-type.h"
 #include "src/compiler/globals.h"
 #include "src/compiler/write-barrier-kind.h"
@@ -48,6 +49,32 @@ class OptionalOperator final {
 using LoadRepresentation = MachineType;
 
 V8_EXPORT_PRIVATE LoadRepresentation LoadRepresentationOf(Operator const*)
+    V8_WARN_UNUSED_RESULT;
+
+// A Word(32|64)AtomicLoad needs both a LoadRepresentation and a memory
+// order.
+class AtomicLoadParameters final {
+ public:
+  AtomicLoadParameters(LoadRepresentation representation,
+                       AtomicMemoryOrder order)
+      : representation_(representation), order_(order) {}
+
+  LoadRepresentation representation() const { return representation_; }
+  AtomicMemoryOrder order() const { return order_; }
+
+ private:
+  LoadRepresentation representation_;
+  AtomicMemoryOrder order_;
+};
+
+V8_EXPORT_PRIVATE bool operator==(AtomicLoadParameters, AtomicLoadParameters);
+bool operator!=(AtomicLoadParameters, AtomicLoadParameters);
+
+size_t hash_value(AtomicLoadParameters);
+
+V8_EXPORT_PRIVATE std::ostream& operator<<(std::ostream&, AtomicLoadParameters);
+
+V8_EXPORT_PRIVATE AtomicLoadParameters AtomicLoadParametersOf(Operator const*)
     V8_WARN_UNUSED_RESULT;
 
 enum class MemoryAccessKind {
@@ -92,6 +119,10 @@ V8_EXPORT_PRIVATE std::ostream& operator<<(std::ostream&,
 V8_EXPORT_PRIVATE LoadTransformParameters const& LoadTransformParametersOf(
     Operator const*) V8_WARN_UNUSED_RESULT;
 
+V8_EXPORT_PRIVATE bool operator==(LoadTransformParameters,
+                                  LoadTransformParameters);
+bool operator!=(LoadTransformParameters, LoadTransformParameters);
+
 struct LoadLaneParameters {
   MemoryAccessKind kind;
   LoadRepresentation rep;
@@ -129,6 +160,43 @@ size_t hash_value(StoreRepresentation);
 V8_EXPORT_PRIVATE std::ostream& operator<<(std::ostream&, StoreRepresentation);
 
 V8_EXPORT_PRIVATE StoreRepresentation const& StoreRepresentationOf(
+    Operator const*) V8_WARN_UNUSED_RESULT;
+
+// A Word(32|64)AtomicStore needs both a StoreRepresentation and a memory order.
+class AtomicStoreParameters final {
+ public:
+  AtomicStoreParameters(MachineRepresentation representation,
+                        WriteBarrierKind write_barrier_kind,
+                        AtomicMemoryOrder order)
+      : store_representation_(representation, write_barrier_kind),
+        order_(order) {}
+
+  MachineRepresentation representation() const {
+    return store_representation_.representation();
+  }
+  WriteBarrierKind write_barrier_kind() const {
+    return store_representation_.write_barrier_kind();
+  }
+  AtomicMemoryOrder order() const { return order_; }
+
+  StoreRepresentation store_representation() const {
+    return store_representation_;
+  }
+
+ private:
+  StoreRepresentation store_representation_;
+  AtomicMemoryOrder order_;
+};
+
+V8_EXPORT_PRIVATE bool operator==(AtomicStoreParameters, AtomicStoreParameters);
+bool operator!=(AtomicStoreParameters, AtomicStoreParameters);
+
+size_t hash_value(AtomicStoreParameters);
+
+V8_EXPORT_PRIVATE std::ostream& operator<<(std::ostream&,
+                                           AtomicStoreParameters);
+
+V8_EXPORT_PRIVATE AtomicStoreParameters const& AtomicStoreParametersOf(
     Operator const*) V8_WARN_UNUSED_RESULT;
 
 // An UnalignedStore needs a MachineType.
@@ -172,9 +240,6 @@ V8_EXPORT_PRIVATE std::ostream& operator<<(std::ostream&,
 
 V8_EXPORT_PRIVATE StackSlotRepresentation const& StackSlotRepresentationOf(
     Operator const* op) V8_WARN_UNUSED_RESULT;
-
-MachineRepresentation AtomicStoreRepresentationOf(Operator const* op)
-    V8_WARN_UNUSED_RESULT;
 
 MachineType AtomicOpType(Operator const* op) V8_WARN_UNUSED_RESULT;
 
@@ -343,7 +408,7 @@ class V8_EXPORT_PRIVATE MachineOperatorBuilder final
   MachineOperatorBuilder& operator=(const MachineOperatorBuilder&) = delete;
 
   const Operator* Comment(const char* msg);
-  const Operator* AbortCSAAssert();
+  const Operator* AbortCSADcheck();
   const Operator* DebugBreak();
   const Operator* UnsafePointerAdd();
 
@@ -840,7 +905,7 @@ class V8_EXPORT_PRIVATE MachineOperatorBuilder final
   const Operator* S128Select();
   const Operator* S128AndNot();
 
-  const Operator* I8x16Swizzle();
+  const Operator* I8x16Swizzle(bool relaxed = false);
   const Operator* I8x16Shuffle(const uint8_t shuffle[16]);
 
   const Operator* V128AnyTrue();
@@ -848,6 +913,20 @@ class V8_EXPORT_PRIVATE MachineOperatorBuilder final
   const Operator* I32x4AllTrue();
   const Operator* I16x8AllTrue();
   const Operator* I8x16AllTrue();
+
+  // Relaxed SIMD operators.
+  const Operator* I8x16RelaxedLaneSelect();
+  const Operator* I16x8RelaxedLaneSelect();
+  const Operator* I32x4RelaxedLaneSelect();
+  const Operator* I64x2RelaxedLaneSelect();
+  const Operator* F32x4RelaxedMin();
+  const Operator* F32x4RelaxedMax();
+  const Operator* F64x2RelaxedMin();
+  const Operator* F64x2RelaxedMax();
+  const Operator* I32x4RelaxedTruncF32x4S();
+  const Operator* I32x4RelaxedTruncF32x4U();
+  const Operator* I32x4RelaxedTruncF64x2SZero();
+  const Operator* I32x4RelaxedTruncF64x2UZero();
 
   // load [base + index]
   const Operator* Load(LoadRepresentation rep);
@@ -895,13 +974,13 @@ class V8_EXPORT_PRIVATE MachineOperatorBuilder final
   const Operator* MemBarrier();
 
   // atomic-load [base + index]
-  const Operator* Word32AtomicLoad(LoadRepresentation rep);
+  const Operator* Word32AtomicLoad(AtomicLoadParameters params);
   // atomic-load [base + index]
-  const Operator* Word64AtomicLoad(LoadRepresentation rep);
+  const Operator* Word64AtomicLoad(AtomicLoadParameters params);
   // atomic-store [base + index], value
-  const Operator* Word32AtomicStore(MachineRepresentation rep);
+  const Operator* Word32AtomicStore(AtomicStoreParameters params);
   // atomic-store [base + index], value
-  const Operator* Word64AtomicStore(MachineRepresentation rep);
+  const Operator* Word64AtomicStore(AtomicStoreParameters params);
   // atomic-exchange [base + index], value
   const Operator* Word32AtomicExchange(MachineType type);
   // atomic-exchange [base + index], value
@@ -931,9 +1010,9 @@ class V8_EXPORT_PRIVATE MachineOperatorBuilder final
   // atomic-xor [base + index], value
   const Operator* Word64AtomicXor(MachineType type);
   // atomic-pair-load [base + index]
-  const Operator* Word32AtomicPairLoad();
+  const Operator* Word32AtomicPairLoad(AtomicMemoryOrder order);
   // atomic-pair-sub [base + index], value_high, value-low
-  const Operator* Word32AtomicPairStore();
+  const Operator* Word32AtomicPairStore(AtomicMemoryOrder order);
   // atomic-pair-add [base + index], value_high, value_low
   const Operator* Word32AtomicPairAdd();
   // atomic-pair-sub [base + index], value_high, value-low

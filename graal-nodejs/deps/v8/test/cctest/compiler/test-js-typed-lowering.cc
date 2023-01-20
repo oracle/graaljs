@@ -6,7 +6,6 @@
 #include "src/compiler/compilation-dependencies.h"
 #include "src/compiler/js-graph.h"
 #include "src/compiler/js-heap-broker.h"
-#include "src/compiler/js-heap-copy-reducer.h"
 #include "src/compiler/js-typed-lowering.h"
 #include "src/compiler/machine-operator.h"
 #include "src/compiler/node-properties.h"
@@ -92,8 +91,6 @@ class JSTypedLoweringTester : public HandleAndZoneScope {
   }
 
   Node* reduce(Node* node) {
-    JSHeapCopyReducer heap_copy_reducer(&js_heap_broker);
-    CHECK(!heap_copy_reducer.Reduce(node).Changed());
     JSGraph jsgraph(main_isolate(), &graph, &common, &javascript, &simplified,
                     &machine);
     GraphReducer graph_reducer(main_zone(), &graph, &tick_counter,
@@ -765,8 +762,8 @@ TEST(RemoveToNumberEffects) {
     if (effect_use != nullptr) {
       R.CheckEffectInput(R.start(), effect_use);
       // Check that value uses of ToNumber() do not go to start().
-      for (int i = 0; i < effect_use->op()->ValueInputCount(); i++) {
-        CHECK_NE(R.start(), effect_use->InputAt(i));
+      for (int j = 0; j < effect_use->op()->ValueInputCount(); j++) {
+        CHECK_NE(R.start(), effect_use->InputAt(j));
       }
     }
   }
@@ -843,8 +840,8 @@ void CheckEqualityReduction(JSTypedLoweringTester* R, bool strict, Node* l,
       const Operator* op = strict ? R->javascript.StrictEqual(feedback_source)
                                   : R->javascript.Equal(feedback_source);
       Node* eq = R->Binop(op, p0, p1);
-      Node* r = R->reduce(eq);
-      R->CheckBinop(expected, r);
+      Node* reduced = R->reduce(eq);
+      R->CheckBinop(expected, reduced);
     }
   }
 }

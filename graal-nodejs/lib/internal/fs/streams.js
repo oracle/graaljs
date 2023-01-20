@@ -110,12 +110,9 @@ const FileHandleOperations = (handle) => {
 
 function close(stream, err, cb) {
   if (!stream.fd) {
-    // TODO(ronag)
-    // stream.closed = true;
     cb(err);
   } else {
     stream[kFs].close(stream.fd, (er) => {
-      stream.closed = true;
       cb(er || err);
     });
     stream.fd = null;
@@ -189,7 +186,6 @@ function ReadStream(path, options) {
   this.end = options.end;
   this.pos = undefined;
   this.bytesRead = 0;
-  this.closed = false;
   this[kIsPerformingIO] = false;
 
   if (this.start !== undefined) {
@@ -363,9 +359,7 @@ function WriteStream(path, options) {
   this.start = options.start;
   this.pos = undefined;
   this.bytesWritten = 0;
-  this.closed = false;
   this[kIsPerformingIO] = false;
-
 
   if (this.start !== undefined) {
     validateInteger(this.start, 'start', 0);

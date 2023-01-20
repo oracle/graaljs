@@ -14,8 +14,6 @@ const {
 const {
   kWeakHandler,
 } = require('internal/event_target');
-const { internalBinding } = require('internal/test/binding');
-const { DOMException } = internalBinding('messaging');
 
 const { setTimeout: sleep } = require('timers/promises');
 
@@ -247,7 +245,10 @@ const { setTimeout: sleep } = require('timers/promises');
 
 {
   // Test abortSignal.throwIfAborted()
-  throws(() => AbortSignal.abort().throwIfAborted(), { code: 20 });
+  throws(() => AbortSignal.abort().throwIfAborted(), {
+    code: 20,
+    name: 'AbortError',
+  });
 
   // Does not throw because it's not aborted.
   const ac = new AbortController();

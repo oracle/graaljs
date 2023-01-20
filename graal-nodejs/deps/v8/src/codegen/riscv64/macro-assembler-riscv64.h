@@ -211,7 +211,7 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   void LoadRootRelative(Register destination, int32_t offset) final;
 
   inline void GenPCRelativeJump(Register rd, int64_t imm32) {
-    DCHECK(is_int32(imm32));
+    DCHECK(is_int32(imm32 + 0x800));
     int32_t Hi20 = (((int32_t)imm32 + 0x800) >> 12);
     int32_t Lo12 = (int32_t)imm32 << 20 >> 20;
     auipc(rd, Hi20);  // Read PC + Hi20 into scratch.
@@ -219,7 +219,7 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   }
 
   inline void GenPCRelativeJumpAndLink(Register rd, int64_t imm32) {
-    DCHECK(is_int32(imm32));
+    DCHECK(is_int32(imm32 + 0x800));
     int32_t Hi20 = (((int32_t)imm32 + 0x800) >> 12);
     int32_t Lo12 = (int32_t)imm32 << 20 >> 20;
     auipc(rd, Hi20);  // Read PC + Hi20 into scratch.
@@ -358,7 +358,7 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   // Registers are saved in numerical order, with higher numbered registers
   // saved in higher memory addresses.
   void MultiPush(RegList regs);
-  void MultiPushFPU(RegList regs);
+  void MultiPushFPU(DoubleRegList regs);
 
   // Calculate how much stack space (in bytes) are required to store caller
   // registers excluding those specified in the arguments.
@@ -407,7 +407,7 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   // Pops multiple values from the stack and load them in the
   // registers specified in regs. Pop order is the opposite as in MultiPush.
   void MultiPop(RegList regs);
-  void MultiPopFPU(RegList regs);
+  void MultiPopFPU(DoubleRegList regs);
 
 #define DEFINE_INSTRUCTION(instr)                          \
   void instr(Register rd, Register rs, const Operand& rt); \
@@ -492,6 +492,13 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   }
 
   void SmiUntag(Register reg) { SmiUntag(reg, reg); }
+  void SmiToInt32(Register smi);
+
+  // Enabled via --debug-code.
+  void AssertNotSmi(Register object,
+                    AbortReason reason = AbortReason::kOperandIsASmi);
+  void AssertSmi(Register object,
+                 AbortReason reason = AbortReason::kOperandIsASmi);
 
   int CalculateStackPassedDWords(int num_gp_arguments, int num_fp_arguments);
 
@@ -571,8 +578,8 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   void Clz64(Register rd, Register rs);
   void Ctz32(Register rd, Register rs);
   void Ctz64(Register rd, Register rs);
-  void Popcnt32(Register rd, Register rs);
-  void Popcnt64(Register rd, Register rs);
+  void Popcnt32(Register rd, Register rs, Register scratch);
+  void Popcnt64(Register rd, Register rs, Register scratch);
 
   // Bit field starts at bit pos and extending for size bits is extracted from
   // rs and stored zero/sign-extended and right-justified in rt
@@ -591,7 +598,8 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   void Neg_d(FPURegister fd, FPURegister fs);
 
   // Change endianness
-  void ByteSwap(Register dest, Register src, int operand_size);
+  void ByteSwap(Register dest, Register src, int operand_size,
+                Register scratch);
 
   void Clear_if_nan_d(Register rd, FPURegister fs);
   void Clear_if_nan_s(Register rd, FPURegister fs);
@@ -606,9 +614,11 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
                             Register scratch_other = no_reg);
 
   template <int NBYTES>
-  void UnalignedFLoadHelper(FPURegister frd, const MemOperand& rs);
+  void UnalignedFLoadHelper(FPURegister frd, const MemOperand& rs,
+                            Register scratch);
   template <int NBYTES>
-  void UnalignedFStoreHelper(FPURegister frd, const MemOperand& rs);
+  void UnalignedFStoreHelper(FPURegister frd, const MemOperand& rs,
+                             Register scratch);
 
   template <typename Reg_T, typename Func>
   void AlignedLoadHelper(Reg_T target, const MemOperand& rs, Func generator);
@@ -632,11 +642,11 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   void Uld(Register rd, const MemOperand& rs);
   void Usd(Register rd, const MemOperand& rs);
 
-  void ULoadFloat(FPURegister fd, const MemOperand& rs);
-  void UStoreFloat(FPURegister fd, const MemOperand& rs);
+  void ULoadFloat(FPURegister fd, const MemOperand& rs, Register scratch);
+  void UStoreFloat(FPURegister fd, const MemOperand& rs, Register scratch);
 
-  void ULoadDouble(FPURegister fd, const MemOperand& rs);
-  void UStoreDouble(FPURegister fd, const MemOperand& rs);
+  void ULoadDouble(FPURegister fd, const MemOperand& rs, Register scratch);
+  void UStoreDouble(FPURegister fd, const MemOperand& rs, Register scratch);
 
   void Lb(Register rd, const MemOperand& rs);
   void Lbu(Register rd, const MemOperand& rs);
@@ -834,6 +844,42 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   void Floor_s_s(FPURegister fd, FPURegister fs, FPURegister fpu_scratch);
   void Ceil_s_s(FPURegister fd, FPURegister fs, FPURegister fpu_scratch);
 
+  void Ceil_f(VRegister dst, VRegister src, Register scratch,
+              VRegister v_scratch);
+
+  void Ceil_d(VRegister dst, VRegister src, Register scratch,
+              VRegister v_scratch);
+
+  void Floor_f(VRegister dst, VRegister src, Register scratch,
+               VRegister v_scratch);
+  void Floor_d(VRegister dst, VRegister src, Register scratch,
+               VRegister v_scratch);
+  void Trunc_f(VRegister dst, VRegister src, Register scratch,
+               VRegister v_scratch);
+  void Trunc_d(VRegister dst, VRegister src, Register scratch,
+               VRegister v_scratch);
+  void Round_f(VRegister dst, VRegister src, Register scratch,
+               VRegister v_scratch);
+  void Round_d(VRegister dst, VRegister src, Register scratch,
+               VRegister v_scratch);
+
+  // -------------------------------------------------------------------------
+  // Smi utilities.
+
+  void SmiTag(Register dst, Register src) {
+    STATIC_ASSERT(kSmiTag == 0);
+    if (SmiValuesAre32Bits()) {
+      // Smi goes to upper 32
+      slli(dst, src, 32);
+    } else {
+      DCHECK(SmiValuesAre31Bits());
+      // Smi is shifted left by 1
+      Add32(dst, src, src);
+    }
+  }
+
+  void SmiTag(Register reg) { SmiTag(reg, reg); }
+
   // Jump the register contains a smi.
   void JumpIfSmi(Register value, Label* smi_label);
 
@@ -907,6 +953,34 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
       Sub64(rd, rs1, rs2);
     }
   }
+  // Wasm into RVV
+  void WasmRvvExtractLane(Register dst, VRegister src, int8_t idx, VSew sew,
+                          Vlmul lmul) {
+    VU.set(kScratchReg, sew, lmul);
+    VRegister Vsrc = idx != 0 ? kSimd128ScratchReg : src;
+    if (idx != 0) {
+      vslidedown_vi(kSimd128ScratchReg, src, idx);
+    }
+    vmv_xs(dst, Vsrc);
+  }
+
+  void WasmRvvEq(VRegister dst, VRegister lhs, VRegister rhs, VSew sew,
+                 Vlmul lmul);
+
+  void WasmRvvNe(VRegister dst, VRegister lhs, VRegister rhs, VSew sew,
+                 Vlmul lmul);
+  void WasmRvvGeS(VRegister dst, VRegister lhs, VRegister rhs, VSew sew,
+                  Vlmul lmul);
+  void WasmRvvGeU(VRegister dst, VRegister lhs, VRegister rhs, VSew sew,
+                  Vlmul lmul);
+  void WasmRvvGtS(VRegister dst, VRegister lhs, VRegister rhs, VSew sew,
+                  Vlmul lmul);
+  void WasmRvvGtU(VRegister dst, VRegister lhs, VRegister rhs, VSew sew,
+                  Vlmul lmul);
+  void WasmRvvS128const(VRegister dst, const uint8_t imms[16]);
+
+  void LoadLane(int sz, VRegister dst, uint8_t laneidx, MemOperand src);
+  void StoreLane(int sz, VRegister src, uint8_t laneidx, MemOperand dst);
 
  protected:
   inline Register GetRtAsRegisterHelper(const Operand& rt, Register scratch);
@@ -949,6 +1023,10 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   template <typename F_TYPE>
   void RoundHelper(FPURegister dst, FPURegister src, FPURegister fpu_scratch,
                    RoundingMode mode);
+
+  template <typename F>
+  void RoundHelper(VRegister dst, VRegister src, Register scratch,
+                   VRegister v_scratch, RoundingMode frm);
 
   template <typename TruncFunc>
   void RoundFloatingPointToInteger(Register rd, FPURegister fs, Register result,
@@ -1047,7 +1125,7 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
 
   // Enter exit frame.
   // argc - argument count to be dropped by LeaveExitFrame.
-  // save_doubles - saves FPU registers on stack, currently disabled.
+  // save_doubles - saves FPU registers on stack.
   // stack_space - extra stack space.
   void EnterExitFrame(bool save_doubles, int stack_space = 0,
                       StackFrame::Type frame_type = StackFrame::EXIT);
@@ -1138,7 +1216,7 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
                                bool builtin_exit_frame = false);
 
   // Generates a trampoline to jump to the off-heap instruction stream.
-  void JumpToInstructionStream(Address entry);
+  void JumpToOffHeapInstructionStream(Address entry);
 
   // ---------------------------------------------------------------------------
   // In-place weak references.
@@ -1171,23 +1249,6 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
                           Register scratch2, Label* stack_overflow,
                           Label* done = nullptr);
 
-  // -------------------------------------------------------------------------
-  // Smi utilities.
-
-  void SmiTag(Register dst, Register src) {
-    STATIC_ASSERT(kSmiTag == 0);
-    if (SmiValuesAre32Bits()) {
-      // Smi goes to upper 32
-      slli(dst, src, 32);
-    } else {
-      DCHECK(SmiValuesAre31Bits());
-      // Smi is shifted left by 1
-      Add32(dst, src, src);
-    }
-  }
-
-  void SmiTag(Register reg) { SmiTag(reg, reg); }
-
   // Left-shifted from int32 equivalent of Smi.
   void SmiScale(Register dst, Register src, int scale) {
     if (SmiValuesAre32Bits()) {
@@ -1205,18 +1266,28 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
     And(scratch, value, Operand(kSmiTagMask));
   }
 
+  enum ArgumentsCountMode { kCountIncludesReceiver, kCountExcludesReceiver };
+  enum ArgumentsCountType { kCountIsInteger, kCountIsSmi, kCountIsBytes };
+  void DropArguments(Register count, ArgumentsCountType type,
+                     ArgumentsCountMode mode, Register scratch = no_reg);
+  void DropArgumentsAndPushNewReceiver(Register argc, Register receiver,
+                                       ArgumentsCountType type,
+                                       ArgumentsCountMode mode,
+                                       Register scratch = no_reg);
+
   // Jump if the register contains a non-smi.
   void JumpIfNotSmi(Register value, Label* not_smi_label);
 
-  // Abort execution if argument is a smi, enabled via --debug-code.
-  void AssertNotSmi(Register object);
-  void AssertSmi(Register object);
 
   // Abort execution if argument is not a Constructor, enabled via --debug-code.
   void AssertConstructor(Register object);
 
   // Abort execution if argument is not a JSFunction, enabled via --debug-code.
   void AssertFunction(Register object);
+
+  // Abort execution if argument is not a callable JSFunction, enabled via
+  // --debug-code.
+  void AssertCallableFunction(Register object);
 
   // Abort execution if argument is not a JSBoundFunction,
   // enabled via --debug-code.

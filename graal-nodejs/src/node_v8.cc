@@ -82,7 +82,8 @@ static constexpr size_t kHeapSpaceStatisticsPropertiesCount =
 #define HEAP_CODE_STATISTICS_PROPERTIES(V)                                     \
   V(0, code_and_metadata_size, kCodeAndMetadataSizeIndex)                      \
   V(1, bytecode_and_metadata_size, kBytecodeAndMetadataSizeIndex)              \
-  V(2, external_script_source_size, kExternalScriptSourceSizeIndex)
+  V(2, external_script_source_size, kExternalScriptSourceSizeIndex)            \
+  V(3, cpu_profiler_metadata_size, kCPUProfilerMetaDataSizeIndex)
 
 #define V(a, b, c) +1
 static const size_t kHeapCodeStatisticsPropertiesCount =
@@ -123,7 +124,7 @@ void BindingData::Deserialize(Local<Context> context,
                               Local<Object> holder,
                               int index,
                               InternalFieldInfo* info) {
-  DCHECK_EQ(index, BaseObject::kEmbedderType);
+  DCHECK_EQ(index, BaseObject::kSlot);
   HandleScope scope(context->GetIsolate());
   Environment* env = Environment::GetCurrent(context);
   BindingData* binding = env->AddBindingData<BindingData>(context, holder);
@@ -131,7 +132,7 @@ void BindingData::Deserialize(Local<Context> context,
 }
 
 InternalFieldInfo* BindingData::Serialize(int index) {
-  DCHECK_EQ(index, BaseObject::kEmbedderType);
+  DCHECK_EQ(index, BaseObject::kSlot);
   InternalFieldInfo* info = InternalFieldInfo::New(type());
   return info;
 }
@@ -143,9 +144,6 @@ void BindingData::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("heap_code_statistics_buffer",
                       heap_code_statistics_buffer);
 }
-
-// TODO(addaleax): Remove once we're on C++17.
-constexpr FastStringKey BindingData::type_name;
 
 void CachedDataVersionTag(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
@@ -217,15 +215,21 @@ void Initialize(Local<Object> target,
       env->AddBindingData<BindingData>(context, target);
   if (binding_data == nullptr) return;
 
-  env->SetMethodNoSideEffect(target, "cachedDataVersionTag",
-                             CachedDataVersionTag);
-  env->SetMethod(
-      target, "updateHeapStatisticsBuffer", UpdateHeapStatisticsBuffer);
-  env->SetMethodNoSideEffect(target, "setHeapSnapshotNearHeapLimit",
-                             SetHeapSnapshotNearHeapLimit);
+  SetMethodNoSideEffect(
+      context, target, "cachedDataVersionTag", CachedDataVersionTag);
+  SetMethodNoSideEffect(context,
+                        target,
+                        "setHeapSnapshotNearHeapLimit",
+                        SetHeapSnapshotNearHeapLimit);
+  SetMethod(context,
+            target,
+            "updateHeapStatisticsBuffer",
+            UpdateHeapStatisticsBuffer);
 
-  env->SetMethod(
-      target, "updateHeapCodeStatisticsBuffer", UpdateHeapCodeStatisticsBuffer);
+  SetMethod(context,
+            target,
+            "updateHeapCodeStatisticsBuffer",
+            UpdateHeapCodeStatisticsBuffer);
 
   size_t number_of_heap_spaces = env->isolate()->NumberOfHeapSpaces();
 
@@ -238,19 +242,21 @@ void Initialize(Local<Object> target,
     heap_spaces[i] = String::NewFromUtf8(env->isolate(), s.space_name())
                                              .ToLocalChecked();
   }
-  target->Set(env->context(),
-              FIXED_ONE_BYTE_STRING(env->isolate(), "kHeapSpaces"),
-              Array::New(env->isolate(),
-                         heap_spaces.out(),
-                         number_of_heap_spaces)).Check();
+  target
+      ->Set(
+          context,
+          FIXED_ONE_BYTE_STRING(env->isolate(), "kHeapSpaces"),
+          Array::New(env->isolate(), heap_spaces.out(), number_of_heap_spaces))
+      .Check();
 
-  env->SetMethod(target,
-                 "updateHeapSpaceStatisticsBuffer",
-                 UpdateHeapSpaceStatisticsBuffer);
+  SetMethod(context,
+            target,
+            "updateHeapSpaceStatisticsBuffer",
+            UpdateHeapSpaceStatisticsBuffer);
 
 #define V(i, _, name)                                                          \
   target                                                                       \
-      ->Set(env->context(),                                                    \
+      ->Set(context,                                                           \
             FIXED_ONE_BYTE_STRING(env->isolate(), #name),                      \
             Uint32::NewFromUnsigned(env->isolate(), i))                        \
       .Check();
@@ -261,7 +267,7 @@ void Initialize(Local<Object> target,
 #undef V
 
   // Export symbols used by v8.setFlagsFromString()
-  env->SetMethod(target, "setFlagsFromString", SetFlagsFromString);
+  SetMethod(context, target, "setFlagsFromString", SetFlagsFromString);
 }
 
 void RegisterExternalReferences(ExternalReferenceRegistry* registry) {

@@ -803,8 +803,7 @@ function tickOnSocket(req, socket) {
   parser.initialize(HTTPParser.RESPONSE,
                     new HTTPClientAsyncResource('HTTPINCOMINGMESSAGE', req),
                     req.maxHeaderSize || 0,
-                    lenient ? kLenientAll : kLenientNone,
-                    0);
+                    lenient ? kLenientAll : kLenientNone);
   parser.socket = socket;
   parser.outgoing = req;
   req.parser = parser;
@@ -882,6 +881,9 @@ function onSocketNT(req, socket, err) {
         socket.emit('free');
       } else {
         finished(socket.destroy(err || req[kError]), (er) => {
+          if (er?.code === 'ERR_STREAM_PREMATURE_CLOSE') {
+            er = null;
+          }
           _destroy(req, er || err);
         });
         return;

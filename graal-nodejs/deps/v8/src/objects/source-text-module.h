@@ -17,6 +17,7 @@ namespace v8 {
 namespace internal {
 
 class UnorderedModuleSet;
+class StructBodyDescriptor;
 
 #include "torque-generated/src/objects/source-text-module-tq.inc"
 
@@ -179,10 +180,6 @@ class SourceTextModule
                                            AsyncParentCompletionSet* exec_list);
 
   // Implementation of spec concrete method Evaluate.
-  static V8_WARN_UNUSED_RESULT MaybeHandle<Object> EvaluateMaybeAsync(
-      Isolate* isolate, Handle<SourceTextModule> module);
-
-  // Continued implementation of spec concrete method Evaluate.
   static V8_WARN_UNUSED_RESULT MaybeHandle<Object> Evaluate(
       Isolate* isolate, Handle<SourceTextModule> module);
 
@@ -278,6 +275,8 @@ class ModuleRequest
   // a single assertion.
   static const size_t kAssertionEntrySize = 3;
 
+  using BodyDescriptor = StructBodyDescriptor;
+
   TQ_OBJECT_CONSTRUCTORS(ModuleRequest)
 };
 
@@ -285,7 +284,6 @@ class SourceTextModuleInfoEntry
     : public TorqueGeneratedSourceTextModuleInfoEntry<SourceTextModuleInfoEntry,
                                                       Struct> {
  public:
-  DECL_PRINTER(SourceTextModuleInfoEntry)
   DECL_VERIFIER(SourceTextModuleInfoEntry)
 
   template <typename IsolateT>
@@ -294,6 +292,8 @@ class SourceTextModuleInfoEntry
       Handle<PrimitiveHeapObject> local_name,
       Handle<PrimitiveHeapObject> import_name, int module_request,
       int cell_index, int beg_pos, int end_pos);
+
+  using BodyDescriptor = StructBodyDescriptor;
 
   TQ_OBJECT_CONSTRUCTORS(SourceTextModuleInfoEntry)
 };

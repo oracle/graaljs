@@ -115,7 +115,6 @@ class Typer::Visitor : public Reducer {
       DECLARE_IMPOSSIBLE_CASE(Deoptimize)
       DECLARE_IMPOSSIBLE_CASE(DeoptimizeIf)
       DECLARE_IMPOSSIBLE_CASE(DeoptimizeUnless)
-      DECLARE_IMPOSSIBLE_CASE(DynamicCheckMapsWithDeoptUnless)
       DECLARE_IMPOSSIBLE_CASE(TrapIf)
       DECLARE_IMPOSSIBLE_CASE(TrapUnless)
       DECLARE_IMPOSSIBLE_CASE(Return)
@@ -882,9 +881,10 @@ bool Typer::Visitor::InductionVariablePhiTypeIsPrefixedPoint(
     InductionVariable* induction_var) {
   Node* node = induction_var->phi();
   DCHECK_EQ(node->opcode(), IrOpcode::kInductionVariablePhi);
+  Node* arith = node->InputAt(1);
   Type type = NodeProperties::GetType(node);
   Type initial_type = Operand(node, 0);
-  Node* arith = node->InputAt(1);
+  Type arith_type = Operand(node, 1);
   Type increment_type = Operand(node, 2);
 
   // Intersect {type} with useful bounds.
@@ -910,26 +910,30 @@ bool Typer::Visitor::InductionVariablePhiTypeIsPrefixedPoint(
     type = Type::Intersect(type, bound_type, typer_->zone());
   }
 
-  // Apply ordinary typing to the "increment" operation.
-  // clang-format off
-  switch (arith->opcode()) {
+  if (arith_type.IsNone()) {
+    type = Type::None();
+  } else {
+    // Apply ordinary typing to the "increment" operation.
+    // clang-format off
+    switch (arith->opcode()) {
 #define CASE(x)                             \
-    case IrOpcode::k##x:                    \
-      type = Type##x(type, increment_type); \
-      break;
-    CASE(JSAdd)
-    CASE(JSSubtract)
-    CASE(NumberAdd)
-    CASE(NumberSubtract)
-    CASE(SpeculativeNumberAdd)
-    CASE(SpeculativeNumberSubtract)
-    CASE(SpeculativeSafeIntegerAdd)
-    CASE(SpeculativeSafeIntegerSubtract)
+      case IrOpcode::k##x:                    \
+        type = Type##x(type, increment_type); \
+        break;
+      CASE(JSAdd)
+      CASE(JSSubtract)
+      CASE(NumberAdd)
+      CASE(NumberSubtract)
+      CASE(SpeculativeNumberAdd)
+      CASE(SpeculativeNumberSubtract)
+      CASE(SpeculativeSafeIntegerAdd)
+      CASE(SpeculativeSafeIntegerSubtract)
 #undef CASE
-    default:
-      UNREACHABLE();
+      default:
+        UNREACHABLE();
+    }
+    // clang-format on
   }
-  // clang-format on
 
   type = Type::Union(initial_type, type, typer_->zone());
 
@@ -1027,6 +1031,7 @@ Type Typer::Visitor::TypeUnreachable(Node* node) { return Type::None(); }
 
 Type Typer::Visitor::TypePlug(Node* node) { UNREACHABLE(); }
 Type Typer::Visitor::TypeStaticAssert(Node* node) { UNREACHABLE(); }
+Type Typer::Visitor::TypeSLVerifierHint(Node* node) { UNREACHABLE(); }
 
 // JS comparison operators.
 
@@ -1210,9 +1215,6 @@ Type Typer::Visitor::TypeTypeOf(Node* node) {
   return Type::InternalizedString();
 }
 
-Type Typer::Visitor::TypeTierUpCheck(Node* node) { UNREACHABLE(); }
-Type Typer::Visitor::TypeUpdateInterruptBudget(Node* node) { UNREACHABLE(); }
-
 // JS conversion operators.
 
 Type Typer::Visitor::TypeToBoolean(Node* node) {
@@ -1257,7 +1259,13 @@ Type Typer::Visitor::TypeJSCreateGeneratorObject(Node* node) {
 }
 
 Type Typer::Visitor::TypeJSCreateClosure(Node* node) {
-  return Type::Function();
+  SharedFunctionInfoRef shared =
+      JSCreateClosureNode{node}.Parameters().shared_info(typer_->broker());
+  if (IsClassConstructor(shared.kind())) {
+    return Type::ClassConstructor();
+  } else {
+    return Type::CallableFunction();
+  }
 }
 
 Type Typer::Visitor::TypeJSCreateIterResultObject(Node* node) {
@@ -1269,7 +1277,7 @@ Type Typer::Visitor::TypeJSCreateStringIterator(Node* node) {
 }
 
 Type Typer::Visitor::TypeJSCreateKeyValueArray(Node* node) {
-  return Type::OtherObject();
+  return Type::Array();
 }
 
 Type Typer::Visitor::TypeJSCreateObject(Node* node) {
@@ -1316,11 +1324,20 @@ Type Typer::Visitor::TypeJSGetTemplateObject(Node* node) {
   return Type::Array();
 }
 
-Type Typer::Visitor::TypeJSLoadProperty(Node* node) {
+Type Typer::Visitor::TypeJSLoadProperty(Node* node) { return Type::Any(); }
+
+Type Typer::Visitor::TypeJSLoadNamed(Node* node) {
+#ifdef DEBUG
+  // Loading of private methods is compiled to a named load of a BlockContext
+  // via a private brand, which is an internal object. However, native context
+  // specialization should always apply for those cases, so assert that the name
+  // is not a private brand here. Otherwise Type::NonInternal() is wrong.
+  JSLoadNamedNode n(node);
+  NamedAccess const& p = n.Parameters();
+  DCHECK(!p.name(typer_->broker()).object()->IsPrivateBrand());
+#endif
   return Type::NonInternal();
 }
-
-Type Typer::Visitor::TypeJSLoadNamed(Node* node) { return Type::NonInternal(); }
 
 Type Typer::Visitor::TypeJSLoadNamedFromSuper(Node* node) {
   return Type::NonInternal();
@@ -1413,15 +1430,17 @@ Type Typer::Visitor::Weaken(Node* node, Type current_type, Type previous_type) {
                      typer_->zone());
 }
 
-Type Typer::Visitor::TypeJSStoreProperty(Node* node) { UNREACHABLE(); }
+Type Typer::Visitor::TypeJSSetKeyedProperty(Node* node) { UNREACHABLE(); }
 
-Type Typer::Visitor::TypeJSStoreNamed(Node* node) { UNREACHABLE(); }
+Type Typer::Visitor::TypeJSDefineKeyedOwnProperty(Node* node) { UNREACHABLE(); }
+
+Type Typer::Visitor::TypeJSSetNamedProperty(Node* node) { UNREACHABLE(); }
 
 Type Typer::Visitor::TypeJSStoreGlobal(Node* node) { UNREACHABLE(); }
 
-Type Typer::Visitor::TypeJSStoreNamedOwn(Node* node) { UNREACHABLE(); }
+Type Typer::Visitor::TypeJSDefineNamedOwnProperty(Node* node) { UNREACHABLE(); }
 
-Type Typer::Visitor::TypeJSStoreDataPropertyInLiteral(Node* node) {
+Type Typer::Visitor::TypeJSDefineKeyedOwnPropertyInLiteral(Node* node) {
   UNREACHABLE();
 }
 
@@ -2083,7 +2102,6 @@ Type Typer::Visitor::TypeCheckInternalizedString(Node* node) {
 }
 
 Type Typer::Visitor::TypeCheckMaps(Node* node) { UNREACHABLE(); }
-Type Typer::Visitor::TypeDynamicCheckMaps(Node* node) { UNREACHABLE(); }
 
 Type Typer::Visitor::TypeCompareMaps(Node* node) { return Type::Boolean(); }
 
@@ -2126,7 +2144,17 @@ Type Typer::Visitor::TypeCheckNotTaggedHole(Node* node) {
   return type;
 }
 
-Type Typer::Visitor::TypeCheckClosure(Node* node) { return Type::Function(); }
+Type Typer::Visitor::TypeCheckClosure(Node* node) {
+  FeedbackCellRef cell = MakeRef(typer_->broker(), FeedbackCellOf(node->op()));
+  base::Optional<SharedFunctionInfoRef> shared = cell.shared_function_info();
+  if (!shared.has_value()) return Type::Function();
+
+  if (IsClassConstructor(shared->kind())) {
+    return Type::ClassConstructor();
+  } else {
+    return Type::CallableFunction();
+  }
+}
 
 Type Typer::Visitor::TypeConvertReceiver(Node* node) {
   Type arg = Operand(node, 0);
@@ -2169,6 +2197,7 @@ Type Typer::Visitor::TypeLoadStackArgument(Node* node) {
 }
 
 Type Typer::Visitor::TypeLoadFromObject(Node* node) { UNREACHABLE(); }
+Type Typer::Visitor::TypeLoadImmutableFromObject(Node* node) { UNREACHABLE(); }
 
 Type Typer::Visitor::TypeLoadTypedElement(Node* node) {
   switch (ExternalArrayTypeOf(node->op())) {
@@ -2199,6 +2228,9 @@ Type Typer::Visitor::TypeStoreMessage(Node* node) { UNREACHABLE(); }
 Type Typer::Visitor::TypeStoreElement(Node* node) { UNREACHABLE(); }
 
 Type Typer::Visitor::TypeStoreToObject(Node* node) { UNREACHABLE(); }
+Type Typer::Visitor::TypeInitializeImmutableInObject(Node* node) {
+  UNREACHABLE();
+}
 
 Type Typer::Visitor::TypeTransitionAndStoreElement(Node* node) {
   UNREACHABLE();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -165,7 +166,7 @@ public class SetBreakPointNode extends JavaScriptRootNode {
 
     @CompilerDirectives.TruffleBoundary
     private void addBreakPoint(Source source, int lineNo, int columnNo, boolean oneShot) {
-        Breakpoint.Builder builder = Breakpoint.newBuilder(source).lineIs(lineNo).columnIs(columnNo);
+        Breakpoint.Builder builder = Breakpoint.newBuilder(source).lineIs(lineNo).columnIs(columnNo).suspendAnchor(SuspendAnchor.AFTER);
         if (oneShot) {
             builder.oneShot();
         }

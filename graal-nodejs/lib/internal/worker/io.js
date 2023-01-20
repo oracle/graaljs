@@ -430,6 +430,9 @@ function isBroadcastChannel(value) {
 }
 
 class BroadcastChannel extends EventTarget {
+  /**
+   * @param {string} name
+   */
   constructor(name) {
     if (arguments.length === 0)
       throw new ERR_MISSING_ARGS('name');
@@ -461,12 +464,18 @@ class BroadcastChannel extends EventTarget {
     }, opts)}`;
   }
 
+  /**
+   * @type {string}
+   */
   get name() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
     return this[kName];
   }
 
+  /**
+   * @returns {void}
+   */
   close() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
@@ -480,6 +489,11 @@ class BroadcastChannel extends EventTarget {
     this[kHandle] = undefined;
   }
 
+  /**
+   *
+   * @param {any} message
+   * @returns {void}
+   */
   postMessage(message) {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
@@ -495,6 +509,9 @@ class BroadcastChannel extends EventTarget {
   // BroadcastChannel API definition. Typically we shouldn't extend Web
   // Platform APIs with Node.js specific methods but ref and unref
   // are a bit special.
+  /**
+   * @returns {BroadcastChannel}
+   */
   ref() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
@@ -507,6 +524,9 @@ class BroadcastChannel extends EventTarget {
   // BroadcastChannel API definition. Typically we shouldn't extend Web
   // Platform APIs with Node.js specific methods but ref and unref
   // are a bit special.
+  /**
+   * @returns {BroadcastChannel}
+   */
   unref() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');

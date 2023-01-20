@@ -68,9 +68,10 @@ class StackArgumentsAccessor {
   DISALLOW_IMPLICIT_CONSTRUCTORS(StackArgumentsAccessor);
 };
 
-class V8_EXPORT_PRIVATE TurboAssembler : public SharedTurboAssembler {
+class V8_EXPORT_PRIVATE TurboAssembler
+    : public SharedTurboAssemblerBase<TurboAssembler> {
  public:
-  using SharedTurboAssembler::SharedTurboAssembler;
+  using SharedTurboAssemblerBase<TurboAssembler>::SharedTurboAssemblerBase;
 
   void CheckPageFlag(Register object, Register scratch, int mask, Condition cc,
                      Label* condition_met,
@@ -198,6 +199,8 @@ class V8_EXPORT_PRIVATE TurboAssembler : public SharedTurboAssembler {
     SmiUntag(output);
   }
 
+  void SmiToInt32(Register reg) { SmiUntag(reg); }
+
   // Before calling a C-function from generated code, align arguments on stack.
   // After aligning the frame, arguments must be stored in esp[0], esp[4],
   // etc., not pushed. The argument count assumes all arguments are word sized.
@@ -301,68 +304,13 @@ class V8_EXPORT_PRIVATE TurboAssembler : public SharedTurboAssembler {
   // may be bigger than 2^16 - 1.  Requires a scratch register.
   void Ret(int bytes_dropped, Register scratch);
 
-  // Defined here because some callers take a pointer to member functions.
-  AVX_OP(Pcmpeqb, pcmpeqb)
-  AVX_OP(Pcmpeqw, pcmpeqw)
-  AVX_OP(Pcmpeqd, pcmpeqd)
-  AVX_OP_SSE4_1(Pcmpeqq, pcmpeqq)
-
-// Macro for instructions that have 2 operands for AVX version and 1 operand for
-// SSE version. Will move src1 to dst if dst != src1.
-#define AVX_OP3_WITH_MOVE(macro_name, name, dst_type, src_type) \
-  void macro_name(dst_type dst, dst_type src1, src_type src2) { \
-    if (CpuFeatures::IsSupported(AVX)) {                        \
-      CpuFeatureScope scope(this, AVX);                         \
-      v##name(dst, src1, src2);                                 \
-    } else {                                                    \
-      if (dst != src1) {                                        \
-        movaps(dst, src1);                                      \
-      }                                                         \
-      name(dst, src2);                                          \
-    }                                                           \
+  void PextrdPreSse41(Register dst, XMMRegister src, uint8_t imm8);
+  void PinsrdPreSse41(XMMRegister dst, Register src, uint8_t imm8,
+                      uint32_t* load_pc_offset) {
+    PinsrdPreSse41(dst, Operand(src), imm8, load_pc_offset);
   }
-  AVX_OP3_WITH_MOVE(Cmpeqps, cmpeqps, XMMRegister, XMMRegister)
-  AVX_OP3_WITH_MOVE(Movlps, movlps, XMMRegister, Operand)
-  AVX_OP3_WITH_MOVE(Movhps, movhps, XMMRegister, Operand)
-  AVX_OP3_WITH_MOVE(Pmaddwd, pmaddwd, XMMRegister, Operand)
-#undef AVX_OP3_WITH_MOVE
-
-  // TODO(zhin): Remove after moving more definitions into SharedTurboAssembler.
-  void Movlps(Operand dst, XMMRegister src) {
-    SharedTurboAssembler::Movlps(dst, src);
-  }
-  void Movhps(Operand dst, XMMRegister src) {
-    SharedTurboAssembler::Movhps(dst, src);
-  }
-
-  void Pshufb(XMMRegister dst, XMMRegister src) { Pshufb(dst, dst, src); }
-  void Pshufb(XMMRegister dst, Operand src) { Pshufb(dst, dst, src); }
-  // Handles SSE and AVX. On SSE, moves src to dst if they are not equal.
-  void Pshufb(XMMRegister dst, XMMRegister src, XMMRegister mask) {
-    Pshufb(dst, src, Operand(mask));
-  }
-  void Pshufb(XMMRegister dst, XMMRegister src, Operand mask);
-
-  void Pextrd(Register dst, XMMRegister src, uint8_t imm8);
-  void Pinsrb(XMMRegister dst, Register src, int8_t imm8) {
-    Pinsrb(dst, Operand(src), imm8);
-  }
-  void Pinsrb(XMMRegister dst, Operand src, int8_t imm8);
-  // Moves src1 to dst if AVX is not supported.
-  void Pinsrb(XMMRegister dst, XMMRegister src1, Operand src2, int8_t imm8);
-  void Pinsrd(XMMRegister dst, Register src, uint8_t imm8) {
-    Pinsrd(dst, Operand(src), imm8);
-  }
-  void Pinsrd(XMMRegister dst, Operand src, uint8_t imm8);
-  // Moves src1 to dst if AVX is not supported.
-  void Pinsrd(XMMRegister dst, XMMRegister src1, Operand src2, uint8_t imm8);
-  void Pinsrw(XMMRegister dst, Register src, int8_t imm8) {
-    Pinsrw(dst, Operand(src), imm8);
-  }
-  void Pinsrw(XMMRegister dst, Operand src, int8_t imm8);
-  // Moves src1 to dst if AVX is not supported.
-  void Pinsrw(XMMRegister dst, XMMRegister src1, Operand src2, int8_t imm8);
-  void Vbroadcastss(XMMRegister dst, Operand src);
+  void PinsrdPreSse41(XMMRegister dst, Operand src, uint8_t imm8,
+                      uint32_t* load_pc_offset);
 
   // Expression support
   // cvtsi2sd instruction only writes to the low 64-bit of dst register, which
@@ -389,32 +337,6 @@ class V8_EXPORT_PRIVATE TurboAssembler : public SharedTurboAssembler {
     Cvttsd2ui(dst, Operand(src), tmp);
   }
   void Cvttsd2ui(Register dst, Operand src, XMMRegister tmp);
-
-  // Handles SSE and AVX. On SSE, moves src to dst if they are not equal.
-  void Pmulhrsw(XMMRegister dst, XMMRegister src1, XMMRegister src2);
-
-  // These Wasm SIMD ops do not have direct lowerings on IA32. These
-  // helpers are optimized to produce the fastest and smallest codegen.
-  // Defined here to allow usage on both TurboFan and Liftoff.
-  void I16x8Q15MulRSatS(XMMRegister dst, XMMRegister src1, XMMRegister src2,
-                        XMMRegister scratch);
-  void I8x16Popcnt(XMMRegister dst, XMMRegister src, XMMRegister tmp1,
-                   XMMRegister tmp2, Register scratch);
-  void F64x2ConvertLowI32x4U(XMMRegister dst, XMMRegister src, Register tmp);
-  void I32x4TruncSatF64x2SZero(XMMRegister dst, XMMRegister src,
-                               XMMRegister scratch, Register tmp);
-  void I32x4TruncSatF64x2UZero(XMMRegister dst, XMMRegister src,
-                               XMMRegister scratch, Register tmp);
-  void I16x8ExtAddPairwiseI8x16S(XMMRegister dst, XMMRegister src,
-                                 XMMRegister tmp, Register scratch);
-  void I16x8ExtAddPairwiseI8x16U(XMMRegister dst, XMMRegister src,
-                                 Register scratch);
-  void I32x4ExtAddPairwiseI16x8S(XMMRegister dst, XMMRegister src,
-                                 Register scratch);
-  void I32x4ExtAddPairwiseI16x8U(XMMRegister dst, XMMRegister src,
-                                 XMMRegister tmp);
-  void I8x16Swizzle(XMMRegister dst, XMMRegister src, XMMRegister mask,
-                    XMMRegister scratch, Register tmp, bool omit_add = false);
 
   void Push(Register src) { push(src); }
   void Push(Operand src) { push(src); }
@@ -513,7 +435,11 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
   }
 
   // Checks if value is in range [lower_limit, higher_limit] using a single
-  // comparison.
+  // comparison. Flags CF=1 or ZF=1 indicate the value is in the range
+  // (condition below_equal). It is valid, that |value| == |scratch| as far as
+  // this function is concerned.
+  void CompareRange(Register value, unsigned lower_limit, unsigned higher_limit,
+                    Register scratch);
   void JumpIfIsInRange(Register value, unsigned lower_limit,
                        unsigned higher_limit, Register scratch,
                        Label* on_in_range,
@@ -597,8 +523,8 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
   //
   // Always use unsigned comparisons: below_equal for a positive
   // result.
-  void CmpInstanceTypeRange(Register map, Register scratch,
-                            InstanceType lower_limit,
+  void CmpInstanceTypeRange(Register map, Register instance_type_out,
+                            Register scratch, InstanceType lower_limit,
                             InstanceType higher_limit);
 
   // Smi tagging support.
@@ -639,6 +565,10 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
 
   // Abort execution if argument is not a JSFunction, enabled via --debug-code.
   void AssertFunction(Register object, Register scratch);
+
+  // Abort execution if argument is not a callable JSFunction, enabled via
+  // --debug-code.
+  void AssertCallableFunction(Register object, Register scratch);
 
   // Abort execution if argument is not a Constructor, enabled via --debug-code.
   void AssertConstructor(Register object);
@@ -692,7 +622,7 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
                                bool builtin_exit_frame = false);
 
   // Generates a trampoline to jump to the off-heap instruction stream.
-  void JumpToInstructionStream(Address entry);
+  void JumpToOffHeapInstructionStream(Address entry);
 
   // ---------------------------------------------------------------------------
   // Utilities
@@ -725,10 +655,6 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
   void StackOverflowCheck(Register num_args, Register scratch,
                           Label* stack_overflow, bool include_receiver = false);
 
-  static int SafepointRegisterStackIndex(Register reg) {
-    return SafepointRegisterStackIndex(reg.code());
-  }
-
  private:
   // Helper functions for generating invokes.
   void InvokePrologue(Register expected_parameter_count,
@@ -739,13 +665,6 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
   void EnterExitFrameEpilogue(int argc, bool save_doubles);
 
   void LeaveExitFrameEpilogue();
-
-  // Compute memory operands for safepoint stack slots.
-  static int SafepointRegisterStackIndex(int reg_code);
-
-  // Needs access to SafepointRegisterStackIndex for compiled frame
-  // traversal.
-  friend class CommonFrame;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(MacroAssembler);
 };

@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 
+#include "include/v8-function.h"
 #include "include/v8-profiler.h"
 #include "src/api/api-inl.h"
 #include "src/base/strings.h"
@@ -48,7 +49,7 @@ namespace internal {
 static bool IsAddressWithinFuncCode(JSFunction function, Isolate* isolate,
                                     void* addr) {
   i::AbstractCode code = function.abstract_code(isolate);
-  return code.contains(reinterpret_cast<Address>(addr));
+  return code.contains(isolate, reinterpret_cast<Address>(addr));
 }
 
 static bool IsAddressWithinFuncCode(v8::Local<v8::Context> context,

@@ -139,6 +139,26 @@ function transferArrayBuffer(buffer) {
   return res;
 }
 
+function isDetachedBuffer(buffer) {
+  if (ArrayBufferGetByteLength(buffer) === 0) {
+    // TODO(daeyeon): Consider using C++ builtin to improve performance.
+    try {
+      new Uint8Array(buffer);
+    } catch (error) {
+      assert(error.name === 'TypeError');
+      return true;
+    }
+  }
+  return false;
+}
+
+function isViewedArrayBufferDetached(view) {
+  return (
+    ArrayBufferViewGetByteLength(view) === 0 &&
+    isDetachedBuffer(ArrayBufferViewGetBuffer(view))
+  );
+}
+
 function dequeueValue(controller) {
   assert(controller[kState].queue !== undefined);
   assert(controller[kState].queueTotalSize !== undefined);
@@ -236,7 +256,9 @@ module.exports = {
   extractSizeAlgorithm,
   lazyTransfer,
   isBrandCheck,
+  isDetachedBuffer,
   isPromisePending,
+  isViewedArrayBufferDetached,
   peekQueueValue,
   resetQueue,
   setPromiseHandled,

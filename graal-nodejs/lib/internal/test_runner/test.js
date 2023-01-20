@@ -1,9 +1,11 @@
 'use strict';
 const {
+  ArrayPrototypeMap,
   ArrayPrototypePush,
   ArrayPrototypeReduce,
   ArrayPrototypeShift,
   ArrayPrototypeSlice,
+  ArrayPrototypeSome,
   ArrayPrototypeUnshift,
   FunctionPrototype,
   MathMax,
@@ -12,6 +14,7 @@ const {
   PromisePrototypeThen,
   PromiseResolve,
   ReflectApply,
+  RegExpPrototypeExec,
   SafeMap,
   SafeSet,
   SafePromiseAll,
@@ -30,7 +33,11 @@ const {
 } = require('internal/errors');
 const { getOptionValue } = require('internal/options');
 const { TapStream } = require('internal/test_runner/tap_stream');
-const { createDeferredCallback, isTestFailureError } = require('internal/test_runner/utils');
+const {
+  convertStringToRegExp,
+  createDeferredCallback,
+  isTestFailureError,
+} = require('internal/test_runner/utils');
 const {
   createDeferredPromise,
   kEmptyObject,
@@ -58,8 +65,13 @@ const kDefaultTimeout = null;
 const noop = FunctionPrototype;
 const isTestRunner = getOptionValue('--test');
 const testOnlyFlag = !isTestRunner && getOptionValue('--test-only');
-// TODO(cjihrig): Use uv_available_parallelism() once it lands.
-const rootConcurrency = isTestRunner ? MathMax(cpus().length - 1, 1) : 1;
+const testNamePatternFlag = isTestRunner ? null :
+  getOptionValue('--test-name-pattern');
+const testNamePatterns = testNamePatternFlag?.length > 0 ?
+  ArrayPrototypeMap(
+    testNamePatternFlag,
+    (re) => convertStringToRegExp(re, '--test-name-pattern')
+  ) : null;
 const kShouldAbort = Symbol('kShouldAbort');
 const kRunHook = Symbol('kRunHook');
 const kHookNames = ObjectSeal(['before', 'after', 'beforeEach', 'afterEach']);
@@ -150,7 +162,7 @@ class Test extends AsyncResource {
     }
 
     if (parent === null) {
-      this.concurrency = rootConcurrency;
+      this.concurrency = 1;
       this.indent = '';
       this.indentString = kDefaultIndent;
       this.only = testOnlyFlag;
@@ -180,7 +192,8 @@ class Test extends AsyncResource {
 
       case 'boolean':
         if (concurrency) {
-          this.concurrency = isTestRunner ? MathMax(cpus().length - 1, 1) : Infinity;
+          // TODO(cjihrig): Use uv_available_parallelism() once it lands.
+          this.concurrency = parent === null ? MathMax(cpus().length - 1, 1) : Infinity;
         } else {
           this.concurrency = 1;
         }
@@ -194,6 +207,18 @@ class Test extends AsyncResource {
     if (timeout != null && timeout !== Infinity) {
       validateNumber(timeout, 'options.timeout', 0, TIMEOUT_MAX);
       this.timeout = timeout;
+    }
+
+    if (testNamePatterns !== null) {
+      // eslint-disable-next-line no-use-before-define
+      const match = this instanceof TestHook || ArrayPrototypeSome(
+        testNamePatterns,
+        (re) => RegExpPrototypeExec(re, name) !== null
+      );
+
+      if (!match) {
+        skip = 'test name does not match pattern';
+      }
     }
 
     if (testOnlyFlag && !this.only) {
@@ -210,7 +235,6 @@ class Test extends AsyncResource {
 
     validateAbortSignal(signal, 'options.signal');
     this.#outerSignal?.addEventListener('abort', this.#abortHandler);
-
 
     this.fn = fn;
     this.name = name;
@@ -516,7 +540,7 @@ class Test extends AsyncResource {
   }
 
   postRun(pendingSubtestsError) {
-    let failedSubtests = 0;
+    const counters = { __proto__: null, failed: 0, passed: 0, cancelled: 0, skipped: 0, todo: 0, totalFailed: 0 };
 
     // If the test was failed before it even started, then the end time will
     // be earlier than the start time. Correct that here.
@@ -536,14 +560,28 @@ class Test extends AsyncResource {
         subtest.postRun(pendingSubtestsError);
       }
 
+      // Check SKIP and TODO tests first, as those should not be counted as
+      // failures.
+      if (subtest.skipped) {
+        counters.skipped++;
+      } else if (subtest.isTodo) {
+        counters.todo++;
+      } else if (subtest.cancelled) {
+        counters.cancelled++;
+      } else if (!subtest.passed) {
+        counters.failed++;
+      } else {
+        counters.passed++;
+      }
+
       if (!subtest.passed) {
-        failedSubtests++;
+        counters.totalFailed++;
       }
     }
 
-    if (this.passed && failedSubtests > 0) {
-      const subtestString = `subtest${failedSubtests > 1 ? 's' : ''}`;
-      const msg = `${failedSubtests} ${subtestString} failed`;
+    if ((this.passed || this.parent === null) && counters.totalFailed > 0) {
+      const subtestString = `subtest${counters.totalFailed > 1 ? 's' : ''}`;
+      const msg = `${counters.totalFailed} ${subtestString} failed`;
 
       this.fail(new ERR_TEST_FAILURE(msg, kSubtestsFailed));
     }
@@ -555,6 +593,22 @@ class Test extends AsyncResource {
       this.parent.addReadySubtest(this);
       this.parent.processReadySubtestRange(false);
       this.parent.processPendingSubtests();
+    } else if (!this.reported) {
+      this.reported = true;
+      this.reporter.plan(this.indent, this.subtests.length);
+
+      for (let i = 0; i < this.diagnostics.length; i++) {
+        this.reporter.diagnostic(this.indent, this.diagnostics[i]);
+      }
+
+      this.reporter.diagnostic(this.indent, `tests ${this.subtests.length}`);
+      this.reporter.diagnostic(this.indent, `pass ${counters.passed}`);
+      this.reporter.diagnostic(this.indent, `fail ${counters.failed}`);
+      this.reporter.diagnostic(this.indent, `cancelled ${counters.cancelled}`);
+      this.reporter.diagnostic(this.indent, `skipped ${counters.skipped}`);
+      this.reporter.diagnostic(this.indent, `todo ${counters.todo}`);
+      this.reporter.diagnostic(this.indent, `duration_ms ${this.#duration()}`);
+      this.reporter.push(null);
     }
   }
 
@@ -588,10 +642,12 @@ class Test extends AsyncResource {
     this.finished = true;
   }
 
+  #duration() {
+    // Duration is recorded in BigInt nanoseconds. Convert to milliseconds.
+    return Number(this.endTime - this.startTime) / 1_000_000;
+  }
+
   report() {
-    // Duration is recorded in BigInt nanoseconds. Convert to seconds.
-    const duration = Number(this.endTime - this.startTime) / 1_000_000_000;
-    const message = `- ${this.name}`;
     let directive;
 
     if (this.skipped) {
@@ -601,12 +657,10 @@ class Test extends AsyncResource {
     }
 
     if (this.passed) {
-      this.reporter.ok(this.indent, this.testNumber, message, directive);
+      this.reporter.ok(this.indent, this.testNumber, this.name, this.#duration(), directive);
     } else {
-      this.reporter.fail(this.indent, this.testNumber, message, directive);
+      this.reporter.fail(this.indent, this.testNumber, this.name, this.#duration(), this.error, directive);
     }
-
-    this.reporter.details(this.indent, duration, this.error);
 
     for (let i = 0; i < this.diagnostics.length; i++) {
       this.reporter.diagnostic(this.indent, this.diagnostics[i]);
@@ -630,6 +684,8 @@ class TestHook extends Test {
   getRunArgs() {
     return this.#args;
   }
+  postRun() {
+  }
 }
 
 class ItTest extends Test {
@@ -638,6 +694,7 @@ class ItTest extends Test {
     return { ctx: { signal: this.signal, name: this.name }, args: [] };
   }
 }
+
 class Suite extends Test {
   constructor(options) {
     super(options);
@@ -672,7 +729,6 @@ class Suite extends Test {
         this.postRun();
         return;
       }
-
 
       const hookArgs = this.getRunArgs();
       await this[kRunHook]('before', hookArgs);

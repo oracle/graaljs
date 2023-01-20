@@ -1595,6 +1595,9 @@ Type: End-of-Life
 
 <!-- YAML
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41479
+    description: End-of-Life.
   - version: v9.0.0
     pr-url: https://github.com/nodejs/node/pull/14249
     description: Runtime deprecation.
@@ -1603,25 +1606,15 @@ changes:
     description: Documentation-only deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
-`tls.parseCertString()` is a trivial parsing helper that was made public by
-mistake. This function can usually be replaced with:
+`tls.parseCertString()` was a trivial parsing helper that was made public by
+mistake. While it was supposed to parse certificate subject and issuer strings,
+it never handled multi-value Relative Distinguished Names correctly.
 
-```js
-const querystring = require('querystring');
-querystring.parse(str, '\n', '=');
-```
-
-This function is not completely equivalent to `querystring.parse()`. One
-difference is that `querystring.parse()` does url decoding:
-
-```console
-> querystring.parse('%E5%A5%BD=1', '\n', '=');
-{ '好': '1' }
-> tls.parseCertString('%E5%A5%BD=1');
-{ '%E5%A5%BD': '1' }
-```
+Earlier versions of this document suggested using `querystring.parse()` as an
+alternative to `tls.parseCertString()`. However, `querystring.parse()` also does
+not handle all certificate subjects correctly and should not be used.
 
 ### DEP0077: `Module._debug()`
 
@@ -2003,7 +1996,7 @@ changes:
 
 Type: Compile-time
 
-Certain versions of `node::MakeCallback` APIs available to native modules are
+Certain versions of `node::MakeCallback` APIs available to native addons are
 deprecated. Please use the versions of the API that accept an `async_context`
 parameter.
 
@@ -2295,7 +2288,9 @@ future release.
 
 <!-- YAML
 changes:
-  - version: v15.13.0
+  - version:
+      - v15.13.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/37784
     description: Deprecation revoked. Status changed to "Legacy".
   - version: v11.0.0
@@ -2751,7 +2746,7 @@ changes:
 Type: Documentation-only
 
 The `node:repl` module exports a `_builtinLibs` property that contains an array
-with native modules. It was incomplete so far and instead it's better to rely
+of built-in modules. It was incomplete so far and instead it's better to rely
 upon `require('node:module').builtinModules`.
 
 ### DEP0143: `Transform._transformState`
@@ -2857,6 +2852,9 @@ Use `fs.rm(path, { recursive: true, force: true })`,
 
 <!-- YAML
 changes:
+  - version: v17.0.0
+    pr-url: https://github.com/nodejs/node/pull/40121
+    description: End-of-Life.
   - version: v16.0.0
     pr-url: https://github.com/nodejs/node/pull/37215
     description: Runtime deprecation.
@@ -2870,9 +2868,9 @@ changes:
 
 Type: Runtime
 
-Using a trailing `"/"` to define
-[subpath folder mappings][] in the [subpath exports][] or
-[subpath imports][] fields is deprecated. Use [subpath patterns][] instead.
+Using a trailing `"/"` to define subpath folder mappings in the
+[subpath exports][] or [subpath imports][] fields is deprecated. Use
+[subpath patterns][] instead.
 
 ### DEP0149: `http.IncomingMessage#connection`
 
@@ -2891,12 +2889,15 @@ Prefer [`message.socket`][] over [`message.connection`][].
 
 <!-- YAML
 changes:
+  - version: v18.10.0
+    pr-url: https://github.com/nodejs/node/pull/43627
+    description: End-of-Life.
   - version: v16.0.0
     pr-url: https://github.com/nodejs/node/pull/36902
     description: Runtime deprecation.
 -->
 
-Type: Runtime
+Type: End-of-Life
 
 The `process.config` property provides access to Node.js compile-time settings.
 However, the property is mutable and therefore subject to tampering. The ability
@@ -2909,7 +2910,9 @@ changes:
   - version: v16.0.0
     pr-url: https://github.com/nodejs/node/pull/37206
     description: Runtime deprecation.
-  - version: v15.8.0
+  - version:
+      - v15.8.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/36918
     description: Documentation-only deprecation
                  with `--pending-deprecation` support.
@@ -2944,17 +2947,24 @@ deprecated and should no longer be used.
 
 <!-- YAML
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41431
+    description: End-of-Life.
+  - version: v17.0.0
+    pr-url: https://github.com/nodejs/node/pull/39793
+    description: Runtime deprecation.
   - version: v16.8.0
     pr-url: https://github.com/nodejs/node/pull/38906
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: End-of-Life
 
 Using a non-nullish non-integer value for `family` option, a non-nullish
 non-number value for `hints` option, a non-nullish non-boolean value for `all`
 option, or a non-nullish non-boolean value for `verbatim` option in
-[`dns.lookup()`][] and [`dnsPromises.lookup()`][] is deprecated.
+[`dns.lookup()`][] and [`dnsPromises.lookup()`][] throws an
+`ERR_INVALID_ARG_TYPE` error.
 
 ### DEP0154: RSA-PSS generate key pair options
 
@@ -2974,13 +2984,16 @@ and `'mgf1HashAlgorithm'`.
 
 <!-- YAML
 changes:
+  - version: v17.0.0
+    pr-url: https://github.com/nodejs/node/pull/40117
+    description: Runtime deprecation.
   - version: v16.10.0
     pr-url: https://github.com/nodejs/node/pull/40039
     description: Documentation-only deprecation
                  with `--pending-deprecation` support.
 -->
 
-Type: Documentation-only (supports [`--pending-deprecation`][])
+Type: Runtime
 
 The remapping of specifiers ending in `"/"` like `import 'pkg/x/'` is deprecated
 for package `"exports"` and `"imports"` pattern resolutions.
@@ -2989,7 +3002,9 @@ for package `"exports"` and `"imports"` pattern resolutions.
 
 <!-- YAML
 changes:
-  - version: v16.12.0
+  - version:
+    - v17.0.0
+    - v16.12.0
     pr-url: https://github.com/nodejs/node/pull/36670
     description: Documentation-only deprecation.
 -->
@@ -3012,12 +3027,17 @@ it was an aborted or graceful destroy.
 
 <!-- YAML
 changes:
-  - version: v16.14.0
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/40773
+    description: End-of-life.
+  - version:
+      - v17.2.0
+      - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/40860
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: End-of-Life
 
 An undocumented feature of Node.js streams was to support thenables in
 implementation methods. This is now deprecated, use callbacks instead and avoid
@@ -3040,7 +3060,9 @@ const w = new Writable({
 
 <!-- YAML
 changes:
-  - version: v16.15.0
+  - version:
+    - v17.5.0
+    - v16.15.0
     pr-url: https://github.com/nodejs/node/pull/41596
     description: Documentation-only deprecation.
 -->
@@ -3052,18 +3074,35 @@ This method was deprecated because it is not compatible with
 
 Use [`buffer.subarray`][] which does the same thing instead.
 
-<!-- md-lint skip-deprecation DEP0159 -->
+### DEP0159: `ERR_INVALID_CALLBACK`
+
+<!-- YAML
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: End-of-Life.
+-->
+
+Type: End-of-Life
+
+This error code was removed due to adding more confusion to
+the errors used for value type validation.
 
 ### DEP0160: `process.on('multipleResolves', handler)`
 
 <!-- YAML
 changes:
-  - version: v16.15.0
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41896
+    description: Runtime deprecation.
+  - version:
+    - v17.6.0
+    - v16.15.0
     pr-url: https://github.com/nodejs/node/pull/41872
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: Runtime.
 
 This event was deprecated because it did not work with V8 promise combinators
 which diminished its usefulness.
@@ -3072,7 +3111,9 @@ which diminished its usefulness.
 
 <!-- YAML
 changes:
-  - version: v16.15.0
+  - version:
+    - v17.6.0
+    - v16.15.0
     pr-url: https://github.com/nodejs/node/pull/41587
     description: Documentation-only deprecation.
 -->
@@ -3090,12 +3131,20 @@ resources and not the actual references.
 
 <!-- YAML
 changes:
-  - version: v16.15.0
+  - version: v18.10.0
+    pr-url: https://github.com/nodejs/node/pull/42796
+    description: End-of-Life.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42607
+    description: Runtime deprecation.
+  - version:
+    - v17.8.0
+    - v16.15.0
     pr-url: https://github.com/nodejs/node/pull/42149
     description: Documentation-only deprecation.
 -->
 
-Type: Documentation-only
+Type: End-of-Life
 
 Implicit coercion of objects with own `toString` property, passed as second
 parameter in [`fs.write()`][], [`fs.writeFile()`][], [`fs.appendFile()`][],
@@ -3106,7 +3155,9 @@ Convert them to primitive strings.
 
 <!-- YAML
 changes:
-  - version: v16.17.0
+  - version:
+    - v18.7.0
+    - v16.17.0
     pr-url: https://github.com/nodejs/node/pull/42714
     description: Documentation-only deprecation.
 -->
@@ -3124,11 +3175,13 @@ thing instead.
 
 <!-- YAML
 changes:
-  - version: v16.18.0
+  - version: v18.10.0
     pr-url: https://github.com/nodejs/node/pull/44714
     description: Documentation-only deprecation of `process.exitCode` integer
                  coercion.
-  - version: v16.17.0
+  - version:
+    - v18.7.0
+    - v16.17.0
     pr-url: https://github.com/nodejs/node/pull/43738
     description: Documentation-only deprecation of `process.exit(code)` integer
                  coercion.
@@ -3144,7 +3197,7 @@ Values other than `undefined`, `null`, integer numbers, and integer strings
 
 <!-- YAML
 changes:
-  - version: v16.18.0
+  - version: v18.8.0
     pr-url: https://github.com/nodejs/node/pull/44093
     description: Documentation-only deprecation.
 -->
@@ -3153,13 +3206,31 @@ Type: Documentation-only
 
 The [`--trace-atomics-wait`][] flag is deprecated.
 
-<!-- md-lint skip-deprecation DEP0166 -->
+### DEP0166: Double slashes in imports and exports targets
+
+<!-- YAML
+changes:
+  - version: v18.10.0
+    pr-url: https://github.com/nodejs/node/pull/44495
+    description: Runtime deprecation.
+  - version: v18.10.0
+    pr-url: https://github.com/nodejs/node/pull/44477
+    description: Documentation-only deprecation
+                 with `--pending-deprecation` support.
+-->
+
+Type: Runtime
+
+Package imports and exports targets mapping into paths including a double slash
+(of _"/"_ or _"\\"_) are deprecated and will fail with a resolution validation
+error in a future release. This same deprecation also applies to pattern matches
+starting or ending in a slash.
 
 ### DEP0167: Weak `DiffieHellmanGroup` instances (`modp1`, `modp2`, `modp5`)
 
 <!-- YAML
 changes:
-  - version: v16.18.0
+  - version: v18.10.0
     pr-url: https://github.com/nodejs/node/pull/44588
     description: Documentation-only deprecation.
 -->
@@ -3342,6 +3413,5 @@ Node-API callbacks.
 [legacy `urlObject`]: url.md#legacy-urlobject
 [static methods of `crypto.Certificate()`]: crypto.md#class-certificate
 [subpath exports]: packages.md#subpath-exports
-[subpath folder mappings]: packages.md#subpath-folder-mappings
 [subpath imports]: packages.md#subpath-imports
 [subpath patterns]: packages.md#subpath-patterns

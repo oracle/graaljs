@@ -4,12 +4,19 @@ import assert from 'assert';
 
 let curWarning = 0;
 const expectedWarnings = [
-  '"./sub/"',
-  '"./fallbackdir/"',
+  'Use of deprecated leading or trailing slash',
+  'Use of deprecated double slash',
+  './/asdf.js',
+  '".//internal/test.js"',
+  '".//internal//test.js"',
+  '"./////internal/////test.js"',
   '"./trailing-pattern-slash/"',
-  '"./subpath/"',
-  '"./subpath/dir1/"',
-  '"./subpath/dir2/"',
+  '"./subpath/dir1/dir1.js"',
+  '"./subpath//dir1/dir1.js"',
+  './/asdf.js',
+  '".//internal/test.js"',
+  '".//internal//test.js"',
+  '"./////internal/////test.js"',
   'no_exports',
   'default_index',
 ];

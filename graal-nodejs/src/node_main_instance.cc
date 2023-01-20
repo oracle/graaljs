@@ -1,6 +1,10 @@
 #include "node_main_instance.h"
 #include <memory>
+#if HAVE_OPENSSL
+#include "crypto/crypto_util.h"
+#endif  // HAVE_OPENSSL
 #include "debug_utils-inl.h"
+#include "node_builtins.h"
 #include "node_external_reference.h"
 #include "node_internals.h"
 #include "node_options-inl.h"
@@ -85,8 +89,7 @@ NodeMainInstance::NodeMainInstance(const SnapshotData* snapshot_data,
       event_loop,
       platform,
       array_buffer_allocator_.get(),
-      snapshot_data == nullptr ? nullptr
-                               : &(snapshot_data->isolate_data_indices));
+      snapshot_data == nullptr ? nullptr : &(snapshot_data->isolate_data_info));
   IsolateSettings s;
   SetIsolateMiscHandlers(isolate_, s);
   if (snapshot_data == nullptr) {
@@ -140,21 +143,6 @@ void NodeMainInstance::Run(int* exit_code, Environment* env) {
     *exit_code = SpinEventLoop(env).FromMaybe(1);
   }
 
-  ResetStdio();
-
-  // TODO(addaleax): Neither NODE_SHARED_MODE nor HAVE_INSPECTOR really
-  // make sense here.
-#if HAVE_INSPECTOR && defined(__POSIX__) && !defined(NODE_SHARED_MODE)
-  struct sigaction act;
-  memset(&act, 0, sizeof(act));
-  for (unsigned nr = 1; nr < kMaxSignal; nr += 1) {
-    if (nr == SIGKILL || nr == SIGSTOP || nr == SIGPROF)
-      continue;
-    act.sa_handler = (nr == SIGPIPE) ? SIG_IGN : SIG_DFL;
-    CHECK_EQ(0, sigaction(nr, &act, nullptr));
-  }
-#endif
-
 #if defined(LEAK_SANITIZER)
   __lsan_do_leak_check();
 #endif
@@ -184,12 +172,13 @@ NodeMainInstance::CreateMainEnvironment(int* exit_code) {
                               EnvironmentFlags::kDefaultFlags,
                               {}));
     context = Context::FromSnapshot(isolate_,
-                                    kNodeContextIndex,
+                                    SnapshotData::kNodeMainContextIndex,
                                     {DeserializeNodeInternalFields, env.get()})
                   .ToLocalChecked();
 
     CHECK(!context.IsEmpty());
     Context::Scope context_scope(context);
+
     CHECK(InitializeContextRuntime(context).IsJust());
     SetIsolateErrorHandlers(isolate_, {});
     env->InitializeMainContext(context, &(snapshot_data_->env_info));
@@ -197,6 +186,10 @@ NodeMainInstance::CreateMainEnvironment(int* exit_code) {
     env->InitializeInspector({});
 #endif
     env->DoneBootstrapping();
+
+#if HAVE_OPENSSL
+    crypto::InitCryptoOnce(isolate_);
+#endif  // HAVE_OPENSSL
   } else {
     context = NewContext(isolate_);
     CHECK(!context.IsEmpty());

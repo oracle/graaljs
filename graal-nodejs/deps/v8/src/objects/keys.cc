@@ -405,7 +405,7 @@ Handle<FixedArray> GetFastEnumPropertyKeys(Isolate* isolate,
     Object key = descriptors->GetKey(i);
     if (key.IsSymbol()) continue;
     keys->set(index, key);
-    if (details.location() != kField) fields_only = false;
+    if (details.location() != PropertyLocation::kField) fields_only = false;
     index++;
   }
   DCHECK_EQ(index, keys->length());
@@ -421,8 +421,8 @@ Handle<FixedArray> GetFastEnumPropertyKeys(Isolate* isolate,
       if (details.IsDontEnum()) continue;
       Object key = descriptors->GetKey(i);
       if (key.IsSymbol()) continue;
-      DCHECK_EQ(kData, details.kind());
-      DCHECK_EQ(kField, details.location());
+      DCHECK_EQ(PropertyKind::kData, details.kind());
+      DCHECK_EQ(PropertyLocation::kField, details.location());
       FieldIndex field_index = FieldIndex::ForDescriptor(*map, i);
       indices->set(index, Smi::FromInt(field_index.GetLoadByFieldIndex()));
       index++;
@@ -767,7 +767,7 @@ base::Optional<int> CollectOwnPropertyNamesInternal(
     }
 
     if (filter & ONLY_ALL_CAN_READ) {
-      if (details.kind() != kAccessor) continue;
+      if (details.kind() != PropertyKind::kAccessor) continue;
       Object accessors = descs->GetStrongValue(i);
       if (!accessors.IsAccessorInfo()) continue;
       if (!AccessorInfo::cast(accessors).all_can_read()) continue;
@@ -925,7 +925,7 @@ ExceptionStatus CollectKeysFromDictionary(Handle<Dictionary> dictionary,
         continue;
       }
       if (filter & ONLY_ALL_CAN_READ) {
-        if (details.kind() != kAccessor) continue;
+        if (details.kind() != PropertyKind::kAccessor) continue;
         Object accessors = raw_dictionary.ValueAt(i);
         if (!accessors.IsAccessorInfo()) continue;
         if (!AccessorInfo::cast(accessors).all_can_read()) continue;

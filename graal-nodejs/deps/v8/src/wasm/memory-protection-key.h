@@ -48,6 +48,10 @@ STATIC_ASSERT(kDisableAccess == PKEY_DISABLE_ACCESS);
 STATIC_ASSERT(kDisableWrite == PKEY_DISABLE_WRITE);
 #endif
 
+// Call exactly once per process to determine if PKU is supported on this
+// platform and initialize global data structures.
+void InitializeMemoryProtectionKeySupport();
+
 // Allocates a memory protection key on platforms with PKU support, returns
 // {kNoMemoryProtectionKey} on platforms without support or when allocation
 // failed at runtime.
@@ -81,6 +85,9 @@ bool SetPermissionsAndMemoryProtectionKey(
 // {kNoMemoryProtectionKey}.
 void SetPermissionsForMemoryProtectionKey(
     int key, MemoryProtectionKeyPermission permissions);
+
+// Get the permissions of the protection key {key} for the current thread.
+MemoryProtectionKeyPermission GetMemoryProtectionKeyPermission(int key);
 
 }  // namespace wasm
 }  // namespace internal

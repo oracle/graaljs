@@ -456,6 +456,16 @@ further errors except from `_destroy()` may be emitted as `'error'`.
 Implementors should not override this method,
 but instead implement [`writable._destroy()`][writable-_destroy].
 
+##### `writable.closed`
+
+<!-- YAML
+added: v18.0.0
+-->
+
+* {boolean}
+
+Is `true` after `'close'` has been emitted.
+
 ##### `writable.destroyed`
 
 <!-- YAML
@@ -589,7 +599,7 @@ the stream has not been destroyed, errored, or ended.
 ##### `writable.writableAborted`
 
 <!-- YAML
-added: v16.17.0
+added: v18.0.0
 -->
 
 > Stability: 1 - Experimental
@@ -622,6 +632,17 @@ added:
 
 Number of times [`writable.uncork()`][stream-uncork] needs to be
 called in order to fully uncork the stream.
+
+##### `writable.errored`
+
+<!-- YAML
+added:
+  v18.0.0
+-->
+
+* {Error}
+
+Returns error if the stream has been destroyed with an error.
 
 ##### `writable.writableFinished`
 
@@ -658,7 +679,9 @@ the status of the `highWaterMark`.
 ##### `writable.writableNeedDrain`
 
 <!-- YAML
-added: v15.2.0
+added:
+  - v15.2.0
+  - v14.17.0
 -->
 
 * {boolean}
@@ -1084,6 +1107,16 @@ further errors except from `_destroy()` may be emitted as `'error'`.
 Implementors should not override this method, but instead implement
 [`readable._destroy()`][readable-_destroy].
 
+##### `readable.closed`
+
+<!-- YAML
+added: v18.0.0
+-->
+
+* {boolean}
+
+Is `true` after `'close'` has been emitted.
+
 ##### `readable.destroyed`
 
 <!-- YAML
@@ -1319,7 +1352,9 @@ Returns whether the stream was destroyed or errored before emitting `'end'`.
 ##### `readable.readableDidRead`
 
 <!-- YAML
-added: v16.7.0
+added:
+  - v16.7.0
+  - v14.18.0
 -->
 
 > Stability: 1 - Experimental
@@ -1348,6 +1383,17 @@ added: v12.9.0
 * {boolean}
 
 Becomes `true` when [`'end'`][] event is emitted.
+
+##### `readable.errored`
+
+<!-- YAML
+added:
+  v18.0.0
+-->
+
+* {Error}
+
+Returns error if the stream has been destroyed with an error.
 
 ##### `readable.readableFlowing`
 
@@ -1645,9 +1691,6 @@ added: v16.3.0
   * `destroyOnReturn` {boolean} When set to `false`, calling `return` on the
     async iterator, or exiting a `for await...of` iteration using a `break`,
     `return`, or `throw` will not destroy the stream. **Default:** `true`.
-  * `destroyOnError` {boolean} When set to `false`, if the stream emits an
-    error while it's being iterated, the iterator will not destroy the stream.
-    **Default:** `true`.
 * Returns: {AsyncIterator} to consume the stream.
 
 The iterator created by this method gives users the option to cancel the
@@ -1693,7 +1736,9 @@ showBoth();
 ##### `readable.map(fn[, options])`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 > Stability: 1 - Experimental
@@ -1738,7 +1783,9 @@ for await (const result of dnsResults) {
 ##### `readable.filter(fn[, options])`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 > Stability: 1 - Experimental
@@ -1787,7 +1834,7 @@ for await (const result of dnsResults) {
 ##### `readable.forEach(fn[, options])`
 
 <!-- YAML
-added: v16.15.0
+added: v17.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -1828,7 +1875,7 @@ for await (const chunk of Readable.from([1, 2, 3, 4]).filter((x) => x > 2)) {
 }
 // With an asynchronous predicate, making at most 2 queries at a time.
 const resolver = new Resolver();
-const dnsResults = await Readable.from([
+const dnsResults = Readable.from([
   'nodejs.org',
   'openjsf.org',
   'www.linuxfoundation.org',
@@ -1846,7 +1893,7 @@ console.log('done'); // Stream has finished
 ##### `readable.toArray([options])`
 
 <!-- YAML
-added: v16.15.0
+added: v17.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -1884,7 +1931,7 @@ const dnsResults = await Readable.from([
 ##### `readable.some(fn[, options])`
 
 <!-- YAML
-added: v16.15.0
+added: v17.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -1933,7 +1980,7 @@ console.log('done'); // Stream has finished
 ##### `readable.find(fn[, options])`
 
 <!-- YAML
-added: v16.17.0
+added: v17.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -1983,7 +2030,7 @@ console.log('done'); // Stream has finished
 ##### `readable.every(fn[, options])`
 
 <!-- YAML
-added: v16.15.0
+added: v17.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -2032,7 +2079,7 @@ console.log('done'); // Stream has finished
 ##### `readable.flatMap(fn[, options])`
 
 <!-- YAML
-added: v16.15.0
+added: v17.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -2081,7 +2128,7 @@ for await (const result of concatResult) {
 ##### `readable.drop(limit[, options])`
 
 <!-- YAML
-added: v16.15.0
+added: v17.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -2103,7 +2150,7 @@ await Readable.from([1, 2, 3, 4]).drop(2).toArray(); // [3, 4]
 ##### `readable.take(limit[, options])`
 
 <!-- YAML
-added: v16.15.0
+added: v17.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -2125,7 +2172,7 @@ await Readable.from([1, 2, 3, 4]).take(2).toArray(); // [1, 2]
 ##### `readable.asIndexedPairs([options])`
 
 <!-- YAML
-added: v16.15.0
+added: v17.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -2149,7 +2196,7 @@ console.log(pairs); // [[0, 'a'], [1, 'b'], [2, 'c']]
 ##### `readable.reduce(fn[, initial[, options]])`
 
 <!-- YAML
-added: v16.15.0
+added: v17.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -2374,6 +2421,11 @@ const cleanup = finished(rs, (err) => {
 <!-- YAML
 added: v10.0.0
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v14.0.0
     pr-url: https://github.com/nodejs/node/pull/32158
     description: The `pipeline(..., cb)` will wait for the `'close'` event
@@ -2525,7 +2577,9 @@ run().catch(console.error);
 
 `stream.pipeline()` leaves dangling event listeners on the streams
 after the `callback` has been invoked. In the case of reuse of streams after
-failure, this can cause event listener leaks and swallowed errors.
+failure, this can cause event listener leaks and swallowed errors. If the last
+stream is readable, dangling event listeners will be removed so that the last
+stream can be consumed later.
 
 `stream.pipeline()` closes all the streams when an error is raised.
 The `IncomingRequest` usage with `pipeline` could lead to an unexpected behavior
@@ -2676,6 +2730,22 @@ Calling `Readable.from(string)` or `Readable.from(buffer)` will not have
 the strings or buffers be iterated to match the other streams semantics
 for performance reasons.
 
+### `stream.Readable.fromWeb(readableStream[, options])`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+> Stability: 1 - Experimental
+
+* `readableStream` {ReadableStream}
+* `options` {Object}
+  * `encoding` {string}
+  * `highWaterMark` {number}
+  * `objectMode` {boolean}
+  * `signal` {AbortSignal}
+* Returns: {stream.Readable}
+
 ### `stream.Readable.isDisturbed(stream)`
 
 <!-- YAML
@@ -2692,7 +2762,9 @@ Returns whether the stream has been read from or cancelled.
 ### `stream.isErrored(stream)`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.3.0
+  - v16.14.0
 -->
 
 > Stability: 1 - Experimental
@@ -2705,7 +2777,9 @@ Returns whether the stream has encountered an error.
 ### `stream.isReadable(stream)`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 > Stability: 1 - Experimental
@@ -2715,7 +2789,7 @@ added: v16.14.0
 
 Returns whether the stream is readable.
 
-### `stream.Readable.toWeb(streamReadable)`
+### `stream.Readable.toWeb(streamReadable[, options])`
 
 <!-- YAML
 added: v17.0.0
@@ -2724,6 +2798,10 @@ added: v17.0.0
 > Stability: 1 - Experimental
 
 * `streamReadable` {stream.Readable}
+* `options` {Object}
+  * `strategy` {Object}
+    * `highWaterMark` {number}
+    * `size` {Function}
 * Returns: {ReadableStream}
 
 ### `stream.Writable.fromWeb(writableStream[, options])`
@@ -2781,6 +2859,145 @@ A utility method for creating duplex streams.
   `Duplex` will write to the `writable` and read from the `readable`.
 * `Promise` converts into readable `Duplex`. Value `null` is ignored.
 * Returns: {stream.Duplex}
+
+### `stream.Duplex.fromWeb(pair[, options])`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+> Stability: 1 - Experimental
+
+* `pair` {Object}
+  * `readable` {ReadableStream}
+  * `writable` {WritableStream}
+* `options` {Object}
+  * `allowHalfOpen` {boolean}
+  * `decodeStrings` {boolean}
+  * `encoding` {string}
+  * `highWaterMark` {number}
+  * `objectMode` {boolean}
+  * `signal` {AbortSignal}
+* Returns: {stream.Duplex}
+
+```mjs
+import { Duplex } from 'node:stream';
+import {
+  ReadableStream,
+  WritableStream
+} from 'node:stream/web';
+
+const readable = new ReadableStream({
+  start(controller) {
+    controller.enqueue('world');
+  },
+});
+
+const writable = new WritableStream({
+  write(chunk) {
+    console.log('writable', chunk);
+  }
+});
+
+const pair = {
+  readable,
+  writable
+};
+const duplex = Duplex.fromWeb(pair, { encoding: 'utf8', objectMode: true });
+
+duplex.write('hello');
+
+for await (const chunk of duplex) {
+  console.log('readable', chunk);
+}
+```
+
+```cjs
+const { Duplex } = require('node:stream');
+const {
+  ReadableStream,
+  WritableStream
+} = require('node:stream/web');
+
+const readable = new ReadableStream({
+  start(controller) {
+    controller.enqueue('world');
+  },
+});
+
+const writable = new WritableStream({
+  write(chunk) {
+    console.log('writable', chunk);
+  }
+});
+
+const pair = {
+  readable,
+  writable
+};
+const duplex = Duplex.fromWeb(pair, { encoding: 'utf8', objectMode: true });
+
+duplex.write('hello');
+duplex.once('readable', () => console.log('readable', duplex.read()));
+```
+
+### `stream.Duplex.toWeb(streamDuplex)`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+> Stability: 1 - Experimental
+
+* `streamDuplex` {stream.Duplex}
+* Returns: {Object}
+  * `readable` {ReadableStream}
+  * `writable` {WritableStream}
+
+```mjs
+import { Duplex } from 'node:stream';
+
+const duplex = Duplex({
+  objectMode: true,
+  read() {
+    this.push('world');
+    this.push(null);
+  },
+  write(chunk, encoding, callback) {
+    console.log('writable', chunk);
+    callback();
+  }
+});
+
+const { readable, writable } = Duplex.toWeb(duplex);
+writable.getWriter().write('hello');
+
+const { value } = await readable.getReader().read();
+console.log('readable', value);
+```
+
+```cjs
+const { Duplex } = require('node:stream');
+
+const duplex = Duplex({
+  objectMode: true,
+  read() {
+    this.push('world');
+    this.push(null);
+  },
+  write(chunk, encoding, callback) {
+    console.log('writable', chunk);
+    callback();
+  }
+});
+
+const { readable, writable } = Duplex.toWeb(duplex);
+writable.getWriter().write('hello');
+
+readable.getReader().read().then((result) => {
+  console.log('readable', result.value);
+});
+```
 
 ### `stream.addAbortSignal(signal, stream)`
 

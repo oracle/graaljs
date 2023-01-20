@@ -135,9 +135,20 @@ const noop = () => {};
 
 const kPerfHooksNetConnectContext = Symbol('kPerfHooksNetConnectContext');
 
-const dc = require('diagnostics_channel');
-const netClientSocketChannel = dc.channel('net.client.socket');
-const netServerSocketChannel = dc.channel('net.server.socket');
+let netClientSocketChannel;
+let netServerSocketChannel;
+function lazyChannels() {
+  // TODO(joyeecheung): support diagnostics channels in the snapshot.
+  // For now it is fine to create them lazily when there isn't a snapshot to
+  // build. If users need the channels they would have to create them first
+  // before invoking any built-ins that would publish to these channels
+  // anyway.
+  if (netClientSocketChannel === undefined) {
+    const dc = require('diagnostics_channel');
+    netClientSocketChannel = dc.channel('net.client.socket');
+    netServerSocketChannel = dc.channel('net.server.socket');
+  }
+}
 
 const {
   hasObserver,
@@ -210,6 +221,7 @@ function connect(...args) {
   const options = normalized[0];
   debug('createConnection', normalized);
   const socket = new Socket(options);
+  lazyChannels();
   if (netClientSocketChannel.hasSubscribers) {
     netClientSocketChannel.publish({
       socket,
@@ -810,7 +822,7 @@ Socket.prototype._reset = function() {
 };
 
 Socket.prototype._getpeername = function() {
-  if (!this._handle || !this._handle.getpeername) {
+  if (!this._handle || !this._handle.getpeername || this.connecting) {
     return this._peername || {};
   } else if (!this._peername) {
     const out = {};
@@ -1103,6 +1115,16 @@ Socket.prototype.connect = function(...args) {
   return this;
 };
 
+function socketToDnsFamily(family) {
+  switch (family) {
+    case 'IPv4':
+      return 4;
+    case 'IPv6':
+      return 6;
+  }
+
+  return family;
+}
 
 function lookupAndConnect(self, options) {
   const { localAddress, localPort } = options;
@@ -1145,7 +1167,7 @@ function lookupAndConnect(self, options) {
 
   if (dns === undefined) dns = require('dns');
   const dnsopts = {
-    family: options.family,
+    family: socketToDnsFamily(options.family),
     hints: options.hints || 0
   };
 
@@ -1746,6 +1768,7 @@ function onconnection(err, clientHandle) {
 
   DTRACE_NET_SERVER_CONNECTION(socket);
   self.emit('connection', socket);
+  lazyChannels();
   if (netServerSocketChannel.hasSubscribers) {
     netServerSocketChannel.publish({
       socket,

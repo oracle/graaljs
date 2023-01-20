@@ -27,6 +27,7 @@
 
 #include <stdlib.h>
 
+#include "include/v8-function.h"
 #include "src/api/api-inl.h"
 #include "src/execution/frames-inl.h"
 #include "src/strings/string-stream.h"
@@ -315,7 +316,7 @@ THREADED_TEST(HandleScopePop) {
   int count_before =
       i::HandleScope::NumberOfHandles(reinterpret_cast<i::Isolate*>(isolate));
   {
-    v8::HandleScope scope(isolate);
+    v8::HandleScope inner_scope(isolate);
     CompileRun(
         "for (var i = 0; i < 1000; i++) {"
         "  obj.one;"

@@ -98,12 +98,12 @@ class CodeEventListener {
   // Not handlified as this happens during GC. No allocation allowed.
   virtual void CodeMoveEvent(AbstractCode from, AbstractCode to) = 0;
   virtual void SharedFunctionInfoMoveEvent(Address from, Address to) = 0;
+  virtual void NativeContextMoveEvent(Address from, Address to) = 0;
   virtual void CodeMovingGCEvent() = 0;
   virtual void CodeDisableOptEvent(Handle<AbstractCode> code,
                                    Handle<SharedFunctionInfo> shared) = 0;
   virtual void CodeDeoptEvent(Handle<Code> code, DeoptimizeKind kind,
-                              Address pc, int fp_to_sp_delta,
-                              bool reuse_code) = 0;
+                              Address pc, int fp_to_sp_delta) = 0;
   // These events can happen when 1. an assumption made by optimized code fails
   // or 2. a weakly embedded object dies.
   virtual void CodeDependencyChangeEvent(Handle<Code> code,
@@ -217,6 +217,11 @@ class CodeEventDispatcher : public CodeEventListener {
       listener->SharedFunctionInfoMoveEvent(from, to);
     });
   }
+  void NativeContextMoveEvent(Address from, Address to) override {
+    DispatchEventToListeners([=](CodeEventListener* listener) {
+      listener->NativeContextMoveEvent(from, to);
+    });
+  }
   void CodeMovingGCEvent() override {
     DispatchEventToListeners(
         [](CodeEventListener* listener) { listener->CodeMovingGCEvent(); });
@@ -228,9 +233,9 @@ class CodeEventDispatcher : public CodeEventListener {
     });
   }
   void CodeDeoptEvent(Handle<Code> code, DeoptimizeKind kind, Address pc,
-                      int fp_to_sp_delta, bool reuse_code) override {
+                      int fp_to_sp_delta) override {
     DispatchEventToListeners([=](CodeEventListener* listener) {
-      listener->CodeDeoptEvent(code, kind, pc, fp_to_sp_delta, reuse_code);
+      listener->CodeDeoptEvent(code, kind, pc, fp_to_sp_delta);
     });
   }
   void CodeDependencyChangeEvent(Handle<Code> code,

@@ -14,16 +14,10 @@ extern class InterpreterData extends Struct {
   @ifnot(V8_EXTERNAL_CODE_SPACE) interpreter_trampoline: Code;
 }
 
-@generatePrint
-extern class BaselineData extends Struct {
-  @if(V8_EXTERNAL_CODE_SPACE) baseline_code: CodeDataContainer;
-  @ifnot(V8_EXTERNAL_CODE_SPACE) baseline_code: Code;
-  data: BytecodeArray|InterpreterData;
-}
-
 type FunctionKind extends uint8 constexpr 'FunctionKind';
 type FunctionSyntaxKind extends uint8 constexpr 'FunctionSyntaxKind';
 type BailoutReason extends uint8 constexpr 'BailoutReason';
+type OSRCodeCacheStateOfSFI extends uint8 constexpr 'OSRCodeCacheStateOfSFI';
 
 bitfield struct SharedFunctionInfoFlags extends uint32 {
   // Have FunctionKind first to make it cheaper to access.
@@ -44,30 +38,35 @@ bitfield struct SharedFunctionInfoFlags extends uint32 {
   is_top_level: bool: 1 bit;
   properties_are_final: bool: 1 bit;
   private_name_lookup_skips_outer_class: bool: 1 bit;
+  osr_code_cache_state: OSRCodeCacheStateOfSFI: 2 bit;
 }
 
 bitfield struct SharedFunctionInfoFlags2 extends uint8 {
   class_scope_has_private_brand: bool: 1 bit;
   has_static_private_methods_or_accessors: bool: 1 bit;
+  maglev_compilation_failed: bool: 1 bit;
 }
 
-@export
-@customCppClass
-@customMap  // Just to place the map at the beginning of the roots array.
-class SharedFunctionInfo extends HeapObject {
+@generateBodyDescriptor
+extern class SharedFunctionInfo extends HeapObject {
   // function_data field is treated as a custom weak pointer. We visit this
   // field as a weak pointer if there is aged bytecode. If there is no bytecode
   // or if the bytecode is young then we treat it as a strong pointer. This is
   // done to support flushing of bytecode.
-  weak function_data: Object;
+  @customWeakMarking function_data: Object;
   name_or_scope_info: String|NoSharedNameSentinel|ScopeInfo;
   outer_scope_info_or_feedback_metadata: HeapObject;
   script_or_debug_info: Script|DebugInfo|Undefined;
-  // [length]: The function length - usually the number of declared parameters.
+  // [length]: The function length - usually the number of declared parameters
+  // (always without the receiver).
   // Use up to 2^16-2 parameters (16 bits of values, where one is reserved for
   // kDontAdaptArgumentsSentinel). The value is only reliable when the function
   // has been compiled.
   length: int16;
+  // [formal_parameter_count]: The number of declared parameters (or the special
+  // value kDontAdaptArgumentsSentinel to indicate that arguments are passed
+  // unaltered).
+  // In contrast to [length], formal_parameter_count includes the receiver.
   formal_parameter_count: uint16;
   function_token_offset: uint16;
   // [expected_nof_properties]: Expected number of properties for the
@@ -84,24 +83,68 @@ class SharedFunctionInfo extends HeapObject {
   @if(V8_SFI_HAS_UNIQUE_ID) unique_id: int32;
 }
 
-@abstract
+const kDontAdaptArgumentsSentinel: constexpr int32
+    generates 'kDontAdaptArgumentsSentinel';
+
 @export
-@customCppClass
-class UncompiledData extends HeapObject {
+macro LoadSharedFunctionInfoFormalParameterCountWithoutReceiver(
+    sfi: SharedFunctionInfo): uint16 {
+  let formalParameterCount = sfi.formal_parameter_count;
+  if (Convert<int32>(formalParameterCount) != kDontAdaptArgumentsSentinel) {
+    formalParameterCount =
+        Convert<uint16>(formalParameterCount - kJSArgcReceiverSlots);
+  }
+  return formalParameterCount;
+}
+
+@export
+macro LoadSharedFunctionInfoFormalParameterCountWithReceiver(
+    sfi: SharedFunctionInfo): uint16 {
+  return sfi.formal_parameter_count;
+}
+
+@export
+macro IsSharedFunctionInfoDontAdaptArguments(sfi: SharedFunctionInfo): bool {
+  const formalParameterCount = sfi.formal_parameter_count;
+  return Convert<int32>(formalParameterCount) == kDontAdaptArgumentsSentinel;
+}
+
+@abstract
+extern class UncompiledData extends HeapObject {
   inferred_name: String;
   start_position: int32;
   end_position: int32;
 }
 
-@export
-@customCppClass
-class UncompiledDataWithoutPreparseData extends UncompiledData {
+@generateBodyDescriptor
+@generateUniqueMap
+@generateFactoryFunction
+extern class UncompiledDataWithoutPreparseData extends UncompiledData {
 }
 
-@export
-@customCppClass
-class UncompiledDataWithPreparseData extends UncompiledData {
+@generateBodyDescriptor
+@generateUniqueMap
+@generateFactoryFunction
+extern class UncompiledDataWithPreparseData extends UncompiledData {
   preparse_data: PreparseData;
+}
+
+@generateBodyDescriptor
+@generateUniqueMap
+@generateFactoryFunction
+extern class UncompiledDataWithoutPreparseDataWithJob extends
+    UncompiledDataWithoutPreparseData {
+  // TODO(v8:10391): Define the field as ExternalPointer or move jobs into cage.
+  job: RawPtr;
+}
+
+@generateBodyDescriptor
+@generateUniqueMap
+@generateFactoryFunction
+extern class UncompiledDataWithPreparseDataAndJob extends
+    UncompiledDataWithPreparseData {
+  // TODO(v8:10391): Define the field as ExternalPointer or move jobs into cage.
+  job: RawPtr;
 }
 
 @export

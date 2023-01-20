@@ -124,7 +124,8 @@ const {
   // Properties for heap code statistics buffer extraction.
   kCodeAndMetadataSizeIndex,
   kBytecodeAndMetadataSizeIndex,
-  kExternalScriptSourceSizeIndex
+  kExternalScriptSourceSizeIndex,
+  kCPUProfilerMetaDataSizeIndex,
 } = binding;
 
 const kNumberOfHeapSpaces = kHeapSpaces.length;
@@ -212,6 +213,7 @@ function getHeapSpaceStatistics() {
  *   code_and_metadata_size: number;
  *   bytecode_and_metadata_size: number;
  *   external_script_source_size: number;
+ *   cpu_profiler_metadata_size: number;
  *   }}
  */
 function getHeapCodeStatistics() {
@@ -221,7 +223,8 @@ function getHeapCodeStatistics() {
   return {
     code_and_metadata_size: buffer[kCodeAndMetadataSizeIndex],
     bytecode_and_metadata_size: buffer[kBytecodeAndMetadataSizeIndex],
-    external_script_source_size: buffer[kExternalScriptSourceSizeIndex]
+    external_script_source_size: buffer[kExternalScriptSourceSizeIndex],
+    cpu_profiler_metadata_size: buffer[kCPUProfilerMetaDataSizeIndex],
   };
 }
 

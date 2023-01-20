@@ -66,7 +66,7 @@ const tsp = require('timers/promises');
   }, /ERR_MISSING_ARGS/);
   assert.throws(() => {
     pipeline();
-  }, /ERR_INVALID_CALLBACK/);
+  }, /ERR_INVALID_ARG_TYPE/);
 }
 
 {
@@ -560,7 +560,7 @@ const tsp = require('timers/promises');
 
   assert.throws(
     () => pipeline(read, transform, write),
-    { code: 'ERR_INVALID_CALLBACK' }
+    { code: 'ERR_INVALID_ARG_TYPE' }
   );
 }
 
@@ -1027,7 +1027,7 @@ const tsp = require('timers/promises');
   const src = new PassThrough();
   const dst = new PassThrough();
   pipeline(src, dst, common.mustSucceed(() => {
-    assert.strictEqual(dst.destroyed, true);
+    assert.strictEqual(dst.destroyed, false);
   }));
   src.end();
 }
@@ -1037,7 +1037,7 @@ const tsp = require('timers/promises');
   const dst = new PassThrough();
   dst.readable = false;
   pipeline(src, dst, common.mustSucceed(() => {
-    assert.strictEqual(dst.destroyed, false);
+    assert.strictEqual(dst.destroyed, true);
   }));
   src.end();
 }
@@ -1461,7 +1461,7 @@ const tsp = require('timers/promises');
 
     await pipelinePromise(read, duplex);
 
-    assert.strictEqual(duplex.destroyed, true);
+    assert.strictEqual(duplex.destroyed, false);
   }
 
   run().then(common.mustCall());
@@ -1486,4 +1486,73 @@ const tsp = require('timers/promises');
   }
 
   run().then(common.mustCall());
+}
+
+{
+  const s = new PassThrough({ objectMode: true });
+  pipeline(async function*() {
+    await Promise.resolve();
+    yield 'hello';
+    yield 'world';
+    yield 'world';
+  }, s, async function(source) {
+    let ret = '';
+    let n = 0;
+    for await (const chunk of source) {
+      if (n++ > 1) {
+        break;
+      }
+      ret += chunk;
+    }
+    return ret;
+  }, common.mustCall((err, val) => {
+    assert.strictEqual(err, undefined);
+    assert.strictEqual(val, 'helloworld');
+    assert.strictEqual(s.destroyed, true);
+  }));
+}
+
+{
+  const s = new PassThrough({ objectMode: true });
+  pipeline(async function*() {
+    await Promise.resolve();
+    yield 'hello';
+    yield 'world';
+    yield 'world';
+  }, s, async function(source) {
+    return null;
+  }, common.mustCall((err, val) => {
+    assert.strictEqual(err, undefined);
+    assert.strictEqual(val, null);
+  }));
+}
+
+{
+  // Mimics a legacy stream without the .destroy method
+  class LegacyWritable extends Stream {
+    write(chunk, encoding, callback) {
+      callback();
+    }
+  }
+
+  const writable = new LegacyWritable();
+  writable.on('error', common.mustCall((err) => {
+    assert.deepStrictEqual(err, new Error('stop'));
+  }));
+
+  pipeline(
+    Readable.from({
+      [Symbol.asyncIterator]() {
+        return {
+          next() {
+            return Promise.reject(new Error('stop'));
+          }
+        };
+      }
+    }),
+    writable,
+    common.mustCall((err) => {
+      assert.deepStrictEqual(err, new Error('stop'));
+    })
+  );
 }

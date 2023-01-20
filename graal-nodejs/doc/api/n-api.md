@@ -201,9 +201,9 @@ GitHub projects using CMake.js.
 #### prebuildify
 
 [prebuildify][] is a tool based on node-gyp. The advantage of prebuildify is
-that the built binaries are bundled with the native module when it's
+that the built binaries are bundled with the native addon when it's
 uploaded to npm. The binaries are downloaded from npm and are immediately
-available to the module user when the native module is installed.
+available to the module user when the native addon is installed.
 
 ## Usage
 
@@ -1182,7 +1182,9 @@ This API throws a JavaScript `RangeError` with the text provided.
 #### `node_api_throw_syntax_error`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.2.0
+  - v16.14.0
 -->
 
 > Stability: 1 - Experimental
@@ -1301,7 +1303,9 @@ This API returns a JavaScript `RangeError` with the text provided.
 #### `node_api_create_syntax_error`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.2.0
+  - v16.14.0
 -->
 
 > Stability: 1 - Experimental
@@ -1380,7 +1384,7 @@ callback throws an exception with no way to recover.
 
 ### Fatal errors
 
-In the event of an unrecoverable error in a native module, a fatal error can be
+In the event of an unrecoverable error in a native addon, a fatal error can be
 thrown to immediately terminate the process.
 
 #### `napi_fatal_error`
@@ -2507,7 +2511,7 @@ of the ECMAScript Language Specification.
 #### `node_api_symbol_for`
 
 <!-- YAML
-added: v16.15.0
+added: v17.5.0
 -->
 
 > Stability: 1 - Experimental
@@ -5718,7 +5722,7 @@ Returns `napi_ok` if the API succeeded.
 
 This function gives V8 an indication of the amount of externally allocated
 memory that is kept alive by JavaScript objects (i.e. a JavaScript object
-that points to its own memory allocated by a native module). Registering
+that points to its own memory allocated by a native addon). Registering
 externally allocated memory will trigger global garbage collections more
 often than it would otherwise.
 
@@ -6268,6 +6272,7 @@ This API may only be called from the main thread.
 <!-- YAML
 added:
   - v15.9.0
+  - v14.18.0
   - v12.22.0
 -->
 

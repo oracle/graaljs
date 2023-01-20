@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "include/v8-function.h"
 #include "src/flags/flags.h"
 #include "test/cctest/compiler/node-observer-tester.h"
 #include "test/cctest/test-api.h"
@@ -17,7 +18,7 @@ void CompileRunWithNodeObserver(const std::string& js_code,
                                 IrOpcode::Value updated_call_opcode2) {
   LocalContext env;
   v8::Isolate* isolate = env->GetIsolate();
-  v8::HandleScope scope(isolate);
+  v8::HandleScope handle_scope(isolate);
 
   FLAG_allow_natives_syntax = true;
   FLAG_turbo_optimize_apply = true;

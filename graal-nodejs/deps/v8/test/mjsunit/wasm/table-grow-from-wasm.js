@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --expose-wasm --experimental-wasm-reftypes
+// Flags: --expose-wasm
 
 d8.file.execute("test/mjsunit/wasm/wasm-module-builder.js");
 
@@ -130,7 +130,7 @@ testGrowInternalAnyFuncTable(9);
   const table = new WebAssembly.Table({element: "externref", initial: size});
 
   const instance = builder.instantiate({imp: {table: table}});
-  assertEquals(null, table.get(size - 2));
+  assertEquals(undefined, table.get(size - 2));
 
   function growAndCheck(element, grow_by) {
     assertEquals(size, instance.exports.size());

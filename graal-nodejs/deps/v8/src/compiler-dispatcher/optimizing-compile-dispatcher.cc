@@ -9,34 +9,19 @@
 #include "src/codegen/optimized-compilation-info.h"
 #include "src/execution/isolate.h"
 #include "src/execution/local-isolate.h"
+#include "src/handles/handles-inl.h"
 #include "src/heap/local-heap.h"
 #include "src/heap/parked-scope.h"
 #include "src/init/v8.h"
 #include "src/logging/counters.h"
 #include "src/logging/log.h"
 #include "src/logging/runtime-call-stats-scope.h"
-#include "src/objects/objects-inl.h"
+#include "src/objects/js-function.h"
 #include "src/tasks/cancelable-task.h"
 #include "src/tracing/trace-event.h"
 
 namespace v8 {
 namespace internal {
-
-namespace {
-
-void DisposeCompilationJob(OptimizedCompilationJob* job,
-                           bool restore_function_code) {
-  if (restore_function_code) {
-    Handle<JSFunction> function = job->compilation_info()->closure();
-    function->set_code(function->shared().GetCode(), kReleaseStore);
-    if (function->IsInOptimizationQueue()) {
-      function->ClearOptimizationMarker();
-    }
-  }
-  delete job;
-}
-
-}  // namespace
 
 class OptimizingCompileDispatcher::CompileTask : public CancelableTask {
  public:
@@ -58,18 +43,11 @@ class OptimizingCompileDispatcher::CompileTask : public CancelableTask {
  private:
   // v8::Task overrides.
   void RunInternal() override {
-#ifdef V8_RUNTIME_CALL_STATS
-    WorkerThreadRuntimeCallStatsScope runtime_call_stats_scope(
-        worker_thread_runtime_call_stats_);
-    LocalIsolate local_isolate(isolate_, ThreadKind::kBackground,
-                               runtime_call_stats_scope.Get());
-#else   // V8_RUNTIME_CALL_STATS
     LocalIsolate local_isolate(isolate_, ThreadKind::kBackground);
-#endif  // V8_RUNTIME_CALL_STATS
     DCHECK(local_isolate.heap()->IsParked());
 
     {
-      RCS_SCOPE(runtime_call_stats_scope.Get(),
+      RCS_SCOPE(&local_isolate,
                 RuntimeCallCounterId::kOptimizeBackgroundDispatcherJob);
 
       TimerEventScope<TimerEventRecompileConcurrent> timer(isolate_);
@@ -103,18 +81,18 @@ OptimizingCompileDispatcher::~OptimizingCompileDispatcher() {
   DeleteArray(input_queue_);
 }
 
-OptimizedCompilationJob* OptimizingCompileDispatcher::NextInput(
+TurbofanCompilationJob* OptimizingCompileDispatcher::NextInput(
     LocalIsolate* local_isolate) {
   base::MutexGuard access_input_queue_(&input_queue_mutex_);
   if (input_queue_length_ == 0) return nullptr;
-  OptimizedCompilationJob* job = input_queue_[InputQueueIndex(0)];
+  TurbofanCompilationJob* job = input_queue_[InputQueueIndex(0)];
   DCHECK_NOT_NULL(job);
   input_queue_shift_ = InputQueueIndex(1);
   input_queue_length_--;
   return job;
 }
 
-void OptimizingCompileDispatcher::CompileNext(OptimizedCompilationJob* job,
+void OptimizingCompileDispatcher::CompileNext(TurbofanCompilationJob* job,
                                               LocalIsolate* local_isolate) {
   if (!job) return;
 
@@ -136,26 +114,27 @@ void OptimizingCompileDispatcher::CompileNext(OptimizedCompilationJob* job,
 
 void OptimizingCompileDispatcher::FlushOutputQueue(bool restore_function_code) {
   for (;;) {
-    OptimizedCompilationJob* job = nullptr;
+    std::unique_ptr<TurbofanCompilationJob> job;
     {
       base::MutexGuard access_output_queue_(&output_queue_mutex_);
       if (output_queue_.empty()) return;
-      job = output_queue_.front();
+      job.reset(output_queue_.front());
       output_queue_.pop();
     }
 
-    DisposeCompilationJob(job, restore_function_code);
+    Compiler::DisposeTurbofanCompilationJob(job.get(), restore_function_code);
   }
 }
 
 void OptimizingCompileDispatcher::FlushInputQueue() {
   base::MutexGuard access_input_queue_(&input_queue_mutex_);
   while (input_queue_length_ > 0) {
-    OptimizedCompilationJob* job = input_queue_[InputQueueIndex(0)];
+    std::unique_ptr<TurbofanCompilationJob> job(
+        input_queue_[InputQueueIndex(0)]);
     DCHECK_NOT_NULL(job);
     input_queue_shift_ = InputQueueIndex(1);
     input_queue_length_--;
-    DisposeCompilationJob(job, true);
+    Compiler::DisposeTurbofanCompilationJob(job.get(), true);
   }
 }
 
@@ -173,7 +152,6 @@ void OptimizingCompileDispatcher::AwaitCompileTasks() {
 
 void OptimizingCompileDispatcher::FlushQueues(
     BlockingBehavior blocking_behavior, bool restore_function_code) {
-  if (FLAG_block_concurrent_recompilation) Unblock();
   FlushInputQueue();
   if (blocking_behavior == BlockingBehavior::kBlock) {
     base::MutexGuard lock_guard(&ref_count_mutex_);
@@ -204,25 +182,29 @@ void OptimizingCompileDispatcher::InstallOptimizedFunctions() {
   HandleScope handle_scope(isolate_);
 
   for (;;) {
-    OptimizedCompilationJob* job = nullptr;
+    std::unique_ptr<TurbofanCompilationJob> job;
     {
       base::MutexGuard access_output_queue_(&output_queue_mutex_);
       if (output_queue_.empty()) return;
-      job = output_queue_.front();
+      job.reset(output_queue_.front());
       output_queue_.pop();
     }
     OptimizedCompilationInfo* info = job->compilation_info();
     Handle<JSFunction> function(*info->closure(), isolate_);
-    if (function->HasAvailableCodeKind(info->code_kind())) {
+
+    // If another racing task has already finished compiling and installing the
+    // requested code kind on the function, throw out the current job.
+    if (!info->is_osr() && function->HasAvailableCodeKind(info->code_kind())) {
       if (FLAG_trace_concurrent_recompilation) {
         PrintF("  ** Aborting compilation for ");
         function->ShortPrint();
         PrintF(" as it has already been optimized.\n");
       }
-      DisposeCompilationJob(job, false);
-    } else {
-      Compiler::FinalizeOptimizedCompilationJob(job, isolate_);
+      Compiler::DisposeTurbofanCompilationJob(job.get(), false);
+      continue;
     }
+
+    Compiler::FinalizeTurbofanCompilationJob(job.get(), isolate_);
   }
 }
 
@@ -231,11 +213,11 @@ bool OptimizingCompileDispatcher::HasJobs() {
   // Note: This relies on {output_queue_} being mutated by a background thread
   // only when {ref_count_} is not zero. Also, {ref_count_} is never incremented
   // by a background thread.
-  return ref_count_ != 0 || !output_queue_.empty() || blocked_jobs_ != 0;
+  return ref_count_ != 0 || !output_queue_.empty();
 }
 
 void OptimizingCompileDispatcher::QueueForOptimization(
-    OptimizedCompilationJob* job) {
+    TurbofanCompilationJob* job) {
   DCHECK(IsQueueAvailable());
   {
     // Add job to the back of the input queue.
@@ -244,20 +226,8 @@ void OptimizingCompileDispatcher::QueueForOptimization(
     input_queue_[InputQueueIndex(input_queue_length_)] = job;
     input_queue_length_++;
   }
-  if (FLAG_block_concurrent_recompilation) {
-    blocked_jobs_++;
-  } else {
-    V8::GetCurrentPlatform()->CallOnWorkerThread(
-        std::make_unique<CompileTask>(isolate_, this));
-  }
-}
-
-void OptimizingCompileDispatcher::Unblock() {
-  while (blocked_jobs_ > 0) {
-    V8::GetCurrentPlatform()->CallOnWorkerThread(
-        std::make_unique<CompileTask>(isolate_, this));
-    blocked_jobs_--;
-  }
+  V8::GetCurrentPlatform()->CallOnWorkerThread(
+      std::make_unique<CompileTask>(isolate_, this));
 }
 
 }  // namespace internal

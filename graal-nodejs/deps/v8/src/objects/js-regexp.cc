@@ -6,6 +6,7 @@
 
 #include "src/base/strings.h"
 #include "src/common/globals.h"
+#include "src/objects/code.h"
 #include "src/objects/js-array-inl.h"
 #include "src/objects/js-regexp-inl.h"
 #include "src/regexp/regexp.h"
@@ -105,70 +106,44 @@ Handle<JSRegExpResultIndices> JSRegExpResultIndices::BuildIndices(
   return indices;
 }
 
-uint32_t JSRegExp::BacktrackLimit() const {
-  CHECK_EQ(TypeTag(), IRREGEXP);
+uint32_t JSRegExp::backtrack_limit() const {
+  CHECK_EQ(type_tag(), IRREGEXP);
   return static_cast<uint32_t>(Smi::ToInt(DataAt(kIrregexpBacktrackLimit)));
 }
 
 // static
-JSRegExp::Flags JSRegExp::FlagsFromString(Isolate* isolate,
-                                          Handle<String> flags, bool* success) {
-  int length = flags->length();
-  if (length == 0) {
-    *success = true;
-    return JSRegExp::kNone;
-  }
+base::Optional<JSRegExp::Flags> JSRegExp::FlagsFromString(
+    Isolate* isolate, Handle<String> flags) {
+  const int length = flags->length();
+
   // A longer flags string cannot be valid.
-  if (length > JSRegExp::kFlagCount) return JSRegExp::Flags(0);
-  JSRegExp::Flags value(0);
-  if (flags->IsSeqOneByteString()) {
-    DisallowGarbageCollection no_gc;
-    SeqOneByteString seq_flags = SeqOneByteString::cast(*flags);
-    for (int i = 0; i < length; i++) {
-      base::Optional<JSRegExp::Flag> maybe_flag =
-          JSRegExp::FlagFromChar(seq_flags.Get(i));
-      if (!maybe_flag.has_value()) return JSRegExp::Flags(0);
-      JSRegExp::Flag flag = *maybe_flag;
-      // Duplicate flag.
-      if (value & flag) return JSRegExp::Flags(0);
-      value |= flag;
-    }
-  } else {
-    flags = String::Flatten(isolate, flags);
-    DisallowGarbageCollection no_gc;
-    String::FlatContent flags_content = flags->GetFlatContent(no_gc);
-    for (int i = 0; i < length; i++) {
-      base::Optional<JSRegExp::Flag> maybe_flag =
-          JSRegExp::FlagFromChar(flags_content.Get(i));
-      if (!maybe_flag.has_value()) return JSRegExp::Flags(0);
-      JSRegExp::Flag flag = *maybe_flag;
-      // Duplicate flag.
-      if (value & flag) return JSRegExp::Flags(0);
-      value |= flag;
-    }
+  if (length > JSRegExp::kFlagCount) return {};
+
+  RegExpFlags value;
+  FlatStringReader reader(isolate, String::Flatten(isolate, flags));
+
+  for (int i = 0; i < length; i++) {
+    base::Optional<RegExpFlag> flag = JSRegExp::FlagFromChar(reader.Get(i));
+    if (!flag.has_value()) return {};
+    if (value & flag.value()) return {};  // Duplicate.
+    value |= flag.value();
   }
-  *success = true;
-  return value;
+
+  return JSRegExp::AsJSRegExpFlags(value);
 }
 
 // static
 Handle<String> JSRegExp::StringFromFlags(Isolate* isolate,
                                          JSRegExp::Flags flags) {
-  // Ensure that this function is up-to-date with the supported flag options.
-  constexpr size_t kFlagCount = JSRegExp::kFlagCount;
-  STATIC_ASSERT(kFlagCount == 8);
-
-  // Translate to the lexicographically smaller string.
+  static constexpr int kStringTerminator = 1;
   int cursor = 0;
-  char buffer[kFlagCount] = {'\0'};
-  if (flags & JSRegExp::kHasIndices) buffer[cursor++] = 'd';
-  if (flags & JSRegExp::kGlobal) buffer[cursor++] = 'g';
-  if (flags & JSRegExp::kIgnoreCase) buffer[cursor++] = 'i';
-  if (flags & JSRegExp::kLinear) buffer[cursor++] = 'l';
-  if (flags & JSRegExp::kMultiline) buffer[cursor++] = 'm';
-  if (flags & JSRegExp::kDotAll) buffer[cursor++] = 's';
-  if (flags & JSRegExp::kUnicode) buffer[cursor++] = 'u';
-  if (flags & JSRegExp::kSticky) buffer[cursor++] = 'y';
+  char buffer[kFlagCount + kStringTerminator];
+#define V(Lower, Camel, LowerCamel, Char, Bit) \
+  if (flags & JSRegExp::k##Camel) buffer[cursor++] = Char;
+  REGEXP_FLAG_LIST(V)
+#undef V
+  buffer[cursor++] = '\0';
+  DCHECK_LE(cursor, kFlagCount + kStringTerminator);
   return isolate->factory()->NewStringFromAsciiChecked(buffer);
 }
 
@@ -182,16 +157,32 @@ MaybeHandle<JSRegExp> JSRegExp::New(Isolate* isolate, Handle<String> pattern,
   return JSRegExp::Initialize(regexp, pattern, flags, backtrack_limit);
 }
 
-Object JSRegExp::Code(bool is_latin1) const {
-  DCHECK_EQ(TypeTag(), JSRegExp::IRREGEXP);
+Object JSRegExp::code(bool is_latin1) const {
+  DCHECK_EQ(type_tag(), JSRegExp::IRREGEXP);
   Object value = DataAt(code_index(is_latin1));
   DCHECK_IMPLIES(V8_EXTERNAL_CODE_SPACE_BOOL, value.IsSmi() || value.IsCodeT());
   return value;
 }
 
-Object JSRegExp::Bytecode(bool is_latin1) const {
-  DCHECK_EQ(TypeTag(), JSRegExp::IRREGEXP);
+void JSRegExp::set_code(bool is_latin1, Handle<Code> code) {
+  SetDataAt(code_index(is_latin1), ToCodeT(*code));
+}
+
+Object JSRegExp::bytecode(bool is_latin1) const {
+  DCHECK(type_tag() == JSRegExp::IRREGEXP ||
+         type_tag() == JSRegExp::EXPERIMENTAL);
   return DataAt(bytecode_index(is_latin1));
+}
+
+void JSRegExp::set_bytecode_and_trampoline(Isolate* isolate,
+                                           Handle<ByteArray> bytecode) {
+  SetDataAt(kIrregexpLatin1BytecodeIndex, *bytecode);
+  SetDataAt(kIrregexpUC16BytecodeIndex, *bytecode);
+
+  Handle<CodeT> trampoline =
+      BUILTIN_CODE(isolate, RegExpExperimentalTrampoline);
+  SetDataAt(JSRegExp::kIrregexpLatin1CodeIndex, *trampoline);
+  SetDataAt(JSRegExp::kIrregexpUC16CodeIndex, *trampoline);
 }
 
 bool JSRegExp::ShouldProduceBytecode() {
@@ -201,7 +192,7 @@ bool JSRegExp::ShouldProduceBytecode() {
 
 // Only irregexps are subject to tier-up.
 bool JSRegExp::CanTierUp() {
-  return FLAG_regexp_tier_up && TypeTag() == JSRegExp::IRREGEXP;
+  return FLAG_regexp_tier_up && type_tag() == JSRegExp::IRREGEXP;
 }
 
 // An irregexp is considered to be marked for tier up if the tier-up ticks
@@ -218,7 +209,7 @@ bool JSRegExp::MarkedForTierUp() {
 
 void JSRegExp::ResetLastTierUpTick() {
   DCHECK(FLAG_regexp_tier_up);
-  DCHECK_EQ(TypeTag(), JSRegExp::IRREGEXP);
+  DCHECK_EQ(type_tag(), JSRegExp::IRREGEXP);
   int tier_up_ticks = Smi::ToInt(DataAt(kIrregexpTicksUntilTierUpIndex)) + 1;
   FixedArray::cast(data()).set(JSRegExp::kIrregexpTicksUntilTierUpIndex,
                                Smi::FromInt(tier_up_ticks));
@@ -226,7 +217,7 @@ void JSRegExp::ResetLastTierUpTick() {
 
 void JSRegExp::TierUpTick() {
   DCHECK(FLAG_regexp_tier_up);
-  DCHECK_EQ(TypeTag(), JSRegExp::IRREGEXP);
+  DCHECK_EQ(type_tag(), JSRegExp::IRREGEXP);
   int tier_up_ticks = Smi::ToInt(DataAt(kIrregexpTicksUntilTierUpIndex));
   if (tier_up_ticks == 0) {
     return;
@@ -237,7 +228,7 @@ void JSRegExp::TierUpTick() {
 
 void JSRegExp::MarkTierUpForNextExec() {
   DCHECK(FLAG_regexp_tier_up);
-  DCHECK_EQ(TypeTag(), JSRegExp::IRREGEXP);
+  DCHECK_EQ(type_tag(), JSRegExp::IRREGEXP);
   FixedArray::cast(data()).set(JSRegExp::kIrregexpTicksUntilTierUpIndex,
                                Smi::zero());
 }
@@ -247,15 +238,15 @@ MaybeHandle<JSRegExp> JSRegExp::Initialize(Handle<JSRegExp> regexp,
                                            Handle<String> source,
                                            Handle<String> flags_string) {
   Isolate* isolate = regexp->GetIsolate();
-  bool success = false;
-  Flags flags = JSRegExp::FlagsFromString(isolate, flags_string, &success);
-  if (!success) {
+  base::Optional<Flags> flags =
+      JSRegExp::FlagsFromString(isolate, flags_string);
+  if (!flags.has_value()) {
     THROW_NEW_ERROR(
         isolate,
         NewSyntaxError(MessageTemplate::kInvalidRegExpFlags, flags_string),
         JSRegExp);
   }
-  return Initialize(regexp, source, flags);
+  return Initialize(regexp, source, flags.value());
 }
 
 namespace {
@@ -417,7 +408,9 @@ MaybeHandle<JSRegExp> JSRegExp::Initialize(Handle<JSRegExp> regexp,
   source = String::Flatten(isolate, source);
 
   RETURN_ON_EXCEPTION(
-      isolate, RegExp::Compile(isolate, regexp, source, flags, backtrack_limit),
+      isolate,
+      RegExp::Compile(isolate, regexp, source, JSRegExp::AsRegExpFlags(flags),
+                      backtrack_limit),
       JSRegExp);
 
   Handle<String> escaped_source;

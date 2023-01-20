@@ -151,7 +151,7 @@ const {
 
 const assert = require('internal/assert');
 
-const { NativeModule } = require('internal/bootstrap/loaders');
+const { BuiltinModule } = require('internal/bootstrap/loaders');
 const {
   validateObject,
   validateString,
@@ -1017,7 +1017,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
     } else if (isModuleNamespaceObject(value)) {
       braces[0] = `${getPrefix(constructor, tag, 'Module')}{`;
       // Special handle keys for namespace objects.
-      formatter = formatNamespaceObject.bind(null, keys);
+      formatter = FunctionPrototypeBind(formatNamespaceObject, null, keys);
     } else if (isBoxedPrimitive(value)) {
       base = getBoxedBase(value, ctx, keys, constructor, tag);
       if (keys.length === 0 && protoProps === undefined) {
@@ -1043,7 +1043,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
   }
   recurseTimes += 1;
 
-  ctx.seen.push(value);
+  ArrayPrototypePush(ctx.seen, value);
   ctx.currentDepth = recurseTimes;
   let output;
   const indentationLvl = ctx.indentationLvl;
@@ -1074,7 +1074,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       }
     }
   }
-  ctx.seen.pop();
+  ArrayPrototypePop(ctx.seen);
 
   if (ctx.sorted) {
     const comparator = ctx.sorted === true ? undefined : ctx.sorted;
@@ -1395,7 +1395,7 @@ function formatError(err, constructor, tag, ctx, keys) {
       let esmWorkingDirectory;
       for (let line of lines) {
         const core = RegExpPrototypeExec(coreModuleRegExp, line);
-        if (core !== null && NativeModule.exists(core[1])) {
+        if (core !== null && BuiltinModule.exists(core[1])) {
           newStack += `\n${ctx.stylize(line, 'undefined')}`;
         } else {
           newStack += '\n';
@@ -1538,7 +1538,7 @@ function groupArrayElements(ctx, output, value) {
 
 function handleMaxCallStackSize(ctx, err, constructorName, indentationLvl) {
   if (isStackOverflowError(err)) {
-    ctx.seen.pop();
+    ArrayPrototypePop(ctx.seen);
     ctx.indentationLvl = indentationLvl;
     return ctx.stylize(
       `[${constructorName}: Inspection interrupted ` +
@@ -1572,8 +1572,6 @@ function addNumericSeparatorEnd(integerString) {
     integerString :
     `${result}${StringPrototypeSlice(integerString, i)}`;
 }
-
-const remainingText = (remaining) => `... ${remaining} more item${remaining > 1 ? 's' : ''}`;
 
 function formatNumber(fn, number, numericSeparator) {
   if (!numericSeparator) {
@@ -1707,7 +1705,7 @@ function formatSpecialArray(ctx, value, recurseTimes, maxLength, output, i) {
       ArrayPrototypePush(output, ctx.stylize(message, 'undefined'));
     }
   } else if (remaining > 0) {
-    ArrayPrototypePush(output, remainingText(remaining));
+    ArrayPrototypePush(output, `... ${remaining} more item${remaining > 1 ? 's' : ''}`);
   }
   return output;
 }
@@ -1746,7 +1744,7 @@ function formatArray(ctx, value, recurseTimes) {
     ArrayPrototypePush(output, formatProperty(ctx, value, recurseTimes, i, kArrayType));
   }
   if (remaining > 0) {
-    ArrayPrototypePush(output, remainingText(remaining));
+    ArrayPrototypePush(output, `... ${remaining} more item${remaining > 1 ? 's' : ''}`);
   }
   return output;
 }
@@ -1762,7 +1760,7 @@ function formatTypedArray(value, length, ctx, ignored, recurseTimes) {
     output[i] = elementFormatter(ctx.stylize, value[i], ctx.numericSeparator);
   }
   if (remaining > 0) {
-    output[maxLength] = remainingText(remaining);
+    output[maxLength] = `... ${remaining} more item${remaining > 1 ? 's' : ''}`;
   }
   if (ctx.showHidden) {
     // .buffer goes last, it's not a primitive like the others.
@@ -1784,41 +1782,23 @@ function formatTypedArray(value, length, ctx, ignored, recurseTimes) {
 }
 
 function formatSet(value, ctx, ignored, recurseTimes) {
-  const length = value.size;
-  const maxLength = MathMin(MathMax(0, ctx.maxArrayLength), length);
-  const remaining = length - maxLength;
   const output = [];
   ctx.indentationLvl += 2;
-  let i = 0;
   for (const v of value) {
-    if (i >= maxLength) break;
     ArrayPrototypePush(output, formatValue(ctx, v, recurseTimes));
-    i++;
-  }
-  if (remaining > 0) {
-    ArrayPrototypePush(output, remainingText(remaining));
   }
   ctx.indentationLvl -= 2;
   return output;
 }
 
 function formatMap(value, ctx, ignored, recurseTimes) {
-  const length = value.size;
-  const maxLength = MathMin(MathMax(0, ctx.maxArrayLength), length);
-  const remaining = length - maxLength;
   const output = [];
   ctx.indentationLvl += 2;
-  let i = 0;
   for (const { 0: k, 1: v } of value) {
-    if (i >= maxLength) break;
     ArrayPrototypePush(
       output,
-      `${formatValue(ctx, k, recurseTimes)} => ${formatValue(ctx, v, recurseTimes)}`,
+      `${formatValue(ctx, k, recurseTimes)} => ${formatValue(ctx, v, recurseTimes)}`
     );
-    i++;
-  }
-  if (remaining > 0) {
-    ArrayPrototypePush(output, remainingText(remaining));
   }
   ctx.indentationLvl -= 2;
   return output;
@@ -1841,7 +1821,8 @@ function formatSetIterInner(ctx, recurseTimes, entries, state) {
   }
   const remaining = entries.length - maxLength;
   if (remaining > 0) {
-    ArrayPrototypePush(output, remainingText(remaining));
+    ArrayPrototypePush(output,
+                       `... ${remaining} more item${remaining > 1 ? 's' : ''}`);
   }
   return output;
 }
@@ -1879,7 +1860,7 @@ function formatMapIterInner(ctx, recurseTimes, entries, state) {
   }
   ctx.indentationLvl -= 2;
   if (remaining > 0) {
-    ArrayPrototypePush(output, remainingText(remaining));
+    ArrayPrototypePush(output, `... ${remaining} more item${remaining > 1 ? 's' : ''}`);
   }
   return output;
 }
@@ -2312,7 +2293,7 @@ if (internalBinding('config').hasIntl) {
     for (let i = 0; i < str.length; i++) {
       // Try to avoid calling into C++ by first handling the ASCII portion of
       // the string. If it is fully ASCII, we skip the C++ part.
-      const code = str.charCodeAt(i);
+      const code = StringPrototypeCharCodeAt(str, i);
       if (code >= 127) {
         width += icu.getStringWidth(StringPrototypeNormalize(StringPrototypeSlice(str, i), 'NFC'));
         break;

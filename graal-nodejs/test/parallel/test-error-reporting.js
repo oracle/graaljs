@@ -79,11 +79,10 @@ errExec('throws_error6.js', common.mustCall((err, stdout, stderr) => {
 
 // Object that throws in toString() doesn't print garbage
 errExec('throws_error7.js', common.mustCall((err, stdout, stderr) => {
-  assert.match(stderr,
-               /throw {\r?\n\^\r?\n{ toString: \[Function: toString] }\r?\n$/);
+  assert.match(stderr, /throw {\r?\n\^\r?\n{ toString: \[Function: toString] }\r?\n\r?\nNode\.js \S+\r?\n$/);
 }));
 
 // Regression tests for https://github.com/nodejs/node/issues/39149
 errExec('throws_error7.js', '--enable-source-maps', common.mustCall((err, stdout, stderr) => {
-  assert.match(stderr, /throw {\r?\n\^\r?\n{ toString: \[Function: toString] }\r?\n$/);
+  assert.match(stderr, /throw {\r?\n\^\r?\n{ toString: \[Function: toString] }\r?\n\r?\nNode\.js \S+\r?\n$/);
 }));

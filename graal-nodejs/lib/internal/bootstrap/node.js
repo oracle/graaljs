@@ -34,7 +34,7 @@
 //   `MessagePort` implementation.
 // - `lib/internal/bootstrap/loaders.js`: this sets up internal binding and
 //   module loaders, including `process.binding()`, `process._linkedBinding()`,
-//   `internalBinding()` and `NativeModule`.
+//   `internalBinding()` and `BuiltinModule`.
 //
 // The initialization done in this script is included in both the main thread
 // and the worker threads. After this, further initialization is done based
@@ -61,7 +61,6 @@ const {
   FunctionPrototypeCall,
   JSONParse,
   ObjectDefineProperty,
-  ObjectDefineProperties,
   ObjectGetPrototypeOf,
   ObjectPreventExtensions,
   ObjectSetPrototypeOf,
@@ -72,7 +71,11 @@ const {
 } = primordials;
 const config = internalBinding('config');
 const internalTimers = require('internal/timers');
-const { deprecate } = require('internal/util');
+const {
+  defineOperation,
+  deprecate,
+  exposeInterface,
+} = require('internal/util');
 const {
   exiting_aliased_Uint32Array,
   getHiddenValue,
@@ -108,7 +111,7 @@ process.domain = null;
 process._exiting = false;
 
 // process.config is serialized config.gypi
-const nativeModule = internalBinding('native_module');
+const nativeModule = internalBinding('builtins');
 
 // TODO(@jasnell): Once this has gone through one full major
 // release cycle, remove the Proxy and setter and update the
@@ -247,66 +250,20 @@ const {
   queueMicrotask
 } = require('internal/process/task_queues');
 
-if (!config.noBrowserGlobals) {
-  // Override global console from the one provided by the VM
-  // to the one implemented by Node.js
-  // https://console.spec.whatwg.org/#console-namespace
-  exposeNamespace(globalThis, 'console',
-                  createGlobalConsole(globalThis.console));
+// Non-standard extensions:
+const { BroadcastChannel } = require('internal/worker/io');
+exposeInterface(globalThis, 'BroadcastChannel', BroadcastChannel);
 
-  const { URL, URLSearchParams } = require('internal/url');
-  // https://url.spec.whatwg.org/#url
-  exposeInterface(globalThis, 'URL', URL);
-  // https://url.spec.whatwg.org/#urlsearchparams
-  exposeInterface(globalThis, 'URLSearchParams', URLSearchParams);
+defineOperation(globalThis, 'queueMicrotask', queueMicrotask);
 
-  const {
-    TextEncoder, TextDecoder
-  } = require('internal/encoding');
-  // https://encoding.spec.whatwg.org/#textencoder
-  exposeInterface(globalThis, 'TextEncoder', TextEncoder);
-  // https://encoding.spec.whatwg.org/#textdecoder
-  exposeInterface(globalThis, 'TextDecoder', TextDecoder);
+const timers = require('timers');
+defineOperation(globalThis, 'clearImmediate', timers.clearImmediate);
+defineOperation(globalThis, 'setImmediate', timers.setImmediate);
 
-  const {
-    AbortController,
-    AbortSignal,
-  } = require('internal/abort_controller');
-  exposeInterface(globalThis, 'AbortController', AbortController);
-  exposeInterface(globalThis, 'AbortSignal', AbortSignal);
-
-  const {
-    EventTarget,
-    Event,
-  } = require('internal/event_target');
-  exposeInterface(globalThis, 'EventTarget', EventTarget);
-  exposeInterface(globalThis, 'Event', Event);
-  const {
-    MessageChannel,
-    MessagePort,
-    MessageEvent,
-  } = require('internal/worker/io');
-  exposeInterface(globalThis, 'MessageChannel', MessageChannel);
-  exposeInterface(globalThis, 'MessagePort', MessagePort);
-  exposeInterface(globalThis, 'MessageEvent', MessageEvent);
-
-  // https://html.spec.whatwg.org/multipage/webappapis.html#windoworworkerglobalscope
-  const timers = require('timers');
-  defineOperation(globalThis, 'clearInterval', timers.clearInterval);
-  defineOperation(globalThis, 'clearTimeout', timers.clearTimeout);
-  defineOperation(globalThis, 'setInterval', timers.setInterval);
-  defineOperation(globalThis, 'setTimeout', timers.setTimeout);
-
-  defineOperation(globalThis, 'queueMicrotask', queueMicrotask);
-
-  // https://www.w3.org/TR/hr-time-2/#the-performance-attribute
-  defineReplacableAttribute(globalThis, 'performance',
-                            require('perf_hooks').performance);
-
-  // Non-standard extensions:
-  defineOperation(globalThis, 'clearImmediate', timers.clearImmediate);
-  defineOperation(globalThis, 'setImmediate', timers.setImmediate);
-}
+const {
+  structuredClone,
+} = require('internal/structured_clone');
+defineOperation(globalThis, 'structuredClone', structuredClone);
 
 // Set the per-Environment callback that will be called
 // when the TrackingTraceStateObserver updates trace state.
@@ -356,9 +313,8 @@ const features = {
   tls_sni: hasOpenSSL,
   tls_ocsp: hasOpenSSL,
   tls: hasOpenSSL,
-  // This needs to be dynamic because snapshot is built without code cache.
-  // TODO(joyeecheung): https://github.com/nodejs/node/issues/31074
-  // Make it possible to build snapshot with code cache
+  // This needs to be dynamic because --no-node-snapshot disables the
+  // code cache even if the binary is built with embedded code cache.
   get cached_builtins() {
     return nativeModule.hasCachedBuiltins();
   }
@@ -426,6 +382,9 @@ require('v8');
 require('vm');
 require('url');
 require('internal/options');
+if (config.hasOpenSSL) {
+  require('crypto');
+}
 
 function setupPrepareStackTrace() {
   const {
@@ -458,13 +417,21 @@ function setupProcessObject() {
     configurable: false,
     value: 'process'
   });
-  // Make process globally available to users by putting it on the global proxy
+
+  // Create global.process as getters so that we have a
+  // deprecation path for these in ES Modules.
+  // See https://github.com/nodejs/node/pull/26334.
+  let _process = process;
   ObjectDefineProperty(globalThis, 'process', {
     __proto__: null,
-    value: process,
+    get() {
+      return _process;
+    },
+    set(value) {
+      _process = value;
+    },
     enumerable: false,
-    writable: true,
-    configurable: true
+    configurable: true,
   });
 }
 
@@ -482,8 +449,6 @@ function setupGlobalProxy() {
 function setupBuffer() {
   const {
     Buffer,
-    atob,
-    btoa,
   } = require('buffer');
   const bufferBinding = internalBinding('buffer');
 
@@ -492,88 +457,19 @@ function setupBuffer() {
   delete bufferBinding.setBufferPrototype;
   delete bufferBinding.zeroFill;
 
-  ObjectDefineProperties(globalThis, {
-    'Buffer': {
-      __proto__: null,
-      value: Buffer,
-      enumerable: false,
-      writable: true,
-      configurable: true,
-    },
-    'atob': {
-      __proto__: null,
-      value: atob,
-      enumerable: false,
-      writable: true,
-      configurable: true,
-    },
-    'btoa': {
-      __proto__: null,
-      value: btoa,
-      enumerable: false,
-      writable: true,
-      configurable: true,
-    },
-  });
-}
-
-function createGlobalConsole(consoleFromVM) {
-  const consoleFromNode =
-    require('internal/console/global');
-  if (config.hasInspector) {
-    const inspector = require('internal/util/inspector');
-    // This will be exposed by `require('inspector').console` later.
-    inspector.consoleFromVM = consoleFromVM;
-    // TODO(joyeecheung): postpone this until the first time inspector
-    // is activated.
-    inspector.wrapConsole(consoleFromNode, consoleFromVM);
-    const { setConsoleExtensionInstaller } = internalBinding('inspector');
-    // Setup inspector command line API.
-    setConsoleExtensionInstaller(inspector.installConsoleExtensions);
-  }
-  return consoleFromNode;
-}
-
-// https://heycam.github.io/webidl/#es-namespaces
-function exposeNamespace(target, name, namespaceObject) {
-  ObjectDefineProperty(target, name, {
+  // Create global.Buffer as getters so that we have a
+  // deprecation path for these in ES Modules.
+  // See https://github.com/nodejs/node/pull/26334.
+  let _Buffer = Buffer;
+  ObjectDefineProperty(globalThis, 'Buffer', {
     __proto__: null,
-    writable: true,
+    get() {
+      return _Buffer;
+    },
+    set(value) {
+      _Buffer = value;
+    },
     enumerable: false,
     configurable: true,
-    value: namespaceObject
-  });
-}
-
-// https://heycam.github.io/webidl/#es-interfaces
-function exposeInterface(target, name, interfaceObject) {
-  ObjectDefineProperty(target, name, {
-    __proto__: null,
-    writable: true,
-    enumerable: false,
-    configurable: true,
-    value: interfaceObject
-  });
-}
-
-// https://heycam.github.io/webidl/#define-the-operations
-function defineOperation(target, name, method) {
-  ObjectDefineProperty(target, name, {
-    __proto__: null,
-    writable: true,
-    enumerable: true,
-    configurable: true,
-    value: method
-  });
-}
-
-// https://heycam.github.io/webidl/#Replaceable
-function defineReplacableAttribute(target, name, value) {
-  ObjectDefineProperty(target, name, {
-    __proto__: null,
-    writable: true,
-    enumerable: true,
-    configurable: true,
-    value,
   });
 }

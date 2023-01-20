@@ -323,8 +323,6 @@ public final class GraalJSAccess {
     public static final HiddenKey ACCESSOR_KEY = new HiddenKey("Accessor");
     public static final HiddenKey OBJECT_TEMPLATE_KEY = new HiddenKey("ObjectTemplate");
 
-    public static final HiddenKey EXTERNALIZED_KEY = new HiddenKey("Externalized");
-
     // Placeholders returned by a native function when a primitive value
     // written into a shared buffer should be returned instead
     private static final Object INT_PLACEHOLDER = new Object();
@@ -335,7 +333,6 @@ public final class GraalJSAccess {
     private final JSContext mainJSContext;
     private final JSRealm mainJSRealm;
     private final NodeJSAgent agent;
-    private final Deallocator deallocator;
     private ESModuleLoader moduleLoader;
 
     /** Env that can be used for accessing instruments when no context is active anymore. */
@@ -430,7 +427,6 @@ public final class GraalJSAccess {
         agent = new NodeJSAgent();
         mainJSRealm.setAgent(agent);
         agent.interopBoundaryEnter();
-        deallocator = new Deallocator();
         envForInstruments = mainJSRealm.getEnv();
         // Disallow importing dynamically unless ESM Loader (--experimental-modules) is enabled.
         isolateEnableImportModuleDynamically(false);
@@ -830,6 +826,10 @@ public final class GraalJSAccess {
 
     public Object valueTypeOf(Object value) {
         return JSRuntime.typeof(value);
+    }
+
+    public Object valueToDetailString(Object value) {
+        return JSRuntime.safeToString(value);
     }
 
     public Object objectNew(Object context) {
@@ -1275,9 +1275,9 @@ public final class GraalJSAccess {
                     return JSFunction.getRealm((JSFunctionObject) constructor);
                 }
             }
-        } else if (JSRuntime.isCallableProxy(object)) {
-            // Callable Proxy: get the creation context from the target function.
-            return objectCreationContext(JSProxy.getTarget(object));
+        } else {
+            JSDynamicObject proxyPrototypeFromCreationContext = JSObjectUtil.getPrototype(object);
+            return objectCreationContextFromConstructor(proxyPrototypeFromCreationContext);
         }
         return mainJSRealm;
     }
@@ -1306,11 +1306,8 @@ public final class GraalJSAccess {
         return JSArray.arrayGetLength((JSDynamicObject) object);
     }
 
-    public Object arrayBufferNew(Object context, Object buffer, long pointer) {
+    public Object arrayBufferNew(Object context, Object buffer) {
         ByteBuffer byteBuffer = (ByteBuffer) buffer;
-        if (pointer != 0) {
-            deallocator.register(byteBuffer, pointer);
-        }
         JSRealm realm = (JSRealm) context;
         JSContext jsContext = realm.getContext();
         JSDynamicObject arrayBuffer;
@@ -1319,7 +1316,6 @@ public final class GraalJSAccess {
         } else {
             arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(jsContext, realm, byteBuffer);
         }
-        JSObjectUtil.putHiddenProperty(arrayBuffer, EXTERNALIZED_KEY, pointer == 0);
         return arrayBuffer;
     }
 
@@ -1430,15 +1426,6 @@ public final class GraalJSAccess {
         return arrayBufferViewByteLength(JSObject.getJSContext(dynamicObject), dynamicObject);
     }
 
-    public boolean arrayBufferIsExternal(Object arrayBuffer) {
-        return JSObjectUtil.getHiddenProperty((JSDynamicObject) arrayBuffer, EXTERNALIZED_KEY) == Boolean.TRUE;
-    }
-
-    public void arrayBufferExternalize(Object arrayBuffer) {
-        JSDynamicObject dynamicObject = (JSDynamicObject) arrayBuffer;
-        JSObjectUtil.putHiddenProperty(dynamicObject, EXTERNALIZED_KEY, true);
-    }
-
     public void arrayBufferDetach(Object arrayBuffer) {
         JSArrayBuffer.detachArrayBuffer((JSDynamicObject) arrayBuffer);
     }
@@ -1503,21 +1490,12 @@ public final class GraalJSAccess {
         }
     }
 
-    public Object sharedArrayBufferNew(Object context, Object buffer, long pointer, boolean externalized) {
+    public Object sharedArrayBufferNew(Object context, Object buffer, long pointer) {
         ByteBuffer byteBuffer = (ByteBuffer) buffer;
         JSRealm realm = (JSRealm) context;
         JSDynamicObject sharedArrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(realm.getContext(), realm, byteBuffer);
-        JSObjectUtil.putHiddenProperty(sharedArrayBuffer, EXTERNALIZED_KEY, externalized);
-        if (externalized) {
-            updateWaiterList(sharedArrayBuffer, pointer);
-        } else {
-            deallocator.register(byteBuffer, pointer);
-        }
+        updateWaiterList(sharedArrayBuffer, pointer);
         return sharedArrayBuffer;
-    }
-
-    public boolean sharedArrayBufferIsExternal(Object sharedArrayBuffer) {
-        return JSObjectUtil.getHiddenProperty((JSDynamicObject) sharedArrayBuffer, EXTERNALIZED_KEY) == Boolean.TRUE;
     }
 
     public Object sharedArrayBufferGetContents(Object sharedArrayBuffer) {
@@ -1525,11 +1503,7 @@ public final class GraalJSAccess {
     }
 
     public void sharedArrayBufferExternalize(Object sharedArrayBuffer, long pointer) {
-        if (!sharedArrayBufferIsExternal(sharedArrayBuffer)) {
-            JSDynamicObject dynamicObject = (JSDynamicObject) sharedArrayBuffer;
-            JSObjectUtil.putHiddenProperty(dynamicObject, EXTERNALIZED_KEY, true);
-            updateWaiterList(dynamicObject, pointer);
-        }
+        updateWaiterList((JSDynamicObject) sharedArrayBuffer, pointer);
     }
 
     public long sharedArrayBufferByteLength(Object sharedArrayBuffer) {
@@ -2996,6 +2970,10 @@ public final class GraalJSAccess {
         ((JSRealm) context).getContext().setPromiseHook(hook);
     }
 
+    public boolean contextIsCodeGenerationFromStringsAllowed(Object context) {
+        return !((JSRealm) context).getContext().getContextOptions().isDisableEval();
+    }
+
     public void isolateRunMicrotasks() {
         pollWeakCallbackQueue(false);
         try {
@@ -3360,7 +3338,10 @@ public final class GraalJSAccess {
         @Override
         public JSDynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
             Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, false);
-            return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, moduleRequest.getSpecifier(), importAssertions);
+            String resourceName = referrer.getSource().getName();
+            GraalJSAccess graalJSAccess = ((RealmData) realm.getEmbedderData()).getGraalJSAccess();
+            Object hostDefinedOptions = graalJSAccess.scriptOrModuleGetHostDefinedOptions(referrer);
+            return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.getSpecifier(), importAssertions);
         }
     }
 
@@ -3862,19 +3843,9 @@ public final class GraalJSAccess {
         return evaluationError;
     }
 
-    public int moduleGetRequestsLength(Object module) {
-        JSModuleRecord record = (JSModuleRecord) module;
-        return record.getModule().getRequestedModules().size();
-    }
-
-    public Object moduleGetRequest(Object module, int index) {
-        JSModuleRecord record = (JSModuleRecord) module;
-        return record.getModule().getRequestedModules().get(index).getSpecifier();
-    }
-
     public Object moduleGetModuleRequests(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
-        return record.getModule().getRequestedModules();
+        return record.getModule().getRequestedModules().toArray();
     }
 
     public Object moduleGetNamespace(Object module) {
@@ -3913,7 +3884,7 @@ public final class GraalJSAccess {
         return ((ModuleRequest) moduleRequest).getSpecifier();
     }
 
-    private static List<Object> moduleRequestGetImportAssertionsImpl(ModuleRequest request, boolean withSourceOffset) {
+    private static Object[] moduleRequestGetImportAssertionsImpl(ModuleRequest request, boolean withSourceOffset) {
         List<Object> assertions = new ArrayList<>();
         for (Map.Entry<TruffleString, TruffleString> entry : request.getAssertions().entrySet()) {
             assertions.add(entry.getKey());
@@ -3922,7 +3893,7 @@ public final class GraalJSAccess {
                 assertions.add(0);
             }
         }
-        return assertions;
+        return assertions.toArray();
     }
 
     public Object moduleRequestGetImportAssertions(Object moduleRequest) {
@@ -4148,13 +4119,11 @@ public final class GraalJSAccess {
     }
 
     public int fixedArrayLength(Object fixedArray) {
-        List<?> list = (List<?>) fixedArray;
-        return list.size();
+        return ((Object[]) fixedArray).length;
     }
 
     public Object fixedArrayGet(Object fixedArray, int index) {
-        List<?> list = (List<?>) fixedArray;
-        Object element = list.get(index);
+        Object element = ((Object[]) fixedArray)[index];
         return processReturnValue(element);
     }
 

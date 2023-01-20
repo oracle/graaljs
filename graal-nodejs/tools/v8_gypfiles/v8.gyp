@@ -87,11 +87,11 @@
             "<(SHARED_INTERMEDIATE_DIR)/torque-generated/exported-macros-assembler.h",
             "<(SHARED_INTERMEDIATE_DIR)/torque-generated/factory.cc",
             "<(SHARED_INTERMEDIATE_DIR)/torque-generated/factory.inc",
-            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/field-offsets.h",
             "<(SHARED_INTERMEDIATE_DIR)/torque-generated/instance-types.h",
             "<(SHARED_INTERMEDIATE_DIR)/torque-generated/interface-descriptors.inc",
             "<(SHARED_INTERMEDIATE_DIR)/torque-generated/objects-body-descriptors-inl.inc",
             "<(SHARED_INTERMEDIATE_DIR)/torque-generated/objects-printer.cc",
+            "<(SHARED_INTERMEDIATE_DIR)/torque-generated/visitor-lists.h",
             '<@(torque_outputs_csa_cc)',
             '<@(torque_outputs_csa_h)',
             '<@(torque_outputs_inl_inc)',
@@ -292,6 +292,11 @@
             '<(V8_ROOT)/src/builtins/riscv64/builtins-riscv64.cc',
           ],
         }],        
+        ['v8_target_arch=="loong64" or v8_target_arch=="loong64"', {
+          'sources': [
+            '<(V8_ROOT)/src/builtins/loong64/builtins-loong64.cc',
+          ],
+        }],        
         ['v8_target_arch=="mips64" or v8_target_arch=="mips64el"', {
           'sources': [
             '<(V8_ROOT)/src/builtins/mips64/builtins-mips64.cc',
@@ -391,17 +396,12 @@
       'toolsets': ['host', 'target'],
       'dependencies': [
         'v8_config_headers',
-        'cppgc_headers',
+        'v8_heap_base_headers',
         'v8_version',
       ],
       'direct_dependent_settings': {
         'sources': [
-          '<(V8_ROOT)/include/v8-cppgc.h',
-          '<(V8_ROOT)/include/v8-fast-api-calls.h',
-          '<(V8_ROOT)/include/v8-internal.h',
-          '<(V8_ROOT)/include/v8-profiler.h',
-          '<(V8_ROOT)/include/v8-util.h',
-          '<(V8_ROOT)/include/v8.h',
+          '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_headers\\".*?sources = ")',
 
           '<(V8_ROOT)/include/v8-wasm-trap-handler-posix.h',
           '<(V8_ROOT)/include/v8-wasm-trap-handler-win.h',
@@ -448,7 +448,7 @@
         'v8_headers',
         'v8_maybe_icu',
         'v8_shared_internal_headers',
-        'cppgc_headers',
+        'v8_heap_base_headers',
         'generate_bytecode_builtins_list',
         'run_torque',
         'v8_libbase',
@@ -458,6 +458,11 @@
           '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?sources = ")',
         ],
         'conditions': [
+          ['v8_enable_maglev==1', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_enable_maglev.*?sources \\+= ")',
+            ],
+          }],
           ['v8_enable_webassembly==1', {
             'sources': [
               '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_enable_webassembly.*?sources \\+= ")',
@@ -471,6 +476,11 @@
           ['v8_control_flow_integrity==0', {
             'sources': [
               '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?!v8_control_flow_integrity.*?sources \\+= ")',
+            ],
+          }],
+          ['v8_enable_heap_snapshot_verify==1', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_enable_heap_snapshot_verify.*?sources \\+= ")',
             ],
           }],
           ['v8_target_arch=="ia32"', {
@@ -569,6 +579,11 @@
           ['v8_target_arch=="riscv64"', {
             'sources': [
               '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"riscv64\\".*?sources \\+= ")',
+            ],
+          }],
+          ['v8_target_arch=="loong64"', {
+            'sources': [
+              '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"v8_internal_headers\\".*?v8_current_cpu == \\"loong64\\".*?sources \\+= ")',
             ],
           }],
         ],
@@ -1099,15 +1114,15 @@
       ],
     },  # run_gen-regexp-special-case
     {
-      'target_name': 'cppgc_headers',
+      'target_name': 'v8_heap_base_headers',
       'type': 'none',
       'toolsets': ['host', 'target'],
       'direct_dependent_settings': {
         'sources': [
-          '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_header_set.\\"cppgc_headers.*?sources = ")',
+          '<!@pymod_do_main(GN-scraper "<(V8_ROOT)/BUILD.gn"  "v8_source_set.\\"v8_heap_base_headers.*?sources = ")',
         ],
       },
-    },  # cppgc_headers
+    },  # v8_heap_base_headers
     {
       'target_name': 'cppgc_base',
       'type': 'none',
@@ -1136,15 +1151,14 @@
       },
     },  # v8_bigint
     {
-      'target_name': 'v8_cppgc_shared',
+      'target_name': 'v8_heap_base',
       'type': 'none',
       'toolsets': ['host', 'target'],
       'direct_dependent_settings': {
         'sources': [
+          '<(V8_ROOT)/src/heap/base/active-system-pages.cc',
           '<(V8_ROOT)/src/heap/base/stack.cc',
-          '<(V8_ROOT)/src/heap/base/stack.h',
           '<(V8_ROOT)/src/heap/base/worklist.cc',
-          '<(V8_ROOT)/src/heap/base/worklist.h',
         ],
         'conditions': [
           ['enable_lto=="true"', {
@@ -1197,6 +1211,11 @@
                   '<(V8_ROOT)/src/heap/base/asm/riscv64/push_registers_asm.cc',
                 ],
               }],
+              ['_toolset == "host" and host_arch == "loong64" or _toolset == "target" and target_arch=="loong64"', {
+                'sources': [
+                  '<(V8_ROOT)/src/heap/base/asm/loong64/push_registers_asm.cc',
+                ],
+              }],
             ]
           }],
           ['OS=="win"', {
@@ -1220,7 +1239,7 @@
           }],
         ],
       },
-    },  # v8_cppgc_shared
+    },  # v8_heap_base
 
     ###############################################################################
     # Public targets
@@ -1299,7 +1318,6 @@
               'is_ubsan_vptr=0',
               'target_cpu=<(target_arch)',
               'v8_current_cpu=<(v8_current_cpu)',
-              'v8_enable_atomic_marking_state=<(v8_enable_atomic_marking_state)',
               'v8_enable_atomic_object_field_writes=<(v8_enable_atomic_object_field_writes)',
               'v8_enable_concurrent_marking=<(v8_enable_concurrent_marking)',
               'v8_enable_i18n_support=<(v8_enable_i18n_support)',
@@ -1307,6 +1325,7 @@
               'v8_enable_verify_csa=<(v8_enable_verify_csa)',
               'v8_enable_lite_mode=<(v8_enable_lite_mode)',
               'v8_enable_pointer_compression=<(v8_enable_pointer_compression)',
+              'v8_enable_shared_ro_heap=<(v8_enable_shared_ro_heap)',
               'v8_enable_webassembly=<(v8_enable_webassembly)',
               # Not available in gyp.
               'v8_control_flow_integrity=0',

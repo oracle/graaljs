@@ -6,15 +6,20 @@ const {
   SymbolIterator,
 } = primordials;
 
+const kDestroyed = Symbol('kDestroyed');
 const kIsErrored = Symbol('kIsErrored');
 const kIsReadable = Symbol('kIsReadable');
 const kIsDisturbed = Symbol('kIsDisturbed');
 
-function isReadableNodeStream(obj) {
+function isReadableNodeStream(obj, strict = false) {
   return !!(
     obj &&
     typeof obj.pipe === 'function' &&
     typeof obj.on === 'function' &&
+    (
+      !strict ||
+      (typeof obj.pause === 'function' && typeof obj.resume === 'function')
+    ) &&
     (!obj._writableState || obj._readableState?.readable !== false) && // Duplex
     (!obj._writableState || obj._readableState) // Writable has .pipe.
   );
@@ -63,7 +68,7 @@ function isDestroyed(stream) {
   const wState = stream._writableState;
   const rState = stream._readableState;
   const state = wState || rState;
-  return !!(stream.destroyed || state?.destroyed);
+  return !!(stream.destroyed || stream[kDestroyed] || state?.destroyed);
 }
 
 // Have been end():d.
@@ -148,9 +153,37 @@ function isFinished(stream, opts) {
   return true;
 }
 
+function isWritableErrored(stream) {
+  if (!isNodeStream(stream)) {
+    return null;
+  }
+
+  if (stream.writableErrored) {
+    return stream.writableErrored;
+  }
+
+  return stream._writableState?.errored ?? null;
+}
+
+function isReadableErrored(stream) {
+  if (!isNodeStream(stream)) {
+    return null;
+  }
+
+  if (stream.readableErrored) {
+    return stream.readableErrored;
+  }
+
+  return stream._readableState?.errored ?? null;
+}
+
 function isClosed(stream) {
   if (!isNodeStream(stream)) {
     return null;
+  }
+
+  if (typeof stream.closed === 'boolean') {
+    return stream.closed;
   }
 
   const wState = stream._writableState;
@@ -229,6 +262,7 @@ function isErrored(stream) {
 }
 
 module.exports = {
+  kDestroyed,
   isDisturbed,
   kIsDisturbed,
   isErrored,
@@ -243,11 +277,13 @@ module.exports = {
   isReadableNodeStream,
   isReadableEnded,
   isReadableFinished,
+  isReadableErrored,
   isNodeStream,
   isWritable,
   isWritableNodeStream,
   isWritableEnded,
   isWritableFinished,
+  isWritableErrored,
   isServerRequest,
   isServerResponse,
   willEmitClose,

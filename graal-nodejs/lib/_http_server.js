@@ -27,6 +27,7 @@ const {
   ObjectKeys,
   ObjectSetPrototypeOf,
   RegExpPrototypeExec,
+  ReflectApply,
   Symbol,
   SymbolFor,
 } = primordials;
@@ -40,12 +41,12 @@ const {
   continueExpression,
   chunkExpression,
   kIncomingMessage,
-  kRequestTimeout,
   HTTPParser,
   isLenient,
   _checkInvalidHeaderChar: checkInvalidHeaderChar,
   prepareError,
 } = require('_http_common');
+const { ConnectionsList } = internalBinding('http_parser');
 const {
   kUniqueHeaders,
   parseUniqueHeadersOption,
@@ -79,15 +80,16 @@ const {
 } = codes;
 const {
   validateInteger,
-  validateBoolean
+  validateBoolean,
+  validateLinkHeaderValue,
+  validateObject
 } = require('internal/validators');
 const Buffer = require('buffer').Buffer;
 const {
   DTRACE_HTTP_SERVER_REQUEST,
   DTRACE_HTTP_SERVER_RESPONSE
 } = require('internal/dtrace');
-const { setTimeout, clearTimeout } = require('timers');
-
+const { setInterval, clearInterval } = require('timers');
 let debug = require('internal/util/debuglog').debuglog('http', (fn) => {
   debug = fn;
 });
@@ -171,11 +173,12 @@ const STATUS_CODES = {
   511: 'Network Authentication Required' // RFC 6585 6
 };
 
-const kOnMessageBegin = HTTPParser.kOnMessageBegin | 0;
 const kOnExecute = HTTPParser.kOnExecute | 0;
 const kOnTimeout = HTTPParser.kOnTimeout | 0;
 const kLenientAll = HTTPParser.kLenientAll | 0;
 const kLenientNone = HTTPParser.kLenientNone | 0;
+const kConnections = Symbol('http.server.connections');
+const kConnectionsCheckingInterval = Symbol('http.server.connectionsCheckingInterval');
 
 const HTTP_SERVER_TRACE_EVENT_NAME = 'http.server.request';
 
@@ -270,9 +273,7 @@ function onServerResponseClose() {
   // where the ServerResponse object has already been deconstructed.
   // Fortunately, that requires only a single if check. :-)
   if (this._httpMessage) {
-    this._httpMessage.destroyed = true;
-    this._httpMessage._closed = true;
-    this._httpMessage.emit('close');
+    emitCloseNT(this._httpMessage);
   }
 }
 
@@ -299,6 +300,34 @@ ServerResponse.prototype.writeContinue = function writeContinue(cb) {
 
 ServerResponse.prototype.writeProcessing = function writeProcessing(cb) {
   this._writeRaw('HTTP/1.1 102 Processing\r\n\r\n', 'ascii', cb);
+};
+
+ServerResponse.prototype.writeEarlyHints = function writeEarlyHints(hints, cb) {
+  let head = 'HTTP/1.1 103 Early Hints\r\n';
+
+  validateObject(hints, 'hints');
+
+  if (hints.link === null || hints.link === undefined) {
+    return;
+  }
+
+  const link = validateLinkHeaderValue(hints.link);
+
+  if (link.length === 0) {
+    return;
+  }
+
+  head += 'Link: ' + link + '\r\n';
+
+  for (const key of ObjectKeys(hints)) {
+    if (key !== 'link') {
+      head += key + ': ' + hints[key] + '\r\n';
+    }
+  }
+
+  head += '\r\n';
+
+  this._writeRaw(head, 'ascii', cb);
 };
 
 ServerResponse.prototype._implicitHeader = function _implicitHeader() {
@@ -405,6 +434,55 @@ function storeHTTPOptions(options) {
   if (insecureHTTPParser !== undefined)
     validateBoolean(insecureHTTPParser, 'options.insecureHTTPParser');
   this.insecureHTTPParser = insecureHTTPParser;
+
+  if (options.noDelay === undefined)
+    options.noDelay = true;
+
+  const requestTimeout = options.requestTimeout;
+  if (requestTimeout !== undefined) {
+    validateInteger(requestTimeout, 'requestTimeout', 0);
+    this.requestTimeout = requestTimeout;
+  } else {
+    this.requestTimeout = 300_000; // 5 minutes
+  }
+
+  const headersTimeout = options.headersTimeout;
+  if (headersTimeout !== undefined) {
+    validateInteger(headersTimeout, 'headersTimeout', 0);
+    this.headersTimeout = headersTimeout;
+  } else {
+    this.headersTimeout = 60_000; // 60 seconds
+  }
+
+  if (this.requestTimeout > 0 && this.headersTimeout > 0 && this.headersTimeout >= this.requestTimeout) {
+    throw new codes.ERR_OUT_OF_RANGE('headersTimeout', '< requestTimeout', headersTimeout);
+  }
+
+  const keepAliveTimeout = options.keepAliveTimeout;
+  if (keepAliveTimeout !== undefined) {
+    validateInteger(keepAliveTimeout, 'keepAliveTimeout', 0);
+    this.keepAliveTimeout = keepAliveTimeout;
+  } else {
+    this.keepAliveTimeout = 5_000; // 5 seconds;
+  }
+
+  const connectionsCheckingInterval = options.connectionsCheckingInterval;
+  if (connectionsCheckingInterval !== undefined) {
+    validateInteger(connectionsCheckingInterval, 'connectionsCheckingInterval', 0);
+    this.connectionsCheckingInterval = connectionsCheckingInterval;
+  } else {
+    this.connectionsCheckingInterval = 30_000; // 30 seconds
+  }
+}
+
+function setupConnectionsTracking(server) {
+  // Start connection handling
+  server[kConnections] = new ConnectionsList();
+
+  // This checker is started without checking whether any headersTimeout or requestTimeout is non zero
+  // otherwise it would not be started if such timeouts are modified after createServer.
+  server[kConnectionsCheckingInterval] =
+    setInterval(checkConnections.bind(server), server.connectionsCheckingInterval).unref();
 }
 
 function Server(options, requestListener) {
@@ -438,16 +516,38 @@ function Server(options, requestListener) {
   this.on('connection', connectionListener);
 
   this.timeout = 0;
-  this.keepAliveTimeout = 5000;
   this.maxHeadersCount = null;
   this.maxRequestsPerSocket = 0;
-  this.headersTimeout = 60 * 1000; // 60 seconds
-  this.requestTimeout = 0;
+  setupConnectionsTracking(this);
   this[kUniqueHeaders] = parseUniqueHeadersOption(options.uniqueHeaders);
 }
 ObjectSetPrototypeOf(Server.prototype, net.Server.prototype);
 ObjectSetPrototypeOf(Server, net.Server);
 
+Server.prototype.close = function() {
+  clearInterval(this[kConnectionsCheckingInterval]);
+  ReflectApply(net.Server.prototype.close, this, arguments);
+};
+
+Server.prototype.closeAllConnections = function() {
+  const connections = this[kConnections].all();
+
+  for (let i = 0, l = connections.length; i < l; i++) {
+    connections[i].socket.destroy();
+  }
+};
+
+Server.prototype.closeIdleConnections = function() {
+  const connections = this[kConnections].idle();
+
+  for (let i = 0, l = connections.length; i < l; i++) {
+    if (connections[i].socket._httpMessage && !connections[i].socket._httpMessage.finished) {
+      continue;
+    }
+
+    connections[i].socket.destroy();
+  }
+};
 
 Server.prototype.setTimeout = function setTimeout(msecs, callback) {
   this.timeout = msecs;
@@ -478,6 +578,22 @@ Server.prototype[EE.captureRejectionSymbol] = function(err, event, ...args) {
         .apply(this, arguments);
   }
 };
+
+function checkConnections() {
+  if (this.headersTimeout === 0 && this.requestTimeout === 0) {
+    return;
+  }
+
+  const expired = this[kConnections].expired(this.headersTimeout, this.requestTimeout);
+
+  for (let i = 0; i < expired.length; i++) {
+    const socket = expired[i].socket;
+
+    if (socket) {
+      onRequestTimeout(socket);
+    }
+  }
+}
 
 function connectionListener(socket) {
   defaultTriggerAsyncIdScope(
@@ -512,7 +628,7 @@ function connectionListenerInternal(server, socket) {
     new HTTPServerAsyncResource('HTTPINCOMINGMESSAGE', socket),
     server.maxHeaderSize || 0,
     lenient ? kLenientAll : kLenientNone,
-    server.headersTimeout || 0,
+    server[kConnections],
   );
   parser.socket = socket;
   socket.parser = parser;
@@ -577,17 +693,6 @@ function connectionListenerInternal(server, socket) {
   parser[kOnTimeout] =
     onParserTimeout.bind(undefined,
                          server, socket);
-
-  // When receiving new requests on the same socket (pipelining or keep alive)
-  // make sure the requestTimeout is active.
-  parser[kOnMessageBegin] =
-    setRequestTimeout.bind(undefined,
-                           server, socket);
-
-  // This protects from DOS attack where an attacker establish the connection
-  // without sending any data on applications where server.timeout is left to
-  // the default value of zero.
-  setRequestTimeout(server, socket);
 
   socket._paused = false;
 }
@@ -671,7 +776,6 @@ function socketOnData(server, socket, parser, state, d) {
 }
 
 function onRequestTimeout(socket) {
-  socket[kRequestTimeout] = undefined;
   // socketOnError has additional logic and will call socket.destroy(err).
   socketOnError.call(socket, new ERR_HTTP_REQUEST_TIMEOUT());
 }
@@ -709,10 +813,17 @@ const requestHeaderFieldsTooLargeResponse = Buffer.from(
 function socketOnError(e) {
   // Ignore further errors
   this.removeListener('error', socketOnError);
-  this.on('error', noop);
+
+  if (this.listenerCount('error') === 0) {
+    this.on('error', noop);
+  }
 
   if (!this.server.emit('clientError', e, this)) {
-    if (this.writable && this.bytesWritten === 0) {
+    // Caution must be taken to avoid corrupting the remote peer.
+    // Reply an error segment if there is no in-flight `ServerResponse`,
+    // or no data of the in-flight one has been written yet to this socket.
+    if (this.writable &&
+        (!this._httpMessage || !this._httpMessage._headerSent)) {
       let response;
 
       switch (e.code) {
@@ -766,9 +877,6 @@ function onParserExecuteCommon(server, socket, parser, state, ret, d) {
 
       socket.readableFlowing = null;
 
-      // Clear the requestTimeout after upgrading the connection.
-      clearRequestTimeout(req);
-
       server.emit(eventName, req, socket, bodyHead);
     } else {
       // Got CONNECT method, but have no handler.
@@ -777,11 +885,6 @@ function onParserExecuteCommon(server, socket, parser, state, ret, d) {
   } else if (parser.incoming && parser.incoming.method === 'PRI') {
     debug('SERVER got PRI request');
     socket.destroy();
-  } else {
-    // When receiving new requests on the same socket (pipelining or keep alive)
-    // make sure the requestTimeout is active.
-    parser[kOnMessageBegin] =
-      setRequestTimeout.bind(undefined, server, socket);
   }
 
   if (socket._paused && socket.parser) {
@@ -802,32 +905,6 @@ function clearIncoming(req) {
       req.on('end', clearIncoming);
     }
   }
-}
-
-function setRequestTimeout(server, socket) {
-  // Set the request timeout handler.
-  if (
-    !socket[kRequestTimeout] &&
-    server.requestTimeout && server.requestTimeout > 0
-  ) {
-    debug('requestTimeout timer set');
-    socket[kRequestTimeout] =
-      setTimeout(onRequestTimeout, server.requestTimeout, socket).unref();
-  }
-}
-
-function clearRequestTimeout(req) {
-  if (!req) {
-    req = this;
-  }
-
-  if (!req[kRequestTimeout]) {
-    return;
-  }
-
-  debug('requestTimeout timer cleared');
-  clearTimeout(req[kRequestTimeout]);
-  req[kRequestTimeout] = undefined;
 }
 
 function resOnFinish(req, res, socket, state, server) {
@@ -852,14 +929,6 @@ function resOnFinish(req, res, socket, state, server) {
   // bytes will be pulled off the wire.
   if (!req._consuming && !req._readableState.resumeScheduled)
     req._dump();
-
-  // Make sure the requestTimeout is cleared before finishing.
-  // This might occur if the application has sent a response
-  // without consuming the request body, which would have already
-  // cleared the timer.
-  // clearRequestTimeout can be executed even if the timer is not active,
-  // so this is safe.
-  clearRequestTimeout(req);
 
   res.detachSocket(socket);
   clearIncoming(req);
@@ -886,9 +955,11 @@ function resOnFinish(req, res, socket, state, server) {
 }
 
 function emitCloseNT(self) {
-  self.destroyed = true;
-  self._closed = true;
-  self.emit('close');
+  if (!self._closed) {
+    self.destroyed = true;
+    self._closed = true;
+    self.emit('close');
+  }
 }
 
 // The following callback is issued after the headers have been read on a
@@ -994,7 +1065,6 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
   }
 
   if (!handled) {
-    req.on('end', clearRequestTimeout);
     server.emit('request', req, res);
   }
 
@@ -1066,6 +1136,7 @@ module.exports = {
   STATUS_CODES,
   Server,
   ServerResponse,
+  setupConnectionsTracking,
   storeHTTPOptions,
   _connectionListener: connectionListener,
   kServerResponse

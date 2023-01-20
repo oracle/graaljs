@@ -59,8 +59,6 @@ const { convertToValidSignal, deprecate } = require('internal/util');
 const { isArrayBufferView } = require('internal/util/types');
 const spawn_sync = internalBinding('spawn_sync');
 const { kStateSymbol } = require('internal/dgram');
-const dc = require('diagnostics_channel');
-const childProcessChannel = dc.channel('child_process');
 
 const {
   UV_EACCES,
@@ -303,11 +301,6 @@ function ChildProcess() {
 
     maybeClose(this);
   };
-  if (childProcessChannel.hasSubscribers) {
-    childProcessChannel.publish({
-      process: this,
-    });
-  }
 }
 ObjectSetPrototypeOf(ChildProcess.prototype, EventEmitter.prototype);
 ObjectSetPrototypeOf(ChildProcess, EventEmitter);
@@ -332,7 +325,7 @@ function flushStdio(subprocess) {
 
 
 function createSocket(pipe, readable) {
-  return net.Socket({ handle: pipe, readable, writable: !readable });
+  return net.Socket({ handle: pipe, readable });
 }
 
 
@@ -451,8 +444,6 @@ ChildProcess.prototype.spawn = function(options) {
     }
 
     if (stream.handle) {
-      // When i === 0 - we're dealing with stdin
-      // (which is the only one writable pipe).
       stream.socket = createSocket(this.pid !== 0 ?
         stream.handle : null, i > 0);
 

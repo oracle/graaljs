@@ -5,8 +5,7 @@
 #ifndef V8_CODEGEN_X64_REGISTER_X64_H_
 #define V8_CODEGEN_X64_REGISTER_X64_H_
 
-#include "src/codegen/register.h"
-#include "src/codegen/reglist.h"
+#include "src/codegen/register-base.h"
 
 namespace v8 {
 namespace internal {
@@ -75,7 +74,7 @@ class Register : public RegisterBase<Register, kRegAfterLast> {
 };
 
 ASSERT_TRIVIALLY_COPYABLE(Register);
-static_assert(sizeof(Register) == sizeof(int),
+static_assert(sizeof(Register) <= sizeof(int),
               "Register can efficiently be passed by value");
 
 #define DECLARE_REGISTER(R) \
@@ -85,23 +84,6 @@ GENERAL_REGISTERS(DECLARE_REGISTER)
 constexpr Register no_reg = Register::no_reg();
 
 constexpr int kNumRegs = 16;
-
-constexpr RegList kJSCallerSaved =
-    Register::ListOf(rax, rcx, rdx,
-                     rbx,  // used as a caller-saved register in JavaScript code
-                     rdi);  // callee function
-
-constexpr RegList kCallerSaved =
-#ifdef V8_TARGET_OS_WIN
-    Register::ListOf(rax, rcx, rdx, r8, r9, r10, r11);
-#else
-    Register::ListOf(rax, rcx, rdx, rdi, rsi, r8, r9, r10, r11);
-#endif  // V8_TARGET_OS_WIN
-
-constexpr int kNumJSCallerSaved = 5;
-
-// Number of registers for which space is reserved in safepoints.
-constexpr int kNumSafepointRegisters = 16;
 
 #ifdef V8_TARGET_OS_WIN
 // Windows calling convention
@@ -155,13 +137,31 @@ constexpr Register arg_reg_4 = rcx;
   V(xmm13)                              \
   V(xmm14)
 
+#define YMM_REGISTERS(V) \
+  V(ymm0)                \
+  V(ymm1)                \
+  V(ymm2)                \
+  V(ymm3)                \
+  V(ymm4)                \
+  V(ymm5)                \
+  V(ymm6)                \
+  V(ymm7)                \
+  V(ymm8)                \
+  V(ymm9)                \
+  V(ymm10)               \
+  V(ymm11)               \
+  V(ymm12)               \
+  V(ymm13)               \
+  V(ymm14)               \
+  V(ymm15)
+
 // Returns the number of padding slots needed for stack pointer alignment.
 constexpr int ArgumentPaddingSlots(int argument_count) {
   // No argument padding required.
   return 0;
 }
 
-constexpr bool kSimpleFPAliasing = true;
+constexpr AliasingKind kFPAliasing = AliasingKind::kOverlap;
 constexpr bool kSimdMaskRegisters = false;
 
 enum DoubleRegisterCode {
@@ -170,6 +170,17 @@ enum DoubleRegisterCode {
 #undef REGISTER_CODE
       kDoubleAfterLast
 };
+
+enum YMMRegisterCode {
+#define REGISTER_CODE(R) kYMMCode_##R,
+  YMM_REGISTERS(REGISTER_CODE)
+#undef REGISTER_CODE
+      kYMMAfterLast
+};
+static_assert(static_cast<int>(kDoubleAfterLast) ==
+                  static_cast<int>(kYMMAfterLast),
+              "The number of XMM register codes must match the number of YMM "
+              "register codes");
 
 class XMMRegister : public RegisterBase<XMMRegister, kDoubleAfterLast> {
  public:
@@ -180,14 +191,30 @@ class XMMRegister : public RegisterBase<XMMRegister, kDoubleAfterLast> {
   // in modR/M, SIB, and opcode bytes.
   int low_bits() const { return code() & 0x7; }
 
- private:
+ protected:
   friend class RegisterBase<XMMRegister, kDoubleAfterLast>;
   explicit constexpr XMMRegister(int code) : RegisterBase(code) {}
 };
 
 ASSERT_TRIVIALLY_COPYABLE(XMMRegister);
-static_assert(sizeof(XMMRegister) == sizeof(int),
+static_assert(sizeof(XMMRegister) <= sizeof(int),
               "XMMRegister can efficiently be passed by value");
+
+class YMMRegister : public XMMRegister {
+ public:
+  static constexpr YMMRegister from_code(int code) {
+    DCHECK(base::IsInRange(code, 0, XMMRegister::kNumRegisters - 1));
+    return YMMRegister(code);
+  }
+
+ private:
+  friend class XMMRegister;
+  explicit constexpr YMMRegister(int code) : XMMRegister(code) {}
+};
+
+ASSERT_TRIVIALLY_COPYABLE(YMMRegister);
+static_assert(sizeof(YMMRegister) <= sizeof(int),
+              "YMMRegister can efficiently be passed by value");
 
 using FloatRegister = XMMRegister;
 
@@ -201,9 +228,15 @@ DOUBLE_REGISTERS(DECLARE_REGISTER)
 #undef DECLARE_REGISTER
 constexpr DoubleRegister no_dreg = DoubleRegister::no_reg();
 
+#define DECLARE_REGISTER(R) \
+  constexpr YMMRegister R = YMMRegister::from_code(kYMMCode_##R);
+YMM_REGISTERS(DECLARE_REGISTER)
+#undef DECLARE_REGISTER
+
 // Define {RegisterName} methods for the register types.
 DEFINE_REGISTER_NAMES(Register, GENERAL_REGISTERS)
 DEFINE_REGISTER_NAMES(XMMRegister, DOUBLE_REGISTERS)
+DEFINE_REGISTER_NAMES(YMMRegister, YMM_REGISTERS)
 
 // Give alias names to registers for calling conventions.
 constexpr Register kReturnRegister0 = rax;

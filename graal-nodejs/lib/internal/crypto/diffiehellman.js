@@ -33,7 +33,7 @@ const {
 } = require('internal/errors');
 
 const {
-  validateCallback,
+  validateFunction,
   validateInt32,
   validateObject,
   validateString,
@@ -323,7 +323,7 @@ function deriveBitsECDH(name, publicKey, privateKey, callback) {
   validateString(name, 'name');
   validateObject(publicKey, 'publicKey');
   validateObject(privateKey, 'privateKey');
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
   const job = new ECDHBitsJob(kCryptoJobAsync, name, publicKey, privateKey);
   job.ondone = (error, bits) => {
     if (error) return FunctionPrototypeCall(callback, job, error);

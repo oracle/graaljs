@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 // Flags: --interrupt-budget=200 --stack-size=200
-// Flags: --budget-for-feedback-vector-allocation=100 --expose-gc
-// Flags: --stress-flush-code --flus-bytecode
+// Flags: --interrupt-budget-for-feedback-allocation=100 --expose-gc
+// Flags: --stress-flush-code --flush-bytecode
 
 var i = 0;
 function main() {

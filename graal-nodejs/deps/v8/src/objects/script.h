@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "include/v8-script.h"
 #include "src/base/export-template.h"
 #include "src/objects/fixed-array.h"
 #include "src/objects/objects.h"
@@ -21,6 +22,11 @@ namespace v8 {
 namespace internal {
 
 class FunctionLiteral;
+class StructBodyDescriptor;
+
+namespace wasm {
+class NativeModule;
+}  // namespace wasm
 
 #include "torque-generated/src/objects/script-tq.inc"
 
@@ -185,6 +191,13 @@ class Script : public TorqueGeneratedScript<Script, Struct> {
   V8_EXPORT_PRIVATE bool GetPositionInfo(int position, PositionInfo* info,
                                          OffsetFlag offset_flag) const;
 
+  // Tells whether this script should be subject to debugging, e.g. for
+  // - scope inspection
+  // - internal break points
+  // - coverage and type profile
+  // - error stack trace
+  bool IsSubjectToDebugging() const;
+
   bool IsUserJavaScript() const;
 
   // Wrappers for GetPositionInfo
@@ -224,6 +237,8 @@ class Script : public TorqueGeneratedScript<Script, Struct> {
   // Dispatched behavior.
   DECL_PRINTER(Script)
   DECL_VERIFIER(Script)
+
+  using BodyDescriptor = StructBodyDescriptor;
 
  private:
   // Bit positions in the flags field.

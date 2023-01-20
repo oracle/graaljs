@@ -13,7 +13,7 @@ const {
 } = internalBinding('crypto');
 
 const {
-  validateCallback,
+  validateFunction,
   validateInteger,
   validateInt32,
   validateUint32,
@@ -48,7 +48,7 @@ function scrypt(password, salt, keylen, options, callback = defaults) {
   const { N, r, p, maxmem } = options;
   ({ password, salt, keylen } = options);
 
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   const job = new ScryptJob(
     kCryptoJobAsync, password, salt, N, r, p, maxmem, keylen);

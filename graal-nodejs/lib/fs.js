@@ -80,6 +80,7 @@ const { FSReqCallback } = binding;
 const { toPathIfFileURL } = require('internal/url');
 const {
   customPromisifyArgs: kCustomPromisifyArgsSymbol,
+  deprecate,
   kEmptyObject,
   promisify: {
     custom: kCustomPromisifiedSymbol,
@@ -135,7 +136,6 @@ const {
   parseFileMode,
   validateBoolean,
   validateBuffer,
-  validateCallback,
   validateEncoding,
   validateFunction,
   validateInteger,
@@ -167,6 +167,11 @@ const isWindows = process.platform === 'win32';
 const isOSX = process.platform === 'darwin';
 
 
+const showStringCoercionDeprecation = deprecate(
+  () => {},
+  'Implicit coercion of objects with own toString property is deprecated.',
+  'DEP0162'
+);
 function showTruncateDeprecation() {
   if (truncateWarn) {
     process.emitWarning(
@@ -178,7 +183,7 @@ function showTruncateDeprecation() {
 }
 
 function maybeCallback(cb) {
-  validateCallback(cb);
+  validateFunction(cb, 'cb');
 
   return cb;
 }
@@ -187,7 +192,7 @@ function maybeCallback(cb) {
 // for callbacks that are passed to the binding layer, callbacks that are
 // invoked from JS already run in the proper scope.
 function makeCallback(cb) {
-  validateCallback(cb);
+  validateFunction(cb, 'cb');
 
   return (...args) => ReflectApply(cb, this, args);
 }
@@ -196,7 +201,7 @@ function makeCallback(cb) {
 // an optimization, since the data passed back to the callback needs to be
 // transformed anyway.
 function makeStatsCallback(cb) {
-  validateCallback(cb);
+  validateFunction(cb, 'cb');
 
   return (err, stats) => {
     if (err) return cb(err);
@@ -334,6 +339,9 @@ function readFileAfterStat(err, stats) {
   if (err)
     return context.close(err);
 
+  // TODO(BridgeAR): Check if allocating a smaller chunk is better performance
+  // wise, similar to the promise based version (less peak memory and chunked
+  // stringify operations vs multiple C++/JS boundary crossings).
   const size = context.size = isFileType(stats, S_IFREG) ? stats[8] : 0;
 
   if (size > kIoMaxLength) {
@@ -343,6 +351,8 @@ function readFileAfterStat(err, stats) {
 
   try {
     if (size === 0) {
+      // TODO(BridgeAR): If an encoding is set, use the StringDecoder to concat
+      // the result and reuse the buffer instead of allocating a new one.
       context.buffers = [];
     } else {
       context.buffer = Buffer.allocUnsafeSlow(size);
@@ -847,6 +857,9 @@ function write(fd, buffer, offsetOrOptions, length, position, callback) {
   }
 
   validateStringAfterArrayBufferView(buffer, 'buffer');
+  if (typeof buffer !== 'string') {
+    showStringCoercionDeprecation();
+  }
 
   if (typeof position !== 'function') {
     if (typeof offset === 'function') {
@@ -2153,6 +2166,9 @@ function writeFile(path, data, options, callback) {
 
   if (!isArrayBufferView(data)) {
     validateStringAfterArrayBufferView(data, 'data');
+    if (typeof data !== 'string') {
+      showStringCoercionDeprecation();
+    }
     data = Buffer.from(String(data), options.encoding || 'utf8');
   }
 
@@ -2193,6 +2209,9 @@ function writeFileSync(path, data, options) {
 
   if (!isArrayBufferView(data)) {
     validateStringAfterArrayBufferView(data, 'data');
+    if (typeof data !== 'string') {
+      showStringCoercionDeprecation();
+    }
     data = Buffer.from(String(data), options.encoding || 'utf8');
   }
 

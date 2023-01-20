@@ -12,7 +12,7 @@ const {
 } = internalBinding('crypto');
 
 const {
-  validateCallback,
+  validateFunction,
   validateInteger,
   validateString,
   validateUint32,
@@ -110,7 +110,7 @@ function hkdf(hash, key, salt, info, length, callback) {
     length,
   } = validateParameters(hash, key, salt, info, length));
 
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   const job = new HKDFJob(kCryptoJobAsync, hash, key, salt, info, length);
 

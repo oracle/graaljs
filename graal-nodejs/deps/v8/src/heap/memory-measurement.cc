@@ -4,9 +4,10 @@
 
 #include "src/heap/memory-measurement.h"
 
-#include "include/v8.h"
+#include "include/v8-local-handle.h"
 #include "src/api/api-inl.h"
 #include "src/execution/isolate-inl.h"
+#include "src/handles/global-handles-inl.h"
 #include "src/heap/factory-inl.h"
 #include "src/heap/incremental-marking.h"
 #include "src/heap/marking-worklist.h"
@@ -337,11 +338,12 @@ std::unique_ptr<v8::MeasureMemoryDelegate> MemoryMeasurement::DefaultDelegate(
 
 bool NativeContextInferrer::InferForContext(Isolate* isolate, Context context,
                                             Address* native_context) {
-  Map context_map = context.map(kAcquireLoad);
+  PtrComprCageBase cage_base(isolate);
+  Map context_map = context.map(cage_base, kAcquireLoad);
   Object maybe_native_context =
       TaggedField<Object, Map::kConstructorOrBackPointerOrNativeContextOffset>::
-          Acquire_Load(isolate, context_map);
-  if (maybe_native_context.IsNativeContext()) {
+          Acquire_Load(cage_base, context_map);
+  if (maybe_native_context.IsNativeContext(cage_base)) {
     *native_context = maybe_native_context.ptr();
     return true;
   }
@@ -400,7 +402,7 @@ void NativeContextStats::IncrementExternalSize(Address context, Map map,
   InstanceType instance_type = map.instance_type();
   size_t external_size = 0;
   if (instance_type == JS_ARRAY_BUFFER_TYPE) {
-    external_size = JSArrayBuffer::cast(object).allocation_length();
+    external_size = JSArrayBuffer::cast(object).GetByteLength();
   } else {
     DCHECK(InstanceTypeChecker::IsExternalString(instance_type));
     external_size = ExternalString::cast(object).ExternalPayloadSize();

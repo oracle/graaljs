@@ -44,3 +44,11 @@ dns.lookup(addresses.NOT_FOUND, {
   assert.strictEqual(error.syscall, 'getaddrinfo');
   assert.strictEqual(error.hostname, addresses.NOT_FOUND);
 }));
+
+assert.throws(
+  () => dnsPromises.lookup(addresses.NOT_FOUND, {
+    family: 'ipv4',
+    all: 'all'
+  }),
+  { code: 'ERR_INVALID_ARG_VALUE' }
+);

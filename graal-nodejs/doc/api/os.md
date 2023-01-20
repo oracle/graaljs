@@ -130,7 +130,9 @@ are always 0.
 ## `os.devNull`
 
 <!-- YAML
-added: v16.3.0
+added:
+  - v16.3.0
+  - v14.18.0
 -->
 
 * {string}
@@ -222,6 +224,13 @@ always `[0, 0, 0]`.
 
 <!-- YAML
 added: v0.6.0
+changes:
+  - version: v18.4.0
+    pr-url: https://github.com/nodejs/node/pull/43054
+    description: The `family` property now returns a string instead of a number.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41431
+    description: The `family` property now returns a number instead of a string.
 -->
 
 * Returns: {Object}
@@ -446,7 +455,7 @@ available, `GetVersionExW()` will be used. See
 ## `os.machine()`
 
 <!-- YAML
-added: v16.18.0
+added: v18.9.0
 -->
 
 * Returns {string}

@@ -1,3 +1,5 @@
+/* eslint jsdoc/require-jsdoc: "error" */
+
 'use strict';
 
 const {
@@ -25,7 +27,6 @@ const {
     ERR_INVALID_ARG_VALUE,
     ERR_OUT_OF_RANGE,
     ERR_UNKNOWN_SIGNAL,
-    ERR_INVALID_CALLBACK,
   }
 } = require('internal/errors');
 const { normalizeEncoding } = require('internal/util');
@@ -218,6 +219,12 @@ function validateBoolean(value, name) {
     throw new ERR_INVALID_ARG_TYPE(name, 'boolean', value);
 }
 
+/**
+ * @param {?object} options
+ * @param {string} key
+ * @param {boolean} defaultValue
+ * @returns {boolean}
+ */
 function getOwnPropertyValueOrDefault(options, key, defaultValue) {
   return options == null || !ObjectPrototypeHasOwnProperty(options, key) ?
     defaultValue :
@@ -268,6 +275,36 @@ const validateArray = hideStackFrames((value, name, minLength = 0) => {
     throw new ERR_INVALID_ARG_VALUE(name, value, reason);
   }
 });
+
+/**
+ * @callback validateStringArray
+ * @param {*} value
+ * @param {string} name
+ * @returns {asserts value is string[]}
+ */
+
+/** @type {validateStringArray} */
+function validateStringArray(value, name) {
+  validateArray(value, name);
+  for (let i = 0; i < value.length; i++) {
+    validateString(value[i], `${name}[${i}]`);
+  }
+}
+
+/**
+ * @callback validateBooleanArray
+ * @param {*} value
+ * @param {string} name
+ * @returns {asserts value is boolean[]}
+ */
+
+/** @type {validateBooleanArray} */
+function validateBooleanArray(value, name) {
+  validateArray(value, name);
+  for (let i = 0; i < value.length; i++) {
+    validateBoolean(value[i], `${name}[${i}]`);
+  }
+}
 
 // eslint-disable-next-line jsdoc/require-returns-check
 /**
@@ -337,11 +374,6 @@ function validatePort(port, name = 'Port', allowZero = true) {
   return port | 0;
 }
 
-const validateCallback = hideStackFrames((callback) => {
-  if (typeof callback !== 'function')
-    throw new ERR_INVALID_CALLBACK(callback);
-});
-
 /**
  * @callback validateAbortSignal
  * @param {*} signal
@@ -409,14 +441,70 @@ function validateUnion(value, name, union) {
   }
 }
 
+const linkValueRegExp = /^(?:<[^>]*>;)\s*(?:rel=(")?[^;"]*\1;?)\s*(?:(?:as|anchor|title)=(")?[^;"]*\2)?$/;
+
+/**
+ * @param {any} value
+ * @param {string} name
+ */
+function validateLinkHeaderFormat(value, name) {
+  if (
+    typeof value === 'undefined' ||
+    !RegExpPrototypeExec(linkValueRegExp, value)
+  ) {
+    throw new ERR_INVALID_ARG_VALUE(
+      name,
+      value,
+      'must be an array or string of format "</styles.css>; rel=preload; as=style"'
+    );
+  }
+}
+
+/**
+ * @param {any} hints
+ * @return {string}
+ */
+function validateLinkHeaderValue(hints) {
+  if (typeof hints === 'string') {
+    validateLinkHeaderFormat(hints, 'hints');
+    return hints;
+  } else if (ArrayIsArray(hints)) {
+    const hintsLength = hints.length;
+    let result = '';
+
+    if (hintsLength === 0) {
+      return result;
+    }
+
+    for (let i = 0; i < hintsLength; i++) {
+      const link = hints[i];
+      validateLinkHeaderFormat(link, 'hints');
+      result += link;
+
+      if (i !== hintsLength - 1) {
+        result += ', ';
+      }
+    }
+
+    return result;
+  }
+
+  throw new ERR_INVALID_ARG_VALUE(
+    'hints',
+    hints,
+    'must be an array or string of format "</styles.css>; rel=preload; as=style"'
+  );
+}
+
 module.exports = {
   isInt32,
   isUint32,
   parseFileMode,
   validateArray,
+  validateStringArray,
+  validateBooleanArray,
   validateBoolean,
   validateBuffer,
-  validateCallback,
   validateEncoding,
   validateFunction,
   validateInt32,
@@ -432,4 +520,5 @@ module.exports = {
   validateUndefined,
   validateUnion,
   validateAbortSignal,
+  validateLinkHeaderValue
 };

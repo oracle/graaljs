@@ -746,17 +746,16 @@ function byteLength(string, encoding) {
   }
 
   const len = string.length;
-  const mustMatch = (arguments.length > 2 && arguments[2] === true);
-  if (!mustMatch && len === 0)
+  if (len === 0)
     return 0;
 
-  if (!encoding)
-    return (mustMatch ? -1 : byteLengthUtf8(string));
-
-  const ops = getEncodingOps(encoding);
-  if (ops === undefined)
-    return (mustMatch ? -1 : byteLengthUtf8(string));
-  return ops.byteLength(string);
+  if (encoding) {
+    const ops = getEncodingOps(encoding);
+    if (ops) {
+      return ops.byteLength(string);
+    }
+  }
+  return byteLengthUtf8(string);
 }
 
 Buffer.byteLength = byteLength;
@@ -1260,6 +1259,8 @@ const kForgivingBase64AllowedChars = [
   0x2F, // /
   0x3D, // =
 ];
+const kEqualSignIndex = ArrayPrototypeIndexOf(kForgivingBase64AllowedChars,
+                                              0x3D);
 
 function atob(input) {
   // The implementation here has not been performance optimized in any way and
@@ -1271,6 +1272,7 @@ function atob(input) {
 
   input = `${input}`;
   let nonAsciiWhitespaceCharCount = 0;
+  let equalCharCount = 0;
 
   for (let n = 0; n < input.length; n++) {
     const index = ArrayPrototypeIndexOf(
@@ -1281,13 +1283,36 @@ function atob(input) {
       // The first 5 elements of `kForgivingBase64AllowedChars` are
       // ASCII whitespace char codes.
       nonAsciiWhitespaceCharCount++;
+
+      if (index === kEqualSignIndex) {
+        equalCharCount++;
+      } else if (equalCharCount) {
+        // The `=` char is only allowed at the end.
+        throw lazyDOMException('Invalid character', 'InvalidCharacterError');
+      }
+
+      if (equalCharCount > 2) {
+        // Only one more `=` is permitted after the first equal sign.
+        throw lazyDOMException('Invalid character', 'InvalidCharacterError');
+      }
     } else if (index === -1) {
       throw lazyDOMException('Invalid character', 'InvalidCharacterError');
     }
   }
 
+  let reminder = nonAsciiWhitespaceCharCount % 4;
+
+  // See #2, #3, #4 - https://infra.spec.whatwg.org/#forgiving-base64
+  if (!reminder) {
+    // Remove all trailing `=` characters and get the new reminder.
+    reminder = (nonAsciiWhitespaceCharCount - equalCharCount) % 4;
+  } else if (equalCharCount) {
+    // `=` should not in the input if there's a reminder.
+    throw lazyDOMException('Invalid character', 'InvalidCharacterError');
+  }
+
   // See #3 - https://infra.spec.whatwg.org/#forgiving-base64
-  if (nonAsciiWhitespaceCharCount % 4 === 1) {
+  if (reminder === 1) {
     throw lazyDOMException(
       'The string to be decoded is not correctly encoded.',
       'InvalidCharacterError');
@@ -1302,6 +1327,7 @@ module.exports = {
   Buffer,
   SlowBuffer,
   transcode,
+
   // Legacy
   kMaxLength,
   kStringMaxLength,

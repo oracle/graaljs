@@ -86,7 +86,9 @@ const buf7 = Buffer.from('tést', 'latin1');
 
 <!-- YAML
 changes:
-  - version: v15.7.0
+  - version:
+      - v15.7.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/36952
     description: Introduced `base64url` encoding.
   - version: v6.4.0
@@ -455,7 +457,7 @@ added:
   - v15.7.0
   - v14.18.0
 changes:
-  - version: v16.17.0
+  - version: v18.0.0
     pr-url: https://github.com/nodejs/node/pull/41270
     description: No longer experimental.
 -->
@@ -466,7 +468,9 @@ multiple worker threads.
 ### `new buffer.Blob([sources[, options]])`
 
 <!-- YAML
-added: v15.7.0
+added:
+  - v15.7.0
+  - v14.18.0
 changes:
   - version: v16.7.0
     pr-url: https://github.com/nodejs/node/pull/39708
@@ -497,7 +501,9 @@ U+FFFD replacement characters.
 ### `blob.arrayBuffer()`
 
 <!-- YAML
-added: v15.7.0
+added:
+  - v15.7.0
+  - v14.18.0
 -->
 
 * Returns: {Promise}
@@ -508,7 +514,9 @@ the `Blob` data.
 ### `blob.size`
 
 <!-- YAML
-added: v15.7.0
+added:
+  - v15.7.0
+  - v14.18.0
 -->
 
 The total size of the `Blob` in bytes.
@@ -516,7 +524,9 @@ The total size of the `Blob` in bytes.
 ### `blob.slice([start[, end[, type]]])`
 
 <!-- YAML
-added: v15.7.0
+added:
+  - v15.7.0
+  - v14.18.0
 -->
 
 * `start` {number} The starting index.
@@ -539,7 +549,9 @@ Returns a new `ReadableStream` that allows the content of the `Blob` to be read.
 ### `blob.text()`
 
 <!-- YAML
-added: v15.7.0
+added:
+  - v15.7.0
+  - v14.18.0
 -->
 
 * Returns: {Promise}
@@ -550,7 +562,9 @@ UTF-8 string.
 ### `blob.type`
 
 <!-- YAML
-added: v15.7.0
+added:
+  - v15.7.0
+  - v14.18.0
 -->
 
 * Type: {string}
@@ -3375,7 +3389,7 @@ console.log(buf.subarray(-5, -2).toString());
 <!-- YAML
 added: v0.3.0
 changes:
-  - version: v16.15.0
+  - version: v17.5.0
     pr-url: https://github.com/nodejs/node/pull/41596
     description: The buf.slice() method has been deprecated.
   - version:
@@ -5004,7 +5018,9 @@ accessed using `require('node:buffer')`.
 ### `buffer.atob(data)`
 
 <!-- YAML
-added: v15.13.0
+added:
+  - v15.13.0
+  - v14.17.0
 -->
 
 > Stability: 3 - Legacy. Use `Buffer.from(data, 'base64')` instead.
@@ -5026,7 +5042,9 @@ and binary data should be performed using `Buffer.from(str, 'base64')` and
 ### `buffer.btoa(data)`
 
 <!-- YAML
-added: v15.13.0
+added:
+  - v15.13.0
+  - v14.17.0
 -->
 
 > Stability: 3 - Legacy. Use `buf.toString('base64')` instead.

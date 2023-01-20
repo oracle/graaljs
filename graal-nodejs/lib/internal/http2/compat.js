@@ -32,6 +32,7 @@ const {
     HTTP2_HEADER_STATUS,
 
     HTTP_STATUS_CONTINUE,
+    HTTP_STATUS_EARLY_HINTS,
     HTTP_STATUS_EXPECTATION_FAILED,
     HTTP_STATUS_METHOD_NOT_ALLOWED,
     HTTP_STATUS_OK
@@ -53,8 +54,10 @@ const {
   hideStackFrames
 } = require('internal/errors');
 const {
-  validateCallback,
+  validateFunction,
   validateString,
+  validateLinkHeaderValue,
+  validateObject,
 } = require('internal/validators');
 const {
   kSocket,
@@ -808,7 +811,7 @@ class Http2ServerResponse extends Stream {
   }
 
   createPushResponse(headers, callback) {
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
     if (this[kState].closed) {
       process.nextTick(callback, new ERR_HTTP2_INVALID_STREAM());
       return;
@@ -842,6 +845,37 @@ class Http2ServerResponse extends Stream {
     stream.additionalHeaders({
       [HTTP2_HEADER_STATUS]: HTTP_STATUS_CONTINUE
     });
+    return true;
+  }
+
+  writeEarlyHints(hints) {
+    validateObject(hints, 'hints');
+
+    const headers = ObjectCreate(null);
+
+    const linkHeaderValue = validateLinkHeaderValue(hints.link);
+
+    for (const key of ObjectKeys(hints)) {
+      if (key !== 'link') {
+        headers[key] = hints[key];
+      }
+    }
+
+    if (linkHeaderValue.length === 0) {
+      return false;
+    }
+
+    const stream = this[kStream];
+
+    if (stream.headersSent || this[kState].closed)
+      return false;
+
+    stream.additionalHeaders({
+      ...headers,
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_EARLY_HINTS,
+      'Link': linkHeaderValue,
+    });
+
     return true;
   }
 }

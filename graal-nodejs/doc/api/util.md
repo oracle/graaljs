@@ -387,7 +387,9 @@ fs.access('file/that/does/not/exist', (err) => {
 ## `util.getSystemErrorMap()`
 
 <!-- YAML
-added: v16.0.0
+added:
+  - v16.0.0
+  - v14.17.0
 -->
 
 * Returns: {Map}
@@ -483,10 +485,8 @@ stream.write('With ES6');
 <!-- YAML
 added: v0.3.0
 changes:
-  - version: v16.18.0
-    pr-url: https://github.com/nodejs/node/pull/43576
-    description: add support for `maxArrayLength` when inspecting `Set` and `Map`.
   - version:
+    - v17.3.0
     - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/41003
     description: The `numericSeparator` option is supported now.
@@ -586,9 +586,8 @@ changes:
   * `showProxy` {boolean} If `true`, `Proxy` inspection includes
     the [`target` and `handler`][] objects. **Default:** `false`.
   * `maxArrayLength` {integer} Specifies the maximum number of `Array`,
-    [`TypedArray`][], [`Map`][], [`Set`][], [`WeakMap`][],
-    and [`WeakSet`][] elements to include when formatting.
-    Set to `null` or `Infinity` to show all elements. Set to `0` or
+    [`TypedArray`][], [`WeakMap`][], and [`WeakSet`][] elements to include when
+    formatting. Set to `null` or `Infinity` to show all elements. Set to `0` or
     negative to show no elements. **Default:** `100`.
   * `maxStringLength` {integer} Specifies the maximum number of characters to
     include when formatting. Set to `null` or `Infinity` to show all elements.
@@ -880,7 +879,9 @@ ignored, if not supported.
 <!-- YAML
 added: v0.1.97
 changes:
-  - version: v16.14.0
+  - version:
+      - v17.3.0
+      - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/41019
     description: The inspect argument is added for more interoperability.
 -->
@@ -1022,9 +1023,14 @@ equality.
 ## `util.parseArgs([config])`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 changes:
-  - version: v16.17.0
+  - version: v18.11.0
+    pr-url: https://github.com/nodejs/node/pull/44631
+    description: Add support for default values in input `config`.
+  - version:
+    - v18.7.0
+    - v16.17.0
     pr-url: https://github.com/nodejs/node/pull/43459
     description: add support for returning detailed parse information
                  using `tokens` in input `config` and returned properties.
@@ -1044,6 +1050,9 @@ changes:
       times. If `true`, all values will be collected in an array. If
       `false`, values for the option are last-wins. **Default:** `false`.
     * `short` {string} A single character alias for the option.
+    * `default` {string | boolean | string\[] | boolean\[]} The default option
+      value when it is not set by args. It must be of the same type as the
+      the `type` property. When `multiple` is `true`, it must be an array.
   * `strict` {boolean} Should an error be thrown when unknown arguments
     are encountered, or when arguments are passed that do not match the
     `type` configured in `options`.
@@ -1577,7 +1586,9 @@ The encoding supported by the `TextEncoder` instance. Always set to `'utf-8'`.
 ## `util.toUSVString(string)`
 
 <!-- YAML
-added: v16.8.0
+added:
+  - v16.8.0
+  - v14.18.0
 -->
 
 * `string` {string}
@@ -1585,6 +1596,37 @@ added: v16.8.0
 Returns the `string` after replacing any surrogate code points
 (or equivalently, any unpaired surrogate code units) with the
 Unicode "replacement character" U+FFFD.
+
+## `util.transferableAbortController()`
+
+<!-- YAML
+added: v18.11.0
+-->
+
+> Stability: 1 - Experimental
+
+Creates and returns an {AbortController} instance whose {AbortSignal} is marked
+as transferable and can be used with `structuredClone()` or `postMessage()`.
+
+## `util.transferableAbortSignal(signal)`
+
+<!-- YAML
+added: v18.11.0
+-->
+
+> Stability: 1 - Experimental
+
+* `signal` {AbortSignal}
+* Returns: {AbortSignal}
+
+Marks the given {AbortSignal} as transferable so that it can be used with
+`structuredClone()` and `postMessage()`.
+
+```js
+const signal = transferableAbortSignal(AbortSignal.timeout(100));
+const channel = new MessageChannel();
+channel.port2.postMessage(signal, [signal]);
+```
 
 ## `util.types`
 

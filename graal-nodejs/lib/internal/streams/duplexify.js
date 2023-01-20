@@ -1,11 +1,11 @@
 'use strict';
 
 const {
+  isReadable,
+  isWritable,
   isIterable,
   isNodeStream,
-  isReadable,
   isReadableNodeStream,
-  isWritable,
   isWritableNodeStream,
   isDuplexNodeStream,
 } = require('internal/streams/utils');

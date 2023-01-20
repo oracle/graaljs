@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,23 +47,17 @@ EXPORT_TO_JS(Detach) {
     args[0].As<ArrayBuffer>()->Detach();
 }
 
-// ArrayBuffer::Externalize
+// ArrayBuffer::GetBackingStore
 
-EXPORT_TO_JS(Externalize) {
-    args[0].As<ArrayBuffer>()->Externalize();
-}
-
-// ArrayBuffer::GetContents
-
-EXPORT_TO_JS(GetContentsDataPointerIsNull) {
-    void* data = args[0].As<ArrayBuffer>()->GetContents().Data();
+EXPORT_TO_JS(GetBackingStoreDataPointerIsNull) {
+    void* data = args[0].As<ArrayBuffer>()->GetBackingStore()->Data();
     args.GetReturnValue().Set(data == nullptr);
 }
 
-EXPORT_TO_JS(GetContentsSum) {
-    ArrayBuffer::Contents contents = args[0].As<ArrayBuffer>()->GetContents();
-    size_t length = contents.ByteLength();
-    uint8_t* data = reinterpret_cast<uint8_t*> (contents.Data());
+EXPORT_TO_JS(GetBackingStoreSum) {
+    std::shared_ptr<BackingStore> backing_store = args[0].As<ArrayBuffer>()->GetBackingStore();
+    size_t length = backing_store->ByteLength();
+    uint8_t* data = reinterpret_cast<uint8_t*> (backing_store->Data());
     int32_t sum = 0;
     for (size_t i = 0; i<length; i++) {
         sum += data[i];

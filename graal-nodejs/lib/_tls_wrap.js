@@ -88,7 +88,6 @@ const {
 const {
   validateBoolean,
   validateBuffer,
-  validateCallback,
   validateFunction,
   validateInt32,
   validateNumber,
@@ -835,7 +834,7 @@ TLSSocket.prototype._init = function(socket, wrap) {
 TLSSocket.prototype.renegotiate = function(options, callback) {
   validateObject(options, 'options');
   if (callback !== undefined) {
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
   }
 
   debug('%s renegotiate()',

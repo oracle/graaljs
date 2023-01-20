@@ -41,12 +41,9 @@ napi_value Init(napi_env env, napi_value exports) {
       DECLARE_NODE_API_PROPERTY_VALUE("cppIntValue", cppIntValue),
       DECLARE_NODE_API_PROPERTY_VALUE("cppStringValue", cppStringValue)};
 
-  NODE_API_CALL(
-      env,
-      napi_define_properties(env,
-                             exports,
-                             sizeof(descriptors) / sizeof(descriptors[0]),
-                             descriptors));
+  NODE_API_CALL(env,
+                napi_define_properties(
+                    env, exports, std::size(descriptors), descriptors));
 
   return exports;
 }

@@ -197,11 +197,11 @@ Reduction JSCreateLowering::ReduceJSCreateArguments(Node* node) {
         Node* const arguments_length =
             graph()->NewNode(simplified()->ArgumentsLength());
         // Allocate the elements backing store.
-        Node* const elements = effect =
-            graph()->NewNode(simplified()->NewArgumentsElements(
-                                 CreateArgumentsType::kUnmappedArguments,
-                                 shared.internal_formal_parameter_count()),
-                             arguments_length, effect);
+        Node* const elements = effect = graph()->NewNode(
+            simplified()->NewArgumentsElements(
+                CreateArgumentsType::kUnmappedArguments,
+                shared.internal_formal_parameter_count_without_receiver()),
+            arguments_length, effect);
         // Load the arguments object map.
         Node* const arguments_map =
             jsgraph()->Constant(native_context().strict_arguments_map());
@@ -222,14 +222,14 @@ Reduction JSCreateLowering::ReduceJSCreateArguments(Node* node) {
         Node* effect = NodeProperties::GetEffectInput(node);
         Node* const arguments_length =
             graph()->NewNode(simplified()->ArgumentsLength());
-        Node* const rest_length = graph()->NewNode(
-            simplified()->RestLength(shared.internal_formal_parameter_count()));
+        Node* const rest_length = graph()->NewNode(simplified()->RestLength(
+            shared.internal_formal_parameter_count_without_receiver()));
         // Allocate the elements backing store.
-        Node* const elements = effect =
-            graph()->NewNode(simplified()->NewArgumentsElements(
-                                 CreateArgumentsType::kRestParameter,
-                                 shared.internal_formal_parameter_count()),
-                             arguments_length, effect);
+        Node* const elements = effect = graph()->NewNode(
+            simplified()->NewArgumentsElements(
+                CreateArgumentsType::kRestParameter,
+                shared.internal_formal_parameter_count_without_receiver()),
+            arguments_length, effect);
         // Load the JSArray object map.
         Node* const jsarray_map = jsgraph()->Constant(
             native_context().js_array_packed_elements_map());
@@ -332,7 +332,8 @@ Reduction JSCreateLowering::ReduceJSCreateArguments(Node* node) {
       return Changed(node);
     }
     case CreateArgumentsType::kRestParameter: {
-      int start_index = shared.internal_formal_parameter_count();
+      int start_index =
+          shared.internal_formal_parameter_count_without_receiver();
       // Use inline allocation for all unmapped arguments objects within inlined
       // (i.e. non-outermost) frames, independent of the object size.
       Node* effect = NodeProperties::GetEffectInput(node);
@@ -401,7 +402,8 @@ Reduction JSCreateLowering::ReduceJSCreateGeneratorObject(Node* node) {
     // Allocate a register file.
     SharedFunctionInfoRef shared = js_function.shared();
     DCHECK(shared.HasBytecodeArray());
-    int parameter_count_no_receiver = shared.internal_formal_parameter_count();
+    int parameter_count_no_receiver =
+        shared.internal_formal_parameter_count_without_receiver();
     int length = parameter_count_no_receiver +
                  shared.GetBytecodeArray().register_count();
     MapRef fixed_array_map = MakeRef(broker(), factory()->fixed_array_map());
@@ -466,9 +468,10 @@ Reduction JSCreateLowering::ReduceNewArray(
 
   // Constructing an Array via new Array(N) where N is an unsigned
   // integer, always creates a holey backing store.
-  ASSIGN_RETURN_NO_CHANGE_IF_DATA_MISSING(
-      initial_map,
-      initial_map.AsElementsKind(GetHoleyElementsKind(elements_kind)));
+  base::Optional<MapRef> maybe_initial_map =
+      initial_map.AsElementsKind(GetHoleyElementsKind(elements_kind));
+  if (!maybe_initial_map.has_value()) return NoChange();
+  initial_map = maybe_initial_map.value();
 
   // Because CheckBounds performs implicit conversion from string to number, an
   // additional CheckNumber is required to behave correctly for calls with a
@@ -525,8 +528,12 @@ Reduction JSCreateLowering::ReduceNewArray(
   if (NodeProperties::GetType(length).Max() > 0.0) {
     elements_kind = GetHoleyElementsKind(elements_kind);
   }
-  ASSIGN_RETURN_NO_CHANGE_IF_DATA_MISSING(
-      initial_map, initial_map.AsElementsKind(elements_kind));
+
+  base::Optional<MapRef> maybe_initial_map =
+      initial_map.AsElementsKind(elements_kind);
+  if (!maybe_initial_map.has_value()) return NoChange();
+  initial_map = maybe_initial_map.value();
+
   DCHECK(IsFastElementsKind(elements_kind));
 
   // Setup elements and properties.
@@ -566,8 +573,11 @@ Reduction JSCreateLowering::ReduceNewArray(
 
   // Determine the appropriate elements kind.
   DCHECK(IsFastElementsKind(elements_kind));
-  ASSIGN_RETURN_NO_CHANGE_IF_DATA_MISSING(
-      initial_map, initial_map.AsElementsKind(elements_kind));
+
+  base::Optional<MapRef> maybe_initial_map =
+      initial_map.AsElementsKind(elements_kind);
+  if (!maybe_initial_map.has_value()) return NoChange();
+  initial_map = maybe_initial_map.value();
 
   // Check {values} based on the {elements_kind}. These checks are guarded
   // by the {elements_kind} feedback on the {site}, so it's safe to just
@@ -929,6 +939,9 @@ Reduction JSCreateLowering::ReduceJSCreateClosure(Node* node) {
     return NoChange();
   }
 
+  // Don't inline anything for class constructors.
+  if (IsClassConstructor(shared.kind())) return NoChange();
+
   MapRef function_map =
       native_context().GetFunctionMapFromIndex(shared.function_map_index());
   DCHECK(!function_map.IsInobjectSlackTrackingInProgress());
@@ -948,7 +961,8 @@ Reduction JSCreateLowering::ReduceJSCreateClosure(Node* node) {
   // Emit code to allocate the JSFunction instance.
   STATIC_ASSERT(JSFunction::kSizeWithoutPrototype == 7 * kTaggedSize);
   AllocationBuilder a(jsgraph(), effect, control);
-  a.Allocate(function_map.instance_size(), allocation, Type::Function());
+  a.Allocate(function_map.instance_size(), allocation,
+             Type::CallableFunction());
   a.Store(AccessBuilder::ForMap(), function_map);
   a.Store(AccessBuilder::ForJSObjectPropertiesOrHashKnownPointer(),
           jsgraph()->EmptyFixedArrayConstant());
@@ -1314,7 +1328,7 @@ base::Optional<MapRef> GetObjectCreateMap(JSHeapBroker* broker,
   MapRef standard_map =
       broker->target_native_context().object_function().initial_map(
           broker->dependencies());
-  if (prototype.equals(standard_map.prototype().value())) {
+  if (prototype.equals(standard_map.prototype())) {
     return standard_map;
   }
   if (prototype.map().oddball_type() == OddballType::kNull) {
@@ -1479,7 +1493,8 @@ Node* JSCreateLowering::TryAllocateAliasedArguments(
 
   // If there is no aliasing, the arguments object elements are not special in
   // any way, we can just return an unmapped backing store instead.
-  int parameter_count = shared.internal_formal_parameter_count();
+  int parameter_count =
+      shared.internal_formal_parameter_count_without_receiver();
   if (parameter_count == 0) {
     return TryAllocateArguments(effect, control, frame_state);
   }
@@ -1529,7 +1544,7 @@ Node* JSCreateLowering::TryAllocateAliasedArguments(
   a.Store(AccessBuilder::ForSloppyArgumentsElementsContext(), context);
   a.Store(AccessBuilder::ForSloppyArgumentsElementsArguments(), arguments);
   for (int i = 0; i < mapped_count; ++i) {
-    int idx = shared.context_header_size() + parameter_count - 1 - i;
+    int idx = shared.context_parameters_start() + parameter_count - 1 - i;
     a.Store(AccessBuilder::ForSloppyArgumentsElementsMappedEntry(),
             jsgraph()->Constant(i), jsgraph()->Constant(idx));
   }
@@ -1545,7 +1560,8 @@ Node* JSCreateLowering::TryAllocateAliasedArguments(
     const SharedFunctionInfoRef& shared, bool* has_aliased_arguments) {
   // If there is no aliasing, the arguments object elements are not
   // special in any way, we can just return an unmapped backing store.
-  int parameter_count = shared.internal_formal_parameter_count();
+  int parameter_count =
+      shared.internal_formal_parameter_count_without_receiver();
   if (parameter_count == 0) {
     return graph()->NewNode(
         simplified()->NewArgumentsElements(
@@ -1585,7 +1601,7 @@ Node* JSCreateLowering::TryAllocateAliasedArguments(
   a.Store(AccessBuilder::ForSloppyArgumentsElementsContext(), context);
   a.Store(AccessBuilder::ForSloppyArgumentsElementsArguments(), arguments);
   for (int i = 0; i < mapped_count; ++i) {
-    int idx = shared.context_header_size() + parameter_count - 1 - i;
+    int idx = shared.context_parameters_start() + parameter_count - 1 - i;
     Node* value = graph()->NewNode(
         common()->Select(MachineRepresentation::kTagged),
         graph()->NewNode(simplified()->NumberLessThan(), jsgraph()->Constant(i),
@@ -1699,8 +1715,8 @@ base::Optional<Node*> JSCreateLowering::TryAllocateFastLiteral(
   for (InternalIndex i : InternalIndex::Range(boilerplate_nof)) {
     PropertyDetails const property_details =
         boilerplate_map.GetPropertyDetails(i);
-    if (property_details.location() != kField) continue;
-    DCHECK_EQ(kData, property_details.kind());
+    if (property_details.location() != PropertyLocation::kField) continue;
+    DCHECK_EQ(PropertyKind::kData, property_details.kind());
     if ((*max_properties)-- == 0) return {};
 
     NameRef property_name = boilerplate_map.GetPropertyKey(i);

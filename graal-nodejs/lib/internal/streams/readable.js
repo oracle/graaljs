@@ -43,8 +43,9 @@ const { Stream, prependListener } = require('internal/streams/legacy');
 const { Buffer } = require('buffer');
 
 const {
-  addAbortSignalNoValidate,
+  addAbortSignal,
 } = require('internal/streams/add-abort-signal');
+const eos = require('internal/streams/end-of-stream');
 
 let debug = require('internal/util/debuglog').debuglog('stream', (fn) => {
   debug = fn;
@@ -57,11 +58,15 @@ const {
 } = require('internal/streams/state');
 
 const {
-  ERR_INVALID_ARG_TYPE,
-  ERR_STREAM_PUSH_AFTER_EOF,
-  ERR_METHOD_NOT_IMPLEMENTED,
-  ERR_STREAM_UNSHIFT_AFTER_END_EVENT
-} = require('internal/errors').codes;
+  aggregateTwoErrors,
+  codes: {
+    ERR_INVALID_ARG_TYPE,
+    ERR_METHOD_NOT_IMPLEMENTED,
+    ERR_OUT_OF_RANGE,
+    ERR_STREAM_PUSH_AFTER_EOF,
+    ERR_STREAM_UNSHIFT_AFTER_END_EVENT,
+  }
+} = require('internal/errors');
 const { validateObject } = require('internal/validators');
 
 const kPaused = Symbol('kPaused');
@@ -197,8 +202,9 @@ function Readable(options) {
 
     if (typeof options.construct === 'function')
       this._construct = options.construct;
+
     if (options.signal && !isDuplex)
-      addAbortSignalNoValidate(options.signal, this);
+      addAbortSignal(options.signal, this);
   }
 
   Stream.call(this, options);
@@ -271,6 +277,8 @@ function readableAddChunk(stream, chunk, encoding, addToFront) {
     if (addToFront) {
       if (state.endEmitted)
         errorOrDestroy(stream, new ERR_STREAM_UNSHIFT_AFTER_END_EVENT());
+      else if (state.destroyed || state.errored)
+        return false;
       else
         addChunk(stream, state, chunk, true);
     } else if (state.ended) {
@@ -311,6 +319,7 @@ function addChunk(stream, state, chunk, addToFront) {
     } else {
       state.awaitDrainWriters = null;
     }
+
     state.dataEmitted = true;
     stream.emit('data', chunk);
   } else {
@@ -355,9 +364,8 @@ Readable.prototype.setEncoding = function(enc) {
 // Don't raise the hwm > 1GB.
 const MAX_HWM = 0x40000000;
 function computeNewHighWaterMark(n) {
-  if (n >= MAX_HWM) {
-    // TODO(ronag): Throw ERR_VALUE_OUT_OF_RANGE.
-    n = MAX_HWM;
+  if (n > MAX_HWM) {
+    throw new ERR_OUT_OF_RANGE('size', '<= 1GiB', n);
   } else {
     // Get the next highest power of 2 to prevent increasing hwm excessively in
     // tiny amounts.
@@ -484,7 +492,11 @@ Readable.prototype.read = function(n) {
       state.needReadable = true;
 
     // Call internal read method
-    this._read(state.highWaterMark);
+    try {
+      this._read(state.highWaterMark);
+    } catch (err) {
+      errorOrDestroy(this, err);
+    }
 
     state.sync = false;
     // If _read pushed data synchronously, then `reading` will be false,
@@ -522,7 +534,7 @@ Readable.prototype.read = function(n) {
       endReadable(this);
   }
 
-  if (ret !== null) {
+  if (ret !== null && !state.errorEmitted && !state.closeEmitted) {
     state.dataEmitted = true;
     this.emit('data', ret);
   }
@@ -1087,12 +1099,6 @@ function streamToAsyncIterator(stream, options) {
 async function* createAsyncIterator(stream, options) {
   let callback = nop;
 
-  const opts = {
-    destroyOnReturn: true,
-    destroyOnError: true,
-    ...options,
-  };
-
   function next(resolve) {
     if (this === stream) {
       callback();
@@ -1102,57 +1108,40 @@ async function* createAsyncIterator(stream, options) {
     }
   }
 
-  const state = stream._readableState;
+  stream.on('readable', next);
 
-  let error = state.errored;
-  let errorEmitted = state.errorEmitted;
-  let endEmitted = state.endEmitted;
-  let closeEmitted = state.closeEmitted;
+  let error;
+  const cleanup = eos(stream, { writable: false }, (err) => {
+    error = err ? aggregateTwoErrors(error, err) : null;
+    callback();
+    callback = nop;
+  });
 
-  stream
-    .on('readable', next)
-    .on('error', function(err) {
-      error = err;
-      errorEmitted = true;
-      next.call(this);
-    })
-    .on('end', function() {
-      endEmitted = true;
-      next.call(this);
-    })
-    .on('close', function() {
-      closeEmitted = true;
-      next.call(this);
-    });
-
-  let errorThrown = false;
   try {
     while (true) {
       const chunk = stream.destroyed ? null : stream.read();
       if (chunk !== null) {
         yield chunk;
-      } else if (errorEmitted) {
+      } else if (error) {
         throw error;
-      } else if (endEmitted) {
-        break;
-      } else if (closeEmitted) {
-        break;
+      } else if (error === null) {
+        return;
       } else {
         await new Promise(next);
       }
     }
   } catch (err) {
-    if (opts.destroyOnError) {
-      destroyImpl.destroyer(stream, err);
-    }
-    errorThrown = true;
-    throw err;
+    error = aggregateTwoErrors(error, err);
+    throw error;
   } finally {
-    if (!errorThrown && opts.destroyOnReturn) {
-      if (state.autoDestroy || !endEmitted) {
-        // TODO(ronag): ERR_PREMATURE_CLOSE?
-        destroyImpl.destroyer(stream, null);
-      }
+    if (
+      (error || options?.destroyOnReturn !== false) &&
+      (error === undefined || stream._readableState.autoDestroy)
+    ) {
+      destroyImpl.destroyer(stream, null);
+    } else {
+      stream.off('readable', next);
+      cleanup();
     }
   }
 }
@@ -1253,14 +1242,26 @@ ObjectDefineProperties(Readable.prototype, {
     }
   },
 
+  errored: {
+    __proto__: null,
+    enumerable: false,
+    get() {
+      return this._readableState ? this._readableState.errored : null;
+    }
+  },
+
+  closed: {
+    __proto__: null,
+    get() {
+      return this._readableState ? this._readableState.closed : false;
+    }
+  },
+
   destroyed: {
     __proto__: null,
     enumerable: false,
     get() {
-      if (this._readableState === undefined) {
-        return false;
-      }
-      return this._readableState.destroyed;
+      return this._readableState ? this._readableState.destroyed : false;
     },
     set(value) {
       // We ignore the value if the stream
@@ -1352,7 +1353,7 @@ function endReadableNT(state, stream) {
   debug('endReadableNT', state.endEmitted, state.length);
 
   // Check that we didn't get one last unshift.
-  if (!state.errorEmitted && !state.closeEmitted &&
+  if (!state.errored && !state.closeEmitted &&
       !state.endEmitted && state.length === 0) {
     state.endEmitted = true;
     stream.emit('end');
@@ -1387,6 +1388,27 @@ function endWritableNT(stream) {
 
 Readable.from = function(iterable, opts) {
   return from(Readable, iterable, opts);
+};
+
+let webStreamsAdapters;
+
+// Lazy to avoid circular references
+function lazyWebStreams() {
+  if (webStreamsAdapters === undefined)
+    webStreamsAdapters = require('internal/webstreams/adapters');
+  return webStreamsAdapters;
+}
+
+Readable.fromWeb = function(readableStream, options) {
+  return lazyWebStreams().newStreamReadableFromReadableStream(
+    readableStream,
+    options);
+};
+
+Readable.toWeb = function(streamReadable, options) {
+  return lazyWebStreams().newReadableStreamFromStreamReadable(
+    streamReadable,
+    options);
 };
 
 Readable.wrap = function(src, options) {

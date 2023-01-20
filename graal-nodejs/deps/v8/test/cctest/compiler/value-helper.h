@@ -146,6 +146,7 @@ class ValueHelper {
       797056.0f,
       1.77219e+09f,
       2147483648.0f,  // INT32_MAX + 1
+      2147483904.0f,  // INT32_MAX + 1 and significand = 1.
       4294967296.0f,  // UINT32_MAX + 1
       1.51116e+11f,
       4.18193e+13f,
@@ -355,6 +356,16 @@ inline base::Vector<const uint32_t> ValueHelper::GetVector() {
 template <>
 inline base::Vector<const int64_t> ValueHelper::GetVector() {
   return int64_vector();
+}
+
+template <>
+inline base::Vector<const float> ValueHelper::GetVector() {
+  return float32_vector();
+}
+
+template <>
+inline base::Vector<const double> ValueHelper::GetVector() {
+  return float64_vector();
 }
 
 // Helper macros that can be used in FOR_INT32_INPUTS(i) { ... i ... }

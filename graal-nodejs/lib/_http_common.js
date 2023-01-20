@@ -40,12 +40,7 @@ const {
   readStop
 } = incoming;
 
-let debug = require('internal/util/debuglog').debuglog('http', (fn) => {
-  debug = fn;
-});
-
 const kIncomingMessage = Symbol('IncomingMessage');
-const kRequestTimeout = Symbol('RequestTimeout');
 const kOnMessageBegin = HTTPParser.kOnMessageBegin | 0;
 const kOnHeaders = HTTPParser.kOnHeaders | 0;
 const kOnHeadersComplete = HTTPParser.kOnHeadersComplete | 0;
@@ -101,12 +96,6 @@ function parserOnHeadersComplete(versionMajor, versionMinor, headers, method,
   incoming.httpVersion = `${versionMajor}.${versionMinor}`;
   incoming.url = url;
   incoming.upgrade = upgrade;
-
-  if (socket) {
-    debug('requestTimeout timer moved to req');
-    incoming[kRequestTimeout] = incoming.socket[kRequestTimeout];
-    incoming.socket[kRequestTimeout] = undefined;
-  }
 
   let n = headers.length;
 
@@ -193,6 +182,7 @@ function freeParser(parser, req, socket) {
     if (parser._consumed)
       parser.unconsume();
     cleanParser(parser);
+    parser.remove();
     if (parsers.free(parser) === false) {
       // Make sure the parser's stack has unwound before deleting the
       // corresponding C++ object through .close().
@@ -272,7 +262,6 @@ module.exports = {
   methods,
   parsers,
   kIncomingMessage,
-  kRequestTimeout,
   HTTPParser,
   isLenient,
   prepareError,

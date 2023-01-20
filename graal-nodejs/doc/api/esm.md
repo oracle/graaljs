@@ -8,14 +8,16 @@
 added: v8.5.0
 changes:
   - version:
-    - v16.17.0
+    - v18.6.0
     pr-url: https://github.com/nodejs/node/pull/42623
     description: Add support for chaining loaders.
   - version:
+    - v17.1.0
     - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/40250
     description: Add support for import assertions.
   - version:
+    - v17.0.0
     - v16.12.0
     pr-url: https://github.com/nodejs/node/pull/37468
     description:
@@ -25,6 +27,7 @@ changes:
       allowed returning `format` from either `resolve` or `load` hooks.
   - version:
     - v15.3.0
+    - v14.17.0
     - v12.22.0
     pr-url: https://github.com/nodejs/node/pull/35781
     description: Stabilize modules implementation.
@@ -211,7 +214,9 @@ added:
   - v14.13.1
   - v12.20.0
 changes:
-  - version: v16.0.0
+  - version:
+      - v16.0.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37246
     description: Added `node:` import support to `require(...)`.
 -->
@@ -227,7 +232,9 @@ import fs from 'node:fs/promises';
 ## Import assertions
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.1.0
+  - v16.14.0
 -->
 
 > Stability: 1 - Experimental
@@ -317,7 +324,9 @@ added:
   - v13.9.0
   - v12.16.2
 changes:
-  - version: v16.2.0
+  - version:
+      - v16.2.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38587
     description: Add support for WHATWG `URL` object to `parentURL` parameter.
 -->
@@ -672,7 +681,7 @@ of Node.js applications.
 added: v8.8.0
 changes:
   - version:
-    - v16.17.0
+    - v18.6.0
     pr-url: https://github.com/nodejs/node/pull/42623
     description: Add support for chaining loaders.
   - version: v16.12.0
@@ -722,13 +731,13 @@ prevent unintentional breaks in the chain.
 
 <!-- YAML
 changes:
-  - version:
-    - v16.17.0
+  - version: v18.6.0
     pr-url: https://github.com/nodejs/node/pull/42623
     description: Add support for chaining resolve hooks. Each hook must either
       call `nextResolve()` or include a `shortCircuit` property set to `true`
       in its return.
   - version:
+    - v17.1.0
     - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/40250
     description: Add support for import assertions.
@@ -814,7 +823,7 @@ export async function resolve(specifier, context, nextResolve) {
 
 <!-- YAML
 changes:
-  - version: v16.17.0
+  - version: v18.6.0
     pr-url: https://github.com/nodejs/node/pull/42623
     description: Add support for chaining load hooks. Each hook must either
       call `nextLoad()` or include a `shortCircuit` property set to `true` in
@@ -912,7 +921,7 @@ source to a supported one (see [Examples](#examples) below).
 
 <!-- YAML
 changes:
-  - version: v16.17.0
+  - version: v18.6.0
     pr-url: https://github.com/nodejs/node/pull/42623
     description: Add support for chaining globalPreload hooks.
 -->
@@ -1247,9 +1256,9 @@ The resolver can throw the following errors:
 >    1. Set _resolved_ to the URL resolution of _specifier_ relative to
 >       _parentURL_.
 > 4. Otherwise, if _specifier_ starts with _"#"_, then
->    1. Set _resolved_ to the destructured value of the result of
->       **PACKAGE\_IMPORTS\_RESOLVE**(_specifier_, _parentURL_,
->       _defaultConditions_).
+>    1. Set _resolved_ to the result of
+>       **PACKAGE\_IMPORTS\_RESOLVE**(_specifier_,
+>       _parentURL_, _defaultConditions_).
 > 5. Otherwise,
 >    1. Note: _specifier_ is now a bare specifier.
 >    2. Set _resolved_ the result of
@@ -1323,9 +1332,8 @@ The resolver can throw the following errors:
 >    **undefined**, then
 >    1. Return **undefined**.
 > 5. If _pjson.name_ is equal to _packageName_, then
->    1. Return the _resolved_ destructured value of the result of
->       **PACKAGE\_EXPORTS\_RESOLVE**(_packageURL_, _packageSubpath_,
->       _pjson.exports_, _defaultConditions_).
+>    1. Return the result of **PACKAGE\_EXPORTS\_RESOLVE**(_packageURL_,
+>       _packageSubpath_, _pjson.exports_, _defaultConditions_).
 > 6. Otherwise, return **undefined**.
 
 **PACKAGE\_EXPORTS\_RESOLVE**(_packageURL_, _subpath_, _exports_, _conditions_)
@@ -1341,17 +1349,14 @@ The resolver can throw the following errors:
 >       1. Set _mainExport_ to _exports_\[_"."_].
 >    4. If _mainExport_ is not **undefined**, then
 >       1. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->          _packageURL_, _mainExport_, _""_, **false**, **false**,
->          _conditions_).
->       2. If _resolved_ is not **null** or **undefined**, then
->          1. Return _resolved_.
+>          _packageURL_, _mainExport_, **null**, **false**, _conditions_).
+>       2. If _resolved_ is not **null** or **undefined**, return _resolved_.
 > 3. Otherwise, if _exports_ is an Object and all keys of _exports_ start with
 >    _"."_, then
 >    1. Let _matchKey_ be the string _"./"_ concatenated with _subpath_.
->    2. Let _resolvedMatch_ be result of **PACKAGE\_IMPORTS\_EXPORTS\_RESOLVE**(
+>    2. Let _resolved_ be the result of **PACKAGE\_IMPORTS\_EXPORTS\_RESOLVE**(
 >       _matchKey_, _exports_, _packageURL_, **false**, _conditions_).
->    3. If _resolvedMatch_._resolve_ is not **null** or **undefined**, then
->       1. Return _resolvedMatch_.
+>    3. If _resolved_ is not **null** or **undefined**, return _resolved_.
 > 4. Throw a _Package Path Not Exported_ error.
 
 **PACKAGE\_IMPORTS\_RESOLVE**(_specifier_, _parentURL_, _conditions_)
@@ -1363,56 +1368,38 @@ The resolver can throw the following errors:
 > 4. If _packageURL_ is not **null**, then
 >    1. Let _pjson_ be the result of **READ\_PACKAGE\_JSON**(_packageURL_).
 >    2. If _pjson.imports_ is a non-null Object, then
->       1. Let _resolvedMatch_ be the result of
->          **PACKAGE\_IMPORTS\_EXPORTS\_RESOLVE**(_specifier_, _pjson.imports_,
->          _packageURL_, **true**, _conditions_).
->       2. If _resolvedMatch_._resolve_ is not **null** or **undefined**, then
->          1. Return _resolvedMatch_.
+>       1. Let _resolved_ be the result of
+>          **PACKAGE\_IMPORTS\_EXPORTS\_RESOLVE**(
+>          _specifier_, _pjson.imports_, _packageURL_, **true**, _conditions_).
+>       2. If _resolved_ is not **null** or **undefined**, return _resolved_.
 > 5. Throw a _Package Import Not Defined_ error.
 
 **PACKAGE\_IMPORTS\_EXPORTS\_RESOLVE**(_matchKey_, _matchObj_, _packageURL_,
 _isImports_, _conditions_)
 
-> 1. If _matchKey_ is a key of _matchObj_ and does not end in _"/"_ or contain
->    _"\*"_, then
+> 1. If _matchKey_ is a key of _matchObj_ and does not contain _"\*"_, then
 >    1. Let _target_ be the value of _matchObj_\[_matchKey_].
->    2. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->       _packageURL_, _target_, _""_, **false**, _isImports_, _conditions_).
->    3. Return the object _{ resolved, exact: **true** }_.
-> 2. Let _expansionKeys_ be the list of keys of _matchObj_ either ending in
->    _"/"_ or containing only a single _"\*"_, sorted by the sorting function
->    **PATTERN\_KEY\_COMPARE** which orders in descending order of specificity.
+>    2. Return the result of **PACKAGE\_TARGET\_RESOLVE**(_packageURL_,
+>       _target_, **null**, _isImports_, _conditions_).
+> 2. Let _expansionKeys_ be the list of keys of _matchObj_ containing only a
+>    single _"\*"_, sorted by the sorting function **PATTERN\_KEY\_COMPARE**
+>    which orders in descending order of specificity.
 > 3. For each key _expansionKey_ in _expansionKeys_, do
->    1. Let _patternBase_ be **null**.
->    2. If _expansionKey_ contains _"\*"_, set _patternBase_ to the substring of
->       _expansionKey_ up to but excluding the first _"\*"_ character.
->    3. If _patternBase_ is not **null** and _matchKey_ starts with but is not
->       equal to _patternBase_, then
->       1. If _matchKey_ ends with _"/"_, throw an _Invalid Module Specifier_
->          error.
->       2. Let _patternTrailer_ be the substring of _expansionKey_ from the
+>    1. Let _patternBase_ be the substring of _expansionKey_ up to but excluding
+>       the first _"\*"_ character.
+>    2. If _matchKey_ starts with but is not equal to _patternBase_, then
+>       1. Let _patternTrailer_ be the substring of _expansionKey_ from the
 >          index after the first _"\*"_ character.
->       3. If _patternTrailer_ has zero length, or if _matchKey_ ends with
+>       2. If _patternTrailer_ has zero length, or if _matchKey_ ends with
 >          _patternTrailer_ and the length of _matchKey_ is greater than or
 >          equal to the length of _expansionKey_, then
 >          1. Let _target_ be the value of _matchObj_\[_expansionKey_].
->          2. Let _subpath_ be the substring of _matchKey_ starting at the
+>          2. Let _patternMatch_ be the substring of _matchKey_ starting at the
 >             index of the length of _patternBase_ up to the length of
 >             _matchKey_ minus the length of _patternTrailer_.
->          3. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->             _packageURL_, _target_, _subpath_, **true**, _isImports_,
->             _conditions_).
->          4. Return the object _{ resolved, exact: **true** }_.
->    4. Otherwise if _patternBase_ is **null** and _matchKey_ starts with
->       _expansionKey_, then
->       1. Let _target_ be the value of _matchObj_\[_expansionKey_].
->       2. Let _subpath_ be the substring of _matchKey_ starting at the
->          index of the length of _expansionKey_.
->       3. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->          _packageURL_, _target_, _subpath_, **false**, _isImports_,
->          _conditions_).
->       4. Return the object _{ resolved, exact: **false** }_.
-> 4. Return the object _{ resolved: **null**, exact: **true** }_.
+>          3. Return the result of **PACKAGE\_TARGET\_RESOLVE**(_packageURL_,
+>             _target_, _patternMatch_, _isImports_, _conditions_).
+> 4. Return **null**.
 
 **PATTERN\_KEY\_COMPARE**(_keyA_, _keyB_)
 
@@ -1430,37 +1417,32 @@ _isImports_, _conditions_)
 > 10. If the length of _keyB_ is greater than the length of _keyA_, return 1.
 > 11. Return 0.
 
-**PACKAGE\_TARGET\_RESOLVE**(_packageURL_, _target_, _subpath_, _pattern_,
-_internal_, _conditions_)
+**PACKAGE\_TARGET\_RESOLVE**(_packageURL_, _target_, _patternMatch_,
+_isImports_, _conditions_)
 
 > 1. If _target_ is a String, then
->    1. If _pattern_ is **false**, _subpath_ has non-zero length and _target_
->       does not end with _"/"_, throw an _Invalid Module Specifier_ error.
->    2. If _target_ does not start with _"./"_, then
->       1. If _internal_ is **true** and _target_ does not start with _"../"_ or
->          _"/"_ and is not a valid URL, then
->          1. If _pattern_ is **true**, then
->             1. Return **PACKAGE\_RESOLVE**(_target_ with every instance of
->                _"\*"_ replaced by _subpath_, _packageURL_ + _"/"_).
->          2. Return **PACKAGE\_RESOLVE**(_target_ + _subpath_,
->             _packageURL_ + _"/"_).
->       2. Otherwise, throw an _Invalid Package Target_ error.
->    3. If _target_ split on _"/"_ or _"\\"_ contains any _"."_, _".."_, or
->       _"node\_modules"_ segments after the first segment, case insensitive and
->       including percent encoded variants, throw an _Invalid Package Target_
->       error.
->    4. Let _resolvedTarget_ be the URL resolution of the concatenation of
+>    1. If _target_ does not start with _"./"_, then
+>       1. If _isImports_ is **false**, or if _target_ starts with _"../"_ or
+>          _"/"_, or if _target_ is a valid URL, then
+>          1. Throw an _Invalid Package Target_ error.
+>       2. If _patternMatch_ is a String, then
+>          1. Return **PACKAGE\_RESOLVE**(_target_ with every instance of _"\*"_
+>             replaced by _patternMatch_, _packageURL_ + _"/"_).
+>       3. Return **PACKAGE\_RESOLVE**(_target_, _packageURL_ + _"/"_).
+>    2. If _target_ split on _"/"_ or _"\\"_ contains any _""_, _"."_, _".."_,
+>       or _"node\_modules"_ segments after the first _"."_ segment, case
+>       insensitive and including percent encoded variants, throw an _Invalid
+>       Package Target_ error.
+>    3. Let _resolvedTarget_ be the URL resolution of the concatenation of
 >       _packageURL_ and _target_.
->    5. Assert: _resolvedTarget_ is contained in _packageURL_.
->    6. If _subpath_ split on _"/"_ or _"\\"_ contains any _"."_, _".."_, or
->       _"node\_modules"_ segments, case insensitive and including percent
->       encoded variants, throw an _Invalid Module Specifier_ error.
->    7. If _pattern_ is **true**, then
->       1. Return the URL resolution of _resolvedTarget_ with every instance of
->          _"\*"_ replaced with _subpath_.
->    8. Otherwise,
->       1. Return the URL resolution of the concatenation of _subpath_ and
->          _resolvedTarget_.
+>    4. Assert: _resolvedTarget_ is contained in _packageURL_.
+>    5. If _patternMatch_ is **null**, then
+>       1. Return _resolvedTarget_.
+>    6. If _patternMatch_ split on _"/"_ or _"\\"_ contains any _""_, _"."_,
+>       _".."_, or _"node\_modules"_ segments, case insensitive and including
+>       percent encoded variants, throw an _Invalid Module Specifier_ error.
+>    7. Return the URL resolution of _resolvedTarget_ with every instance of
+>       _"\*"_ replaced with _patternMatch_.
 > 2. Otherwise, if _target_ is a non-null Object, then
 >    1. If _exports_ contains any index property keys, as defined in ECMA-262
 >       [6.1.7 Array Index][], throw an _Invalid Package Configuration_ error.
@@ -1469,7 +1451,7 @@ _internal_, _conditions_)
 >          then
 >          1. Let _targetValue_ be the value of the _p_ property in _target_.
 >          2. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->             _packageURL_, _targetValue_, _subpath_, _pattern_, _internal_,
+>             _packageURL_, _targetValue_, _patternMatch_, _isImports_,
 >             _conditions_).
 >          3. If _resolved_ is equal to **undefined**, continue the loop.
 >          4. Return _resolved_.
@@ -1478,7 +1460,7 @@ _internal_, _conditions_)
 >    1. If \_target.length is zero, return **null**.
 >    2. For each item _targetValue_ in _target_, do
 >       1. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->          _packageURL_, _targetValue_, _subpath_, _pattern_, _internal_,
+>          _packageURL_, _targetValue_, _patternMatch_, _isImports_,
 >          _conditions_), continuing the loop on any _Invalid Package Target_
 >          error.
 >       2. If _resolved_ is **undefined**, continue the loop.

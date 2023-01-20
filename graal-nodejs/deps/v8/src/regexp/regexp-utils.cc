@@ -49,7 +49,8 @@ MaybeHandle<Object> RegExpUtils::SetLastIndex(Isolate* isolate,
   Handle<Object> value_as_object =
       isolate->factory()->NewNumberFromInt64(value);
   if (HasInitialRegExpMap(isolate, *recv)) {
-    JSRegExp::cast(*recv).set_last_index(*value_as_object, SKIP_WRITE_BARRIER);
+    JSRegExp::cast(*recv).set_last_index(*value_as_object,
+                                         UPDATE_WRITE_BARRIER);
     return recv;
   } else {
     return Object::SetProperty(
@@ -118,33 +119,6 @@ MaybeHandle<Object> RegExpUtils::RegExpExec(Isolate* isolate,
 
     return Execution::Call(isolate, regexp_exec, regexp, argc, argv.begin());
   }
-}
-
-Maybe<bool> RegExpUtils::IsRegExp(Isolate* isolate, Handle<Object> object) {
-  if (!object->IsJSReceiver()) return Just(false);
-
-  Handle<JSReceiver> receiver = Handle<JSReceiver>::cast(object);
-
-  Handle<Object> match;
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, match,
-      JSObject::GetProperty(isolate, receiver,
-                            isolate->factory()->match_symbol()),
-      Nothing<bool>());
-
-  if (!match->IsUndefined(isolate)) {
-    const bool match_as_boolean = match->BooleanValue(isolate);
-
-    if (match_as_boolean && !object->IsJSRegExp()) {
-      isolate->CountUsage(v8::Isolate::kRegExpMatchIsTrueishOnNonJSRegExp);
-    } else if (!match_as_boolean && object->IsJSRegExp()) {
-      isolate->CountUsage(v8::Isolate::kRegExpMatchIsFalseishOnJSRegExp);
-    }
-
-    return Just(match_as_boolean);
-  }
-
-  return Just(object->IsJSRegExp());
 }
 
 bool RegExpUtils::IsUnmodifiedRegExp(Isolate* isolate, Handle<Object> obj) {

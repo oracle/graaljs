@@ -20,7 +20,7 @@ const inspector = require('node:inspector');
 <!-- YAML
 added: v9.0.0
 changes:
-  - version: v16.18.0
+  - version: v18.10.0
     pr-url: https://github.com/nodejs/node/pull/44489
     description: The API is exposed in the worker threads.
 -->
@@ -178,6 +178,12 @@ enabled agents or configured breakpoints.
 
 <!-- YAML
 added: v8.0.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `method` {string}

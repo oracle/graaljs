@@ -38,13 +38,11 @@ namespace worker {
 class TransferData;
 }
 
-extern uint16_t kNodeEmbedderId;
-
 class BaseObject : public MemoryRetainer {
  public:
-  enum InternalFields { kEmbedderType, kSlot, kInternalFieldCount };
+  enum InternalFields { kSlot, kInternalFieldCount };
 
-  // Associates this object with `object`. It uses the 1st internal field for
+  // Associates this object with `object`. It uses the 0th internal field for
   // that, and in particular aborts if there is no such field.
   BaseObject(Environment* env, v8::Local<v8::Object> object);
   ~BaseObject() override;
@@ -86,6 +84,8 @@ class BaseObject : public MemoryRetainer {
   // i.e. whether is can be deleted by GC once no strong BaseObjectPtrs refer
   // to it anymore.
   inline bool IsWeakOrDetached() const;
+
+  inline v8::EmbedderGraph::Node::Detachedness GetDetachedness() const override;
 
   // Utility to create a FunctionTemplate with one internal field (used for
   // the `BaseObject*` pointer) and a constructor that initializes that field
@@ -175,7 +175,7 @@ class BaseObject : public MemoryRetainer {
   // position of members in memory are predictable. For more information please
   // refer to `doc/contributing/node-postmortem-support.md`
   friend int GenDebugSymbols();
-  friend class CleanupHookCallback;
+  friend class CleanupQueue;
   template <typename T, bool kIsWeak>
   friend class BaseObjectPtrImpl;
 
@@ -232,7 +232,9 @@ inline T* Unwrap(v8::Local<v8::Value> obj) {
 // circumstances such as the GC or Environment cleanup.
 // If weak, destruction behaviour is not affected, but the pointer will be
 // reset to nullptr once the BaseObject is destroyed.
-// The API matches std::shared_ptr closely.
+// The API matches std::shared_ptr closely. However, this class is not thread
+// safe, that is, we can't have different BaseObjectPtrImpl instances in
+// different threads refering to the same BaseObject instance.
 template <typename T, bool kIsWeak>
 class BaseObjectPtrImpl final {
  public:

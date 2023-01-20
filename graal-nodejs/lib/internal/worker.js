@@ -87,9 +87,6 @@ let debug = require('internal/util/debuglog').debuglog('worker', (fn) => {
   debug = fn;
 });
 
-const dc = require('diagnostics_channel');
-const workerThreadsChannel = dc.channel('worker_threads');
-
 let cwdCounter;
 
 const environmentData = new SafeMap();
@@ -263,11 +260,6 @@ class Worker extends EventEmitter {
     this[kHandle].startThread();
 
     process.nextTick(() => process.emit('worker', this));
-    if (workerThreadsChannel.hasSubscribers) {
-      workerThreadsChannel.publish({
-        worker: this,
-      });
-    }
   }
 
   [kOnExit](code, customErr, customErrReason) {

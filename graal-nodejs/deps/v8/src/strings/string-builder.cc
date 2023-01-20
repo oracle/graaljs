@@ -34,7 +34,7 @@ void StringBuilderConcatHelper(String special, sinkchar* sink,
         pos = Smi::ToInt(obj);
         len = -encoded_slice;
       }
-      String::WriteToFlat(special, sink + position, pos, pos + len);
+      String::WriteToFlat(special, sink + position, pos, len);
       position += len;
     } else {
       String string = String::cast(element);
@@ -244,6 +244,10 @@ IncrementalStringBuilder::IncrementalStringBuilder(Isolate* isolate)
 
 int IncrementalStringBuilder::Length() const {
   return accumulator_->length() + current_index_;
+}
+
+bool IncrementalStringBuilder::HasValidCurrentIndex() const {
+  return current_index_ < part_length_;
 }
 
 void IncrementalStringBuilder::Accumulate(Handle<String> new_part) {

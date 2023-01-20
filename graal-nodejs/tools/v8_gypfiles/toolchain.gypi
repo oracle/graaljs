@@ -285,6 +285,11 @@
           'V8_TARGET_ARCH_SPARCV9',
         ],
       }],
+      ['v8_target_arch=="loong64"', {
+        'defines': [
+          'V8_TARGET_ARCH_LOONG64',
+        ],
+      }],
       ['v8_target_arch=="s390x"', {
         'defines': [
           'V8_TARGET_ARCH_S390',
@@ -963,6 +968,7 @@
         'defines': [
           'WIN32',
           'NOMINMAX',  # Refs: https://chromium-review.googlesource.com/c/v8/v8/+/1456620
+          '_WIN32_WINNT=0x0602',  # Windows 8
         ],
         # 4351: VS 2005 and later are warning us that they've fixed a bug
         #       present in VS 2003 and earlier.
@@ -1007,7 +1013,7 @@
       ['OS=="mac"', {
         'defines': [
           'V8_HAVE_TARGET_OS',
-          'V8_TARGET_OS_MACOSX',
+          'V8_TARGET_OS_MACOS',
         ]
       }],
       ['OS=="win"', {

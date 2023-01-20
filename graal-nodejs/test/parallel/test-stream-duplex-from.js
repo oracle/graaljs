@@ -146,7 +146,6 @@ const { Blob } = require('buffer');
   );
 }
 
-
 // Ensure that isDuplexNodeStream was called
 {
   const duplex = new Duplex();
@@ -249,6 +248,19 @@ const { Blob } = require('buffer');
       assert.strictEqual(duplex.writable, true);
     }))
     .on('end', common.mustCall());
+}
+
+// Ensure that given readable stream that throws an error it calls destroy
+{
+  const myErrorMessage = 'error!';
+  const duplex = Duplex.from(Readable({
+    read() {
+      throw new Error(myErrorMessage);
+    }
+  }));
+  duplex.on('error', common.mustCall((msg) => {
+    assert.strictEqual(msg.message, myErrorMessage);
+  }));
 }
 
 // Ensure that given writable stream that throws an error it calls destroy

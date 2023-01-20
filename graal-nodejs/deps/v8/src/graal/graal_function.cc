@@ -284,7 +284,7 @@ v8::ScriptOrigin GraalFunction::GetScriptOrigin() const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_resource_name, graal_isolate, GraalAccessMethod::function_resource_name, Object, GetJavaObject());
     GraalValue* resource_name = (java_resource_name == nullptr) ? graal_isolate->GetUndefined() : GraalString::Allocate(graal_isolate, java_resource_name);
-    return v8::ScriptOrigin(reinterpret_cast<v8::Value*> (resource_name));
+    return v8::ScriptOrigin(reinterpret_cast<v8::Isolate*> (graal_isolate), reinterpret_cast<v8::Value*> (resource_name));
 }
 
 int GraalFunction::GetScriptLineNumber() const {

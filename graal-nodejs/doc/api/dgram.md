@@ -113,6 +113,13 @@ exist and calls such as `socket.address()` and `socket.setTTL()` will fail.
 
 <!-- YAML
 added: v0.1.99
+changes:
+  - version: v18.4.0
+    pr-url: https://github.com/nodejs/node/pull/43054
+    description: The `family` property now returns a string instead of a number.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41431
+    description: The `family` property now returns a number instead of a string.
 -->
 
 The `'message'` event is emitted when a new datagram is available on a socket.
@@ -454,6 +461,23 @@ added: v8.7.0
 
 This method throws [`ERR_SOCKET_BUFFER_SIZE`][] if called on an unbound socket.
 
+### `socket.getSendQueueSize()`
+
+<!-- YAML
+added: v18.8.0
+-->
+
+* Returns: {number} Number of bytes queued for sending.
+
+### `socket.getSendQueueCount()`
+
+<!-- YAML
+added: v18.8.0
+-->
+
+* Returns: {number} Number of send requests currently in the queue awaiting
+  to be processed.
+
 ### `socket.ref()`
 
 <!-- YAML
@@ -490,6 +514,10 @@ if the socket is not connected.
 <!-- YAML
 added: v0.1.99
 changes:
+  - version: v17.0.0
+    pr-url: https://github.com/nodejs/node/pull/39190
+    description: The `address` parameter now only accepts a `string`, `null`
+                 or `undefined`.
   - version:
     - v14.5.0
     - v12.19.0
@@ -539,7 +567,7 @@ If `msg` is an array, `offset` and `length` must not be specified.
 
 The `address` argument is a string. If the value of `address` is a host name,
 DNS will be used to resolve the address of the host. If `address` is not
-provided or otherwise falsy, `'127.0.0.1'` (for `udp4` sockets) or `'::1'`
+provided or otherwise nullish, `'127.0.0.1'` (for `udp4` sockets) or `'::1'`
 (for `udp6` sockets) will be used by default.
 
 If the socket has not been previously bound with a call to `bind`, the socket

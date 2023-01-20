@@ -1,9 +1,9 @@
 #include "node_binding.h"
 #include <atomic>
 #include "env-inl.h"
+#include "node_builtins.h"
 #include "node_errors.h"
 #include "node_external_reference.h"
-#include "node_native_module_env.h"
 #include "util.h"
 
 #include <string>
@@ -43,6 +43,7 @@
   V(blob)                                                                      \
   V(block_list)                                                                \
   V(buffer)                                                                    \
+  V(builtins)                                                                  \
   V(cares_wrap)                                                                \
   V(config)                                                                    \
   V(contextify)                                                                \
@@ -60,7 +61,6 @@
   V(messaging)                                                                 \
   V(module_wrap)                                                               \
   V(mksnapshot)                                                                \
-  V(native_module)                                                             \
   V(options)                                                                   \
   V(os)                                                                        \
   V(performance)                                                               \
@@ -87,6 +87,7 @@
   V(uv)                                                                        \
   V(v8)                                                                        \
   V(wasi)                                                                      \
+  V(wasm_web_api)                                                              \
   V(watchdog)                                                                  \
   V(worker)                                                                    \
   V(zlib)
@@ -605,14 +606,13 @@ void GetInternalBinding(const FunctionCallbackInfo<Value>& args) {
         exports->SetPrototype(env->context(), Null(env->isolate())).FromJust());
     DefineConstants(env->isolate(), exports);
   } else if (!strcmp(*module_v, "natives")) {
-    exports = native_module::NativeModuleEnv::GetSourceObject(env->context());
+    exports = builtins::BuiltinLoader::GetSourceObject(env->context());
     // Legacy feature: process.binding('natives').config contains stringified
     // config.gypi
     CHECK(exports
               ->Set(env->context(),
                     env->config_string(),
-                    native_module::NativeModuleEnv::GetConfigString(
-                        env->isolate()))
+                    builtins::BuiltinLoader::GetConfigString(env->isolate()))
               .FromJust());
   } else {
     return THROW_ERR_INVALID_MODULE(env, "No such module: %s", *module_v);

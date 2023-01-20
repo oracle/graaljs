@@ -167,8 +167,8 @@ void StringBuiltinsAssembler::StringEqual_Core(
     TNode<String> lhs, TNode<Word32T> lhs_instance_type, TNode<String> rhs,
     TNode<Word32T> rhs_instance_type, TNode<IntPtrT> length, Label* if_equal,
     Label* if_not_equal, Label* if_indirect) {
-  CSA_ASSERT(this, WordEqual(LoadStringLengthAsWord(lhs), length));
-  CSA_ASSERT(this, WordEqual(LoadStringLengthAsWord(rhs), length));
+  CSA_DCHECK(this, WordEqual(LoadStringLengthAsWord(lhs), length));
+  CSA_DCHECK(this, WordEqual(LoadStringLengthAsWord(rhs), length));
   // Fast check to see if {lhs} and {rhs} refer to the same String object.
   GotoIf(TaggedEqual(lhs, rhs), if_equal);
 
@@ -244,8 +244,8 @@ void StringBuiltinsAssembler::StringEqual_Loop(
     TNode<String> lhs, TNode<Word32T> lhs_instance_type, MachineType lhs_type,
     TNode<String> rhs, TNode<Word32T> rhs_instance_type, MachineType rhs_type,
     TNode<IntPtrT> length, Label* if_equal, Label* if_not_equal) {
-  CSA_ASSERT(this, WordEqual(LoadStringLengthAsWord(lhs), length));
-  CSA_ASSERT(this, WordEqual(LoadStringLengthAsWord(rhs), length));
+  CSA_DCHECK(this, WordEqual(LoadStringLengthAsWord(lhs), length));
+  CSA_DCHECK(this, WordEqual(LoadStringLengthAsWord(rhs), length));
 
   // Compute the effective offset of the first character.
   TNode<RawPtrT> lhs_data = DirectStringData(lhs, lhs_instance_type);
@@ -341,7 +341,7 @@ TNode<String> StringBuiltinsAssembler::AllocateConsString(TNode<Uint32T> length,
 TNode<String> StringBuiltinsAssembler::StringAdd(
     TNode<ContextOrEmptyContext> context, TNode<String> left,
     TNode<String> right) {
-  CSA_ASSERT(this, IsZeroOrContext(context));
+  CSA_DCHECK(this, IsZeroOrContext(context));
 
   TVARIABLE(String, result);
   Label check_right(this), runtime(this, Label::kDeferred), cons(this),
@@ -540,7 +540,7 @@ TF_BUILTIN(StringAdd_CheckNone, StringBuiltinsAssembler) {
   auto right = Parameter<String>(Descriptor::kRight);
   TNode<ContextOrEmptyContext> context =
       UncheckedParameter<ContextOrEmptyContext>(Descriptor::kContext);
-  CSA_ASSERT(this, IsZeroOrContext(context));
+  CSA_DCHECK(this, IsZeroOrContext(context));
   Return(StringAdd(context, left, right));
 }
 
@@ -751,21 +751,6 @@ TF_BUILTIN(StringGreaterThanOrEqual, StringBuiltinsAssembler) {
                                      Operation::kGreaterThanOrEqual);
 }
 
-TF_BUILTIN(StringCodePointAt, StringBuiltinsAssembler) {
-  auto receiver = Parameter<String>(Descriptor::kReceiver);
-  auto position = UncheckedParameter<IntPtrT>(Descriptor::kPosition);
-
-  // TODO(sigurds) Figure out if passing length as argument pays off.
-  TNode<IntPtrT> length = LoadStringLengthAsWord(receiver);
-  // Load the character code at the {position} from the {receiver}.
-  TNode<Int32T> code =
-      LoadSurrogatePairAt(receiver, length, position, UnicodeEncoding::UTF32);
-  // And return it as TaggedSigned value.
-  // TODO(turbofan): Allow builtins to return values untagged.
-  TNode<Smi> result = SmiFromInt32(code);
-  Return(result);
-}
-
 TF_BUILTIN(StringFromCodePointAt, StringBuiltinsAssembler) {
   auto receiver = Parameter<String>(Descriptor::kReceiver);
   auto position = UncheckedParameter<IntPtrT>(Descriptor::kPosition);
@@ -792,12 +777,12 @@ TF_BUILTIN(StringFromCharCode, StringBuiltinsAssembler) {
 
   CodeStubArguments arguments(this, argc);
   TNode<Uint32T> unsigned_argc =
-      Unsigned(TruncateIntPtrToInt32(arguments.GetLength()));
+      Unsigned(TruncateIntPtrToInt32(arguments.GetLengthWithoutReceiver()));
   // Check if we have exactly one argument (plus the implicit receiver), i.e.
   // if the parent frame is not an arguments adaptor frame.
   Label if_oneargument(this), if_notoneargument(this);
-  Branch(IntPtrEqual(arguments.GetLength(), IntPtrConstant(1)), &if_oneargument,
-         &if_notoneargument);
+  Branch(IntPtrEqual(arguments.GetLengthWithoutReceiver(), IntPtrConstant(1)),
+         &if_oneargument, &if_notoneargument);
 
   BIND(&if_oneargument);
   {
@@ -965,8 +950,8 @@ TNode<String> StringBuiltinsAssembler::GetSubstitution(
     TNode<Context> context, TNode<String> subject_string,
     TNode<Smi> match_start_index, TNode<Smi> match_end_index,
     TNode<String> replace_string) {
-  CSA_ASSERT(this, TaggedIsPositiveSmi(match_start_index));
-  CSA_ASSERT(this, TaggedIsPositiveSmi(match_end_index));
+  CSA_DCHECK(this, TaggedIsPositiveSmi(match_start_index));
+  CSA_DCHECK(this, TaggedIsPositiveSmi(match_end_index));
 
   TVARIABLE(String, var_result, replace_string);
   Label runtime(this), out(this);
@@ -984,7 +969,7 @@ TNode<String> StringBuiltinsAssembler::GetSubstitution(
 
   BIND(&runtime);
   {
-    CSA_ASSERT(this, TaggedIsPositiveSmi(dollar_index));
+    CSA_DCHECK(this, TaggedIsPositiveSmi(dollar_index));
 
     const TNode<Object> matched =
         CallBuiltin(Builtin::kStringSubstring, context, subject_string,
@@ -1185,8 +1170,8 @@ TF_BUILTIN(StringPrototypeMatchAll, StringBuiltinsAssembler) {
     //        TypeError exception.
     GotoIf(TaggedIsSmi(maybe_regexp), &next);
     TNode<HeapObject> heap_maybe_regexp = CAST(maybe_regexp);
-    regexp_asm.BranchIfFastRegExp_Strict(context, heap_maybe_regexp, &fast,
-                                         &slow);
+    regexp_asm.BranchIfFastRegExpForMatch(context, heap_maybe_regexp, &fast,
+                                          &slow);
 
     BIND(&fast);
     {
@@ -1260,7 +1245,7 @@ TF_BUILTIN(StringPrototypeMatchAll, StringBuiltinsAssembler) {
 TNode<JSArray> StringBuiltinsAssembler::StringToArray(
     TNode<NativeContext> context, TNode<String> subject_string,
     TNode<Smi> subject_length, TNode<Number> limit_number) {
-  CSA_ASSERT(this, SmiGreaterThan(subject_length, SmiConstant(0)));
+  CSA_DCHECK(this, SmiGreaterThan(subject_length, SmiConstant(0)));
 
   Label done(this), call_runtime(this, Label::kDeferred),
       fill_thehole_and_call_runtime(this, Label::kDeferred);
@@ -1299,7 +1284,7 @@ TNode<JSArray> StringBuiltinsAssembler::StringToArray(
           // TODO(jkummerow): Implement a CSA version of
           // DisallowGarbageCollection and use that to guard
           // ToDirectStringAssembler.PointerToData().
-          CSA_ASSERT(this, WordEqual(to_direct.PointerToData(&call_runtime),
+          CSA_DCHECK(this, WordEqual(to_direct.PointerToData(&call_runtime),
                                      string_data));
           TNode<Int32T> char_code =
               UncheckedCast<Int32T>(Load(MachineType::Uint8(), string_data,
@@ -1434,9 +1419,10 @@ TF_BUILTIN(StringPrototypeSplit, StringBuiltinsAssembler) {
 
     TNode<Smi> length = smi_zero;
     TNode<IntPtrT> capacity = IntPtrConstant(0);
-    TNode<JSArray> result = AllocateJSArray(kind, array_map, capacity, length);
+    TNode<JSArray> result_array =
+        AllocateJSArray(kind, array_map, capacity, length);
 
-    args.PopAndReturn(result);
+    args.PopAndReturn(result_array);
   }
 }
 
@@ -1478,12 +1464,12 @@ TNode<Int32T> StringBuiltinsAssembler::LoadSurrogatePairAt(
     TNode<Int32T> trail = var_trail.value();
 
     // Check that this path is only taken if a surrogate pair is found
-    CSA_SLOW_ASSERT(this,
+    CSA_SLOW_DCHECK(this,
                     Uint32GreaterThanOrEqual(lead, Int32Constant(0xD800)));
-    CSA_SLOW_ASSERT(this, Uint32LessThan(lead, Int32Constant(0xDC00)));
-    CSA_SLOW_ASSERT(this,
+    CSA_SLOW_DCHECK(this, Uint32LessThan(lead, Int32Constant(0xDC00)));
+    CSA_SLOW_DCHECK(this,
                     Uint32GreaterThanOrEqual(trail, Int32Constant(0xDC00)));
-    CSA_SLOW_ASSERT(this, Uint32LessThan(trail, Int32Constant(0xE000)));
+    CSA_SLOW_DCHECK(this, Uint32LessThan(trail, Int32Constant(0xE000)));
 
     switch (encoding) {
       case UnicodeEncoding::UTF16:
@@ -1757,7 +1743,7 @@ TNode<String> StringBuiltinsAssembler::SubString(TNode<String> string,
 
   BIND(&original_string_or_invalid_length);
   {
-    CSA_ASSERT(this, IntPtrEqual(substr_length, string_length));
+    CSA_DCHECK(this, IntPtrEqual(substr_length, string_length));
 
     // Equal length - check if {from, to} == {0, str.length}.
     GotoIf(UintPtrGreaterThan(from, IntPtrConstant(0)), &runtime);

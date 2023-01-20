@@ -1,14 +1,16 @@
 'use strict';
+const { ObjectAssign } = primordials;
 const { test, describe, it, before, after, beforeEach, afterEach } = require('internal/test_runner/harness');
-const { emitExperimentalWarning } = require('internal/util');
-
-emitExperimentalWarning('The test runner');
+const { run } = require('internal/test_runner/runner');
 
 module.exports = test;
-module.exports.test = test;
-module.exports.describe = describe;
-module.exports.it = it;
-module.exports.before = before;
-module.exports.after = after;
-module.exports.beforeEach = beforeEach;
-module.exports.afterEach = afterEach;
+ObjectAssign(module.exports, {
+  after,
+  afterEach,
+  before,
+  beforeEach,
+  describe,
+  it,
+  run,
+  test,
+});

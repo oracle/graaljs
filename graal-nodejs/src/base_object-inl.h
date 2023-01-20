@@ -92,6 +92,11 @@ bool BaseObject::IsWeakOrDetached() const {
   return pd->wants_weak_jsobj || pd->is_detached;
 }
 
+v8::EmbedderGraph::Node::Detachedness BaseObject::GetDetachedness() const {
+  return IsWeakOrDetached() ? v8::EmbedderGraph::Node::Detachedness::kDetached
+                            : v8::EmbedderGraph::Node::Detachedness::kUnknown;
+}
+
 template <int Field>
 void BaseObject::InternalFieldGet(
     v8::Local<v8::String> property,
@@ -115,7 +120,7 @@ bool BaseObject::has_pointer_data() const {
 template <typename T, bool kIsWeak>
 BaseObject::PointerData*
 BaseObjectPtrImpl<T, kIsWeak>::pointer_data() const {
-  if (kIsWeak) {
+  if constexpr (kIsWeak) {
     return data_.pointer_data;
   }
   if (get_base_object() == nullptr) {
@@ -126,7 +131,7 @@ BaseObjectPtrImpl<T, kIsWeak>::pointer_data() const {
 
 template <typename T, bool kIsWeak>
 BaseObject* BaseObjectPtrImpl<T, kIsWeak>::get_base_object() const {
-  if (kIsWeak) {
+  if constexpr (kIsWeak) {
     if (pointer_data() == nullptr) {
       return nullptr;
     }
@@ -137,7 +142,7 @@ BaseObject* BaseObjectPtrImpl<T, kIsWeak>::get_base_object() const {
 
 template <typename T, bool kIsWeak>
 BaseObjectPtrImpl<T, kIsWeak>::~BaseObjectPtrImpl() {
-  if (kIsWeak) {
+  if constexpr (kIsWeak) {
     if (pointer_data() != nullptr &&
         --pointer_data()->weak_ptr_count == 0 &&
         pointer_data()->self == nullptr) {
@@ -157,7 +162,7 @@ template <typename T, bool kIsWeak>
 BaseObjectPtrImpl<T, kIsWeak>::BaseObjectPtrImpl(T* target)
   : BaseObjectPtrImpl() {
   if (target == nullptr) return;
-  if (kIsWeak) {
+  if constexpr (kIsWeak) {
     data_.pointer_data = target->pointer_data();
     CHECK_NOT_NULL(pointer_data());
     pointer_data()->weak_ptr_count++;
@@ -198,7 +203,7 @@ BaseObjectPtrImpl<T, kIsWeak>& BaseObjectPtrImpl<T, kIsWeak>::operator=(
 template <typename T, bool kIsWeak>
 BaseObjectPtrImpl<T, kIsWeak>::BaseObjectPtrImpl(BaseObjectPtrImpl&& other)
   : data_(other.data_) {
-  if (kIsWeak)
+  if constexpr (kIsWeak)
     other.data_.target = nullptr;
   else
     other.data_.pointer_data = nullptr;

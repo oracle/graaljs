@@ -5,10 +5,17 @@ const {
   codes: {
     ERR_MULTIPLE_CALLBACK,
   },
+  AbortError,
 } = require('internal/errors');
 const {
   Symbol,
 } = primordials;
+const {
+  kDestroyed,
+  isDestroyed,
+  isFinished,
+  isServerRequest
+} = require('internal/streams/utils');
 
 const kDestroy = Symbol('kDestroy');
 const kConstruct = Symbol('kConstruct');
@@ -99,20 +106,7 @@ function _destroy(self, err, cb) {
     }
   }
   try {
-    const result = self._destroy(err || null, onDestroy);
-    if (result != null) {
-      const then = result.then;
-      if (typeof then === 'function') {
-        then.call(
-          result,
-          function() {
-            process.nextTick(onDestroy, null);
-          },
-          function(err) {
-            process.nextTick(onDestroy, err);
-          });
-      }
-    }
+    self._destroy(err || null, onDestroy);
   } catch (err) {
     onDestroy(err);
   }
@@ -169,8 +163,8 @@ function undestroy() {
     r.errored = null;
     r.errorEmitted = false;
     r.reading = false;
-    r.ended = false;
-    r.endEmitted = false;
+    r.ended = r.readable === false;
+    r.endEmitted = r.readable === false;
   }
 
   if (w) {
@@ -180,11 +174,11 @@ function undestroy() {
     w.closeEmitted = false;
     w.errored = null;
     w.errorEmitted = false;
-    w.ended = false;
-    w.ending = false;
     w.finalCalled = false;
     w.prefinished = false;
-    w.finished = false;
+    w.ended = w.writable === false;
+    w.ending = w.writable === false;
+    w.finished = w.writable === false;
   }
 }
 
@@ -278,24 +272,7 @@ function constructNT(stream) {
   }
 
   try {
-    const result = stream._construct(onConstruct);
-    if (result != null) {
-      const then = result.then;
-      if (typeof then === 'function') {
-        then.call(
-          result,
-          function() {
-            if (!called) {
-              process.nextTick(onConstruct, null);
-            }
-          },
-          function(err) {
-            if (!called) {
-              process.nextTick(onConstruct, err);
-            }
-          });
-      }
-    }
+    stream._construct(onConstruct);
   } catch (err) {
     onConstruct(err);
   }
@@ -309,13 +286,47 @@ function isRequest(stream) {
   return stream?.setHeader && typeof stream.abort === 'function';
 }
 
+function emitCloseLegacy(stream) {
+  stream.emit('close');
+}
+
+function emitErrorCloseLegacy(stream, err) {
+  stream.emit('error', err);
+  process.nextTick(emitCloseLegacy, stream);
+}
+
 // Normalize destroy for legacy.
 function destroyer(stream, err) {
-  if (!stream) return;
-  if (isRequest(stream)) return stream.abort();
-  if (isRequest(stream.req)) return stream.req.abort();
-  if (typeof stream.destroy === 'function') return stream.destroy(err);
-  if (typeof stream.close === 'function') return stream.close();
+  if (!stream || isDestroyed(stream)) {
+    return;
+  }
+
+  if (!err && !isFinished(stream)) {
+    err = new AbortError();
+  }
+
+  // TODO: Remove isRequest branches.
+  if (isServerRequest(stream)) {
+    stream.socket = null;
+    stream.destroy(err);
+  } else if (isRequest(stream)) {
+    stream.abort();
+  } else if (isRequest(stream.req)) {
+    stream.req.abort();
+  } else if (typeof stream.destroy === 'function') {
+    stream.destroy(err);
+  } else if (typeof stream.close === 'function') {
+    // TODO: Don't lose err?
+    stream.close();
+  } else if (err) {
+    process.nextTick(emitErrorCloseLegacy, stream, err);
+  } else {
+    process.nextTick(emitCloseLegacy, stream);
+  }
+
+  if (!stream.destroyed) {
+    stream[kDestroyed] = true;
+  }
 }
 
 module.exports = {

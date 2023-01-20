@@ -62,12 +62,10 @@ const net = require('net');
 const { getOptionValue } = require('internal/options');
 const { getRootCertificates, getSSLCiphers } = internalBinding('crypto');
 const { Buffer } = require('buffer');
-const { URL } = require('internal/url');  // Only used for Security Revert
 const { canonicalizeIP } = internalBinding('cares_wrap');
 const _tls_common = require('_tls_common');
 const _tls_wrap = require('_tls_wrap');
 const { createSecurePair } = require('internal/tls/secure-pair');
-const { parseCertString } = require('internal/tls/parse-cert-string');
 
 // Allow {CLIENT_RENEG_LIMIT} client-initiated session renegotiations
 // every {CLIENT_RENEG_WINDOW} seconds. An error event is emitted if more
@@ -283,7 +281,6 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
   const subject = cert.subject;
   const altNames = cert.subjectaltname;
   const dnsNames = [];
-  const uriNames = [];
   const ips = [];
 
   hostname = '' + hostname;
@@ -295,12 +292,6 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
     ArrayPrototypeForEach(splitAltNames, (name) => {
       if (StringPrototypeStartsWith(name, 'DNS:')) {
         ArrayPrototypePush(dnsNames, StringPrototypeSlice(name, 4));
-      } else if (process.REVERT_CVE_2021_44531 &&
-                 StringPrototypeStartsWith(name, 'URI:')) {
-        const uri = new URL(StringPrototypeSlice(name, 4));
-
-        // TODO(bnoordhuis) Also use scheme.
-        ArrayPrototypePush(uriNames, uri.hostname);
       } else if (StringPrototypeStartsWith(name, 'IP Address:')) {
         ArrayPrototypePush(ips, canonicalizeIP(StringPrototypeSlice(name, 11)));
       }
@@ -310,9 +301,6 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
   let valid = false;
   let reason = 'Unknown reason';
 
-  const hasAltNames =
-    dnsNames.length > 0 || ips.length > 0 || uriNames.length > 0;
-
   hostname = unfqdn(hostname);  // Remove trailing dot for error messages.
 
   if (net.isIP(hostname)) {
@@ -320,17 +308,12 @@ exports.checkServerIdentity = function checkServerIdentity(hostname, cert) {
     if (!valid)
       reason = `IP: ${hostname} is not in the cert's list: ` +
                ArrayPrototypeJoin(ips, ', ');
-    // TODO(bnoordhuis) Also check URI SANs that are IP addresses.
-  } else if ((process.REVERT_CVE_2021_44531 && (hasAltNames || subject)) ||
-             (dnsNames.length > 0 || subject?.CN)) {
+  } else if (dnsNames.length > 0 || subject?.CN) {
     const hostParts = splitHost(hostname);
     const wildcard = (pattern) => check(hostParts, pattern, true);
 
-    if ((process.REVERT_CVE_2021_44531 && hasAltNames) ||
-        (dnsNames.length > 0)) {
-      const noWildcard = (pattern) => check(hostParts, pattern, false);
-      valid = ArrayPrototypeSome(dnsNames, wildcard) ||
-              ArrayPrototypeSome(uriNames, noWildcard);
+    if (dnsNames.length > 0) {
+      valid = ArrayPrototypeSome(dnsNames, wildcard);
       if (!valid)
         reason =
           `Host: ${hostname}. is not in the cert's altnames: ${altNames}`;
@@ -361,12 +344,6 @@ exports.TLSSocket = _tls_wrap.TLSSocket;
 exports.Server = _tls_wrap.Server;
 exports.createServer = _tls_wrap.createServer;
 exports.connect = _tls_wrap.connect;
-
-exports.parseCertString = internalUtil.deprecate(
-  parseCertString,
-  'tls.parseCertString() is deprecated. ' +
-  'Please use querystring.parse() instead.',
-  'DEP0076');
 
 exports.createSecurePair = internalUtil.deprecate(
   createSecurePair,

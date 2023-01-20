@@ -3,8 +3,9 @@
 const { RegExpPrototypeExec } = primordials;
 
 const {
-  prepareMainThreadExecution
-} = require('internal/bootstrap/pre_execution');
+  prepareMainThreadExecution,
+  markBootstrapComplete
+} = require('internal/process/pre_execution');
 
 prepareMainThreadExecution(true);
 

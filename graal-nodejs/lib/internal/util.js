@@ -498,27 +498,16 @@ function exposeInterface(target, name, interfaceObject) {
   });
 }
 
-let DOMException;
+let _DOMException;
+const lazyDOMExceptionClass = () => {
+  _DOMException ??= internalBinding('messaging').DOMException;
+  return _DOMException;
+};
+
 const lazyDOMException = hideStackFrames((message, name) => {
-  if (DOMException === undefined)
-    DOMException = internalBinding('messaging').DOMException;
-  return new DOMException(message, name);
+  _DOMException ??= internalBinding('messaging').DOMException;
+  return new _DOMException(message, name);
 });
-
-function structuredClone(value) {
-  const {
-    DefaultSerializer,
-    DefaultDeserializer,
-  } = require('v8');
-  const ser = new DefaultSerializer();
-  ser._getDataCloneError = hideStackFrames((message) =>
-    lazyDOMException(message, 'DataCloneError'));
-  ser.writeValue(value);
-  const serialized = ser.releaseBuffer();
-
-  const des = new DefaultDeserializer(serialized);
-  return des.readValue();
-}
 
 const kEnumerableProperty = ObjectCreate(null);
 kEnumerableProperty.enumerable = true;
@@ -591,13 +580,13 @@ module.exports = {
   isInsideNodeModules,
   join,
   lazyDOMException,
+  lazyDOMExceptionClass,
   normalizeEncoding,
   once,
   promisify,
   SideEffectFreeRegExpPrototypeExec,
   sleep,
   spliceOne,
-  structuredClone,
   toUSVString,
   removeColors,
 

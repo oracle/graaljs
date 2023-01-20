@@ -31,25 +31,23 @@ namespace internal {
 
 #include "torque-generated/src/objects/js-objects-tq-inl.inc"
 
-OBJECT_CONSTRUCTORS_IMPL(JSReceiver, HeapObject)
+TQ_OBJECT_CONSTRUCTORS_IMPL(JSReceiver)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSObject)
+TQ_OBJECT_CONSTRUCTORS_IMPL(JSObjectWithEmbedderSlots)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSCustomElementsObject)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSSpecialObject)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSAsyncFromSyncIterator)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSDate)
-OBJECT_CONSTRUCTORS_IMPL(JSGlobalObject, JSSpecialObject)
+TQ_OBJECT_CONSTRUCTORS_IMPL(JSGlobalObject)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSGlobalProxy)
 JSIteratorResult::JSIteratorResult(Address ptr) : JSObject(ptr) {}
-OBJECT_CONSTRUCTORS_IMPL(JSMessageObject, JSObject)
+TQ_OBJECT_CONSTRUCTORS_IMPL(JSMessageObject)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSPrimitiveWrapper)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSStringIterator)
 
 NEVER_READ_ONLY_SPACE_IMPL(JSReceiver)
 
-CAST_ACCESSOR(JSGlobalObject)
 CAST_ACCESSOR(JSIteratorResult)
-CAST_ACCESSOR(JSMessageObject)
-CAST_ACCESSOR(JSReceiver)
 
 DEF_GETTER(JSObject, elements, FixedArrayBase) {
   return TaggedField<FixedArrayBase, kElementsOffset>::load(cage_base, *this);
@@ -88,9 +86,10 @@ MaybeHandle<Object> JSReceiver::GetElement(Isolate* isolate,
   return Object::GetProperty(&it);
 }
 
-Handle<Object> JSReceiver::GetDataProperty(Handle<JSReceiver> object,
+Handle<Object> JSReceiver::GetDataProperty(Isolate* isolate,
+                                           Handle<JSReceiver> object,
                                            Handle<Name> name) {
-  LookupIterator it(object->GetIsolate(), object, name, object,
+  LookupIterator it(isolate, object, name, object,
                     LookupIterator::PROTOTYPE_CHAIN_SKIP_INTERCEPTOR);
   if (!it.IsFound()) return it.factory()->undefined_value();
   return GetDataProperty(&it);
@@ -286,6 +285,20 @@ int JSObject::GetEmbedderFieldsStartOffset() {
 }
 
 // static
+bool JSObject::MayHaveEmbedderFields(Map map) {
+  InstanceType instance_type = map.instance_type();
+  // TODO(v8) It'd be nice if all objects with embedder data slots inherited
+  // from JSObjectWithEmbedderSlots, but this is currently not possible due to
+  // instance_type constraints.
+  return InstanceTypeChecker::IsJSObjectWithEmbedderSlots(instance_type) ||
+         InstanceTypeChecker::IsJSSpecialObject(instance_type);
+}
+
+bool JSObject::MayHaveEmbedderFields() const {
+  return MayHaveEmbedderFields(map());
+}
+
+// static
 int JSObject::GetEmbedderFieldCount(Map map) {
   int instance_size = map.instance_size();
   if (instance_size == kVariableSizeSentinel) return 0;
@@ -310,10 +323,6 @@ int JSObject::GetEmbedderFieldOffset(int index) {
   return GetEmbedderFieldsStartOffset() + (kEmbedderDataSlotSize * index);
 }
 
-void JSObject::InitializeEmbedderField(Isolate* isolate, int index) {
-  EmbedderDataSlot(*this, index).AllocateExternalPointerEntry(isolate);
-}
-
 Object JSObject::GetEmbedderField(int index) {
   return EmbedderDataSlot(*this, index).load_tagged();
 }
@@ -324,6 +333,12 @@ void JSObject::SetEmbedderField(int index, Object value) {
 
 void JSObject::SetEmbedderField(int index, Smi value) {
   EmbedderDataSlot(*this, index).store_smi(value);
+}
+
+bool JSObject::IsDroppableApiObject() const {
+  auto instance_type = map().instance_type();
+  return InstanceTypeChecker::IsJSApiObject(instance_type) ||
+         instance_type == JS_SPECIAL_API_OBJECT_TYPE;
 }
 
 // Access fast-case object properties at index. The use of these routines
@@ -337,16 +352,33 @@ Object JSObject::RawFastPropertyAt(FieldIndex index) const {
 Object JSObject::RawFastPropertyAt(PtrComprCageBase cage_base,
                                    FieldIndex index) const {
   if (index.is_inobject()) {
-    return TaggedField<Object>::load(cage_base, *this, index.offset());
+    return TaggedField<Object>::Relaxed_Load(cage_base, *this, index.offset());
   } else {
     return property_array(cage_base).get(cage_base,
                                          index.outobject_array_index());
   }
 }
 
-base::Optional<Object> JSObject::RawInobjectPropertyAt(Map original_map,
-                                                       FieldIndex index) const {
+// The SeqCst versions of RawFastPropertyAt are used for atomically accessing
+// shared struct fields.
+Object JSObject::RawFastPropertyAt(FieldIndex index,
+                                   SeqCstAccessTag tag) const {
   PtrComprCageBase cage_base = GetPtrComprCageBase(*this);
+  return RawFastPropertyAt(cage_base, index, tag);
+}
+
+Object JSObject::RawFastPropertyAt(PtrComprCageBase cage_base, FieldIndex index,
+                                   SeqCstAccessTag tag) const {
+  if (index.is_inobject()) {
+    return TaggedField<Object>::SeqCst_Load(cage_base, *this, index.offset());
+  } else {
+    return property_array(cage_base).get(cage_base,
+                                         index.outobject_array_index(), tag);
+  }
+}
+
+base::Optional<Object> JSObject::RawInobjectPropertyAt(
+    PtrComprCageBase cage_base, Map original_map, FieldIndex index) const {
   CHECK(index.is_inobject());
 
   // This method implements a "snapshot" protocol to protect against reading out
@@ -376,7 +408,7 @@ base::Optional<Object> JSObject::RawInobjectPropertyAt(Map original_map,
   // given by the map and it will be a valid Smi or object pointer.
   Object maybe_tagged_object =
       TaggedField<Object>::Acquire_Load(cage_base, *this, index.offset());
-  if (original_map != map(kAcquireLoad)) return {};
+  if (original_map != map(cage_base, kAcquireLoad)) return {};
   return maybe_tagged_object;
 }
 
@@ -386,6 +418,17 @@ void JSObject::RawFastInobjectPropertyAtPut(FieldIndex index, Object value,
   int offset = index.offset();
   RELAXED_WRITE_FIELD(*this, offset, value);
   CONDITIONAL_WRITE_BARRIER(*this, offset, value, mode);
+}
+
+void JSObject::RawFastInobjectPropertyAtPut(FieldIndex index, Object value,
+                                            SeqCstAccessTag tag) {
+  DCHECK(index.is_inobject());
+  DCHECK(value.IsShared());
+  SEQ_CST_WRITE_FIELD(*this, index.offset(), value);
+  // JSSharedStructs are allocated in the shared old space, which is currently
+  // collected by stopping the world, so the incremental write barrier is not
+  // needed. They can only store Smis and other HeapObjects in the shared old
+  // space, so the generational write barrier is also not needed.
 }
 
 void JSObject::FastPropertyAtPut(FieldIndex index, Object value,
@@ -398,10 +441,19 @@ void JSObject::FastPropertyAtPut(FieldIndex index, Object value,
   }
 }
 
+void JSObject::FastPropertyAtPut(FieldIndex index, Object value,
+                                 SeqCstAccessTag tag) {
+  if (index.is_inobject()) {
+    RawFastInobjectPropertyAtPut(index, value, tag);
+  } else {
+    property_array().set(index.outobject_array_index(), value, tag);
+  }
+}
+
 void JSObject::WriteToField(InternalIndex descriptor, PropertyDetails details,
                             Object value) {
-  DCHECK_EQ(kField, details.location());
-  DCHECK_EQ(kData, details.kind());
+  DCHECK_EQ(PropertyLocation::kField, details.location());
+  DCHECK_EQ(PropertyKind::kData, details.kind());
   DisallowGarbageCollection no_gc;
   FieldIndex index = FieldIndex::ForDescriptor(map(), descriptor);
   if (details.representation().IsDouble()) {
@@ -423,6 +475,23 @@ void JSObject::WriteToField(InternalIndex descriptor, PropertyDetails details,
   } else {
     FastPropertyAtPut(index, value);
   }
+}
+
+Object JSObject::RawFastPropertyAtSwap(FieldIndex index, Object value,
+                                       SeqCstAccessTag tag) {
+  PtrComprCageBase cage_base = GetPtrComprCageBase(*this);
+  return RawFastPropertyAtSwap(cage_base, index, value, tag);
+}
+
+Object JSObject::RawFastPropertyAtSwap(PtrComprCageBase cage_base,
+                                       FieldIndex index, Object value,
+                                       SeqCstAccessTag tag) {
+  if (index.is_inobject()) {
+    return TaggedField<Object>::SeqCst_Swap(cage_base, *this, index.offset(),
+                                            value);
+  }
+  return property_array().Swap(cage_base, index.outobject_array_index(), value,
+                               tag);
 }
 
 int JSObject::GetInObjectPropertyOffset(int index) {
@@ -448,11 +517,37 @@ void JSObject::InitializeBody(Map map, int start_offset,
                               MapWord filler_map, Object undefined_filler) {
   int size = map.instance_size();
   int offset = start_offset;
+
+  // embedder data slots need to be initialized separately
+  if (MayHaveEmbedderFields(map)) {
+    int embedder_field_start = GetEmbedderFieldsStartOffset(map);
+    int embedder_field_count = GetEmbedderFieldCount(map);
+
+    // fill start with references to the undefined value object
+    DCHECK_LE(offset, embedder_field_start);
+    while (offset < embedder_field_start) {
+      WRITE_FIELD(*this, offset, undefined_filler);
+      offset += kTaggedSize;
+    }
+
+    // initialize embedder data slots
+    DCHECK_EQ(offset, embedder_field_start);
+    for (int i = 0; i < embedder_field_count; i++) {
+      // TODO(v8): consider initializing embedded data slots with Smi::zero().
+      EmbedderDataSlot(*this, i).Initialize(undefined_filler);
+      offset += kEmbedderDataSlotSize;
+    }
+  } else {
+    DCHECK_EQ(0, GetEmbedderFieldCount(map));
+  }
+
+  DCHECK_LE(offset, size);
   if (is_slack_tracking_in_progress) {
     int end_of_pre_allocated_offset =
         size - (map.UnusedPropertyFields() * kTaggedSize);
     DCHECK_LE(kHeaderSize, end_of_pre_allocated_offset);
-    // fill start with references to the undefined value object
+    DCHECK_LE(offset, end_of_pre_allocated_offset);
+    // fill pre allocated slots with references to the undefined value object
     while (offset < end_of_pre_allocated_offset) {
       WRITE_FIELD(*this, offset, undefined_filler);
       offset += kTaggedSize;
@@ -465,18 +560,34 @@ void JSObject::InitializeBody(Map map, int start_offset,
     }
   } else {
     while (offset < size) {
-      // fill with references to the undefined value object
+      // fill everything with references to the undefined value object
       WRITE_FIELD(*this, offset, undefined_filler);
       offset += kTaggedSize;
     }
   }
 }
 
-ACCESSORS(JSGlobalObject, native_context, NativeContext, kNativeContextOffset)
-ACCESSORS(JSGlobalObject, global_proxy, JSGlobalProxy, kGlobalProxyOffset)
+TQ_OBJECT_CONSTRUCTORS_IMPL(JSExternalObject)
+
+DEF_GETTER(JSExternalObject, value, void*) {
+  Isolate* isolate = GetIsolateForSandbox(*this);
+  return reinterpret_cast<void*>(
+      ReadExternalPointerField(kValueOffset, isolate, kExternalObjectValueTag));
+}
+
+void JSExternalObject::AllocateExternalPointerEntries(Isolate* isolate) {
+  InitExternalPointerField(kValueOffset, isolate, kExternalObjectValueTag);
+}
+
+void JSExternalObject::set_value(Isolate* isolate, void* value) {
+  WriteExternalPointerField(kValueOffset, isolate,
+                            reinterpret_cast<Address>(value),
+                            kExternalObjectValueTag);
+}
 
 DEF_GETTER(JSGlobalObject, native_context_unchecked, Object) {
-  return TaggedField<Object, kNativeContextOffset>::load(cage_base, *this);
+  return TaggedField<Object, kNativeContextOffset>::Relaxed_Load(cage_base,
+                                                                 *this);
 }
 
 bool JSMessageObject::DidEnsureSourcePositionsAvailable() const {
@@ -501,9 +612,6 @@ void JSMessageObject::set_type(MessageTemplate value) {
   set_raw_type(static_cast<int>(value));
 }
 
-ACCESSORS(JSMessageObject, argument, Object, kArgumentsOffset)
-ACCESSORS(JSMessageObject, script, Script, kScriptOffset)
-ACCESSORS(JSMessageObject, stack_frames, Object, kStackFramesOffset)
 ACCESSORS(JSMessageObject, shared_info, HeapObject, kSharedInfoOffset)
 ACCESSORS(JSMessageObject, bytecode_offset, Smi, kBytecodeOffsetOffset)
 SMI_ACCESSORS(JSMessageObject, start_position, kStartPositionOffset)
@@ -617,11 +725,6 @@ DEF_GETTER(JSObject, HasSlowStringWrapperElements, bool) {
   return GetElementsKind(cage_base) == SLOW_STRING_WRAPPER_ELEMENTS;
 }
 
-DEF_GETTER(JSObject, HasTypedArrayElements, bool) {
-  DCHECK(!elements(cage_base).is_null());
-  return map(cage_base).has_typed_array_elements();
-}
-
 DEF_GETTER(JSObject, HasTypedArrayOrRabGsabTypedArrayElements, bool) {
   DCHECK(!elements(cage_base).is_null());
   return map(cage_base).has_typed_array_or_rab_gsab_typed_array_elements();
@@ -716,21 +819,18 @@ DEF_GETTER(JSReceiver, property_array, PropertyArray) {
   return PropertyArray::cast(prop);
 }
 
-Maybe<bool> JSReceiver::HasProperty(Handle<JSReceiver> object,
+Maybe<bool> JSReceiver::HasProperty(Isolate* isolate, Handle<JSReceiver> object,
                                     Handle<Name> name) {
-  Isolate* isolate = object->GetIsolate();
   PropertyKey key(isolate, name);
   LookupIterator it(isolate, object, key, object);
   return HasProperty(&it);
 }
 
-Maybe<bool> JSReceiver::HasOwnProperty(Handle<JSReceiver> object,
+Maybe<bool> JSReceiver::HasOwnProperty(Isolate* isolate,
+                                       Handle<JSReceiver> object,
                                        uint32_t index) {
-  if (object->IsJSModuleNamespace()) return Just(false);
-
   if (object->IsJSObject()) {  // Shortcut.
-    LookupIterator it(object->GetIsolate(), object, index, object,
-                      LookupIterator::OWN);
+    LookupIterator it(isolate, object, index, object, LookupIterator::OWN);
     return HasProperty(&it);
   }
 
@@ -763,8 +863,9 @@ Maybe<PropertyAttributes> JSReceiver::GetOwnPropertyAttributes(
   return GetPropertyAttributes(&it);
 }
 
-Maybe<bool> JSReceiver::HasElement(Handle<JSReceiver> object, uint32_t index) {
-  LookupIterator it(object->GetIsolate(), object, index, object);
+Maybe<bool> JSReceiver::HasElement(Isolate* isolate, Handle<JSReceiver> object,
+                                   uint32_t index) {
+  LookupIterator it(isolate, object, index, object);
   return HasProperty(&it);
 }
 

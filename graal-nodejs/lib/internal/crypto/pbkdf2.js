@@ -14,7 +14,7 @@ const {
 } = internalBinding('crypto');
 
 const {
-  validateCallback,
+  validateFunction,
   validateInt32,
   validateInteger,
   validateString,
@@ -43,7 +43,7 @@ function pbkdf2(password, salt, iterations, keylen, digest, callback) {
   ({ password, salt, iterations, keylen, digest } =
     check(password, salt, iterations, keylen, digest));
 
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   const job = new PBKDF2Job(
     kCryptoJobAsync,

@@ -14,8 +14,7 @@
     "fail": {
       "expected": [
         "postMessage after close should throw",
-        "postMessage should throw InvalidStateError after close, even with uncloneable data",
-        "postMessage should throw with uncloneable data"
+        "postMessage should throw InvalidStateError after close, even with uncloneable data"
       ]
     }
   },

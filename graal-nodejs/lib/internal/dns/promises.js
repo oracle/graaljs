@@ -1,7 +1,6 @@
 'use strict';
 const {
   ArrayPrototypeMap,
-  ObjectCreate,
   ObjectDefineProperty,
   Promise,
   ReflectApply,
@@ -10,16 +9,15 @@ const {
 
 const {
   bindDefaultResolver,
-  Resolver: CallbackResolver,
+  createResolverClass,
   validateHints,
-  validateTimeout,
-  validateTries,
   emitInvalidHostnameWarning,
   getDefaultVerbatim,
   errorCodes: dnsErrorCodes,
   setDefaultResultOrder,
   setDefaultResolver,
 } = require('internal/dns/utils');
+
 const {
   NODATA,
   FORMERR,
@@ -52,19 +50,21 @@ const { isIP } = require('internal/net');
 const {
   getaddrinfo,
   getnameinfo,
-  ChannelWrap,
   GetAddrInfoReqWrap,
   GetNameInfoReqWrap,
   QueryReqWrap
 } = internalBinding('cares_wrap');
 const {
+  ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
   ERR_MISSING_ARGS,
 } = codes;
 const {
+  validateBoolean,
+  validateNumber,
+  validateOneOf,
   validatePort,
   validateString,
-  validateOneOf,
 } = require('internal/validators');
 
 const kPerfHooksDnsLookupContext = Symbol('kPerfHooksDnsLookupContext');
@@ -153,9 +153,10 @@ function createLookupPromise(family, hostname, all, hints, verbatim) {
   });
 }
 
+const validFamilies = [0, 4, 6];
 function lookup(hostname, options) {
   let hints = 0;
-  let family = -1;
+  let family = 0;
   let all = false;
   let verbatim = getDefaultVerbatim();
 
@@ -164,20 +165,30 @@ function lookup(hostname, options) {
     validateString(hostname, 'hostname');
   }
 
-  if (options !== null && typeof options === 'object') {
-    hints = options.hints >>> 0;
-    family = options.family >>> 0;
-    all = options.all === true;
-    if (typeof options.verbatim === 'boolean') {
-      verbatim = options.verbatim === true;
-    }
-
-    validateHints(hints);
+  if (typeof options === 'number') {
+    validateOneOf(options, 'family', validFamilies);
+    family = options;
+  } else if (options !== undefined && typeof options !== 'object') {
+    throw new ERR_INVALID_ARG_TYPE('options', ['integer', 'object'], options);
   } else {
-    family = options >>> 0;
+    if (options?.hints != null) {
+      validateNumber(options.hints, 'options.hints');
+      hints = options.hints >>> 0;
+      validateHints(hints);
+    }
+    if (options?.family != null) {
+      validateOneOf(options.family, 'options.family', validFamilies);
+      family = options.family;
+    }
+    if (options?.all != null) {
+      validateBoolean(options.all, 'options.all');
+      all = options.all;
+    }
+    if (options?.verbatim != null) {
+      validateBoolean(options.verbatim, 'options.verbatim');
+      verbatim = options.verbatim;
+    }
   }
-
-  validateOneOf(family, 'family', [0, 4, 6], true);
 
   return createLookupPromise(family, hostname, all, hints, verbatim);
 }
@@ -291,36 +302,7 @@ function resolver(bindingName) {
   return query;
 }
 
-
-const resolveMap = ObjectCreate(null);
-
-// Resolver instances correspond 1:1 to c-ares channels.
-class Resolver {
-  constructor(options = undefined) {
-    const timeout = validateTimeout(options);
-    const tries = validateTries(options);
-    this._handle = new ChannelWrap(timeout, tries);
-  }
-}
-
-Resolver.prototype.getServers = CallbackResolver.prototype.getServers;
-Resolver.prototype.setServers = CallbackResolver.prototype.setServers;
-Resolver.prototype.cancel = CallbackResolver.prototype.cancel;
-Resolver.prototype.setLocalAddress = CallbackResolver.prototype.setLocalAddress;
-Resolver.prototype.resolveAny = resolveMap.ANY = resolver('queryAny');
-Resolver.prototype.resolve4 = resolveMap.A = resolver('queryA');
-Resolver.prototype.resolve6 = resolveMap.AAAA = resolver('queryAaaa');
-Resolver.prototype.resolveCaa = resolveMap.CAA = resolver('queryCaa');
-Resolver.prototype.resolveCname = resolveMap.CNAME = resolver('queryCname');
-Resolver.prototype.resolveMx = resolveMap.MX = resolver('queryMx');
-Resolver.prototype.resolveNs = resolveMap.NS = resolver('queryNs');
-Resolver.prototype.resolveTxt = resolveMap.TXT = resolver('queryTxt');
-Resolver.prototype.resolveSrv = resolveMap.SRV = resolver('querySrv');
-Resolver.prototype.resolvePtr = resolveMap.PTR = resolver('queryPtr');
-Resolver.prototype.resolveNaptr = resolveMap.NAPTR = resolver('queryNaptr');
-Resolver.prototype.resolveSoa = resolveMap.SOA = resolver('querySoa');
-Resolver.prototype.reverse = resolver('getHostByAddr');
-Resolver.prototype.resolve = function resolve(hostname, rrtype) {
+function resolve(hostname, rrtype) {
   let resolver;
 
   if (rrtype !== undefined) {
@@ -335,7 +317,11 @@ Resolver.prototype.resolve = function resolve(hostname, rrtype) {
   }
 
   return ReflectApply(resolver, this, [hostname]);
-};
+}
+
+// Promise-based resolver.
+const { Resolver, resolveMap } = createResolverClass(resolver);
+Resolver.prototype.resolve = resolve;
 
 function defaultResolverSetServers(servers) {
   const resolver = new Resolver();

@@ -11,6 +11,17 @@
 #if !defined(_MSC_VER)
 #include <unistd.h>  // setuid, getuid
 #endif
+#ifdef __linux__
+#include <linux/capability.h>
+#include <elf.h>
+#ifdef __LP64__
+#define Elf_auxv_t Elf64_auxv_t
+#else
+#define Elf_auxv_t Elf32_auxv_t
+#endif  // __LP64__
+extern char** environ;
+#include <sys/syscall.h>
+#endif  // __linux__
 
 namespace node {
 
@@ -27,20 +38,69 @@ using v8::TryCatch;
 using v8::Uint32;
 using v8::Value;
 
-namespace per_process {
-bool linux_at_secure = false;
-}  // namespace per_process
+bool linux_at_secure() {
+  // This could reasonably be a static variable, but this way
+  // we can guarantee that this function is always usable
+  // and returns the correct value,  e.g. even in static
+  // initialization code in other files.
+#ifdef __linux__
+  bool linux_at_secure_value = false;
+  char** envp = environ;
+  while (*envp++ != nullptr) {}
+  Elf_auxv_t* auxv = reinterpret_cast<Elf_auxv_t*>(envp);
+  for (; auxv->a_type != AT_NULL; auxv++) {
+    if (auxv->a_type == AT_SECURE) {
+      linux_at_secure_value = auxv->a_un.a_val;
+      break;
+    }
+  }
+  static const bool value = linux_at_secure_value;
+  return value;
+#else
+  return false;
+#endif
+}
 
 namespace credentials {
 
-// Look up environment variable unless running as setuid root.
+#if defined(__linux__)
+// Returns true if the current process only has the passed-in capability.
+bool HasOnly(int capability) {
+  DCHECK(cap_valid(capability));
+
+  struct __user_cap_data_struct cap_data[2];
+  struct __user_cap_header_struct cap_header_data = {
+    _LINUX_CAPABILITY_VERSION_3,
+    getpid()};
+
+
+  if (syscall(SYS_capget, &cap_header_data, &cap_data) != 0) {
+    return false;
+  }
+  if (capability < 32) {
+    return cap_data[0].permitted ==
+        static_cast<unsigned int>(CAP_TO_MASK(capability));
+  }
+  return cap_data[1].permitted ==
+      static_cast<unsigned int>(CAP_TO_MASK(capability));
+}
+#endif
+
+// Look up the environment variable and allow the lookup if the current
+// process only has the capability CAP_NET_BIND_SERVICE set. If the current
+// process does not have any capabilities set and the process is running as
+// setuid root then lookup will not be allowed.
 bool SafeGetenv(const char* key,
                 std::string* text,
                 std::shared_ptr<KVStore> env_vars,
                 v8::Isolate* isolate) {
 #if !defined(__CloudABI__) && !defined(_WIN32)
-  if (per_process::linux_at_secure || getuid() != geteuid() ||
-      getgid() != getegid())
+#if defined(__linux__)
+  if ((!HasOnly(CAP_NET_BIND_SERVICE) && linux_at_secure()) ||
+      getuid() != geteuid() || getgid() != getegid())
+#else
+  if (linux_at_secure() || getuid() != geteuid() || getgid() != getegid())
+#endif
     goto fail;
 #endif
 
@@ -171,7 +231,8 @@ static const char* name_by_gid(gid_t gid) {
 
 static uid_t uid_by_name(Isolate* isolate, Local<Value> value) {
   if (value->IsUint32()) {
-    return static_cast<uid_t>(value.As<Uint32>()->Value());
+    static_assert(std::is_same<uid_t, uint32_t>::value);
+    return value.As<Uint32>()->Value();
   } else {
     Utf8Value name(isolate, value);
     return uid_by_name(*name);
@@ -180,7 +241,8 @@ static uid_t uid_by_name(Isolate* isolate, Local<Value> value) {
 
 static gid_t gid_by_name(Isolate* isolate, Local<Value> value) {
   if (value->IsUint32()) {
-    return static_cast<gid_t>(value.As<Uint32>()->Value());
+    static_assert(std::is_same<gid_t, uint32_t>::value);
+    return value.As<Uint32>()->Value();
   } else {
     Utf8Value name(isolate, value);
     return gid_by_name(*name);
@@ -413,23 +475,23 @@ static void Initialize(Local<Object> target,
   Environment* env = Environment::GetCurrent(context);
   Isolate* isolate = env->isolate();
 
-  env->SetMethod(target, "safeGetenv", SafeGetenv);
+  SetMethod(context, target, "safeGetenv", SafeGetenv);
 
 #ifdef NODE_IMPLEMENTS_POSIX_CREDENTIALS
   READONLY_TRUE_PROPERTY(target, "implementsPosixCredentials");
-  env->SetMethodNoSideEffect(target, "getuid", GetUid);
-  env->SetMethodNoSideEffect(target, "geteuid", GetEUid);
-  env->SetMethodNoSideEffect(target, "getgid", GetGid);
-  env->SetMethodNoSideEffect(target, "getegid", GetEGid);
-  env->SetMethodNoSideEffect(target, "getgroups", GetGroups);
+  SetMethodNoSideEffect(context, target, "getuid", GetUid);
+  SetMethodNoSideEffect(context, target, "geteuid", GetEUid);
+  SetMethodNoSideEffect(context, target, "getgid", GetGid);
+  SetMethodNoSideEffect(context, target, "getegid", GetEGid);
+  SetMethodNoSideEffect(context, target, "getgroups", GetGroups);
 
   if (env->owns_process_state()) {
-    env->SetMethod(target, "initgroups", InitGroups);
-    env->SetMethod(target, "setegid", SetEGid);
-    env->SetMethod(target, "seteuid", SetEUid);
-    env->SetMethod(target, "setgid", SetGid);
-    env->SetMethod(target, "setuid", SetUid);
-    env->SetMethod(target, "setgroups", SetGroups);
+    SetMethod(context, target, "initgroups", InitGroups);
+    SetMethod(context, target, "setegid", SetEGid);
+    SetMethod(context, target, "seteuid", SetEUid);
+    SetMethod(context, target, "setgid", SetGid);
+    SetMethod(context, target, "setuid", SetUid);
+    SetMethod(context, target, "setgroups", SetGroups);
   }
 #endif  // NODE_IMPLEMENTS_POSIX_CREDENTIALS
 }

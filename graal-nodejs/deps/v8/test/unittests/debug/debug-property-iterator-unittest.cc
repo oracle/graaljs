@@ -2,7 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "include/v8.h"
+#include "include/v8-exception.h"
+#include "include/v8-local-handle.h"
+#include "include/v8-object.h"
+#include "include/v8-primitive.h"
+#include "include/v8-template.h"
 #include "src/api/api.h"
 #include "src/objects/objects-inl.h"
 #include "test/unittests/test-utils.h"
@@ -92,6 +96,56 @@ TEST_F(DebugPropertyIteratorTest, DoestWalksPrototypeChainIfInaccesible) {
   ASSERT_TRUE(iterator->Advance().FromMaybe(false));
 
   ASSERT_TRUE(iterator->Done());
+}
+
+TEST_F(DebugPropertyIteratorTest, SkipsIndicesOnArrays) {
+  TryCatch try_catch(isolate());
+
+  Local<Value> elements[2] = {
+      Number::New(isolate(), 21),
+      Number::New(isolate(), 42),
+  };
+  auto array = Array::New(isolate(), elements, arraysize(elements));
+
+  auto iterator = PropertyIterator::Create(context(), array, true);
+  while (!iterator->Done()) {
+    ASSERT_FALSE(iterator->is_array_index());
+    ASSERT_TRUE(iterator->Advance().FromMaybe(false));
+  }
+}
+
+TEST_F(DebugPropertyIteratorTest, SkipsIndicesOnObjects) {
+  TryCatch try_catch(isolate());
+
+  Local<Name> names[2] = {
+      String::NewFromUtf8Literal(isolate(), "42"),
+      String::NewFromUtf8Literal(isolate(), "x"),
+  };
+  Local<Value> values[arraysize(names)] = {
+      Number::New(isolate(), 42),
+      Number::New(isolate(), 21),
+  };
+  Local<Object> object =
+      Object::New(isolate(), Null(isolate()), names, values, arraysize(names));
+
+  auto iterator = PropertyIterator::Create(context(), object, true);
+  while (!iterator->Done()) {
+    ASSERT_FALSE(iterator->is_array_index());
+    ASSERT_TRUE(iterator->Advance().FromMaybe(false));
+  }
+}
+
+TEST_F(DebugPropertyIteratorTest, SkipsIndicesOnTypedArrays) {
+  TryCatch try_catch(isolate());
+
+  auto buffer = ArrayBuffer::New(isolate(), 1024 * 1024);
+  auto array = Uint8Array::New(buffer, 0, 1024 * 1024);
+
+  auto iterator = PropertyIterator::Create(context(), array, true);
+  while (!iterator->Done()) {
+    ASSERT_FALSE(iterator->is_array_index());
+    ASSERT_TRUE(iterator->Advance().FromMaybe(false));
+  }
 }
 
 }  // namespace

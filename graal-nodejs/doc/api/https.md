@@ -135,6 +135,22 @@ added: v0.1.90
 
 See [`server.close()`][] in the `node:http` module.
 
+### `server.closeAllConnections()`
+
+<!-- YAML
+added: v18.2.0
+-->
+
+See [`server.closeAllConnections()`][] in the `node:http` module.
+
+### `server.closeIdleConnections()`
+
+<!-- YAML
+added: v18.2.0
+-->
+
+See [`server.closeIdleConnections()`][] in the `node:http` module.
+
 ### `server.headersTimeout`
 
 <!-- YAML
@@ -304,13 +320,15 @@ Global instance of [`https.Agent`][] for all HTTPS client requests.
 <!-- YAML
 added: v0.3.6
 changes:
-  - version: v16.7.0
+  - version:
+      - v16.7.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/39310
     description: When using a `URL` object parsed username
                  and password will now be properly URI decoded.
   - version:
-    - v14.1.0
-    - v13.14.0
+      - v14.1.0
+      - v13.14.0
     pr-url: https://github.com/nodejs/node/pull/32786
     description: The `highWaterMark` option is accepted now.
   - version: v10.9.0
@@ -531,6 +549,8 @@ headers: max-age=0; pin-sha256="WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18="; p
 [`net.Server`]: net.md#class-netserver
 [`new URL()`]: url.md#new-urlinput-base
 [`server.close()`]: http.md#serverclosecallback
+[`server.closeAllConnections()`]: http.md#servercloseallconnections
+[`server.closeIdleConnections()`]: http.md#servercloseidleconnections
 [`server.headersTimeout`]: http.md#serverheaderstimeout
 [`server.keepAliveTimeout`]: http.md#serverkeepalivetimeout
 [`server.listen()`]: net.md#serverlisten

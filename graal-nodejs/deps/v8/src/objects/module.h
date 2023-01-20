@@ -5,11 +5,11 @@
 #ifndef V8_OBJECTS_MODULE_H_
 #define V8_OBJECTS_MODULE_H_
 
+#include "include/v8-script.h"
 #include "src/objects/fixed-array.h"
 #include "src/objects/js-objects.h"
 #include "src/objects/objects.h"
 #include "src/objects/struct.h"
-#include "torque-generated/field-offsets.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
@@ -116,12 +116,6 @@ class Module : public TorqueGeneratedModule<Module, HeapObject> {
       ZoneForwardList<Handle<SourceTextModule>>* stack, unsigned* dfs_index,
       Zone* zone);
 
-  static V8_WARN_UNUSED_RESULT MaybeHandle<Object> EvaluateMaybeAsync(
-      Isolate* isolate, Handle<Module> module);
-
-  static V8_WARN_UNUSED_RESULT MaybeHandle<Object> InnerEvaluate(
-      Isolate* isolate, Handle<Module> module);
-
   // Set module's status back to kUnlinked and reset other internal state.
   // This is used when instantiation fails.
   static void Reset(Isolate* isolate, Handle<Module> module);
@@ -159,6 +153,10 @@ class JSModuleNamespace
   static V8_WARN_UNUSED_RESULT Maybe<PropertyAttributes> GetPropertyAttributes(
       LookupIterator* it);
 
+  static V8_WARN_UNUSED_RESULT Maybe<bool> DefineOwnProperty(
+      Isolate* isolate, Handle<JSModuleNamespace> o, Handle<Object> key,
+      PropertyDescriptor* desc, Maybe<ShouldThrow> should_throw);
+
   // In-object fields.
   enum {
     kToStringTagFieldIndex,
@@ -171,6 +169,16 @@ class JSModuleNamespace
       kHeaderSize + (kTaggedSize * kInObjectFieldCount);
 
   TQ_OBJECT_CONSTRUCTORS(JSModuleNamespace)
+};
+
+class ScriptOrModule
+    : public TorqueGeneratedScriptOrModule<ScriptOrModule, Struct> {
+ public:
+  DECL_PRINTER(ScriptOrModule)
+
+  using BodyDescriptor = StructBodyDescriptor;
+
+  TQ_OBJECT_CONSTRUCTORS(ScriptOrModule)
 };
 
 }  // namespace internal

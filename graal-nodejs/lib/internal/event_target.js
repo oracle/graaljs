@@ -68,16 +68,7 @@ const kTrustEvent = Symbol('kTrustEvent');
 
 const { now } = require('internal/perf/utils');
 
-// TODO(joyeecheung): V8 snapshot does not support instance member
-// initializers for now:
-// https://bugs.chromium.org/p/v8/issues/detail?id=10704
 const kType = Symbol('type');
-const kDefaultPrevented = Symbol('defaultPrevented');
-const kCancelable = Symbol('cancelable');
-const kTimestamp = Symbol('timestamp');
-const kBubbles = Symbol('bubbles');
-const kComposed = Symbol('composed');
-const kPropagationStopped = Symbol('propagationStopped');
 const kDetail = Symbol('detail');
 
 const isTrustedSet = new SafeWeakSet();
@@ -92,6 +83,13 @@ function isEvent(value) {
 }
 
 class Event {
+  #cancelable = false;
+  #bubbles = false;
+  #composed = false;
+  #defaultPrevented = false;
+  #timestamp = now();
+  #propagationStopped = false;
+
   /**
    * @param {string} type
    * @param {{
@@ -105,14 +103,11 @@ class Event {
       throw new ERR_MISSING_ARGS('type');
     validateObject(options, 'options');
     const { bubbles, cancelable, composed } = options;
-    this[kCancelable] = !!cancelable;
-    this[kBubbles] = !!bubbles;
-    this[kComposed] = !!composed;
+    this.#cancelable = !!cancelable;
+    this.#bubbles = !!bubbles;
+    this.#composed = !!composed;
 
     this[kType] = `${type}`;
-    this[kDefaultPrevented] = false;
-    this[kTimestamp] = now();
-    this[kPropagationStopped] = false;
     if (options?.[kTrustEvent]) {
       isTrustedSet.add(this);
     }
@@ -141,9 +136,9 @@ class Event {
 
     return `${name} ${inspect({
       type: this[kType],
-      defaultPrevented: this[kDefaultPrevented],
-      cancelable: this[kCancelable],
-      timeStamp: this[kTimestamp],
+      defaultPrevented: this.#defaultPrevented,
+      cancelable: this.#cancelable,
+      timeStamp: this.#timestamp,
     }, opts)}`;
   }
 
@@ -156,7 +151,7 @@ class Event {
   preventDefault() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    this[kDefaultPrevented] = true;
+    this.#defaultPrevented = true;
   }
 
   /**
@@ -201,7 +196,7 @@ class Event {
   get cancelable() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kCancelable];
+    return this.#cancelable;
   }
 
   /**
@@ -210,7 +205,7 @@ class Event {
   get defaultPrevented() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kCancelable] && this[kDefaultPrevented];
+    return this.#cancelable && this.#defaultPrevented;
   }
 
   /**
@@ -219,7 +214,7 @@ class Event {
   get timeStamp() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kTimestamp];
+    return this.#timestamp;
   }
 
 
@@ -250,7 +245,7 @@ class Event {
   get bubbles() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kBubbles];
+    return this.#bubbles;
   }
 
   /**
@@ -259,7 +254,7 @@ class Event {
   get composed() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kComposed];
+    return this.#composed;
   }
 
   /**
@@ -277,7 +272,7 @@ class Event {
   get cancelBubble() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kPropagationStopped];
+    return this.#propagationStopped;
   }
 
   /**
@@ -294,7 +289,7 @@ class Event {
   stopPropagation() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    this[kPropagationStopped] = true;
+    this.#propagationStopped = true;
   }
 
   static NONE = 0;

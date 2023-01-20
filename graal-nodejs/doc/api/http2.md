@@ -3,7 +3,9 @@
 <!-- YAML
 added: v8.4.0
 changes:
-  - version: v15.3.0
+  - version:
+      - v15.3.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/36070
     description: It is possible to abort a request with an AbortSignal.
   - version: v15.0.0
@@ -529,6 +531,12 @@ frames have been acknowledged.
 
 <!-- YAML
 added: v8.9.3
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `payload` {Buffer|TypedArray|DataView} Optional ping payload.
@@ -587,7 +595,9 @@ A prototype-less object describing the current remote settings of this
 #### `http2session.setLocalWindowSize(windowSize)`
 
 <!-- YAML
-added: v15.3.0
+added:
+  - v15.3.0
+  - v14.18.0
 -->
 
 * `windowSize` {number}
@@ -612,6 +622,12 @@ server.on('connect', (session) => {
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `msecs` {number}
@@ -675,6 +691,12 @@ An object describing the current status of this `Http2Session`.
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `settings` {HTTP/2 Settings Object}
@@ -1202,6 +1224,12 @@ See [`net.Socket.bufferSize`][] for details.
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `code` {number} Unsigned 32-bit integer identifying the error code.
@@ -1347,6 +1375,12 @@ value will be `undefined` after the `Http2Stream` instance is destroyed.
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `msecs` {number}
@@ -1551,6 +1585,12 @@ accepts push streams, `false` otherwise. Settings are the same for every
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `headers` {HTTP/2 Headers Object}
@@ -2035,6 +2075,11 @@ closed, although the server has already stopped allowing new sessions. See
 <!-- YAML
 added: v8.4.0
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v13.0.0
     pr-url: https://github.com/nodejs/node/pull/27558
     description: The default timeout changed from 120s to 0 (no timeout).
@@ -2050,7 +2095,7 @@ on the `Http2Server` after `msecs` milliseconds.
 
 The given callback is registered as a listener on the `'timeout'` event.
 
-In case if `callback` is not a function, a new `ERR_INVALID_CALLBACK`
+In case if `callback` is not a function, a new `ERR_INVALID_ARG_TYPE`
 error will be thrown.
 
 #### `server.timeout`
@@ -2076,7 +2121,9 @@ value only affects new connections to the server, not any existing connections.
 #### `server.updateSettings([settings])`
 
 <!-- YAML
-added: v15.1.0
+added:
+  - v15.1.0
+  - v14.17.0
 -->
 
 * `settings` {HTTP/2 Settings Object}
@@ -2260,6 +2307,12 @@ closed, although the server has already stopped allowing new sessions. See
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `msecs` {number} **Default:** `120000` (2 minutes)
@@ -2272,7 +2325,7 @@ on the `Http2SecureServer` after `msecs` milliseconds.
 
 The given callback is registered as a listener on the `'timeout'` event.
 
-In case if `callback` is not a function, a new `ERR_INVALID_CALLBACK`
+In case if `callback` is not a function, a new `ERR_INVALID_ARG_TYPE`
 error will be thrown.
 
 #### `server.timeout`
@@ -2298,7 +2351,9 @@ value only affects new connections to the server, not any existing connections.
 #### `server.updateSettings([settings])`
 
 <!-- YAML
-added: v15.1.0
+added:
+  - v15.1.0
+  - v14.17.0
 -->
 
 * `settings` {HTTP/2 Settings Object}
@@ -2798,7 +2853,9 @@ the given `Buffer` as generated by `http2.getPackedSettings()`.
 ### `http2.sensitiveHeaders`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * {symbol}
@@ -3551,6 +3608,12 @@ See [`response.socket`][].
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `headers` {HTTP/2 Headers Object} An object describing the headers
@@ -3927,6 +3990,32 @@ added: v8.4.0
 Sends a status `100 Continue` to the client, indicating that the request body
 should be sent. See the [`'checkContinue'`][] event on `Http2Server` and
 `Http2SecureServer`.
+
+### `response.writeEarlyHints(links)`
+
+<!-- YAML
+added: v18.11.0
+-->
+
+* `links` {string|Array}
+
+Sends a status `103 Early Hints` to the client with a Link header,
+indicating that the user agent can preload/preconnect the linked resources.
+The `links` can be a string or an array of strings containing the values
+of the `Link` header.
+
+**Example**
+
+```js
+const earlyHintsLink = '</styles.css>; rel=preload; as=style';
+response.writeEarlyHints(earlyHintsLink);
+
+const earlyHintsLinks = [
+  '</styles.css>; rel=preload; as=style',
+  '</scripts.js>; rel=preload; as=script',
+];
+response.writeEarlyHints(earlyHintsLinks);
+```
 
 #### `response.writeHead(statusCode[, statusMessage][, headers])`
 

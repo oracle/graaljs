@@ -266,7 +266,8 @@ Handle<Code> CSATestRunner::create_find_entry(Isolate* isolate) {
   // TODO(v8:11330): Remove once CSA implementation has a fallback for
   // non-SSSE3/AVX configurations.
   if (!IsEnabled()) {
-    return isolate->builtins()->code_handle(Builtin::kIllegal);
+    return FromCodeT(isolate->builtins()->code_handle(Builtin::kIllegal),
+                     isolate);
   }
   STATIC_ASSERT(kFindEntryParams == 2);  // (table, key)
   compiler::CodeAssemblerTester asm_tester(isolate, kFindEntryParams + 1);
@@ -338,7 +339,8 @@ Handle<Code> CSATestRunner::create_delete(Isolate* isolate) {
   // TODO(v8:11330): Remove once CSA implementation has a fallback for
   // non-SSSE3/AVX configurations.
   if (!IsEnabled()) {
-    return isolate->builtins()->code_handle(Builtin::kIllegal);
+    return FromCodeT(isolate->builtins()->code_handle(Builtin::kIllegal),
+                     isolate);
   }
   STATIC_ASSERT(kDeleteParams == 2);  // (table, entry)
   compiler::CodeAssemblerTester asm_tester(isolate, kDeleteParams + 1);
@@ -363,7 +365,8 @@ Handle<Code> CSATestRunner::create_add(Isolate* isolate) {
   // TODO(v8:11330): Remove once CSA implementation has a fallback for
   // non-SSSE3/AVX configurations.
   if (!IsEnabled()) {
-    return isolate->builtins()->code_handle(Builtin::kIllegal);
+    return FromCodeT(isolate->builtins()->code_handle(Builtin::kIllegal),
+                     isolate);
   }
   STATIC_ASSERT(kAddParams == 4);  // (table, key, value, details)
   compiler::CodeAssemblerTester asm_tester(isolate, kAddParams + 1);
@@ -420,8 +423,8 @@ Handle<Code> CSATestRunner::create_get_counts(Isolate* isolate) {
     TNode<FixedArray> results = m.AllocateZeroedFixedArray(m.IntPtrConstant(3));
 
     auto check_and_add = [&](TNode<IntPtrT> value, int array_index) {
-      CSA_ASSERT(&m, m.UintPtrGreaterThanOrEqual(value, m.IntPtrConstant(0)));
-      CSA_ASSERT(&m, m.UintPtrLessThanOrEqual(
+      CSA_DCHECK(&m, m.UintPtrGreaterThanOrEqual(value, m.IntPtrConstant(0)));
+      CSA_DCHECK(&m, m.UintPtrLessThanOrEqual(
                          value, m.IntPtrConstant(Smi::kMaxValue)));
       TNode<Smi> smi = m.SmiFromIntPtr(value);
       m.StoreFixedArrayElement(results, array_index, smi);

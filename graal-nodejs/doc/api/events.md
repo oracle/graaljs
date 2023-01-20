@@ -827,7 +827,9 @@ added:
  - v13.4.0
  - v12.16.0
 changes:
-  - version: v16.14.0
+  - version:
+    - v17.4.0
+    - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/41267
     description: No longer experimental.
 -->
@@ -942,6 +944,7 @@ regular `'error'` listener is installed.
 <!-- YAML
 added:
  - v15.2.0
+ - v14.17.0
 -->
 
 * `emitterOrTarget` {EventEmitter|EventTarget}
@@ -1257,7 +1260,9 @@ added:
  - v13.4.0
  - v12.16.0
 changes:
-  - version: v16.14.0
+  - version:
+    - v17.4.0
+    - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/41267
     description: No longer experimental.
 -->
@@ -1273,7 +1278,9 @@ added:
   - v13.4.0
   - v12.16.0
 changes:
-  - version: v16.14.0
+  - version:
+    - v17.4.0
+    - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/41267
     description: No longer experimental.
 -->
@@ -1470,7 +1477,9 @@ setMaxListeners(5, target, emitter);
 ## Class: `events.EventEmitterAsyncResource extends EventEmitter`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 Integrates `EventEmitter` with {AsyncResource} for `EventEmitter`s that
@@ -1981,7 +1990,7 @@ Removes the `listener` from the list of handlers for event `type`.
 ### Class: `CustomEvent`
 
 <!-- YAML
-added: v16.17.0
+added: v18.7.0
 -->
 
 > Stability: 1 - Experimental.
@@ -1994,7 +2003,7 @@ Instances are created internally by Node.js.
 #### `event.detail`
 
 <!-- YAML
-added: v16.17.0
+added: v18.7.0
 -->
 
 > Stability: 1 - Experimental.

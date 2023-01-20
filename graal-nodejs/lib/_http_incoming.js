@@ -232,11 +232,14 @@ IncomingMessage.prototype._destroy = function _destroy(err, cb) {
   if (this.socket && !this.socket.destroyed && this.aborted) {
     this.socket.destroy(err);
     const cleanup = finished(this.socket, (e) => {
+      if (e?.code === 'ERR_STREAM_PREMATURE_CLOSE') {
+        e = null;
+      }
       cleanup();
-      onError(this, e || err, cb);
+      process.nextTick(onError, this, e || err, cb);
     });
   } else {
-    onError(this, err, cb);
+    process.nextTick(onError, this, err, cb);
   }
 };
 

@@ -635,8 +635,8 @@ Socket.prototype.send = function(buffer,
   if (typeof address === 'function') {
     callback = address;
     address = undefined;
-  } else if (address && typeof address !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('address', ['string', 'falsy'], address);
+  } else if (address != null) {
+    validateString(address, 'address');
   }
 
   healthCheck(this);
@@ -976,6 +976,13 @@ Socket.prototype.getSendBufferSize = function() {
   return bufferSize(this, 0, SEND_BUFFER);
 };
 
+Socket.prototype.getSendQueueSize = function() {
+  return this[kStateSymbol].handle.getSendQueueSize();
+};
+
+Socket.prototype.getSendQueueCount = function() {
+  return this[kStateSymbol].handle.getSendQueueCount();
+};
 
 // Deprecated private APIs.
 ObjectDefineProperty(Socket.prototype, '_handle', {

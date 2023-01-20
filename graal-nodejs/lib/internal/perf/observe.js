@@ -11,6 +11,8 @@ const {
   ArrayPrototypeSort,
   ArrayPrototypeConcat,
   Error,
+  MathMax,
+  MathMin,
   ObjectDefineProperties,
   ObjectFreeze,
   ObjectKeys,
@@ -47,7 +49,7 @@ const {
 } = require('internal/errors');
 
 const {
-  validateCallback,
+  validateFunction,
   validateObject,
 } = require('internal/validators');
 
@@ -66,13 +68,9 @@ const { inspect } = require('util');
 
 const { now } = require('internal/perf/utils');
 
-const kBuffer = Symbol('kBuffer');
-const kCallback = Symbol('kCallback');
 const kDispatch = Symbol('kDispatch');
-const kEntryTypes = Symbol('kEntryTypes');
 const kMaybeBuffer = Symbol('kMaybeBuffer');
 const kDeprecatedFields = Symbol('kDeprecatedFields');
-const kType = Symbol('kType');
 
 const kDeprecationMessage =
   'Custom PerformanceEntry accessors are deprecated. ' +
@@ -99,11 +97,17 @@ const kSupportedEntryTypes = ObjectFreeze([
 let markEntryBuffer = [];
 let measureEntryBuffer = [];
 let resourceTimingBuffer = [];
-const kMaxPerformanceEntryBuffers = 1e6;
+let resourceTimingSecondaryBuffer = [];
+const kPerformanceEntryBufferWarnSize = 1e6;
+// https://www.w3.org/TR/timing-entrytypes-registry/#registry
+// Default buffer limit for resource timing entries.
+let resourceTimingBufferSizeLimit = 250;
+let dispatchBufferFull;
+let resourceTimingBufferFullPending = false;
+
 const kClearPerformanceEntryBuffers = ObjectFreeze({
   'mark': 'performance.clearMarks',
   'measure': 'performance.clearMeasures',
-  'resource': 'performance.clearResourceTimings',
 });
 const kWarnedEntryTypes = new SafeMap();
 
@@ -163,20 +167,22 @@ function maybeIncrementObserverCount(type) {
 }
 
 class PerformanceObserverEntryList {
+  #buffer = [];
+
   constructor(entries) {
-    this[kBuffer] = ArrayPrototypeSort(entries, (first, second) => {
+    this.#buffer = ArrayPrototypeSort(entries, (first, second) => {
       return first.startTime - second.startTime;
     });
   }
 
   getEntries() {
-    return ArrayPrototypeSlice(this[kBuffer]);
+    return ArrayPrototypeSlice(this.#buffer);
   }
 
   getEntriesByType(type) {
     type = `${type}`;
     return ArrayPrototypeFilter(
-      this[kBuffer],
+      this.#buffer,
       (entry) => entry.entryType === type);
   }
 
@@ -184,11 +190,11 @@ class PerformanceObserverEntryList {
     name = `${name}`;
     if (type != null /** not nullish */) {
       return ArrayPrototypeFilter(
-        this[kBuffer],
+        this.#buffer,
         (entry) => entry.name === name && entry.entryType === type);
     }
     return ArrayPrototypeFilter(
-      this[kBuffer],
+      this.#buffer,
       (entry) => entry.name === name);
   }
 
@@ -200,20 +206,19 @@ class PerformanceObserverEntryList {
       depth: options.depth == null ? null : options.depth - 1
     };
 
-    return `PerformanceObserverEntryList ${inspect(this[kBuffer], opts)}`;
+    return `PerformanceObserverEntryList ${inspect(this.#buffer, opts)}`;
   }
 }
 
 class PerformanceObserver {
+  #buffer = [];
+  #entryTypes = new SafeSet();
+  #type;
+  #callback;
+
   constructor(callback) {
-    // TODO(joyeecheung): V8 snapshot does not support instance member
-    // initializers for now:
-    // https://bugs.chromium.org/p/v8/issues/detail?id=10704
-    this[kBuffer] = [];
-    this[kEntryTypes] = new SafeSet();
-    this[kType] = undefined;
-    validateCallback(callback);
-    this[kCallback] = callback;
+    validateFunction(callback, 'callback');
+    this.#callback = callback;
   }
 
   observe(options = kEmptyObject) {
@@ -231,10 +236,10 @@ class PerformanceObserver {
                                       'options.entryTypes can not set with ' +
                                       'options.type together');
 
-    switch (this[kType]) {
+    switch (this.#type) {
       case undefined:
-        if (entryTypes !== undefined) this[kType] = kTypeMultiple;
-        if (type !== undefined) this[kType] = kTypeSingle;
+        if (entryTypes !== undefined) this.#type = kTypeMultiple;
+        if (type !== undefined) this.#type = kTypeSingle;
         break;
       case kTypeSingle:
         if (entryTypes !== undefined)
@@ -250,53 +255,53 @@ class PerformanceObserver {
         break;
     }
 
-    if (this[kType] === kTypeMultiple) {
+    if (this.#type === kTypeMultiple) {
       if (!ArrayIsArray(entryTypes)) {
         throw new ERR_INVALID_ARG_TYPE(
           'options.entryTypes',
           'string[]',
           entryTypes);
       }
-      maybeDecrementObserverCounts(this[kEntryTypes]);
-      this[kEntryTypes].clear();
+      maybeDecrementObserverCounts(this.#entryTypes);
+      this.#entryTypes.clear();
       for (let n = 0; n < entryTypes.length; n++) {
         if (ArrayPrototypeIncludes(kSupportedEntryTypes, entryTypes[n])) {
-          this[kEntryTypes].add(entryTypes[n]);
+          this.#entryTypes.add(entryTypes[n]);
           maybeIncrementObserverCount(entryTypes[n]);
         }
       }
     } else {
       if (!ArrayPrototypeIncludes(kSupportedEntryTypes, type))
         return;
-      this[kEntryTypes].add(type);
+      this.#entryTypes.add(type);
       maybeIncrementObserverCount(type);
       if (buffered) {
         const entries = filterBufferMapByNameAndType(undefined, type);
-        ArrayPrototypePushApply(this[kBuffer], entries);
+        ArrayPrototypePushApply(this.#buffer, entries);
         kPending.add(this);
         if (kPending.size)
           queuePending();
       }
     }
 
-    if (this[kEntryTypes].size)
+    if (this.#entryTypes.size)
       kObservers.add(this);
     else
       this.disconnect();
   }
 
   disconnect() {
-    maybeDecrementObserverCounts(this[kEntryTypes]);
+    maybeDecrementObserverCounts(this.#entryTypes);
     kObservers.delete(this);
     kPending.delete(this);
-    this[kBuffer] = [];
-    this[kEntryTypes].clear();
-    this[kType] = undefined;
+    this.#buffer = [];
+    this.#entryTypes.clear();
+    this.#type = undefined;
   }
 
   takeRecords() {
-    const list = this[kBuffer];
-    this[kBuffer] = [];
+    const list = this.#buffer;
+    this.#buffer = [];
     return list;
   }
 
@@ -305,17 +310,17 @@ class PerformanceObserver {
   }
 
   [kMaybeBuffer](entry) {
-    if (!this[kEntryTypes].has(entry.entryType))
+    if (!this.#entryTypes.has(entry.entryType))
       return;
-    ArrayPrototypePush(this[kBuffer], entry);
+    ArrayPrototypePush(this.#buffer, entry);
     kPending.add(this);
     if (kPending.size)
       queuePending();
   }
 
   [kDispatch]() {
-    this[kCallback](new PerformanceObserverEntryList(this.takeRecords()),
-                    this);
+    this.#callback(new PerformanceObserverEntryList(this.takeRecords()),
+                   this);
   }
 
   [kInspect](depth, options) {
@@ -329,12 +334,17 @@ class PerformanceObserver {
     return `PerformanceObserver ${inspect({
       connected: kObservers.has(this),
       pending: kPending.has(this),
-      entryTypes: ArrayFrom(this[kEntryTypes]),
-      buffer: this[kBuffer],
+      entryTypes: ArrayFrom(this.#entryTypes),
+      buffer: this.#buffer,
     }, opts)}`;
   }
 }
 
+/**
+ * https://www.w3.org/TR/performance-timeline/#dfn-queue-a-performanceentry
+ *
+ * Add the performance entry to the interested performance observer's queue.
+ */
 function enqueue(entry) {
   if (!isPerformanceEntry(entry))
     throw new ERR_INVALID_ARG_TYPE('entry', 'PerformanceEntry', entry);
@@ -342,15 +352,18 @@ function enqueue(entry) {
   for (const obs of kObservers) {
     obs[kMaybeBuffer](entry);
   }
+}
 
+/**
+ * Add the user timing entry to the global buffer.
+ */
+function bufferUserTiming(entry) {
   const entryType = entry.entryType;
   let buffer;
   if (entryType === 'mark') {
     buffer = markEntryBuffer;
   } else if (entryType === 'measure') {
     buffer = measureEntryBuffer;
-  } else if (entryType === 'resource') {
-    buffer = resourceTimingBuffer;
   } else {
     return;
   }
@@ -358,7 +371,7 @@ function enqueue(entry) {
   ArrayPrototypePush(buffer, entry);
   const count = buffer.length;
 
-  if (count > kMaxPerformanceEntryBuffers &&
+  if (count > kPerformanceEntryBufferWarnSize &&
     !kWarnedEntryTypes.has(entryType)) {
     kWarnedEntryTypes.set(entryType, true);
     // No error code for this since it is a Warning
@@ -373,6 +386,59 @@ function enqueue(entry) {
     w.count = count;
     process.emitWarning(w);
   }
+}
+
+/**
+ * Add the resource timing entry to the global buffer if the buffer size is not
+ * exceeding the buffer limit, or dispatch a buffer full event on the global
+ * performance object.
+ *
+ * See also https://www.w3.org/TR/resource-timing-2/#dfn-add-a-performanceresourcetiming-entry
+ */
+function bufferResourceTiming(entry) {
+  if (resourceTimingBuffer.length < resourceTimingBufferSizeLimit && !resourceTimingBufferFullPending) {
+    ArrayPrototypePush(resourceTimingBuffer, entry);
+    return;
+  }
+
+  if (!resourceTimingBufferFullPending) {
+    resourceTimingBufferFullPending = true;
+    setImmediate(() => {
+      while (resourceTimingSecondaryBuffer.length > 0) {
+        const excessNumberBefore = resourceTimingSecondaryBuffer.length;
+        dispatchBufferFull('resourcetimingbufferfull');
+
+        // Calculate the number of items to be pushed to the global buffer.
+        const numbersToPreserve = MathMax(
+          MathMin(resourceTimingBufferSizeLimit - resourceTimingBuffer.length, resourceTimingSecondaryBuffer.length),
+          0
+        );
+        const excessNumberAfter = resourceTimingSecondaryBuffer.length - numbersToPreserve;
+        for (let idx = 0; idx < numbersToPreserve; idx++) {
+          ArrayPrototypePush(resourceTimingBuffer, resourceTimingSecondaryBuffer[idx]);
+        }
+
+        if (excessNumberBefore <= excessNumberAfter) {
+          resourceTimingSecondaryBuffer = [];
+        }
+      }
+      resourceTimingBufferFullPending = false;
+    });
+  }
+
+  ArrayPrototypePush(resourceTimingSecondaryBuffer, entry);
+}
+
+// https://w3c.github.io/resource-timing/#dom-performance-setresourcetimingbuffersize
+function setResourceTimingBufferSize(maxSize) {
+  // If the maxSize parameter is less than resource timing buffer current
+  // size, no PerformanceResourceTiming objects are to be removed from the
+  // performance entry buffer.
+  resourceTimingBufferSizeLimit = maxSize;
+}
+
+function setDispatchBufferFull(fn) {
+  dispatchBufferFull = fn;
 }
 
 function clearEntriesFromBuffer(type, name) {
@@ -495,4 +561,9 @@ module.exports = {
   filterBufferMapByNameAndType,
   startPerf,
   stopPerf,
+
+  bufferUserTiming,
+  bufferResourceTiming,
+  setResourceTimingBufferSize,
+  setDispatchBufferFull,
 };

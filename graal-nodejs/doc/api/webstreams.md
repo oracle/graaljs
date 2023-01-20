@@ -2,25 +2,17 @@
 
 <!--introduced_in=v16.5.0-->
 
-> Stability: 1 - Experimental
+<!-- YAML
+added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: Use of this API no longer emit a runtime warning.
+-->
+
+> Stability: 1 - Experimental.
 
 An implementation of the [WHATWG Streams Standard][].
-
-```mjs
-import {
-  ReadableStream,
-  WritableStream,
-  TransformStream,
-} from 'node:stream/web';
-```
-
-```cjs
-const {
-  ReadableStream,
-  WritableStream,
-  TransformStream,
-} = require('stream/web');
-```
 
 ## Overview
 
@@ -101,6 +93,10 @@ const stream = new ReadableStream({
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new ReadableStream([underlyingSource [, strategy]])`
@@ -304,7 +300,7 @@ is active.
 <!-- YAML
 added: v16.5.0
 changes:
-  - version: v16.18.0
+  - version: v18.10.0
     pr-url: https://github.com/nodejs/node/pull/44505
     description: Support teeing a readable byte stream.
 -->
@@ -390,6 +386,10 @@ port2.postMessage(stream, [stream]);
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 By default, calling `readableStream.getReader()` with no arguments
@@ -457,6 +457,10 @@ Releases this reader's lock on the underlying {ReadableStream}.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 The `ReadableStreamBYOBReader` is an alternative consumer for
@@ -647,6 +651,10 @@ Signals an error that causes the {ReadableStream} to error and close.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.10.0
+    pr-url: https://github.com/nodejs/node/pull/44702
+    description: Support handling a BYOB pull request from a released reader.
 -->
 
 Every {ReadableStream} has a controller that is responsible for
@@ -704,6 +712,10 @@ Signals an error that causes the {ReadableStream} to error and close.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 When using `ReadableByteStreamController` in byte-oriented
@@ -750,6 +762,10 @@ added: v16.5.0
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 The `WritableStream` is a destination to which stream data is sent.
@@ -866,6 +882,10 @@ port2.postMessage(stream, [stream]);
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new WritableStreamDefaultWriter(stream)`
@@ -953,14 +973,14 @@ Appends a new chunk of data to the {WritableStream}'s queue.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 The `WritableStreamDefaultController` manage's the {WritableStream}'s
 internal state.
-
-#### `writableStreamDefaultController.abortReason`
-
-* Type: {any} The `reason` value passed to `writableStream.abort()`.
 
 #### `writableStreamDefaultController.error(error)`
 
@@ -983,6 +1003,10 @@ with currently pending writes canceled.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 A `TransformStream` consists of a {ReadableStream} and a {WritableStream} that
@@ -1085,6 +1109,10 @@ port2.postMessage(stream, [stream]);
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 The `TransformStreamDefaultController` manages the internal state
@@ -1135,6 +1163,10 @@ to be abruptly closed with an error.
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new ByteLengthQueuingStrategy(options)`
@@ -1168,6 +1200,10 @@ added: v16.5.0
 
 <!-- YAML
 added: v16.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new CountQueuingStrategy(options)`
@@ -1201,6 +1237,10 @@ added: v16.5.0
 
 <!-- YAML
 added: v16.6.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new TextEncoderStream()`
@@ -1241,6 +1281,10 @@ added: v16.6.0
 
 <!-- YAML
 added: v16.6.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
 -->
 
 #### `new TextDecoderStream([encoding[, options]])`
@@ -1304,6 +1348,74 @@ added: v16.6.0
 
 <!-- YAML
 added: v16.6.0
+-->
+
+* Type: {WritableStream}
+
+### Class: `CompressionStream`
+
+<!-- YAML
+added: v17.0.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
+-->
+
+#### `new CompressionStream(format)`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+* `format` {string} One of either `'deflate'` or `'gzip'`.
+
+#### `compressionStream.readable`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+* Type: {ReadableStream}
+
+#### `compressionStream.writable`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+* Type: {WritableStream}
+
+### Class: `DecompressionStream`
+
+<!-- YAML
+added: v17.0.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/42225
+    description: This class is now exposed on the global object.
+-->
+
+#### `new DecompressionStream(format)`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+* `format` {string} One of either `'deflate'` or `'gzip'`.
+
+#### `decompressionStream.readable`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+* Type: {ReadableStream}
+
+#### `decompressionStream.writable`
+
+<!-- YAML
+added: v17.0.0
 -->
 
 * Type: {WritableStream}

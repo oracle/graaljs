@@ -28,15 +28,16 @@ Handle<WasmInstanceObject> CompileModule(Zone* zone, Isolate* isolate,
   MaybeHandle<WasmInstanceObject> maybe_instance =
       CompileAndInstantiateForTesting(
           isolate, &thrower, ModuleWireBytes(buffer.begin(), buffer.end()));
+  CHECK_WITH_MSG(!thrower.error(), thrower.error_msg());
   return maybe_instance.ToHandleChecked();
 }
 
-bool IsGeneric(Code wrapper) {
+bool IsGeneric(CodeT wrapper) {
   return wrapper.is_builtin() &&
          wrapper.builtin_id() == Builtin::kGenericJSToWasmWrapper;
 }
 
-bool IsSpecific(Code wrapper) {
+bool IsSpecific(CodeT wrapper) {
   return wrapper.kind() == CodeKind::JS_TO_WASM_FUNCTION;
 }
 
@@ -152,11 +153,10 @@ TEST(WrapperReplacement) {
 
     // Call the exported Wasm function as many times as required to almost
     // exhaust the remaining budget for using the generic wrapper.
-    Handle<Code> wrapper_before_call;
+    Handle<CodeT> wrapper_before_call;
     for (int i = remaining_budget; i > 0; --i) {
       // Verify that the wrapper to be used is the generic one.
-      wrapper_before_call =
-          Handle<Code>(main_function_data->wrapper_code(), isolate);
+      wrapper_before_call = handle(main_function_data->wrapper_code(), isolate);
       CHECK(IsGeneric(*wrapper_before_call));
       // Call the function.
       Handle<Object> params[1] = {SmiHandle(isolate, i)};
@@ -166,7 +166,7 @@ TEST(WrapperReplacement) {
     }
 
     // Get the wrapper-code object after the wrapper replacement.
-    Code wrapper_after_call = main_function_data->wrapper_code();
+    CodeT wrapper_after_call = main_function_data->wrapper_code();
 
     // Verify that the budget has been exhausted.
     CHECK_EQ(main_function_data->wrapper_budget(), 0);
@@ -302,25 +302,32 @@ TEST(WrapperReplacement_IndirectExport) {
     uint32_t function_index = f->func_index();
 
     // Export a table of indirect functions.
-    uint32_t table_index = builder->AllocateIndirectFunctions(2);
+    const uint32_t table_size = 2;
+    const uint32_t table_index =
+        builder->AddTable(kWasmFuncRef, table_size, table_size);
     builder->AddExport(base::CStrVector("exported_table"), kExternalTable, 0);
+
     // Point from the exported table to the Wasm function.
-    builder->SetIndirectFunction(0, function_index);
+    builder->SetIndirectFunction(
+        table_index, 0, function_index,
+        WasmModuleBuilder::WasmElemSegment::kRelativeToImports);
 
     // Compile the module.
     Handle<WasmInstanceObject> instance =
         CompileModule(&zone, isolate, builder);
 
     // Get the exported table.
-    Handle<WasmTableObject> table = handle(
+    Handle<WasmTableObject> table(
         WasmTableObject::cast(instance->tables().get(table_index)), isolate);
     // Get the Wasm function through the exported table.
     Handle<Object> function =
         WasmTableObject::Get(isolate, table, function_index);
-    Handle<WasmExportedFunction> indirect_function =
-        handle(WasmExportedFunction::cast(*function), isolate);
+    Handle<WasmExportedFunction> indirect_function(
+        WasmExportedFunction::cast(
+            WasmInternalFunction::cast(*function).external()),
+        isolate);
     // Get the function data.
-    Handle<WasmExportedFunctionData> indirect_function_data = handle(
+    Handle<WasmExportedFunctionData> indirect_function_data(
         indirect_function->shared().wasm_exported_function_data(), isolate);
 
     // Verify that the generic-wrapper budget has initially a value of

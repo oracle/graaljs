@@ -16,12 +16,13 @@ if (is_fuchsia) {
 
   fuchsia_package_runner("v8_unittests_fuchsia") {
     testonly = true
+    use_cfv2 = false
     package = ":v8_unittests_pkg"
     package_name_override = "v8_unittests"
   }
 }
 
-v8_executable("v8_cppgc_shared_unittests") {
+v8_executable("v8_heap_base_unittests") {
   testonly = true
 
   configs = [
@@ -32,16 +33,19 @@ v8_executable("v8_cppgc_shared_unittests") {
   sources = [ "heap/base/run-all-unittests.cc" ]
 
   deps = [
-    ":v8_cppgc_shared_unittests_sources",
+    ":v8_heap_base_unittests_sources",
     "//testing/gmock",
     "//testing/gtest",
   ]
 }
 
-v8_source_set("v8_cppgc_shared_unittests_sources") {
+v8_source_set("v8_heap_base_unittests_sources") {
   testonly = true
 
-  sources = [ "heap/base/worklist-unittest.cc" ]
+  sources = [
+    "heap/base/active-system-pages-unittest.cc",
+    "heap/base/worklist-unittest.cc",
+  ]
 
   configs = [
     "../..:external_config",
@@ -49,7 +53,7 @@ v8_source_set("v8_cppgc_shared_unittests_sources") {
   ]
 
   deps = [
-    "../..:v8_cppgc_shared_for_testing",
+    "../..:v8_heap_base_for_testing",
     "//testing/gmock",
     "//testing/gtest",
   ]
@@ -74,7 +78,7 @@ if (cppgc_is_standalone) {
 
     deps = [
       ":cppgc_unittests_sources",
-      ":v8_cppgc_shared_unittests_sources",
+      ":v8_heap_base_unittests_sources",
       "../..:cppgc_for_testing",
       "//testing/gmock",
       "//testing/gtest",
@@ -119,6 +123,7 @@ v8_source_set("cppgc_unittests_sources") {
     "heap/cppgc/object-start-bitmap-unittest.cc",
     "heap/cppgc/page-memory-unittest.cc",
     "heap/cppgc/persistent-family-unittest.cc",
+    "heap/cppgc/platform-unittest.cc",
     "heap/cppgc/prefinalizer-unittest.cc",
     "heap/cppgc/sanitizer-unittest.cc",
     "heap/cppgc/source-location-unittest.cc",
@@ -161,14 +166,13 @@ v8_source_set("cppgc_unittests_sources") {
 v8_executable("unittests") {
   testonly = true
 
-  # TODO(machenbach): Translate from gyp.
-  #['OS=="aix"', {
-  #  'ldflags': [ '-Wl,-bbigtoc' ],
-  #}],
+  if (current_os == "aix") {
+    ldflags = [ "-Wl,-bbigtoc" ]
+  }
 
   deps = [
     ":unittests_sources",
-    ":v8_cppgc_shared_unittests_sources",
+    ":v8_heap_base_unittests_sources",
     "../..:v8_for_testing",
     "../..:v8_libbase",
     "../..:v8_libplatform",
@@ -202,6 +206,7 @@ v8_source_set("unittests_sources") {
     "../../testing/gmock-support.h",
     "../../testing/gtest-support.h",
     "api/access-check-unittest.cc",
+    "api/deserialize-unittest.cc",
     "api/exception-unittest.cc",
     "api/interceptor-unittest.cc",
     "api/isolate-unittest.cc",
@@ -231,6 +236,7 @@ v8_source_set("unittests_sources") {
     "base/threaded-list-unittest.cc",
     "base/utils/random-number-generator-unittest.cc",
     "base/vector-unittest.cc",
+    "base/virtual-address-space-unittest.cc",
     "base/vlq-base64-unittest.cc",
     "base/vlq-unittest.cc",
     "codegen/aligned-slot-allocator-unittest.cc",
@@ -304,12 +310,17 @@ v8_source_set("unittests_sources") {
     "debug/debug-property-iterator-unittest.cc",
     "diagnostics/eh-frame-iterator-unittest.cc",
     "diagnostics/eh-frame-writer-unittest.cc",
+    "diagnostics/gdb-jit-unittest.cc",
     "execution/microtask-queue-unittest.cc",
     "heap/allocation-observer-unittest.cc",
-    "heap/barrier-unittest.cc",
     "heap/bitmap-test-utils.h",
     "heap/bitmap-unittest.cc",
     "heap/code-object-registry-unittest.cc",
+    "heap/cppgc-js/traced-reference-unittest.cc",
+    "heap/cppgc-js/unified-heap-snapshot-unittest.cc",
+    "heap/cppgc-js/unified-heap-unittest.cc",
+    "heap/cppgc-js/unified-heap-utils.cc",
+    "heap/cppgc-js/unified-heap-utils.h",
     "heap/embedder-tracing-unittest.cc",
     "heap/gc-idle-time-handler-unittest.cc",
     "heap/gc-tracer-unittest.cc",
@@ -318,6 +329,7 @@ v8_source_set("unittests_sources") {
     "heap/heap-utils.cc",
     "heap/heap-utils.h",
     "heap/index-generator-unittest.cc",
+    "heap/lab-unittest.cc",
     "heap/list-unittest.cc",
     "heap/local-factory-unittest.cc",
     "heap/local-heap-unittest.cc",
@@ -326,16 +338,11 @@ v8_source_set("unittests_sources") {
     "heap/memory-reducer-unittest.cc",
     "heap/object-stats-unittest.cc",
     "heap/persistent-handles-unittest.cc",
+    "heap/progressbar-unittest.cc",
     "heap/safepoint-unittest.cc",
     "heap/slot-set-unittest.cc",
     "heap/spaces-unittest.cc",
-    "heap/traced-reference-unittest.cc",
-    "heap/unified-heap-snapshot-unittest.cc",
-    "heap/unified-heap-unittest.cc",
-    "heap/unified-heap-utils.cc",
-    "heap/unified-heap-utils.h",
     "heap/unmapper-unittest.cc",
-    "heap/worklist-unittest.cc",
     "interpreter/bytecode-array-builder-unittest.cc",
     "interpreter/bytecode-array-iterator-unittest.cc",
     "interpreter/bytecode-array-random-iterator-unittest.cc",
@@ -354,6 +361,7 @@ v8_source_set("unittests_sources") {
     "libplatform/default-job-unittest.cc",
     "libplatform/default-platform-unittest.cc",
     "libplatform/default-worker-threads-task-runner-unittest.cc",
+    "libplatform/single-threaded-default-platform-unittest.cc",
     "libplatform/task-queue-unittest.cc",
     "libplatform/worker-thread-unittest.cc",
     "logging/counters-unittest.cc",
@@ -361,6 +369,7 @@ v8_source_set("unittests_sources") {
     "numbers/conversions-unittest.cc",
     "objects/object-unittest.cc",
     "objects/osr-optimized-code-cache-unittest.cc",
+    "objects/swiss-hash-table-helpers-unittest.cc",
     "objects/value-serializer-unittest.cc",
     "objects/weakarraylist-unittest.cc",
     "parser/ast-value-unittest.cc",
@@ -372,6 +381,7 @@ v8_source_set("unittests_sources") {
     "regress/regress-crbug-938251-unittest.cc",
     "run-all-unittests.cc",
     "runtime/runtime-debug-unittest.cc",
+    "sandbox/sandbox-unittest.cc",
     "strings/char-predicates-unittest.cc",
     "strings/unicode-unittest.cc",
     "tasks/background-compile-task-unittest.cc",
@@ -412,6 +422,7 @@ v8_source_set("unittests_sources") {
       "wasm/leb-helper-unittest.cc",
       "wasm/liftoff-register-unittests.cc",
       "wasm/loop-assignment-analysis-unittest.cc",
+      "wasm/memory-protection-unittest.cc",
       "wasm/module-decoder-memory64-unittest.cc",
       "wasm/module-decoder-unittest.cc",
       "wasm/simd-shuffle-unittest.cc",
@@ -481,20 +492,28 @@ v8_source_set("unittests_sources") {
       "assembler/turbo-assembler-s390-unittest.cc",
       "compiler/s390/instruction-selector-s390-unittest.cc",
     ]
+  } else if (v8_current_cpu == "loong64") {
+    sources += [
+      "assembler/turbo-assembler-loong64-unittest.cc",
+      "compiler/loong64/instruction-selector-loong64-unittest.cc",
+    ]
   }
 
-  if (is_posix && v8_enable_webassembly) {
-    sources += [ "wasm/trap-handler-posix-unittest.cc" ]
-  }
+  if (v8_enable_webassembly) {
+    if (is_posix) {
+      sources += [ "wasm/trap-handler-posix-unittest.cc" ]
+    }
 
-  if (is_win && v8_enable_webassembly) {
-    sources += [ "wasm/trap-handler-win-unittest.cc" ]
-  }
+    if (is_win) {
+      sources += [ "wasm/trap-handler-win-unittest.cc" ]
+    }
 
-  # Include this test only on arm64 simulator builds on x64 on Linux.
-  if (current_cpu == "x64" && v8_current_cpu == "arm64" && is_linux &&
-      v8_enable_webassembly) {
-    sources += [ "wasm/trap-handler-simulator-unittest.cc" ]
+    # Include this test only on arm64 simulator builds on x64 on Linux, Mac and
+    # Windows.
+    if (current_cpu == "x64" && v8_current_cpu == "arm64" &&
+        (is_linux || is_mac || is_win)) {
+      sources += [ "wasm/trap-handler-simulator-unittest.cc" ]
+    }
   }
 
   configs = [
@@ -509,6 +528,7 @@ v8_source_set("unittests_sources") {
     "../..:v8_libbase",
     "../..:v8_libplatform",
     "../..:v8_shared_internal_headers",
+    "../..:v8_version",
     "../../third_party/inspector_protocol:crdtp_test",
     "//build/win:default_exe_manifest",
     "//testing/gmock",
@@ -524,5 +544,7 @@ v8_source_set("unittests_sources") {
     # bytecode-utils.h.
     # C4309: 'static_cast': truncation of constant value
     cflags = [ "/wd4309" ]
+
+    sources += [ "avoid-windows-h-includes.cc" ]
   }
 }

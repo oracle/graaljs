@@ -151,7 +151,7 @@ const maybeOverridePrepareStackTrace = (globalThis, error, trace) => {
 };
 
 const aggregateTwoErrors = hideStackFrames((innerError, outerError) => {
-  if (innerError && outerError) {
+  if (innerError && outerError && innerError !== outerError) {
     if (ArrayIsArray(outerError.errors)) {
       // If `outerError` is already an `AggregateError`.
       ArrayPrototypePush(outerError.errors, innerError);
@@ -191,6 +191,12 @@ function lazyBuffer() {
 }
 
 function isErrorStackTraceLimitWritable() {
+  // Do no touch Error.stackTraceLimit as V8 would attempt to install
+  // it again during deserialization.
+  if (require('v8').startupSnapshot.isBuildingSnapshot()) {
+    return false;
+  }
+
   const desc = ObjectGetOwnPropertyDescriptor(Error, 'stackTraceLimit');
   if (desc === undefined) {
     return ObjectIsExtensible(Error);
@@ -937,6 +943,8 @@ module.exports = {
 E('ERR_AMBIGUOUS_ARGUMENT', 'The "%s" argument is ambiguous. %s', TypeError);
 E('ERR_ARG_NOT_ITERABLE', '%s must be iterable', TypeError);
 E('ERR_ASSERTION', '%s', Error);
+E('ERR_ASSERT_SNAPSHOT_NOT_SUPPORTED',
+  'Snapshot is not supported in this context ', TypeError);
 E('ERR_ASYNC_CALLBACK', '%s must be a function', TypeError);
 E('ERR_ASYNC_TYPE', 'Invalid name for async "type": %s', TypeError);
 E('ERR_BROTLI_INVALID_PARAM', '%s is not a valid Brotli parameter', RangeError);
@@ -1281,8 +1289,6 @@ E('ERR_INVALID_ARG_VALUE', (name, value, reason = 'is invalid') => {
 E('ERR_INVALID_ASYNC_ID', 'Invalid %s value: %s', RangeError);
 E('ERR_INVALID_BUFFER_SIZE',
   'Buffer size must be a multiple of %s', RangeError);
-E('ERR_INVALID_CALLBACK',
-  'Callback must be a function. Received %O', TypeError);
 E('ERR_INVALID_CHAR',
   // Using a default argument here is important so the argument is not counted
   // towards `Function#length`.
@@ -1673,6 +1679,7 @@ E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url, supported) => {
   msg += `. Received protocol '${url.protocol}'`;
   return msg;
 }, Error);
+E('ERR_USE_AFTER_CLOSE', '%s was closed', Error);
 
 // This should probably be a `TypeError`.
 E('ERR_VALID_PERFORMANCE_ENTRY_TYPE',
@@ -1692,6 +1699,7 @@ E('ERR_VM_MODULE_NOT_MODULE',
   'Provided module is not an instance of Module', Error);
 E('ERR_VM_MODULE_STATUS', 'Module status %s', Error);
 E('ERR_WASI_ALREADY_STARTED', 'WASI instance has already started', Error);
+E('ERR_WEBASSEMBLY_RESPONSE', 'WebAssembly response %s', TypeError);
 E('ERR_WORKER_INIT_FAILED', 'Worker initialization failure: %s', Error);
 E('ERR_WORKER_INVALID_EXEC_ARGV', (errors, msg = 'invalid execArgv flags') =>
   `Initiated Worker with ${msg}: ${ArrayPrototypeJoin(errors, ', ')}`,

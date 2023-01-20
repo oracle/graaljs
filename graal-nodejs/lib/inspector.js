@@ -21,8 +21,8 @@ const {
 const EventEmitter = require('events');
 const { queueMicrotask } = require('internal/process/task_queues');
 const {
-  validateCallback,
   isUint32,
+  validateFunction,
   validateInt32,
   validateObject,
   validateString,
@@ -36,7 +36,8 @@ const {
   open,
   url,
   isEnabled,
-  waitForDebugger
+  waitForDebugger,
+  console,
 } = internalBinding('inspector');
 
 const connectionSymbol = Symbol('connectionProperty');
@@ -118,7 +119,7 @@ class Session extends EventEmitter {
       validateObject(params, 'params');
     }
     if (callback) {
-      validateCallback(callback);
+      validateFunction(callback, 'callback');
     }
 
     if (!this[connectionSymbol]) {
@@ -194,9 +195,7 @@ module.exports = {
   close: _debugEnd,
   url,
   waitForDebugger: inspectorWaitForDebugger,
-  // This is dynamically added during bootstrap,
-  // where the console from the VM is still available
-  console: require('internal/util/inspector').consoleFromVM,
+  console,
   Session
 };
 

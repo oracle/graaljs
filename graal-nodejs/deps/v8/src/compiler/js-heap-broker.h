@@ -32,6 +32,11 @@
 
 namespace v8 {
 namespace internal {
+
+namespace maglev {
+class MaglevCompilationInfo;
+}
+
 namespace compiler {
 
 class ObjectRef;
@@ -94,12 +99,12 @@ DEFINE_OPERATORS_FOR_FLAGS(GetOrCreateDataFlags)
 class V8_EXPORT_PRIVATE JSHeapBroker {
  public:
   JSHeapBroker(Isolate* isolate, Zone* broker_zone, bool tracing_enabled,
-               bool is_concurrent_inlining, CodeKind code_kind);
+               CodeKind code_kind);
 
   // For use only in tests, sets default values for some arguments. Avoids
   // churn when new flags are added.
   JSHeapBroker(Isolate* isolate, Zone* broker_zone)
-      : JSHeapBroker(isolate, broker_zone, FLAG_trace_heap_broker, false,
+      : JSHeapBroker(isolate, broker_zone, FLAG_trace_heap_broker,
                      CodeKind::TURBOFAN) {}
 
   ~JSHeapBroker();
@@ -114,11 +119,19 @@ class V8_EXPORT_PRIVATE JSHeapBroker {
   void InitializeAndStartSerializing();
 
   Isolate* isolate() const { return isolate_; }
+
+  // The pointer compression cage base value used for decompression of all
+  // tagged values except references to Code objects.
+  PtrComprCageBase cage_base() const {
+#if V8_COMPRESS_POINTERS
+    return cage_base_;
+#else
+    return PtrComprCageBase{};
+#endif  // V8_COMPRESS_POINTERS
+  }
+
   Zone* zone() const { return zone_; }
   bool tracing_enabled() const { return tracing_enabled_; }
-  bool is_concurrent_inlining() const { return is_concurrent_inlining_; }
-  bool is_isolate_bootstrapping() const { return is_isolate_bootstrapping_; }
-  bool is_turboprop() const { return code_kind_ == CodeKind::TURBOPROP; }
 
   NexusConfig feedback_nexus_config() const {
     return IsMainThread() ? NexusConfig::FromMainThread(isolate())
@@ -141,6 +154,12 @@ class V8_EXPORT_PRIVATE JSHeapBroker {
   // handles provided back to {info}. {info} is responsible for disposing of
   // them.
   void DetachLocalIsolate(OptimizedCompilationInfo* info);
+
+  // TODO(v8:7700): Refactor this once the broker is no longer
+  // Turbofan-specific.
+  void AttachLocalIsolateForMaglev(maglev::MaglevCompilationInfo* info,
+                                   LocalIsolate* local_isolate);
+  void DetachLocalIsolateForMaglev(maglev::MaglevCompilationInfo* info);
 
   bool StackHasOverflowed() const;
 
@@ -173,7 +192,6 @@ class V8_EXPORT_PRIVATE JSHeapBroker {
                    ProcessedFeedback const* feedback);
   FeedbackSlotKind GetFeedbackSlotKind(FeedbackSource const& source) const;
 
-  // TODO(neis): Move these into serializer when we're always in the background.
   ElementAccessFeedback const& ProcessFeedbackMapsForElementAccess(
       ZoneVector<MapRef>& maps, KeyedAccessMode const& keyed_mode,
       FeedbackSlotKind slot_kind);
@@ -215,10 +233,6 @@ class V8_EXPORT_PRIVATE JSHeapBroker {
   PropertyAccessInfo GetPropertyAccessInfo(
       MapRef map, NameRef name, AccessMode access_mode,
       CompilationDependencies* dependencies);
-
-  MinimorphicLoadPropertyAccessInfo GetPropertyAccessInfo(
-      MinimorphicLoadPropertyAccessFeedback const& feedback,
-      FeedbackSource const& source);
 
   StringRef GetTypedArrayStringTag(ElementsKind kind);
 
@@ -290,8 +304,6 @@ class V8_EXPORT_PRIVATE JSHeapBroker {
   std::string Trace() const;
   void IncrementTracingIndentation();
   void DecrementTracingIndentation();
-
-  RootIndexMap const& root_index_map() { return root_index_map_; }
 
   // Locks {mutex} through the duration of this scope iff it is the first
   // occurrence. This is done to have a recursive shared lock on {mutex}.
@@ -389,8 +401,6 @@ class V8_EXPORT_PRIVATE JSHeapBroker {
 
   void CollectArrayAndObjectPrototypes();
 
-  PerIsolateCompilerCache* compiler_cache() const { return compiler_cache_; }
-
   void set_persistent_handles(
       std::unique_ptr<PersistentHandles> persistent_handles) {
     DCHECK_NULL(ph_);
@@ -419,7 +429,10 @@ class V8_EXPORT_PRIVATE JSHeapBroker {
       std::unique_ptr<CanonicalHandlesMap> canonical_handles);
 
   Isolate* const isolate_;
-  Zone* const zone_ = nullptr;
+#if V8_COMPRESS_POINTERS
+  const PtrComprCageBase cage_base_;
+#endif  // V8_COMPRESS_POINTERS
+  Zone* const zone_;
   base::Optional<NativeContextRef> target_native_context_;
   RefsMap* refs_;
   RootIndexMap root_index_map_;
@@ -428,25 +441,17 @@ class V8_EXPORT_PRIVATE JSHeapBroker {
       array_and_object_prototypes_;
   BrokerMode mode_ = kDisabled;
   bool const tracing_enabled_;
-  bool const is_concurrent_inlining_;
-  bool const is_isolate_bootstrapping_;
   CodeKind const code_kind_;
   std::unique_ptr<PersistentHandles> ph_;
   LocalIsolate* local_isolate_ = nullptr;
   std::unique_ptr<CanonicalHandlesMap> canonical_handles_;
   unsigned trace_indentation_ = 0;
-  PerIsolateCompilerCache* compiler_cache_ = nullptr;
   ZoneUnorderedMap<FeedbackSource, ProcessedFeedback const*,
                    FeedbackSource::Hash, FeedbackSource::Equal>
       feedback_;
   ZoneUnorderedMap<PropertyAccessTarget, PropertyAccessInfo,
                    PropertyAccessTarget::Hash, PropertyAccessTarget::Equal>
       property_access_infos_;
-  ZoneUnorderedMap<FeedbackSource, MinimorphicLoadPropertyAccessInfo,
-                   FeedbackSource::Hash, FeedbackSource::Equal>
-      minimorphic_property_access_infos_;
-
-  ZoneVector<ObjectData*> typed_array_string_tags_;
 
   CompilationDependencies* dependencies_ = nullptr;
 
@@ -460,7 +465,6 @@ class V8_EXPORT_PRIVATE JSHeapBroker {
   // Likewise for boilerplate migrations.
   int boilerplate_migration_mutex_depth_ = 0;
 
-  static constexpr size_t kMaxSerializedFunctionsCacheSize = 200;
   static constexpr uint32_t kMinimalRefsBucketCount = 8;
   STATIC_ASSERT(base::bits::IsPowerOfTwo(kMinimalRefsBucketCount));
   static constexpr uint32_t kInitialRefsBucketCount = 1024;
@@ -486,21 +490,6 @@ class V8_NODISCARD TraceScope {
  private:
   JSHeapBroker* const broker_;
 };
-
-#define ASSIGN_RETURN_NO_CHANGE_IF_DATA_MISSING(something_var,             \
-                                                optionally_something)      \
-  auto optionally_something_ = optionally_something;                       \
-  if (!optionally_something_)                                              \
-    return NoChangeBecauseOfMissingData(broker(), __FUNCTION__, __LINE__); \
-  something_var = *optionally_something_;
-
-class Reduction;
-Reduction NoChangeBecauseOfMissingData(JSHeapBroker* broker,
-                                       const char* function, int line);
-
-// Miscellaneous definitions that should be moved elsewhere once concurrent
-// compilation is finished.
-bool CanInlineElementAccess(MapRef const& map);
 
 // Scope that unparks the LocalHeap, if:
 //   a) We have a JSHeapBroker,

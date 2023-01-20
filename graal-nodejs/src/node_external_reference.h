@@ -30,7 +30,12 @@ class ExternalReferenceRegistry {
   V(v8::GenericNamedPropertyDeleterCallback)                                   \
   V(v8::GenericNamedPropertyEnumeratorCallback)                                \
   V(v8::GenericNamedPropertyQueryCallback)                                     \
-  V(v8::GenericNamedPropertySetterCallback)
+  V(v8::GenericNamedPropertySetterCallback)                                    \
+  V(v8::IndexedPropertySetterCallback)                                         \
+  V(v8::IndexedPropertyDefinerCallback)                                        \
+  V(v8::IndexedPropertyDeleterCallback)                                        \
+  V(v8::IndexedPropertyQueryCallback)                                          \
+  V(v8::IndexedPropertyDescriptorCallback)
 
 #define V(ExternalReferenceType)                                               \
   void Register(ExternalReferenceType addr) { RegisterT(addr); }
@@ -56,6 +61,8 @@ class ExternalReferenceRegistry {
   V(binding)                                                                   \
   V(blob)                                                                      \
   V(buffer)                                                                    \
+  V(builtins)                                                                  \
+  V(cares_wrap)                                                                \
   V(contextify)                                                                \
   V(credentials)                                                               \
   V(env_var)                                                                   \
@@ -67,7 +74,6 @@ class ExternalReferenceRegistry {
   V(heap_utils)                                                                \
   V(messaging)                                                                 \
   V(mksnapshot)                                                                \
-  V(native_module)                                                             \
   V(options)                                                                   \
   V(os)                                                                        \
   V(performance)                                                               \
@@ -90,6 +96,7 @@ class ExternalReferenceRegistry {
   V(uv)                                                                        \
   V(v8)                                                                        \
   V(zlib)                                                                      \
+  V(wasm_web_api)                                                              \
   V(worker)
 
 #if NODE_HAVE_I18N_SUPPORT

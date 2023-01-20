@@ -156,9 +156,33 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors) {
       errors->push_back("either --test or --interactive can be used, not both");
     }
 
-    if (debug_options_.inspector_enabled) {
-      errors->push_back("the inspector cannot be used with --test");
+    if (watch_mode) {
+      // TODO(MoLow): Support (incremental?) watch mode within test runner
+      errors->push_back("either --test or --watch can be used, not both");
     }
+
+#ifndef ALLOW_ATTACHING_DEBUGGER_IN_TEST_RUNNER
+    debug_options_.allow_attaching_debugger = false;
+#endif
+  }
+
+  if (watch_mode) {
+    if (syntax_check_only) {
+      errors->push_back("either --watch or --check can be used, not both");
+    }
+
+    if (has_eval_string) {
+      errors->push_back("either --watch or --eval can be used, not both");
+    }
+
+    if (force_repl) {
+      errors->push_back("either --watch or --interactive "
+                        "can be used, not both");
+    }
+
+#ifndef ALLOW_ATTACHING_DEBUGGER_IN_WATCH_MODE
+    debug_options_.allow_attaching_debugger = false;
+#endif
   }
 
 #if HAVE_INSPECTOR
@@ -338,8 +362,8 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--experimental-fetch",
             "experimental Fetch API",
             &EnvironmentOptions::experimental_fetch,
-            kAllowedInEnvironment);
-  AddOption("--experimental-json-modules", "", NoOp{}, kAllowedInEnvironment);
+            kAllowedInEnvironment,
+            true);
   AddOption("--experimental-global-customevent",
             "expose experimental CustomEvent on the global scope",
             &EnvironmentOptions::experimental_global_customevent,
@@ -348,6 +372,7 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "expose experimental Web Crypto API on the global scope",
             &EnvironmentOptions::experimental_global_web_crypto,
             kAllowedInEnvironment);
+  AddOption("--experimental-json-modules", "", NoOp{}, kAllowedInEnvironment);
   AddOption("--experimental-loader",
             "use the specified module as a custom loader",
             &EnvironmentOptions::userland_loaders,
@@ -529,6 +554,9 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--test",
             "launch test runner on startup",
             &EnvironmentOptions::test_runner);
+  AddOption("--test-name-pattern",
+            "run tests whose name matches this regular expression",
+            &EnvironmentOptions::test_name_pattern);
   AddOption("--test-only",
             "run tests with 'only' option set",
             &EnvironmentOptions::test_only,
@@ -568,6 +596,11 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "show stack traces on process warnings",
             &EnvironmentOptions::trace_warnings,
             kAllowedInEnvironment);
+  AddOption("--extra-info-on-fatal-exception",
+            "hide extra information on fatal exception that causes exit",
+            &EnvironmentOptions::extra_info_on_fatal_exception,
+            kAllowedInEnvironment,
+            true);
   AddOption("--unhandled-rejections",
             "define unhandled rejections behavior. Options are 'strict' "
             "(always raise an error), 'throw' (raise an error unless "
@@ -581,7 +614,15 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "", /* undocumented, only for debugging */
             &EnvironmentOptions::verify_base_objects,
             kAllowedInEnvironment);
-
+  AddOption("--watch",
+            "run in watch mode",
+            &EnvironmentOptions::watch_mode,
+            kAllowedInEnvironment);
+  AddOption("--watch-path",
+            "path to watch",
+            &EnvironmentOptions::watch_mode_paths,
+            kAllowedInEnvironment);
+  Implies("--watch-path", "--watch");
   AddOption("--check",
             "syntax check script without executing",
             &EnvironmentOptions::syntax_check_only);
@@ -612,6 +653,11 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "to be a terminal",
             &EnvironmentOptions::force_repl);
   AddAlias("-i", "--interactive");
+
+  AddOption("--update-assert-snapshot",
+            "update assert snapshot files",
+            &EnvironmentOptions::update_assert_snapshot,
+            kAllowedInEnvironment);
 
   AddOption("--napi-modules", "", NoOp{}, kAllowedInEnvironment);
 
@@ -654,10 +700,6 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
   AddOption("--track-heap-objects",
             "track heap object allocations for heap snapshots",
             &PerIsolateOptions::track_heap_objects,
-            kAllowedInEnvironment);
-  AddOption("--node-snapshot",
-            "",  // It's a debug-only option.
-            &PerIsolateOptions::node_snapshot,
             kAllowedInEnvironment);
 
   // Explicitly add some V8 flags to mark them as allowed in NODE_OPTIONS.
@@ -754,6 +796,16 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             " Currently only supported in the node_mksnapshot binary.",
             &PerProcessOptions::build_snapshot,
             kDisallowedInEnvironment);
+  AddOption("--node-snapshot",
+            "",  // It's a debug-only option.
+            &PerProcessOptions::node_snapshot,
+            kAllowedInEnvironment);
+  AddOption("--snapshot-blob",
+            "Path to the snapshot blob that's either the result of snapshot"
+            "building, or the blob that is used to restore the application "
+            "state",
+            &PerProcessOptions::snapshot_blob,
+            kAllowedInEnvironment);
 
   // 12.x renamed this inadvertently, so alias it for consistency within the
   // release line, while using the original name for consistency with older
@@ -854,16 +906,17 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             "minimum allocation size from the OpenSSL secure heap",
             &PerProcessOptions::secure_heap_min,
             kAllowedInEnvironment);
-  AddOption("--openssl-shared-config",
-            "enable OpenSSL shared configuration",
-            &PerProcessOptions::openssl_shared_config,
-            kAllowedInEnvironment);
 #endif  // HAVE_OPENSSL
 #if OPENSSL_VERSION_MAJOR >= 3
   AddOption("--openssl-legacy-provider",
             "enable OpenSSL 3.0 legacy provider",
             &PerProcessOptions::openssl_legacy_provider,
             kAllowedInEnvironment);
+  AddOption("--openssl-shared-config",
+            "enable OpenSSL shared configuration",
+            &PerProcessOptions::openssl_shared_config,
+            kAllowedInEnvironment);
+
 #endif  // OPENSSL_VERSION_MAJOR
   AddOption("--use-largepages",
             "Map the Node.js static code to large pages. Options are "
@@ -1146,8 +1199,9 @@ void Initialize(Local<Object> target,
                 void* priv) {
   Environment* env = Environment::GetCurrent(context);
   Isolate* isolate = env->isolate();
-  env->SetMethodNoSideEffect(target, "getCLIOptions", GetCLIOptions);
-  env->SetMethodNoSideEffect(target, "getEmbedderOptions", GetEmbedderOptions);
+  SetMethodNoSideEffect(context, target, "getCLIOptions", GetCLIOptions);
+  SetMethodNoSideEffect(
+      context, target, "getEmbedderOptions", GetEmbedderOptions);
 
   Local<Object> env_settings = Object::New(isolate);
   NODE_DEFINE_CONSTANT(env_settings, kAllowedInEnvironment);

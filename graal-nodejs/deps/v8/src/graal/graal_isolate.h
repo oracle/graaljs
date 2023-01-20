@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,6 +130,7 @@ enum GraalAccessMethod {
     value_strict_equals,
     value_instance_of,
     value_type_of,
+    value_to_detail_string,
     object_new,
     object_set,
     object_set_index,
@@ -170,8 +171,6 @@ enum GraalAccessMethod {
     array_buffer_view_buffer,
     array_buffer_view_byte_length,
     array_buffer_view_byte_offset,
-    array_buffer_is_external,
-    array_buffer_externalize,
     array_buffer_detach,
     typed_array_length,
     uint8_array_new,
@@ -271,6 +270,7 @@ enum GraalAccessMethod {
     context_get_embedder_data,
     context_get_extras_binding_object,
     context_set_promise_hooks,
+    context_is_code_generation_from_strings_allowed,
     try_catch_exception,
     try_catch_has_terminated,
     message_get_script_resource_name,
@@ -344,8 +344,6 @@ enum GraalAccessMethod {
     module_instantiate,
     module_evaluate,
     module_get_status,
-    module_get_requests_length,
-    module_get_request,
     module_get_namespace,
     module_get_identity_hash,
     module_get_exception,
@@ -389,7 +387,6 @@ enum GraalAccessMethod {
     set_new,
     set_add,
     shared_array_buffer_new,
-    shared_array_buffer_is_external,
     shared_array_buffer_get_contents,
     shared_array_buffer_externalize,
     shared_array_buffer_byte_length,
@@ -451,8 +448,8 @@ public:
     void NotifyPromiseRejectCallback(v8::PromiseRejectMessage message);
     void SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback);
     void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
-    void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyWithImportAssertionsCallback callback);
-    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions);
+    void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback);
+    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions);
     void SetPrepareStackTraceCallback(v8::PrepareStackTraceCallback callback);
     v8::MaybeLocal<v8::Value> NotifyPrepareStackTraceCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> error, v8::Local<v8::Array> sites);
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
@@ -669,7 +666,6 @@ public:
     }
 
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
-    void Externalize(jobject java_buffer);
     v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
     void SchedulePauseOnNextStatement();
 
@@ -765,7 +761,7 @@ public:
 private:
     // Slots accessed by v8::Isolate::Get/SetData
     // They must be the first field of GraalIsolate
-    void* slot[30] = {};
+    void* slot[v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiSystemPointerSize + v8::internal::Internals::kDoubleReturnValuePlaceholderIndex + 1] = {};
     std::vector<v8::Value*> eternals;
     std::vector<v8::Context*> contexts;
     std::vector<GraalHandleContent*> handles;
@@ -786,9 +782,6 @@ private:
     jobject double_placeholder_;
     jmethodID jni_methods_[GraalAccessMethod::count];
     jfieldID jni_fields_[static_cast<int>(GraalAccessField::count)];
-    jfieldID cleanerField_;
-    jfieldID thunkField_;
-    jfieldID addressField_;
     GraalPrimitive* undefined_instance_;
     GraalPrimitive* null_instance_;
     GraalBoolean* true_instance_;
@@ -850,7 +843,7 @@ private:
     v8::PromiseHook promise_hook_;
     v8::PromiseRejectCallback promise_reject_callback_;
     v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
-    v8::HostImportModuleDynamicallyWithImportAssertionsCallback import_module_dynamically;
+    v8::HostImportModuleDynamicallyCallback import_module_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
     v8::internal::MicrotaskQueue microtask_queue_;

@@ -59,7 +59,9 @@ net.createServer().listen(
 ## Class: `net.BlockList`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 The `BlockList` object can be used with some network APIs to specify rules for
@@ -69,7 +71,9 @@ IP subnets.
 ### `blockList.addAddress(address[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `address` {string|net.SocketAddress} An IPv4 or IPv6 address.
@@ -80,7 +84,9 @@ Adds a rule to block the given IP address.
 ### `blockList.addRange(start, end[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `start` {string|net.SocketAddress} The starting IPv4 or IPv6 address in the
@@ -94,7 +100,9 @@ Adds a rule to block a range of IP addresses from `start` (inclusive) to
 ### `blockList.addSubnet(net, prefix[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `net` {string|net.SocketAddress} The network IPv4 or IPv6 address.
@@ -108,7 +116,9 @@ Adds a rule to block a range of IP addresses specified as a subnet mask.
 ### `blockList.check(address[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `address` {string|net.SocketAddress} The IP address to check
@@ -136,7 +146,9 @@ console.log(blockList.check('::ffff:123.123.123.123', 'ipv6')); // Prints: true
 ### `blockList.rules`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * Type: {string\[]}
@@ -146,13 +158,17 @@ The list of rules added to the blocklist.
 ## Class: `net.SocketAddress`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 ### `new net.SocketAddress([options])`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * `options` {Object}
@@ -167,7 +183,9 @@ added: v15.14.0
 ### `socketaddress.address`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {string}
@@ -175,7 +193,9 @@ added: v15.14.0
 ### `socketaddress.family`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {string} Either `'ipv4'` or `'ipv6'`.
@@ -183,7 +203,9 @@ added: v15.14.0
 ### `socketaddress.flowlabel`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {number}
@@ -191,7 +213,9 @@ added: v15.14.0
 ### `socketaddress.port`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {number}
@@ -260,7 +284,7 @@ Emitted when the server has been bound after calling [`server.listen()`][].
 ### Event: `'drop'`
 
 <!-- YAML
-added: v16.17.0
+added: v18.6.0
 -->
 
 When the number of connections reaches the threshold of `server.maxConnections`,
@@ -279,6 +303,13 @@ TCP server, the argument is as follows, otherwise the argument is `undefined`.
 
 <!-- YAML
 added: v0.1.90
+changes:
+  - version: v18.4.0
+    pr-url: https://github.com/nodejs/node/pull/43054
+    description: The `family` property now returns a string instead of a number.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41431
+    description: The `family` property now returns a number instead of a string.
 -->
 
 * Returns: {Object|string|null}
@@ -704,7 +735,7 @@ Not applicable to Unix sockets.
 
 * `err` {Error|null} The error object. See [`dns.lookup()`][].
 * `address` {string} The IP address.
-* `family` {string|null} The address type. See [`dns.lookup()`][].
+* `family` {number|null} The address type. See [`dns.lookup()`][].
 * `host` {string} The host name.
 
 ### Event: `'ready'`
@@ -732,6 +763,13 @@ See also: [`socket.setTimeout()`][].
 
 <!-- YAML
 added: v0.1.90
+changes:
+  - version: v18.4.0
+    pr-url: https://github.com/nodejs/node/pull/43054
+    description: The `family` property now returns a string instead of a number.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41431
+    description: The `family` property now returns a number instead of a string.
 -->
 
 * Returns: {Object}
@@ -816,7 +854,7 @@ behavior.
 <!-- YAML
 added: v0.1.90
 changes:
-  - version: v16.15.0
+  - version: v17.7.0
     pr-url: https://github.com/nodejs/node/pull/41310
     description: The `noDelay`, `keepAlive`, and `keepAliveInitialDelay`
                  options are supported now.
@@ -1011,7 +1049,7 @@ The numeric representation of the local port. For example, `80` or `21`.
 ### `socket.localFamily`
 
 <!-- YAML
-added: v16.18.0
+added: v18.8.0
 -->
 
 * {string}
@@ -1086,7 +1124,7 @@ The numeric representation of the remote port. For example, `80` or `21`.
 ### `socket.resetAndDestroy()`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 * Returns: {net.Socket}
@@ -1169,6 +1207,12 @@ algorithm.
 
 <!-- YAML
 added: v0.1.90
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `timeout` {number}
