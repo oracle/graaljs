@@ -935,8 +935,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             int slot = getWritePrivateNode().getSlotIndex();
             int brandSlot = getPrivateBrandSlotIndex();
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
-            int blockSlot = -1; // TODO
-            return ClassElementDefinitionRecord.createPrivateMethod(key, slot, brandSlot, blockSlot, value, isAnonymousFunctionDefinition(), decorators);
+            return ClassElementDefinitionRecord.createPrivateMethod(key, slot, brandSlot, value, isAnonymousFunctionDefinition(), decorators);
         }
 
         @Override
@@ -1003,14 +1002,13 @@ public class ObjectLiteralNode extends JavaScriptNode {
             assert getter != null || setter != null;
             int slot = getWritePrivateNode().getSlotIndex();
             int brandSlot = getPrivateBrandSlotIndex();
-            int blockSlot = -1; // TODO
             if (hasGetter() && hasSetter()) {
-                return ClassElementDefinitionRecord.createPrivateAccessor(key, slot, brandSlot, blockSlot, getter, setter, isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createPrivateAccessor(key, slot, brandSlot, getter, setter, isAnonymousFunctionDefinition(), decorators);
             } else if (hasGetter()) {
-                return ClassElementDefinitionRecord.createPrivateGetter(key, slot, brandSlot, blockSlot, getter, isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createPrivateGetter(key, slot, brandSlot, getter, isAnonymousFunctionDefinition(), decorators);
             } else {
                 assert hasSetter();
-                return ClassElementDefinitionRecord.createPrivateSetter(key, slot, brandSlot, blockSlot, setter, isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createPrivateSetter(key, slot, brandSlot, setter, isAnonymousFunctionDefinition(), decorators);
             }
         }
 

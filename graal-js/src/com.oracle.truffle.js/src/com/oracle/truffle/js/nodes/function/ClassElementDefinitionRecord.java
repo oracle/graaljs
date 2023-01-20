@@ -95,21 +95,20 @@ public class ClassElementDefinitionRecord {
         return new ClassElementDefinitionRecord(Kind.Setter, key, setter, null, setter, false, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateMethod(Object key, int frameSlot, int brandSlot, int blockSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new PrivateFrameBasedElementDefinitionRecord(Kind.Method, key, value, null, null, frameSlot, brandSlot, blockSlot, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateMethod(Object key, int frameSlot, int brandSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Method, key, value, null, null, frameSlot, brandSlot, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateAccessor(Object key, int frameSlot, int brandSlot, int blockSlot, Object getter, Object setter, boolean anonymousFunctionDefinition,
-                    Object[] decorators) {
-        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, key, getter, getter, setter, frameSlot, brandSlot, blockSlot, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateAccessor(Object key, int frameSlot, int brandSlot, Object getter, Object setter, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, key, getter, getter, setter, frameSlot, brandSlot, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateGetter(Object key, int frameSlot, int brandSlot, int blockSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, key, value, value, null, frameSlot, brandSlot, blockSlot, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateGetter(Object key, int frameSlot, int brandSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, key, value, value, null, frameSlot, brandSlot, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateSetter(Object key, int frameSlot, int brandSlot, int blockSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new PrivateFrameBasedElementDefinitionRecord(Kind.Setter, key, value, null, value, frameSlot, brandSlot, blockSlot, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateSetter(Object key, int frameSlot, int brandSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Setter, key, value, null, value, frameSlot, brandSlot, anonymousFunctionDefinition, decorators);
     }
 
     public static ClassElementDefinitionRecord createAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter, boolean isPrivate,
@@ -228,14 +227,12 @@ public class ClassElementDefinitionRecord {
 
         private final int keySlot;
         private final int brandSlot;
-        private final int blockScopeSlot;
 
-        private PrivateFrameBasedElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, int keySlot, int brandSlot, int blockScopeSlot,
-                        boolean anonymousFunctionDefinition, Object[] decorators) {
+        private PrivateFrameBasedElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, int keySlot, int brandSlot, boolean anonymousFunctionDefinition,
+                        Object[] decorators) {
             super(kind, key, value, getter, setter, true, anonymousFunctionDefinition, decorators);
             this.keySlot = keySlot;
             this.brandSlot = brandSlot;
-            this.blockScopeSlot = blockScopeSlot;
         }
 
         public int getKeySlot() {
@@ -244,10 +241,6 @@ public class ClassElementDefinitionRecord {
 
         public int getBrandSlot() {
             return brandSlot;
-        }
-
-        public int getBlockScopeSlot() {
-            return blockScopeSlot;
         }
     }
 
