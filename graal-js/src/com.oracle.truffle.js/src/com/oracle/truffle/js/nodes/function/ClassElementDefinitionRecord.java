@@ -88,11 +88,11 @@ public class ClassElementDefinitionRecord {
     }
 
     public static ClassElementDefinitionRecord createPublicGetter(Object key, Object getter, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Getter, key, getter, getter, null, false, anonymousFunctionDefinition, decorators);
+        return new ClassElementDefinitionRecord(Kind.Getter, key, null, getter, null, false, anonymousFunctionDefinition, decorators);
     }
 
     public static ClassElementDefinitionRecord createPublicSetter(Object key, Object setter, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Setter, key, setter, null, setter, false, anonymousFunctionDefinition, decorators);
+        return new ClassElementDefinitionRecord(Kind.Setter, key, null, null, setter, false, anonymousFunctionDefinition, decorators);
     }
 
     public static ClassElementDefinitionRecord createPrivateMethod(Object key, int frameSlot, int brandSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
@@ -100,15 +100,15 @@ public class ClassElementDefinitionRecord {
     }
 
     public static ClassElementDefinitionRecord createPrivateAccessor(Object key, int frameSlot, int brandSlot, Object getter, Object setter, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, key, getter, getter, setter, frameSlot, brandSlot, anonymousFunctionDefinition, decorators);
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, key, null, getter, setter, frameSlot, brandSlot, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateGetter(Object key, int frameSlot, int brandSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, key, value, value, null, frameSlot, brandSlot, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateGetter(Object key, int frameSlot, int brandSlot, Object getter, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Getter, key, null, getter, null, frameSlot, brandSlot, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateSetter(Object key, int frameSlot, int brandSlot, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new PrivateFrameBasedElementDefinitionRecord(Kind.Setter, key, value, null, value, frameSlot, brandSlot, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateSetter(Object key, int frameSlot, int brandSlot, Object setter, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.Setter, key, null, null, setter, frameSlot, brandSlot, anonymousFunctionDefinition, decorators);
     }
 
     public static ClassElementDefinitionRecord createAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter, boolean isPrivate,
@@ -117,15 +117,10 @@ public class ClassElementDefinitionRecord {
     }
 
     protected ClassElementDefinitionRecord(Kind kind, Object key, Object value, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
-        this.kind = kind;
-        this.key = key;
-        this.value = value;
-        this.anonymousFunctionDefinition = anonymousFunctionDefinition;
-        this.decorators = decorators;
-        this.isPrivate = isPrivate;
+        this(kind, key, value, null, null, isPrivate, anonymousFunctionDefinition, decorators);
     }
 
-    protected ClassElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, boolean anonymousFunctionDefinition, boolean isPrivate, Object[] decorators) {
+    protected ClassElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
         this.kind = kind;
         this.key = key;
         this.value = value;
@@ -134,6 +129,9 @@ public class ClassElementDefinitionRecord {
         this.anonymousFunctionDefinition = anonymousFunctionDefinition;
         this.isPrivate = isPrivate;
         this.decorators = decorators;
+        assert kind == Kind.AutoAccessor
+                        ? (value != null && getter != null && setter != null)
+                        : (value != null) != (getter != null || setter != null);
     }
 
     public final boolean isMethod() {
@@ -146,6 +144,10 @@ public class ClassElementDefinitionRecord {
 
     public final boolean isSetter() {
         return this.kind == Kind.Setter;
+    }
+
+    public final boolean isAccessor() {
+        return isGetter() || isSetter();
     }
 
     public final boolean isAutoAccessor() {
@@ -168,12 +170,20 @@ public class ClassElementDefinitionRecord {
         return decorators;
     }
 
+    public boolean hasDecorators() {
+        return decorators != null;
+    }
+
     public Object getKey() {
         return key;
     }
 
     public Object getValue() {
         return value;
+    }
+
+    public void setValue(Object newValue) {
+        this.value = newValue;
     }
 
     public Object[] getInitializers() {
@@ -186,10 +196,6 @@ public class ClassElementDefinitionRecord {
             appendedInitializers = new ArrayList<>();
         }
         appendedInitializers.add(initializer);
-    }
-
-    public void setValue(Object newValue) {
-        this.value = newValue;
     }
 
     @TruffleBoundary

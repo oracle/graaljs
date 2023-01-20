@@ -78,7 +78,7 @@ public abstract class DefineMethodPropertyNode extends JavaScriptBaseNode {
         if (ownProperty != null) {
             otherAccessor = ownProperty.getSet();
         }
-        PropertyDescriptor desc = PropertyDescriptor.createAccessor(record.getValue(), otherAccessor, enumerable, true);
+        PropertyDescriptor desc = PropertyDescriptor.createAccessor(record.getGetter(), otherAccessor, enumerable, true);
         JSRuntime.definePropertyOrThrow(homeObject, record.getKey(), desc);
     }
 
@@ -89,7 +89,7 @@ public abstract class DefineMethodPropertyNode extends JavaScriptBaseNode {
         if (ownProperty != null) {
             otherAccessor = ownProperty.getGet();
         }
-        PropertyDescriptor desc = PropertyDescriptor.createAccessor(otherAccessor, record.getValue(), enumerable, true);
+        PropertyDescriptor desc = PropertyDescriptor.createAccessor(otherAccessor, record.getSetter(), enumerable, true);
         JSRuntime.definePropertyOrThrow(homeObject, record.getKey(), desc);
     }
 
