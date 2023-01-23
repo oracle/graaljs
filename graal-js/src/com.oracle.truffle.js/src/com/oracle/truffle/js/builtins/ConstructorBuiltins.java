@@ -1030,45 +1030,50 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        @Child private JSToPrimitiveNode toPrimitiveNode;
-        @Child private JSToDoubleNode toDoubleNode;
-        private final ConditionProfile stringOrNumberProfile = ConditionProfile.create();
-        private final ConditionProfile isDateProfile = ConditionProfile.create();
-        private final ConditionProfile gotFieldsProfile = ConditionProfile.create();
-
-        private Object toPrimitive(Object target) {
-            if (toPrimitiveNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toPrimitiveNode = insert(JSToPrimitiveNode.createHintDefault());
-            }
-            return toPrimitiveNode.execute(target);
-        }
-
-        protected double toDouble(Object target) {
-            if (toDoubleNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toDoubleNode = insert(JSToDoubleNode.create());
-            }
-            return toDoubleNode.executeDouble(target);
-        }
-
         @Specialization(guards = {"args.length == 0"})
-        protected JSDynamicObject constructDateZero(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+        protected final JSObject constructDateZero(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             return swapPrototype(JSDate.create(getContext(), getRealm(), now()), newTarget);
         }
 
-        @Specialization(guards = {"args.length == 1"})
-        protected JSDynamicObject constructDateOne(JSDynamicObject newTarget, Object[] args,
+        protected static Object arg0(Object[] args) {
+            return args[0];
+        }
+
+        @Specialization(guards = {"args.length == 1", "isJSDate(arg0(args))"})
+        protected final JSObject constructDateFromDate(JSDynamicObject newTarget, Object[] args) {
+            double dateValue = JSDate.getTimeMillisField((JSDateObject) args[0]);
+            assert JSRuntime.isSameValue(JSDate.timeClip(dateValue), dateValue);
+            return swapPrototype(JSDate.create(getContext(), getRealm(), dateValue), newTarget);
+        }
+
+        @Specialization(guards = {"args.length == 1", "!isJSDate(arg0(args))"})
+        protected final JSObject constructDateOne(JSDynamicObject newTarget, Object[] args,
                         @Cached InlinedConditionProfile isSpecialCase,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-            double dateValue = getDateValue(args[0], interop);
-            return swapPrototype(JSDate.create(getContext(), getRealm(), timeClip(dateValue, isSpecialCase)), newTarget);
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached InlinedConditionProfile stringOrNumberProfile,
+                        @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
+                        @Cached @Shared JSToDoubleNode toDoubleNode) {
+            Object arg0 = args[0];
+            double rawDateValue;
+            if (getContext().getEcmaScriptVersion() >= 6 && interop.isInstant(arg0)) {
+                rawDateValue = JSDate.getDateValueFromInstant(arg0, interop);
+            } else {
+                Object value = toPrimitiveNode.execute(arg0);
+                if (stringOrNumberProfile.profile(this, value instanceof TruffleString)) {
+                    rawDateValue = parseDate((TruffleString) value);
+                } else {
+                    rawDateValue = toDoubleNode.executeDouble(value);
+                }
+            }
+            double dateValue = timeClip(rawDateValue, isSpecialCase);
+            return swapPrototype(JSDate.create(getContext(), getRealm(), dateValue), newTarget);
         }
 
         @Specialization(guards = {"args.length >= 2"})
-        protected JSDynamicObject constructDateMult(JSDynamicObject newTarget, Object[] args) {
-            double val = constructorImpl(args);
-            return swapPrototype(JSDate.create(getContext(), getRealm(), val), newTarget);
+        protected final JSObject constructDateMult(JSDynamicObject newTarget, Object[] args,
+                        @Cached @Shared JSToDoubleNode toDoubleNode) {
+            double dateValue = constructorImpl(args, toDoubleNode);
+            return swapPrototype(JSDate.create(getContext(), getRealm(), dateValue), newTarget);
         }
 
         // inlined JSDate.timeClip to use profiles
@@ -1087,38 +1092,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @TruffleBoundary
         private double parseDate(TruffleString target) {
             Integer[] fields = getContext().getEvaluator().parseDate(getRealm(), Strings.toJavaString(Strings.lazyTrim(target)), false);
-            if (gotFieldsProfile.profile(fields != null)) {
+            if (fields != null) {
                 return JSDate.makeDate(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7]);
             }
             return Double.NaN;
         }
 
-        private double getDateValue(Object arg0, InteropLibrary interop) {
-            if (getContext().getEcmaScriptVersion() >= 6) {
-                if (isDateProfile.profile(JSDate.isJSDate(arg0))) {
-                    return JSDate.getTimeMillisField((JSDateObject) arg0);
-                } else if (interop.isInstant(arg0)) {
-                    return JSDate.getDateValueFromInstant(arg0, interop);
-                }
-            }
-            Object value = toPrimitive(arg0);
-            if (stringOrNumberProfile.profile(Strings.isTString(value))) {
-                return parseDate(JSRuntime.toStringIsString(value));
-            } else {
-                double dval = toDouble(value);
-                if (Double.isInfinite(dval) || Double.isNaN(dval)) {
-                    return Double.NaN;
-                } else {
-                    return dval;
-                }
-            }
-        }
-
-        private double constructorImpl(Object[] args) {
+        private static double constructorImpl(Object[] args, JSToDoubleNode toDoubleNode) {
             double[] argsEvaluated = new double[args.length];
             boolean isNaN = false;
             for (int i = 0; i < args.length; i++) {
-                double d = toDouble(args[i]);
+                double d = toDoubleNode.executeDouble(args[i]);
                 if (Double.isNaN(d)) {
                     isNaN = true;
                 }
