@@ -68,7 +68,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -2595,20 +2594,20 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     @ImportStatic(value = {JSProxy.class})
     public abstract static class ConstructJSProxyNode extends ConstructWithNewTargetNode {
-        private final ConditionProfile targetNonObject = ConditionProfile.create();
-        private final ConditionProfile handlerNonObject = ConditionProfile.create();
 
         public ConstructJSProxyNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
         }
 
         @Specialization
-        protected JSDynamicObject constructJSProxy(JSDynamicObject newTarget, Object target, Object handler) {
-            if (targetNonObject.profile(!JSGuards.isTruffleObject(target) || target instanceof Symbol || target == Undefined.instance || target == Null.instance ||
+        protected final JSObject constructJSProxy(JSDynamicObject newTarget, Object target, Object handler,
+                        @Cached InlinedConditionProfile targetNonObject,
+                        @Cached InlinedConditionProfile handlerNonObject) {
+            if (targetNonObject.profile(this, !JSGuards.isTruffleObject(target) || target instanceof Symbol || target == Undefined.instance || target == Null.instance ||
                             target instanceof TruffleString || target instanceof SafeInteger || target instanceof BigInt)) {
                 throw Errors.createTypeError("target expected to be an object");
             }
-            if (handlerNonObject.profile(!JSGuards.isJSObject(handler))) {
+            if (handlerNonObject.profile(this, !JSGuards.isJSObject(handler))) {
                 throw Errors.createTypeError("handler expected to be an object");
             }
             JSDynamicObject handlerObj = (JSDynamicObject) handler;
