@@ -2947,7 +2947,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                             @Cached("value") TruffleString cachedValue,
                             @Cached TruffleString.EqualNode equalNode,
                             @Cached("createSymbolUsageMarker()") AtomicReference<Object> symbolUsageMarker,
-                            @Cached("createCachedSingletonSymbol(value)") Symbol cachedSymbol) {
+                            @Cached(value = "createCachedSingletonSymbol(value)", weak = true) Symbol cachedSymbol) {
                 return cachedSymbol;
             }
 
