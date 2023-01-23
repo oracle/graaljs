@@ -607,15 +607,15 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
     }
 
     public static final class SpreadArrayNode extends JavaScriptNode {
-        @Child private GetIteratorNode getIteratorNode;
+        @Child private GetIteratorUnaryNode getIteratorNode;
         @Child private IteratorGetNextValueNode iteratorStepNode;
 
-        private SpreadArrayNode(JSContext context, GetIteratorNode getIteratorNode) {
+        private SpreadArrayNode(JSContext context, GetIteratorUnaryNode getIteratorNode) {
             this.getIteratorNode = getIteratorNode;
             this.iteratorStepNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), false);
         }
 
-        public static SpreadArrayNode create(JSContext context, GetIteratorNode getIteratorNode) {
+        public static SpreadArrayNode create(JSContext context, GetIteratorUnaryNode getIteratorNode) {
             return new SpreadArrayNode(context, getIteratorNode);
         }
 

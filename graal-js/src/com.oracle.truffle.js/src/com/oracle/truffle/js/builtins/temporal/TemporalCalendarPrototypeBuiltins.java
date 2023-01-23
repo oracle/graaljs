@@ -86,7 +86,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearMonthFromFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearNodeGen;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -284,7 +284,6 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class JSTemporalCalendarFields extends JSTemporalBuiltinOperation {
         @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private GetIteratorBaseNode getIteratorNode;
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
 
@@ -294,14 +293,6 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
             iteratorCloseNode.executeAbrupt(iterator);
-        }
-
-        protected IteratorRecord getIterator(Object iterator) {
-            if (getIteratorNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorNode = insert(GetIteratorBaseNode.create());
-            }
-            return getIteratorNode.execute(iterator);
         }
 
         protected Object getIteratorValue(JSDynamicObject iteratorResult) {
@@ -325,10 +316,10 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected JSDynamicObject fields(JSTemporalCalendarObject calendar, Object fieldsParam) {
+        protected JSDynamicObject fields(JSTemporalCalendarObject calendar, Object fieldsParam,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode) {
             assert calendar.getId().equals(ISO8601);
-
-            IteratorRecord iter = getIterator(fieldsParam /* , sync */);
+            IteratorRecord iter = getIteratorNode.execute(this, fieldsParam /* , sync */);
             List<TruffleString> fieldNames = new ArrayList<>();
             Object next = Boolean.TRUE;
             while (next != Boolean.FALSE) {

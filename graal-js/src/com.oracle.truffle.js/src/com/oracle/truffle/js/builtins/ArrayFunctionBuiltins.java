@@ -55,11 +55,9 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -201,12 +199,10 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
     public abstract static class JSArrayFromNode extends JSArrayFunctionOperation {
         @Child private JSFunctionCallNode callMapFnNode;
         @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private JSFunctionCallNode callIteratorMethodNode;
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
+        @Child private GetIteratorNode getIteratorNode;
         @Child private GetMethodNode getIteratorMethodNode;
-        @Child private IsJSObjectNode isObjectNode;
-        @Child private PropertyGetNode getNextMethodNode;
         @Child private JSGetLengthNode getSourceLengthNode;
         @Child private IsArrayNode isFastArrayNode;
         private final ConditionProfile isIterable = ConditionProfile.create();
@@ -226,20 +222,11 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         protected IteratorRecord getIterator(Object object, Object usingIterator) {
-            if (callIteratorMethodNode == null) {
+            if (getIteratorNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callIteratorMethodNode = insert(JSFunctionCallNode.createCall());
+                getIteratorNode = insert(GetIteratorNode.create());
             }
-            if (isObjectNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isObjectNode = insert(IsJSObjectNode.create());
-            }
-            if (getNextMethodNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getNextMethodNode = insert(PropertyGetNode.create(Strings.NEXT, getContext()));
-            }
-
-            return GetIteratorNode.getIterator(object, usingIterator, callIteratorMethodNode, isObjectNode, getNextMethodNode, this);
+            return getIteratorNode.execute(null, object, usingIterator);
         }
 
         protected Object getIteratorValue(JSDynamicObject iteratorResult) {

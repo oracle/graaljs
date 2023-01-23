@@ -96,7 +96,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.FromPropertyDescriptorNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -1066,7 +1066,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected JSDynamicObject entries(Object iterable,
                         @Cached RequireObjectCoercibleNode requireObjectCoercibleNode,
-                        @Cached GetIteratorBaseNode getIteratorNode,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
                         @Cached IteratorStepNode iteratorStepNode,
                         @Cached IteratorValueNode iteratorValueNode,
                         @Cached IsObjectNode isObjectNode,
@@ -1078,7 +1078,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             JSObject target = JSOrdinary.create(getContext(), getRealm());
 
             // AddEntriesFromIterable
-            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);

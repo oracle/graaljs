@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,12 +41,13 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.ResolveNodeGen;
-import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
@@ -139,7 +140,6 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private PropertyGetNode getResolve;
         @Child private IsCallableNode isCallable;
-        @Child private GetIteratorBaseNode getIteratorNode;
         @Child private PerformPromiseCombinatorNode performPromiseOpNode;
         @Child private JSFunctionCallNode callRejectNode;
         @Child private IteratorCloseNode iteratorCloseNode;
@@ -150,18 +150,18 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             this.getResolve = PropertyGetNode.create(JSPromise.RESOLVE, context);
             this.isCallable = IsCallableNode.create();
-            this.getIteratorNode = GetIteratorBaseNode.create();
             this.performPromiseOpNode = performPromiseOp;
         }
 
         @Specialization
-        protected Object doObject(JSObject constructor, Object iterable) {
+        protected Object doObject(JSObject constructor, Object iterable,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
             Object promiseResolve;
             IteratorRecord iteratorRecord;
             try {
                 promiseResolve = getPromiseResolve(constructor);
-                iteratorRecord = getIteratorNode.execute(iterable);
+                iteratorRecord = getIteratorNode.execute(this, iterable);
             } catch (AbstractTruffleException ex) {
                 return rejectPromise(ex, promiseCapability);
             }

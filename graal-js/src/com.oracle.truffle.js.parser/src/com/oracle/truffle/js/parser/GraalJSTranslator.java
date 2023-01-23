@@ -119,7 +119,7 @@ import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.DeclareEvalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorUnaryNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -2117,12 +2117,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assert forNode.isForIn() && !forNode.isForEach() && !forNode.isForOf();
             createIteratorNode = factory.createEnumerate(context, modify, false);
         }
-        return desugarForInOrOfBody(forNode, factory.createGetIterator(context, createIteratorNode), jumpTarget);
+        return desugarForInOrOfBody(forNode, factory.createGetIterator(createIteratorNode), jumpTarget);
     }
 
     private JavaScriptNode desugarForOf(ForNode forNode, JavaScriptNode modify, JumpTargetCloseable<ContinueTarget> jumpTarget) {
         assert forNode.isForOf();
-        JavaScriptNode getIterator = factory.createGetIterator(context, modify);
+        JavaScriptNode getIterator = factory.createGetIterator(modify);
         return desugarForInOrOfBody(forNode, getIterator, jumpTarget);
     }
 
@@ -2324,12 +2324,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return enterDelete(unaryNode);
             case SPREAD_ARGUMENT: {
                 JavaScriptNode argument = transform(unaryNode.getExpression());
-                GetIteratorNode getIterator = factory.createGetIterator(context, argument);
+                GetIteratorUnaryNode getIterator = factory.createGetIterator(argument);
                 return tagExpression(factory.createSpreadArgument(context, getIterator), unaryNode);
             }
             case SPREAD_ARRAY: {
                 JavaScriptNode array = transform(unaryNode.getExpression());
-                GetIteratorNode getIterator = factory.createGetIterator(context, array);
+                GetIteratorUnaryNode getIterator = factory.createGetIterator(array);
                 return tagExpression(factory.createSpreadArray(context, getIterator), unaryNode);
             }
             case YIELD:
@@ -3040,7 +3040,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef valueTempVar = environment.createTempVar();
         JavaScriptNode initValue = valueTempVar.createWriteNode(assignedValue);
         // By default, we use the hint to track the type of iterator.
-        JavaScriptNode getIterator = factory.createGetIterator(context, initValue);
+        JavaScriptNode getIterator = factory.createGetIterator(initValue);
         JavaScriptNode initIteratorTempVar = iteratorTempVar.createWriteNode(getIterator);
 
         for (int i = 0; i < elementExpressions.size(); i++) {

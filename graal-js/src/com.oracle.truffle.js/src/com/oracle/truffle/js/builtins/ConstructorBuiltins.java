@@ -68,7 +68,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -146,13 +145,10 @@ import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.access.InstallErrorCauseNode;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.IterableToListNode;
@@ -2399,19 +2395,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.setMessage = JSObjectUtil.createDispatched(JSError.MESSAGE);
         }
 
-        @NeverDefault
-        GetMethodNode createGetIteratorMethod() {
-            return GetMethodNode.create(getContext(), Symbol.SYMBOL_ITERATOR);
-        }
-
         @Specialization
         protected JSDynamicObject constructError(JSDynamicObject newTarget, Object errorsObj, Object messageObj, Object options,
                         @Cached JSToStringNode toStringNode,
-                        @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
-                        @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
-                        @Cached IsJSObjectNode isObjectNode,
-                        @Cached IterableToListNode iterableToListNode,
-                        @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode) {
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached IterableToListNode iterableToListNode) {
             JSContext context = getContext();
             JSRealm realm = getRealm();
             JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
@@ -2429,8 +2417,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 installErrorCause(errorObj, options);
             }
 
-            Object usingIterator = getIteratorMethodNode.executeWithTarget(errorsObj);
-            SimpleArrayList<Object> errors = iterableToListNode.execute(GetIteratorNode.getIterator(errorsObj, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, this));
+            IteratorRecord iterator = getIteratorNode.execute(this, errorsObj);
+            SimpleArrayList<Object> errors = iterableToListNode.execute(iterator);
             JSDynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors.toArray());
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();
@@ -2681,12 +2669,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private GetIteratorBaseNode getIteratorNode;
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
         @Child private JSFunctionCallNode callAdderNode;
         @Child private PropertyGetNode getAdderFnNode;
-        protected final BranchProfile errorBranch = BranchProfile.create();
 
         protected void iteratorCloseAbrupt(JSDynamicObject iterator) {
             if (iteratorCloseNode == null) {
@@ -2694,14 +2680,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
             iteratorCloseNode.executeAbrupt(iterator);
-        }
-
-        protected IteratorRecord getIterator(Object iterator) {
-            if (getIteratorNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorNode = insert(GetIteratorBaseNode.create());
-            }
-            return getIteratorNode.execute(iterator);
         }
 
         protected Object getIteratorValue(JSDynamicObject iteratorResult) {
@@ -2750,20 +2728,24 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return mapObj;
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isNullOrUndefined(iterable)")
-        protected JSObject constructMapFromIterable(JSDynamicObject newTarget, Object iterable,
+        protected final JSObject constructMapFromIterable(JSDynamicObject newTarget, Object iterable,
+                        @Bind("this") Node node,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
                         @Cached IsObjectNode isObjectNode,
-                        @Cached IsCallableNode isCallableNode) {
+                        @Cached IsCallableNode isCallableNode,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             JSObject mapObj = newMapObject();
             swapPrototype(mapObj, newTarget);
 
             Object adder = getAdderFn(mapObj, Strings.SET);
             if (!isCallableNode.executeBoolean(adder)) {
-                errorBranch.enter();
+                errorBranch.enter(node);
                 throw Errors.createTypeError("function set not callable");
             }
-            IteratorRecord iter = getIterator(iterable);
+            IteratorRecord iter = getIteratorNode.execute(node, iterable);
 
             try {
                 while (true) {
@@ -2773,7 +2755,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     }
                     Object nextItem = getIteratorValue((JSDynamicObject) next);
                     if (!isObjectNode.executeBoolean(nextItem)) {
-                        errorBranch.enter();
+                        errorBranch.enter(node);
                         throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
                     }
                     Object k = readElementNode.executeWithTargetAndIndex(nextItem, 0);
@@ -2811,18 +2793,22 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return setObj;
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isNullOrUndefined(iterable)")
         protected JSObject constructSetFromIterable(JSDynamicObject newTarget, Object iterable,
-                        @Cached IsCallableNode isCallableNode) {
+                        @Bind("this") Node node,
+                        @Cached IsCallableNode isCallableNode,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             JSObject setObj = newSetObject();
             swapPrototype(setObj, newTarget);
 
             Object adder = getAdderFn(setObj, Strings.ADD);
             if (!isCallableNode.executeBoolean(adder)) {
-                errorBranch.enter();
+                errorBranch.enter(node);
                 throw Errors.createTypeError("function add not callable");
             }
-            IteratorRecord iter = getIterator(iterable);
+            IteratorRecord iter = getIteratorNode.execute(node, iterable);
 
             try {
                 while (true) {

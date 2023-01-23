@@ -38,67 +38,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.function;
+package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorUnaryNode;
-import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
-public final class SpreadArgumentNode extends JavaScriptNode {
-    @Child private GetIteratorUnaryNode getIteratorNode;
-    @Child private IteratorGetNextValueNode iteratorStepNode;
-    private final JSContext context;
+/**
+ * GetIterator(obj, hint = sync).
+ */
+@ImportStatic(JSInteropUtil.class)
+public abstract class GetIteratorUnaryNode extends JavaScriptNode {
+    @Child @Executed protected JavaScriptNode objectNode;
 
-    private SpreadArgumentNode(JSContext context, GetIteratorUnaryNode getIteratorNode) {
-        this.context = context;
-        this.getIteratorNode = getIteratorNode;
-        this.iteratorStepNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), false);
+    protected GetIteratorUnaryNode(JavaScriptNode objectNode) {
+        this.objectNode = objectNode;
+    }
+
+    @NeverDefault
+    public static GetIteratorUnaryNode create(JavaScriptNode iteratedObject) {
+        return GetIteratorUnaryNodeGen.create(iteratedObject);
+    }
+
+    @Specialization
+    protected final IteratorRecord doGetIterator(Object iteratedObject,
+                    @Cached(inline = true) GetIteratorNode getIteratorNode) {
+        return getIteratorNode.execute(this, iteratedObject);
     }
 
     @Override
-    public boolean isInstrumentable() {
-        return false;
-    }
-
-    public static SpreadArgumentNode create(JSContext context, GetIteratorUnaryNode getIteratorNode) {
-        return new SpreadArgumentNode(context, getIteratorNode);
-    }
-
-    @Override
-    public Object[] execute(VirtualFrame frame) {
-        SimpleArrayList<Object> argList = new SimpleArrayList<>();
-        executeToList(frame, argList, null, InlinedBranchProfile.getUncached(), InlinedBranchProfile.getUncached());
-        return argList.toArray();
-    }
-
-    public void executeToList(VirtualFrame frame, SimpleArrayList<Object> argList, Node node, InlinedBranchProfile growBranch, InlinedBranchProfile errorBranch) {
-        IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
-        for (;;) {
-            Object nextArg = iteratorStepNode.execute(frame, iteratorRecord);
-            if (nextArg == null) {
-                break;
-            }
-            if (argList.size() >= context.getFunctionArgumentsLimit()) {
-                errorBranch.enter(node);
-                throw Errors.createRangeError("spreaded function argument count exceeds limit");
-            }
-            argList.add(nextArg, node, growBranch);
-        }
-    }
+    public abstract IteratorRecord execute(VirtualFrame frame);
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(context, cloneUninitialized(getIteratorNode, materializedTags));
+        return GetIteratorUnaryNodeGen.create(cloneUninitialized(objectNode, materializedTags));
     }
 }

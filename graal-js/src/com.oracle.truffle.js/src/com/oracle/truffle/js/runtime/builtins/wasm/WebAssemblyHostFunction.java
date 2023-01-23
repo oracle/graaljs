@@ -51,7 +51,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IterableToListNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
@@ -102,7 +102,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
                     @Cached ToJSValueNode toJSValueNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Cached InlinedBranchProfile errorBranch,
-                    @Cached GetIteratorBaseNode getIteratorNode,
+                    @Cached(inline = true) GetIteratorNode getIteratorNode,
                     @Cached IterableToListNode iterableToListNode,
                     @CachedLibrary("this") InteropLibrary self) {
         JSContext context = JavaScriptLanguage.get(self).getJSContext();
@@ -122,7 +122,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
         } else if (resultTypes.length == 1) {
             return toWebAssemblyValueNode.execute(result, resultTypes[0]);
         } else {
-            IteratorRecord iterator = getIteratorNode.execute(result);
+            IteratorRecord iterator = getIteratorNode.execute(node, result);
             SimpleArrayList<Object> values = iterableToListNode.execute(iterator);
 
             if (resultTypes.length != values.size()) {

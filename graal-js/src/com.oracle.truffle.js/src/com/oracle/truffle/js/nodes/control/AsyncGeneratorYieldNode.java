@@ -47,7 +47,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetAsyncIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
@@ -160,7 +160,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
 
     private final int iteratorTempSlot;
 
-    @Child private GetIteratorNode getIteratorNode;
+    @Child private GetAsyncIteratorNode getIteratorNode;
     @Child private IteratorNextNode iteratorNextNode;
     @Child private IteratorCompleteNode iteratorCompleteNode;
     @Child private IteratorValueNode iteratorValueNode;
@@ -175,7 +175,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         super(context, stateSlot, expression, readAsyncContextNode, readYieldResultNode, returnNode);
         this.iteratorTempSlot = iteratorTempSlot;
 
-        this.getIteratorNode = GetIteratorNode.createAsync(context, null);
+        this.getIteratorNode = GetAsyncIteratorNode.create(context, null);
         this.iteratorNextNode = IteratorNextNode.create();
         this.iteratorCompleteNode = IteratorCompleteNode.create();
         this.iteratorValueNode = IteratorValueNode.create();

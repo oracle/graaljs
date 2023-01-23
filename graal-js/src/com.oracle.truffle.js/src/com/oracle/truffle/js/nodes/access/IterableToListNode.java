@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 /**
  * Implements the part of {@code IterableToList(items, [method])} after {@code GetIterator}.
  *
- * Combine with {@link GetIteratorBaseNode} to get the full operation.
+ * Combine with {@link GetIteratorNode} to get the full operation.
  */
 @GenerateUncached
 @ImportStatic(JSInteropUtil.class)

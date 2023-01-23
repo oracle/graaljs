@@ -64,16 +64,13 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IterableToListNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -329,9 +326,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                     @Cached @Exclusive InlinedConditionProfile isIterableProfile,
                     @Cached("createWriteOwn()") @Shared("writeOwn") WriteElementNode writeOwnNode,
-                    @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
-                    @Cached IsJSObjectNode isObjectNode,
-                    @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode,
+                    @Cached(inline = true) GetIteratorNode getIteratorNode,
                     @Cached IterableToListNode iterableToListNode,
                     @Cached("createGetLength()") JSGetLengthNode getLengthNode,
                     @Cached("create(getContext())") ReadElementNode readNode) {
@@ -342,7 +337,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         Object usingIterator = getIteratorMethodNode.executeWithTarget(object);
         if (isIterableProfile.profile(node, usingIterator != Undefined.instance)) {
-            SimpleArrayList<Object> values = iterableToListNode.execute(GetIteratorNode.getIterator(object, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, this));
+            SimpleArrayList<Object> values = iterableToListNode.execute(getIteratorNode.execute(node, object, usingIterator));
             int len = values.size();
             JSDynamicObject arrayBuffer = createTypedArrayBuffer(len);
             TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
