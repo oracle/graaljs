@@ -95,15 +95,13 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         if (type.allowsBoolean()) {
             value = toBooleanNode.executeBoolean(this, value);
         } else if (type.allowsNumber()) {
-            // workaround as long as JSToStringNode cannot have an uncached version
-            value = toNumberNode == null ? JSRuntime.toNumber(value) : toNumberNode.executeNumber(value);
+            value = toNumberNode.executeNumber(value);
             if (JSRuntime.isNaN(value)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorNumberIsNaN();
             }
         } else if (type.allowsString()) {
-            // workaround as long as JSToStringNode cannot have an uncached version
-            value = toStringNode == null ? JSRuntime.toString(value) : toStringNode.executeString(value);
+            value = toStringNode.executeString(value);
         }
         if (value != Undefined.instance && values != null && !Boundaries.listContainsUnchecked(values, value)) {
             errorBranch.enter(this);
