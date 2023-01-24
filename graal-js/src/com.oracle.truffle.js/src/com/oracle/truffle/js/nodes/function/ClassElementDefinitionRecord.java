@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.HiddenKey;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.object.HiddenKey;
 
 public class ClassElementDefinitionRecord {
 
@@ -75,8 +75,12 @@ public class ClassElementDefinitionRecord {
     /** The initializers of the field or accessor, if any. */
     private Object[] initializers;
 
-    public static ClassElementDefinitionRecord createField(Object key, Object value, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Field, key, value, isPrivate, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPublicField(Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.Field, key, value, false, anonymousFunctionDefinition, decorators);
+    }
+
+    public static ClassElementDefinitionRecord createPrivateField(Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.Field, key, value, true, anonymousFunctionDefinition, decorators);
     }
 
     public static ClassElementDefinitionRecord createPublicMethod(Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
@@ -111,9 +115,14 @@ public class ClassElementDefinitionRecord {
         return new PrivateFrameBasedElementDefinitionRecord(Kind.Setter, key, null, null, setter, frameSlot, brandSlot, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter, boolean isPrivate,
+    public static ClassElementDefinitionRecord createPublicAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter,
                     boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new AutoAccessor(key, backingStorageKey, value, getter, setter, isPrivate, anonymousFunctionDefinition, decorators);
+        return new AutoAccessor(key, backingStorageKey, value, getter, setter, true, anonymousFunctionDefinition, decorators);
+    }
+
+    public static ClassElementDefinitionRecord createPrivateAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter,
+                    boolean anonymousFunctionDefinition, Object[] decorators) {
+        return new AutoAccessor(key, backingStorageKey, value, getter, setter, false, anonymousFunctionDefinition, decorators);
     }
 
     protected ClassElementDefinitionRecord(Kind kind, Object key, Object value, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {

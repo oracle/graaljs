@@ -359,7 +359,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             JSFunctionObject getter = createAutoAccessorGetter(backingStorageKey);
             executeWithGetterSetter(homeObject, key, getter, setter);
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
-            return ClassElementDefinitionRecord.createAutoAccessor(key, backingStorageKey, value, getter, setter, false, isAnonymousFunctionDefinition(), decorators);
+            return ClassElementDefinitionRecord.createPublicAutoAccessor(key, backingStorageKey, value, getter, setter, isAnonymousFunctionDefinition(), decorators);
         }
 
         @Override
@@ -466,7 +466,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             Object key = evaluateKey(frame);
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
             if (isFieldOrStaticBlock) {
-                return ClassElementDefinitionRecord.createField(key, value, false, isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createPublicField(key, value, isAnonymousFunctionDefinition(), decorators);
             } else {
                 return ClassElementDefinitionRecord.createPublicMethod(key, value, isAnonymousFunctionDefinition(), decorators);
             }
@@ -652,7 +652,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             Object key = evaluateKey(frame);
             Object value = evaluateValue(frame, homeObject, key, realm);
             if (isFieldOrStaticBlock) {
-                return ClassElementDefinitionRecord.createField(key, value, false, isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createPublicField(key, value, isAnonymousFunctionDefinition(), decorators);
             } else {
                 return ClassElementDefinitionRecord.createPublicMethod(key, value, isAnonymousFunctionDefinition(), decorators);
             }
@@ -873,7 +873,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             writePrivateNode.execute(frame);
             Object key = keyNode.execute(frame);
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
-            return ClassElementDefinitionRecord.createField(key, value, isPrivate(), isAnonymousFunctionDefinition(), decorators);
+            return ClassElementDefinitionRecord.createPrivateField(key, value, isAnonymousFunctionDefinition(), decorators);
         }
 
         /**
