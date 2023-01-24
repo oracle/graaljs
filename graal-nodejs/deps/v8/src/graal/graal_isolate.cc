@@ -882,7 +882,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::big_int_uint64_value, "bigIntUint64Value", "(Ljava/lang/Object;)J")
     ACCESS_METHOD(GraalAccessMethod::big_int_new, "bigIntNew", "(J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::big_int_new_from_unsigned, "bigIntNewFromUnsigned", "(J)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::big_int_new_from_words, "bigIntNewFromWords", "()Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::big_int_new_from_words, "bigIntNewFromWords", "(II[J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::big_int_word_count, "bigIntWordCount", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::big_int_to_words_array, "bigIntToWordsArray", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_new, "sharedArrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;J)Ljava/lang/Object;")

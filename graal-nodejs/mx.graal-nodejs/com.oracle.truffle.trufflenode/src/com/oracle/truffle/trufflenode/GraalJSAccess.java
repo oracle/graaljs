@@ -4075,20 +4075,16 @@ public final class GraalJSAccess {
         return new BigInt(bigInt);
     }
 
-    public Object bigIntNewFromWords() { // all arguments are in sharedBuffer
-        resetSharedBuffer();
-        int sign = sharedBuffer.getInt();
-        int count = sharedBuffer.getInt();
+    public Object bigIntNewFromWords(int signBit, int wordCount, long[] words) {
         BigInteger result = BigInteger.ZERO;
-        for (int wordIdx = 0; wordIdx < count; wordIdx++) {
-            long word = sharedBuffer.getLong();
+        for (int wordIdx = 0; wordIdx < wordCount; wordIdx++) {
             for (int bit = 0; bit < 64; bit++) {
-                if ((word & (1L << bit)) != 0) {
+                if ((words[wordIdx] & (1L << bit)) != 0) {
                     result = result.setBit(bit + 64 * wordIdx);
                 }
             }
         }
-        if (sign != 0) {
+        if (signBit != 0) {
             result = result.negate();
         }
         return new BigInt(result);

@@ -70,13 +70,11 @@ v8::MaybeLocal<v8::BigInt> GraalBigInt::NewFromWords(v8::Local<v8::Context> cont
     }
 
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
-    graal_isolate->ResetSharedBuffer();
-    graal_isolate->WriteInt32ToSharedBuffer(sign_bit);
-    graal_isolate->WriteInt32ToSharedBuffer(word_count);
-    for (int i = 0; i < word_count; i++) {
-        graal_isolate->WriteInt64ToSharedBuffer(static_cast<int64_t> (words[i]));
-    }
-    JNI_CALL(jobject, java_big_int, graal_isolate, GraalAccessMethod::big_int_new_from_words, Object);
+    JNIEnv* env = graal_isolate->GetJNIEnv();
+    jlongArray java_words = env->NewLongArray(word_count);
+    env->SetLongArrayRegion(java_words, 0, word_count, (jlong*) words);
+    JNI_CALL(jobject, java_big_int, graal_isolate, GraalAccessMethod::big_int_new_from_words, Object, sign_bit, word_count, java_words);
+    env->DeleteLocalRef(java_words);
     GraalBigInt* graal_big_int = new GraalBigInt(graal_isolate, java_big_int);
     v8::Local<v8::BigInt> v8_big_int = reinterpret_cast<v8::BigInt*> (graal_big_int);
     return v8_big_int;
