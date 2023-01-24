@@ -447,7 +447,7 @@ describe('Value - Is*()', function () {
                 it('should return ' + expectedResult + ' for ' + valueType, function () {
                     assert.strictEqual(testedFunction(value), expectedResult);
                 });
-                if (typeof java !== 'undefined') {
+                if (module.hasJavaInterop()) {
                     it('should return ' + expectedResult + ' for interop ' + valueType, function () {
                         var interopTypedArray = new (global[valueType])(java.nio.ByteBuffer.allocate(8));
                         assert.strictEqual(testedFunction(interopTypedArray), expectedResult);

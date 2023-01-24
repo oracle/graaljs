@@ -4075,20 +4075,16 @@ public final class GraalJSAccess {
         return new BigInt(bigInt);
     }
 
-    public Object bigIntNewFromWords() { // all arguments are in sharedBuffer
-        resetSharedBuffer();
-        int sign = sharedBuffer.getInt();
-        int count = sharedBuffer.getInt();
+    public Object bigIntNewFromWords(int signBit, int wordCount, long[] words) {
         BigInteger result = BigInteger.ZERO;
-        for (int wordIdx = 0; wordIdx < count; wordIdx++) {
-            long word = sharedBuffer.getLong();
+        for (int wordIdx = 0; wordIdx < wordCount; wordIdx++) {
             for (int bit = 0; bit < 64; bit++) {
-                if ((word & (1L << bit)) != 0) {
+                if ((words[wordIdx] & (1L << bit)) != 0) {
                     result = result.setBit(bit + 64 * wordIdx);
                 }
             }
         }
-        if (sign != 0) {
+        if (signBit != 0) {
             result = result.negate();
         }
         return new BigInt(result);
@@ -4099,16 +4095,18 @@ public final class GraalJSAccess {
         return (bigInt.bitLength() + ((bigInt.signum() == -1) ? 1 : 0) + 63) / 64;
     }
 
-    public void bigIntToWordsArray(Object value) {
+    public long[] bigIntToWordsArray(Object value, int wordCount) {
         BigInteger bigInt = ((BigInt) value).bigIntegerValue();
-        resetSharedBuffer();
-        int count = bigIntWordCount(value);
-        sharedBuffer.putInt(count);
-        sharedBuffer.putInt(bigInt.signum() == -1 ? 1 : 0);
-        if (bigInt.signum() == -1) {
+        int actualWordCount = bigIntWordCount(value);
+        int effectiveWordCount = Math.min(wordCount, actualWordCount);
+        long[] result = new long[effectiveWordCount + 2];
+        boolean negative = (bigInt.signum() == -1);
+        result[0] = negative ? 1 : 0; // signBit
+        result[1] = actualWordCount;
+        if (negative) {
             bigInt = bigInt.negate();
         }
-        for (int wordIdx = 0; wordIdx < count; wordIdx++) {
+        for (int wordIdx = 0; wordIdx < effectiveWordCount; wordIdx++) {
             long word = 0;
             for (int bit = 63; bit >= 0; bit--) {
                 word <<= 1;
@@ -4116,8 +4114,9 @@ public final class GraalJSAccess {
                     word++;
                 }
             }
-            sharedBuffer.putLong(word);
+            result[wordIdx + 2] = word;
         }
+        return result;
     }
 
     public int fixedArrayLength(Object fixedArray) {

@@ -41,6 +41,7 @@
 
 var assert = require('assert');
 var fs = require('fs');
+var module = require('./_unit');
 var util = require('util');
 var vm = require('vm');
 
@@ -51,7 +52,7 @@ describe('Other', function () {
         Object.defineProperty(process.env, 'FOO', {value: 'baz', enumerable: true, configurable: true, writable: true});
         assert.strictEqual(process.env.FOO, 'baz');
     });
-    if (typeof Java !== 'undefined') {
+    if (module.hasJavaInterop()) {
         it('util.inspect should work for JavaObjects', function() {
             var Point = Java.type('java.awt.Point');
             var point = new Point();

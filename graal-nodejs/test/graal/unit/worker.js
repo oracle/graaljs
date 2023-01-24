@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 
 const assert = require('assert');
+var module = require('./_unit');
 
 const {
     Worker,
@@ -47,7 +48,7 @@ const {
 } = require('worker_threads');
 
 describe('Worker', function () {
-    if (typeof java !== 'undefined') {
+    if (module.hasJavaInterop()) {
         it('terminate should terminate Thread.sleep()', function (done) {
             var worker = new Worker('java.lang.Thread.sleep(1000000)', {eval: true});
             worker.on('online', function () {

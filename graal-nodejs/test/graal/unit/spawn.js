@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 
 var assert = require('assert');
 var child_process = require('child_process');
+var module = require('./_unit');
 var spawnSync = child_process.spawnSync;
 
 function checkTheAnswerToLifeTheUniverseAndEverything(answer) {
@@ -102,7 +103,7 @@ describe('Spawn', function () {
             assert.match(result.stdout.toString(), /Options:/);
         });
     });
-    if (typeof java === 'object') {
+    if (module.hasJavaInterop()) {
         it('should finish gracefully when a native method is called from a wrong thread', function () {
             var code = `var vm = require('vm');
                         var ctx = org.graalvm.polyglot.Context.newBuilder("js").allowAllAccess(true).build();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,27 @@ describe('BigInt', function () {
             assert.strictEqual(module.BigInt_NewFromUnsignedMaxValue(), maxUint64);
         });
     });
+    describe('NewFromWords', function () {
+        it('should respect sign bit', function () {
+            assert.strictEqual(module.BigInt_NewFromWords(0, 1, [42]), 42n);
+            assert.strictEqual(module.BigInt_NewFromWords(1, 1, [42]), -42n);
+        });
+        it('should work for a basic case', function () {
+            var words = [211, 42, 3];
+            var expected = 0n;
+            for (var i = 0; i < words.length; i++) {
+                expected += (BigInt(words[i]) << BigInt(i)*64n);
+            }
+            assert.strictEqual(module.BigInt_NewFromWords(0, words.length, words), expected);
+        });
+        it('should work for a large word count', function () {
+            var words = new Array(501);
+            words.fill(0);
+            words[500] = 42;
+            var expected = -(42n << (500n*64n));
+            assert.strictEqual(module.BigInt_NewFromWords(1, words.length, words), expected);
+        });
+    });
     describe('Int64Value', function () {
         it('should return correct result for extreme values', function () {
             assert.strictEqual(module.BigInt_Int64Value(minInt64), minInt64);
@@ -105,6 +126,30 @@ describe('BigInt', function () {
                 assert.strictEqual(module.BigInt_WordCount(value), Math.ceil(i/64));
                 value <<= 1n;
             }
+        });
+    });
+    describe('ToWordsArray', function () {
+        it('should return the correct sign bit', function () {
+            assert.deepStrictEqual(module.BigInt_ToWordsArray(42n, 1), [0, 1, 42]);
+            assert.deepStrictEqual(module.BigInt_ToWordsArray(-42n, 1), [1, 1, 42]);
+        });
+        it('should respect word count', function () {
+            var bigInt = (211n << 128n) + (42n << 64n) + 7n;
+            assert.deepStrictEqual(module.BigInt_ToWordsArray(bigInt, 0), [0, 3]);
+            assert.deepStrictEqual(module.BigInt_ToWordsArray(bigInt, 1), [0, 3, 7]);
+            assert.deepStrictEqual(module.BigInt_ToWordsArray(bigInt, 2), [0, 3, 7, 42]);
+            assert.deepStrictEqual(module.BigInt_ToWordsArray(bigInt, 3), [0, 3, 7, 42, 211]);
+            assert.deepStrictEqual(module.BigInt_ToWordsArray(bigInt, 4), [0, 3, 7, 42, 211]);
+            assert.deepStrictEqual(module.BigInt_ToWordsArray(bigInt, 5), [0, 3, 7, 42, 211]);
+        });
+        it('should work for a large word count', function () {
+            var bigInt = -(42n << (500n*64n));
+            var expected = new Array(503);
+            expected.fill(0);
+            expected[0] = 1; // signBit
+            expected[1] = 501; // wordCount
+            expected[502] = 42; // the most significant word
+            assert.deepStrictEqual(module.BigInt_ToWordsArray(bigInt, 501), expected);
         });
     });
 });
