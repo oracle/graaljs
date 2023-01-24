@@ -60,6 +60,27 @@ describe('BigInt', function () {
             assert.strictEqual(module.BigInt_NewFromUnsignedMaxValue(), maxUint64);
         });
     });
+    describe('NewFromWords', function () {
+        it('should respect sign bit', function () {
+            assert.strictEqual(module.BigInt_NewFromWords(0, 1, [42]), 42n);
+            assert.strictEqual(module.BigInt_NewFromWords(1, 1, [42]), -42n);
+        });
+        it('should work for a basic case', function () {
+            var words = [211, 42, 3];
+            var expected = 0n;
+            for (var i = 0; i < words.length; i++) {
+                expected += (BigInt(words[i]) << BigInt(i)*64n);
+            }
+            assert.strictEqual(module.BigInt_NewFromWords(0, words.length, words), expected);
+        });
+        it('should work for a large word count', function () {
+            var words = new Array(501);
+            words.fill(0);
+            words[500] = 42;
+            var expected = -(42n << (500n*64n));
+            assert.strictEqual(module.BigInt_NewFromWords(1, words.length, words), expected);
+        });
+    });
     describe('Int64Value', function () {
         it('should return correct result for extreme values', function () {
             assert.strictEqual(module.BigInt_Int64Value(minInt64), minInt64);

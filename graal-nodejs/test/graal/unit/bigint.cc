@@ -101,4 +101,21 @@ EXPORT_TO_JS(WordCount) {
     args.GetReturnValue().Set(args[0].As<BigInt>()->WordCount());
 }
 
+EXPORT_TO_JS(NewFromWords) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    int sign_bit = args[0].As<Int32>()->Value();
+    int word_count = args[1].As<Int32>()->Value();
+    uint64_t* words = new uint64_t[word_count];
+    for (int i = 0; i < word_count; i++) {
+        // supporting words that fit into double only (for simplicity)
+        words[i] = (uint64_t) args[2].As<Object>()->Get(context, i).ToLocalChecked().As<Number>()->Value();
+    }
+
+    Local<BigInt> result = BigInt::NewFromWords(context, sign_bit, word_count, words).ToLocalChecked();
+
+    args.GetReturnValue().Set(result);
+    delete[] words;
+}
+
 #undef SUITE
