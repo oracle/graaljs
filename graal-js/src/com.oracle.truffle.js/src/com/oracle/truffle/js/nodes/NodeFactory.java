@@ -952,6 +952,10 @@ public class NodeFactory {
         return ObjectLiteralNode.newStaticBlockMember(value);
     }
 
+    public DecoratorListEvaluationNode createDecoratorListEvaluation(JavaScriptNode[] decorators) {
+        return DecoratorListEvaluationNode.create(decorators);
+    }
+
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
                     JSWriteFrameSlotNode writeClassBinding, JSWriteFrameSlotNode writeInternalConstructorBrand, JavaScriptNode[] classDecorators, DecoratorListEvaluationNode[] memberDecorators,
                     TruffleString className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, JSFrameSlot blockScopeSlot) {
