@@ -4095,16 +4095,18 @@ public final class GraalJSAccess {
         return (bigInt.bitLength() + ((bigInt.signum() == -1) ? 1 : 0) + 63) / 64;
     }
 
-    public void bigIntToWordsArray(Object value) {
+    public long[] bigIntToWordsArray(Object value, int wordCount) {
         BigInteger bigInt = ((BigInt) value).bigIntegerValue();
-        resetSharedBuffer();
-        int count = bigIntWordCount(value);
-        sharedBuffer.putInt(count);
-        sharedBuffer.putInt(bigInt.signum() == -1 ? 1 : 0);
-        if (bigInt.signum() == -1) {
+        int actualWordCount = bigIntWordCount(value);
+        int effectiveWordCount = Math.min(wordCount, actualWordCount);
+        long[] result = new long[effectiveWordCount + 2];
+        boolean negative = (bigInt.signum() == -1);
+        result[0] = negative ? 1 : 0; // signBit
+        result[1] = actualWordCount;
+        if (negative) {
             bigInt = bigInt.negate();
         }
-        for (int wordIdx = 0; wordIdx < count; wordIdx++) {
+        for (int wordIdx = 0; wordIdx < effectiveWordCount; wordIdx++) {
             long word = 0;
             for (int bit = 63; bit >= 0; bit--) {
                 word <<= 1;
@@ -4112,8 +4114,9 @@ public final class GraalJSAccess {
                     word++;
                 }
             }
-            sharedBuffer.putLong(word);
+            result[wordIdx + 2] = word;
         }
+        return result;
     }
 
     public int fixedArrayLength(Object fixedArray) {
