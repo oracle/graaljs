@@ -63,7 +63,7 @@ public class ClassElementDefinitionRecord {
     private final boolean anonymousFunctionDefinition;
     private final boolean isPrivate;
 
-    /** The function for a method definition. */
+    /** The function for a method or the initializer function for a field. */
     private Object value;
     /** The getter function for an accessor definition. */
     private Object getter;
@@ -74,13 +74,15 @@ public class ClassElementDefinitionRecord {
     private List<Object> appendedInitializers;
     /** The initializers of the field or accessor, if any. */
     private Object[] initializers;
+    /** Private field storage key for an auto accessor or a private field. */
+    private HiddenKey backingStorageKey;
 
     public static ClassElementDefinitionRecord createPublicField(Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
         return new ClassElementDefinitionRecord(Kind.Field, key, value, false, anonymousFunctionDefinition, decorators);
     }
 
     public static ClassElementDefinitionRecord createPrivateField(Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Field, key, value, true, anonymousFunctionDefinition, decorators);
+        return new ClassElementDefinitionRecord(Kind.Field, key, value, null, null, true, anonymousFunctionDefinition, decorators, (HiddenKey) key);
     }
 
     public static ClassElementDefinitionRecord createPublicMethod(Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
@@ -117,12 +119,13 @@ public class ClassElementDefinitionRecord {
 
     public static ClassElementDefinitionRecord createPublicAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter,
                     boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new AutoAccessor(key, backingStorageKey, value, getter, setter, true, anonymousFunctionDefinition, decorators);
+        return new ClassElementDefinitionRecord(Kind.AutoAccessor, key, value, getter, setter, true, anonymousFunctionDefinition, decorators, backingStorageKey);
     }
 
-    public static ClassElementDefinitionRecord createPrivateAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter,
-                    boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new AutoAccessor(key, backingStorageKey, value, getter, setter, false, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter, int frameSlot, int brandSlot,
+                    boolean anonymousFunctionDefinition,
+                    Object[] decorators) {
+        return new PrivateFrameBasedElementDefinitionRecord(Kind.AutoAccessor, key, value, getter, setter, frameSlot, brandSlot, anonymousFunctionDefinition, decorators, backingStorageKey);
     }
 
     protected ClassElementDefinitionRecord(Kind kind, Object key, Object value, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
@@ -130,6 +133,12 @@ public class ClassElementDefinitionRecord {
     }
 
     protected ClassElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
+        this(kind, key, value, getter, setter, isPrivate, anonymousFunctionDefinition, decorators, null);
+
+    }
+
+    protected ClassElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators,
+                    HiddenKey backingStorageKey) {
         this.kind = kind;
         this.key = key;
         this.value = value;
@@ -138,6 +147,7 @@ public class ClassElementDefinitionRecord {
         this.anonymousFunctionDefinition = anonymousFunctionDefinition;
         this.isPrivate = isPrivate;
         this.decorators = decorators;
+        this.backingStorageKey = backingStorageKey;
         assert kind == Kind.AutoAccessor
                         ? (value != null && getter != null && setter != null)
                         : (value != null) != (getter != null || setter != null);
@@ -233,6 +243,10 @@ public class ClassElementDefinitionRecord {
         return setter;
     }
 
+    public HiddenKey getBackingStorageKey() {
+        return backingStorageKey;
+    }
+
     @Override
     public String toString() {
         return "ClassElementDefinitionRecord [kind=" + kind + ", key=" + key + ", value=" + value + ", getter=" + getter + ", setter=" + setter + "]";
@@ -245,7 +259,12 @@ public class ClassElementDefinitionRecord {
 
         private PrivateFrameBasedElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, int keySlot, int brandSlot, boolean anonymousFunctionDefinition,
                         Object[] decorators) {
-            super(kind, key, value, getter, setter, true, anonymousFunctionDefinition, decorators);
+            this(kind, key, value, getter, setter, keySlot, brandSlot, anonymousFunctionDefinition, decorators, null);
+        }
+
+        private PrivateFrameBasedElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, int keySlot, int brandSlot, boolean anonymousFunctionDefinition,
+                        Object[] decorators, HiddenKey backingStorageKey) {
+            super(kind, key, value, getter, setter, true, anonymousFunctionDefinition, decorators, backingStorageKey);
             this.keySlot = keySlot;
             this.brandSlot = brandSlot;
         }
@@ -256,20 +275,6 @@ public class ClassElementDefinitionRecord {
 
         public int getBrandSlot() {
             return brandSlot;
-        }
-    }
-
-    public static class AutoAccessor extends ClassElementDefinitionRecord {
-
-        private final HiddenKey backingStorageKey;
-
-        protected AutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
-            super(Kind.AutoAccessor, key, value, getter, setter, isPrivate, anonymousFunctionDefinition, decorators);
-            this.backingStorageKey = backingStorageKey;
-        }
-
-        public HiddenKey getBackingStorageKey() {
-            return backingStorageKey;
         }
     }
 }

@@ -3240,7 +3240,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assert !property.isCoverInitializedName();
 
             final ObjectLiteralMemberNode member;
-            if (property.getValue() != null || property.isClassField()) {
+            if (property.getValue() != null || (isClass && ((ClassElement) property).isClassFieldOrAutoAccessor())) {
                 member = enterObjectPropertyNode(property, isClass, classNameSymbol);
             } else if (property.isRest()) {
                 assert !isClass;
@@ -3332,7 +3332,22 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode value = transformPropertyValue(property.getValue(), classNameSymbol);
 
         boolean enumerable = !isClass || property.isClassField();
-        if (property instanceof ClassElement && ((ClassElement) property).isAutoAccessor()) {
+        if (isClass && property.isPrivate()) {
+            VarRef privateVar = environment.findLocalVar(property.getPrivateNameTS());
+            if (((ClassElement) property).isAutoAccessor()) {
+                JSWriteFrameSlotNode writePrivateAccessor = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
+                JavaScriptNode fieldStorageKey = factory.createNewPrivateName(property.getPrivateNameTS());
+                JSFrameSlot constructorSlot = getConstructorFrameSlotForVariable(privateVar);
+                return factory.createPrivateAutoAccessorMember(property.isStatic(), value, writePrivateAccessor, fieldStorageKey, constructorSlot.getIndex());
+            } else if (property.isClassField()) {
+                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(property.getPrivateNameTS()));
+                return factory.createPrivateFieldMember(privateVar.createReadNode(), property.isStatic(), value, writePrivateNode);
+            } else {
+                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
+                JSFrameSlot constructorSlot = getConstructorFrameSlotForVariable(privateVar);
+                return factory.createPrivateMethodMember(property.getPrivateNameTS(), property.isStatic(), value, writePrivateNode, constructorSlot.getIndex());
+            }
+        } else if (isClass && ((ClassElement) property).isAutoAccessor()) {
             if (property.isComputed()) {
                 JavaScriptNode computedKey = transform(property.getKey());
                 return factory.createComputedAutoAccessor(computedKey, property.isStatic(), enumerable, value);
@@ -3344,16 +3359,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return factory.createComputedDataMember(computedKey, property.isStatic(), enumerable, value, property.isClassField(), property.isAnonymousFunctionDefinition());
         } else if (!isClass && property.isProto()) {
             return factory.createProtoMember(property.getKeyNameTS(), property.isStatic(), value);
-        } else if (property.isPrivate()) {
-            VarRef privateVar = environment.findLocalVar(property.getPrivateNameTS());
-            if (property.isClassField()) {
-                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(property.getPrivateNameTS()));
-                return factory.createPrivateFieldMember(privateVar.createReadNode(), property.isStatic(), value, writePrivateNode);
-            } else {
-                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
-                JSFrameSlot constructorSlot = getConstructorFrameSlotForVariable(privateVar);
-                return factory.createPrivateMethodMember(property.getPrivateNameTS(), property.isStatic(), value, writePrivateNode, constructorSlot.getIndex());
-            }
         } else if (isClass && property.isClassStaticBlock()) {
             return factory.createStaticBlockMember(value);
         } else {

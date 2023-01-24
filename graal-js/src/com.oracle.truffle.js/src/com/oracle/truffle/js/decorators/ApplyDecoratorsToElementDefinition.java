@@ -192,7 +192,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
 
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"record.isAutoAccessor()", "record.hasDecorators()"})
-    protected void decorateAuto(VirtualFrame frame, JSDynamicObject proto, ClassElementDefinitionRecord.AutoAccessor record, List<Object> extraInitializers,
+    protected void decorateAuto(VirtualFrame frame, JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
                     @Bind("this") Node node,
                     @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,

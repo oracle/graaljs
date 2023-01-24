@@ -1318,6 +1318,11 @@ public class NodeFactory {
         return ObjectLiteralNode.newPrivateAccessorMember(isStatic, getterNode, setterNode, writePrivateNode, privateBrandSlotIndex);
     }
 
+    public ObjectLiteralMemberNode createPrivateAutoAccessorMember(boolean isStatic, JavaScriptNode valueNode,
+                    JSWriteFrameSlotNode writePrivateAccessor, JavaScriptNode storageKey, int privateBrandSlotIndex) {
+        return ObjectLiteralNode.newPrivateAutoAccessorMember(isStatic, valueNode, writePrivateAccessor, storageKey, privateBrandSlotIndex);
+    }
+
     public JavaScriptNode createPrivateBrandCheck(JavaScriptNode targetNode, JavaScriptNode brandNode) {
         return PrivateBrandCheckNode.create(targetNode, brandNode);
     }

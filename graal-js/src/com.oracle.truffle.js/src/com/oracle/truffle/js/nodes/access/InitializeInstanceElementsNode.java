@@ -53,9 +53,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord;
@@ -185,11 +182,11 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             Object initializer = field.getValue();
             boolean isAnonymousFunctionDefinition = (boolean) field.isAnonymousFunction();
             Node writeNode = null;
-            if (field instanceof ClassElementDefinitionRecord.AutoAccessor) {
-                writeNode = DynamicObjectLibrary.getFactory().createDispatched(5);
-            } else if (key instanceof HiddenKey) {
+            if (field.isAutoAccessor() || (field.isPrivate() && field.isField())) {
+                assert field.getBackingStorageKey() != null : key;
                 writeNode = PrivateFieldAddNode.create(context);
             } else if (key != null) {
+                assert JSRuntime.isPropertyKey(key) : key;
                 writeNode = WriteElementNode.create(context, true, true);
             }
             JSFunctionCallNode callNode = null;
@@ -252,12 +249,11 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             if (writeNode instanceof PropertySetNode) {
                 ((PropertySetNode) writeNode).setValue(target, value);
             } else if (writeNode instanceof PrivateFieldAddNode) {
-                assert record.getKey() instanceof HiddenKey : record.getKey();
-                ((PrivateFieldAddNode) writeNode).execute(target, record.getKey(), value);
-            } else if (writeNode instanceof DynamicObjectLibrary) {
-                ClassElementDefinitionRecord.AutoAccessor autoAccessor = (ClassElementDefinitionRecord.AutoAccessor) record;
-                ((DynamicObjectLibrary) writeNode).put((DynamicObject) target, autoAccessor.getBackingStorageKey(), value);
+                // private field or backing storage of an auto accessor
+                assert record.getBackingStorageKey() != null : record.getKey();
+                ((PrivateFieldAddNode) writeNode).execute(target, record.getBackingStorageKey(), value);
             } else if (writeNode != null) {
+                // public field
                 assert JSRuntime.isPropertyKey(record.getKey()) : record.getKey();
                 ((WriteElementNode) writeNode).executeWithTargetAndIndexAndValue(target, record.getKey(), value);
             }

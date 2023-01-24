@@ -1878,7 +1878,7 @@ public class Parser extends AbstractParser {
                 }
 
                 if (classElement.isPrivate()) {
-                    hasPrivateMethods = hasPrivateMethods || !classElement.isClassField();
+                    hasPrivateMethods = hasPrivateMethods || classElement.isMethodOrAccessor();
                     hasPrivateInstanceMethods = hasPrivateInstanceMethods || (!classElement.isClassField() && !classElement.isStatic());
                     declarePrivateName(classScope, classElement);
                 }
@@ -1970,10 +1970,10 @@ public class Parser extends AbstractParser {
     private void declarePrivateName(Scope classScope, ClassElement classElement) {
         // Syntax Error if PrivateBoundIdentifiers of ClassBody contains any duplicate entries,
         // unless the name is used once for a getter and once for a setter and in no other entries.
-        int privateFlags = (classElement.isStatic() ? Symbol.IS_PRIVATE_NAME_STATIC : 0);
-        if (!classElement.isClassField()) {
-            privateFlags |= classElement.isAccessor() ? Symbol.IS_PRIVATE_NAME_ACCESSOR : Symbol.IS_PRIVATE_NAME_METHOD;
-        }
+        int privateFlags = (classElement.isStatic() ? Symbol.IS_PRIVATE_NAME_STATIC : 0) |
+                        (classElement.isMethod() ? Symbol.IS_PRIVATE_NAME_METHOD : 0) |
+                        ((classElement.isAccessor() || classElement.isAutoAccessor()) ? Symbol.IS_PRIVATE_NAME_ACCESSOR : 0);
+
         if (!classScope.addPrivateName(classElement.getPrivateNameTS(), privateFlags)) {
             throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, classElement.getPrivateName()), classElement.getKey().getToken());
         }
@@ -3726,10 +3726,10 @@ public class Parser extends AbstractParser {
      * Parse throw statement.
      *
      * <pre>
-     * {@code
+     * <code>
      * ThrowStatement:
      *      throw Expression; // [no LineTerminator here]
-     * }
+     * </code>
      * </pre>
      */
     private void throwStatement(boolean yield, boolean await) {
