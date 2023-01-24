@@ -3266,7 +3266,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     decorators[j] = transform(d.get(j));
                 }
             }
-            decoratedElements[i++] = decorators != null ? DecoratorListEvaluationNode.create(decorators) : null;
+            decoratedElements[i++] = decorators != null ? factory.createDecoratorListEvaluation(decorators) : null;
         }
         return decoratedElements;
     }
