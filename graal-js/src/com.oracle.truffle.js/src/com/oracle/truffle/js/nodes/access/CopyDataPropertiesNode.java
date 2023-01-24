@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -104,7 +105,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                     @Cached ListSizeNode listSize,
                     @Cached ListGetNode listGet,
                     @Cached JSClassProfile classProfile,
-                    @Cached TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
         List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(source, classProfile);
         int size = listSize.execute(ownPropertyKeys);
         for (int i = 0; i < size; i++) {
@@ -142,7 +143,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop,
                     @Cached ImportValueNode importValue,
                     @Cached JSToStringNode toString,
-                    @Cached TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
         if (objInterop.isNull(from)) {
             return target;
         }

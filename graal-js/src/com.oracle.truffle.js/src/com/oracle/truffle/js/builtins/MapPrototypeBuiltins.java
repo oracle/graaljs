@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,7 +53,7 @@ import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.CreateMapIteratorNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapClearNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapDeleteNodeGen;
@@ -64,6 +65,7 @@ import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetSizeNode
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -186,8 +188,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected JSDynamicObject doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorLib,
-                        @Cached BranchProfile growProfile) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary iteratorLib,
+                        @Cached InlinedBranchProfile growProfile) {
             try {
                 Object hashEntriesIterator = mapLib.getHashKeysIterator(thisObj);
                 // Save keys to temporary array to avoid concurrent modification exceptions.
@@ -195,7 +197,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 while (true) {
                     try {
                         Object nextKey = iteratorLib.getIteratorNextElement(hashEntriesIterator);
-                        keys.add(nextKey, growProfile);
+                        keys.add(nextKey, this, growProfile);
                     } catch (StopIterationException e) {
                         break;
                     }
@@ -394,8 +396,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("createCall()") @Shared("callNode") JSFunctionCallNode callNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary entryLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary iteratorLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary entryLib) {
             try {
                 Object hashEntriesIterator = mapLib.getHashEntriesIterator(thisObj);
                 while (true) {
@@ -448,9 +450,10 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected final Object doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
-                        @Cached BranchProfile toDoubleBranch) {
+                        @Cached(inline = true) LongToIntOrDoubleNode sizeToJSNumber) {
             try {
-                return JSRuntime.longToIntOrDouble(mapLib.getHashSize(thisObj), toDoubleBranch);
+                long hashSize = mapLib.getHashSize(thisObj);
+                return sizeToJSNumber.execute(this, hashSize);
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(thisObj, e, "getHashSize", this);
             }

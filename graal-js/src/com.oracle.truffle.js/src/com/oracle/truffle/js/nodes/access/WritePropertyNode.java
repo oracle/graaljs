@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -75,7 +74,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     private static final byte VALUE_OBJECT = 3;
 
     private final boolean verifyHasProperty;
-    @CompilationFinal private BranchProfile referenceErrorBranch;
+    @CompilationFinal private boolean referenceErrorBranchEntered;
     @Child protected HasPropertyCacheNode hasProperty;
 
     protected WritePropertyNode(JavaScriptNode target, JavaScriptNode rhs, Object propertyKey, boolean isGlobal, JSContext context, boolean isStrict, boolean verifyHasProperty) {
@@ -85,7 +84,6 @@ public class WritePropertyNode extends JSTargetableWriteNode {
         this.cache = PropertySetNode.createImpl(propertyKey, isGlobal, context, isStrict, false, JSAttributes.getDefault(), false, superProperty);
         this.verifyHasProperty = verifyHasProperty;
         if (verifyHasProperty) {
-            this.referenceErrorBranch = BranchProfile.create();
             // HasProperty node is usually unused when setting a global property in non-strict mode.
             if (isStrict || !isGlobal) {
                 this.hasProperty = HasPropertyCacheNode.create(propertyKey, context);
@@ -349,7 +347,10 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     }
 
     private void unresolvablePropertyInStrictMode(Object thisObj) {
-        referenceErrorBranch.enter();
+        if (!referenceErrorBranchEntered) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            referenceErrorBranchEntered = true;
+        }
         assert !cache.isGlobal() || (thisObj == null) || (JSDynamicObject.isJSDynamicObject(thisObj) && thisObj == getRealm().getGlobalObject());
         throw Errors.createReferenceErrorNotDefined(cache.getContext(), getKey(), this);
     }

@@ -48,7 +48,9 @@ import com.ibm.icu.util.Calendar;
 import com.ibm.icu.util.TimeZone;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleBaseNameAccessorNodeGen;
@@ -605,7 +607,8 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        public Object doLocale(JSLocaleObject localeObject) {
+        public Object doLocale(JSLocaleObject localeObject,
+                        @Cached InlinedBranchProfile growProfile) {
             Calendar.WeekData weekData = weekData(localeObject);
 
             int firstDay = calendarToECMAScriptDay(weekData.firstDayOfWeek);
@@ -615,7 +618,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int weekendCease = weekData.weekendCease;
             int day = weekData.weekendOnset;
             while (true) {
-                weekendList.add(calendarToECMAScriptDay(day), null);
+                weekendList.add(calendarToECMAScriptDay(day), this, growProfile);
                 if (day == weekendCease) {
                     break;
                 }

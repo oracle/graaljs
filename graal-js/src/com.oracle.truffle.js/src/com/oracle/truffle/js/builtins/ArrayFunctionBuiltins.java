@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,11 @@ package com.oracle.truffle.js.builtins;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayFromNodeGen;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayOfNodeGen;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSIsArrayNodeGen;
@@ -53,11 +55,9 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -143,7 +143,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
     public abstract static class JSArrayFunctionOperation extends JSArrayOperation {
         @Child private ArrayCreateNode arrayCreateNode;
-        private final ConditionProfile isConstructor = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isConstructor = ConditionProfile.create();
 
         public JSArrayFunctionOperation(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
             super(context, builtin, isTypedArray);
@@ -199,15 +199,13 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
     public abstract static class JSArrayFromNode extends JSArrayFunctionOperation {
         @Child private JSFunctionCallNode callMapFnNode;
         @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private JSFunctionCallNode callIteratorMethodNode;
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
+        @Child private GetIteratorNode getIteratorNode;
         @Child private GetMethodNode getIteratorMethodNode;
-        @Child private IsJSObjectNode isObjectNode;
-        @Child private PropertyGetNode getNextMethodNode;
         @Child private JSGetLengthNode getSourceLengthNode;
         @Child private IsArrayNode isFastArrayNode;
-        private final ConditionProfile isIterable = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isIterable = ConditionProfile.create();
 
         public JSArrayFromNode(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
             super(context, builtin, isTypedArray);
@@ -224,20 +222,11 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         protected IteratorRecord getIterator(Object object, Object usingIterator) {
-            if (callIteratorMethodNode == null) {
+            if (getIteratorNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callIteratorMethodNode = insert(JSFunctionCallNode.createCall());
+                getIteratorNode = insert(GetIteratorNode.create());
             }
-            if (isObjectNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isObjectNode = insert(IsJSObjectNode.create());
-            }
-            if (getNextMethodNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getNextMethodNode = insert(PropertyGetNode.create(Strings.NEXT, getContext()));
-            }
-
-            return GetIteratorNode.getIterator(object, usingIterator, callIteratorMethodNode, isObjectNode, getNextMethodNode, this);
+            return getIteratorNode.execute(null, object, usingIterator);
         }
 
         protected Object getIteratorValue(JSDynamicObject iteratorResult) {
@@ -273,15 +262,16 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected JSDynamicObject arrayFrom(Object thisObj, Object[] args) {
+        protected JSDynamicObject arrayFrom(Object thisObj, Object[] args,
+                        @Cached InlinedBranchProfile growProfile) {
             Object items = JSRuntime.getArgOrUndefined(args, 0);
             Object mapFn = JSRuntime.getArgOrUndefined(args, 1);
             Object thisArg = JSRuntime.getArgOrUndefined(args, 2);
 
-            return arrayFromIntl(thisObj, items, mapFn, thisArg, true);
+            return arrayFromIntl(thisObj, items, mapFn, thisArg, true, growProfile);
         }
 
-        protected JSDynamicObject arrayFromIntl(Object thisObj, Object items, Object mapFn, Object thisArg, boolean setLength) {
+        protected JSDynamicObject arrayFromIntl(Object thisObj, Object items, Object mapFn, Object thisArg, boolean setLength, InlinedBranchProfile growProfile) {
             boolean mapping;
             if (mapFn == Undefined.instance) {
                 mapping = false;
@@ -291,7 +281,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
             Object usingIterator = getIteratorMethodNode.executeWithTarget(items);
             if (isIterable.profile(usingIterator != Undefined.instance)) {
-                return arrayFromIterable(thisObj, items, usingIterator, mapFn, thisArg, mapping);
+                return arrayFromIterable(thisObj, items, usingIterator, mapFn, thisArg, mapping, growProfile);
             } else {
                 // NOTE: source is not an Iterable so assume it is already an array-like object.
                 Object itemsObject = toObject(items);
@@ -299,7 +289,8 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
-        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
+        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping,
+                        @SuppressWarnings("unused") InlinedBranchProfile growProfile) {
             JSDynamicObject obj = constructOrArray(thisObj, 0, false);
 
             IteratorRecord iteratorRecord = getIterator(items, usingIterator);

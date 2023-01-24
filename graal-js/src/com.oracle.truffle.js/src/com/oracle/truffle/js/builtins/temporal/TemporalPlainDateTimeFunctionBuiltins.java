@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,13 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimeFunctionBuiltinsFactory.JSTemporalPlainDateTimeCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimeFunctionBuiltinsFactory.JSTemporalPlainDateTimeFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -98,18 +100,21 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected Object from(Object item, Object optParam,
-                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
-            JSDynamicObject options = getOptionsObject(optParam);
+        protected JSTemporalPlainDateTimeObject from(Object item, Object optParam,
+                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime,
+                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedConditionProfile optionUndefined) {
+            JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
             if (isObject(item) && JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 JSTemporalPlainDateTimeObject dtItem = (JSTemporalPlainDateTimeObject) item;
-                TemporalUtil.toTemporalOverflow(options, getOptionNode());
+                TemporalUtil.toTemporalOverflow(options, getOptionNode);
                 return JSTemporalPlainDateTime.create(getContext(),
                                 dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(),
                                 dtItem.getHour(), dtItem.getMinute(), dtItem.getSecond(), dtItem.getMillisecond(),
-                                dtItem.getMicrosecond(), dtItem.getNanosecond(), dtItem.getCalendar(), errorBranch);
+                                dtItem.getMicrosecond(), dtItem.getNanosecond(), dtItem.getCalendar(), this, errorBranch);
             }
-            return toTemporalDateTime.executeDynamicObject(item, options);
+            return toTemporalDateTime.execute(item, options);
         }
 
     }
@@ -123,8 +128,8 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         @Specialization
         protected int compare(Object obj1, Object obj2,
                         @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
-            JSTemporalPlainDateTimeObject one = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(obj1, Undefined.instance);
-            JSTemporalPlainDateTimeObject two = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(obj2, Undefined.instance);
+            JSTemporalPlainDateTimeObject one = toTemporalDateTime.execute(obj1, Undefined.instance);
+            JSTemporalPlainDateTimeObject two = toTemporalDateTime.execute(obj2, Undefined.instance);
             return TemporalUtil.compareISODateTime(
                             one.getYear(), one.getMonth(), one.getDay(),
                             one.getHour(), one.getMinute(), one.getSecond(),

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,12 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -57,10 +59,11 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
@@ -102,10 +105,12 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         this.propertyNode = propertyNode;
     }
 
+    @NeverDefault
     public static DeletePropertyNode create(boolean strict, JSContext context) {
         return create(null, null, strict, context);
     }
 
+    @NeverDefault
     public static DeletePropertyNode createNonStrict(JSContext context) {
         return create(null, null, false, context);
     }
@@ -167,7 +172,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @Specialization(guards = {"isJSOrdinaryObject(targetObject)"})
     protected final boolean doJSOrdinaryObject(JSDynamicObject targetObject, Object key,
-                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
+                    @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode,
                     @CachedLibrary(limit = "InteropLibraryLimit") DynamicObjectLibrary dynamicObjectLib) {
         Object propertyKey = toPropertyKeyNode.execute(key);
 
@@ -188,20 +193,22 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         }
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"!isJSOrdinaryObject(targetObject)"})
     protected final boolean doJSObject(JSDynamicObject targetObject, Object key,
+                    @Bind("this") Node node,
                     @Cached("createIsFastArray()") IsArrayNode isArrayNode,
-                    @Cached("createBinaryProfile()") ConditionProfile arrayProfile,
-                    @Cached ToArrayIndexNode toArrayIndexNode,
-                    @Cached("createBinaryProfile()") ConditionProfile arrayIndexProfile,
+                    @Cached InlinedConditionProfile arrayProfile,
+                    @Shared("toArrayIndex") @Cached ToArrayIndexNode toArrayIndexNode,
+                    @Cached InlinedConditionProfile arrayIndexProfile,
                     @Cached("create(context, strict)") JSArrayDeleteIndexNode deleteArrayIndexNode,
                     @Cached JSClassProfile jsclassProfile,
                     @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         final Object propertyKey;
-        if (arrayProfile.profile(isArrayNode.execute(targetObject))) {
+        if (arrayProfile.profile(node, isArrayNode.execute(targetObject))) {
             Object objIndex = toArrayIndexNode.execute(key);
 
-            if (arrayIndexProfile.profile(objIndex instanceof Long)) {
+            if (arrayIndexProfile.profile(node, objIndex instanceof Long)) {
                 long longIndex = (long) objIndex;
                 return deleteArrayIndexNode.execute(targetObject, arrayGetArrayType(targetObject), longIndex);
             } else {
@@ -333,8 +340,8 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)"}, replaces = {"member", "arrayElementInt"})
     protected boolean foreignObject(Object target, Object key,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                    @Shared("toArrayIndex") @Cached("create()") ToArrayIndexNode toArrayIndexNode,
-                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+                    @Shared("toArrayIndex") @Cached ToArrayIndexNode toArrayIndexNode,
+                    @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         Object propertyKey;
         if (interop.hasArrayElements(target)) {
             Object indexOrPropertyKey = toArrayIndexNode.execute(key);

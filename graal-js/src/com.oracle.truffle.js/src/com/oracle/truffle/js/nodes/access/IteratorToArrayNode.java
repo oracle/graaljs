@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,7 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -80,12 +80,12 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
 
     @Specialization(guards = "!iteratorRecord.isDone()")
     protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord,
-                    @Cached BranchProfile firstGrowProfile,
-                    @Cached BranchProfile growProfile) {
+                    @Cached InlinedBranchProfile firstGrowProfile,
+                    @Cached InlinedBranchProfile growProfile) {
         SimpleArrayList<Object> elements = new SimpleArrayList<>(capacity);
         Object value;
         while ((value = iteratorStepNode.execute(frame, iteratorRecord)) != null) {
-            elements.add(value, first ? firstGrowProfile : growProfile);
+            elements.add(value, this, first ? firstGrowProfile : growProfile);
         }
 
         if (CompilerDirectives.inInterpreter()) {

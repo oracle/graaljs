@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,16 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -66,52 +69,54 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object operand);
 
+    @NeverDefault
     public static JSCollectionsNormalizeNode create() {
         return JSCollectionsNormalizeNodeGen.create();
     }
 
     @Specialization
-    public int doInt(int value) {
+    static int doInt(int value) {
         return value;
     }
 
     @Specialization
-    public Object doDouble(double value) {
+    static Object doDouble(double value) {
         return JSSet.normalizeDouble(value);
     }
 
     @Specialization
-    public TruffleString doString(TruffleString value) {
+    static TruffleString doString(TruffleString value) {
         return value;
     }
 
     @Specialization
-    public boolean doBoolean(boolean value) {
+    static boolean doBoolean(boolean value) {
         return value;
     }
 
     @Specialization
-    public Object doDynamicObject(JSDynamicObject object) {
+    static Object doDynamicObject(JSDynamicObject object) {
         return object;
     }
 
     @Specialization
-    public Symbol doSymbol(Symbol value) {
+    static Symbol doSymbol(Symbol value) {
         return value;
     }
 
     @Specialization
-    public BigInt doBigInt(BigInt bigInt) {
+    static BigInt doBigInt(BigInt bigInt) {
         return bigInt;
     }
 
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
-    public Object doForeignObject(Object object,
+    static Object doForeignObject(Object object,
+                    @Bind("this") Node node,
                     @CachedLibrary("object") InteropLibrary interop,
-                    @Cached("createBinaryProfile()") ConditionProfile primitiveProfile,
-                    @Cached("create()") JSCollectionsNormalizeNode nestedNormalizeNode) {
-        Object primitive = JSInteropUtil.toPrimitiveOrDefault(object, null, interop, this);
-        return primitiveProfile.profile(primitive == null) ? object : nestedNormalizeNode.execute(primitive);
+                    @Cached InlinedConditionProfile primitiveProfile,
+                    @Cached JSCollectionsNormalizeNode nestedNormalizeNode) {
+        Object primitive = JSInteropUtil.toPrimitiveOrDefault(object, null, interop, node);
+        return primitiveProfile.profile(node, primitive == null) ? object : nestedNormalizeNode.execute(primitive);
     }
 
 }

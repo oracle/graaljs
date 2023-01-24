@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,11 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -103,14 +104,14 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = "doCached")
     final boolean doUncached(JSDynamicObject scope,
-                    @Cached("create()") BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         Property property = scope.getShape().getProperty(varName);
         if (property != null) {
             if (JSDynamicObject.getOrNull(scope, varName) == Dead.instance()) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createReferenceErrorNotDefined(getLanguage().getJSContext(), varName, this);
             } else if (write && JSProperty.isConst(property)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorConstReassignment(varName, this);
             }
             return true;
@@ -132,6 +133,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
         return false;
     }
 
+    @NeverDefault
     final Assumption getAbsentPropertyAssumption(Shape shape) {
         Property property = shape.getProperty(varName);
         if (property == null) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -80,10 +81,9 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     @Child private HasPropertyCacheNode hasSetNode;
     @Child private HasPropertyCacheNode hasGetNode;
 
-    private final BranchProfile errorBranch = BranchProfile.create();
-
     public abstract Object execute(Object operand);
 
+    @NeverDefault
     public static ToPropertyDescriptorNode create(JSContext context) {
         return ToPropertyDescriptorNodeGen.create(context);
     }
@@ -134,45 +134,46 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     @Specialization(guards = {"wasExecuted(obj)", "isObjectNode.executeBoolean(obj)"}, limit = "1")
     protected Object doDefault(Object obj,
                     @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode,
-                    @Cached("create()") BranchProfile hasGetBranch,
-                    @Cached("create()") BranchProfile hasSetBranch,
-                    @Cached("create()") BranchProfile hasEnumerableBranch,
-                    @Cached("create()") BranchProfile hasConfigurableBranch,
-                    @Cached("create()") BranchProfile hasValueBranch,
-                    @Cached("create()") BranchProfile hasWritableBranch,
-                    @Cached("create()") IsCallableNode isCallable) {
+                    @Cached InlinedBranchProfile hasGetBranch,
+                    @Cached InlinedBranchProfile hasSetBranch,
+                    @Cached InlinedBranchProfile hasEnumerableBranch,
+                    @Cached InlinedBranchProfile hasConfigurableBranch,
+                    @Cached InlinedBranchProfile hasValueBranch,
+                    @Cached InlinedBranchProfile hasWritableBranch,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached IsCallableNode isCallable) {
         initialize();
         PropertyDescriptor desc = PropertyDescriptor.createEmpty();
 
         // 3.
         if (hasEnumerableNode.hasProperty(obj)) {
-            hasEnumerableBranch.enter();
+            hasEnumerableBranch.enter(this);
             desc.setEnumerable(getEnumerableValue(obj));
         }
         // 4.
         if (hasConfigurableNode.hasProperty(obj)) {
-            hasConfigurableBranch.enter();
+            hasConfigurableBranch.enter(this);
             desc.setConfigurable(getConfigurableValue(obj));
         }
         // 5.
         boolean hasValue = hasValueNode.hasProperty(obj);
         if (hasValue) {
-            hasValueBranch.enter();
+            hasValueBranch.enter(this);
             desc.setValue(getValue(obj));
         }
         // 6.
         boolean hasWritable = hasWritableNode.hasProperty(obj);
         if (hasWritable) {
-            hasWritableBranch.enter();
+            hasWritableBranch.enter(this);
             desc.setWritable(getWritableValue(obj));
         }
         // 7.
         boolean hasGet = hasGetNode.hasProperty(obj);
         if (hasGet) {
-            hasGetBranch.enter();
+            hasGetBranch.enter(this);
             Object getter = getGet(obj);
             if (!isCallable.executeBoolean(getter) && getter != Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("Getter must be a function");
             }
             desc.setGet(getter);
@@ -180,17 +181,17 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         // 8.
         boolean hasSet = hasSetNode.hasProperty(obj);
         if (hasSet) {
-            hasSetBranch.enter();
+            hasSetBranch.enter(this);
             Object setter = getSet(obj);
             if (!isCallable.executeBoolean(setter) && setter != Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("Setter must be a function");
             }
             desc.setSet(setter);
         }
         // 9.
         if ((hasGet || hasSet) && (hasValue || hasWritable)) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeError("Invalid property. A property cannot both have accessors and be writable or have a value");
         }
         return desc;

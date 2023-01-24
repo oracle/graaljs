@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,8 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -61,15 +61,9 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of ToTemporalCalendar() operation. See {@link TemporalUtil#toTemporalCalendar}.
+ * Implementation of ToTemporalCalendar() operation.
  */
 public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
-
-    private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isCalendarProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile hasCalendarProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile hasCalendar2Profile = ConditionProfile.createBinaryProfile();
-    private final BranchProfile parseBranch = BranchProfile.create();
 
     private final JSContext context;
     @Child private PropertyGetNode getCalendarPropertyNode;
@@ -78,46 +72,47 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
-    public static ToTemporalCalendarNode create(JSContext context) {
-        return ToTemporalCalendarNodeGen.create(context);
-    }
-
-    public abstract JSDynamicObject executeDynamicObject(Object value);
+    public abstract JSDynamicObject execute(Object value);
 
     @Specialization
     public JSDynamicObject toTemporalCalendar(Object itemParam,
-                    @Cached BranchProfile errorBranch,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode) {
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode,
+                    @Cached InlinedConditionProfile isObjectProfile,
+                    @Cached InlinedConditionProfile isCalendarProfile,
+                    @Cached InlinedConditionProfile hasCalendarProfile,
+                    @Cached InlinedConditionProfile hasCalendar2Profile,
+                    @Cached InlinedBranchProfile parseBranch) {
         Object item = itemParam;
-        if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
-            JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, errorBranch);
-            if (isCalendarProfile.profile(item instanceof TemporalCalendar)) {
+        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
+            JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, this, errorBranch);
+            if (isCalendarProfile.profile(this, item instanceof TemporalCalendar)) {
                 return ((TemporalCalendar) item).getCalendar();
             }
-            if (hasCalendarProfile.profile(!JSObject.hasProperty(itemObj, CALENDAR))) {
+            if (hasCalendarProfile.profile(this, !JSObject.hasProperty(itemObj, CALENDAR))) {
                 return itemObj;
             }
             item = getCalendarProperty(itemObj);
-            if (hasCalendar2Profile.profile(isObjectNode.executeBoolean(item) && !JSObject.hasProperty((JSDynamicObject) item, CALENDAR))) {
+            if (hasCalendar2Profile.profile(this, isObjectNode.executeBoolean(item) && !JSObject.hasProperty((JSDynamicObject) item, CALENDAR))) {
                 return (JSDynamicObject) item;
             }
         }
         TruffleString identifier = toStringNode.executeString(item);
         if (!TemporalUtil.isBuiltinCalendar(identifier)) {
-            parseBranch.enter();
+            parseBranch.enter(this);
             identifier = TemporalUtil.parseTemporalCalendarString(identifier);
             if (!TemporalUtil.isBuiltinCalendar(identifier)) {
                 throw TemporalErrors.createRangeErrorCalendarUnknown();
             }
         }
-        return JSTemporalCalendar.create(context, getRealm(), identifier, errorBranch);
+        return JSTemporalCalendar.create(context, getRealm(), identifier, this, errorBranch);
     }
 
     private Object getCalendarProperty(JSDynamicObject obj) {
         if (getCalendarPropertyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getCalendarPropertyNode = insert(PropertyGetNode.create(CALENDAR, false, context));
+            getCalendarPropertyNode = insert(PropertyGetNode.create(CALENDAR, context));
         }
         return getCalendarPropertyNode.getValue(obj);
     }

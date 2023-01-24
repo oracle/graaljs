@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,9 @@ package com.oracle.truffle.js.builtins;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.ArrayBufferPrototype;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferAbstractSliceNode;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.ByteLengthGetterNodeGen;
@@ -81,8 +82,6 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
 
     public abstract static class JSSharedArrayBufferSliceNode extends JSArrayBufferAbstractSliceNode {
 
-        private final BranchProfile errorBranch = BranchProfile.create();
-
         public JSSharedArrayBufferSliceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -93,23 +92,24 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             return (JSDynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
         }
 
-        private void checkErrors(JSDynamicObject resObj, JSDynamicObject thisObj, int newLen) {
+        private void checkErrors(JSDynamicObject resObj, JSDynamicObject thisObj, int newLen, InlinedBranchProfile errorBranch) {
             if (!JSSharedArrayBuffer.isJSSharedArrayBuffer(resObj)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("SharedArrayBuffer expected");
             }
             if (resObj == thisObj) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("SameValue(new, O) is forbidden");
             }
             if (JSSharedArrayBuffer.getDirectByteBuffer(resObj).capacity() < newLen) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("insufficient length constructed");
             }
         }
 
         @Specialization(guards = "isJSSharedArrayBuffer(thisObj)")
-        protected JSDynamicObject sliceSharedIntInt(JSDynamicObject thisObj, int begin, int end) {
+        protected JSDynamicObject sliceSharedIntInt(JSDynamicObject thisObj, int begin, int end,
+                        @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch) {
             ByteBuffer byteBuffer = JSSharedArrayBuffer.getDirectByteBuffer(thisObj);
             int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteLength);
@@ -117,7 +117,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             int newLen = clampedEnd - clampedBegin;
 
             JSDynamicObject resObj = constructNewSharedArrayBuffer(thisObj, newLen);
-            checkErrors(resObj, thisObj, newLen);
+            checkErrors(resObj, thisObj, newLen, errorBranch);
 
             ByteBuffer resBuffer = JSArrayBuffer.getDirectByteBuffer(resObj);
             Boundaries.byteBufferPutSlice(resBuffer, 0, byteBuffer, clampedBegin, clampedEnd);
@@ -125,11 +125,12 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         @Specialization(guards = "isJSSharedArrayBuffer(thisObj)", replaces = "sliceSharedIntInt")
-        protected JSDynamicObject sliceShared(JSDynamicObject thisObj, Object begin0, Object end0) {
+        protected JSDynamicObject sliceShared(JSDynamicObject thisObj, Object begin0, Object end0,
+                        @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch) {
             int len = JSSharedArrayBuffer.getDirectByteBuffer(thisObj).capacity();
             int begin = getStart(begin0, len);
             int end = getEnd(end0, len);
-            return sliceSharedIntInt(thisObj, begin, end);
+            return sliceSharedIntInt(thisObj, begin, end, errorBranch);
         }
 
         @SuppressWarnings("unused")

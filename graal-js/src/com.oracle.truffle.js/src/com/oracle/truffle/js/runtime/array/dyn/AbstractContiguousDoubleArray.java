@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetInd
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayOffset;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetIndexOffset;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -70,8 +71,8 @@ public abstract class AbstractContiguousDoubleArray extends AbstractDoubleArray 
     }
 
     @Override
-    protected final void setLengthLess(JSDynamicObject object, long length, ProfileHolder profile) {
-        setLengthLessContiguous(object, length, profile);
+    protected final void setLengthLess(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
+        setLengthLessContiguous(object, length, node, profile);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.js.builtins.intl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.IntlBuiltinsFactory.GetCanonicalLocalesNodeGen;
@@ -139,7 +139,7 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
         @Specialization
         protected Object supportedValuesOf(Object keyArg,
                         @Cached JSToStringNode toStringNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             TruffleString key = toStringNode.executeString(keyArg);
             String[] list;
             if (Strings.equals(IntlUtil.KEY_CALENDAR, key)) {
@@ -155,7 +155,7 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
             } else if (Strings.equals(IntlUtil.KEY_UNIT, key)) {
                 list = IntlUtil.availableUnits();
             } else {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorFormat("Invalid key : %s", this, key);
             }
             return JSArray.createConstant(getContext(), getRealm(), Strings.convertJavaStringArray(list));

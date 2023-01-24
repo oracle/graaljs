@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,11 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -82,7 +84,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     private final boolean hasOwnProperty;
     private final JSClassProfile classProfile = JSClassProfile.create();
-    private final ConditionProfile hasElementProfile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile hasElementProfile = ConditionProfile.create();
 
     static final int MAX_ARRAY_TYPES = 3;
 
@@ -90,10 +92,12 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         this.hasOwnProperty = hasOwnProperty;
     }
 
+    @NeverDefault
     public static JSHasPropertyNode create() {
         return JSHasPropertyNodeGen.create(false);
     }
 
+    @NeverDefault
     public static JSHasPropertyNode create(boolean hasOwnProperty) {
         return JSHasPropertyNodeGen.create(hasOwnProperty);
     }
@@ -132,7 +136,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                     @Cached("getCacheableObjectType(object)") JSClass cachedObjectType,
                     @Cached("propertyName") TruffleString cachedName,
                     @Cached("getCachedPropertyGetter(object, propertyName)") HasPropertyCacheNode hasPropertyNode,
-                    @Cached TruffleString.EqualNode equalNode) {
+                    @Cached @Shared("strEq") TruffleString.EqualNode equalNode) {
         return hasPropertyNode.hasProperty(object);
     }
 
@@ -141,7 +145,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     public boolean arrayStringCached(JSDynamicObject object, TruffleString propertyName,
                     @Cached("propertyName") TruffleString cachedName,
                     @Cached("getCachedPropertyGetter(object, propertyName)") HasPropertyCacheNode hasPropertyNode,
-                    @Cached TruffleString.EqualNode equalNode) {
+                    @Cached @Shared("strEq") TruffleString.EqualNode equalNode) {
         return hasPropertyNode.hasProperty(object);
     }
 
@@ -178,9 +182,9 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
     public boolean foreignObject(Object object, Object propertyName,
                     @CachedLibrary("object") InteropLibrary interop,
-                    @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("create()") ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                    @Cached("create()") JSHasPropertyNode hasInPrototype) {
+                    @Cached JSToStringNode toStringNode,
+                    @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
+                    @Cached JSHasPropertyNode hasInPrototype) {
         if (propertyName instanceof Number && interop.hasArrayElements(object)) {
             long index = JSRuntime.longValue((Number) propertyName);
             return index >= 0 && index < JSInteropUtil.getArraySize(object, interop, this);
@@ -200,7 +204,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     @ReportPolymorphism.Megamorphic
     @Specialization
     public boolean objectObject(JSDynamicObject object, Object propertyName,
-                    @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+                    @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         Object propertyKey = toPropertyKeyNode.execute(propertyName);
         return hasPropertyGeneric(object, propertyKey);
     }

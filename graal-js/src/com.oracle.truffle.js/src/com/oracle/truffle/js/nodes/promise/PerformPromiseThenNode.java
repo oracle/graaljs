@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,12 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -58,7 +61,7 @@ import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
-public class PerformPromiseThenNode extends JavaScriptBaseNode {
+public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
     private final JSContext context;
     @Child private IsCallableNode isCallableFulfillNode = IsCallableNode.create();
     @Child private IsCallableNode isCallableRejectNode = IsCallableNode.create();
@@ -68,10 +71,6 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getPromiseIsHandledNode;
     @Child private PropertySetNode setPromiseIsHandledNode;
     @Child private PromiseReactionJobNode promiseReactionJobNode;
-    private final ConditionProfile pendingProf = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile fulfilledProf = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile unhandledProf = ConditionProfile.createBinaryProfile();
-    private final BranchProfile growProfile = BranchProfile.create();
 
     protected PerformPromiseThenNode(JSContext context) {
         this.context = context;
@@ -80,12 +79,20 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         this.setPromiseIsHandledNode = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
     }
 
+    @NeverDefault
     public static PerformPromiseThenNode create(JSContext context) {
-        return new PerformPromiseThenNode(context);
+        return PerformPromiseThenNodeGen.create(context);
     }
 
+    public abstract JSDynamicObject execute(JSDynamicObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability);
+
     @SuppressWarnings("unchecked")
-    public JSDynamicObject execute(JSDynamicObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability) {
+    @Specialization
+    protected JSDynamicObject promiseThen(JSDynamicObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability,
+                    @Cached InlinedConditionProfile pendingProf,
+                    @Cached InlinedConditionProfile fulfilledProf,
+                    @Cached InlinedConditionProfile unhandledProf,
+                    @Cached InlinedBranchProfile growProfile) {
         assert JSPromise.isJSPromise(promise);
         Object onFulfilledHandler = isCallableFulfillNode.executeBoolean(onFulfilled) ? onFulfilled : Undefined.instance;
         Object onRejectedHandler = isCallableRejectNode.executeBoolean(onRejected) ? onRejected : Undefined.instance;
@@ -94,17 +101,17 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         PromiseReactionRecord rejectReaction = PromiseReactionRecord.create(resultCapability, onRejectedHandler, false);
 
         int promiseState = JSPromise.getPromiseState(promise);
-        if (pendingProf.profile(promiseState == JSPromise.PENDING)) {
-            ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseFulfillReactionsNode.getValue(promise)).add(fulfillReaction, growProfile);
-            ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseRejectReactionsNode.getValue(promise)).add(rejectReaction, growProfile);
-        } else if (fulfilledProf.profile(promiseState == JSPromise.FULFILLED)) {
+        if (pendingProf.profile(this, promiseState == JSPromise.PENDING)) {
+            ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseFulfillReactionsNode.getValue(promise)).add(fulfillReaction, this, growProfile);
+            ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseRejectReactionsNode.getValue(promise)).add(rejectReaction, this, growProfile);
+        } else if (fulfilledProf.profile(this, promiseState == JSPromise.FULFILLED)) {
             Object value = getPromiseResult(promise);
             JSFunctionObject job = getPromiseReactionJob(fulfillReaction, value);
             context.promiseEnqueueJob(getRealm(), job);
         } else {
             assert promiseState == JSPromise.REJECTED;
             Object reason = getPromiseResult(promise);
-            if (unhandledProf.profile(!getPromiseIsHandled(promise))) {
+            if (unhandledProf.profile(this, !getPromiseIsHandled(promise))) {
                 context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE, Undefined.instance);
             }
             JSFunctionObject job = getPromiseReactionJob(rejectReaction, reason);

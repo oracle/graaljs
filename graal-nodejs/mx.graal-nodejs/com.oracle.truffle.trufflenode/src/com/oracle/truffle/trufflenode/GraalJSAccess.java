@@ -1381,7 +1381,7 @@ public final class GraalJSAccess {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object value = valueNode.execute(frame);
-                return bufferGetContents.execute(value);
+                return bufferGetContents.execute(null, value);
             }
         }
         CallTarget callTarget = new InteropArrayBufferGetContents().getCallTarget();
@@ -3598,6 +3598,7 @@ public final class GraalJSAccess {
         return Strings.builderToString(builder);
     }
 
+    @SuppressWarnings("cast")
     public Object regexpNew(Object context, Object pattern, int flags) {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();
@@ -3617,7 +3618,7 @@ public final class GraalJSAccess {
     public static Object regexpPattern(JSDynamicObject regexp) {
         assert JSRegExp.isJSRegExp(regexp);
         Object compiledRegex = JSRegExp.getCompiledRegex(regexp);
-        return TRegexUtil.InteropReadStringMemberNode.getUncached().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN);
+        return TRegexUtil.InteropReadStringMemberNode.getUncached().execute(null, compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN);
     }
 
     @TruffleBoundary
@@ -3627,25 +3628,25 @@ public final class GraalJSAccess {
 
     public static int regexpV8Flags(JSDynamicObject regexp) {
         Object compiledRegex = JSRegExp.getCompiledRegex(regexp);
-        Object flagsObj = TRegexUtil.InteropReadMemberNode.getUncached().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.FLAGS);
+        Object flagsObj = TRegexUtil.InteropReadMemberNode.getUncached().execute(null, compiledRegex, TRegexUtil.Props.CompiledRegex.FLAGS);
 
         int v8Flags = 0; // v8::RegExp::Flags::kNone
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.GLOBAL)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(null, flagsObj, TRegexUtil.Props.Flags.GLOBAL)) {
             v8Flags |= 1; // v8::RegExp::Flags::kGlobal
         }
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.IGNORE_CASE)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(null, flagsObj, TRegexUtil.Props.Flags.IGNORE_CASE)) {
             v8Flags |= 2; // v8::RegExp::Flags::kIgnoreCase
         }
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.MULTILINE)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(null, flagsObj, TRegexUtil.Props.Flags.MULTILINE)) {
             v8Flags |= 4; // v8::RegExp::Flags::kMultiline
         }
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.STICKY)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(null, flagsObj, TRegexUtil.Props.Flags.STICKY)) {
             v8Flags |= 8; // v8::RegExp::Flags::kSticky
         }
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.UNICODE)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(null, flagsObj, TRegexUtil.Props.Flags.UNICODE)) {
             v8Flags |= 16; // v8::RegExp::Flags::kUnicode
         }
-        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.DOT_ALL)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(null, flagsObj, TRegexUtil.Props.Flags.DOT_ALL)) {
             v8Flags |= 32; // v8::RegExp::Flags::kDotAll
         }
         return v8Flags;
@@ -3683,6 +3684,7 @@ public final class GraalJSAccess {
         return parser.parse((TruffleString) string, realm);
     }
 
+    @SuppressWarnings("cast")
     public Object jsonStringify(Object context, Object object, Object gap) {
         JSFunctionObject stringify = ((JSRealm) context).lookupFunction(JSONBuiltins.BUILTINS, STRINGIFY);
         return (TruffleString) JSFunction.call(stringify, Undefined.instance, new Object[]{

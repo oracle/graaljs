@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -58,6 +59,7 @@ public abstract class JSLoadNode extends JavaScriptBaseNode {
 
     protected final JSContext context;
 
+    @NeverDefault
     public static JSLoadNode create(JSContext context) {
         return JSLoadNodeGen.create(context);
     }
@@ -81,7 +83,7 @@ public abstract class JSLoadNode extends JavaScriptBaseNode {
     @Specialization(guards = {"cachedSource.isCached()", "equals(source, cachedSource)"}, limit = "1")
     static Object cachedLoad(Source source, JSRealm realm,
                     @Cached @Shared("importValue") ImportValueNode importValue,
-                    @Cached("source") Source cachedSource,
+                    @Cached(value = "source", neverDefault = true) Source cachedSource,
                     @Cached("create(loadScript(source, realm))") DirectCallNode callNode) {
         return importValue.executeWithTarget(callNode.call(JSArguments.EMPTY_ARGUMENTS_ARRAY));
     }

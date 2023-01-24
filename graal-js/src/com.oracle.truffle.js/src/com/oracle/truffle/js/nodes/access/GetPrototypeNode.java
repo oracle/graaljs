@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -73,6 +74,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
 
     public abstract JSDynamicObject execute(Object obj);
 
+    @NeverDefault
     public static GetPrototypeNode create() {
         return GetPrototypeNodeGen.create();
     }
@@ -123,7 +125,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isJSProxy(obj)")
     static JSDynamicObject doProxy(JSDynamicObject obj,
-                    @Cached("create()") JSClassProfile jsclassProfile) {
+                    @Cached JSClassProfile jsclassProfile) {
         return JSObject.getPrototype(obj, jsclassProfile);
     }
 

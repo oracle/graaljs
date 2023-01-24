@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 
-public final class GeneratorWrapperNode extends JavaScriptNode implements RepeatingNode {
+public final class GeneratorWrapperNode extends JavaScriptNode implements RepeatingNode, GeneratorNode {
     @Child private JavaScriptNode childNode;
     private final int stateSlot;
 
@@ -60,9 +60,7 @@ public final class GeneratorWrapperNode extends JavaScriptNode implements Repeat
     }
 
     public static JavaScriptNode createWrapper(JavaScriptNode child, int stateSlot) {
-        JavaScriptNode wrapper = new GeneratorWrapperNode(child, stateSlot);
-        JavaScriptNode.transferSourceSectionAndTags(child, wrapper);
-        return wrapper;
+        return new GeneratorWrapperNode(child, stateSlot);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,14 @@ package com.oracle.truffle.js.nodes.function;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
@@ -113,6 +114,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
         return null;
     }
 
+    @NeverDefault
     protected Shape getShapeWithoutProto() {
         CompilerAsserts.neverPartOfCompilation();
         return JSObjectUtil.getProtoChildShape(null, instanceLayout, context);
@@ -129,23 +131,23 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @ReportPolymorphism.Megamorphic
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(prototype)"}, replaces = "doCachedProto")
     public JSDynamicObject doUncachedProto(@SuppressWarnings("unused") JSDynamicObject target, JSDynamicObject prototype,
-                    @Cached("create()") BranchProfile slowBranch) {
-        Shape shape = JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context, slowBranch);
+                    @Cached InlinedBranchProfile slowBranch) {
+        Shape shape = JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context, this, slowBranch);
         return JSOrdinary.create(context, shape);
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "prototypeClass != null", "prototypeClass.isInstance(prototype)"}, limit = "1")
     public JSDynamicObject createWithProtoCachedClass(@SuppressWarnings("unused") JSDynamicObject target, Object prototype,
                     @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
-                    @Cached("getClassIfJSObject(prototype)") Class<?> prototypeClass,
-                    @Cached("getShapeWithoutProto()") Shape cachedShape) {
+                    @Cached(value = "getClassIfJSObject(prototype)", neverDefault = false) Class<?> prototypeClass,
+                    @Cached("getShapeWithoutProto()") @Shared("shapeWithoutProto") Shape cachedShape) {
         return createWithProto(target, (JSDynamicObject) prototypeClass.cast(prototype), setProtoNode, cachedShape);
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "isJSObject(prototype)"})
     public JSDynamicObject createWithProto(@SuppressWarnings("unused") JSDynamicObject target, JSDynamicObject prototype,
                     @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
-                    @Cached("getShapeWithoutProto()") Shape cachedShape) {
+                    @Cached("getShapeWithoutProto()") @Shared("shapeWithoutProto") Shape cachedShape) {
         JSDynamicObject object = JSOrdinary.create(context, cachedShape);
         setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
         return object;

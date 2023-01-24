@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,9 +70,9 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"!cachedIsProxy", "cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static boolean doIsArrayClass(Object object,
-                    @Cached("getClassIfJSDynamicObject(object)") Class<?> cachedClass,
-                    @Cached("isJSArray(object)") boolean cachedIsArray,
-                    @Cached("isJSProxy(object)") boolean cachedIsProxy) {
+                    @Cached(value = "getClassIfJSDynamicObject(object)", neverDefault = false) Class<?> cachedClass,
+                    @Cached(value = "isJSArray(object)", neverDefault = false) boolean cachedIsArray,
+                    @Cached(value = "isJSProxy(object)", neverDefault = false) boolean cachedIsProxy) {
         return cachedIsArray;
     }
 

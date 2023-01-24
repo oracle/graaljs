@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,15 +49,14 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.InlineSupport;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCloneable;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
@@ -70,6 +69,7 @@ import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.InlinedProfileBag;
 
 public abstract class ScriptArray {
 
@@ -136,53 +136,128 @@ public abstract class ScriptArray {
 
     public abstract int lengthInt(JSDynamicObject object);
 
-    protected interface ProfileAccess {
+    public static class CreateWritableProfileAccess implements InlinedProfileBag {
+
+        private final InlinedConditionProfile newArrayLengthZero;
+        private final InlinedConditionProfile newArrayLengthBelowLimit;
+        private final InlinedConditionProfile indexZero;
+        private final InlinedConditionProfile indexLessThanLength;
+
+        public static final int REQUIRED_BITS = 4 * 2;
+        private static final CreateWritableProfileAccess UNCACHED = new CreateWritableProfileAccess(new Builder());
+
+        @NeverDefault
+        public static CreateWritableProfileAccess getUncached() {
+            return UNCACHED;
+        }
+
+        @NeverDefault
+        public static CreateWritableProfileAccess inline(
+                        @InlineSupport.RequiredField(value = InlineSupport.StateField.class, bits = REQUIRED_BITS) InlineSupport.InlineTarget inlineTarget) {
+            try (Builder b = new Builder(inlineTarget, REQUIRED_BITS)) {
+                return new CreateWritableProfileAccess(b);
+            }
+        }
+
+        protected CreateWritableProfileAccess(Builder b) {
+            this.newArrayLengthZero = b.conditionProfile();
+            this.newArrayLengthBelowLimit = b.conditionProfile();
+            this.indexZero = b.conditionProfile();
+            this.indexLessThanLength = b.conditionProfile();
+        }
+
+        public boolean newArrayLengthZero(Node node, boolean condition) {
+            return newArrayLengthZero.profile(node, condition);
+        }
+
+        public final boolean newArrayLengthBelowLimit(Node node, boolean condition) {
+            return newArrayLengthBelowLimit.profile(node, condition);
+        }
+
+        public final boolean indexZero(Node node, boolean condition) {
+            return indexZero.profile(node, condition);
+        }
+
+        public final boolean indexLessThanLength(Node node, boolean condition) {
+            return indexLessThanLength.profile(node, condition);
+        }
     }
 
-    protected interface SetLengthProfileAccess extends ProfileAccess {
-        default boolean lengthZero(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 0, condition);
+    public static class SetLengthProfileAccess extends CreateWritableProfileAccess {
+
+        private final InlinedConditionProfile lengthZero;
+        private final InlinedConditionProfile lengthLess;
+        private final InlinedConditionProfile zeroBasedSetUsedLength;
+        private final InlinedConditionProfile zeroBasedClearUnusedArea;
+        private final InlinedConditionProfile contiguousZeroUsed;
+        private final InlinedConditionProfile contiguousNegativeUsed;
+        private final InlinedConditionProfile contiguousShrinkUsed;
+        private final InlinedConditionProfile clearUnusedArea;
+
+        public static final int REQUIRED_BITS = 8 * 2 + CreateWritableProfileAccess.REQUIRED_BITS;
+        private static final SetLengthProfileAccess UNCACHED = new SetLengthProfileAccess(new Builder());
+
+        @NeverDefault
+        public static SetLengthProfileAccess getUncached() {
+            return UNCACHED;
         }
 
-        default boolean lengthLess(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 1, condition);
+        @NeverDefault
+        public static SetLengthProfileAccess inline(
+                        @InlineSupport.RequiredField(value = InlineSupport.StateField.class, bits = REQUIRED_BITS) InlineSupport.InlineTarget inlineTarget) {
+            try (Builder b = new Builder(inlineTarget, REQUIRED_BITS)) {
+                return new SetLengthProfileAccess(b);
+            }
         }
 
-        default boolean zeroBasedSetUsedLength(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 2, condition);
+        protected SetLengthProfileAccess(Builder b) {
+            super(b);
+            this.lengthZero = b.conditionProfile();
+            this.lengthLess = b.conditionProfile();
+            this.zeroBasedSetUsedLength = b.conditionProfile();
+            this.zeroBasedClearUnusedArea = b.conditionProfile();
+            this.contiguousZeroUsed = b.conditionProfile();
+            this.contiguousNegativeUsed = b.conditionProfile();
+            this.contiguousShrinkUsed = b.conditionProfile();
+            this.clearUnusedArea = b.conditionProfile();
         }
 
-        default boolean zeroBasedClearUnusedArea(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 3, condition);
+        public final boolean lengthZero(Node node, boolean condition) {
+            return lengthZero.profile(node, condition);
         }
 
-        default boolean contiguousZeroUsed(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 4, condition);
+        public final boolean lengthLess(Node node, boolean condition) {
+            return lengthLess.profile(node, condition);
         }
 
-        default boolean contiguousNegativeUsed(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 5, condition);
+        public final boolean zeroBasedSetUsedLength(Node node, boolean condition) {
+            return zeroBasedSetUsedLength.profile(node, condition);
         }
 
-        default boolean contiguousShrinkUsed(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 6, condition);
+        public final boolean zeroBasedClearUnusedArea(Node node, boolean condition) {
+            return zeroBasedClearUnusedArea.profile(node, condition);
         }
 
-        default boolean clearUnusedArea(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 7, condition);
+        public final boolean contiguousZeroUsed(Node node, boolean condition) {
+            return contiguousZeroUsed.profile(node, condition);
+        }
+
+        public final boolean contiguousNegativeUsed(Node node, boolean condition) {
+            return contiguousNegativeUsed.profile(node, condition);
+        }
+
+        public final boolean contiguousShrinkUsed(Node node, boolean condition) {
+            return contiguousShrinkUsed.profile(node, condition);
+        }
+
+        public final boolean clearUnusedArea(Node node, boolean condition) {
+            return clearUnusedArea.profile(node, condition);
         }
     }
 
-    protected static final SetLengthProfileAccess SET_LENGTH_PROFILE = new SetLengthProfileAccess() {
-    };
+    public abstract ScriptArray setLengthImpl(JSDynamicObject object, long len, Node node, SetLengthProfileAccess profile);
 
-    public static ProfileHolder createSetLengthProfile() {
-        return ProfileHolder.create(8, SetLengthProfileAccess.class);
-    }
-
-    public abstract ScriptArray setLengthImpl(JSDynamicObject object, long len, ProfileHolder profile);
-
-    public final ScriptArray setLength(JSDynamicObject object, long len, boolean strict, ProfileHolder profile) {
+    public final ScriptArray setLength(JSDynamicObject object, long len, boolean strict, Node node, SetLengthProfileAccess profile) {
         if (isLengthNotWritable()) {
             if (strict) {
                 throw Errors.createTypeErrorLengthNotWritable();
@@ -191,11 +266,11 @@ public abstract class ScriptArray {
         } else if (isSealed()) {
             assert len >= lastElementIndex(object) + 1; // to be checked by caller
         }
-        return setLengthImpl(object, len, profile);
+        return setLengthImpl(object, len, node, profile);
     }
 
     public final ScriptArray setLength(JSDynamicObject object, long len, boolean strict) {
-        return setLength(object, len, strict, ProfileHolder.empty());
+        return setLength(object, len, strict, null, SetLengthProfileAccess.getUncached());
     }
 
     /**
@@ -577,47 +652,5 @@ public abstract class ScriptArray {
         CompilerAsserts.partialEvaluationConstant(this);
         assert this == other;
         return this;
-    }
-
-    public interface ProfileHolder {
-        boolean profile(ProfileAccess profileAccess, int index, boolean condition);
-
-        static ProfileHolder create(int profileCount, Class<?> profileAccessClass) {
-            return new ProfileHolderImpl(profileCount, profileAccessClass);
-        }
-
-        static ProfileHolder empty() {
-            return ProfileHolderImpl.EMPTY;
-        }
-    }
-
-    private static final class ProfileHolderImpl extends NodeCloneable implements ProfileHolder {
-        @CompilationFinal(dimensions = 1) private ConditionProfile[] conditionProfiles;
-        private Class<?> profileAccessClass;
-
-        private static final ProfileHolderImpl EMPTY = new ProfileHolderImpl();
-
-        private ProfileHolderImpl(int profileCount, Class<?> profileAccessClass) {
-            this.conditionProfiles = new ConditionProfile[profileCount];
-            this.profileAccessClass = profileAccessClass;
-        }
-
-        private ProfileHolderImpl() {
-        }
-
-        @Override
-        public boolean profile(ProfileAccess profileAccess, int index, boolean condition) {
-            assert profileAccessClass == null || profileAccessClass.isInstance(profileAccess);
-            ConditionProfile[] profiles = this.conditionProfiles;
-            if (profiles == null) {
-                return condition;
-            }
-            ConditionProfile profile = profiles[index];
-            if (profile == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                profile = profiles[index] = ConditionProfile.createBinaryProfile();
-            }
-            return profile.profile(condition);
-        }
     }
 }

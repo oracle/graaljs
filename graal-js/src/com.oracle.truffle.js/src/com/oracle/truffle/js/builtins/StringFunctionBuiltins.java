@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
@@ -198,7 +198,6 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private ReadElementNode readRawElementNode;
         @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
         @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
-        private final ConditionProfile emptyProf = ConditionProfile.createBinaryProfile();
 
         public StringRawNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -214,13 +213,14 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object raw(Object template, Object[] substitutions) {
+        protected Object raw(Object template, Object[] substitutions,
+                        @Cached InlinedConditionProfile emptyProf) {
             int numberOfSubstitutions = substitutions.length;
             Object cooked = templateToObjectNode.execute(template);
             Object raw = rawToObjectNode.execute(getRawNode.getValue(cooked));
 
             int literalSegments = getRawLength(raw);
-            if (emptyProf.profile(literalSegments <= 0)) {
+            if (emptyProf.profile(this, literalSegments <= 0)) {
                 return Strings.EMPTY_STRING;
             }
 

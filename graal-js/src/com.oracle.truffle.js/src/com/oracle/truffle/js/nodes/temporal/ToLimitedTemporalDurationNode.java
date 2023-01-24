@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,8 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -62,36 +62,31 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToLimitedTemporalDurationNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile hasDisallowedFields = ConditionProfile.createBinaryProfile();
-    private final BranchProfile errorBranch = BranchProfile.create();
-
     protected ToLimitedTemporalDurationNode() {
     }
 
-    public static ToLimitedTemporalDurationNode create() {
-        return ToLimitedTemporalDurationNodeGen.create();
-    }
-
-    public abstract JSTemporalDurationRecord executeDynamicObject(Object temporalDurationLike, List<TruffleString> disallowedFields);
+    public abstract JSTemporalDurationRecord execute(Object temporalDurationLike, List<TruffleString> disallowedFields);
 
     @Specialization
     protected JSTemporalDurationRecord toLimitedTemporalDuration(Object temporalDurationLike, List<TruffleString> disallowedFields,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode) {
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode,
+                    @Cached InlinedConditionProfile isObjectProfile,
+                    @Cached InlinedConditionProfile hasDisallowedFields,
+                    @Cached InlinedBranchProfile errorBranch) {
         JSTemporalDurationRecord d;
-        if (isObjectProfile.profile(!isObjectNode.executeBoolean(temporalDurationLike))) {
+        if (isObjectProfile.profile(this, !isObjectNode.executeBoolean(temporalDurationLike))) {
             TruffleString str = toStringNode.executeString(temporalDurationLike);
             d = JSTemporalDuration.parseTemporalDurationString(str);
         } else {
             d = JSTemporalDuration.toTemporalDurationRecord((JSDynamicObject) temporalDurationLike);
         }
 
-        if (hasDisallowedFields.profile(disallowedFields != TemporalUtil.listEmpty)) {
+        if (hasDisallowedFields.profile(this, disallowedFields != TemporalUtil.listEmpty)) {
             for (TemporalUtil.UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
                 double value = TemporalUtil.getPropertyFromRecord(d, unit);
                 if (value != 0 && Boundaries.listContains(disallowedFields, unit.toTruffleString())) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw TemporalErrors.createRangeErrorDisallowedField(unit.toTruffleString());
                 }
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -76,11 +77,11 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
 
     @Specialization(guards = "isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
     final Object sliceDirect(JSTypedArrayObject target, Object start, Object end,
-                    @Cached JSToIntegerAsIntNode toIntNode,
-                    @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getLengthNode,
-                    @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
-                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
-                    @Cached TruffleString.IsValidNode isValidNode) {
+                    @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
+                    @Cached @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared("fromByteArray") TruffleString.FromByteArrayNode fromByteArrayNode,
+                    @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached @Shared("isValid") TruffleString.IsValidNode isValidNode) {
         JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
 
@@ -90,14 +91,14 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
 
     @Specialization(guards = "!isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
     final Object sliceInterop(JSTypedArrayObject target, Object start, Object end,
-                    @Cached JSToIntegerAsIntNode toIntNode,
-                    @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getLengthNode,
-                    @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
-                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
-                    @Cached TruffleString.IsValidNode isValidNode,
-                    @Cached ArrayBufferGetContentsNode arrayBufferGetContentsNode) {
+                    @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
+                    @Cached @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared("fromByteArray") TruffleString.FromByteArrayNode fromByteArrayNode,
+                    @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached @Shared("isValid") TruffleString.IsValidNode isValidNode,
+                    @Cached(inline = true) ArrayBufferGetContentsNode arrayBufferGetContentsNode) {
         JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
-        ByteBuffer rawBuffer = arrayBufferGetContentsNode.execute(arrayBuffer);
+        ByteBuffer rawBuffer = arrayBufferGetContentsNode.execute(this, arrayBuffer);
 
         return slice(target, start, end, rawBuffer,
                         toIntNode, getLengthNode, fromByteArrayNode, switchEncodingNode, isValidNode);
@@ -109,7 +110,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
                     TruffleString.FromByteArrayNode fromByteArrayNode,
                     TruffleString.SwitchEncodingNode switchEncodingNode,
                     TruffleString.IsValidNode isValidNode) {
-        int bufferLength = getLengthNode.executeInt(target);
+        int bufferLength = getLengthNode.executeInt(this, target, getContext());
         if (bufferLength == 0) {
             // By default, an empty buffer returns an empty string
             return Strings.EMPTY_STRING;

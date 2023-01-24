@@ -50,12 +50,12 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
@@ -76,9 +76,11 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadIntMemberNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadMemberNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadStringMemberNode;
-import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
-import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeGetGroupBoundariesMethodNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResult;
 
 public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
@@ -117,7 +119,8 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
         @Override
         public Object get(JSDynamicObject object) {
-            return TRegexUtil.InvokeGetGroupBoundariesMethodNode.getUncached().execute(arrayGetRegexResult(object, DynamicObjectLibrary.getUncached()), TRegexUtil.Props.RegexResult.GET_START, 0);
+            Object regexResult = arrayGetRegexResult(object, DynamicObjectLibrary.getUncached());
+            return InvokeGetGroupBoundariesMethodNode.getUncached().execute(null, regexResult, TRegexUtil.Props.RegexResult.GET_START, 0);
         }
 
         @TruffleBoundary
@@ -130,32 +133,28 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
     public static final class LazyNamedCaptureGroupProperty extends PropertyProxy {
 
-        private final JSContext context;
-        private final TruffleString groupName;
         private final int groupIndex;
-        private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
+        private final TruffleString groupName;
 
-        public LazyNamedCaptureGroupProperty(JSContext context, TruffleString groupName, int groupIndex) {
-            this.context = context;
-            this.groupName = groupName;
+        public LazyNamedCaptureGroupProperty(TruffleString groupName, int groupIndex) {
             this.groupIndex = groupIndex;
+            this.groupName = groupName;
         }
 
         public int getGroupIndex() {
             return groupIndex;
         }
 
-        private final TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.getUncached();
-
         @Override
         public Object get(JSDynamicObject object) {
             JSRegExpGroupsObject groups = (JSRegExpGroupsObject) object;
             Object regexResult = groups.getRegexResult();
-            if (isIndicesObject.profile(groups.isIndices())) {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentLanguage().getJSContext(), TRegexResultAccessor.getUncached(), regexResult, groupIndex);
+            if (groups.isIndices()) {
+                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentLanguage().getJSContext(), regexResult, groupIndex,
+                                null, InvokeGetGroupBoundariesMethodNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached());
             } else {
                 TruffleString input = groups.getInputString();
-                return materializeNode.materializeGroup(context, regexResult, groupIndex, input);
+                return TRegexMaterializeResult.materializeGroupUncached(regexResult, groupIndex, input);
             }
         }
 
@@ -170,6 +169,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     private JSRegExp() {
     }
 
+    @NeverDefault
     public static Object getCompiledRegex(JSDynamicObject thisObj) {
         assert isJSRegExp(thisObj);
         return ((JSRegExpObject) thisObj).getCompiledRegex();
@@ -237,7 +237,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
     @TruffleBoundary
     private static JSObjectFactory computeGroupsFactory(JSContext ctx, Object compiledRegex) {
-        Object namedCaptureGroups = TRegexUtil.InteropReadMemberNode.getUncached().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
+        Object namedCaptureGroups = InteropReadMemberNode.getUncached().execute(null, compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
         if (InteropLibrary.getUncached().isNull(namedCaptureGroups)) {
             return null;
         } else {
@@ -259,7 +259,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             List<Object> keys = JSInteropUtil.keys(namedCaptureGroups);
             List<Pair<Integer, TruffleString>> pairs = new ArrayList<>(keys.size());
             for (Object key : keys) {
-                int groupIndex = TRegexUtil.InteropReadIntMemberNode.getUncached().execute(namedCaptureGroups, InteropLibrary.getUncached().asString(key));
+                int groupIndex = InteropReadIntMemberNode.getUncached().execute(null, namedCaptureGroups, InteropLibrary.getUncached().asString(key));
                 TruffleString groupName = InteropLibrary.getUncached().asTruffleString(key);
                 pairs.add(new Pair<>(groupIndex, groupName));
             }
@@ -268,7 +268,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             for (Pair<Integer, TruffleString> pair : pairs) {
                 int groupIndex = pair.getFirst();
                 TruffleString groupName = pair.getSecond();
-                builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(ctx, groupName, groupIndex), JSAttributes.getDefault() | JSProperty.PROXY);
+                builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndex), JSAttributes.getDefault() | JSProperty.PROXY);
             }
             groupsShape = builder.build();
             return JSObjectFactory.createBound(ctx, Null.instance, groupsShape);
@@ -285,12 +285,13 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     @TruffleBoundary
     public static TruffleString prototypeToString(JSDynamicObject thisObj) {
         Object regex = getCompiledRegex(thisObj);
-        InteropReadStringMemberNode readString = TRegexUtil.InteropReadStringMemberNode.getUncached();
-        TruffleString pattern = readString.execute(regex, TRegexUtil.Props.CompiledRegex.PATTERN);
+        InteropReadStringMemberNode readString = InteropReadStringMemberNode.getUncached();
+        TruffleString pattern = readString.execute(null, regex, TRegexUtil.Props.CompiledRegex.PATTERN);
         if (Strings.length(pattern) == 0) {
             pattern = Strings.EMPTY_REGEX;
         }
-        TruffleString flags = readString.execute(TRegexUtil.InteropReadMemberNode.getUncached().execute(regex, TRegexUtil.Props.CompiledRegex.FLAGS), TRegexUtil.Props.Flags.SOURCE);
+        Object regexFlags = TRegexUtil.InteropReadMemberNode.getUncached().execute(null, regex, TRegexUtil.Props.CompiledRegex.FLAGS);
+        TruffleString flags = readString.execute(null, regexFlags, TRegexUtil.Props.Flags.SOURCE);
         return Strings.concatAll(Strings.SLASH, pattern, Strings.SLASH, flags);
     }
 

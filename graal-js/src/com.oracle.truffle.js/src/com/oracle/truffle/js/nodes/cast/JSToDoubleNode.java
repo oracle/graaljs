@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,9 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -63,6 +65,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     public abstract double executeDouble(Object value);
 
+    @NeverDefault
     public static JSToDoubleNode create() {
         return JSToDoubleNodeGen.create();
     }
@@ -99,13 +102,13 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static double doStringDouble(TruffleString value,
-                    @Cached("create()") JSStringToNumberNode stringToNumberNode) {
+                    @Cached JSStringToNumberNode stringToNumberNode) {
         return stringToNumberNode.executeString(value);
     }
 
     @Specialization
     protected double doJSObject(JSObject value,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
+                    @Cached("createHintNumber()") @Shared("toPrimitiveHintNumber") JSToPrimitiveNode toPrimitiveNode) {
         return getToDoubleNode().executeDouble(toPrimitiveNode.execute(value));
     }
 
@@ -116,7 +119,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isForeignObject(object)")
     protected double doForeignObject(Object object,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
+                    @Cached("createHintNumber()") @Shared("toPrimitiveHintNumber") JSToPrimitiveNode toPrimitiveNode) {
         return getToDoubleNode().executeDouble(toPrimitiveNode.execute(object));
     }
 

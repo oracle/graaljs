@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,7 +100,7 @@ public final class DateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<D
     }
 
     public abstract static class DateParseNode extends JSBuiltinNode {
-        private final ConditionProfile gotFieldsProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile gotFieldsProfile = ConditionProfile.create();
 
         public DateParseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -138,7 +138,7 @@ public final class DateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<D
 
         @Specialization
         protected double utc(Object[] args,
-                        @Cached("create()") JSToNumberNode toNumberNode) {
+                        @Cached JSToNumberNode toNumberNode) {
             double[] argsEvaluated = new double[args.length];
             boolean isNaN = false;
             for (int i = 0; i < args.length; i++) {

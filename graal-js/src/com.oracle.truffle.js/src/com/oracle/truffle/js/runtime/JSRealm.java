@@ -85,7 +85,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltins;
@@ -210,6 +210,7 @@ import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexCompiledRegexAccessor;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 
 /**
@@ -2632,13 +2633,13 @@ public class JSRealm {
         this.embedderData = embedderData;
     }
 
-    public Object getStaticRegexResult(JSContext ctx, TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor) {
+    public Object getStaticRegexResult(JSContext ctx, Node node, TRegexUtil.InvokeExecMethodNode invokeExec) {
         CompilerAsserts.partialEvaluationConstant(ctx);
         assert ctx.isOptionRegexpStaticResult();
         if (staticRegexResultCompiledRegex != null && ctx.getRegExpStaticResultUnusedAssumption().isValid()) {
             // switch from lazy to eager static RegExp result
             ctx.getRegExpStaticResultUnusedAssumption().invalidate();
-            staticRegexResult = compiledRegexAccessor.exec(staticRegexResultCompiledRegex, staticRegexResultOriginalInputString, staticRegexResultFromIndex);
+            staticRegexResult = TRegexCompiledRegexAccessor.exec(staticRegexResultCompiledRegex, staticRegexResultOriginalInputString, staticRegexResultFromIndex, node, invokeExec);
         }
         if (staticRegexResult == null) {
             staticRegexResult = ctx.getTRegexEmptyResult();
@@ -2661,7 +2662,7 @@ public class JSRealm {
         if (ctx.getRegExpStaticResultUnusedAssumption().isValid()) {
             staticRegexResultFromIndex = fromIndex;
         } else {
-            assert TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(result, TRegexUtil.Props.RegexResult.IS_MATCH);
+            assert TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(null, result, TRegexUtil.Props.RegexResult.IS_MATCH);
             staticRegexResult = result;
         }
     }
@@ -2946,7 +2947,7 @@ public class JSRealm {
         }
     }
 
-    public boolean joinStackPush(Object o, BranchProfile growProfile) {
+    public boolean joinStackPush(Object o, Node node, InlinedBranchProfile growProfile) {
         InteropLibrary interop = (o instanceof JSObject) ? null : InteropLibrary.getFactory().getUncached(o);
         for (int i = 0; i < joinStack.size(); i++) {
             Object element = joinStack.get(i);
@@ -2954,7 +2955,7 @@ public class JSRealm {
                 return false;
             }
         }
-        joinStack.add(o, growProfile);
+        joinStack.add(o, node, growProfile);
         return true;
     }
 

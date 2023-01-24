@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,12 +47,16 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
@@ -149,8 +153,8 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
 
     @Specialization
     protected TruffleString doStringNumber(TruffleString a,
-                    @Cached("rightValueToString()") TruffleString rightString,
-                    @Cached("create()") JSConcatStringsNode createLazyString) {
+                    @Cached("rightValueToString()") @Shared("rightString") TruffleString rightString,
+                    @Cached @Shared("concatStrings") JSConcatStringsNode createLazyString) {
         return createLazyString.executeTString(a, rightString);
     }
 
@@ -164,23 +168,26 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
         return Strings.SYMBOL_PLUS;
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"!hasOverloadedOperators(a)"}, replaces = {"doInt", "doDouble", "doStringNumber"})
     protected Object doPrimitiveConversion(Object a,
+                    @Bind("this") Node node,
                     @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveA,
-                    @Cached("create()") JSToNumberNode toNumberA,
-                    @Cached("rightValueToString()") TruffleString rightString,
-                    @Cached("create()") JSConcatStringsNode createLazyString,
-                    @Cached("createBinaryProfile()") ConditionProfile profileA) {
+                    @Cached JSToNumberNode toNumberA,
+                    @Cached("rightValueToString()") @Shared("rightString") TruffleString rightString,
+                    @Cached @Shared("concatStrings") JSConcatStringsNode createLazyString,
+                    @Cached InlinedConditionProfile profileA) {
 
         Object primitiveA = toPrimitiveA.execute(a);
 
-        if (profileA.profile(isString(primitiveA))) {
+        if (profileA.profile(node, isString(primitiveA))) {
             return createLazyString.executeTString((TruffleString) primitiveA, rightString);
         } else {
             return JSRuntime.doubleValue(toNumberA.executeNumber(primitiveA)) + rightDouble;
         }
     }
 
+    @NeverDefault
     protected TruffleString rightValueToString() {
         return JSRuntime.toString(getRightValue());
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
@@ -88,7 +88,7 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
                     @Cached(value = "createCall()") JSFunctionCallNode iteratorCallNode,
                     @Cached(value = "create(NEXT, context)") PropertyGetNode getNextMethodNode,
                     @Cached(value = "createSetHidden(ASYNC_FROM_SYNC_ITERATOR_KEY, context)") PropertySetNode setSyncIteratorRecordNode,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         boolean alreadyAsync = false;
         Object method = Undefined.instance;
         if (async) {
@@ -107,12 +107,12 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
             iterator = iteratorCallNode.executeCall(JSArguments.create(iteratedObject, method));
         }
         if (!(iterator instanceof JSObject)) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorNotAnObject(iterator, this);
         }
         Object nextMethod = getNextMethodNode.getValue(iterator);
         if (!isCallableNode.executeBoolean(nextMethod)) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorNotAFunction(nextMethod, this);
         }
         IteratorRecord iteratorRecord = IteratorRecord.create((JSObject) iterator, nextMethod, false);

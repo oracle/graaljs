@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.array.dyn;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -64,13 +65,13 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
     }
 
     @Override
-    protected int prepareInBounds(JSDynamicObject object, int index, ProfileHolder profile) {
-        return prepareInBoundsContiguous(object, index, profile);
+    protected int prepareInBounds(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
+        return prepareInBoundsContiguous(object, index, node, profile);
     }
 
     @Override
-    protected int prepareSupported(JSDynamicObject object, int index, ProfileHolder profile) {
-        return prepareSupportedContiguous(object, index, profile);
+    protected int prepareSupported(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
+        return prepareSupportedContiguous(object, index, node, profile);
     }
 
     @Override
@@ -94,8 +95,8 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
     }
 
     @Override
-    public ZeroBasedJSObjectArray toNonContiguous(JSDynamicObject object, int index, Object value, ProfileHolder profile) {
-        setSupported(object, index, (JSDynamicObject) value, profile);
+    public ZeroBasedJSObjectArray toNonContiguous(JSDynamicObject object, int index, Object value, Node node, SetSupportedProfileAccess profile) {
+        setSupported(object, index, (JSDynamicObject) value, node, profile);
 
         JSDynamicObject[] array = getArray(object);
         int length = lengthInt(object);

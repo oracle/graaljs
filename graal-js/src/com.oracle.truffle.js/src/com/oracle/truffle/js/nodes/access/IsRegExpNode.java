@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,9 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -67,16 +68,16 @@ public abstract class IsRegExpNode extends JavaScriptBaseNode {
 
     @Specialization
     boolean doIsObject(JSDynamicObject obj,
-                    @Cached("create()") IsJSObjectNode isObjectNode,
-                    @Cached("create()") JSToBooleanNode toBooleanNode,
+                    @Cached IsJSObjectNode isObjectNode,
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode,
                     @Cached("createIsJSRegExpNode()") IsJSClassNode isJSRegExpNode,
-                    @Cached("createBinaryProfile()") ConditionProfile hasMatchSymbol) {
+                    @Cached InlinedConditionProfile hasMatchSymbol) {
         if (!isObjectNode.executeBoolean(obj)) {
             return false;
         }
-        Object isRegExp = getSymbolMatchNode.getValue(obj);
-        if (hasMatchSymbol.profile(isRegExp != Undefined.instance)) {
-            return toBooleanNode.executeBoolean(isRegExp);
+        Object matcher = getSymbolMatchNode.getValue(obj);
+        if (hasMatchSymbol.profile(this, matcher != Undefined.instance)) {
+            return toBooleanNode.executeBoolean(this, matcher);
         } else {
             return isJSRegExpNode.executeBoolean(obj);
         }
@@ -87,10 +88,12 @@ public abstract class IsRegExpNode extends JavaScriptBaseNode {
         return false;
     }
 
+    @NeverDefault
     static IsJSClassNode createIsJSRegExpNode() {
         return IsJSClassNode.create(JSRegExp.INSTANCE);
     }
 
+    @NeverDefault
     public static IsRegExpNode create(JSContext context) {
         return IsRegExpNodeGen.create(context);
     }

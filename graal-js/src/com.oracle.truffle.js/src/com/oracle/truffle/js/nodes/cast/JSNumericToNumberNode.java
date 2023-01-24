@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,10 +52,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 public abstract class JSNumericToNumberNode extends JavaScriptBaseNode {
 
     public abstract Number executeNumeric(Object value);
-
-    public static JSNumericToNumberNode create() {
-        return JSNumericToNumberNodeGen.create();
-    }
 
     @Specialization
     protected static Number doBigInt(BigInt value) {

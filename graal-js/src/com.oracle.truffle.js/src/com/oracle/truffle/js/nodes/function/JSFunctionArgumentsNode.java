@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,12 @@ package com.oracle.truffle.js.nodes.function;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -60,7 +62,7 @@ public class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
         assert args.length <= context.getFunctionArgumentsLimit();
         for (JavaScriptNode arg : args) {
             if (arg instanceof SpreadArgumentNode) {
-                return new SpreadFunctionArgumentsNode(args);
+                return SpreadFunctionArgumentsNodeGen.create(args);
             }
         }
         if (args.length == 0) {
@@ -174,8 +176,7 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
     }
 }
 
-class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
-    private final BranchProfile growProfile = BranchProfile.create();
+abstract class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
 
     protected SpreadFunctionArgumentsNode(JavaScriptNode[] args) {
         super(args);
@@ -186,9 +187,11 @@ class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
         return args.length;
     }
 
-    @Override
     @ExplodeLoop
-    public Object[] executeFillObjectArray(VirtualFrame frame, Object[] arguments, int fixedArgumentsLength) {
+    @Specialization
+    protected final Object[] fillObjectArray(VirtualFrame frame, Object[] arguments, int fixedArgumentsLength,
+                    @Cached InlinedBranchProfile growBranch,
+                    @Cached InlinedBranchProfile errorBranch) {
         // assume size that avoids growing
         SimpleArrayList<Object> argList = SimpleArrayList.create((long) fixedArgumentsLength + args.length + JSConfig.SpreadArgumentPlaceholderCount);
         for (int i = 0; i < fixedArgumentsLength; i++) {
@@ -196,9 +199,9 @@ class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
         }
         for (int i = 0; i < args.length; i++) {
             if (args[i] instanceof SpreadArgumentNode) {
-                ((SpreadArgumentNode) args[i]).executeToList(frame, argList, growProfile);
+                ((SpreadArgumentNode) args[i]).executeToList(frame, argList, this, growBranch, errorBranch);
             } else {
-                argList.add(args[i].execute(frame), growProfile);
+                argList.add(args[i].execute(frame), this, growBranch);
             }
         }
         return argList.toArray();
@@ -206,6 +209,6 @@ class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
 
     @Override
     protected AbstractFunctionArgumentsNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new SpreadFunctionArgumentsNode(JavaScriptNode.cloneUninitialized(args, materializedTags));
+        return SpreadFunctionArgumentsNodeGen.create(JavaScriptNode.cloneUninitialized(args, materializedTags));
     }
 }

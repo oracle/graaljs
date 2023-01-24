@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.js.nodes.intl;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -64,12 +64,12 @@ public abstract class DefaultNumberOptionNode extends JavaScriptBaseNode {
     @Specialization(guards = "!isUndefined(value)")
     public int getOption(Object value, int minimum, int maximum,
                     @SuppressWarnings("unused") int fallback,
-                    @Cached("create()") JSToNumberNode toNumberNode,
-                    @Cached("create()") BranchProfile errorBranch) {
+                    @Cached JSToNumberNode toNumberNode,
+                    @Cached InlinedBranchProfile errorBranch) {
         Number numValue = toNumberNode.executeNumber(value);
         double doubleValue = JSRuntime.doubleValue(numValue);
         if (Double.isNaN(doubleValue) || doubleValue < minimum || maximum < doubleValue) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw createRangeError(doubleValue, minimum, maximum);
         }
         return (int) doubleValue;

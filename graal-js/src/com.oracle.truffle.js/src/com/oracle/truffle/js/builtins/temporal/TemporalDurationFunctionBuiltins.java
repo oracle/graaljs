@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,9 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
@@ -99,16 +100,17 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected JSDynamicObject from(Object item,
-                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode) {
+        protected JSTemporalDurationObject from(Object item,
+                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             if (isObject(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
                 return JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(),
                                 duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
-                                duration.getMicroseconds(), duration.getNanoseconds(), errorBranch);
+                                duration.getMicroseconds(), duration.getNanoseconds(), this, errorBranch);
             }
-            return toTemporalDurationNode.executeDynamicObject(item);
+            return toTemporalDurationNode.execute(item);
         }
     }
 
@@ -122,10 +124,12 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         protected int compare(Object oneParam, Object twoParam, Object optionsParam,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached("create(getContext())") TemporalUnbalanceDurationRelativeNode unbalanceDurationRelativeNode,
-                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode) {
-            JSTemporalDurationObject one = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(oneParam);
-            JSTemporalDurationObject two = (JSTemporalDurationObject) toTemporalDurationNode.executeDynamicObject(twoParam);
-            JSDynamicObject options = getOptionsObject(optionsParam);
+                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedConditionProfile optionUndefined) {
+            JSTemporalDurationObject one = toTemporalDurationNode.execute(oneParam);
+            JSTemporalDurationObject two = toTemporalDurationNode.execute(twoParam);
+            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
             double shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),

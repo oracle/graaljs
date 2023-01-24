@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,13 +42,14 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
@@ -78,7 +79,6 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
     @Child private JSToPropertyKeyNode toPropertyKeyNode;
     @Child private InteropLibrary interopNode;
     @Child private ExportValueNode exportValueNode;
-    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected JSProxyPropertySetNode(JSContext context, boolean isStrict) {
         this.call = JSFunctionCallNode.createCall();
@@ -91,25 +91,27 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
 
     public abstract boolean executeWithReceiverAndValueInt(Object proxy, Object receiver, int value, Object key);
 
+    @NeverDefault
     public static JSProxyPropertySetNode create(JSContext context, boolean isStrict) {
         return JSProxyPropertySetNodeGen.create(context, isStrict);
     }
 
     @Specialization
     protected boolean doGeneric(JSDynamicObject proxy, Object receiver, Object value, Object key,
-                    @Cached("createBinaryProfile()") ConditionProfile hasTrap,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached InlinedConditionProfile hasTrap,
                     @Cached JSClassProfile targetClassProfile) {
         assert JSProxy.isJSProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
         JSDynamicObject handler = JSProxy.getHandler(proxy);
         if (handler == Null.instance) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorProxyRevoked(JSProxy.SET, this);
         }
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
-        if (hasTrap.profile(trapFun == Undefined.instance)) {
+        if (hasTrap.profile(this, trapFun == Undefined.instance)) {
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.setWithReceiver((JSDynamicObject) target, propertyKey, value, receiver, isStrict, targetClassProfile, this);
             } else {
@@ -120,7 +122,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         Object trapResult = call.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, value, receiver));
         boolean booleanTrapResult = toBoolean.executeBoolean(trapResult);
         if (!booleanTrapResult) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             if (isStrict) {
                 throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.SET, propertyKey);
             } else {

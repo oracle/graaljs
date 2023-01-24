@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -71,10 +72,12 @@ public abstract class TestArrayNode extends JavaScriptBaseNode {
         return TestArrayNodeGen.create(test);
     }
 
+    @NeverDefault
     public static TestArrayNode createHasHoles() {
         return create(Test.HasHoles);
     }
 
+    @NeverDefault
     public static TestArrayNode createIsSealed() {
         return create(Test.IsSealed);
     }

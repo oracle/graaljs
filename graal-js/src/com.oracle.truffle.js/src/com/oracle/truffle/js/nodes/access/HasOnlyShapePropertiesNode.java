@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,10 +57,6 @@ public abstract class HasOnlyShapePropertiesNode extends JavaScriptBaseNode {
     protected HasOnlyShapePropertiesNode() {
     }
 
-    public static HasOnlyShapePropertiesNode create() {
-        return HasOnlyShapePropertiesNodeGen.create();
-    }
-
     public final boolean execute(JSDynamicObject object) {
         return execute(object, JSObject.getJSClass(object));
     }
@@ -75,7 +71,7 @@ public abstract class HasOnlyShapePropertiesNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isJSObjectPrototype(jsclass)"})
     static boolean doObjectPrototype(JSDynamicObject object, JSClass jsclass,
-                    @Cached("getJSContext(object)") JSContext context) {
+                    @Cached("getLanguage().getJSContext()") JSContext context) {
         if (context.getArrayPrototypeNoElementsAssumption().isValid()) {
             assert jsclass.hasOnlyShapeProperties(object);
             return true;

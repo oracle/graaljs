@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,7 +70,7 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callPromiseRejectNode;
     @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
-    private final ConditionProfile notExecutingProf = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile notExecutingProf = ConditionProfile.create();
 
     protected AsyncGeneratorEnqueueNode(JSContext context) {
         this.getGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,99 +40,136 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.Set;
-
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * GetIterator(obj, hint = sync).
  */
+@GenerateInline
+@GenerateUncached
 @ImportStatic(JSInteropUtil.class)
-public abstract class GetIteratorNode extends JavaScriptNode {
-    @Child @Executed protected JavaScriptNode objectNode;
-    @Child private GetMethodNode getIteratorMethodNode;
-    @Child protected PropertyGetNode getNextMethodNode;
-    private final BranchProfile errorBranch = BranchProfile.create();
+public abstract class GetIteratorNode extends JavaScriptBaseNode {
 
-    protected final JSContext context;
-
-    protected GetIteratorNode(JSContext context, JavaScriptNode objectNode) {
-        this.context = context;
-        this.objectNode = objectNode;
-        this.getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
+    protected GetIteratorNode() {
     }
 
-    public static GetIteratorNode create(JSContext context, JavaScriptNode iteratedObject) {
-        return GetIteratorNodeGen.create(context, iteratedObject);
+    public final IteratorRecord execute(Node node, Object iteratedObject) {
+        return execute(node, iteratedObject, Undefined.instance);
     }
 
-    public static GetIteratorNode createAsync(JSContext context, JavaScriptNode iteratedObject) {
-        return GetAsyncIteratorNodeGen.create(context, iteratedObject);
+    public abstract IteratorRecord execute(Node node, Object iteratedObject, Object method);
+
+    @NeverDefault
+    public static GetIteratorNode create() {
+        return GetIteratorNodeGen.create();
+    }
+
+    public static GetIteratorNode getUncached() {
+        return GetIteratorNodeGen.getUncached();
     }
 
     @Specialization
-    protected IteratorRecord doGetIterator(Object iteratedObject,
-                    @Cached("create()") IsCallableNode isCallableNode,
-                    @Cached("createCall()") JSFunctionCallNode methodCallNode,
-                    @Cached("create()") IsJSObjectNode isObjectNode) {
-        Object method = getIteratorMethodNode().executeWithTarget(iteratedObject);
-        return getIterator(iteratedObject, method, isCallableNode, methodCallNode, isObjectNode);
-    }
-
-    protected final IteratorRecord getIterator(Object iteratedObject, Object method, IsCallableNode isCallableNode, JSFunctionCallNode methodCallNode, IsJSObjectNode isObjectNode) {
-        if (!isCallableNode.executeBoolean(method)) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorNotIterable(iteratedObject, this);
+    protected static IteratorRecord doGetIterator(Node node, Object items, Object methodOpt,
+                    @Cached(value = "createIteratorMethodNode()", uncached = "uncachedIteratorMethodNode()", inline = false) GetMethodNode getIteratorMethodNode,
+                    @Cached(inline = false) IsCallableNode isCallableNode,
+                    @Cached(value = "createCall()", uncached = "getUncachedCall()", inline = false) JSFunctionCallNode iteratorCallNode,
+                    @Cached(inline = false) IsJSObjectNode isObjectNode,
+                    @Cached(value = "createNextMethodNode()", uncached = "uncachedNextMethodNode()", inline = false) PropertyGetNode getNextMethodNode,
+                    @Cached InlinedBranchProfile errorBranch) {
+        Object method;
+        if (methodOpt != Undefined.instance) {
+            method = methodOpt;
+        } else {
+            if (getIteratorMethodNode == null) {
+                method = getIteratorMethodUncached(items, node);
+            } else {
+                method = getIteratorMethodNode.executeWithTarget(items);
+            }
         }
-        return getIterator(iteratedObject, method, methodCallNode, isObjectNode, getNextMethodNode, this);
+
+        return getIterator(items, method, isCallableNode, iteratorCallNode, isObjectNode, getNextMethodNode, errorBranch, node);
     }
 
-    public static IteratorRecord getIterator(Object iteratedObject, Object method, JSFunctionCallNode methodCallNode, IsJSObjectNode isObjectNode, PropertyGetNode getNextMethodNode,
-                    JavaScriptBaseNode origin) {
+    private static Object getIteratorMethodUncached(Object items, Node node) {
+        Object method;
+        Object obj = JSRuntime.toObject(JavaScriptLanguage.get(node).getJSContext(), items);
+        if (JSRuntime.isForeignObject(obj)) {
+            obj = ForeignObjectPrototypeNode.getUncached().execute(obj);
+        }
+        if (obj instanceof JSDynamicObject) {
+            method = JSObject.get((JSDynamicObject) obj, Symbol.SYMBOL_ITERATOR);
+        } else {
+            method = Undefined.instance;
+        }
+        return method;
+    }
+
+    public static IteratorRecord getIterator(Object iteratedObject, Object method,
+                    IsCallableNode isCallableNode,
+                    JSFunctionCallNode methodCallNode,
+                    IsJSObjectNode isObjectNode,
+                    PropertyGetNode getNextMethodNode,
+                    InlinedBranchProfile errorBranch,
+                    Node node) {
+        if (!isCallableNode.executeBoolean(method)) {
+            errorBranch.enter(node);
+            throw Errors.createTypeErrorNotIterable(iteratedObject, node);
+        }
+        return getIterator(iteratedObject, method, methodCallNode, isObjectNode, getNextMethodNode, node);
+    }
+
+    public static IteratorRecord getIterator(Object iteratedObject, Object method,
+                    JSFunctionCallNode methodCallNode,
+                    IsJSObjectNode isObjectNode,
+                    PropertyGetNode getNextMethodNode,
+                    Node node) {
         Object iterator = methodCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
         if (isObjectNode.executeBoolean(iterator)) {
             JSDynamicObject jsIterator = (JSDynamicObject) iterator;
-            Object nextMethod = getNextMethodNode.getValue(jsIterator);
+            Object nextMethod = getNextMethodNode != null ? getNextMethodNode.getValue(jsIterator) : JSObject.get(jsIterator, Strings.NEXT);
             return IteratorRecord.create(jsIterator, nextMethod, false);
         } else {
-            throw Errors.createTypeErrorNotAnObject(iterator, origin);
+            throw Errors.createTypeErrorNotAnObject(iterator, node);
         }
     }
 
-    @Override
-    public abstract IteratorRecord execute(VirtualFrame frame);
-
-    public abstract IteratorRecord execute(Object iteratedObject);
-
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return GetIteratorNodeGen.create(context, cloneUninitialized(objectNode, materializedTags));
+    @NeverDefault
+    GetMethodNode createIteratorMethodNode() {
+        return GetMethodNode.create(getLanguage().getJSContext(), Symbol.SYMBOL_ITERATOR);
     }
 
-    protected GetMethodNode getIteratorMethodNode() {
-        if (getIteratorMethodNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getIteratorMethodNode = insert(GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR));
-        }
-        return getIteratorMethodNode;
+    static GetMethodNode uncachedIteratorMethodNode() {
+        return null;
+    }
+
+    @NeverDefault
+    PropertyGetNode createNextMethodNode() {
+        return PropertyGetNode.create(Strings.NEXT, getLanguage().getJSContext());
+    }
+
+    static PropertyGetNode uncachedNextMethodNode() {
+        return null;
     }
 }

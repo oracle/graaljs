@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,11 +44,13 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -123,7 +125,7 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
     }
 
     @Specialization(guards = "isInt")
-    protected int doDouble(double a, @Cached("create()") JSToInt32Node leftInt32) {
+    protected int doDouble(double a, @Cached JSToInt32Node leftInt32) {
         return doInteger(leftInt32.executeInt(a));
     }
 
@@ -159,19 +161,20 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "isInt"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"})
     protected Object doGeneric(Object a,
-                    @Cached("create()") JSToNumericNode toNumeric,
-                    @Cached("createBinaryProfile()") ConditionProfile profileIsBigInt,
+                    @Cached @Shared("toNumeric") JSToNumericNode toNumeric,
+                    @Cached @Shared("isBigInt") InlinedConditionProfile profileIsBigInt,
                     @Cached("makeCopy()") JavaScriptNode innerXorNode) {
         Object numericA = toNumeric.execute(a);
-        if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {
+        if (profileIsBigInt.profile(this, JSRuntime.isBigInt(numericA))) {
             throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
         } else {
             return ((JSBitwiseXorConstantNode) innerXorNode).executeObject(numericA);
         }
     }
 
-    protected JSBitwiseXorConstantNode makeCopy() {
-        return (JSBitwiseXorConstantNode) copyUninitialized(null);
+    @NeverDefault
+    final JSBitwiseXorConstantNode makeCopy() {
+        return JSBitwiseXorConstantNodeGen.create(null, isInt ? rightIntValue : rightBigIntValue);
     }
 
     // Workaround for SpotBugs warning in JSBitwiseXorConstantNodeGen
@@ -181,10 +184,10 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!isInt()"}, replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"})
     protected BigInt doGenericBigIntCase(Object a,
-                    @Cached("create()") JSToNumericNode toNumeric,
-                    @Cached("createBinaryProfile()") ConditionProfile profileIsBigInt) {
+                    @Cached @Shared("toNumeric") JSToNumericNode toNumeric,
+                    @Cached @Shared("isBigInt") InlinedConditionProfile profileIsBigInt) {
         Object numericA = toNumeric.execute(a);
-        if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {
+        if (profileIsBigInt.profile(this, JSRuntime.isBigInt(numericA))) {
             return doBigInt((BigInt) numericA);
         } else {
             throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);

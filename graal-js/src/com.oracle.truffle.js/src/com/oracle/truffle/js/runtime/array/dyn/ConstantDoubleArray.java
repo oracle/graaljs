@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.array.dyn;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -89,21 +90,21 @@ public final class ConstantDoubleArray extends AbstractConstantArray {
 
     @Override
     public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
-        return createWriteableDouble(object, index, HolesDoubleArray.HOLE_VALUE_DOUBLE, ProfileHolder.empty()).deleteElementImpl(object, index, strict);
+        return createWriteableDouble(object, index, HolesDoubleArray.HOLE_VALUE_DOUBLE, null, CreateWritableProfileAccess.getUncached()).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    public ScriptArray setLengthImpl(JSDynamicObject object, long length, ProfileHolder profile) {
-        return createWriteableDouble(object, length - 1, HolesDoubleArray.HOLE_VALUE_DOUBLE, ProfileHolder.empty()).setLengthImpl(object, length, profile);
+    public ScriptArray setLengthImpl(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
+        return createWriteableDouble(object, length - 1, HolesDoubleArray.HOLE_VALUE_DOUBLE, node, profile).setLengthImpl(object, length, node, profile);
     }
 
     @Override
-    public ZeroBasedDoubleArray createWriteableInt(JSDynamicObject object, long index, int value, ProfileHolder profile) {
-        return createWriteableDouble(object, index, value, profile);
+    public ZeroBasedDoubleArray createWriteableInt(JSDynamicObject object, long index, int value, Node node, CreateWritableProfileAccess profile) {
+        return createWriteableDouble(object, index, value, node, profile);
     }
 
     @Override
-    public ZeroBasedDoubleArray createWriteableDouble(JSDynamicObject object, long index, double value, ProfileHolder profile) {
+    public ZeroBasedDoubleArray createWriteableDouble(JSDynamicObject object, long index, double value, Node node, CreateWritableProfileAccess profile) {
         double[] doubleCopy = ArrayCopy.doubleToDouble(getArray(object));
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
@@ -113,12 +114,12 @@ public final class ConstantDoubleArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractWritableArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractWritableArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, Node node, CreateWritableProfileAccess profile) {
+        return createWriteableObject(object, index, value, node, profile);
     }
 
     @Override
-    public ZeroBasedObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, ProfileHolder profile) {
+    public ZeroBasedObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, Node node, CreateWritableProfileAccess profile) {
         Object[] doubleCopy = ArrayCopy.doubleToObject(getArray(object));
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {

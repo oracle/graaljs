@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -54,8 +56,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.ArrayLiteralNodeFactory.DefaultArrayLiteralWithSpreadNodeGen;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
@@ -134,7 +137,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
     }
 
     public static ArrayLiteralNode createWithSpread(JSContext context, JavaScriptNode[] elements) {
-        return new DefaultArrayLiteralWithSpreadNode(context, elements);
+        return DefaultArrayLiteralWithSpreadNodeGen.create(context, elements);
     }
 
     private static ArrayLiteralNode createConstantArray(JSContext context, JavaScriptNode[] elements, Object[] constantValues) {
@@ -551,9 +554,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
     }
 
-    private static final class DefaultArrayLiteralWithSpreadNode extends DefaultArrayLiteralNode {
-
-        private final BranchProfile growProfile = BranchProfile.create();
+    abstract static class DefaultArrayLiteralWithSpreadNode extends DefaultArrayLiteralNode {
 
         DefaultArrayLiteralWithSpreadNode(JSContext context, JavaScriptNode[] elements) {
             super(context, elements);
@@ -561,32 +562,35 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         @ExplodeLoop
-        @Override
-        public JSArrayObject execute(VirtualFrame frame) {
+        @Specialization
+        public JSArrayObject doDefault(VirtualFrame frame,
+                        @Cached InlinedBranchProfile growProfile) {
             SimpleArrayList<Object> evaluatedElements = new SimpleArrayList<>(elements.length + JSConfig.SpreadArgumentPlaceholderCount);
             int holeCount = 0;
             int holesBeforeLastNonEmpty = 0;
             int arrayOffset = 0;
             int lastNonEmptyPlusOne = 0;
             for (int i = 0; i < elements.length; i++) {
-                Node node = elements[i];
-                if (elements[i] instanceof WrapperNode) {
-                    node = ((WrapperNode) elements[i]).getDelegateNode();
+                JavaScriptNode element = elements[i];
+                Node unwrapped = element;
+                if (element instanceof WrapperNode) {
+                    unwrapped = ((WrapperNode) element).getDelegateNode();
                 }
-                if (node instanceof EmptyNode) {
-                    evaluatedElements.add(null, growProfile);
+                if (unwrapped instanceof EmptyNode) {
+                    evaluatedElements.add(null, this, growProfile);
                     holeCount++;
                     if (lastNonEmptyPlusOne == 0) {
                         arrayOffset++;
                     }
-                } else if (node instanceof SpreadArrayNode) {
-                    int count = ((SpreadArrayNode) node).executeToList(frame, evaluatedElements, growProfile);
+                } else if (unwrapped instanceof SpreadArrayNode) {
+                    int count = ((SpreadArrayNode) unwrapped).executeToList(frame, evaluatedElements, this, growProfile);
                     if (count != 0) {
                         lastNonEmptyPlusOne = evaluatedElements.size();
                         holesBeforeLastNonEmpty = holeCount;
                     }
                 } else {
-                    evaluatedElements.add(elements[i].execute(frame), growProfile);
+                    Object evaluatedElement = element.execute(frame);
+                    evaluatedElements.add(evaluatedElement, this, growProfile);
                     lastNonEmptyPlusOne = evaluatedElements.size();
                     holesBeforeLastNonEmpty = holeCount;
                 }
@@ -598,24 +602,24 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new DefaultArrayLiteralWithSpreadNode(context, cloneUninitialized(elements, materializedTags));
+            return DefaultArrayLiteralWithSpreadNodeGen.create(context, cloneUninitialized(elements, materializedTags));
         }
     }
 
     public static final class SpreadArrayNode extends JavaScriptNode {
-        @Child private GetIteratorNode getIteratorNode;
+        @Child private GetIteratorUnaryNode getIteratorNode;
         @Child private IteratorGetNextValueNode iteratorStepNode;
 
-        private SpreadArrayNode(JSContext context, GetIteratorNode getIteratorNode) {
+        private SpreadArrayNode(JSContext context, GetIteratorUnaryNode getIteratorNode) {
             this.getIteratorNode = getIteratorNode;
             this.iteratorStepNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), false);
         }
 
-        public static SpreadArrayNode create(JSContext context, GetIteratorNode getIteratorNode) {
+        public static SpreadArrayNode create(JSContext context, GetIteratorUnaryNode getIteratorNode) {
             return new SpreadArrayNode(context, getIteratorNode);
         }
 
-        public int executeToList(VirtualFrame frame, SimpleArrayList<Object> toList, BranchProfile growProfile) {
+        public int executeToList(VirtualFrame frame, SimpleArrayList<Object> toList, Node node, InlinedBranchProfile growProfile) {
             IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
             int count = 0;
             for (;;) {
@@ -623,7 +627,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                 if (nextArg == null) {
                     break;
                 }
-                toList.add(nextArg, growProfile);
+                toList.add(nextArg, node, growProfile);
                 count++;
             }
             return count;

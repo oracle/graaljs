@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,8 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoi;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -70,49 +71,44 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
  */
 public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
 
-    private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isPlainDateTimeProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isZonedDateTimeProfile = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isPlainTimeProfile = ConditionProfile.createBinaryProfile();
-    private final BranchProfile errorBranch = BranchProfile.create();
-
     protected final JSContext ctx;
 
     protected ToTemporalTimeNode(JSContext context) {
         this.ctx = context;
     }
 
-    public static ToTemporalTimeNode create(JSContext context) {
-        return ToTemporalTimeNodeGen.create(context);
-    }
-
-    public abstract JSDynamicObject executeDynamicObject(Object value, Overflow overflowParam);
+    public abstract JSTemporalPlainTimeObject execute(Object value, Overflow overflowParam);
 
     @Specialization
-    protected JSDynamicObject toTemporalTime(Object item, Overflow overflowParam,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode,
+    protected JSTemporalPlainTimeObject toTemporalTime(Object item, Overflow overflowParam,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode,
+                    @Cached InlinedConditionProfile isObjectProfile,
+                    @Cached InlinedConditionProfile isPlainDateTimeProfile,
+                    @Cached InlinedConditionProfile isZonedDateTimeProfile,
+                    @Cached InlinedConditionProfile isPlainTimeProfile,
+                    @Cached InlinedBranchProfile errorBranch,
                     @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode) {
         Overflow overflow = overflowParam == null ? Overflow.CONSTRAIN : overflowParam;
         assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
         JSTemporalDurationRecord result2 = null;
-        if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
+        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
-            if (isPlainTimeProfile.profile(JSTemporalPlainTime.isJSTemporalPlainTime(itemObj))) {
-                return itemObj;
-            } else if (isZonedDateTimeProfile.profile(TemporalUtil.isTemporalZonedDateTime(itemObj))) {
+            if (isPlainTimeProfile.profile(this, JSTemporalPlainTime.isJSTemporalPlainTime(itemObj))) {
+                return (JSTemporalPlainTimeObject) itemObj;
+            } else if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(itemObj))) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) itemObj;
                 JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, getRealm(), zdt.getNanoseconds());
                 JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
                 return JSTemporalPlainTime.create(ctx, plainDateTime.getHour(), plainDateTime.getMinute(),
-                                plainDateTime.getSecond(), plainDateTime.getMillisecond(), plainDateTime.getMicrosecond(), plainDateTime.getNanosecond(), errorBranch);
-            } else if (isPlainDateTimeProfile.profile(JSTemporalPlainDateTime.isJSTemporalPlainDateTime(itemObj))) {
+                                plainDateTime.getSecond(), plainDateTime.getMillisecond(), plainDateTime.getMicrosecond(), plainDateTime.getNanosecond(), this, errorBranch);
+            } else if (isPlainDateTimeProfile.profile(this, JSTemporalPlainDateTime.isJSTemporalPlainDateTime(itemObj))) {
                 JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) itemObj;
-                return JSTemporalPlainTime.create(ctx, dt.getHour(), dt.getMinute(), dt.getSecond(), dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), errorBranch);
+                return JSTemporalPlainTime.create(ctx, dt.getHour(), dt.getMinute(), dt.getSecond(), dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), this, errorBranch);
             }
-            JSDynamicObject calendar = getTemporalCalendarNode.executeDynamicObject(itemObj);
+            JSDynamicObject calendar = getTemporalCalendarNode.execute(itemObj);
             if (!toStringNode.executeString(calendar).equals(TemporalConstants.ISO8601)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorTemporalISO8601Expected();
             }
             JSTemporalDateTimeRecord result = TemporalUtil.toTemporalTimeRecord(itemObj);
@@ -127,6 +123,6 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
             result2 = JSTemporalDurationRecord.create(result);
         }
         return JSTemporalPlainTime.create(ctx, dtoi(result2.getHours()), dtoi(result2.getMinutes()), dtoi(result2.getSeconds()), dtoi(result2.getMilliseconds()), dtoi(result2.getMicroseconds()),
-                        dtoi(result2.getNanoseconds()), errorBranch);
+                        dtoi(result2.getNanoseconds()), this, errorBranch);
     }
 }

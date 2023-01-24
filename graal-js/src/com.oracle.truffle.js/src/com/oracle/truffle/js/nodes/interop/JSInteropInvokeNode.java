@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.interop;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -60,15 +61,11 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
     JSInteropInvokeNode() {
     }
 
-    public static JSInteropInvokeNode create() {
-        return JSInteropInvokeNodeGen.create();
-    }
-
     public abstract Object execute(JSDynamicObject receiver, TruffleString name, Object[] arguments) throws UnknownIdentifierException, UnsupportedMessageException;
 
     @Specialization(guards = {"stringEquals(equalNode, cachedName, name)"}, limit = "1")
     Object doCached(JSDynamicObject receiver, @SuppressWarnings("unused") TruffleString name, Object[] arguments,
-                    @Cached("name") TruffleString cachedName,
+                    @Cached(value = "name", neverDefault = true) TruffleString cachedName,
                     @Cached @SuppressWarnings("unused") TruffleString.EqualNode equalNode,
                     @Cached("createGetProperty(cachedName)") PropertyGetNode functionPropertyGetNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
@@ -108,6 +105,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
         }
     }
 
+    @NeverDefault
     PropertyGetNode createGetProperty(TruffleString name) {
         return PropertyGetNode.create(name, false, getLanguage().getJSContext());
     }

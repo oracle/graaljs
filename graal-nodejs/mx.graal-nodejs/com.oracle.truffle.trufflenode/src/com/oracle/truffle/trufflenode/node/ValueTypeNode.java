@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,7 +89,9 @@ import static com.oracle.truffle.trufflenode.ValueType.UNKNOWN_TYPE;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -97,6 +99,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
@@ -243,15 +246,19 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return PROXY_OBJECT;
     }
 
-    @Specialization(guards = {"cachedArray == value.getArrayType()"})
+    static final int TYPED_ARRAY_LIMIT = 3;
+
+    @SuppressWarnings("truffle-static-method")
+    @Specialization(guards = {"cachedArray == value.getArrayType()"}, limit = "TYPED_ARRAY_LIMIT")
     protected final int doArrayBufferView(JSTypedArrayObject value,
+                    @Bind("this") Node node,
                     @Cached("value.getArrayType()") TypedArray cachedArray,
                     @Cached("identifyType(cachedArray)") int cachedTypeInt,
-                    @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
+                    @Cached @Shared("getByteLength") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         assert JSArrayBufferView.isJSArrayBufferView(value);
         if (useSharedBuffer) {
             ByteBuffer sharedBuffer = GraalJSAccess.get(this).getSharedBuffer();
-            sharedBuffer.putInt(getByteLengthNode.executeInt(value));
+            sharedBuffer.putInt(getByteLengthNode.executeInt(node, value, context));
             sharedBuffer.putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         return cachedTypeInt;
@@ -259,11 +266,11 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = "doArrayBufferView")
     protected final int doArrayBufferViewOverLimit(JSTypedArrayObject value,
-                    @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
+                    @Cached @Shared("getByteLength") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         assert JSArrayBufferView.isJSArrayBufferView(value);
         if (useSharedBuffer) {
             ByteBuffer sharedBuffer = GraalJSAccess.get(this).getSharedBuffer();
-            sharedBuffer.putInt(getByteLengthNode.executeInt(value));
+            sharedBuffer.putInt(getByteLengthNode.executeInt(this, value, context));
             sharedBuffer.putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         TypedArray array = value.getArrayType();

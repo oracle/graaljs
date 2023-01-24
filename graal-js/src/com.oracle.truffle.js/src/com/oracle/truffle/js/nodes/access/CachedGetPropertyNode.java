@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.FrequencyBasedPolymorphicAccessNode.FrequencyBasedPropertyGetNode;
@@ -76,24 +77,24 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(equalsNode, cachedKey, key)"}, limit = "MAX_DEPTH")
     Object doCachedKey(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
-                    @Cached("cachedPropertyKey(key)") Object cachedKey,
+                    @Cached("propertyKeyOrNull(key)") Object cachedKey,
                     @Cached("create(cachedKey, context)") PropertyGetNode propertyNode,
-                    @Cached TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
         return propertyNode.getValueOrDefault(target, receiver, defaultValue);
     }
 
     @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
     Object doIntIndex(JSDynamicObject target, int index, Object receiver, Object defaultValue,
-                    @Cached("create()") JSClassProfile jsclassProfile) {
+                    @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 
-    @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"})
+    @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"}, limit = "1")
     Object doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object receiver, Object defaultValue,
-                    @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
+                    @Cached @Shared("requireObjectCoercible") RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
                     @Bind("toArrayIndexNode.execute(key)") Object maybeIndex,
-                    @Cached("create()") JSClassProfile jsclassProfile) {
+                    @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
         requireObjectCoercibleNode.executeVoid(target);
         long index = (long) maybeIndex;
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
@@ -107,34 +108,30 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
 
     @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
-    Object doGeneric(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
-                    @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
-                    @Cached("create()") ToArrayIndexNode toArrayIndexNode,
-                    @Cached("createBinaryProfile()") ConditionProfile getType,
-                    @Cached("create()") JSClassProfile jsclassProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile highFrequency,
+    static Object doGeneric(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
+                    @Bind("this") Node node,
+                    @Cached @Shared("requireObjectCoercible") RequireObjectCoercibleNode requireObjectCoercibleNode,
+                    @Cached ToArrayIndexNode toArrayIndexNode,
+                    @Cached InlinedConditionProfile getType,
+                    @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile,
+                    @Cached InlinedConditionProfile highFrequency,
                     @Cached("createFrequencyBasedPropertyGet(context)") FrequencyBasedPropertyGetNode hotKey,
-                    @Cached TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
         requireObjectCoercibleNode.executeVoid(target);
         Object arrayIndex = toArrayIndexNode.execute(key);
-        if (getType.profile(arrayIndex instanceof Long)) {
-            return JSObject.getOrDefault(target, (long) arrayIndex, receiver, defaultValue, jsclassProfile, this);
+        if (getType.profile(node, arrayIndex instanceof Long)) {
+            return JSObject.getOrDefault(target, (long) arrayIndex, receiver, defaultValue, jsclassProfile, node);
         } else {
             assert JSRuntime.isPropertyKey(arrayIndex);
             Object maybeRead = hotKey.executeFastGet(arrayIndex, target, equalsNode);
-            if (highFrequency.profile(maybeRead != null)) {
+            if (highFrequency.profile(node, maybeRead != null)) {
                 return maybeRead;
             }
-            return JSObject.getOrDefault(target, arrayIndex, receiver, defaultValue, jsclassProfile, this);
+            return JSObject.getOrDefault(target, arrayIndex, receiver, defaultValue, jsclassProfile, node);
         }
     }
 
-    public static Object cachedPropertyKey(Object key) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (JSRuntime.isPropertyKey(key)) {
-            return key;
-        } else {
-            return null;
-        }
+    static Object propertyKeyOrNull(Object key) {
+        return JSRuntime.isPropertyKey(key) ? key : null;
     }
 }

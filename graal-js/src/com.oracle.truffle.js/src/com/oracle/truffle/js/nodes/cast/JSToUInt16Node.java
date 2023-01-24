@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
@@ -65,9 +65,9 @@ public abstract class JSToUInt16Node extends JavaScriptBaseNode {
 
     @Specialization
     protected int doDouble(double value,
-                    @Cached("create()") BranchProfile needPositiveInfinityBranch) {
+                    @Cached InlinedBranchProfile needPositiveInfinityBranch) {
         if (JSRuntime.isPositiveInfinity(value)) {
-            needPositiveInfinityBranch.enter();
+            needPositiveInfinityBranch.enter(this);
             return 0;
         }
         return JSRuntime.toUInt16((long) value);
@@ -75,7 +75,7 @@ public abstract class JSToUInt16Node extends JavaScriptBaseNode {
 
     @Specialization
     protected int doGeneric(Object value,
-                    @Cached("create()") JSToNumberNode toNumberNode) {
+                    @Cached JSToNumberNode toNumberNode) {
         return JSRuntime.toUInt16(toNumberNode.executeNumber(value));
     }
 }

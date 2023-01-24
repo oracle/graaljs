@@ -51,6 +51,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsCompareExchangeNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsComputeNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsIsLockFreeNodeGen;
@@ -494,14 +495,14 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization
         protected Object doGeneric(Object maybeTarget, Object index, Object expected, Object replacement,
                         @Cached @Shared("toIndex") JSToIndexNode toIndexNode,
-                        @Cached BranchProfile notSharedArrayBuffer) {
+                        @Cached InlinedBranchProfile notSharedArrayBuffer) {
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
             TypedArray ta = validateIntegerTypedArray(target, false);
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
 
             if (!isSharedBufferView(target)) {
-                notSharedArrayBuffer.enter();
+                notSharedArrayBuffer.enter(this);
                 if (ta instanceof Int8Array || ta instanceof DirectInt8Array || ta instanceof InteropInt8Array) {
                     return (int) (byte) doInt8(target, intIndex, toInt(expected), toIntChecked(replacement, target), true, (TypedIntArray) ta);
                 } else if (ta instanceof Uint8Array || ta instanceof DirectUint8Array || ta instanceof InteropUint8Array) {
@@ -989,14 +990,14 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization
         protected Object doGeneric(Object maybeTarget, Object index, Object value,
                         @Cached @Shared("toIndex") JSToIndexNode toIndexNode,
-                        @Cached BranchProfile notSharedArrayBuffer) {
+                        @Cached InlinedBranchProfile notSharedArrayBuffer) {
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
             TypedArray ta = validateIntegerTypedArray(target, false);
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
 
             if (!isSharedBufferView(target)) {
-                notSharedArrayBuffer.enter();
+                notSharedArrayBuffer.enter(this);
                 if (ta instanceof DirectInt8Array || ta instanceof Int8Array || ta instanceof InteropInt8Array) {
                     return (int) (byte) nonAtomicDoInt(target, intIndex, toIntChecked(value, target), (TypedIntArray) ta);
                 } else if (ta instanceof DirectUint8Array || ta instanceof Uint8Array || ta instanceof InteropUint8Array) {
@@ -1076,8 +1077,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization
         protected Object doNotify(Object maybeTarget, Object index, Object count,
                         @Cached JSToIndexNode toIndexNode,
-                        @Cached("create()") JSToInt32Node toInt32Node,
-                        @Cached("create()") BranchProfile notSharedArrayBuffer) {
+                        @Cached JSToInt32Node toInt32Node,
+                        @Cached InlinedBranchProfile notSharedArrayBuffer) {
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
             validateIntegerTypedArray(target, true);
@@ -1090,7 +1091,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             }
             // Note: this check must happen after 'c' is computed.
             if (!isSharedBufferView(target)) {
-                notSharedArrayBuffer.enter();
+                notSharedArrayBuffer.enter(this);
                 return 0;
             }
 
@@ -1128,11 +1129,11 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
     }
 
     public abstract static class AtomicsWaitBaseNode extends AtomicsOperationNode {
-        private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile timeoutNaNProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isAsyncProfile = ConditionProfile.create();
+        private final ConditionProfile timeoutNaNProfile = ConditionProfile.create();
         private final BranchProfile valuesNotEqualBranch = BranchProfile.create();
         private final BranchProfile asyncImmediateTimeoutBranch = BranchProfile.create();
-        private final ConditionProfile awokenProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile awokenProfile = ConditionProfile.create();
         private final BranchProfile errorBranch = BranchProfile.create();
         private final BranchProfile notSharedArrayBuffer = BranchProfile.create();
 

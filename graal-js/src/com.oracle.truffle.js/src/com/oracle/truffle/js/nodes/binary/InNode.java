@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -92,11 +92,11 @@ public abstract class InNode extends JSBinaryNode {
     @Specialization(guards = "isForeignObject(haystack)")
     protected boolean doForeign(Object needle, Object haystack,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile errorBranch) {
         if (isObjectNode.executeBoolean(haystack)) {
             return getHasPropertyNode().executeBoolean(haystack, needle);
         } else {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorNotAnObject(haystack, this);
         }
     }

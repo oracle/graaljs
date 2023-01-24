@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,14 +42,15 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
@@ -59,28 +60,24 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
 
     protected final JSContext ctx;
-    private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
-    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected ToTemporalDurationNode(JSContext context) {
         this.ctx = context;
     }
 
-    public static ToTemporalDurationNode create(JSContext context) {
-        return ToTemporalDurationNodeGen.create(context);
-    }
-
-    public abstract JSDynamicObject executeDynamicObject(Object item);
+    public abstract JSTemporalDurationObject execute(Object item);
 
     @Specialization
-    protected JSDynamicObject toTemporalDuration(Object item,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode) {
+    protected JSTemporalDurationObject toTemporalDuration(Object item,
+                    @Cached InlinedConditionProfile isObjectProfile,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode) {
         JSTemporalDurationRecord result;
-        if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
+        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
             if (JSTemporalDuration.isJSTemporalDuration(itemObj)) {
-                return itemObj;
+                return (JSTemporalDurationObject) itemObj;
             }
             result = JSTemporalDuration.toTemporalDurationRecord(itemObj);
         } else {
@@ -88,6 +85,6 @@ public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
             result = JSTemporalDuration.parseTemporalDurationString(string);
         }
         return JSTemporalDuration.createTemporalDuration(ctx, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
-                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), errorBranch);
+                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), this, errorBranch);
     }
 }

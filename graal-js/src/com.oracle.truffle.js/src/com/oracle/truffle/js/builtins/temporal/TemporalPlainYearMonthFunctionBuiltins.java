@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,13 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltinsFactory.JSTemporalPlainYearMonthCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltinsFactory.JSTemporalPlainYearMonthFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalYearMonthNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -99,15 +101,18 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected JSDynamicObject from(Object item, Object optParam,
-                        @Cached("create(getContext())") ToTemporalYearMonthNode toTemporalYearMonthNode) {
-            JSDynamicObject options = getOptionsObject(optParam);
+        protected JSTemporalPlainYearMonthObject from(Object item, Object optParam,
+                        @Cached("create(getContext())") ToTemporalYearMonthNode toTemporalYearMonthNode,
+                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedConditionProfile optionUndefined) {
+            JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
             if (isObject(item) && JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(item)) {
                 JSTemporalPlainYearMonthObject pmd = (JSTemporalPlainYearMonthObject) item;
-                TemporalUtil.toTemporalOverflow(options, getOptionNode());
-                return JSTemporalPlainYearMonth.create(getContext(), pmd.getYear(), pmd.getMonth(), pmd.getCalendar(), pmd.getDay(), errorBranch);
+                TemporalUtil.toTemporalOverflow(options, getOptionNode);
+                return JSTemporalPlainYearMonth.create(getContext(), pmd.getYear(), pmd.getMonth(), pmd.getCalendar(), pmd.getDay(), this, errorBranch);
             }
-            return toTemporalYearMonthNode.executeDynamicObject(item, options);
+            return toTemporalYearMonthNode.execute(item, options);
         }
 
     }
@@ -121,8 +126,8 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected int compare(Object one, Object two,
                         @Cached("create(getContext())") ToTemporalYearMonthNode toTemporalYearMonthNode) {
-            JSTemporalPlainYearMonthObject oneYM = toTemporalYearMonthNode.executeDynamicObject(one, Undefined.instance);
-            JSTemporalPlainYearMonthObject twoYM = toTemporalYearMonthNode.executeDynamicObject(two, Undefined.instance);
+            JSTemporalPlainYearMonthObject oneYM = toTemporalYearMonthNode.execute(one, Undefined.instance);
+            JSTemporalPlainYearMonthObject twoYM = toTemporalYearMonthNode.execute(two, Undefined.instance);
             return TemporalUtil.compareISODate(oneYM.getYear(), oneYM.getMonth(), oneYM.getDay(), twoYM.getYear(), twoYM.getMonth(), twoYM.getDay());
         }
 

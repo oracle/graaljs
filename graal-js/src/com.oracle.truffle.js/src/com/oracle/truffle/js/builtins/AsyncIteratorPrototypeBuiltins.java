@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,12 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.AsyncIteratorArgs;
 import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorMethodNode;
 import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorMethodWithCallableNode;
@@ -70,6 +71,7 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorDrainQueueNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -179,9 +181,9 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Child private PropertyGetNode getArgsNode;
             @Child private PropertyGetNode getThisNode;
             @Child protected JSFunctionCallNode callNode;
+            @Child private LongToIntOrDoubleNode indexToNumber = LongToIntOrDoubleNode.create();
 
             protected final JSContext context;
-            private final BranchProfile doubleIndexBranch = BranchProfile.create();
 
             protected AsyncIteratorRootNode(JSContext context) {
                 super(context.getLanguage(), null, null);
@@ -214,7 +216,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
 
             protected final Object indexToJS(long index) {
-                return JSRuntime.longToIntOrDouble(index, doubleIndexBranch);
+                return indexToNumber.fromIndex(null, index);
             }
         }
 
@@ -307,7 +309,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
                 this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
                 this.isObjectNode = IsObjectNode.create();
-                this.iteratorCompleteNode = IteratorCompleteNode.create(context);
+                this.iteratorCompleteNode = IteratorCompleteNode.create();
             }
 
             public abstract Object executeBody(VirtualFrame frame);
@@ -451,7 +453,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             AsyncIteratorGeneratorAwaitResumptionWithNextRootNode(JSContext context) {
                 super(context);
                 this.isObjectNode = IsObjectNode.create();
-                this.iteratorCompleteNode = IteratorCompleteNode.create(context);
+                this.iteratorCompleteNode = IteratorCompleteNode.create();
                 this.iteratorValueNode = IteratorValueNode.create();
             }
 
@@ -1097,8 +1099,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
 
-        private final BranchProfile errorBranch = BranchProfile.create();
-
         public AsyncIteratorTakeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
@@ -1109,18 +1109,19 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization
-        public JSDynamicObject take(Object thisObj, Object limit) {
+        public JSDynamicObject take(Object thisObj, Object limit,
+                        @Cached InlinedBranchProfile errorBranch) {
             IteratorRecord record = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
             if (integerLimit < 0) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
@@ -1216,8 +1217,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
 
-        private final BranchProfile errorProfile = BranchProfile.create();
-
         public AsyncIteratorDropNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
@@ -1228,18 +1227,19 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization
-        public JSDynamicObject drop(Object thisObj, Object limit) {
+        public JSDynamicObject drop(Object thisObj, Object limit,
+                        @Cached InlinedBranchProfile errorBranch) {
             IteratorRecord record = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
-                errorProfile.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
             if (integerLimit < 0) {
-                errorProfile.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
@@ -1713,9 +1713,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Child private IteratorNextNode iteratorNextNode;
             @Child private IteratorValueNode iteratorValueNode;
             @Child private AsyncIteratorAwaitNode<AsyncIteratorToArrayArgs> awaitNode;
-
             private final JSContext context;
-            private final BranchProfile growProfile = BranchProfile.create();
 
             public AsyncIteratorToArrayRootNode(JSContext context) {
                 super(context);
@@ -1738,7 +1736,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 }
 
                 Object value = iteratorValueNode.execute(next);
-                args.result.add(value, growProfile);
+                args.result.add(value, null, InlinedBranchProfile.getUncached());
 
                 return awaitNode.execute(frame, iteratorNextNode.execute(args.iterated), args);
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -141,7 +142,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static boolean doJSObjectCached(Object object,
-                    @Cached("getClassIfJSObject(object)") Class<?> cachedClass) {
+                    @Cached(value = "getClassIfJSObject(object)", neverDefault = false) Class<?> cachedClass) {
         assert !JSGuards.isNullOrUndefined(object);
         return false;
     }
@@ -172,6 +173,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
         return JSIsNullOrUndefinedNodeGen.create(value, false, false);
     }
 
+    @NeverDefault
     public static JSIsNullOrUndefinedNode create() {
         return JSIsNullOrUndefinedNodeGen.create(null, true, true);
     }

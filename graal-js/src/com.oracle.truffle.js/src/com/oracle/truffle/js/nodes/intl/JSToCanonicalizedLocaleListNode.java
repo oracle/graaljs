@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,8 +110,8 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                     @Cached("createToObject(context)") JSToObjectNode toObjectNode,
                     @Cached("create(context)") JSGetLengthNode getLengthNode,
                     @Cached JSHasPropertyNode hasPropertyNode,
-                    @Cached TypeOfNode typeOfNode,
-                    @Cached JSToStringNode toStringNode,
+                    @Cached @Shared("typeOfNode") TypeOfNode typeOfNode,
+                    @Cached @Shared("toStringNode") JSToStringNode toStringNode,
                     @Cached @Shared("equalsNode") TruffleString.EqualNode equalsNode,
                     @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode) {
         List<String> result = new ArrayList<>();
@@ -143,8 +143,8 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     @Specialization(guards = {"isForeignObject(object)"})
     protected String[] doForeignType(Object object,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                    @Cached TypeOfNode typeOfNode,
-                    @Cached JSToStringNode toStringNode,
+                    @Cached @Shared("typeOfNode") TypeOfNode typeOfNode,
+                    @Cached @Shared("toStringNode") JSToStringNode toStringNode,
                     @Cached @Shared("equalsNode") TruffleString.EqualNode equalsNode,
                     @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode) {
         List<String> result = new ArrayList<>();

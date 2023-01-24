@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
@@ -74,7 +76,7 @@ import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
-public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
+public abstract class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
 
     protected static final class RejectElementArgs {
         boolean alreadyCalled;
@@ -98,7 +100,6 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
     @Child protected PropertyGetNode getThen;
     @Child protected JSFunctionCallNode callThen;
     @Child protected PropertySetNode setArgs;
-    private final BranchProfile growProfile = BranchProfile.create();
 
     protected PerformPromiseAnyNode(JSContext context) {
         super(context);
@@ -109,11 +110,12 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
     }
 
     public static PerformPromiseAnyNode create(JSContext context) {
-        return new PerformPromiseAnyNode(context);
+        return PerformPromiseAnyNodeGen.create(context);
     }
 
-    @Override
-    public JSDynamicObject execute(IteratorRecord iteratorRecord, JSDynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve) {
+    @Specialization
+    protected JSDynamicObject promiseAny(IteratorRecord iteratorRecord, JSDynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve,
+                    @Cached InlinedBranchProfile growProfile) {
         assert JSRuntime.isConstructor(constructor);
         assert JSRuntime.isCallable(promiseResolve);
         SimpleArrayList<Object> errors = new SimpleArrayList<>(10);
@@ -130,7 +132,7 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
                 return resultCapability.getPromise();
             }
             Object nextValue = iteratorValueOrSetDone(iteratorRecord, next);
-            errors.add(Undefined.instance, growProfile);
+            errors.add(Undefined.instance, this, growProfile);
             Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
             Object resolveElement = createResolveElementFunction(index, errors, resultCapability, remainingElementsCount);
             JSFunctionObject rejectElement = createRejectElementFunction(index, errors, resultCapability, remainingElementsCount);

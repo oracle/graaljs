@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,19 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.nodes.DenyReplace;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * ES6 7.4.3 IteratorComplete(iterResult).
  */
+@GenerateUncached
 public abstract class IteratorCompleteNode extends JavaScriptBaseNode {
 
     protected IteratorCompleteNode() {
@@ -57,44 +60,26 @@ public abstract class IteratorCompleteNode extends JavaScriptBaseNode {
 
     public abstract boolean execute(Object iterResult);
 
-    public static IteratorCompleteNode create(JSContext context) {
-        return new Cached(context);
+    @Specialization
+    protected boolean iteratorComplete(Object iterResult,
+                    @Cached(value = "createGetDoneNode()", uncached = "getNullNode()") PropertyGetNode getDoneNode,
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode) {
+        Object done = (getDoneNode != null) ? getDoneNode.getValue(iterResult) : JSRuntime.get(iterResult, Strings.DONE);
+        return toBooleanNode.executeBoolean(this, done);
     }
 
+    @NeverDefault
+    public static IteratorCompleteNode create() {
+        return IteratorCompleteNodeGen.create();
+    }
+
+    @NeverDefault
     public static IteratorCompleteNode getUncached() {
-        return Uncached.INSTANCE;
+        return IteratorCompleteNodeGen.getUncached();
     }
 
-    static final class Cached extends IteratorCompleteNode {
-        @Child private PropertyGetNode getDoneNode;
-        @Child private JSToBooleanNode toBooleanNode;
-
-        Cached(JSContext context) {
-            this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
-            this.toBooleanNode = JSToBooleanNode.create();
-        }
-
-        @Override
-        public boolean execute(Object iterResult) {
-            return toBooleanNode.executeBoolean(getDoneNode.getValue(iterResult));
-        }
-    }
-
-    @DenyReplace
-    static final class Uncached extends IteratorCompleteNode {
-        static final Uncached INSTANCE = new Uncached();
-
-        private Uncached() {
-        }
-
-        @Override
-        public boolean execute(Object iterResult) {
-            return JSRuntime.toBoolean(JSRuntime.get(iterResult, Strings.DONE));
-        }
-
-        @Override
-        public boolean isAdoptable() {
-            return false;
-        }
+    @NeverDefault
+    PropertyGetNode createGetDoneNode() {
+        return PropertyGetNode.create(Strings.DONE, getLanguage().getJSContext());
     }
 }

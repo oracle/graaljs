@@ -55,7 +55,9 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyInstancePrototypeBuiltins;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
+import com.oracle.truffle.js.nodes.wasm.ToJSValueNodeGen;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
+import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNodeGen;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -197,8 +199,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         boolean anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
 
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
-            @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
+            @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNodeGen.create();
+            @Child ToJSValueNode toJSValueNode = ToJSValueNodeGen.create();
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             @Child InteropLibrary readArrayElementLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
@@ -315,7 +317,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         if (!isI64 && isBigInt) {
                             throw Errors.createLinkError("BigInt can only be stored in valtype i64");
                         }
-                        Object webAssemblyValue = ToWebAssemblyValueNode.getUncached().execute(value, valueType);
+                        Object webAssemblyValue = ToWebAssemblyValueNodeGen.getUncached().execute(value, valueType);
                         try {
                             Object createGlobal = realm.getWASMGlobalAlloc();
                             wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, valueType, false, webAssemblyValue);

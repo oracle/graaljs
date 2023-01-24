@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,7 +92,7 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected Object doJSObjectCached(Object object,
-                    @Cached("getClassIfJSObject(object)") Class<?> cachedClass) {
+                    @Cached(value = "getClassIfJSObject(object)", neverDefault = false) Class<?> cachedClass) {
         return object;
     }
 

@@ -209,7 +209,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         @Child private JSIsArrayNode isArrayNode;
         @Child private IsCallableNode isCallableNode;
         private final BranchProfile spaceIsStringBranch = BranchProfile.create();
-        private final ConditionProfile spaceIsUndefinedProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile spaceIsUndefinedProfile = ConditionProfile.create();
 
         protected Object jsonStr(Object jsonData, Object keyStr, JSDynamicObject holder) {
             if (jsonStringifyStringNode == null) {

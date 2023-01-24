@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,14 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -66,6 +70,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
         super(context);
     }
 
+    @NeverDefault
     public static JSArrayFirstElementIndexNode create(JSContext context) {
         return JSArrayFirstElementIndexNodeGen.create(context);
     }
@@ -90,30 +95,32 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
         return getArrayType(object).firstElementIndex(object);
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object) == cachedArrayType",
                     "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long doWithHolesCached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
-                    @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached("createBinaryProfile()") ConditionProfile isZero) {
+                    @Bind("this") Node node,
+                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared("isZero") InlinedConditionProfile isZero) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
-        return holesArrayImpl(object, length, cachedArrayType, nextElementIndexNode, isZero);
+        return holesArrayImpl(object, length, cachedArrayType, node, nextElementIndexNode, isZero);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "doWithHolesCached")
     public long doWithHolesUncached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached("createBinaryProfile()") ConditionProfile isZero,
-                    @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
+                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared("isZero") InlinedConditionProfile isZero,
+                    @Cached InlinedExactClassProfile arrayTypeProfile) {
         assert isSupportedArray(object);
-        ScriptArray array = arrayTypeProfile.profile(getArrayType(object));
-        return holesArrayImpl(object, length, array, nextElementIndexNode, isZero);
+        ScriptArray array = arrayTypeProfile.profile(this, getArrayType(object));
+        return holesArrayImpl(object, length, array, this, nextElementIndexNode, isZero);
     }
 
     private long holesArrayImpl(JSDynamicObject object, long length, ScriptArray array,
-                    JSArrayNextElementIndexNode nextElementIndexNode, ConditionProfile isZero) {
+                    Node node, JSArrayNextElementIndexNode nextElementIndexNode, InlinedConditionProfile isZero) {
         long firstIndex = array.firstElementIndex(object);
-        if (isZero.profile(firstIndex == 0)) {
+        if (isZero.profile(node, firstIndex == 0)) {
             return firstIndex;
         }
 
@@ -138,7 +145,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)"})
     public long firstObjectViaEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         if (hasPropertyNode.executeBoolean(object, 0)) {
             return 0;
         }
@@ -147,7 +154,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)", "isSuitableForEnumBasedProcessing(object, length)"})
     public long firstObjectViaFullEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         if (hasPropertyNode.executeBoolean(object, 0)) {
             return 0;
         }
@@ -156,7 +163,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, length)"})
     public long doObject(Object object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long index = 0;
         while (!hasPropertyNode.executeBoolean(object, index) && index <= (length - 1)) {
             index++;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,19 @@
  */
 package com.oracle.truffle.js.decorators;
 
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.Record;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -72,14 +77,11 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
-import java.util.List;
-
 @ImportStatic(ClassElementDefinitionRecord.class)
 public abstract class ApplyDecoratorsToElementDefinition extends Node {
 
     protected final JSContext context;
     private final boolean isStatic;
-    private final BranchProfile errorProfile = BranchProfile.create();
 
     public ApplyDecoratorsToElementDefinition(JSContext context, boolean isStatic) {
         this.isStatic = isStatic;
@@ -97,15 +99,16 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
 
     @SuppressWarnings("unused")
     @Specialization(guards = "!hasDecorators(record)")
-    public void noDecorators(VirtualFrame frame, JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers) {
+    protected static void noDecorators(VirtualFrame frame, JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers) {
         // NOP
     }
 
     @Specialization(guards = {"record.isField()", "hasDecorators(record)"})
-    public void decorateField(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
-                    @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
-                    @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached("create()") IsCallableNode isCallableNode) {
+    protected void decorateField(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
+                    @Shared("createDecoratorContext") @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
+                    @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
+                    @Shared("isCallable") @Cached IsCallableNode isCallableNode,
+                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) {
         for (Object decorator : record.getDecorators()) {
             Record state = new Record();
             JSDynamicObject decoratorContext = createDecoratorContextNode.executeContext(frame, record, extraInitializers, state);
@@ -115,15 +118,15 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
             if (isCallableNode.executeBoolean(newValue)) {
                 record.appendInitializer(newValue);
             } else {
-                checkUndefined(newValue);
+                checkUndefined(newValue, this, errorBranch);
             }
         }
         record.cleanDecorator();
     }
 
-    private static void setFunctionName(JSObject callable, Object propertyKey, ConditionProfile isSymbolProfile, JSClassProfile classProfile) {
+    private static void setFunctionName(JSObject callable, Object propertyKey, Node node, InlinedConditionProfile isSymbolProfile, JSClassProfile classProfile) {
         assert JSRuntime.isPropertyKey(propertyKey);
-        TruffleString name = isSymbolProfile.profile(propertyKey instanceof Symbol) ? ((Symbol) propertyKey).toFunctionNameString() : (TruffleString) propertyKey;
+        TruffleString name = isSymbolProfile.profile(node, propertyKey instanceof Symbol) ? ((Symbol) propertyKey).toFunctionNameString() : (TruffleString) propertyKey;
         setFunctionNameTS(callable, name, classProfile);
     }
 
@@ -133,22 +136,23 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
     }
 
     @Specialization(guards = {"record.isMethod()", "hasDecorators(record)"})
-    public void decorateMethod(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
-                    @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
-                    @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached("create()") IsCallableNode isCallableNode,
-                    @Cached("createBinaryProfile()") ConditionProfile isSymbolProfile,
-                    @Cached JSClassProfile newValueClassProfile) {
+    protected void decorateMethod(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
+                    @Shared("createDecoratorContext") @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
+                    @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
+                    @Shared("isCallable") @Cached IsCallableNode isCallableNode,
+                    @Cached InlinedConditionProfile isSymbolProfile,
+                    @Shared("newValueJSClass") @Cached JSClassProfile newValueClassProfile,
+                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) {
         for (Object decorator : record.getDecorators()) {
             Object newValue = executeDecoratorWithContext(frame, record, extraInitializers, createDecoratorContextNode, callNode, decorator);
             if (isCallableNode.executeBoolean(newValue)) {
                 if (newValue instanceof JSObject) {
                     // cannot set function name of foreign objects
-                    setFunctionName((JSObject) newValue, record.getKey(), isSymbolProfile, newValueClassProfile);
+                    setFunctionName((JSObject) newValue, record.getKey(), this, isSymbolProfile, newValueClassProfile);
                 }
                 record.setValue(newValue);
             } else {
-                checkUndefined(newValue);
+                checkUndefined(newValue, this, errorBranch);
             }
         }
         record.cleanDecorator();
@@ -159,13 +163,15 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
     }
 
     @Specialization(guards = {"hasDecorators(record)", "isGetterOrSetter(record)"})
-    public void decorateGetterSetter(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
-                    @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
-                    @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached("create()") IsCallableNode isCallableNode,
+    protected static void decorateGetterSetter(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, List<Object> extraInitializers,
+                    @Bind("this") Node node,
+                    @Shared("createDecoratorContext") @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
+                    @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
+                    @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Cached("createSymbolToString()") JSToStringNode toStringNode,
-                    @Cached("create()") TruffleString.ConcatNode concatNode,
-                    @Cached JSClassProfile newValueClassProfile) {
+                    @Cached TruffleString.ConcatNode concatNode,
+                    @Shared("newValueJSClass") @Cached JSClassProfile newValueClassProfile,
+                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) {
         for (Object decorator : record.getDecorators()) {
             Object newValue = executeDecoratorWithContext(frame, record, extraInitializers, createDecoratorContextNode, callNode, decorator);
             if (isCallableNode.executeBoolean(newValue)) {
@@ -177,22 +183,24 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                 }
                 record.setValue(newValue);
             } else {
-                checkUndefined(newValue);
+                checkUndefined(newValue, node, errorBranch);
             }
         }
         record.cleanDecorator();
     }
 
     @Specialization(guards = {"record.isAutoAccessor()", "hasDecorators(record)"})
-    public void decorateAuto(VirtualFrame frame, JSDynamicObject proto, ClassElementDefinitionRecord.AutoAccessor record, List<Object> extraInitializers,
-                    @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
-                    @Cached("createCall()") JSFunctionCallNode callNode,
+    protected static void decorateAuto(VirtualFrame frame, JSDynamicObject proto, ClassElementDefinitionRecord.AutoAccessor record, List<Object> extraInitializers,
+                    @Bind("this") Node node,
+                    @Shared("createDecoratorContext") @Cached("createDecoratorContextObjectNode()") CreateDecoratorContextObjectNode createDecoratorContextNode,
+                    @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
+                    @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Cached("createGetterNode()") PropertyGetNode getGetterNode,
                     @Cached("createSetterNode()") PropertyGetNode getSetterNode,
                     @Cached("createInitNode()") PropertyGetNode getInitNode,
-                    @Cached("create()") IsCallableNode isCallableNode,
                     @Cached("create(context)") CreateObjectNode createObjectNode,
-                    @Cached("create()") IsObjectNode isObjectNode) {
+                    @Cached IsObjectNode isObjectNode,
+                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) {
         for (Object decorator : record.getDecorators()) {
             Record state = new Record();
             JSDynamicObject decoratorContext = createDecoratorContextNode.executeContext(frame, record, extraInitializers, state);
@@ -206,23 +214,23 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                 if (isCallableNode.executeBoolean(newGetter)) {
                     record.setGetter(newGetter);
                 } else {
-                    checkUndefined(newGetter);
+                    checkUndefined(newGetter, node, errorBranch);
                 }
                 Object newSetter = getSetterNode.getValue(newValue);
                 if (isCallableNode.executeBoolean(newSetter)) {
                     record.setSetter(newSetter);
                 } else {
-                    checkUndefined(newSetter);
+                    checkUndefined(newSetter, node, errorBranch);
                 }
                 patchAutoAccessor(proto, record);
                 Object newInit = getInitNode.getValue(newValue);
                 if (isCallableNode.executeBoolean(newInit)) {
                     record.appendInitializer(newInit);
                 } else {
-                    checkUndefined(newInit);
+                    checkUndefined(newInit, node, errorBranch);
                 }
             } else {
-                checkUndefined(newValue);
+                checkUndefined(newValue, node, errorBranch);
             }
         }
         record.cleanDecorator();
@@ -254,6 +262,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
         JSObjectUtil.defineAccessorProperty(proto, elementRecord.getKey(), newAccessor, propertyFlags);
     }
 
+    @NeverDefault
     protected CreateDecoratorContextObjectNode createDecoratorContextObjectNode() {
         return CreateDecoratorContextObjectNode.create(context, isStatic);
     }
@@ -270,11 +279,11 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
         return PropertyGetNode.create(Strings.INIT, context);
     }
 
-    public void checkUndefined(Object value) {
+    protected static void checkUndefined(Object value, Node node, InlinedBranchProfile errorProfile) {
         assert value != null;
         if (value != Undefined.instance) {
-            errorProfile.enter();
-            throw Errors.createTypeErrorWrongDecoratorReturn(this);
+            errorProfile.enter(node);
+            throw Errors.createTypeErrorWrongDecoratorReturn(node);
         }
     }
 }

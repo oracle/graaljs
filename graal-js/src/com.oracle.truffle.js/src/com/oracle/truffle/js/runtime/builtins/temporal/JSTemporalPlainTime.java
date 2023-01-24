@@ -41,8 +41,9 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimeFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltins;
@@ -77,13 +78,13 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     }
 
     public static JSTemporalPlainTimeObject create(JSContext context, int hours, int minutes, int seconds, int milliseconds,
-                    int microseconds, int nanoseconds, BranchProfile errorBranch) {
+                    int microseconds, int nanoseconds, Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isValidTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
-        JSRealm realm = JSRealm.get(null);
-        JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm, errorBranch);
+        JSRealm realm = JSRealm.get(node);
+        JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm, node, errorBranch);
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
         JSTemporalPlainTimeObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
                         hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm);
@@ -133,7 +134,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     // 4.5.3
     public static JSDynamicObject toPartialTime(JSDynamicObject temporalTimeLike, IsObjectNode isObject, JSToIntegerThrowOnInfinityNode toInt, JSContext ctx) {
         if (!isObject.executeBoolean(temporalTimeLike)) {
-            throw TemporalErrors.createTypeErrorTemporalTimeExpected();
+            throw TemporalErrors.createTypeErrorTemporalPlainTimeExpected();
         }
         JSRealm realm = JSRealm.get(null);
         JSDynamicObject result = JSOrdinary.create(ctx, realm);

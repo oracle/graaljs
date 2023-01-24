@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,13 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltinsFactory.JSTemporalPlainDateCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltinsFactory.JSTemporalPlainDateFromNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -98,16 +100,19 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object from(Object item, Object optParam,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
-            JSDynamicObject options = getOptionsObject(optParam);
+        protected JSTemporalPlainDateObject from(Object item, Object optParam,
+                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedConditionProfile optionUndefined) {
+            JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
             if (isObject(item) && JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
                 JSTemporalPlainDateObject dtItem = (JSTemporalPlainDateObject) item;
-                TemporalUtil.toTemporalOverflow(options, getOptionNode());
+                TemporalUtil.toTemporalOverflow(options, getOptionNode);
                 return JSTemporalPlainDate.create(getContext(),
-                                dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(), dtItem.getCalendar(), errorBranch);
+                                dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(), dtItem.getCalendar(), this, errorBranch);
             }
-            return toTemporalDate.executeDynamicObject(item, options);
+            return toTemporalDate.execute(item, options);
         }
 
     }
@@ -121,8 +126,8 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected int compare(Object obj1, Object obj2,
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
-            JSTemporalPlainDateObject one = toTemporalDate.executeDynamicObject(obj1, Undefined.instance);
-            JSTemporalPlainDateObject two = toTemporalDate.executeDynamicObject(obj2, Undefined.instance);
+            JSTemporalPlainDateObject one = toTemporalDate.execute(obj1, Undefined.instance);
+            JSTemporalPlainDateObject two = toTemporalDate.execute(obj2, Undefined.instance);
             return TemporalUtil.compareISODate(
                             one.getYear(), one.getMonth(), one.getDay(),
                             two.getYear(), two.getMonth(), two.getDay());

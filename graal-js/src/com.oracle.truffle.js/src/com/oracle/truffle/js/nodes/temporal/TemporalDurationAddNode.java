@@ -45,9 +45,11 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.doubleIsInteger;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -80,11 +82,6 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
     @Child private GetMethodNode getMethodDateUntilNode;
     @Child private JSFunctionCallNode callDateUntilNode;
     @Child EnumerableOwnPropertyNamesNode namesNode;
-    private final BranchProfile errorBranch = BranchProfile.create();
-    private final BranchProfile relativeToUndefinedBranch = BranchProfile.create();
-    private final BranchProfile relativeToPlainDateBranch = BranchProfile.create();
-    private final BranchProfile relativeToZonedDateTimeBranch = BranchProfile.create();
-    private final ConditionProfile largetUnitYMWDProfile = ConditionProfile.createBinaryProfile();
 
     protected TemporalDurationAddNode(JSContext ctx) {
         this.ctx = ctx;
@@ -93,17 +90,18 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
         this.namesNode = EnumerableOwnPropertyNamesNode.createKeys(ctx);
     }
 
-    public static TemporalDurationAddNode create(JSContext ctx) {
-        return TemporalDurationAddNodeGen.create(ctx);
-    }
-
     public abstract JSTemporalDurationRecord execute(double y1, double mon1, double w1, double d1, double h1, double min1, double s1, double ms1, double mus1, double ns1,
                     double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, JSDynamicObject relativeTo);
 
     // @Cached parameters create unused variable in generated code, see GR-37931
     @Specialization
     protected JSTemporalDurationRecord add(double y1, double mon1, double w1, double d1, double h1, double min1, double s1, double ms1, double mus1, double ns1,
-                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, JSDynamicObject relativeTo) {
+                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, JSDynamicObject relativeTo,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached InlinedBranchProfile relativeToUndefinedBranch,
+                    @Cached InlinedBranchProfile relativeToPlainDateBranch,
+                    @Cached InlinedBranchProfile relativeToZonedDateTimeBranch,
+                    @Cached InlinedConditionProfile largetUnitYMWDProfile) {
         assert doubleIsInteger(y1) && doubleIsInteger(mon1) && doubleIsInteger(w1) && doubleIsInteger(d1);
         assert doubleIsInteger(h1) && doubleIsInteger(min1) && doubleIsInteger(s1) && doubleIsInteger(ms1) && doubleIsInteger(mus1) && doubleIsInteger(ns1);
         assert doubleIsInteger(y2) && doubleIsInteger(mon2) && doubleIsInteger(w2) && doubleIsInteger(d2);
@@ -113,24 +111,24 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
         TemporalUtil.Unit largestUnit2 = TemporalUtil.defaultTemporalLargestUnit(y2, mon2, w2, d2, h2, min2, s2, ms2, mus2);
         TemporalUtil.Unit largestUnit = TemporalUtil.largerOfTwoTemporalUnits(largestUnit1, largestUnit2);
         if (relativeTo == Undefined.instance) {
-            relativeToUndefinedBranch.enter();
+            relativeToUndefinedBranch.enter(this);
             if (largestUnit == TemporalUtil.Unit.YEAR || largestUnit == TemporalUtil.Unit.MONTH || largestUnit == TemporalUtil.Unit.WEEK) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("Largest unit allowed with no relative is 'days'.");
             }
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(ctx, namesNode, d1 + d2, h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit);
             return TemporalUtil.createDurationRecord(0, 0, 0, result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(),
                             result.getNanoseconds());
         } else if (JSTemporalPlainDate.isJSTemporalPlainDate(relativeTo)) {
-            relativeToPlainDateBranch.enter();
+            relativeToPlainDateBranch.enter(this);
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) relativeTo;
             JSDynamicObject calendar = date.getCalendar();
-            JSDynamicObject dateDuration1 = JSTemporalDuration.createTemporalDuration(ctx, y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0, errorBranch);
-            JSDynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(ctx, y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0, errorBranch);
+            JSDynamicObject dateDuration1 = JSTemporalDuration.createTemporalDuration(ctx, y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0, this, errorBranch);
+            JSDynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(ctx, y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0, this, errorBranch);
 
             Object dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
-            JSDynamicObject intermediate = calendarDateAdd(calendar, date, dateDuration1, Undefined.instance, dateAdd);
-            JSDynamicObject end = calendarDateAdd(calendar, intermediate, dateDuration2, Undefined.instance, dateAdd);
+            JSDynamicObject intermediate = calendarDateAdd(calendar, date, dateDuration1, Undefined.instance, dateAdd, this, errorBranch);
+            JSDynamicObject end = calendarDateAdd(calendar, intermediate, dateDuration2, Undefined.instance, dateAdd, this, errorBranch);
 
             TemporalUtil.Unit dateLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(TemporalUtil.Unit.DAY, largestUnit);
 
@@ -142,7 +140,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
             return TemporalUtil.createDurationRecord(dateDifference.getYears(), dateDifference.getMonths(), dateDifference.getWeeks(), result.getDays(),
                             result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
         } else {
-            relativeToZonedDateTimeBranch.enter();
+            relativeToZonedDateTimeBranch.enter(this);
             assert TemporalUtil.isTemporalZonedDateTime(relativeTo);
             JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) relativeTo;
             JSDynamicObject timeZone = zdt.getTimeZone();
@@ -151,25 +149,26 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
                             dtol(mus1), dtol(ns1));
             BigInt endNs = TemporalUtil.addZonedDateTime(ctx, intermediateNs, timeZone, calendar, dtol(y2), dtol(mon2), dtol(w2), dtol(d2), dtol(h2), dtol(min2), dtol(s2), dtol(ms2), dtol(mus2),
                             dtol(ns2));
-            if (largetUnitYMWDProfile.profile(
+            if (largetUnitYMWDProfile.profile(this,
                             TemporalUtil.Unit.YEAR != largestUnit && TemporalUtil.Unit.MONTH != largestUnit && TemporalUtil.Unit.WEEK != largestUnit && TemporalUtil.Unit.DAY != largestUnit)) {
                 long diffNs = TemporalUtil.bitol(TemporalUtil.differenceInstant(zdt.getNanoseconds(), endNs, 1d, TemporalUtil.Unit.NANOSECOND, TemporalUtil.RoundingMode.HALF_EXPAND));
                 JSTemporalDurationRecord result = TemporalUtil.balanceDuration(ctx, namesNode, 0, 0, 0, 0, 0, 0, diffNs, largestUnit);
                 return TemporalUtil.createDurationRecord(0, 0, 0, 0, result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(),
                                 result.getNanoseconds());
             } else {
-                return TemporalUtil.differenceZonedDateTime(ctx, namesNode, zdt.getNanoseconds(), endNs, timeZone, calendar, largestUnit);
+                return TemporalUtil.differenceZonedDateTime(ctx, getRealm(), namesNode, zdt.getNanoseconds(), endNs, timeZone, calendar, largestUnit);
             }
         }
     }
 
-    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateAddPrepared) {
+    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateAddPrepared,
+                    Node node, InlinedBranchProfile errorBranch) {
         if (callDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callDateAddNode = insert(JSFunctionCallNode.createCall());
         }
         Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, dateAddPrepared, date, duration, options));
-        return TemporalUtil.requireTemporalDate(addedDate, errorBranch);
+        return TemporalUtil.requireTemporalDate(addedDate, node, errorBranch);
     }
 
     protected JSTemporalDurationObject calendarDateUntil(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Object dateUntil) {

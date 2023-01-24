@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.unary;
-
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.SafeInteger;
-import com.oracle.truffle.js.runtime.Strings;
+package com.oracle.truffle.js.nodes.control;
 
 /**
- * Flatten lazy strings.
+ * Marker interface for generator nodes.
  */
-public abstract class FlattenNode extends JavaScriptBaseNode {
-    FlattenNode() {
-    }
-
-    public abstract Object execute(Object value);
-
-    @Specialization
-    protected static TruffleString doLazyString(TruffleString value,
-                    @Cached TruffleString.MaterializeNode materializeNode) {
-        return Strings.flatten(materializeNode, value);
-    }
-
-    @Specialization
-    protected static double doSafeInteger(SafeInteger value) {
-        return value.doubleValue();
-    }
-
-    @Fallback
-    protected static Object doOther(Object value) {
-        return value;
-    }
-
-    public static FlattenNode create() {
-        return FlattenNodeGen.create();
-    }
+public interface GeneratorNode {
 }

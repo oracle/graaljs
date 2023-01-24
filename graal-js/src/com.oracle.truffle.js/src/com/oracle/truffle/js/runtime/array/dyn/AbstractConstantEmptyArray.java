@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.array.dyn;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
@@ -112,15 +113,15 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractIntArray createWriteableInt(JSDynamicObject object, long index, int value, ProfileHolder profile) {
+    public AbstractIntArray createWriteableInt(JSDynamicObject object, long index, int value, Node node, CreateWritableProfileAccess profile) {
         assert index >= 0; // corner case, length would not be int then
         int capacity = lengthInt(object);
-        int[] initialArray = new int[calcNewArraySize(capacity, profile)];
+        int[] initialArray = new int[calcNewArraySize(capacity, node, profile)];
         AbstractIntArray newArray;
-        if (CREATE_WRITABLE_PROFILE.indexZero(profile, index == 0)) {
+        if (profile.indexZero(node, index == 0)) {
             newArray = ZeroBasedIntArray.makeZeroBasedIntArray(object, capacity, 0, initialArray, integrityLevel);
         } else {
-            newArray = createWritableIntContiguous(object, capacity, index, initialArray, profile);
+            newArray = createWritableIntContiguous(object, capacity, index, initialArray, node, profile);
         }
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -129,21 +130,21 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return newArray;
     }
 
-    private AbstractIntArray createWritableIntContiguous(JSDynamicObject object, int capacity, long index, int[] initialArray, ProfileHolder profile) {
+    private AbstractIntArray createWritableIntContiguous(JSDynamicObject object, int capacity, long index, int[] initialArray, Node node, CreateWritableProfileAccess profile) {
         long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
-        if (CREATE_WRITABLE_PROFILE.indexLessThanLength(profile, index < initialArray.length)) {
+        if (profile.indexLessThanLength(node, index < initialArray.length)) {
             arrayOffset = (int) index;
             indexOffset = 0;
         }
         return ContiguousIntArray.makeContiguousIntArray(object, length, initialArray, indexOffset, arrayOffset, 0, integrityLevel);
     }
 
-    private static int calcNewArraySize(int capacity, ProfileHolder profile) {
-        if (CREATE_WRITABLE_PROFILE.lengthZero(profile, capacity == 0)) {
+    private static int calcNewArraySize(int capacity, Node node, CreateWritableProfileAccess profile) {
+        if (profile.newArrayLengthZero(node, capacity == 0)) {
             return JSConfig.InitialArraySize;
-        } else if (CREATE_WRITABLE_PROFILE.lengthBelowLimit(profile, capacity < JSConfig.MaxFlatArraySize)) {
+        } else if (profile.newArrayLengthBelowLimit(node, capacity < JSConfig.MaxFlatArraySize)) {
             return capacity;
         } else {
             return JSConfig.InitialArraySize;
@@ -151,14 +152,14 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractDoubleArray createWriteableDouble(JSDynamicObject object, long index, double value, ProfileHolder profile) {
+    public AbstractDoubleArray createWriteableDouble(JSDynamicObject object, long index, double value, Node node, CreateWritableProfileAccess profile) {
         int capacity = lengthInt(object);
-        double[] initialArray = new double[calcNewArraySize(capacity, profile)];
+        double[] initialArray = new double[calcNewArraySize(capacity, node, profile)];
         AbstractDoubleArray newArray;
-        if (CREATE_WRITABLE_PROFILE.indexZero(profile, index == 0)) {
+        if (profile.indexZero(node, index == 0)) {
             newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, capacity, 0, initialArray, integrityLevel);
         } else {
-            newArray = createWritableDoubleContiguous(object, capacity, index, initialArray, profile);
+            newArray = createWritableDoubleContiguous(object, capacity, index, initialArray, node, profile);
         }
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -167,11 +168,11 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return newArray;
     }
 
-    private AbstractDoubleArray createWritableDoubleContiguous(JSDynamicObject object, int capacity, long index, double[] initialArray, ProfileHolder profile) {
+    private AbstractDoubleArray createWritableDoubleContiguous(JSDynamicObject object, int capacity, long index, double[] initialArray, Node node, CreateWritableProfileAccess profile) {
         long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
-        if (CREATE_WRITABLE_PROFILE.indexLessThanLength(profile, index < initialArray.length)) {
+        if (profile.indexLessThanLength(node, index < initialArray.length)) {
             arrayOffset = (int) index;
             indexOffset = 0;
         }
@@ -179,14 +180,14 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractJSObjectArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
+    public AbstractJSObjectArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, Node node, CreateWritableProfileAccess profile) {
         int capacity = lengthInt(object);
-        JSDynamicObject[] initialArray = new JSDynamicObject[calcNewArraySize(capacity, profile)];
+        JSDynamicObject[] initialArray = new JSDynamicObject[calcNewArraySize(capacity, node, profile)];
         AbstractJSObjectArray newArray;
-        if (CREATE_WRITABLE_PROFILE.indexZero(profile, index == 0)) {
+        if (profile.indexZero(node, index == 0)) {
             newArray = ZeroBasedJSObjectArray.makeZeroBasedJSObjectArray(object, capacity, 0, initialArray, integrityLevel);
         } else {
-            newArray = createWritableJSObjectContiguous(object, capacity, index, initialArray, profile);
+            newArray = createWritableJSObjectContiguous(object, capacity, index, initialArray, node, profile);
         }
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -195,11 +196,11 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return newArray;
     }
 
-    private AbstractJSObjectArray createWritableJSObjectContiguous(JSDynamicObject object, int capacity, long index, JSDynamicObject[] initialArray, ProfileHolder profile) {
+    private AbstractJSObjectArray createWritableJSObjectContiguous(JSDynamicObject object, int capacity, long index, JSDynamicObject[] initialArray, Node node, CreateWritableProfileAccess profile) {
         long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
-        if (CREATE_WRITABLE_PROFILE.indexLessThanLength(profile, index < initialArray.length)) {
+        if (profile.indexLessThanLength(node, index < initialArray.length)) {
             arrayOffset = (int) index;
             indexOffset = 0;
         }
@@ -207,14 +208,14 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, Node node, CreateWritableProfileAccess profile) {
         int capacity = lengthInt(object);
-        Object[] initialArray = new Object[calcNewArraySize(capacity, profile)];
+        Object[] initialArray = new Object[calcNewArraySize(capacity, node, profile)];
         AbstractObjectArray newArray;
-        if (CREATE_WRITABLE_PROFILE.indexZero(profile, index == 0)) {
+        if (profile.indexZero(node, index == 0)) {
             newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, capacity, 0, initialArray, integrityLevel);
         } else {
-            newArray = createWritableObjectContiguous(object, capacity, index, initialArray, profile);
+            newArray = createWritableObjectContiguous(object, capacity, index, initialArray, node, profile);
         }
         if (JSConfig.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -223,11 +224,11 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
         return newArray;
     }
 
-    private AbstractObjectArray createWritableObjectContiguous(JSDynamicObject object, int capacity, long index, Object[] initialArray, ProfileHolder profile) {
+    private AbstractObjectArray createWritableObjectContiguous(JSDynamicObject object, int capacity, long index, Object[] initialArray, Node node, CreateWritableProfileAccess profile) {
         long length = Math.max(index + 1, capacity);
         int arrayOffset = 0;
         long indexOffset = index;
-        if (CREATE_WRITABLE_PROFILE.indexLessThanLength(profile, index < initialArray.length)) {
+        if (profile.indexLessThanLength(node, index < initialArray.length)) {
             arrayOffset = (int) index;
             indexOffset = 0;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.FormatCacheNodeGen;
-import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.GetBuiltinToStringTagNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeDefineGetterOrSetterNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeHasOwnPropertyNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeIsPrototypeOfNodeGen;
@@ -171,7 +170,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Child private JSToObjectNode toObjectNode;
 
-        private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isObject = ConditionProfile.create();
         private final BranchProfile notAJSObjectBranch = BranchProfile.create();
 
         /**
@@ -309,7 +308,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected TruffleString doJSProxy(JSProxyObject thisObj,
-                        @Shared("builtinTag") @Cached("create()") GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
+                        @Shared("builtinTag") @Cached GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
             // builtinTag must be read before tag because the latter may revoke the proxy
             TruffleString builtinTag = getBuiltinToStringTagNode.execute(thisObj);
             TruffleString tag = getToStringTag(thisObj);
@@ -379,10 +378,6 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         public abstract TruffleString execute(JSObject object);
 
-        public static GetBuiltinToStringTagNode create() {
-            return GetBuiltinToStringTagNodeGen.create();
-        }
-
         @SuppressWarnings("unused")
         @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "5")
         protected static TruffleString cached(JSObject object,
@@ -407,16 +402,16 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"stringEquals(equalsNode, cachedName, name)"}, limit = "10")
-        protected TruffleString executeCached(TruffleString name,
+        protected TruffleString doCached(TruffleString name,
                         @Cached("name") TruffleString cachedName,
-                        @Cached("executeUncached(name)") TruffleString cachedResult,
+                        @Cached("doUncached(name)") TruffleString cachedResult,
                         @Cached TruffleString.EqualNode equalsNode) {
             return cachedResult;
         }
 
         @TruffleBoundary
         @Specialization
-        protected TruffleString executeUncached(TruffleString name) {
+        protected TruffleString doUncached(TruffleString name) {
             return Strings.concatAll(Strings.BRACKET_OBJECT_SPC, name, Strings.BRACKET_CLOSE);
         }
     }
@@ -449,7 +444,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
         @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
-        private final ConditionProfile descNull = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile descNull = ConditionProfile.create();
 
         @Specialization
         protected boolean propertyIsEnumerable(Object obj, Object key) {
@@ -550,8 +545,8 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final ConditionProfile argIsNull = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile firstPrototypeFits = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile argIsNull = ConditionProfile.create();
+        private final ConditionProfile firstPrototypeFits = ConditionProfile.create();
 
         @Specialization(guards = "isJSObject(arg)")
         protected boolean isPrototypeOf(Object thisObj, JSDynamicObject arg) {

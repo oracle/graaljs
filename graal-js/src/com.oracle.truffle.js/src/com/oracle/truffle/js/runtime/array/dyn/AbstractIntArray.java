@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -71,7 +72,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
             if (injectBranchProbability(SLOWPATH_PROBABILITY, intValue == HolesIntArray.HOLE_VALUE)) {
                 return toObject(object, index, value).setElementImpl(object, index, value, strict);
             }
-            setSupported(object, (int) index, intValue, ProfileHolder.empty());
+            setSupported(object, (int) index, intValue, null, SetSupportedProfileAccess.getUncached());
             return this;
         } else {
             return rewrite(object, index, value).setElementImpl(object, index, value, strict);
@@ -118,15 +119,15 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
 
     public abstract void setInBoundsFast(JSDynamicObject object, int index, int value);
 
-    public final void setInBounds(JSDynamicObject object, int index, int value, ProfileHolder profile) {
-        getArray(object)[prepareInBounds(object, index, profile)] = value;
+    public final void setInBounds(JSDynamicObject object, int index, int value, Node node, SetSupportedProfileAccess profile) {
+        getArray(object)[prepareInBounds(object, index, node, profile)] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("InBounds", index, value);
         }
     }
 
-    public final void setSupported(JSDynamicObject object, int index, int value, ProfileHolder profile) {
-        int preparedIndex = prepareSupported(object, index, profile);
+    public final void setSupported(JSDynamicObject object, int index, int value, Node node, SetSupportedProfileAccess profile) {
+        int preparedIndex = prepareSupported(object, index, node, profile);
         getArray(object)[preparedIndex] = value;
         if (JSConfig.TraceArrayWrites) {
             traceWriteValue("Supported", index, value);

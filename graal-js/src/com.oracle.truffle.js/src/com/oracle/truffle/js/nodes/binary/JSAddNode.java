@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,13 +46,15 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
@@ -224,33 +226,34 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doSafeInteger",
                     "doIntSafeInteger", "doSafeIntegerInt", "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
-    protected Object doPrimitiveConversion(Object a, Object b,
+    protected static Object doPrimitiveConversion(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveA,
                     @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveB,
-                    @Cached("create()") JSToNumericNode toNumericA,
-                    @Cached("create()") JSToNumericNode toNumericB,
-                    @Cached("create()") JSToStringNode toStringA,
-                    @Cached("create()") JSToStringNode toStringB,
-                    @Cached("createBinaryProfile()") ConditionProfile profileA,
-                    @Cached("createBinaryProfile()") ConditionProfile profileB,
+                    @Cached JSToNumericNode toNumericA,
+                    @Cached JSToNumericNode toNumericB,
+                    @Cached JSToStringNode toStringA,
+                    @Cached JSToStringNode toStringB,
+                    @Cached InlinedConditionProfile profileA,
+                    @Cached InlinedConditionProfile profileB,
                     @Cached("copyRecursive()") JSAddNode add,
-                    @Cached("create()") BranchProfile mixedNumericTypes) {
+                    @Cached InlinedBranchProfile mixedNumericTypes) {
 
         Object primitiveA = toPrimitiveA.execute(a);
         Object primitiveB = toPrimitiveB.execute(b);
 
         Object castA;
         Object castB;
-        if (profileA.profile(isString(primitiveA))) {
+        if (profileA.profile(node, isString(primitiveA))) {
             castA = primitiveA;
             castB = toStringB.executeString(primitiveB);
-        } else if (profileB.profile(isString(primitiveB))) {
+        } else if (profileB.profile(node, isString(primitiveB))) {
             castA = toStringA.executeString(primitiveA);
             castB = primitiveB;
         } else {
             castA = toNumericA.execute(primitiveA);
             castB = toNumericB.execute(primitiveB);
-            ensureBothSameNumericType(castA, castB, mixedNumericTypes);
+            ensureBothSameNumericType(castA, castB, node, mixedNumericTypes);
         }
         return add.execute(castA, castB);
     }

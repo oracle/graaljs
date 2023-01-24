@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 
@@ -63,17 +64,18 @@ public abstract class IsJSObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static boolean isObjectCached(@SuppressWarnings("unused") Object object,
-                    @Cached("getClassIfJSDynamicObject(object)") @SuppressWarnings("unused") Class<?> cachedClass,
-                    @Cached("isJSObject(object)") boolean cachedResult) {
+                    @Cached(value = "getClassIfJSDynamicObject(object)", neverDefault = false) @SuppressWarnings("unused") Class<?> cachedClass,
+                    @Cached(value = "isJSObject(object)", neverDefault = false) boolean cachedResult) {
         return cachedResult;
     }
 
     @Specialization(replaces = {"isObjectCached"})
     protected boolean isObject(Object object,
-                    @Cached ConditionProfile resultProfile) {
-        return resultProfile.profile(JSGuards.isJSObject(object));
+                    @Cached InlinedConditionProfile resultProfile) {
+        return resultProfile.profile(this, JSGuards.isJSObject(object));
     }
 
+    @NeverDefault
     public static IsJSObjectNode create() {
         return IsJSObjectNodeGen.create();
     }

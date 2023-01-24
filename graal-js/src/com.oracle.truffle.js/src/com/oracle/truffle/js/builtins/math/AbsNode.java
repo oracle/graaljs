@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@ package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 
@@ -53,8 +53,9 @@ public abstract class AbsNode extends MathOperation {
     }
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected static int absInt(int a, @Cached("createBinaryProfile()") ConditionProfile negative) throws ArithmeticException {
-        return negative.profile(a < 0) ? Math.subtractExact(0, a) : a;
+    protected final int absInt(int a,
+                    @Cached InlinedConditionProfile negative) throws ArithmeticException {
+        return negative.profile(this, a < 0) ? Math.subtractExact(0, a) : a;
     }
 
     @Specialization

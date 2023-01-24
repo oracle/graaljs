@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,17 +40,19 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -58,98 +60,58 @@ import com.oracle.truffle.js.runtime.objects.Null;
  * Implementation of ToJSValue() operation. See
  * <a href="https://www.w3.org/TR/wasm-js-api/#tojsvalue">Wasm JS-API Spec</a>
  */
+@ImportStatic(JSConfig.class)
+@GenerateUncached
 public abstract class ToJSValueNode extends JavaScriptBaseNode {
-    @Child InteropLibrary isFuncLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-    @Child InteropLibrary funcTypeLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
     protected ToJSValueNode() {
-    }
-
-    public static ToJSValueNode create() {
-        return ToJSValueNodeGen.create();
-    }
-
-    public static ToJSValueNode getUncached() {
-        return ToJSValueNode.Uncached.INSTANCE;
     }
 
     public abstract Object execute(Object value);
 
     @Specialization
-    public Object convert(Object value) {
-        if (value instanceof Integer) {
-            return value;
-        } else if (value instanceof Long) {
-            return BigInt.valueOf((long) value);
-        } else if (value instanceof Float) {
-            return (double) (float) value;
-        } else if (value instanceof Double) {
-            return value;
+    static int i32(int value) {
+        return value;
+    }
+
+    @Specialization
+    static BigInt i64(long value) {
+        return BigInt.valueOf(value);
+    }
+
+    @Specialization
+    static double f32(float value) {
+        return value;
+    }
+
+    @Specialization
+    static double f64(double value) {
+        return value;
+    }
+
+    @Fallback
+    final Object convert(Object value,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary isFuncLib,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary funcTypeLib,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary asTStringLib) {
+        JSRealm realm = getRealm();
+        final Object refNull = realm.getWasmRefNull();
+        if (value == refNull) {
+            return Null.instance;
         } else {
-            JSRealm realm = getRealm();
-            final Object refNull = realm.getWasmRefNull();
-            if (value == refNull) {
-                return Null.instance;
-            } else {
-                Object isFuncFn = realm.getWASMIsFunc();
-                try {
-                    if ((Boolean) isFuncLib.execute(isFuncFn, value)) {
-                        Object funcTypeFn = realm.getWASMFuncType();
-                        TruffleString funcType = asTString(funcTypeLib.execute(funcTypeFn, value));
-                        return JSWebAssemblyInstance.exportFunction(realm.getContext(), realm, value, funcType);
-                    } else {
-                        return value;
-                    }
-                } catch (InteropException ex) {
-                    throw Errors.shouldNotReachHere(ex);
-                }
-            }
-        }
-    }
-
-    static class Uncached extends ToJSValueNode {
-        static final Uncached INSTANCE = new Uncached();
-
-        Uncached() {
-        }
-
-        @Override
-        public Object execute(Object value) {
-            if (value instanceof Integer) {
-                return value;
-            } else if (value instanceof Long) {
-                return BigInt.valueOf((long) value);
-            } else if (value instanceof Float) {
-                return (double) (float) value;
-            } else if (value instanceof Double) {
-                return value;
-            } else {
-                JSRealm realm = getRealm();
-                final Object refNull = realm.getWasmRefNull();
-                if (value == refNull) {
-                    return Null.instance;
+            Object isFuncFn = realm.getWASMIsFunc();
+            try {
+                Object isFunc = isFuncLib.execute(isFuncFn, value);
+                if (isFunc instanceof Boolean && (boolean) isFunc) {
+                    Object funcTypeFn = realm.getWASMFuncType();
+                    TruffleString funcType = asTStringLib.asTruffleString(funcTypeLib.execute(funcTypeFn, value));
+                    return JSWebAssemblyInstance.exportFunction(realm.getContext(), realm, value, funcType);
                 } else {
-                    Object isFuncFn = realm.getWASMIsFunc();
-                    try {
-                        if ((Boolean) InteropLibrary.getUncached().execute(isFuncFn, value)) {
-                            Object funcTypeFn = realm.getWASMFuncType();
-                            TruffleString funcType = ToJSValueNode.asTString(InteropLibrary.getUncached().execute(funcTypeFn, value));
-                            return JSWebAssemblyInstance.exportFunction(realm.getContext(), realm, value, funcType);
-                        } else {
-                            return value;
-                        }
-                    } catch (InteropException ex) {
-                        throw Errors.shouldNotReachHere(ex);
-                    }
+                    return value;
                 }
+            } catch (InteropException ex) {
+                throw Errors.shouldNotReachHere(ex);
             }
         }
-    }
-
-    private static TruffleString asTString(Object string) throws UnsupportedMessageException {
-        if (string instanceof String) {
-            return Strings.fromJavaString((String) string);
-        }
-        return InteropLibrary.getUncached(string).asTruffleString(string);
     }
 }

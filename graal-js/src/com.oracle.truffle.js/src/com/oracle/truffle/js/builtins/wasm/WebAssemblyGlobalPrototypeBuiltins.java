@@ -43,11 +43,13 @@ package com.oracle.truffle.js.builtins.wasm;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltinsFactory.WebAssemblyGlobalGetValueNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltinsFactory.WebAssemblyGlobalSetValueNodeGen;
@@ -123,18 +125,17 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
         return null;
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class WebAssemblyGlobalValueOfNode extends JSBuiltinNode {
-        @Child ToJSValueNode toJSValueNode;
-        @Child InteropLibrary globalReadLib;
 
         public WebAssemblyGlobalValueOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            toJSValueNode = ToJSValueNode.create();
-            globalReadLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
-        protected Object valueOf(Object thiz) {
+        protected Object valueOf(Object thiz,
+                        @Cached ToJSValueNode toJSValueNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary globalReadLib) {
             if (!JSWebAssemblyGlobal.isJSWebAssemblyGlobal(thiz)) {
                 throw Errors.createTypeError("WebAssembly.Global.valueOf(): Receiver is not a WebAssembly.Global");
             }
@@ -142,7 +143,7 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
             Object wasmGlobal = object.getWASMGlobal();
             try {
                 Object globalRead = getRealm().getWASMGlobalRead();
-                return toJSValueNode.convert(globalReadLib.execute(globalRead, wasmGlobal));
+                return toJSValueNode.execute(globalReadLib.execute(globalRead, wasmGlobal));
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -150,17 +151,17 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class WebAssemblyGlobalGetValueNode extends JSBuiltinNode {
-
-        @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
-        @Child InteropLibrary globalReadLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         protected WebAssemblyGlobalGetValueNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object getValue(JSWebAssemblyGlobalObject object) {
+        protected Object getValue(JSWebAssemblyGlobalObject object,
+                        @Cached ToJSValueNode toJSValueNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary globalReadLib) {
             Object wasmGlobal = object.getWASMGlobal();
             Object globalRead = getRealm().getWASMGlobalRead();
             try {
@@ -177,10 +178,8 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class WebAssemblyGlobalSetValueNode extends JSBuiltinNode {
-
-        @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
-        @Child InteropLibrary globalWriteLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         protected WebAssemblyGlobalSetValueNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -188,16 +187,18 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected Object setValue(JSWebAssemblyGlobalObject global, Object[] args,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached ToWebAssemblyValueNode toWebAssemblyValueNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary globalWriteLib) {
             if (!global.isMutable()) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("set WebAssembly.Global.value: Can't set the value of an immutable global");
             }
             Object wasmGlobal = global.getWASMGlobal();
             try {
                 Object value;
                 if (args.length == 0) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeError("set WebAssembly.Global.value: Argument 0 is required");
                 } else {
                     value = args[0];
@@ -209,7 +210,7 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException ex) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError(ex, this);
             }
         }

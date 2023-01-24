@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,7 +91,7 @@ public abstract class JSComplementNode extends JSUnaryNode {
 
     @Specialization
     protected int doDouble(double a,
-                    @Cached("create()") JSToInt32Node toInt32Node) {
+                    @Cached JSToInt32Node toInt32Node) {
         return doInteger(toInt32Node.executeInt(a));
     }
 

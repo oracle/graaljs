@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,25 +43,27 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNodeGen.GetPropertyProxyValueNodeGen;
-import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNodeGen.UsesOrdinaryGetOwnPropertyNodeGen;
+import com.oracle.truffle.js.nodes.array.JSArrayGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -88,9 +90,9 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     private final boolean needWritability;
     final boolean allowCaching;
     @CompilationFinal private boolean seenNonArrayIndex;
-    private final ConditionProfile hasPropertyBranch = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isDataPropertyBranch = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isAccessorPropertyBranch = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile hasPropertyBranch = ConditionProfile.create();
+    private final ConditionProfile isDataPropertyBranch = ConditionProfile.create();
+    private final ConditionProfile isAccessorPropertyBranch = ConditionProfile.create();
     @Child private GetPropertyProxyValueNode getPropertyProxyValueNode;
 
     protected JSGetOwnPropertyNode(boolean needValue, boolean needEnumerability, boolean needConfigurability, boolean needWritability, boolean allowCaching) {
@@ -101,14 +103,17 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         this.allowCaching = allowCaching;
     }
 
+    @NeverDefault
     public static JSGetOwnPropertyNode create() {
         return create(true);
     }
 
+    @NeverDefault
     public static JSGetOwnPropertyNode create(boolean needValue) {
         return create(needValue, true, true, true, true);
     }
 
+    @NeverDefault
     public static JSGetOwnPropertyNode create(boolean needValue, boolean needEnumerability, boolean needConfigurability, boolean needWritability, boolean allowCaching) {
         return JSGetOwnPropertyNodeGen.create(needValue, needEnumerability, needConfigurability, needWritability, allowCaching);
     }
@@ -116,33 +121,22 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     public abstract PropertyDescriptor execute(JSDynamicObject object, Object key);
 
     /** @see JSArray#getOwnProperty */
-    @Specialization(guards = {"isJSArray(thisObj)"})
-    PropertyDescriptor array(JSDynamicObject thisObj, Object propertyKey,
+    @SuppressWarnings("truffle-static-method")
+    @Specialization
+    final PropertyDescriptor array(JSArrayObject thisObj, Object propertyKey,
+                    @Bind("this") Node node,
                     @Cached ToArrayIndexNode toArrayIndexNode,
-                    @Cached BranchProfile noSuchElementBranch,
-                    @Cached("createIdentityProfile()") ValueProfile typeProfile) {
+                    @Cached JSArrayGetOwnPropertyNode arrayGetOwnProperty,
+                    @Cached InlinedBranchProfile noSuchElementBranch) {
         assert JSRuntime.isPropertyKey(propertyKey);
         long idx = toArrayIndex(propertyKey, toArrayIndexNode);
         if (JSRuntime.isArrayIndex(idx)) {
-            ScriptArray array = typeProfile.profile(JSAbstractArray.arrayGetArrayType(thisObj));
-            if (array.hasElement(thisObj, idx)) {
-                PropertyDescriptor desc = PropertyDescriptor.createEmpty();
-                if (needEnumerability) {
-                    desc.setEnumerable(true);
-                }
-                if (needConfigurability) {
-                    desc.setConfigurable(!array.isSealed());
-                }
-                if (needWritability) {
-                    desc.setWritable(!array.isFrozen());
-                }
-                if (needValue) {
-                    desc.setValue(array.getElement(thisObj, idx));
-                }
+            PropertyDescriptor desc = arrayGetOwnProperty.execute(node, thisObj, idx, needValue, needEnumerability, needConfigurability, needWritability);
+            if (desc != null) {
                 return desc;
             }
         }
-        noSuchElementBranch.enter();
+        noSuchElementBranch.enter(node);
         Property prop = thisObj.getShape().getProperty(propertyKey);
         return ordinaryGetOwnProperty(thisObj, prop);
     }
@@ -150,11 +144,11 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     /** @see JSString#getOwnProperty */
     @Specialization(guards = "isJSString(thisObj)")
     protected PropertyDescriptor getOwnPropertyString(JSDynamicObject thisObj, Object key,
-                    @Cached("createBinaryProfile()") ConditionProfile stringCaseProfile) {
+                    @Cached InlinedConditionProfile stringCaseProfile) {
         assert JSRuntime.isPropertyKey(key);
         Property prop = thisObj.getShape().getProperty(key);
         PropertyDescriptor desc = ordinaryGetOwnProperty(thisObj, prop);
-        if (stringCaseProfile.profile(desc == null)) {
+        if (stringCaseProfile.profile(this, desc == null)) {
             return JSString.stringGetIndexProperty(thisObj, key);
         } else {
             return desc;
@@ -244,7 +238,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!usesOrdinaryGetOwnProperty.execute(thisObj)", "!isJSArray(thisObj)", "!isJSString(thisObj)"}, limit = "1")
     static PropertyDescriptor generic(JSDynamicObject thisObj, Object key,
-                    @Cached("create()") JSClassProfile jsclassProfile,
+                    @Cached JSClassProfile jsclassProfile,
                     @Cached @Shared("usesOrdinaryGetOwnProperty") @SuppressWarnings("unused") UsesOrdinaryGetOwnPropertyNode usesOrdinaryGetOwnProperty) {
         assert !JSObject.getJSClass(thisObj).usesOrdinaryGetOwnProperty();
         return JSObject.getOwnProperty(thisObj, key, jsclassProfile);
@@ -267,10 +261,6 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     public abstract static class UsesOrdinaryGetOwnPropertyNode extends JavaScriptBaseNode {
 
         protected UsesOrdinaryGetOwnPropertyNode() {
-        }
-
-        public static UsesOrdinaryGetOwnPropertyNode create() {
-            return UsesOrdinaryGetOwnPropertyNodeGen.create();
         }
 
         public final boolean execute(JSDynamicObject object) {

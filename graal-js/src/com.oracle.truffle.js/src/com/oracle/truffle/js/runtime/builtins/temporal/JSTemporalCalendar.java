@@ -40,8 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins;
@@ -71,16 +72,9 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     private JSTemporalCalendar() {
     }
 
-    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id) {
+    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id, Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isBuiltinCalendar(id)) {
-            throw TemporalErrors.createRangeErrorCalendarNotSupported();
-        }
-        return createIntl(context, realm != null ? realm : JSRealm.get(null), id);
-    }
-
-    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id, BranchProfile errorBranch) {
-        if (!TemporalUtil.isBuiltinCalendar(id)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
         return createIntl(context, realm, id);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,9 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.GeneratorPrototypeBuiltinsFactory.GeneratorResumeNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.InternalCallNode;
@@ -109,7 +110,6 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
         @Child private PropertyGetNode getGeneratorTarget;
         @Child private PropertyGetNode getGeneratorContext;
         @Child private InternalCallNode callNode;
-        private final BranchProfile errorBranch = BranchProfile.create();
 
         public GeneratorResumeNode(JSContext context, JSBuiltin builtin, Completion.Type resumeType) {
             super(context, builtin);
@@ -120,13 +120,14 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected Object resume(JSObject generator, Object value) {
+        protected Object resume(JSObject generator, Object value,
+                        @Cached InlinedBranchProfile errorBranch) {
             Object generatorTarget = getGeneratorTarget.getValue(generator);
             if (generatorTarget != Undefined.instance) {
                 Object generatorContext = getGeneratorContext.getValue(generator);
                 return callNode.execute((CallTarget) generatorTarget, JSArguments.createResumeArguments(generatorContext, generator, resumeType, value));
             } else {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorGeneratorObjectExpected();
             }
         }

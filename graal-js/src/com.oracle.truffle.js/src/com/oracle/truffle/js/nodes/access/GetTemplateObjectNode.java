@@ -84,7 +84,7 @@ public abstract class GetTemplateObjectNode extends JavaScriptNode {
 
     @Specialization(guards = "!context.isMultiContext()", assumptions = "context.getSingleRealmAssumption()")
     protected JSDynamicObject doCached(@SuppressWarnings("unused") VirtualFrame frame,
-                    @Cached("doUncached(frame)") JSDynamicObject cachedTemplate) {
+                    @Cached(value = "doUncached(frame)", neverDefault = true) JSDynamicObject cachedTemplate) {
         return cachedTemplate;
     }
 

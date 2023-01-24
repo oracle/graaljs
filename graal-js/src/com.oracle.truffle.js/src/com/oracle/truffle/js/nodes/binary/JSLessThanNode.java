@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,11 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -163,10 +165,11 @@ public abstract class JSLessThanNode extends JSCompareNode {
     }
 
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
-    protected boolean doOverloaded(Object a, Object b,
+    protected static boolean doOverloaded(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached("createHintNumberLeftToRight(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
-                    @Cached("create()") JSToBooleanNode toBooleanNode) {
-        return toBooleanNode.executeBoolean(overloadedOperatorNode.execute(a, b));
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode) {
+        return toBooleanNode.executeBoolean(node, overloadedOperatorNode.execute(a, b));
     }
 
     protected TruffleString getOverloadedOperatorName() {
@@ -176,11 +179,11 @@ public abstract class JSLessThanNode extends JSCompareNode {
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString",
                     "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})
     protected boolean doGeneric(Object a, Object b,
-                    @Cached("create()") JSToStringOrNumberNode toStringOrNumber1,
+                    @Cached JSToStringOrNumberNode toStringOrNumber1,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive1,
-                    @Cached("create()") JSToStringOrNumberNode toStringOrNumber2,
+                    @Cached JSToStringOrNumberNode toStringOrNumber2,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive2,
-                    @Cached("create()") JSLessThanNode lessThanNode) {
+                    @Cached JSLessThanNode lessThanNode) {
         return lessThanNode.executeBoolean(toStringOrNumber1.execute(toPrimitive1.execute(a)), toStringOrNumber2.execute(toPrimitive2.execute(b)));
     }
 

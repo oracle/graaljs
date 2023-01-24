@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -57,6 +60,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 /**
  * @see JSToBooleanUnaryNode
  */
+@GenerateInline
 @GenerateUncached
 @ImportStatic({JSConfig.class})
 public abstract class JSToBooleanNode extends JavaScriptBaseNode {
@@ -64,8 +68,13 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
     protected JSToBooleanNode() {
     }
 
-    public abstract boolean executeBoolean(Object value);
+    public final boolean executeBoolean(Object value) {
+        return executeBoolean(null, value);
+    }
 
+    public abstract boolean executeBoolean(Node node, Object value);
+
+    @NeverDefault
     public static JSToBooleanNode create() {
         return JSToBooleanNodeGen.create();
     }

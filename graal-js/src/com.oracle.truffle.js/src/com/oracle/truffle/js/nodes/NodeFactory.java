@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,8 @@ import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalVariableNode;
 import com.oracle.truffle.js.nodes.access.EnumerateNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetAsyncIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorUnaryNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.GetTemplateObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalDeclarationInstantiationNode;
@@ -963,12 +964,12 @@ public class NodeFactory {
         return MakeMethodNode.create(context, function);
     }
 
-    public JavaScriptNode createSpreadArgument(JSContext context, GetIteratorNode getIteratorNode) {
-        return SpreadArgumentNode.create(context, getIteratorNode);
+    public JavaScriptNode createSpreadArgument(JSContext context, GetIteratorUnaryNode getIterator) {
+        return SpreadArgumentNode.create(context, getIterator);
     }
 
-    public JavaScriptNode createSpreadArray(JSContext context, GetIteratorNode getIteratorNode) {
-        return ArrayLiteralNode.SpreadArrayNode.create(context, getIteratorNode);
+    public JavaScriptNode createSpreadArray(JSContext context, GetIteratorUnaryNode getIterator) {
+        return ArrayLiteralNode.SpreadArrayNode.create(context, getIterator);
     }
 
     public ReturnNode createReturn(JavaScriptNode expression) {
@@ -1065,12 +1066,12 @@ public class NodeFactory {
 
     // ##### Iterator nodes
 
-    public GetIteratorNode createGetIterator(JSContext context, JavaScriptNode iteratedObject) {
-        return GetIteratorNode.create(context, iteratedObject);
+    public GetIteratorUnaryNode createGetIterator(JavaScriptNode iteratedObject) {
+        return GetIteratorUnaryNode.create(iteratedObject);
     }
 
     public JavaScriptNode createGetAsyncIterator(JSContext context, JavaScriptNode iteratedObject) {
-        return GetIteratorNode.createAsync(context, iteratedObject);
+        return GetAsyncIteratorNode.create(context, iteratedObject);
     }
 
     public JavaScriptNode createEnumerate(JSContext context, JavaScriptNode iteratedObject, boolean values) {

@@ -146,14 +146,14 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         @Child private PropertySetNode setDoneNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
-        protected ConditionProfile valuePresenceProfile = ConditionProfile.createBinaryProfile();
+        protected ConditionProfile valuePresenceProfile = ConditionProfile.create();
 
         AsyncFromSyncBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             this.executePromiseMethodNode = JSFunctionCallNode.createCall();
             this.iteratorNextNode = IteratorNextNode.create();
-            this.iteratorCompleteNode = IteratorCompleteNode.create(context);
+            this.iteratorCompleteNode = IteratorCompleteNode.create();
             this.iteratorValueNode = IteratorValueNode.create();
             this.getSyncIteratorRecordNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, context);
             this.setDoneNode = PropertySetNode.createSetHidden(DONE, context);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -70,6 +71,7 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     protected RequireObjectCoercibleNode() {
     }
 
+    @NeverDefault
     public static RequireObjectCoercibleNode create() {
         return RequireObjectCoercibleNodeGen.create();
     }
@@ -115,7 +117,7 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static void doCachedJSClass(@SuppressWarnings("unused") Object object,
-                    @Cached("getClassIfJSObject(object)") @SuppressWarnings("unused") Class<?> cachedClass) {
+                    @Cached(value = "getClassIfJSObject(object)", neverDefault = false) @SuppressWarnings("unused") Class<?> cachedClass) {
     }
 
     @Specialization(guards = {"isJSObject(object)"}, replaces = "doCachedJSClass")

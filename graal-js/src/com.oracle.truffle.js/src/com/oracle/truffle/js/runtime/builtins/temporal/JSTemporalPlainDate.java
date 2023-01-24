@@ -42,8 +42,9 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins;
@@ -117,30 +118,19 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return obj instanceof JSTemporalPlainDateObject;
     }
 
-    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, JSDynamicObject calendar, BranchProfile errorBranch) {
+    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, JSDynamicObject calendar, Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(year, month, day)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
         }
         if (!TemporalUtil.isoDateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
-        return createIntl(context, year, month, day, calendar);
+        return createIntl(context, JSRealm.get(node), year, month, day, calendar);
     }
 
-    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, JSDynamicObject calendar) {
-        if (!TemporalUtil.validateISODate(year, month, day)) {
-            throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
-        }
-        if (!TemporalUtil.isoDateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
-            throw TemporalErrors.createRangeErrorDateOutsideRange();
-        }
-        return createIntl(context, year, month, day, calendar);
-    }
-
-    private static JSTemporalPlainDateObject createIntl(JSContext context, int year, int month, int day, JSDynamicObject calendar) {
-        JSRealm realm = JSRealm.get(null);
+    private static JSTemporalPlainDateObject createIntl(JSContext context, JSRealm realm, int year, int month, int day, JSDynamicObject calendar) {
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
         JSTemporalPlainDateObject object = factory.initProto(new JSTemporalPlainDateObject(factory.getShape(realm),
                         year, month, day, calendar), realm);

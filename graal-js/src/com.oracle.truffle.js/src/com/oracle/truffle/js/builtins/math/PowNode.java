@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,9 +44,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.SlowPathException;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -61,6 +62,7 @@ public abstract class PowNode extends MathOperation {
 
     public abstract double execute(Object a, Object b);
 
+    @NeverDefault
     protected PowNode create(JSContext context) {
         return PowNodeGen.create(context, null, null);
     }
@@ -136,12 +138,12 @@ public abstract class PowNode extends MathOperation {
     @SuppressFBWarnings(value = "FE_FLOATING_POINT_EQUALITY", justification = "not necessary in this case")
     @Specialization
     protected double pow3(double a, double b,
-                    @Cached("createBinaryProfile()") ConditionProfile branch1,
-                    @Cached("createBinaryProfile()") ConditionProfile branch2) {
+                    @Cached InlinedConditionProfile branch1,
+                    @Cached InlinedConditionProfile branch2) {
         int ib = (int) b;
-        if (branch1.profile(JSRuntime.doubleIsRepresentableAsInt(b, true) && b > 0)) {
+        if (branch1.profile(this, JSRuntime.doubleIsRepresentableAsInt(b, true) && b > 0)) {
             return positivePow(a, ib);
-        } else if (branch2.profile(ib + 0.5 == b && b > 0 && a > 0 && a != -0.0)) {
+        } else if (branch2.profile(this, ib + 0.5 == b && b > 0 && a > 0 && a != -0.0)) {
             return positivePow(a, ib) * Math.sqrt(a);
         } else {
             return powIntl(a, b);

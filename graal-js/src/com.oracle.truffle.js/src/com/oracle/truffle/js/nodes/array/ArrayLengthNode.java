@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,11 +43,15 @@ package com.oracle.truffle.js.nodes.array;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNodeFactory.ArrayLengthReadNodeGen;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNodeFactory.SetArrayLengthNodeGen;
@@ -70,12 +74,14 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
     protected ArrayLengthNode() {
     }
 
+    @NeverDefault
     protected static ScriptArray getArrayType(JSDynamicObject target) {
         return JSObject.getArray(target);
     }
 
     public abstract static class ArrayLengthReadNode extends ArrayLengthNode {
 
+        @NeverDefault
         public static ArrayLengthReadNode create() {
             return ArrayLengthReadNodeGen.create();
         }
@@ -128,10 +134,12 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
     }
 
     public abstract static class ArrayLengthWriteNode extends ArrayLengthNode {
+        @NeverDefault
         public static ArrayLengthWriteNode create(boolean strict) {
             return SetArrayLengthNodeGen.create(strict);
         }
 
+        @NeverDefault
         public static ArrayLengthWriteNode createSetOrDelete(boolean strict) {
             return SetArrayLengthOrDeleteNodeGen.create(strict);
         }
@@ -146,40 +154,42 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             this.strict = strict;
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))"}, limit = "MAX_TYPE_COUNT")
         protected void doCached(JSDynamicObject arrayObj, int length,
+                        @Bind("this") Node node,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
-                        @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
+                        @Cached @Shared("setLengthProfile") ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             if (arrayType.isSealed()) {
-                setLengthSealed(arrayObj, length, arrayType, setLengthProfile);
+                setLengthSealed(arrayObj, length, arrayType, node, setLengthProfile);
                 return;
             }
-            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, setLengthProfile));
+            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, node, setLengthProfile));
         }
 
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSDynamicObject arrayObj, int length,
-                        @Cached("createBinaryProfile()") ConditionProfile sealedProfile,
-                        @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
+                        @Cached InlinedConditionProfile sealedProfile,
+                        @Cached @Shared("setLengthProfile") ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);
-            if (sealedProfile.profile(arrayType.isSealed())) {
-                setLengthSealed(arrayObj, length, arrayType, setLengthProfile);
+            if (sealedProfile.profile(this, arrayType.isSealed())) {
+                setLengthSealed(arrayObj, length, arrayType, this, setLengthProfile);
                 return;
             }
-            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, setLengthProfile));
+            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, this, setLengthProfile));
         }
 
-        private void setLengthSealed(JSDynamicObject arrayObj, int length, ScriptArray arrayType, ScriptArray.ProfileHolder setLengthProfile) {
+        private void setLengthSealed(JSDynamicObject arrayObj, int length, ScriptArray arrayType, Node node, ScriptArray.SetLengthProfileAccess setLengthProfile) {
             long minLength = arrayType.lastElementIndex(arrayObj) + 1;
             if (length < minLength) {
-                ScriptArray array = arrayType.setLength(arrayObj, minLength, strict, setLengthProfile);
+                ScriptArray array = arrayType.setLength(arrayObj, minLength, strict, node, setLengthProfile);
                 arraySetArrayType(arrayObj, array);
                 array.canDeleteElement(arrayObj, minLength - 1, strict);
                 return;
             }
-            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, setLengthProfile));
+            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, node, setLengthProfile));
         }
     }
 
@@ -190,32 +200,34 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             this.strict = strict;
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))"}, limit = "MAX_TYPE_COUNT")
         protected void doCached(JSDynamicObject arrayObj, int length,
+                        @Bind("this") Node node,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
-                        @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
+                        @Cached @Shared("setLengthProfile") ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             if (arrayType.isLengthNotWritable() || arrayType.isSealed()) {
-                deleteAndSetLength(arrayObj, length, arrayType, setLengthProfile);
+                deleteAndSetLength(arrayObj, length, arrayType, node, setLengthProfile);
                 return;
             }
-            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, setLengthProfile));
+            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, node, setLengthProfile));
         }
 
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSDynamicObject arrayObj, int length,
-                        @Cached("createBinaryProfile()") ConditionProfile mustDeleteProfile,
-                        @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
+                        @Cached InlinedConditionProfile mustDeleteProfile,
+                        @Cached @Shared("setLengthProfile") ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);
-            if (mustDeleteProfile.profile(arrayType.isLengthNotWritable() || arrayType.isSealed())) {
-                deleteAndSetLength(arrayObj, length, arrayType, setLengthProfile);
+            if (mustDeleteProfile.profile(this, arrayType.isLengthNotWritable() || arrayType.isSealed())) {
+                deleteAndSetLength(arrayObj, length, arrayType, this, setLengthProfile);
                 return;
             }
-            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, setLengthProfile));
+            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, this, setLengthProfile));
         }
 
-        private void deleteAndSetLength(JSDynamicObject arrayObj, int length, ScriptArray arrayType, ScriptArray.ProfileHolder setLengthProfile) {
+        private void deleteAndSetLength(JSDynamicObject arrayObj, int length, ScriptArray arrayType, Node node, ScriptArray.SetLengthProfileAccess setLengthProfile) {
             ScriptArray array = arrayType;
             for (int i = array.lengthInt(arrayObj) - 1; i >= length; i--) {
                 if (array.canDeleteElement(arrayObj, i, strict)) {
@@ -223,7 +235,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
                     arraySetArrayType(arrayObj, array);
                 }
             }
-            arraySetArrayType(arrayObj, array.setLength(arrayObj, length, strict, setLengthProfile));
+            arraySetArrayType(arrayObj, array.setLength(arrayObj, length, strict, node, setLengthProfile));
         }
     }
 }

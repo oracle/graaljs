@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,49 +40,43 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Objects;
+
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 
-public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNode.WithIntState {
+public abstract class JSLogicalNode extends JavaScriptNode implements ResumableNode.WithIntState {
+
+    @Child @Executed protected JavaScriptNode leftNode;
+    @Child protected JavaScriptNode rightNode;
 
     private static final int RESUME_RIGHT = 1;
     private static final int RESUME_UNEXECUTED = 0;
 
-    protected final ConditionProfile canShortCircuit = ConditionProfile.createBinaryProfile();
-
     protected JSLogicalNode(JavaScriptNode left, JavaScriptNode right) {
-        super(left, right);
+        this.leftNode = left;
+        this.rightNode = right;
     }
 
-    protected abstract boolean useLeftValue(Object leftValue);
-
-    @Override
-    public final Object execute(VirtualFrame frame) {
-        Object leftValue = leftNode.execute(frame);
-        if (canShortCircuit.profile(useLeftValue(leftValue))) {
-            return leftValue;
-        } else {
-            return rightNode.execute(frame);
-        }
-    }
+    protected abstract Object executeEvaluated(VirtualFrame frame, Object leftValue);
 
     @Override
     public Object resume(VirtualFrame frame, int stateSlot) {
         int state = getStateAsIntAndReset(frame, stateSlot);
         if (state == RESUME_UNEXECUTED) {
             Object leftValue = leftNode.execute(frame);
-            if (canShortCircuit.profile(useLeftValue(leftValue))) {
-                return leftValue;
-            } else {
-                try {
-                    return getRight().execute(frame);
-                } catch (YieldException e) {
-                    setStateAsInt(frame, stateSlot, RESUME_RIGHT);
-                    throw e;
-                }
+            try {
+                return executeEvaluated(frame, leftValue);
+            } catch (YieldException e) {
+                setStateAsInt(frame, stateSlot, RESUME_RIGHT);
+                throw e;
             }
         } else {
             assert state == RESUME_RIGHT;
@@ -95,8 +89,49 @@ public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNod
         }
     }
 
+    public final JavaScriptNode getLeft() {
+        return leftNode;
+    }
+
+    public final JavaScriptNode getRight() {
+        return rightNode;
+    }
+
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return getLeft().isResultAlwaysOfType(clazz) && getRight().isResultAlwaysOfType(clazz);
+    }
+
+    @Override
+    public String expressionToString() {
+        if (getLeft() != null && getRight() != null) {
+            NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
+            if (annotation != null && !annotation.shortName().isEmpty()) {
+                return "(" + Objects.toString(getLeft().expressionToString(), INTERMEDIATE_VALUE) + " " + annotation.shortName() + " " +
+                                Objects.toString(getRight().expressionToString(), INTERMEDIATE_VALUE) + ")";
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == BinaryOperationTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
+        if (annotation != null) {
+            String shortName = annotation.shortName();
+            if (!shortName.isEmpty()) {
+                return JSTags.createNodeObjectDescriptor("operator", annotation.shortName());
+            }
+        }
+        return null;
     }
 }

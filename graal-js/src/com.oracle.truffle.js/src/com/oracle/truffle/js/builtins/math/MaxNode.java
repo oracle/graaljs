@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,13 @@
  */
 package com.oracle.truffle.js.builtins.math;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -54,19 +58,19 @@ public abstract class MaxNode extends MathOperation {
         super(context, builtin);
     }
 
-    private final ConditionProfile leftSmaller = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile rightSmaller = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile bothEqual = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile negativeZero = ConditionProfile.createBinaryProfile();
-
-    private double maxDoubleDouble(double a, double b) {
-        if (leftSmaller.profile(a > b)) {
+    private static double maxDoubleDouble(double a, double b,
+                    Node node,
+                    InlinedConditionProfile leftSmaller,
+                    InlinedConditionProfile rightSmaller,
+                    InlinedConditionProfile bothEqual,
+                    InlinedConditionProfile negativeZero) {
+        if (leftSmaller.profile(node, a > b)) {
             return a;
-        } else if (rightSmaller.profile(b > a)) {
+        } else if (rightSmaller.profile(node, b > a)) {
             return b;
         } else {
-            if (bothEqual.profile(a == b)) {
-                if (negativeZero.profile(JSRuntime.isNegativeZero(a))) {
+            if (bothEqual.profile(node, a == b)) {
+                if (negativeZero.profile(node, JSRuntime.isNegativeZero(a))) {
                     return b;
                 } else {
                     return a;
@@ -93,40 +97,52 @@ public abstract class MaxNode extends MathOperation {
     }
 
     @Specialization(guards = {"args.length == 2", "caseIntInt(args)"})
-    protected static int max2ParamInt(Object[] args,
-                    @Cached("createBinaryProfile()") ConditionProfile maxProfile) {
+    protected int max2ParamInt(Object[] args,
+                    @Cached @Shared("maxProfile") InlinedConditionProfile maxProfile) {
         int i1 = (int) args[0];
         int i2 = (int) args[1];
-        return max(i1, i2, maxProfile);
+        return max(i1, i2, this, maxProfile);
     }
 
     @Specialization(guards = {"args.length == 2", "!caseIntInt(args)"})
-    protected Object max2Param(Object[] args,
-                    @Cached("createBinaryProfile()") ConditionProfile isIntBranch,
-                    @Cached("createBinaryProfile()") ConditionProfile maxProfile,
-                    @Cached("create()") JSToNumberNode toNumber1Node,
-                    @Cached("create()") JSToNumberNode toNumber2Node) {
+    protected static Object max2Param(Object[] args,
+                    @Bind("this") Node node,
+                    @Cached @Exclusive InlinedConditionProfile isIntBranch,
+                    @Cached @Shared("maxProfile") InlinedConditionProfile maxProfile,
+                    @Cached JSToNumberNode toNumber1Node,
+                    @Cached JSToNumberNode toNumber2Node,
+                    @Cached @Shared("leftSmaller") InlinedConditionProfile leftSmaller,
+                    @Cached @Shared("rightSmaller") InlinedConditionProfile rightSmaller,
+                    @Cached @Shared("bothEqual") InlinedConditionProfile bothEqual,
+                    @Cached @Shared("negativeZero") InlinedConditionProfile negativeZero) {
         Number n1 = toNumber1Node.executeNumber(args[0]);
         Number n2 = toNumber2Node.executeNumber(args[1]);
-        if (isIntBranch.profile(n1 instanceof Integer && n2 instanceof Integer)) {
-            return max(((Integer) n1).intValue(), ((Integer) n2).intValue(), maxProfile);
+        if (isIntBranch.profile(node, n1 instanceof Integer && n2 instanceof Integer)) {
+            return max(((Integer) n1).intValue(), ((Integer) n2).intValue(), node, maxProfile);
         } else {
             double d1 = JSRuntime.doubleValue(n1);
             double d2 = JSRuntime.doubleValue(n2);
-            return maxDoubleDouble(d1, d2);
+            return maxDoubleDouble(d1, d2,
+                            node, leftSmaller, rightSmaller, bothEqual, negativeZero);
         }
     }
 
     @Specialization(guards = "args.length >= 3")
-    protected double max(Object[] args) {
-        double largest = maxDoubleDouble(toDouble(args[0]), toDouble(args[1]));
+    protected double max(Object[] args,
+                    @Cached @Shared("leftSmaller") InlinedConditionProfile leftSmaller,
+                    @Cached @Shared("rightSmaller") InlinedConditionProfile rightSmaller,
+                    @Cached @Shared("bothEqual") InlinedConditionProfile bothEqual,
+                    @Cached @Shared("negativeZero") InlinedConditionProfile negativeZero) {
+        double largest = maxDoubleDouble(toDouble(args[0]), toDouble(args[1]),
+                        this, leftSmaller, rightSmaller, bothEqual, negativeZero);
         for (int i = 2; i < args.length; i++) {
-            largest = maxDoubleDouble(largest, toDouble(args[i]));
+            largest = maxDoubleDouble(largest, toDouble(args[i]),
+                            this, leftSmaller, rightSmaller, bothEqual, negativeZero);
         }
         return largest;
     }
 
-    private static int max(int a, int b, ConditionProfile maxProfile) {
-        return maxProfile.profile(a >= b) ? a : b;
+    private static int max(int a, int b, Node node, InlinedConditionProfile maxProfile) {
+        return maxProfile.profile(node, a >= b) ? a : b;
     }
 }

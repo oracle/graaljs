@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,10 +47,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -84,6 +86,7 @@ public abstract class JSEqualNode extends JSCompareNode {
         super(left, right);
     }
 
+    @NeverDefault
     public static JSEqualNode create() {
         return JSEqualNodeGen.create(null, null);
     }
@@ -221,13 +224,14 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
-    protected boolean doOverloaded(Object a, Object b,
+    protected static boolean doOverloaded(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached("createHintDefault(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
-                    @Cached("create()") JSToBooleanNode toBooleanNode) {
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode) {
         if (a == b) {
             return true;
         } else {
-            return toBooleanNode.executeBoolean(overloadedOperatorNode.execute(a, b));
+            return toBooleanNode.executeBoolean(node, overloadedOperatorNode.execute(a, b));
         }
     }
 

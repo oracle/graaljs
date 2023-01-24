@@ -45,7 +45,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatFormatRangeNodeGen;
@@ -183,9 +183,9 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         public TruffleString doFormatRange(JSDateTimeFormatObject dateTimeFormat, Object startDate, Object endDate,
                         @Cached JSToNumberNode startDateToNumberNode,
                         @Cached JSToNumberNode endDateToNumberNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (startDate == Undefined.instance || endDate == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorInvalidTimeValue();
             }
             Number xNumber = startDateToNumberNode.executeNumber(startDate);
@@ -193,7 +193,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             double x = JSDate.timeClip(JSRuntime.toDouble(xNumber));
             double y = JSDate.timeClip(JSRuntime.toDouble(yNumber));
             if (Double.isNaN(x) || Double.isNaN(y)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorInvalidTimeValue();
             }
             return JSDateTimeFormat.formatRange(dateTimeFormat, x, y);
@@ -216,9 +216,9 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         public Object doFormatRangeToParts(JSDateTimeFormatObject dateTimeFormat, Object startDate, Object endDate,
                         @Cached JSToNumberNode startDateToNumberNode,
                         @Cached JSToNumberNode endDateToNumberNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (startDate == Undefined.instance || endDate == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorInvalidTimeValue();
             }
             Number xNumber = startDateToNumberNode.executeNumber(startDate);
@@ -226,7 +226,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             double x = JSDate.timeClip(JSRuntime.toDouble(xNumber));
             double y = JSDate.timeClip(JSRuntime.toDouble(yNumber));
             if (Double.isNaN(x) || Double.isNaN(y)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorInvalidTimeValue();
             }
             return JSDateTimeFormat.formatRangeToParts(getContext(), getRealm(), dateTimeFormat, x, y);
@@ -252,11 +252,11 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         public Object doDateTimeFormat(JSDateTimeFormatObject dateTimeFormatObj,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             JSDateTimeFormat.InternalState state = JSDateTimeFormat.getInternalState(dateTimeFormatObj);
 
             if (state == null || !state.isInitialized()) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
             }
 

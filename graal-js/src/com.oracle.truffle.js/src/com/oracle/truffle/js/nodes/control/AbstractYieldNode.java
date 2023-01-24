@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,7 @@ abstract class AbstractYieldNode extends JavaScriptNode implements ResumableNode
     @Child protected ReturnNode returnNode;
     @Child protected YieldResultNode generatorYieldNode;
     protected final JSContext context;
-    protected final ConditionProfile returnOrExceptionProfile = ConditionProfile.createBinaryProfile();
+    protected final ConditionProfile returnOrExceptionProfile = ConditionProfile.create();
 
     protected AbstractYieldNode(JSContext context, int stateSlot, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, YieldResultNode yieldResultNode) {
         this.stateSlot = stateSlot;

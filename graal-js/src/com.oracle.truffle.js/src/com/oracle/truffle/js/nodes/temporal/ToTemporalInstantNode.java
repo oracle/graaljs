@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -65,18 +65,14 @@ public abstract class ToTemporalInstantNode extends JavaScriptBaseNode {
         this.ctx = context;
     }
 
-    public static ToTemporalInstantNode create(JSContext context) {
-        return ToTemporalInstantNodeGen.create(context);
-    }
-
     public abstract JSTemporalInstantObject execute(Object value);
 
     @Specialization
     public JSTemporalInstantObject toTemporalDateTime(Object item,
-                    @Cached("create()") IsObjectNode isObjectNode,
-                    @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("createBinaryProfile()") ConditionProfile isObjectProfile) {
-        if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached JSToStringNode toStringNode,
+                    @Cached InlinedConditionProfile isObjectProfile) {
+        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             if (TemporalUtil.isTemporalInstant(item)) {
                 return (JSTemporalInstantObject) item;
             }

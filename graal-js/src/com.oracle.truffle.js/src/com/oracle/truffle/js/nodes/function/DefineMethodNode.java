@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -130,11 +131,13 @@ public class DefineMethodNode extends JavaScriptBaseNode {
             return makeFunction(frame, factory, prototype);
         }
 
+        @NeverDefault
         @TruffleBoundary
         protected final JSFunctionFactory makeFactory(JSDynamicObject prototype) {
             return JSFunctionFactory.create(getContext(), prototype);
         }
 
+        @NeverDefault
         protected final JSFunctionFactory makeFactoryMultiContext() {
             return makeFactory(null);
         }

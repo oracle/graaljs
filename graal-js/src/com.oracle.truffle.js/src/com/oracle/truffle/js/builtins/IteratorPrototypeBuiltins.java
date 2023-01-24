@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,14 @@ package com.oracle.truffle.js.builtins;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -67,6 +69,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -237,9 +240,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             @Child private IteratorStepNode iteratorStepNode;
             @Child private IteratorValueNode iteratorValueNode;
             @Child private PropertySetNode setGeneratorStateNode;
+            @Child private LongToIntOrDoubleNode indexToNumber = LongToIntOrDoubleNode.create();
 
             private final BranchProfile hasNoArgsProfile = BranchProfile.create();
-            private final BranchProfile doubleIndexBranch = BranchProfile.create();
             protected final JSContext context;
 
             public IteratorFromGeneratorImplNode(JSContext context) {
@@ -297,7 +300,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             public abstract IteratorFromGeneratorImplNode<T> copyUninitialized();
 
             protected final Object indexToJS(long index) {
-                return JSRuntime.longToIntOrDouble(index, doubleIndexBranch);
+                return indexToNumber.fromIndex(null, index);
             }
         }
 
@@ -505,8 +508,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
 
-        private BranchProfile errorProfile = BranchProfile.create();
-
         protected IteratorTakeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, BuiltinFunctionKey.IteratorTake, c -> createIteratorFromGeneratorFunctionImpl(c, IteratorTakeNextNode.create(c)));
 
@@ -524,18 +525,19 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        public JSDynamicObject take(Object thisObj, Object limit) {
+        public JSDynamicObject take(Object thisObj, Object limit,
+                        @Cached InlinedBranchProfile errorBranch) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
-                errorProfile.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
             if (integerLimit < 0) {
-                errorProfile.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
@@ -545,7 +547,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected abstract static class IteratorTakeNextNode extends IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<IteratorTakeArgs> {
             @Child private IteratorCloseNode iteratorCloseNode;
 
-            private final ConditionProfile finiteProfile = ConditionProfile.createBinaryProfile();
+            private final ConditionProfile finiteProfile = ConditionProfile.create();
 
             protected IteratorTakeNextNode(JSContext context) {
                 super(context);
@@ -585,8 +587,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
 
-        private final BranchProfile errorProfile = BranchProfile.create();
-
         protected IteratorDropNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, BuiltinFunctionKey.IteratorDrop, c -> createIteratorFromGeneratorFunctionImpl(c, IteratorDropNextNode.create(c)));
 
@@ -604,18 +604,19 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        public JSDynamicObject drop(Object thisObj, Object limit) {
+        public JSDynamicObject drop(Object thisObj, Object limit,
+                        @Cached InlinedBranchProfile errorBranch) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
-                errorProfile.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
             if (integerLimit < 0) {
-                errorProfile.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
@@ -624,7 +625,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         protected abstract static class IteratorDropNextNode extends IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<IteratorDropArgs> {
 
-            private final ConditionProfile finiteProfile = ConditionProfile.createBinaryProfile();
+            private final ConditionProfile finiteProfile = ConditionProfile.create();
 
             protected IteratorDropNextNode(JSContext context) {
                 super(context);
@@ -767,9 +768,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private IsJSObjectNode isObjectNode;
         @Child private JSToBooleanNode toBooleanNode;
         @Child private IteratorValueNode iteratorValueNode;
-
-        protected final BranchProfile errorProfile = BranchProfile.create();
-        private final BranchProfile doubleIndexBranch = BranchProfile.create();
+        @Child private LongToIntOrDoubleNode indexToJS;
 
         protected static final Object CONTINUE = new Object();
 
@@ -780,9 +779,10 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             this.iteratorNextNode = IteratorNextNode.create();
             this.iteratorValueNode = IteratorValueNode.create();
-            this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
+            this.getDoneNode = PropertyGetNode.create(Strings.DONE, context);
             this.isObjectNode = IsJSObjectNode.create();
             this.toBooleanNode = JSToBooleanNode.create();
+            this.indexToJS = LongToIntOrDoubleNode.create();
         }
 
         protected Object end() {
@@ -808,13 +808,14 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "isCallable(fn)")
-        protected Object compatible(Object thisObj, Object fn) {
+        protected Object compatible(Object thisObj, Object fn,
+                        @Cached InlinedBranchProfile errorBranch) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
             long counter = 0;
             while (true) {
                 Object next = iteratorNextNode.execute(iterated);
                 if (!isObjectNode.executeBoolean(next)) {
-                    errorProfile.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeErrorIterResultNotAnObject(next, this);
                 }
                 if (toBooleanNode.executeBoolean(getDoneNode.getValue(next))) {
@@ -839,7 +840,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected final Object indexToJS(long index) {
-            return JSRuntime.longToIntOrDouble(index, doubleIndexBranch);
+            return indexToJS.execute(null, index);
         }
     }
 
@@ -953,7 +954,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private IteratorValueNode iteratorValueNode;
         @Child private JSFunctionCallNode callNode;
         @Child private IteratorCloseNode iteratorCloseNode;
-        private final BranchProfile doubleIndexBranch = BranchProfile.create();
 
         protected IteratorReduceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -963,21 +963,9 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.callNode = JSFunctionCallNode.createCall();
         }
 
-        private Object callReducer(IteratorRecord iterated, Object reducer, Object accumulator, Object value, long counter) {
-            try {
-                return callNode.executeCall(JSArguments.create(Undefined.instance, reducer, accumulator, value, JSRuntime.longToIntOrDouble(counter, doubleIndexBranch)));
-            } catch (AbstractTruffleException ex) {
-                if (iteratorCloseNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
-                }
-                iteratorCloseNode.executeAbrupt(iterated.getIterator());
-                throw ex; // should be executed by iteratorClose
-            }
-        }
-
         @Specialization(guards = "isCallable(reducer)")
-        protected Object reduce(Object thisObj, Object reducer, Object[] args) {
+        protected Object reduce(Object thisObj, Object reducer, Object[] args,
+                        @Cached(inline = true) LongToIntOrDoubleNode counterToJSNumber) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
             Object accumulator;
@@ -1001,8 +989,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     return accumulator;
                 }
                 Object value = iteratorValueNode.execute(next);
-                accumulator = callReducer(iterated, reducer, accumulator, value, counter);
-                counter++;
+                try {
+                    accumulator = callNode.executeCall(JSArguments.create(Undefined.instance, reducer, accumulator, value, counterToJSNumber.execute(this, counter)));
+                    counter++;
+                } catch (AbstractTruffleException ex) {
+                    iteratorCloseNode().executeAbrupt(iterated.getIterator());
+                    throw ex; // should be executed by iteratorClose
+                }
             }
         }
 
@@ -1010,6 +1003,14 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected void incompatible(Object thisObj, Object reducer, @SuppressWarnings("unused") Object[] args) {
             getIteratorDirect(thisObj);
             throw Errors.createTypeErrorNotAFunction(reducer);
+        }
+
+        private IteratorCloseNode iteratorCloseNode() {
+            if (iteratorCloseNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
+            }
+            return iteratorCloseNode;
         }
     }
 }

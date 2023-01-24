@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.js.builtins.math;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -72,26 +72,26 @@ public abstract class CeilNode extends MathOperation {
     }
 
     @Specialization
-    protected static Object ceilDouble(double d,
-                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
-                    @Cached("createBinaryProfile()") @Shared("requiresNegativeZero") ConditionProfile requiresNegativeZero,
-                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
-                    @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong) {
-        if (isZero.profile(d == 0.0)) {
+    protected final Object ceilDouble(double d,
+                    @Cached @Shared("isZero") InlinedConditionProfile isZero,
+                    @Cached @Shared("requiresNegativeZero") InlinedConditionProfile requiresNegativeZero,
+                    @Cached @Shared("fitsInt") InlinedConditionProfile fitsInt,
+                    @Cached @Shared("fitsSafeLong") InlinedConditionProfile fitsSafeLong) {
+        if (isZero.profile(this, d == 0.0)) {
             // ceil(-0.0) => -0.0
             // ceil(+0.0) => +0.0
             return d;
-        } else if (fitsInt.profile(d >= Integer.MIN_VALUE && d <= Integer.MAX_VALUE)) {
+        } else if (fitsInt.profile(this, d >= Integer.MIN_VALUE && d <= Integer.MAX_VALUE)) {
             int i = (int) d;
             int result = d > i ? i + 1 : i;
-            if (requiresNegativeZero.profile(result == 0 && d < 0)) {
+            if (requiresNegativeZero.profile(this, result == 0 && d < 0)) {
                 return -0.0;
             }
             return result;
-        } else if (fitsSafeLong.profile(JSRuntime.isSafeInteger(d))) {
+        } else if (fitsSafeLong.profile(this, JSRuntime.isSafeInteger(d))) {
             long i = (long) d;
             long result = d > i ? i + 1 : i;
-            if (requiresNegativeZero.profile(result == 0 && d < 0)) {
+            if (requiresNegativeZero.profile(this, result == 0 && d < 0)) {
                 return -0.0;
             }
             return SafeInteger.valueOf(result);
@@ -101,11 +101,11 @@ public abstract class CeilNode extends MathOperation {
     }
 
     @Specialization(replaces = "ceilDouble")
-    protected Object ceilToDouble(Object a,
-                    @Cached("createBinaryProfile()") @Shared("isZero") ConditionProfile isZero,
-                    @Cached("createBinaryProfile()") @Shared("requiresNegativeZero") ConditionProfile requiresNegativeZero,
-                    @Cached("createBinaryProfile()") @Shared("fitsInt") ConditionProfile fitsInt,
-                    @Cached("createBinaryProfile()") @Shared("fitsSafeLong") ConditionProfile fitsSafeLong) {
+    protected final Object ceilToDouble(Object a,
+                    @Cached @Shared("isZero") InlinedConditionProfile isZero,
+                    @Cached @Shared("requiresNegativeZero") InlinedConditionProfile requiresNegativeZero,
+                    @Cached @Shared("fitsInt") InlinedConditionProfile fitsInt,
+                    @Cached @Shared("fitsSafeLong") InlinedConditionProfile fitsSafeLong) {
         double d = toDouble(a);
         return ceilDouble(d, isZero, requiresNegativeZero, fitsInt, fitsSafeLong);
     }

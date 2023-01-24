@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -131,8 +131,8 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)"})
     protected static Object doGeneric(Object a,
-                    @Cached("create()") JSToNumericNode toNumericNode,
-                    @Cached("create()") JSUnaryMinusNode recursiveUnaryMinus) {
+                    @Cached JSToNumericNode toNumericNode,
+                    @Cached JSUnaryMinusNode recursiveUnaryMinus) {
         Object value = toNumericNode.execute(a);
         return recursiveUnaryMinus.execute(value);
     }

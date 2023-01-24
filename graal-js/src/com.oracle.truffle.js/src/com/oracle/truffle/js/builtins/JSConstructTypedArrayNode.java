@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,31 +45,32 @@ import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSConstructTypedArrayNodeGen.IntegerIndexedObjectCreateNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IterableToListNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -172,38 +173,39 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSHeapArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doArrayBuffer(JSDynamicObject newTarget, JSDynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
+                    @Cached @Shared("lengthIsUndefined") InlinedConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
         byte[] byteArray = JSArrayBuffer.getByteArray(arrayBuffer);
         int arrayBufferLength = byteArray.length;
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, false, lengthIsUndefined);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, false, this, lengthIsUndefined);
     }
 
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSDirectArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doDirectArrayBuffer(JSDynamicObject newTarget, JSDynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
+                    @Cached @Shared("lengthIsUndefined") InlinedConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
         ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         int arrayBufferLength = byteBuffer.limit();
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, true, false, lengthIsUndefined);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, true, false, this, lengthIsUndefined);
     }
 
     private JSDynamicObject doArrayBufferImpl(JSDynamicObject arrayBuffer, Object byteOffset0, Object length0, JSDynamicObject newTarget, long bufferByteLength,
-                    boolean direct, boolean isInteropBuffer, ConditionProfile lengthIsUndefinedProfile) {
+                    boolean direct, boolean isInteropBuffer,
+                    Node node, InlinedConditionProfile lengthIsUndefinedProfile) {
         final int elementSize = factory.getBytesPerElement();
 
         final long byteOffset = toIndex(byteOffset0);
         rangeCheckIsMultipleOfElementSize(byteOffset % elementSize == 0, "start offset", factory.getName(), elementSize);
 
         long length = 0;
-        if (!lengthIsUndefinedProfile.profile(length0 == Undefined.instance)) {
+        if (!lengthIsUndefinedProfile.profile(node, length0 == Undefined.instance)) {
             length = toIndex(length0);
             assert length >= 0;
         }
 
         checkDetachedBuffer(arrayBuffer);
 
-        if (lengthIsUndefinedProfile.profile(length0 == Undefined.instance)) {
+        if (lengthIsUndefinedProfile.profile(node, length0 == Undefined.instance)) {
             rangeCheckIsMultipleOfElementSize(bufferByteLength % elementSize == 0, "buffer.byteLength", factory.getName(), elementSize);
             length = ((bufferByteLength - byteOffset) / elementSize);
             rangeCheck(length >= 0, "length < 0");
@@ -228,7 +230,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSSharedArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doSharedArrayBuffer(JSDynamicObject newTarget, JSDynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
+                    @Cached @Shared("lengthIsUndefined") InlinedConditionProfile lengthIsUndefined) {
         return doDirectArrayBuffer(newTarget, arrayBuffer, byteOffset0, length0, lengthIsUndefined);
     }
 
@@ -242,11 +244,11 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSInteropArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doInteropArrayBuffer(JSDynamicObject newTarget, JSDynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined,
+                    @Cached @Shared("lengthIsUndefined") InlinedConditionProfile lengthIsUndefined,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         Object buffer = JSArrayBuffer.getInteropBuffer(arrayBuffer);
         long arrayBufferLength = getBufferSizeSafe(buffer, interop);
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, true, lengthIsUndefined);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, true, this, lengthIsUndefined);
     }
 
     /**
@@ -317,15 +319,14 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * argument and the Type of the first argument is Object and that object does not have either a
      * [[TypedArrayName]] or an [[ArrayBufferData]] internal slot.
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSObject(object)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)"})
-    protected JSDynamicObject doObject(JSDynamicObject newTarget, JSDynamicObject object, Object byteOffset0, Object length0,
+    protected JSDynamicObject doObject(JSDynamicObject newTarget, JSDynamicObject object, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
+                    @Bind("this") Node node,
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
-                    @Cached("createBinaryProfile()") ConditionProfile isIterableProfile,
-                    @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
-                    @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
-                    @Cached IsJSObjectNode isObjectNode,
-                    @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode,
+                    @Cached @Exclusive InlinedConditionProfile isIterableProfile,
+                    @Cached("createWriteOwn()") @Shared("writeOwn") WriteElementNode writeOwnNode,
+                    @Cached(inline = true) GetIteratorNode getIteratorNode,
                     @Cached IterableToListNode iterableToListNode,
                     @Cached("createGetLength()") JSGetLengthNode getLengthNode,
                     @Cached("create(getContext())") ReadElementNode readNode) {
@@ -335,8 +336,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         assert JSRuntime.isObject(proto);
 
         Object usingIterator = getIteratorMethodNode.executeWithTarget(object);
-        if (isIterableProfile.profile(usingIterator != Undefined.instance)) {
-            SimpleArrayList<Object> values = iterableToListNode.execute(GetIteratorNode.getIterator(object, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, this));
+        if (isIterableProfile.profile(node, usingIterator != Undefined.instance)) {
+            SimpleArrayList<Object> values = iterableToListNode.execute(getIteratorNode.execute(node, object, usingIterator));
             int len = values.size();
             JSDynamicObject arrayBuffer = createTypedArrayBuffer(len);
             TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
@@ -361,16 +362,18 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return obj;
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"!isUndefined(newTarget)", "isForeignObject(object)"}, limit = "InteropLibraryLimit")
     protected JSDynamicObject doForeignObject(JSDynamicObject newTarget, Object object, Object byteOffset0, Object length0,
+                    @Bind("this") Node node,
                     @CachedLibrary("object") InteropLibrary interop,
-                    @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
+                    @Cached("createWriteOwn()") @Shared("writeOwn") WriteElementNode writeOwnNode,
                     @Cached ImportValueNode importValue,
-                    @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
+                    @Cached @Exclusive InlinedConditionProfile lengthIsUndefined) {
         if (interop.hasBufferElements(object)) {
             JSDynamicObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), object);
             long bufferByteLength = getBufferSizeSafe(object, interop);
-            return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, bufferByteLength, false, true, lengthIsUndefined);
+            return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, bufferByteLength, false, true, node, lengthIsUndefined);
         }
 
         long length;
@@ -406,14 +409,17 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         }
     }
 
+    @NeverDefault
     GetMethodNode createGetIteratorMethod() {
         return GetMethodNode.create(getContext(), Symbol.SYMBOL_ITERATOR);
     }
 
+    @NeverDefault
     WriteElementNode createWriteOwn() {
         return WriteElementNode.create(getContext(), true, true);
     }
 
+    @NeverDefault
     JSGetLengthNode createGetLength() {
         return JSGetLengthNode.create(getContext());
     }
@@ -528,8 +534,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isDefaultPrototype(proto)", "!context.isMultiContext()", "proto == cachedProto"}, limit = "1")
         JSDynamicObject doCachedProto(JSDynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, JSDynamicObject proto,
-                        @Cached("proto") JSDynamicObject cachedProto,
-                        @Cached("makeObjectFactory(cachedProto)") JSObjectFactory objectFactory) {
+                        @Cached(value = "proto", neverDefault = true) JSDynamicObject cachedProto,
+                        @Cached(value = "makeObjectFactory(cachedProto)", neverDefault = true) JSObjectFactory objectFactory) {
             return JSArrayBufferView.createArrayBufferView(context, getRealm(), objectFactory, arrayBuffer, typedArray, offset, length);
         }
 

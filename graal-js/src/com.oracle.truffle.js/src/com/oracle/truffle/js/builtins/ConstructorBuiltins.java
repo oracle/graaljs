@@ -53,9 +53,11 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -64,9 +66,10 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.utilities.AssumedValue;
@@ -141,13 +144,10 @@ import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.access.InstallErrorCauseNode;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.IterableToListNode;
@@ -862,10 +862,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return swapPrototype(JSArray.createConstantEmptyArray(getContext(), realm, arrayAllocationSite, length), newTarget);
         }
 
-        @Specialization(guards = {"args.length == 1", "toArrayLengthNode.isTypeNumber(len)"}, replaces = "constructArrayWithIntLength")
+        @Specialization(guards = {"args.length == 1", "toArrayLengthNode.isTypeNumber(len)"}, replaces = "constructArrayWithIntLength", limit = "1")
         protected JSObject constructWithLength(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args,
                         @Cached @SuppressWarnings("unused") ToArrayLengthNode toArrayLengthNode,
-                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
+                        @Cached("create(getContext())") @Shared("arrayCreate") ArrayCreateNode arrayCreateNode,
                         @Bind("toArrayLengthNode.executeLong(firstArg(args))") long len) {
             JSArrayObject array = arrayCreateNode.execute(len);
             return swapPrototype(array, newTarget);
@@ -875,14 +875,16 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return arguments[0];
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "isOneForeignArg(args)", limit = "InteropLibraryLimit")
         protected JSObject constructWithForeignArg(JSDynamicObject newTarget, Object[] args,
+                        @Bind("this") Node node,
                         @CachedLibrary("firstArg(args)") InteropLibrary interop,
-                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
-                        @Cached("createBinaryProfile()") ConditionProfile isNumber,
-                        @Cached("create()") BranchProfile rangeErrorProfile) {
+                        @Cached("create(getContext())") @Shared("arrayCreate") ArrayCreateNode arrayCreateNode,
+                        @Cached @Exclusive InlinedConditionProfile isNumber,
+                        @Cached @Exclusive InlinedBranchProfile rangeErrorProfile) {
             Object len = args[0];
-            if (isNumber.profile(interop.isNumber(len))) {
+            if (isNumber.profile(node, interop.isNumber(len))) {
                 if (interop.fitsInLong(len)) {
                     try {
                         long length = interop.asLong(len);
@@ -891,11 +893,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                             return swapPrototype(array, newTarget);
                         }
                     } catch (UnsupportedMessageException umex) {
-                        rangeErrorProfile.enter();
+                        rangeErrorProfile.enter(node);
                         throw Errors.createTypeErrorInteropException(len, umex, "asLong", this);
                     }
                 }
-                rangeErrorProfile.enter();
+                rangeErrorProfile.enter(node);
                 throw Errors.createRangeErrorInvalidArrayLength();
             } else {
                 return swapPrototype(JSArray.create(getContext(), getRealm(), ConstantObjectArray.createConstantObjectArray(), args, 1), newTarget);
@@ -904,23 +906,23 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!isOneNumberArg(args)", "!isOneForeignArg(args)"})
         protected JSObject constructArrayVarargs(JSDynamicObject newTarget, Object[] args,
-                        @Cached("create()") BranchProfile isIntegerCase,
-                        @Cached("create()") BranchProfile isDoubleCase,
-                        @Cached("create()") BranchProfile isObjectCase,
-                        @Cached("createBinaryProfile()") ConditionProfile isLengthZero) {
+                        @Cached @Exclusive InlinedBranchProfile isIntegerCase,
+                        @Cached @Exclusive InlinedBranchProfile isDoubleCase,
+                        @Cached @Exclusive InlinedBranchProfile isObjectCase,
+                        @Cached @Exclusive InlinedConditionProfile isLengthZero) {
             JSRealm realm = getRealm();
-            if (isLengthZero.profile(args == null || args.length == 0)) {
+            if (isLengthZero.profile(this, args == null || args.length == 0)) {
                 return swapPrototype(JSArray.create(getContext(), realm, ScriptArray.createConstantEmptyArray(), args, 0), newTarget);
             } else {
                 ArrayContentType type = ArrayLiteralNode.identifyPrimitiveContentType(args, false);
                 if (type == ArrayContentType.Integer) {
-                    isIntegerCase.enter();
+                    isIntegerCase.enter(this);
                     return swapPrototype(JSArray.createZeroBasedIntArray(getContext(), realm, ArrayLiteralNode.createIntArray(args)), newTarget);
                 } else if (type == ArrayContentType.Double) {
-                    isDoubleCase.enter();
+                    isDoubleCase.enter(this);
                     return swapPrototype(JSArray.createZeroBasedDoubleArray(getContext(), realm, ArrayLiteralNode.createDoubleArray(args)), newTarget);
                 } else {
-                    isObjectCase.enter();
+                    isObjectCase.enter(this);
                     return swapPrototype(JSArray.create(getContext(), realm, ConstantObjectArray.createConstantObjectArray(), args, args.length), newTarget);
                 }
             }
@@ -983,8 +985,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected boolean callBoolean(Object value, @Cached("create()") JSToBooleanNode toBoolean) {
-            return toBoolean.executeBoolean(value);
+        protected boolean callBoolean(Object value,
+                        @Cached(inline = true) JSToBooleanNode toBoolean) {
+            return toBoolean.executeBoolean(this, value);
         }
     }
 
@@ -995,8 +998,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructBoolean(JSDynamicObject newTarget, Object value,
-                        @Cached("create()") JSToBooleanNode toBoolean) {
-            return swapPrototype(JSBoolean.create(getContext(), getRealm(), toBoolean.executeBoolean(value)), newTarget);
+                        @Cached(inline = true) JSToBooleanNode toBoolean) {
+            return swapPrototype(JSBoolean.create(getContext(), getRealm(), toBoolean.executeBoolean(this, value)), newTarget);
         }
 
         @Override
@@ -1026,50 +1029,55 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        @Child private JSToPrimitiveNode toPrimitiveNode;
-        @Child private JSToDoubleNode toDoubleNode;
-        private final ConditionProfile stringOrNumberProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isDateProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile gotFieldsProfile = ConditionProfile.createBinaryProfile();
-
-        private Object toPrimitive(Object target) {
-            if (toPrimitiveNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toPrimitiveNode = insert(JSToPrimitiveNode.createHintDefault());
-            }
-            return toPrimitiveNode.execute(target);
-        }
-
-        protected double toDouble(Object target) {
-            if (toDoubleNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toDoubleNode = insert(JSToDoubleNode.create());
-            }
-            return toDoubleNode.executeDouble(target);
-        }
-
         @Specialization(guards = {"args.length == 0"})
-        protected JSDynamicObject constructDateZero(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+        protected final JSObject constructDateZero(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             return swapPrototype(JSDate.create(getContext(), getRealm(), now()), newTarget);
         }
 
-        @Specialization(guards = {"args.length == 1"})
-        protected JSDynamicObject constructDateOne(JSDynamicObject newTarget, Object[] args,
-                        @Cached("createBinaryProfile()") ConditionProfile isSpecialCase,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-            double dateValue = getDateValue(args[0], interop);
-            return swapPrototype(JSDate.create(getContext(), getRealm(), timeClip(dateValue, isSpecialCase)), newTarget);
+        protected static Object arg0(Object[] args) {
+            return args[0];
+        }
+
+        @Specialization(guards = {"args.length == 1", "isJSDate(arg0(args))"})
+        protected final JSObject constructDateFromDate(JSDynamicObject newTarget, Object[] args) {
+            double dateValue = JSDate.getTimeMillisField((JSDateObject) args[0]);
+            assert JSRuntime.isSameValue(JSDate.timeClip(dateValue), dateValue);
+            return swapPrototype(JSDate.create(getContext(), getRealm(), dateValue), newTarget);
+        }
+
+        @Specialization(guards = {"args.length == 1", "!isJSDate(arg0(args))"})
+        protected final JSObject constructDateOne(JSDynamicObject newTarget, Object[] args,
+                        @Cached InlinedConditionProfile isSpecialCase,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached InlinedConditionProfile stringOrNumberProfile,
+                        @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
+                        @Cached @Shared JSToDoubleNode toDoubleNode) {
+            Object arg0 = args[0];
+            double rawDateValue;
+            if (getContext().getEcmaScriptVersion() >= 6 && interop.isInstant(arg0)) {
+                rawDateValue = JSDate.getDateValueFromInstant(arg0, interop);
+            } else {
+                Object value = toPrimitiveNode.execute(arg0);
+                if (stringOrNumberProfile.profile(this, value instanceof TruffleString)) {
+                    rawDateValue = parseDate((TruffleString) value);
+                } else {
+                    rawDateValue = toDoubleNode.executeDouble(value);
+                }
+            }
+            double dateValue = timeClip(rawDateValue, isSpecialCase);
+            return swapPrototype(JSDate.create(getContext(), getRealm(), dateValue), newTarget);
         }
 
         @Specialization(guards = {"args.length >= 2"})
-        protected JSDynamicObject constructDateMult(JSDynamicObject newTarget, Object[] args) {
-            double val = constructorImpl(args);
-            return swapPrototype(JSDate.create(getContext(), getRealm(), val), newTarget);
+        protected final JSObject constructDateMult(JSDynamicObject newTarget, Object[] args,
+                        @Cached @Shared JSToDoubleNode toDoubleNode) {
+            double dateValue = constructorImpl(args, toDoubleNode);
+            return swapPrototype(JSDate.create(getContext(), getRealm(), dateValue), newTarget);
         }
 
         // inlined JSDate.timeClip to use profiles
-        private static double timeClip(double dateValue, ConditionProfile isSpecialCase) {
-            if (isSpecialCase.profile(Double.isInfinite(dateValue) || Double.isNaN(dateValue) || Math.abs(dateValue) > JSDate.MAX_DATE)) {
+        private double timeClip(double dateValue, InlinedConditionProfile isSpecialCase) {
+            if (isSpecialCase.profile(this, Double.isInfinite(dateValue) || Double.isNaN(dateValue) || Math.abs(dateValue) > JSDate.MAX_DATE)) {
                 return Double.NaN;
             }
             return (long) dateValue;
@@ -1083,38 +1091,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @TruffleBoundary
         private double parseDate(TruffleString target) {
             Integer[] fields = getContext().getEvaluator().parseDate(getRealm(), Strings.toJavaString(Strings.lazyTrim(target)), false);
-            if (gotFieldsProfile.profile(fields != null)) {
+            if (fields != null) {
                 return JSDate.makeDate(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7]);
             }
             return Double.NaN;
         }
 
-        private double getDateValue(Object arg0, InteropLibrary interop) {
-            if (getContext().getEcmaScriptVersion() >= 6) {
-                if (isDateProfile.profile(JSDate.isJSDate(arg0))) {
-                    return JSDate.getTimeMillisField((JSDateObject) arg0);
-                } else if (interop.isInstant(arg0)) {
-                    return JSDate.getDateValueFromInstant(arg0, interop);
-                }
-            }
-            Object value = toPrimitive(arg0);
-            if (stringOrNumberProfile.profile(Strings.isTString(value))) {
-                return parseDate(JSRuntime.toStringIsString(value));
-            } else {
-                double dval = toDouble(value);
-                if (Double.isInfinite(dval) || Double.isNaN(dval)) {
-                    return Double.NaN;
-                } else {
-                    return dval;
-                }
-            }
-        }
-
-        private double constructorImpl(Object[] args) {
+        private static double constructorImpl(Object[] args, JSToDoubleNode toDoubleNode) {
             double[] argsEvaluated = new double[args.length];
             boolean isNaN = false;
             for (int i = 0; i < args.length; i++) {
-                double d = toDouble(args[i]);
+                double d = toDoubleNode.executeDouble(args[i]);
                 if (Double.isNaN(d)) {
                     isNaN = true;
                 }
@@ -1142,14 +1129,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSDynamicObject constructTemporalPlainDate(JSDynamicObject newTarget, Object isoYear, Object isoMonth,
                         Object isoDay, Object calendarLike,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode,
+                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                        @Cached("create()") BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             final int y = toIntegerNode.executeIntOrThrow(isoYear);
             final int m = toIntegerNode.executeIntOrThrow(isoMonth);
             final int d = toIntegerNode.executeIntOrThrow(isoDay);
-            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
-            return swapPrototype(JSTemporalPlainDate.create(getContext(), y, m, d, calendar, errorBranch), newTarget);
+            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(calendarLike);
+            return swapPrototype(JSTemporalPlainDate.create(getContext(), y, m, d, calendar, this, errorBranch), newTarget);
         }
 
         @Override
@@ -1168,8 +1155,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalPlainTime(JSDynamicObject newTarget, Object hourObj, Object minuteObj,
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject,
-                        @Cached BranchProfile errorBranch,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode) {
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode) {
             final int hour = toIntegerNode.executeIntOrThrow(hourObj);
             final int minute = toIntegerNode.executeIntOrThrow(minuteObj);
             final int second = toIntegerNode.executeIntOrThrow(secondObj);
@@ -1177,7 +1164,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
             final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
             return swapPrototype(JSTemporalPlainTime.create(getContext(),
-                            hour, minute, second, millisecond, microsecond, nanosecond, errorBranch), newTarget);
+                            hour, minute, second, millisecond, microsecond, nanosecond, this, errorBranch), newTarget);
         }
 
         @Override
@@ -1196,9 +1183,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalPlainDateTime(JSDynamicObject newTarget, Object yearObj, Object monthObj, Object dayObj, Object hourObj, Object minuteObj,
                         Object secondObj, Object millisecondObject,
                         Object microsecondObject, Object nanosecondObject, Object calendarLike,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode,
+                        @Cached JSToIntegerThrowOnInfinityNode toIntegerNode,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             final int year = toIntegerNode.executeIntOrThrow(yearObj);
             final int month = toIntegerNode.executeIntOrThrow(monthObj);
             final int day = toIntegerNode.executeIntOrThrow(dayObj);
@@ -1209,9 +1196,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final int millisecond = toIntegerNode.executeIntOrThrow(millisecondObject);
             final int microsecond = toIntegerNode.executeIntOrThrow(microsecondObject);
             final int nanosecond = toIntegerNode.executeIntOrThrow(nanosecondObject);
-            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
+            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(calendarLike);
             return swapPrototype(JSTemporalPlainDateTime.create(getContext(),
-                            year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, errorBranch), newTarget);
+                            year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, this, errorBranch), newTarget);
         }
 
         @Override
@@ -1230,8 +1217,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalDuration(JSDynamicObject newTarget, Object yearsObj, Object monthsObj,
                         Object weeksObj, Object daysObj, Object hoursObj, Object minutesObj, Object secondsObj,
                         Object millisecondsObject, Object microsecondsObject, Object nanosecondsObject,
-                        @Cached("create()") JSToIntegerWithoutRoundingNode toIntegerNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached JSToIntegerWithoutRoundingNode toIntegerNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             final double years = toIntegerNode.executeDouble(yearsObj);
             final double months = toIntegerNode.executeDouble(monthsObj);
             final double weeks = toIntegerNode.executeDouble(weeksObj);
@@ -1243,7 +1230,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final double microseconds = toIntegerNode.executeDouble(microsecondsObject);
             final double nanoseconds = toIntegerNode.executeDouble(nanosecondsObject);
             return swapPrototype(JSTemporalDuration.createTemporalDuration(getContext(),
-                            years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, errorBranch), newTarget);
+                            years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, this, errorBranch), newTarget);
         }
 
         @Override
@@ -1260,10 +1247,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructTemporalCalendar(JSDynamicObject newTarget, Object arg,
-                        @Cached BranchProfile errorBranch,
-                        @Cached("create()") JSToStringNode toString) {
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached JSToStringNode toString) {
             final TruffleString id = toString.executeString(arg);
-            return swapPrototype(JSTemporalCalendar.create(getContext(), getRealm(), id, errorBranch), newTarget);
+            return swapPrototype(JSTemporalCalendar.create(getContext(), getRealm(), id, this, errorBranch), newTarget);
         }
 
         @Override
@@ -1281,8 +1268,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSDynamicObject constructTemporalPlainYearMonth(JSDynamicObject newTarget, Object isoYear,
                         Object isoMonth, Object calendarLike, Object refISODay,
-                        @Cached("create()") BranchProfile errorBranch,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toInteger,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached JSToIntegerThrowOnInfinityNode toInteger,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode) {
 
             Object referenceISODay = refISODay;
@@ -1291,9 +1278,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             int y = toInteger.executeIntOrThrow(isoYear);
             int m = toInteger.executeIntOrThrow(isoMonth);
-            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
+            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(calendarLike);
             int ref = toInteger.executeIntOrThrow(referenceISODay);
-            return swapPrototype(JSTemporalPlainYearMonth.create(getContext(), y, m, calendar, ref, errorBranch), newTarget);
+            return swapPrototype(JSTemporalPlainYearMonth.create(getContext(), y, m, calendar, ref, this, errorBranch), newTarget);
         }
 
         @Override
@@ -1311,8 +1298,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected JSDynamicObject constructTemporalPlainMonthDay(JSDynamicObject newTarget, Object isoMonth,
                         Object isoDay, Object calendarLike, Object refISOYear,
-                        @Cached("create()") BranchProfile errorBranch,
-                        @Cached("create()") JSToIntegerThrowOnInfinityNode toInt,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached JSToIntegerThrowOnInfinityNode toInt,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode) {
             Object referenceISOYear = refISOYear;
             if (referenceISOYear == Undefined.instance || referenceISOYear == null) {
@@ -1320,9 +1307,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             int m = toInt.executeIntOrThrow(isoMonth);
             int d = toInt.executeIntOrThrow(isoDay);
-            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
+            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(calendarLike);
             int ref = toInt.executeIntOrThrow(referenceISOYear); // non-spec
-            return swapPrototype(JSTemporalPlainMonthDay.create(getContext(), m, d, calendar, ref, errorBranch), newTarget);
+            return swapPrototype(JSTemporalPlainMonthDay.create(getContext(), m, d, calendar, ref, this, errorBranch), newTarget);
         }
 
         @Override
@@ -1339,10 +1326,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructTemporalInstant(JSDynamicObject newTarget, Object epochNanoseconds,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             BigInt bi = JSRuntime.toBigInt(epochNanoseconds);
             if (!TemporalUtil.isValidEpochNanoseconds(bi)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
             return swapPrototype(JSTemporalInstant.create(getContext(), getRealm(), bi), newTarget);
@@ -1362,7 +1349,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructTemporalTimeZone(JSDynamicObject newTarget, Object identifier,
-                        @Cached("create()") JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode) {
             TruffleString id = toStringNode.executeString(identifier);
             return constructTemporalTimeZoneIntl(newTarget, id);
         }
@@ -1377,7 +1364,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 }
                 id = TemporalUtil.canonicalizeTimeZoneName(id);
             }
-            return swapPrototype(TemporalUtil.createTemporalTimeZone(getContext(), id), newTarget);
+            return swapPrototype(TemporalUtil.createTemporalTimeZone(getContext(), getRealm(), id), newTarget);
         }
 
         @Override
@@ -1396,15 +1383,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSDynamicObject constructTemporalZonedDateTime(JSDynamicObject newTarget, Object epochNanoseconds, Object timeZoneLike, Object calendarLike,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone,
                         @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                        @Cached("create()") JSToBigIntNode toBigIntNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached JSToBigIntNode toBigIntNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             BigInt ns = toBigIntNode.executeBigInteger(epochNanoseconds);
             if (!TemporalUtil.isValidEpochNanoseconds(ns)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
-            JSDynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(timeZoneLike);
-            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.executeDynamicObject(calendarLike);
+            JSDynamicObject timeZone = toTemporalTimeZone.execute(timeZoneLike);
+            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(calendarLike);
 
             return swapPrototype(JSTemporalZonedDateTime.create(getContext(), getRealm(), ns, timeZone, calendar), newTarget);
         }
@@ -1430,41 +1417,52 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private PropertyGetNode getConstructorNode;
         @Child private PropertyGetNode getSourceNode;
         @Child private PropertyGetNode getFlagsNode;
-        @Child private TRegexUtil.InteropReadStringMemberNode interopReadPatternNode;
-        private final BranchProfile regexpObject = BranchProfile.create();
-        private final BranchProfile regexpMatcherObject = BranchProfile.create();
-        private final BranchProfile regexpNonObject = BranchProfile.create();
-        private final BranchProfile regexpObjectNewFlagsBranch = BranchProfile.create();
-        private final ConditionProfile callIsRegExpProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile constructorEquivalentProfile = ConditionProfile.createBinaryProfile();
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSDynamicObject constructRegExp(JSDynamicObject newTarget, Object pattern, Object flags,
-                        @Cached("create(getContext())") IsRegExpNode isRegExpNode) {
+                        @Bind("this") Node node,
+                        @Cached("create(getContext())") IsRegExpNode isRegExpNode,
+                        @Cached InlinedBranchProfile regexpObject,
+                        @Cached InlinedBranchProfile regexpMatcherObject,
+                        @Cached InlinedBranchProfile regexpNonObject,
+                        @Cached InlinedBranchProfile regexpObjectNewFlagsBranch,
+                        @Cached InlinedConditionProfile callIsRegExpProfile,
+                        @Cached InlinedConditionProfile constructorEquivalentProfile,
+                        @Cached(inline = true) TRegexUtil.InteropReadStringMemberNode readPattern) {
             boolean hasMatchSymbol = isRegExpNode.executeBoolean(pattern);
+            boolean legacyFeaturesEnabled;
             if (isCall) {
                 // we are in the "call" case, i.e. NewTarget is undefined (before)
-                if (callIsRegExpProfile.profile(hasMatchSymbol && flags == Undefined.instance && JSDynamicObject.isJSDynamicObject(pattern))) {
+                if (callIsRegExpProfile.profile(node, hasMatchSymbol && flags == Undefined.instance && JSDynamicObject.isJSDynamicObject(pattern))) {
                     JSDynamicObject patternObj = (JSDynamicObject) pattern;
                     Object patternConstructor = getConstructor(patternObj);
-                    if (constructorEquivalentProfile.profile(patternConstructor == getRealm().getRegExpConstructor())) {
+                    if (constructorEquivalentProfile.profile(node, patternConstructor == getRealm().getRegExpConstructor())) {
                         return patternObj;
                     }
                 }
-                return constructRegExpImpl(pattern, flags, hasMatchSymbol, true);
+                legacyFeaturesEnabled = true;
             } else {
                 // we are in the "construct" case, i.e. NewTarget is NOT undefined
-                return swapPrototype(constructRegExpImpl(pattern, flags, hasMatchSymbol, newTarget == getRealm().getRegExpConstructor()), newTarget);
+                legacyFeaturesEnabled = newTarget == getRealm().getRegExpConstructor();
             }
-
+            JSRegExpObject regExpObject = constructRegExpImpl(pattern, flags, hasMatchSymbol, legacyFeaturesEnabled,
+                            node, regexpObject, regexpMatcherObject, regexpNonObject, regexpObjectNewFlagsBranch, readPattern);
+            return isCall ? regExpObject : swapPrototype(regExpObject, newTarget);
         }
 
-        protected JSRegExpObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol, boolean legacyFeaturesEnabled) {
+        protected JSRegExpObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol, boolean legacyFeaturesEnabled,
+                        Node node,
+                        InlinedBranchProfile regexpObject,
+                        InlinedBranchProfile regexpMatcherObject,
+                        InlinedBranchProfile regexpNonObject,
+                        InlinedBranchProfile regexpObjectNewFlagsBranch,
+                        TRegexUtil.InteropReadStringMemberNode readPattern) {
             Object p;
             Object f;
             boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);
             if (isJSRegExp) {
-                regexpObject.enter();
+                regexpObject.enter(node);
                 Object compiledRegex = JSRegExp.getCompiledRegex((JSDynamicObject) patternObj);
                 if (flags == Undefined.instance) {
                     return getCreateRegExpNode().createRegExp(compiledRegex);
@@ -1473,12 +1471,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         throw Errors.createTypeError("Cannot supply flags when constructing one RegExp from another");
                     }
                     Object flagsStr = flagsToString(flags);
-                    regexpObjectNewFlagsBranch.enter();
-                    Object newCompiledRegex = getCompileRegexNode().compile(getInteropReadPatternNode().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN), flagsStr);
+                    regexpObjectNewFlagsBranch.enter(node);
+                    Object newCompiledRegex = getCompileRegexNode().compile(readPattern.execute(node, compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN), flagsStr);
                     return getCreateRegExpNode().createRegExp(newCompiledRegex);
                 }
             } else if (hasMatchSymbol) {
-                regexpMatcherObject.enter();
+                regexpMatcherObject.enter(node);
                 JSDynamicObject patternJSObj = (JSDynamicObject) patternObj;
                 p = getSource(patternJSObj);
                 if (flags == Undefined.instance) {
@@ -1487,7 +1485,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     f = flags;
                 }
             } else {
-                regexpNonObject.enter();
+                regexpNonObject.enter(node);
                 p = patternObj;
                 f = flags;
             }
@@ -1510,14 +1508,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 patternToStringNode = insert(JSToStringNode.createUndefinedToEmpty());
             }
             return patternToStringNode;
-        }
-
-        private TRegexUtil.InteropReadStringMemberNode getInteropReadPatternNode() {
-            if (interopReadPatternNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                interopReadPatternNode = insert(TRegexUtil.InteropReadStringMemberNode.create());
-            }
-            return interopReadPatternNode;
         }
 
         private CompileRegexNode getCompileRegexNode() {
@@ -1605,7 +1595,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length != 0"})
         protected JSDynamicObject constructString(JSDynamicObject newTarget, Object[] args,
-                        @Cached("create()") JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode) {
             return swapPrototype(JSString.create(getContext(), getRealm(), toStringNode.executeString(args[0])), newTarget);
         }
 
@@ -1925,13 +1915,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return newObject(newTarget);
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"}, limit = "InteropLibraryLimit")
         protected Object constructObjectJSObject(@SuppressWarnings("unused") JSDynamicObject newTarget, Object[] arguments,
+                        @Bind("this") Node node,
                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
                         @CachedLibrary("firstArgument(arguments)") InteropLibrary interop,
-                        @Cached("createBinaryProfile()") ConditionProfile isNull) {
+                        @Cached InlinedConditionProfile isNull) {
             Object arg0 = arguments[0];
-            if (isNull.profile(interop.isNull(arg0))) {
+            if (isNull.profile(node, interop.isNull(arg0))) {
                 return newObject(Null.instance);
             } else {
                 return toObjectNode.execute(arg0);
@@ -1966,8 +1958,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length > 0"})
         protected Number callNumber(Object[] args,
-                        @Cached("create()") JSToNumericNode toNumericNode,
-                        @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
+                        @Cached JSToNumericNode toNumericNode,
+                        @Cached JSNumericToNumberNode toNumberFromNumericNode) {
             return toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]));
         }
     }
@@ -1984,8 +1976,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length > 0"})
         protected JSDynamicObject constructNumber(JSDynamicObject newTarget, Object[] args,
-                        @Cached("create()") JSToNumericNode toNumericNode,
-                        @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
+                        @Cached JSToNumericNode toNumericNode,
+                        @Cached JSNumericToNumberNode toNumberFromNumericNode) {
             return swapPrototype(JSNumber.create(getContext(), getRealm(), toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]))), newTarget);
         }
 
@@ -2019,8 +2011,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length > 0"})
         protected Object callBigInt(Object[] args,
-                        @Cached("create()") JSNumberToBigIntNode numberToBigIntNode,
-                        @Cached("create()") JSToBigIntNode toBigIntNode) {
+                        @Cached JSNumberToBigIntNode numberToBigIntNode,
+                        @Cached JSToBigIntNode toBigIntNode) {
             Object value = args[0];
             Object primitiveObj = toPrimitive(value);
             if (JSRuntime.isNumber(primitiveObj)) {
@@ -2059,12 +2051,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected final JSDynamicObject constructFunction(JSDynamicObject newTarget, Object[] args,
-                        @Cached("createBinaryProfile()") ConditionProfile hasArgsProfile,
-                        @Cached("createBinaryProfile()") ConditionProfile hasParamsProfile) {
+                        @Cached InlinedConditionProfile hasArgsProfile,
+                        @Cached InlinedConditionProfile hasParamsProfile) {
             int argc = args.length;
             TruffleString[] params;
             TruffleString body;
-            if (hasArgsProfile.profile(argc > 0)) {
+            if (hasArgsProfile.profile(this, argc > 0)) {
                 params = new TruffleString[argc - 1];
                 for (int i = 0; i < argc - 1; i++) {
                     params[i] = toStringNode.executeString(args[i]);
@@ -2074,7 +2066,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 params = new TruffleString[0];
                 body = Strings.EMPTY_STRING;
             }
-            TruffleString paramList = hasParamsProfile.profile(argc > 1) ? join(params) : Strings.EMPTY_STRING;
+            TruffleString paramList = hasParamsProfile.profile(this, argc > 1) ? join(params) : Strings.EMPTY_STRING;
             return swapPrototype(functionNode.executeFunction(Strings.toJavaString(paramList), Strings.toJavaString(body), getSourceName()), newTarget);
         }
 
@@ -2140,6 +2132,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return a.equals(b);
         }
 
+        @NeverDefault
         protected LRUCache<CachedSourceKey, ScriptNode> createCache() {
             return new LRUCache<>(context.getContextOptions().getFunctionConstructorCacheSize());
         }
@@ -2147,10 +2140,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("unused")
         @Specialization(guards = {"equals(cachedParamList, paramList)", "equals(cachedBody, body)", "equals(cachedSourceName, sourceName)"}, limit = "1")
         protected final JSFunctionObject doCached(String paramList, String body, String sourceName,
-                        @Cached("paramList") String cachedParamList,
-                        @Cached("body") String cachedBody,
-                        @Cached("sourceName") String cachedSourceName,
-                        @Cached("createAssumedValue()") AssumedValue<ScriptNode> cachedParsedFunction) {
+                        @Cached(value = "paramList", neverDefault = true) String cachedParamList,
+                        @Cached(value = "body", neverDefault = true) String cachedBody,
+                        @Cached(value = "sourceName", neverDefault = true) String cachedSourceName,
+                        @Cached(value = "createAssumedValue()", neverDefault = true) AssumedValue<ScriptNode> cachedParsedFunction) {
             ScriptNode parsedFunction = cachedParsedFunction.get();
             if (parsedFunction == null) {
                 parsedFunction = parseFunction(paramList, body, sourceName);
@@ -2162,11 +2155,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(replaces = "doCached")
         protected final JSFunctionObject doUncached(String paramList, String body, String sourceName,
-                        @Cached("createCache()") LRUCache<CachedSourceKey, ScriptNode> cache,
-                        @Cached("createCountingProfile()") ConditionProfile cacheHit) {
+                        @Cached("createCache()") LRUCache<CachedSourceKey, ScriptNode> cache) {
             ScriptNode cached = cacheLookup(cache, new CachedSourceKey(paramList, body, sourceName));
             JSRealm realm = getRealm();
-            if (cacheHit.profile(cached == null)) {
+            if (cached == null) {
                 return parseAndEvalFunction(cache, realm, paramList, body, sourceName);
             } else {
                 return evalParsedFunction(realm, cached);
@@ -2262,8 +2254,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!bufferInterop.hasBufferElements(length)"})
         protected JSDynamicObject constructFromLength(JSDynamicObject newTarget, Object length,
-                        @Cached("create()") JSToIndexNode toIndexNode,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+                        @Cached JSToIndexNode toIndexNode,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") @SuppressWarnings("unused") InteropLibrary bufferInterop) {
             long byteLength = toIndexNode.executeLong(length);
 
@@ -2273,7 +2265,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
 
             if (byteLength > getContext().getContextOptions().getMaxTypedArrayLength()) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("Array buffer allocation failed");
             }
 
@@ -2297,9 +2289,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"bufferInterop.hasBufferElements(buffer)"})
         protected JSDynamicObject constructFromInteropBuffer(JSDynamicObject newTarget, Object buffer,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") @SuppressWarnings("unused") InteropLibrary bufferInterop) {
-            getBufferSizeSafe(buffer, bufferInterop, errorBranch);
+            getBufferSizeSafe(buffer, bufferInterop, this, errorBranch);
             return swapPrototype(JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), buffer), newTarget);
         }
 
@@ -2308,11 +2300,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return useShared ? realm.getSharedArrayBufferPrototype() : realm.getArrayBufferPrototype();
         }
 
-        static int getBufferSizeSafe(Object buffer, InteropLibrary bufferInterop, BranchProfile errorBranch) {
+        static int getBufferSizeSafe(Object buffer, InteropLibrary bufferInterop, Node node, InlinedBranchProfile errorBranch) {
             try {
                 long bufferSize = bufferInterop.getBufferSize(buffer);
                 if (bufferSize < 0 || bufferSize > Integer.MAX_VALUE) {
-                    errorBranch.enter();
+                    errorBranch.enter(node);
                     throw Errors.createRangeErrorInvalidBufferSize();
                 }
                 return (int) bufferSize;
@@ -2342,7 +2334,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = "!isString(message)")
         protected JSDynamicObject constructError(JSDynamicObject newTarget, Object message, Object options,
-                        @Cached("create()") JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode) {
             return constructErrorImpl(newTarget, message == Undefined.instance ? null : toStringNode.executeString(message), options);
         }
 
@@ -2386,18 +2378,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.setMessage = JSObjectUtil.createDispatched(JSError.MESSAGE);
         }
 
-        GetMethodNode createGetIteratorMethod() {
-            return GetMethodNode.create(getContext(), Symbol.SYMBOL_ITERATOR);
-        }
-
         @Specialization
         protected JSDynamicObject constructError(JSDynamicObject newTarget, Object errorsObj, Object messageObj, Object options,
                         @Cached JSToStringNode toStringNode,
-                        @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
-                        @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
-                        @Cached IsJSObjectNode isObjectNode,
-                        @Cached IterableToListNode iterableToListNode,
-                        @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode) {
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached IterableToListNode iterableToListNode) {
             JSContext context = getContext();
             JSRealm realm = getRealm();
             JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
@@ -2415,8 +2400,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 installErrorCause(errorObj, options);
             }
 
-            Object usingIterator = getIteratorMethodNode.executeWithTarget(errorsObj);
-            SimpleArrayList<Object> errors = iterableToListNode.execute(GetIteratorNode.getIterator(errorsObj, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, this));
+            IteratorRecord iterator = getIteratorNode.execute(this, errorsObj);
+            SimpleArrayList<Object> errors = iterableToListNode.execute(iterator);
             JSDynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors.toArray());
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();
@@ -2457,8 +2442,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"isJSHeapArrayBuffer(buffer)"})
         protected final JSDynamicObject ofHeapArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
+                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode) {
             return constructDataView(newTarget, buffer, byteOffset, byteLength, false, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
@@ -2466,8 +2451,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"isJSDirectOrSharedArrayBuffer(buffer)"})
         protected final JSDynamicObject ofDirectArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
+                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode) {
             return constructDataView(newTarget, buffer, byteOffset, byteLength, true, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
@@ -2475,8 +2460,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"isJSInteropArrayBuffer(buffer)"})
         protected final JSDynamicObject ofInteropArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
+                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
@@ -2485,8 +2470,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"!isJSAbstractBuffer(buffer)", "bufferInterop.hasBufferElements(buffer)"})
         protected final JSDynamicObject ofInteropBuffer(JSDynamicObject newTarget, Object buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
-                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
+                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
@@ -2503,40 +2488,40 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         protected final JSDynamicObject constructDataView(JSDynamicObject newTarget, JSDynamicObject arrayBuffer, Object byteOffset, Object byteLength,
                         boolean direct, boolean isInteropBuffer,
-                        BranchProfile errorBranch,
-                        ConditionProfile byteLengthCondition,
+                        InlinedBranchProfile errorBranch,
+                        InlinedConditionProfile byteLengthCondition,
                         JSToIndexNode offsetToIndexNode,
                         JSToIndexNode lengthToIndexNode,
                         InteropLibrary bufferInterop) {
             long offset = offsetToIndexNode.executeLong(byteOffset);
 
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("detached buffer cannot be used");
             }
 
             int bufferByteLength;
             if (isInteropBuffer) {
-                bufferByteLength = ConstructArrayBufferNode.getBufferSizeSafe(JSArrayBuffer.getInteropBuffer(arrayBuffer), bufferInterop, errorBranch);
+                bufferByteLength = ConstructArrayBufferNode.getBufferSizeSafe(JSArrayBuffer.getInteropBuffer(arrayBuffer), bufferInterop, this, errorBranch);
             } else if (direct) {
                 bufferByteLength = JSArrayBuffer.getDirectByteLength(arrayBuffer);
             } else {
                 bufferByteLength = JSArrayBuffer.getHeapByteLength(arrayBuffer);
             }
             if (offset > bufferByteLength) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("offset > bufferByteLength");
             }
 
             final long viewByteLength;
-            if (byteLengthCondition.profile(byteLength != Undefined.instance)) {
+            if (byteLengthCondition.profile(this, byteLength != Undefined.instance)) {
                 viewByteLength = lengthToIndexNode.executeLong(byteLength);
                 if (viewByteLength < 0) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createRangeError("viewByteLength < 0");
                 }
                 if (offset + viewByteLength > bufferByteLength) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createRangeError("offset + viewByteLength > bufferByteLength");
                 }
             } else {
@@ -2545,7 +2530,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             assert offset >= 0 && offset <= Integer.MAX_VALUE && viewByteLength >= 0 && viewByteLength <= Integer.MAX_VALUE;
             JSDynamicObject result = swapPrototype(JSDataView.createDataView(getContext(), getRealm(), arrayBuffer, (int) offset, (int) viewByteLength), newTarget);
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorDetachedBuffer();
             }
             return result;
@@ -2609,20 +2594,20 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     @ImportStatic(value = {JSProxy.class})
     public abstract static class ConstructJSProxyNode extends ConstructWithNewTargetNode {
-        private final ConditionProfile targetNonObject = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile handlerNonObject = ConditionProfile.createBinaryProfile();
 
         public ConstructJSProxyNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
         }
 
         @Specialization
-        protected JSDynamicObject constructJSProxy(JSDynamicObject newTarget, Object target, Object handler) {
-            if (targetNonObject.profile(!JSGuards.isTruffleObject(target) || target instanceof Symbol || target == Undefined.instance || target == Null.instance ||
+        protected final JSObject constructJSProxy(JSDynamicObject newTarget, Object target, Object handler,
+                        @Cached InlinedConditionProfile targetNonObject,
+                        @Cached InlinedConditionProfile handlerNonObject) {
+            if (targetNonObject.profile(this, !JSGuards.isTruffleObject(target) || target instanceof Symbol || target == Undefined.instance || target == Null.instance ||
                             target instanceof TruffleString || target instanceof SafeInteger || target instanceof BigInt)) {
                 throw Errors.createTypeError("target expected to be an object");
             }
-            if (handlerNonObject.profile(!JSGuards.isJSObject(handler))) {
+            if (handlerNonObject.profile(this, !JSGuards.isJSObject(handler))) {
                 throw Errors.createTypeError("handler expected to be an object");
             }
             JSDynamicObject handlerObj = (JSDynamicObject) handler;
@@ -2667,12 +2652,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private GetIteratorBaseNode getIteratorNode;
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
         @Child private JSFunctionCallNode callAdderNode;
         @Child private PropertyGetNode getAdderFnNode;
-        protected final BranchProfile errorBranch = BranchProfile.create();
 
         protected void iteratorCloseAbrupt(JSDynamicObject iterator) {
             if (iteratorCloseNode == null) {
@@ -2680,14 +2663,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
             iteratorCloseNode.executeAbrupt(iterator);
-        }
-
-        protected IteratorRecord getIterator(Object iterator) {
-            if (getIteratorNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorNode = insert(GetIteratorBaseNode.create());
-            }
-            return getIteratorNode.execute(iterator);
         }
 
         protected Object getIteratorValue(JSDynamicObject iteratorResult) {
@@ -2736,20 +2711,24 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return mapObj;
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isNullOrUndefined(iterable)")
-        protected JSObject constructMapFromIterable(JSDynamicObject newTarget, Object iterable,
+        protected final JSObject constructMapFromIterable(JSDynamicObject newTarget, Object iterable,
+                        @Bind("this") Node node,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
                         @Cached IsObjectNode isObjectNode,
-                        @Cached IsCallableNode isCallableNode) {
+                        @Cached IsCallableNode isCallableNode,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             JSObject mapObj = newMapObject();
             swapPrototype(mapObj, newTarget);
 
             Object adder = getAdderFn(mapObj, Strings.SET);
             if (!isCallableNode.executeBoolean(adder)) {
-                errorBranch.enter();
+                errorBranch.enter(node);
                 throw Errors.createTypeError("function set not callable");
             }
-            IteratorRecord iter = getIterator(iterable);
+            IteratorRecord iter = getIteratorNode.execute(node, iterable);
 
             try {
                 while (true) {
@@ -2759,7 +2738,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     }
                     Object nextItem = getIteratorValue((JSDynamicObject) next);
                     if (!isObjectNode.executeBoolean(nextItem)) {
-                        errorBranch.enter();
+                        errorBranch.enter(node);
                         throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
                     }
                     Object k = readElementNode.executeWithTargetAndIndex(nextItem, 0);
@@ -2797,18 +2776,22 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return setObj;
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isNullOrUndefined(iterable)")
         protected JSObject constructSetFromIterable(JSDynamicObject newTarget, Object iterable,
-                        @Cached IsCallableNode isCallableNode) {
+                        @Bind("this") Node node,
+                        @Cached IsCallableNode isCallableNode,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             JSObject setObj = newSetObject();
             swapPrototype(setObj, newTarget);
 
             Object adder = getAdderFn(setObj, Strings.ADD);
             if (!isCallableNode.executeBoolean(adder)) {
-                errorBranch.enter();
+                errorBranch.enter(node);
                 throw Errors.createTypeError("function add not callable");
             }
-            IteratorRecord iter = getIterator(iterable);
+            IteratorRecord iter = getIteratorNode.execute(node, iterable);
 
             try {
                 while (true) {
@@ -2956,7 +2939,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             protected abstract Object executeWithArguments(Object arg0);
 
-            @Specialization(guards = {"acceptCache(equalNode, value, cachedValue, symbolUsageMarker)"})
+            @Specialization(guards = {"acceptCache(equalNode, value, cachedValue, symbolUsageMarker)"}, limit = "1")
             protected Symbol callSymbolSingleton(TruffleString value,
                             @Cached("value") TruffleString cachedValue,
                             @Cached TruffleString.EqualNode equalNode,
@@ -3238,10 +3221,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child PropertyGetNode getElementNode;
         @Child PropertyGetNode getInitialNode;
         @Child PropertyGetNode getMaximumNode;
-        @Child JSToStringNode toStringNode;
         @Child ToWebAssemblyIndexOrSizeNode toInitialSizeNode;
         @Child ToWebAssemblyIndexOrSizeNode toMaximumSizeNode;
-        @Child ToWebAssemblyValueNode toWebAssemblyValueNode;
         @Child InteropLibrary tableAllocLib;
 
         public ConstructWebAssemblyTableNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
@@ -3250,15 +3231,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.getElementNode = PropertyGetNode.create(Strings.ELEMENT, context);
             this.getInitialNode = PropertyGetNode.create(Strings.INITIAL, context);
             this.getMaximumNode = PropertyGetNode.create(Strings.MAXIMUM, context);
-            this.toStringNode = JSToStringNode.create();
             this.toInitialSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table(): Property 'initial'");
             this.toMaximumSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table(): Property 'maximum'");
-            this.toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             this.tableAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
-        protected JSDynamicObject constructTable(JSDynamicObject newTarget, Object descriptor, Object[] args) {
+        protected JSDynamicObject constructTable(JSDynamicObject newTarget, Object descriptor, Object[] args,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached ToWebAssemblyValueNode toWebAssemblyValueNode) {
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Table(): Argument 0 must be a table descriptor", this);
             }
@@ -3312,31 +3293,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     }
 
     public abstract static class ConstructWebAssemblyGlobalNode extends ConstructWithNewTargetNode {
-        @Child IsObjectNode isObjectNode;
-        @Child JSToStringNode toStringNode;
-        @Child JSToBooleanNode toBooleanNode;
         @Child PropertyGetNode getValueNode;
         @Child PropertyGetNode getMutableNode;
-        @Child ToWebAssemblyValueNode toWebAssemblyValueNode;
         @Child InteropLibrary globalAllocLib;
 
         public ConstructWebAssemblyGlobalNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
-            this.isObjectNode = IsObjectNode.create();
-            this.toStringNode = JSToStringNode.create();
-            this.toBooleanNode = JSToBooleanNode.create();
             this.getValueNode = PropertyGetNode.create(Strings.VALUE, context);
             this.getMutableNode = PropertyGetNode.create(Strings.MUTABLE, context);
-            this.toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             this.globalAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
-        protected JSDynamicObject constructGlobal(JSDynamicObject newTarget, Object descriptor, Object[] args) {
+        protected JSDynamicObject constructGlobal(JSDynamicObject newTarget, Object descriptor, Object[] args,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached(inline = true) JSToBooleanNode toBooleanNode,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached ToWebAssemblyValueNode toWebAssemblyValueNode) {
             if (!isObjectNode.executeBoolean(descriptor)) {
                 throw Errors.createTypeError("WebAssembly.Global(): Argument 0 must be a global descriptor", this);
             }
-            boolean mutable = toBooleanNode.executeBoolean(getMutableNode.getValue(descriptor));
+            boolean mutable = toBooleanNode.executeBoolean(this, getMutableNode.getValue(descriptor));
             TruffleString valueType = toStringNode.executeString(getValueNode.getValue(descriptor));
             if (!JSWebAssemblyValueTypes.isValueType(valueType)) {
                 throw Errors.createTypeError("WebAssembly.Global(): Descriptor property 'value' must be a WebAssembly type (i32, i64, f32, f64, anyfunc, externref)", this);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetAsyncIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
@@ -160,7 +160,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
 
     private final int iteratorTempSlot;
 
-    @Child private GetIteratorNode getIteratorNode;
+    @Child private GetAsyncIteratorNode getIteratorNode;
     @Child private IteratorNextNode iteratorNextNode;
     @Child private IteratorCompleteNode iteratorCompleteNode;
     @Child private IteratorValueNode iteratorValueNode;
@@ -175,9 +175,9 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         super(context, stateSlot, expression, readAsyncContextNode, readYieldResultNode, returnNode);
         this.iteratorTempSlot = iteratorTempSlot;
 
-        this.getIteratorNode = GetIteratorNode.createAsync(context, null);
+        this.getIteratorNode = GetAsyncIteratorNode.create(context, null);
         this.iteratorNextNode = IteratorNextNode.create();
-        this.iteratorCompleteNode = IteratorCompleteNode.create(context);
+        this.iteratorCompleteNode = IteratorCompleteNode.create();
         this.iteratorValueNode = IteratorValueNode.create();
         this.getThrowMethodNode = GetMethodNode.create(context, Strings.THROW);
         this.getReturnMethodNode = GetMethodNode.create(context, Strings.RETURN);

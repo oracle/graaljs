@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -68,6 +69,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -120,8 +122,8 @@ import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
-import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeGetGroupBoundariesMethodNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResult;
 
 /**
  * ES6 9.1.8 [[Get]] (P, Receiver).
@@ -137,24 +139,29 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     private boolean propertyAssumptionCheckEnabled = true;
     @Child protected GetCacheNode cacheNode;
 
+    @NeverDefault
     public static PropertyGetNode create(Object key, JSContext context) {
         return create(key, false, context);
     }
 
+    @NeverDefault
     public static PropertyGetNode create(Object key, boolean isGlobal, JSContext context) {
         final boolean getOwnProperty = false;
         final boolean isMethod = false;
         return createImpl(key, isGlobal, context, getOwnProperty, isMethod);
     }
 
+    @NeverDefault
     public static PropertyGetNode create(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty, boolean isMethod) {
         return createImpl(key, isGlobal, context, getOwnProperty, isMethod);
     }
 
+    @NeverDefault
     private static PropertyGetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty, boolean isMethod) {
         return new PropertyGetNode(key, context, isGlobal, getOwnProperty, isMethod);
     }
 
+    @NeverDefault
     public static PropertyGetNode createGetOwn(Object key, JSContext context) {
         final boolean global = false;
         final boolean getOwnProperty = true;
@@ -162,10 +169,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return createImpl(key, global, context, getOwnProperty, isMethod);
     }
 
+    @NeverDefault
     public static PropertyGetNode createGetHidden(HiddenKey key, JSContext context) {
         return createGetOwn(key, context);
     }
 
+    @NeverDefault
     public static PropertyGetNode createGetMethod(Object key, JSContext context) {
         return createImpl(key, false, context, false, true);
     }
@@ -1375,8 +1384,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Child private JSToObjectNode toObjectNode;
         @Child private ForeignPropertyGetNode foreignGetNode;
         @Child private GetPropertyFromJSObjectNode getFromJSObjectNode;
-        private final ConditionProfile isJSObject = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isForeignObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isJSObject = ConditionProfile.create();
+        private final ConditionProfile isForeignObject = ConditionProfile.create();
         private final BranchProfile notAJSObjectBranch = BranchProfile.create();
         private final BranchProfile fallbackBranch = BranchProfile.create();
 
@@ -1466,8 +1475,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Specialization(guards = {"isGlobal()"})
         protected Object doRequired(JSDynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root,
-                        @Cached("create()") JSHasPropertyNode hasPropertyNode,
-                        @Cached("create()") JSClassProfile classProfile) {
+                        @Cached JSHasPropertyNode hasPropertyNode,
+                        @Cached JSClassProfile classProfile) {
             if (hasPropertyNode.executeBoolean(object, key)) {
                 return getPropertyFromJSObjectIntl(classProfile.profile(JSObject.getJSClass(object)), object, receiver, defaultValue, root);
             } else {
@@ -1644,7 +1653,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Child private CreateMethodPropertyNode setConstructor;
         @CompilationFinal private int kind;
         private final JSContext context;
-        private final ConditionProfile prototypeInitializedProfile = ConditionProfile.createCountingProfile();
+        private final CountingConditionProfile prototypeInitializedProfile = CountingConditionProfile.create();
 
         private static final int UNKNOWN = 0;
         private static final int CONSTRUCTOR = 1;
@@ -1791,7 +1800,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             JSDynamicObject store = receiverCheck.getStore(thisObj);
             Object lazyRegexResult = Properties.getOrDefault(readLazyRegexResult, store, JSAbstractArray.LAZY_REGEX_RESULT_ID, null);
             assert lazyRegexResult != null;
-            return readStartNode.execute(lazyRegexResult, TRegexUtil.Props.RegexResult.GET_START, 0);
+            return readStartNode.execute(null, lazyRegexResult, TRegexUtil.Props.RegexResult.GET_START, 0);
         }
 
         @Override
@@ -1804,9 +1813,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         private final JSContext context;
         private final int groupIndex;
-        @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
-        @Child private TRegexResultAccessor resultAccessor = TRegexResultAccessor.create();
-        private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
+        @Child TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
+        @Child private InvokeGetGroupBoundariesMethodNode getStartNode = InvokeGetGroupBoundariesMethodNode.create();
+        @Child private InvokeGetGroupBoundariesMethodNode getEndNode = InvokeGetGroupBoundariesMethodNode.create();
+        private final ConditionProfile isIndicesObject = ConditionProfile.create();
 
         public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, int groupIndex, JSContext context) {
             super(receiverCheck);
@@ -1821,10 +1831,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             JSRegExpGroupsObject groups = (JSRegExpGroupsObject) store;
             Object regexResult = groups.getRegexResult();
             if (isIndicesObject.profile(groups.isIndices())) {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), resultAccessor, regexResult, groupIndex);
+                return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), regexResult, groupIndex,
+                                null, getStartNode, getEndNode);
             } else {
                 TruffleString input = groups.getInputString();
-                return materializeNode.materializeGroup(context, regexResult, groupIndex, input);
+                return TRegexMaterializeResult.materializeGroup(context, regexResult, groupIndex, input,
+                                null, substringNode, getStartNode, getEndNode);
             }
         }
     }
@@ -2174,5 +2186,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         } else {
             return new ObjectPropertyGetNode(property, receiverCheck);
         }
+    }
+
+    public static PropertyGetNode getNullNode() {
+        return null;
     }
 }

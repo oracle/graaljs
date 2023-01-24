@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,16 +79,16 @@ public final class JSWebAssemblyValueTypes {
         return Strings.equals(ANYFUNC, type);
     }
 
-    public static boolean isExtenref(TruffleString type) {
+    public static boolean isExternref(TruffleString type) {
         return Strings.equals(EXTERNREF, type);
     }
 
     public static boolean isValueType(TruffleString type) {
-        return isI32(type) || isI64(type) || isF32(type) || isF64(type) || isAnyfunc(type) || isExtenref(type);
+        return isI32(type) || isI64(type) || isF32(type) || isF64(type) || isAnyfunc(type) || isExternref(type);
     }
 
     public static boolean isReferenceType(TruffleString type) {
-        return isAnyfunc(type) || isExtenref(type);
+        return isAnyfunc(type) || isExternref(type);
     }
 
     public static Object getDefaultValue(JSRealm realm, TruffleString type) {
@@ -102,7 +102,7 @@ public final class JSWebAssemblyValueTypes {
             return 0d;
         } else if (isAnyfunc(type)) {
             return realm.getWasmRefNull();
-        } else if (isExtenref(type)) {
+        } else if (isExternref(type)) {
             return Undefined.instance;
         } else {
             throw Errors.shouldNotReachHere();

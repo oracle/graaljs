@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,9 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins.JSArrayFromNode;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins.JSArrayFunctionOperation;
 import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltinsFactory.TypedArrayFromNodeGen;
@@ -120,15 +121,14 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
 
     public abstract static class TypedArrayFromNode extends JSArrayFromNode {
 
-        private final BranchProfile growProfile = BranchProfile.create();
-
         public TypedArrayFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, true);
         }
 
         @Override
         @Specialization
-        protected JSDynamicObject arrayFrom(Object thisObj, Object[] args) {
+        protected JSDynamicObject arrayFrom(Object thisObj, Object[] args,
+                        @Cached InlinedBranchProfile growProfile) {
             Object source = JSRuntime.getArgOrUndefined(args, 0);
             Object mapFn = JSRuntime.getArgOrUndefined(args, 1);
             Object thisArg = JSRuntime.getArgOrUndefined(args, 2);
@@ -136,11 +136,11 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
             if (!JSFunction.isConstructor(thisObj)) {
                 throw Errors.createTypeErrorNotAConstructor(thisObj, getContext());
             }
-            return arrayFromIntl(thisObj, source, mapFn, thisArg, false);
+            return arrayFromIntl(thisObj, source, mapFn, thisArg, false, growProfile);
         }
 
         @Override
-        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
+        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping, InlinedBranchProfile growProfile) {
             SimpleArrayList<Object> values = new SimpleArrayList<>();
 
             IteratorRecord iteratorRecord = getIterator(items, usingIterator);
@@ -150,7 +150,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
                     break;
                 }
                 Object nextValue = getIteratorValue((JSDynamicObject) next);
-                values.add(nextValue, growProfile);
+                values.add(nextValue, this, growProfile);
             }
             int len = values.size();
             JSTypedArrayObject obj = getArraySpeciesConstructorNode().typedArrayCreate((JSDynamicObject) thisObj, len);

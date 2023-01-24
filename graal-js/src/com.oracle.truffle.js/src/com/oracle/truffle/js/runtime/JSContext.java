@@ -1214,8 +1214,8 @@ public class JSContext {
     public Object getTRegexEmptyResult() {
         if (tRegexEmptyResult == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            tRegexEmptyResult = TRegexUtil.InvokeExecMethodNode.getUncached().execute(RegexCompilerInterface.compile("[]", "", this, JSRealm.get(null)), "", 0);
-            assert !TRegexUtil.TRegexResultAccessor.getUncached().isMatch(tRegexEmptyResult);
+            tRegexEmptyResult = TRegexUtil.InvokeExecMethodNode.getUncached().execute(null, RegexCompilerInterface.compile("[]", "", this, JSRealm.get(null)), "", 0);
+            assert !TRegexUtil.TRegexResultAccessor.isMatch(tRegexEmptyResult, null, TRegexUtil.InteropReadBooleanMemberNode.getUncached());
         }
         return tRegexEmptyResult;
     }

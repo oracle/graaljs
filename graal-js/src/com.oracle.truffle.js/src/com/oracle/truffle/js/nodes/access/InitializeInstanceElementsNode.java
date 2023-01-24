@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -125,7 +126,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL)
     @Specialization
     protected static Object withFields(Object target, Object constructor, ClassElementDefinitionRecord[] fields, JSFunctionObject[] initializers, Object brand,
-                    @Cached("createBrandAddNode(brand, context)") @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode,
+                    @Cached(value = "createBrandAddNode(brand, context)", neverDefault = false) @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode,
                     @Cached("createFieldNodes(fields, context)") DefineFieldNode[] fieldNodes,
                     @Cached("createCall()") JSFunctionCallNode callInit) {
         privateBrandAdd(target, constructor, fields, initializers, brand, privateBrandAddNode);
@@ -155,7 +156,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
 
     @Specialization
     protected static Object privateBrandAdd(Object target, Object constructor, @SuppressWarnings("unused") Object fields, @SuppressWarnings("unused") Object initializers, Object brand,
-                    @Cached("createBrandAddNode(brand, context)") @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode) {
+                    @Cached(value = "createBrandAddNode(brand, context)", neverDefault = false) @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode) {
         // If constructor.[[PrivateBrand]] is not undefined,
         // Perform ? PrivateBrandAdd(O, constructor.[[PrivateBrand]]).
         assert (privateBrandAddNode != null) == (brand != Undefined.instance);
@@ -179,6 +180,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         }
     }
 
+    @NeverDefault
     static DefineFieldNode[] createFieldNodes(ClassElementDefinitionRecord[] fields, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         int size = fields.length;

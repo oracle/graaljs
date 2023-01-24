@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
@@ -64,22 +65,27 @@ public abstract class JSToOperandNode extends JavaScriptBaseNode {
         this.checkOperatorAllowed = checkOperatorAllowed;
     }
 
+    @NeverDefault
     public static JSToOperandNode createHintDefault() {
         return create(Hint.Default);
     }
 
+    @NeverDefault
     public static JSToOperandNode createHintString() {
         return create(Hint.String);
     }
 
+    @NeverDefault
     public static JSToOperandNode createHintNumber() {
         return create(Hint.Number);
     }
 
+    @NeverDefault
     public static JSToOperandNode create(Hint hint) {
         return JSToOperandNodeGen.create(hint, true);
     }
 
+    @NeverDefault
     public static JSToOperandNode create(Hint hint, boolean checkOperatorAllowed) {
         return JSToOperandNodeGen.create(hint, checkOperatorAllowed);
     }

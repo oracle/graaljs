@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 
 import java.util.List;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -165,31 +166,31 @@ public final class ConstantObjectArray extends AbstractConstantArray {
 
     @Override
     public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
-        return createWriteableObject(object, index, null, ProfileHolder.empty()).deleteElementImpl(object, index, strict);
+        return createWriteableObject(object, index, null, null, CreateWritableProfileAccess.getUncached()).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    public ScriptArray setLengthImpl(JSDynamicObject object, long length, ProfileHolder profile) {
-        return createWriteableObject(object, length - 1, null, ProfileHolder.empty()).setLengthImpl(object, length, profile);
+    public ScriptArray setLengthImpl(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
+        return createWriteableObject(object, length - 1, null, node, profile).setLengthImpl(object, length, node, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableInt(JSDynamicObject object, long index, int value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractObjectArray createWriteableInt(JSDynamicObject object, long index, int value, Node node, CreateWritableProfileAccess profile) {
+        return createWriteableObject(object, index, value, node, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableDouble(JSDynamicObject object, long index, double value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractObjectArray createWriteableDouble(JSDynamicObject object, long index, double value, Node node, CreateWritableProfileAccess profile) {
+        return createWriteableObject(object, index, value, node, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractObjectArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, Node node, CreateWritableProfileAccess profile) {
+        return createWriteableObject(object, index, value, node, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, Node node, CreateWritableProfileAccess profile) {
         Object[] array = getArray(object);
         AbstractObjectArray newArray;
         if (holes) {

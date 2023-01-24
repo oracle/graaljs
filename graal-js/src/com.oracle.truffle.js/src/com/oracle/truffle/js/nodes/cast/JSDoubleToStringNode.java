@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -56,10 +56,6 @@ import com.oracle.truffle.js.runtime.Strings;
  */
 @GenerateUncached
 public abstract class JSDoubleToStringNode extends JavaScriptBaseNode {
-
-    public static JSDoubleToStringNode create() {
-        return JSDoubleToStringNodeGen.create();
-    }
 
     public abstract TruffleString executeString(Object operand);
 
@@ -76,23 +72,23 @@ public abstract class JSDoubleToStringNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static TruffleString doDouble(double d,
+    protected TruffleString doDouble(double d,
                     @Cached @Shared("fromLongNode") TruffleString.FromLongNode fromLongNode,
-                    @Cached ConditionProfile isInt,
-                    @Cached ConditionProfile isNaN,
-                    @Cached ConditionProfile isPositiveInfinity,
-                    @Cached ConditionProfile isNegativeInfinity,
-                    @Cached ConditionProfile isZero,
+                    @Cached InlinedConditionProfile isInt,
+                    @Cached InlinedConditionProfile isNaN,
+                    @Cached InlinedConditionProfile isPositiveInfinity,
+                    @Cached InlinedConditionProfile isNegativeInfinity,
+                    @Cached InlinedConditionProfile isZero,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
-        if (isZero.profile(d == 0)) {
+        if (isZero.profile(this, d == 0)) {
             return Strings.ZERO;
-        } else if (isInt.profile(JSRuntime.doubleIsRepresentableAsInt(d, true))) {
+        } else if (isInt.profile(this, JSRuntime.doubleIsRepresentableAsInt(d, true))) {
             return doInt((int) d, fromLongNode);
-        } else if (isNaN.profile(Double.isNaN(d))) {
+        } else if (isNaN.profile(this, Double.isNaN(d))) {
             return Strings.NAN;
-        } else if (isPositiveInfinity.profile(d == Double.POSITIVE_INFINITY)) {
+        } else if (isPositiveInfinity.profile(this, d == Double.POSITIVE_INFINITY)) {
             return Strings.INFINITY;
-        } else if (isNegativeInfinity.profile(d == Double.NEGATIVE_INFINITY)) {
+        } else if (isNegativeInfinity.profile(this, d == Double.NEGATIVE_INFINITY)) {
             return Strings.NEGATIVE_INFINITY;
         } else {
             return Strings.fromJavaString(fromJavaStringNode, JSRuntime.formatDtoA(d));

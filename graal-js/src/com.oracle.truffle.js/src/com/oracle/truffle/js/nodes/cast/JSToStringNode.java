@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -80,6 +81,7 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         this.symbolToString = symbolToString;
     }
 
+    @NeverDefault
     public static JSToStringNode create() {
         return JSToStringNodeGen.create(false, false);
     }
@@ -87,6 +89,7 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     /**
      * Creates a node that returns the empty string for {@code undefined}.
      */
+    @NeverDefault
     public static JSToStringNode createUndefinedToEmpty() {
         return JSToStringNodeGen.create(true, false);
     }
@@ -96,6 +99,7 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
      *
      * Used by the String function if called without new (ES6 21.1.1.1 "String(value)").
      */
+    @NeverDefault
     public static JSToStringNode createSymbolToString() {
         return JSToStringNodeGen.create(false, true);
     }
@@ -138,7 +142,7 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected TruffleString doDouble(double d, @Cached("create()") JSDoubleToStringNode doubleToStringNode) {
+    protected TruffleString doDouble(double d, @Cached JSDoubleToStringNode doubleToStringNode) {
         return doubleToStringNode.executeString(d);
     }
 

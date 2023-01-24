@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -50,7 +51,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -85,7 +87,7 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
 
         public abstract double doDouble(double value);
 
-        public abstract Number doNumber(Number value, ConditionProfile isIntegerProfile, ConditionProfile isBoundaryValue);
+        public abstract Number doNumber(Number value, Node node, InlinedConditionProfile isIntegerProfile, InlinedConditionProfile isBoundaryValue);
 
         public abstract BigInt doBigInt(BigInt value);
 
@@ -106,10 +108,10 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
         }
 
         @Override
-        public Number doNumber(Number numValue, ConditionProfile isIntegerProfile, ConditionProfile isBoundaryValue) {
-            if (isIntegerProfile.profile(numValue instanceof Integer)) {
+        public Number doNumber(Number numValue, Node node, InlinedConditionProfile isIntegerProfile, InlinedConditionProfile isBoundaryValue) {
+            if (isIntegerProfile.profile(node, numValue instanceof Integer)) {
                 int intValue = (Integer) numValue;
-                if (isBoundaryValue.profile(intValue != Integer.MAX_VALUE)) {
+                if (isBoundaryValue.profile(node, intValue != Integer.MAX_VALUE)) {
                     return intValue + 1;
                 } else {
                     return intValue + 1d;
@@ -148,10 +150,10 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
         }
 
         @Override
-        public Number doNumber(Number numValue, ConditionProfile isIntegerProfile, ConditionProfile isBoundaryValue) {
-            if (isIntegerProfile.profile(numValue instanceof Integer)) {
+        public Number doNumber(Number numValue, Node node, InlinedConditionProfile isIntegerProfile, InlinedConditionProfile isBoundaryValue) {
+            if (isIntegerProfile.profile(node, numValue instanceof Integer)) {
                 int intValue = (Integer) numValue;
-                if (isBoundaryValue.profile(intValue != Integer.MIN_VALUE)) {
+                if (isBoundaryValue.profile(node, intValue != Integer.MIN_VALUE)) {
                     return intValue - 1;
                 } else {
                     return intValue - 1d;
@@ -382,20 +384,22 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return op.getOverloadedOperatorName();
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"frame.isObject(slot)"})
     public Object doObject(Frame frame,
-                    @Cached("createBinaryProfile()") ConditionProfile isNumberProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
+                    @Bind("this") Node node,
+                    @Cached InlinedConditionProfile isNumberProfile,
+                    @Cached InlinedConditionProfile isIntegerProfile,
+                    @Cached InlinedConditionProfile isBigIntProfile,
+                    @Cached InlinedConditionProfile isBoundaryProfile,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode,
                     @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand) {
         ensureObjectKind(frame);
         Object value = frame.getObject(slot);
         Object operand = toNumericOperand.execute(value);
-        if (isNumberProfile.profile(operand instanceof Number)) {
-            frame.setObject(slot, op.doNumber((Number) operand, isIntegerProfile, isBoundaryProfile));
-        } else if (isBigIntProfile.profile(operand instanceof BigInt)) {
+        if (isNumberProfile.profile(node, operand instanceof Number)) {
+            frame.setObject(slot, op.doNumber((Number) operand, node, isIntegerProfile, isBoundaryProfile));
+        } else if (isBigIntProfile.profile(node, operand instanceof BigInt)) {
             frame.setObject(slot, op.doBigInt((BigInt) operand));
         } else {
             assert JSRuntime.isObject(operand) && JSOverloadedOperatorsObject.hasOverloadedOperators(operand);
@@ -530,21 +534,23 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return op.getOverloadedOperatorName();
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"frame.isObject(slot)"})
     public Object doObject(Frame frame,
-                    @Cached("createBinaryProfile()") ConditionProfile isNumberProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
+                    @Bind("this") Node node,
+                    @Cached InlinedConditionProfile isNumberProfile,
+                    @Cached InlinedConditionProfile isIntegerProfile,
+                    @Cached InlinedConditionProfile isBigIntProfile,
+                    @Cached InlinedConditionProfile isBoundaryProfile,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode,
                     @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand) {
         ensureObjectKind(frame);
         Object value = frame.getObject(slot);
         Object operand = toNumericOperand.execute(value);
         Object newValue;
-        if (isNumberProfile.profile(operand instanceof Number)) {
-            newValue = op.doNumber((Number) operand, isIntegerProfile, isBoundaryProfile);
-        } else if (isBigIntProfile.profile(operand instanceof BigInt)) {
+        if (isNumberProfile.profile(node, operand instanceof Number)) {
+            newValue = op.doNumber((Number) operand, node, isIntegerProfile, isBoundaryProfile);
+        } else if (isBigIntProfile.profile(node, operand instanceof BigInt)) {
             newValue = op.doBigInt((BigInt) operand);
         } else {
             assert JSRuntime.isObject(operand) && JSOverloadedOperatorsObject.hasOverloadedOperators(operand);

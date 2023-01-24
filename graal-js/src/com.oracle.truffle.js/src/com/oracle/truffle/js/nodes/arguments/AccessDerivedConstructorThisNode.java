@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,38 +42,38 @@ package com.oracle.truffle.js.nodes.arguments;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.runtime.Errors;
 
-public final class AccessDerivedConstructorThisNode extends JavaScriptNode implements RepeatableNode {
-    @Child private JavaScriptNode accessThisNode;
-    private final BranchProfile errorBranch = BranchProfile.create();
+public abstract class AccessDerivedConstructorThisNode extends JavaScriptNode implements RepeatableNode {
+    @Child @Executed protected JavaScriptNode accessThisNode;
 
     AccessDerivedConstructorThisNode(JavaScriptNode accessThisNode) {
         this.accessThisNode = accessThisNode;
     }
 
+    @NeverDefault
     public static AccessDerivedConstructorThisNode create(JavaScriptNode accessThisNode) {
-        return new AccessDerivedConstructorThisNode(accessThisNode);
+        return AccessDerivedConstructorThisNodeGen.create(accessThisNode);
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        Object thisObj = accessThisNode.execute(frame);
-        if (ArgumentsObjectNode.isInitialized(thisObj)) {
-            return thisObj;
-        } else {
-            errorBranch.enter();
-            throw Errors.createReferenceErrorDerivedConstructorThisNotInitialized(this);
-        }
+    @Specialization(guards = "!isUndefined(thisObj)")
+    protected static Object doInitialized(Object thisObj) {
+        return thisObj;
+    }
+
+    @Specialization(guards = "isUndefined(thisObj)")
+    protected final Object doUninitialized(@SuppressWarnings("unused") Object thisObj) {
+        throw Errors.createReferenceErrorDerivedConstructorThisNotInitialized(this);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new AccessDerivedConstructorThisNode(cloneUninitialized(accessThisNode, materializedTags));
+        return create(cloneUninitialized(accessThisNode, materializedTags));
     }
 }
