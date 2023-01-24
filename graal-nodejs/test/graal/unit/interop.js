@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 
 var assert = require('assert');
+var module = require('./_unit');
 var repl = require('repl');
 var vm = require('vm');
 
@@ -52,7 +53,7 @@ describe('Polyglot', function () {
             assert.strictEqual(require('vm').runInNewContext("Polyglot.export('obj', { foo: 'bar' }); Polyglot.import('obj').foo"), 'bar');
         });
     }
-    if (typeof java === 'object') {
+    if (module.hasJavaInterop()) {
         it('auto-completion in REPL should work for foreign objects', function () {
             var theREPL = repl.start('');
             try {

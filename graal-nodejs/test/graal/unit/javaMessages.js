@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,7 @@ const {
 
 describe('Java interop messages', function() {
     this.timeout(10000);
-    if (typeof Java !== 'object') {
+    if (!module.hasJavaInterop()) {
         // no interop
         return;
     }

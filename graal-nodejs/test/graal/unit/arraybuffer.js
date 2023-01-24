@@ -86,7 +86,7 @@ describe('ArrayBuffer', function () {
             var sum = module.ArrayBuffer_GetBackingStoreSum(buffer);
             assert.strictEqual(sum, 42);
         });
-        if (typeof java !== 'undefined') {
+        if (module.hasJavaInterop()) {
             it('should work on an interop buffer', function() {
                 var buffer = java.nio.ByteBuffer.allocate(6);
                 for (var i = 1; i <= 6; i++) {
@@ -103,7 +103,7 @@ describe('ArrayBuffer', function () {
             var array = module['ArrayBuffer_New' + type](buffer);
             assert.ok(array instanceof global[type]);
         });
-        if (typeof java !== 'undefined') {
+        if (module.hasJavaInterop()) {
             it(type + '::New() can be used on an interop buffer', function () {
                 var buffer = new ArrayBuffer(java.nio.ByteBuffer.allocate(8));
                 var array = module['ArrayBuffer_New' + type](buffer);

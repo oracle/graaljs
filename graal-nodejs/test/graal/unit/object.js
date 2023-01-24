@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -163,7 +163,7 @@ describe('Object', function () {
             var names = module.Object_GetOwnPropertyNames(o);
             assert.strictEqual(names.length, 0);
         });
-        if (typeof java === 'object') {
+        if (module.hasJavaInterop()) {
             it('should work for foreign objects', function () {
                 var point = new java.awt.Point();
                 var names = module.Object_GetOwnPropertyNames(point);
@@ -226,7 +226,7 @@ describe('Object', function () {
             assert.strictEqual(names[1], 'b');
             assert.strictEqual(names[2], 'c');
         });
-        if (typeof java === 'object') {
+        if (module.hasJavaInterop()) {
             it('should work for foreign objects', function () {
                 var point = new java.awt.Point();
                 var names = module.Object_GetPropertyNames(point);
@@ -497,7 +497,7 @@ describe('Object', function () {
                 module.Object_SetIntegrityLevel(proxy, false);
             }, TypeError);
         });
-        if (typeof java === 'object') {
+        if (module.hasJavaInterop()) {
             var point = new java.awt.Point();
             it('should not crash for foreign objects (freeze)', function () {
                 assert.strictEqual(module.Object_SetIntegrityLevel(point, true), true);
