@@ -374,6 +374,7 @@ public class JSContext {
         FinishImportModuleDynamicallyResolve,
         ExportGetter,
         OrdinaryWrappedFunctionCall,
+        DecoratorContextAddInitializer,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;

@@ -44,7 +44,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.Record;
+import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.DecorationState;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -77,7 +77,7 @@ public class ApplyDecoratorsToClassDefinitionNode extends Node {
     public Object executeDecorators(VirtualFrame frame, Object className, JSObject constructor, Object[] decorators, SimpleArrayList<Object> extraInitializers) {
         Object classDef = constructor;
         for (Object decorator : decorators) {
-            Record state = new Record();
+            DecorationState state = new DecorationState();
             JSDynamicObject context = createDecoratorContextObject(frame, className, extraInitializers, state);
             Object newDef = callNode.executeCall(JSArguments.create(Undefined.instance, decorator, classDef, context));
             state.finished = true;
@@ -91,7 +91,7 @@ public class ApplyDecoratorsToClassDefinitionNode extends Node {
         return classDef;
     }
 
-    private JSDynamicObject createDecoratorContextObject(VirtualFrame frame, Object className, SimpleArrayList<Object> extraInitializers, Record state) {
+    private JSDynamicObject createDecoratorContextObject(VirtualFrame frame, Object className, SimpleArrayList<Object> extraInitializers, DecorationState state) {
         return createDecoratorContextObject.evaluateClass(frame, className, extraInitializers, state);
     }
 }

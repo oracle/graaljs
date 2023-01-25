@@ -52,7 +52,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.Record;
+import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.DecorationState;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
@@ -109,7 +109,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) {
         for (Object decorator : record.getDecorators()) {
-            Record state = new Record();
+            DecorationState state = new DecorationState();
             JSDynamicObject decoratorContext = createDecoratorContextNode.executeContext(frame, record, extraInitializers, state);
             Object value = Undefined.instance;
             Object newValue = callNode.executeCall(JSArguments.create(Undefined.instance, decorator, value, decoratorContext));
@@ -202,7 +202,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Cached IsObjectNode isObjectNode,
                     @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) {
         for (Object decorator : record.getDecorators()) {
-            Record state = new Record();
+            DecorationState state = new DecorationState();
             JSDynamicObject decoratorContext = createDecoratorContextNode.executeContext(frame, record, extraInitializers, state);
             JSDynamicObject value = createObjectNode.execute(frame);
             JSRuntime.createDataPropertyOrThrow(value, Strings.GET, record.getGetter());
@@ -238,7 +238,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
 
     private static Object executeDecoratorWithContext(VirtualFrame frame, ClassElementDefinitionRecord record, Object value, SimpleArrayList<Object> extraInitializers, Object decorator,
                     CreateDecoratorContextObjectNode createDecoratorContextNode, JSFunctionCallNode callNode) {
-        Record state = new Record();
+        DecorationState state = new DecorationState();
         JSDynamicObject decoratorContext = createDecoratorContextNode.executeContext(frame, record, extraInitializers, state);
         Object newValue = callNode.executeCall(JSArguments.create(Undefined.instance, decorator, value, decoratorContext));
         state.finished = true;
