@@ -381,7 +381,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return backingStorageKey;
         }
 
-        @TruffleBoundary
         private static JSFunctionData createAutoAccessorSetFunctionData(JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
@@ -401,7 +400,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
         }
 
-        @TruffleBoundary
         private static JSFunctionData createAutoAccessorGetFunctionData(JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
@@ -864,11 +862,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
-            writePrivateNode.execute(frame);
-        }
-
-        @Override
         public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, JSRealm realm, Object[] decorators) {
             writePrivateNode.execute(frame);
             Object key = keyNode.execute(frame);
@@ -915,13 +908,9 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return privateBrandSlotIndex;
         }
 
-        public JSWriteFrameSlotNode getWritePrivateNode() {
-            return writePrivateNode;
-        }
-
         @Override
         public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, JSRealm realm, Object[] decorators) {
-            int slot = getWritePrivateNode().getSlotIndex();
+            int slot = writePrivateNode.getSlotIndex();
             int brandSlot = getPrivateBrandSlotIndex();
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
             return ClassElementDefinitionRecord.createPrivateMethod(privateName, slot, brandSlot, value, isAnonymousFunctionDefinition(), decorators);
@@ -930,12 +919,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Override
         public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
             writePrivateNode.executeWrite(frame, classElement.getValue());
-        }
-
-        @Override
-        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
-            Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
-            writePrivateNode.executeWrite(frame, value);
         }
 
         @Override
@@ -969,10 +952,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return privateBrandSlotIndex;
         }
 
-        public FrameSlotNode getWritePrivateNode() {
-            return writePrivateNode;
-        }
-
         @Override
         public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, JSRealm realm, Object[] decorators) {
             Object key = writePrivateNode.getIdentifier();
@@ -985,7 +964,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 setter = evaluateWithHomeObject(setterNode, frame, homeObject, realm);
             }
             assert getter != null || setter != null;
-            int slot = getWritePrivateNode().getSlotIndex();
+            int slot = writePrivateNode.getSlotIndex();
             int brandSlot = getPrivateBrandSlotIndex();
             if (hasGetter() && hasSetter()) {
                 return ClassElementDefinitionRecord.createPrivateAccessor(key, slot, brandSlot, getter, setter, isAnonymousFunctionDefinition(), decorators);
@@ -1011,22 +990,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
                     setter = setter == null ? ((Accessor) previous).getSetter() : setter;
                 }
             }
-            Accessor accessor = new Accessor(getter, setter);
-            writePrivateNode.executeWrite(frame, accessor);
-        }
-
-        @Override
-        public final void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
-            Object getter = null;
-            Object setter = null;
-            if (hasGetter()) {
-                getter = evaluateWithHomeObject(getterNode, frame, homeObject, realm);
-            }
-            if (hasSetter()) {
-                setter = evaluateWithHomeObject(setterNode, frame, homeObject, realm);
-            }
-
-            assert getter != null || setter != null;
             Accessor accessor = new Accessor(getter, setter);
             writePrivateNode.executeWrite(frame, accessor);
         }
@@ -1112,7 +1075,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return backingStorageKey;
         }
 
-        @TruffleBoundary
         private static JSFunctionData createAutoAccessorGetFunctionData(JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
@@ -1129,7 +1091,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
         }
 
-        @TruffleBoundary
         private static JSFunctionData createAutoAccessorSetFunctionData(JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
