@@ -295,14 +295,27 @@ public class ObjectLiteralNode extends JavaScriptNode {
      */
     public abstract static class PrivateClassElementNode extends ClassElementNode {
 
-        protected PrivateClassElementNode(boolean isStatic, boolean isFieldOrStaticBlock) {
+        @Child protected JSWriteFrameSlotNode writePrivateNode;
+
+        protected PrivateClassElementNode(boolean isStatic, boolean isFieldOrStaticBlock, JSWriteFrameSlotNode writePrivateNode) {
             super(isStatic, JSAttributes.getDefaultNotEnumerable(), isFieldOrStaticBlock, false);
+            this.writePrivateNode = writePrivateNode;
         }
 
         @Override
         public final boolean isPrivate() {
             return true;
         }
+
+        public final ScopeFrameNode getPrivateScopeNode() {
+            return writePrivateNode.getLevelFrameNode();
+        }
+
+        public final int getPrivateMemberSlotIndex() {
+            return writePrivateNode.getSlotIndex();
+        }
+
+        public abstract int getPrivateBrandSlotIndex();
     }
 
     private abstract static class CachingObjectLiteralMemberNode extends ClassElementNode {
@@ -867,10 +880,9 @@ public class ObjectLiteralNode extends JavaScriptNode {
     private static class PrivateFieldMemberNode extends PrivateClassElementNode {
         @Child private JavaScriptNode keyNode;
         @Child private JavaScriptNode valueNode;
-        @Child private JSWriteFrameSlotNode writePrivateNode;
 
         PrivateFieldMemberNode(JavaScriptNode key, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
-            super(isStatic, true);
+            super(isStatic, true, writePrivateNode);
             this.keyNode = key;
             this.valueNode = valueNode;
             this.writePrivateNode = writePrivateNode;
@@ -893,6 +905,11 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
+        public int getPrivateBrandSlotIndex() {
+            return -1;
+        }
+
+        @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new PrivateFieldMemberNode(JavaScriptNode.cloneUninitialized(keyNode, materializedTags), isStatic, JavaScriptNode.cloneUninitialized(valueNode, materializedTags),
                             JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags));
@@ -901,29 +918,27 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     public static class PrivateMethodMemberNode extends PrivateClassElementNode {
         @Child private JavaScriptNode valueNode;
-        @Child private JSWriteFrameSlotNode writePrivateNode;
 
         private final TruffleString privateName;
         private final int privateBrandSlotIndex;
 
         PrivateMethodMemberNode(TruffleString privateName, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode, int privateBrandSlotIndex) {
-            super(isStatic, false);
+            super(isStatic, false, writePrivateNode);
             this.privateName = privateName;
             this.valueNode = valueNode;
             this.writePrivateNode = writePrivateNode;
             this.privateBrandSlotIndex = privateBrandSlotIndex;
         }
 
+        @Override
         public int getPrivateBrandSlotIndex() {
             return privateBrandSlotIndex;
         }
 
         @Override
         public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, JSRealm realm, Object[] decorators) {
-            int slot = writePrivateNode.getSlotIndex();
-            int brandSlot = getPrivateBrandSlotIndex();
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
-            return ClassElementDefinitionRecord.createPrivateMethod(privateName, slot, brandSlot, value, isAnonymousFunctionDefinition(), decorators);
+            return ClassElementDefinitionRecord.createPrivateMethod(privateName, value, isAnonymousFunctionDefinition(), decorators);
         }
 
         @Override
@@ -941,18 +956,18 @@ public class ObjectLiteralNode extends JavaScriptNode {
     public static class PrivateAccessorMemberNode extends PrivateClassElementNode implements AccessorMemberNode {
         @Child private JavaScriptNode getterNode;
         @Child private JavaScriptNode setterNode;
-        @Child private JSWriteFrameSlotNode writePrivateNode;
 
         private final int privateBrandSlotIndex;
 
         PrivateAccessorMemberNode(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode, int privateBrandSlotIndex) {
-            super(isStatic, false);
+            super(isStatic, false, writePrivateNode);
             this.getterNode = getterNode;
             this.setterNode = setterNode;
             this.writePrivateNode = writePrivateNode;
             this.privateBrandSlotIndex = privateBrandSlotIndex;
         }
 
+        @Override
         public int getPrivateBrandSlotIndex() {
             return privateBrandSlotIndex;
         }
@@ -969,15 +984,13 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 setter = evaluateWithHomeObject(setterNode, frame, homeObject, realm);
             }
             assert getter != null || setter != null;
-            int slot = writePrivateNode.getSlotIndex();
-            int brandSlot = getPrivateBrandSlotIndex();
             if (hasGetter() && hasSetter()) {
-                return ClassElementDefinitionRecord.createPrivateAccessor(key, slot, brandSlot, getter, setter, isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createPrivateAccessor(key, getter, setter, isAnonymousFunctionDefinition(), decorators);
             } else if (hasGetter()) {
-                return ClassElementDefinitionRecord.createPrivateGetter(key, slot, brandSlot, getter, isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createPrivateGetter(key, getter, isAnonymousFunctionDefinition(), decorators);
             } else {
                 assert hasSetter();
-                return ClassElementDefinitionRecord.createPrivateSetter(key, slot, brandSlot, setter, isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createPrivateSetter(key, setter, isAnonymousFunctionDefinition(), decorators);
             }
         }
 
@@ -1019,7 +1032,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Child private JavaScriptNode valueNode;
         @Child private JavaScriptNode storageKeyNode;
-        @Child private JSWriteFrameSlotNode writePrivateAccessorNode;
         @Child private PropertySetNode backingStorageMagicSetNode;
 
         private final int privateBrandSlotIndex;
@@ -1028,10 +1040,9 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         PrivateAutoAccessorMemberNode(boolean isStatic, JavaScriptNode valueNode,
                         JSWriteFrameSlotNode writePrivateAccessorNode, JavaScriptNode storageKeyNode, int privateBrandSlot) {
-            super(isStatic, false);
+            super(isStatic, false, writePrivateAccessorNode);
             this.valueNode = valueNode;
             this.storageKeyNode = storageKeyNode;
-            this.writePrivateAccessorNode = writePrivateAccessorNode;
             this.privateBrandSlotIndex = privateBrandSlot;
             JSContext context = getLanguage().getJSContext();
             this.backingStorageMagicSetNode = PropertySetNode.createSetHidden(STORAGE_KEY_MAGIC, context);
@@ -1046,11 +1057,9 @@ public class ObjectLiteralNode extends JavaScriptNode {
             JSFunctionObject setter = createAutoAccessorSetter(storageKey, realm);
             JSFunctionObject getter = createAutoAccessorGetter(storageKey, realm);
             Accessor accessor = new Accessor(getter, setter);
-            writePrivateAccessorNode.executeWrite(frame, accessor);
-            Object accessorKey = writePrivateAccessorNode.getIdentifier();
-            int accessorSlot = writePrivateAccessorNode.getSlotIndex();
-            int brandSlot = privateBrandSlotIndex;
-            return ClassElementDefinitionRecord.createPrivateAutoAccessor(accessorKey, storageKey, value, getter, setter, accessorSlot, brandSlot, isAnonymousFunctionDefinition(), decorators);
+            writePrivateNode.executeWrite(frame, accessor);
+            Object accessorKey = writePrivateNode.getIdentifier();
+            return ClassElementDefinitionRecord.createPrivateAutoAccessor(accessorKey, storageKey, value, getter, setter, isAnonymousFunctionDefinition(), decorators);
         }
 
         /**
@@ -1118,10 +1127,15 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
+        public int getPrivateBrandSlotIndex() {
+            return privateBrandSlotIndex;
+        }
+
+        @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new PrivateAutoAccessorMemberNode(isStatic,
                             JavaScriptNode.cloneUninitialized(valueNode, materializedTags),
-                            JavaScriptNode.cloneUninitialized(writePrivateAccessorNode, materializedTags),
+                            JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags),
                             JavaScriptNode.cloneUninitialized(storageKeyNode, materializedTags),
                             privateBrandSlotIndex);
         }
