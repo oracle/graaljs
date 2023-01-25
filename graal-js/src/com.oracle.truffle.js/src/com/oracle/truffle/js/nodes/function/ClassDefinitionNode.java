@@ -310,10 +310,6 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         stateSlot,
                         realm);
 
-        if (writeClassBindingNode != null) {
-            writeClassBindingNode.executeWrite(frame, constructor);
-        }
-
         SimpleArrayList<Object> staticExtraInitializers = SimpleArrayList.createEmpty();
         SimpleArrayList<Object> instanceExtraInitializers = SimpleArrayList.createEmpty();
         applyDecoratorsAndDefineMethods(frame,
@@ -343,7 +339,14 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             writeInternalConstructorBrand.executeWrite(frame, constructor);
         }
 
-        executeStaticExtraInitializers(constructor, staticExtraInitializers.toArray());
+        SimpleArrayList<Object> classExtraInitializers = SimpleArrayList.createEmpty();
+        Object newConstructor = applyDecoratorsToClassDefinition(frame, getClassName(), constructor, decorators, classExtraInitializers);
+
+        if (writeClassBindingNode != null) {
+            writeClassBindingNode.executeWrite(frame, newConstructor);
+        }
+
+        executeStaticExtraInitializers(newConstructor, staticExtraInitializers.toArray());
 
         if (staticElementCount != 0) {
             InitializeInstanceElementsNode initializeStaticElements = this.staticElementsNode;
@@ -351,11 +354,11 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.staticElementsNode = initializeStaticElements = insert(InitializeInstanceElementsNode.create(context));
             }
-            initializeStaticElements.executeStaticElements(constructor, staticElements);
+            initializeStaticElements.executeStaticElements(newConstructor, staticElements);
         }
 
-        SimpleArrayList<Object> classExtraInitializers = SimpleArrayList.createEmpty();
-        return applyDecoratorsToClassDefinition(frame, getClassName(), constructor, decorators, classExtraInitializers);
+        executeStaticExtraInitializers(newConstructor, classExtraInitializers.toArray());
+        return newConstructor;
     }
 
     private void applyDecoratorsAndDefineMethods(VirtualFrame frame,
