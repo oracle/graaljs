@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.js.runtime;
+
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -133,12 +135,22 @@ public final class Symbol implements TruffleObject {
      */
     private final TruffleString description;
 
-    private Symbol(TruffleString description) {
+    /**
+     * If true, the symbol is in the GlobalSymbolRegistry (i.e. created by {@code Symbol.for}).
+     */
+    private final boolean registered;
+
+    private Symbol(TruffleString description, boolean registered) {
         this.description = description;
+        this.registered = registered;
     }
 
     public static Symbol create(TruffleString description) {
-        return new Symbol(description);
+        return new Symbol(description, false);
+    }
+
+    public static Symbol createRegistered(TruffleString description) {
+        return new Symbol(Objects.requireNonNull(description), true);
     }
 
     public Object getDescription() {
@@ -147,6 +159,10 @@ public final class Symbol implements TruffleObject {
 
     public TruffleString getName() {
         return description == null ? Strings.EMPTY_STRING : description;
+    }
+
+    public boolean isRegistered() {
+        return registered;
     }
 
     @Override

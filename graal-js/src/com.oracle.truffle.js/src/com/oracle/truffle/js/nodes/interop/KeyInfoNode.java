@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.interop;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -55,8 +56,10 @@ import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -68,6 +71,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * This node implements the {@code isMember*} messages.
  */
+@ImportStatic(Strings.class)
 @GenerateUncached
 public abstract class KeyInfoNode extends JavaScriptBaseNode {
     public static final int READABLE = 1 << 0;
@@ -85,13 +89,14 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
     public abstract boolean execute(JSDynamicObject receiver, String key, int query);
 
     @Specialization(guards = {"!isJSProxy(target)", "property != null"}, limit = "2")
-    static boolean cachedOwnProperty(JSDynamicObject target, String key, int query,
+    static boolean cachedOwnProperty(JSDynamicObject target, @SuppressWarnings("unused") String key, int query,
                     @CachedLibrary("target") DynamicObjectLibrary objectLibrary,
-                    @Bind("objectLibrary.getProperty(target, key)") Property property,
+                    @Cached @SuppressWarnings("unused") TruffleString.FromJavaStringNode fromJavaStringNode,
+                    @Bind("fromJavaString(fromJavaStringNode, key)") TruffleString tStringKey,
+                    @Bind("objectLibrary.getProperty(target, tStringKey)") Property property,
                     @Cached IsCallableNode isCallable,
                     @Cached BranchProfile proxyBranch,
-                    @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
-        TruffleString tStringKey = Strings.fromJavaString(fromJavaStringNode, key);
+                    @Cached BranchProfile moduleNamespaceBranch) {
         if (JSProperty.isAccessor(property)) {
             Accessor accessor = (Accessor) Properties.getOrDefault(objectLibrary, target, tStringKey, null);
             if ((query & READABLE) != 0 && accessor.hasGetter()) {
@@ -120,9 +125,15 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
             }
             if ((query & INVOCABLE) != 0) {
                 Object value = Properties.getOrDefault(objectLibrary, target, tStringKey, Undefined.instance);
-                if (JSProperty.isProxy(property)) {
-                    proxyBranch.enter();
-                    value = ((PropertyProxy) value).get(target);
+                if (JSProperty.isDataSpecial(property)) {
+                    if (JSProperty.isProxy(property)) {
+                        proxyBranch.enter();
+                        value = ((PropertyProxy) value).get(target);
+                    } else {
+                        assert JSProperty.isModuleNamespaceExport(property) : property;
+                        moduleNamespaceBranch.enter();
+                        value = JSModuleNamespace.getBindingValue((ExportResolution) value);
+                    }
                 }
                 if (isCallable.executeBoolean(value)) {
                     return true;

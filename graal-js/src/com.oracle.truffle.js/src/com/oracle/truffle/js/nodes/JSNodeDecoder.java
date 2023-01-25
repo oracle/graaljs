@@ -128,6 +128,9 @@ public class JSNodeDecoder {
     public static final int CONTINUE_TARGET_LOOP = 3;
     public static final int CONTINUE_TARGET_UNLABELED_LOOP = 4;
 
+    public static final int CONTEXT_ARG = -1;
+    public static final int SOURCE_ARG = -2;
+
     private static final boolean VERBOSE = false;
     private static final NodeDecoder<NodeFactory> GEN = NodeFactoryDecoderGen.create();
 
@@ -187,11 +190,12 @@ public class JSNodeDecoder {
                 case ID_LD_ARG:
                     int argIndex = state.getInt();
                     Object argument;
-                    if (argIndex == -1) {
+                    if (argIndex == CONTEXT_ARG) {
                         argument = context;
-                    } else if (argIndex == -2) {
+                    } else if (argIndex == SOURCE_ARG) {
                         argument = source;
                     } else {
+                        assert argIndex >= 0 : argIndex;
                         argument = state.getArgument(argIndex);
                     }
                     storeResult(state, argument);

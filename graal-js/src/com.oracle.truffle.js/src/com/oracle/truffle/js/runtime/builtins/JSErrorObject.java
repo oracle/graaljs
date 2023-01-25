@@ -121,6 +121,30 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
     }
 
     @ExportMessage
+    public boolean hasExceptionStackTrace(
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
+        return exceptions.hasExceptionStackTrace(getException());
+    }
+
+    @ExportMessage
+    public Object getExceptionStackTrace(
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+        return exceptions.getExceptionStackTrace(getException());
+    }
+
+    @ExportMessage
+    public boolean hasExceptionCause(
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
+        return exceptions.hasExceptionCause(getException());
+    }
+
+    @ExportMessage
+    public Object getExceptionCause(
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+        return exceptions.getExceptionCause(getException());
+    }
+
+    @ExportMessage
     public static final class IsIdenticalOrUndefined {
         @Specialization
         public static TriState doError(JSErrorObject receiver, JSDynamicObject other) {

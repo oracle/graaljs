@@ -82,15 +82,16 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.codec.BinaryEncoder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
+import com.oracle.truffle.js.nodes.JSNodeDecoder;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -111,6 +112,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
@@ -509,7 +511,7 @@ public class Recording {
 
         @Override
         public void encodeTo(JSNodeEncoder encoder) {
-            encoder.encodeLoadArg(getId(), -2);
+            encoder.encodeLoadArg(getId(), JSNodeDecoder.SOURCE_ARG);
         }
     }
 
@@ -530,7 +532,7 @@ public class Recording {
 
         @Override
         public void encodeTo(JSNodeEncoder encoder) {
-            encoder.encodeLoadArg(getId(), -1);
+            encoder.encodeLoadArg(getId(), JSNodeDecoder.CONTEXT_ARG);
         }
     }
 
@@ -1317,12 +1319,14 @@ public class Recording {
             enc = dumpFunctionData((JSFunctionData) arg);
         } else if (arg instanceof SourceSection) {
             enc = dumpSourceSection((SourceSection) arg);
+        } else if (arg instanceof Source) {
+            enc = dumpSource((Source) arg);
         } else if (arg instanceof Environment) {
             enc = dumpPlaceholder(arg);
-        } else if (arg instanceof JSFrameDescriptor || arg instanceof InternalSlotId) {
+        } else if (arg instanceof JSFrameDescriptor || arg instanceof InternalSlotId || arg instanceof ScriptOrModule) {
             enc = dumpRecorded(arg);
         } else {
-            throw new RuntimeException("Unrecognized argument: " + arg);
+            throw new IllegalArgumentException(String.format("Unrecognized argument or return type: %s (%s)", arg.getClass().getTypeName(), arg));
         }
         return enc.asVar();
     }

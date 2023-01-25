@@ -459,7 +459,7 @@ public final class JSDictionary extends JSNonProxy {
             desc.setConfigurable(JSProperty.isConfigurable(p));
             desc.setEnumerable(JSProperty.isEnumerable(p));
         } else {
-            assert JSProperty.isData(p);
+            assert JSProperty.isData(p) && !JSProperty.isDataSpecial(p) : p;
             desc = PropertyDescriptor.createData(value, JSProperty.isEnumerable(p), JSProperty.isWritable(p), JSProperty.isConfigurable(p));
         }
         return desc;

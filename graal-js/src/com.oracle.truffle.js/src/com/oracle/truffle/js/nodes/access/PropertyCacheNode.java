@@ -1040,12 +1040,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
         }
 
-        if (cachedCount >= context.getPropertyCacheLimit() || (specialized != null && specialized.isGeneric())) {
-            return rewriteToGeneric(currentHead, cachedCount, "cache limit reached");
-        }
-
         if (specialized == null) {
             specialized = createUndefinedPropertyNode(thisObj, thisObj, depth, value);
+        }
+
+        if (cachedCount >= context.getPropertyCacheLimit() || specialized.isGeneric()) {
+            return rewriteToGeneric(currentHead, cachedCount, "cache limit reached");
         }
 
         return insertCached(specialized, currentHead, cachedCount);

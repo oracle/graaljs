@@ -202,8 +202,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
         moduleMap.put(canonicalPath, newModule);
 
-        if (referrer instanceof JSModuleRecord) {
-            ((JSModuleRecord) referrer).getModuleData().rememberImportedModuleSource(moduleRequest.getSpecifier(), source);
+        if (referrer != null) {
+            referrer.rememberImportedModuleSource(moduleRequest.getSpecifier(), source);
         }
         return newModule;
     }

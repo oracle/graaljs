@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,45 +38,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.nodes.arguments;
 
-import com.oracle.js.parser.ir.Module;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import java.util.Objects;
+import java.util.Set;
 
-/**
- * ES module data that can be shared across contexts.
- */
-public final class JSModuleData extends ScriptOrModule {
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
-    /** Module parse node. */
-    private final Module module;
+public final class GetActiveScriptOrModuleNode extends JavaScriptNode {
 
-    private final JSFunctionData functionData;
-    private final FrameDescriptor frameDescriptor;
+    @CompilationFinal private ScriptOrModule scriptOrModule;
 
-    public JSModuleData(Module module, Source source, JSFunctionData functionData, FrameDescriptor frameDescriptor) {
-        super(functionData.getContext(), source);
-        this.module = module;
-        this.functionData = functionData;
-        this.frameDescriptor = frameDescriptor;
+    private GetActiveScriptOrModuleNode() {
     }
 
-    public Module getModule() {
-        return module;
+    public static GetActiveScriptOrModuleNode create() {
+        return new GetActiveScriptOrModuleNode();
     }
 
-    public JSFunctionData getFunctionData() {
-        return functionData;
+    @Override
+    public Object execute(VirtualFrame frame) {
+        return Objects.requireNonNull(scriptOrModule);
     }
 
-    public FrameDescriptor getFrameDescriptor() {
-        return frameDescriptor;
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return this;
     }
 
-    public boolean isTopLevelAsync() {
-        return functionData.isAsync();
+    @Override
+    public boolean isAdoptable() {
+        return false;
     }
 
+    public void setScriptOrModule(ScriptOrModule scriptOrModule) {
+        assert this.scriptOrModule == null;
+        this.scriptOrModule = scriptOrModule;
+    }
 }

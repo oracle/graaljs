@@ -229,6 +229,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         if (JSProperty.isProxy(prop)) {
             return getPropertyProxyValue(thisObj, value);
         } else {
+            assert !JSProperty.isDataSpecial(prop) : prop;
             return value;
         }
     }

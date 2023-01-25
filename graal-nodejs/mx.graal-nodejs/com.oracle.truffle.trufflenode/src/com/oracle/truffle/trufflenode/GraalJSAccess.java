@@ -1700,12 +1700,7 @@ public final class GraalJSAccess {
     public Object symbolFor(Object description) {
         TruffleString stringDesc = (TruffleString) description;
         Map<TruffleString, Symbol> registry = mainJSContext.getSymbolRegistry();
-        Symbol symbol = registry.get(stringDesc);
-        if (symbol == null) {
-            symbol = Symbol.create(stringDesc);
-            registry.put(stringDesc, symbol);
-        }
-        return symbol;
+        return registry.computeIfAbsent(stringDesc, Symbol::createRegistered);
     }
 
     public Object functionNewInstance(Object function, Object[] arguments) {
