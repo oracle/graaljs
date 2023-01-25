@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public class ClassElementDefinitionRecord {
 
@@ -71,9 +71,8 @@ public class ClassElementDefinitionRecord {
     private Object setter;
     /** The decorators applied to the class element, if any. */
     private Object[] decorators;
-    private List<Object> appendedInitializers;
     /** The initializers of the field or accessor, if any. */
-    private Object[] initializers;
+    private SimpleArrayList<Object> initializers;
     /** Private field storage key for an auto accessor or a private field. */
     private HiddenKey backingStorageKey;
 
@@ -205,22 +204,24 @@ public class ClassElementDefinitionRecord {
         this.value = newValue;
     }
 
-    public Object[] getInitializers() {
-        return initializers == null ? EMPTY : initializers;
+    public SimpleArrayList<Object> getInitializers() {
+        return initializers;
     }
 
-    @TruffleBoundary
-    public void appendInitializer(Object initializer) {
-        if (appendedInitializers == null) {
-            appendedInitializers = new ArrayList<>();
+    public void addInitializer(Object initializer, Node node, InlinedBranchProfile growBranch) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, initializers == null)) {
+            growBranch.enter(node);
+            initializers = new SimpleArrayList<>();
         }
-        appendedInitializers.add(initializer);
+        initializers.add(initializer, node, growBranch);
     }
 
-    @TruffleBoundary
+    public boolean hasInitializers() {
+        return initializers != null && initializers.size() != 0;
+    }
+
     public void cleanDecorator() {
         this.decorators = EMPTY;
-        this.initializers = appendedInitializers == null ? EMPTY : appendedInitializers.toArray(EMPTY);
     }
 
     public Object isAnonymousFunction() {

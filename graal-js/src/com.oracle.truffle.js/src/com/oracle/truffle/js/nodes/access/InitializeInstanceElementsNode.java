@@ -60,8 +60,8 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -86,7 +86,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
 
-    private static final JSFunctionObject[] EMPTY_INITIALIZERS = new JSFunctionObject[0];
+    private static final Object[] EMPTY_INITIALIZERS = ScriptArray.EMPTY_OBJECT_ARRAY;
 
     @Child @Executed protected JavaScriptNode targetNode;
     @Child @Executed protected JavaScriptNode constructorNode;
@@ -118,11 +118,11 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         return executeEvaluated(targetConstructor, Undefined.instance, staticElements, EMPTY_INITIALIZERS, Undefined.instance);
     }
 
-    protected abstract Object executeEvaluated(Object target, Object constructor, ClassElementDefinitionRecord[] fields, JSFunctionObject[] initializers, Object brand);
+    protected abstract Object executeEvaluated(Object target, Object constructor, ClassElementDefinitionRecord[] fields, Object[] initializers, Object brand);
 
     @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL)
     @Specialization
-    protected static Object withFields(Object target, Object constructor, ClassElementDefinitionRecord[] fields, JSFunctionObject[] initializers, Object brand,
+    protected static Object withFields(Object target, Object constructor, ClassElementDefinitionRecord[] fields, Object[] initializers, Object brand,
                     @Cached(value = "createBrandAddNode(brand, context)", neverDefault = false) @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode,
                     @Cached("createFieldNodes(fields, context)") InitializeFieldOrAccessorNode[] fieldNodes,
                     @Cached("createCall()") JSFunctionCallNode callInit) {
@@ -139,8 +139,8 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         return target;
     }
 
-    private static void executeInitializers(Object target, JSFunctionObject[] initializers, JSFunctionCallNode callInit) {
-        for (JSFunctionObject initializer : initializers) {
+    private static void executeInitializers(Object target, Object[] initializers, JSFunctionCallNode callInit) {
+        for (Object initializer : initializers) {
             callInit.executeCall(JSArguments.createZeroArg(target, initializer));
         }
     }
@@ -225,15 +225,16 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
                                 : JSArguments.createOneArg(target, initializer, Undefined.instance));
             }
             // run decorators-defined initializers
-            Object[] fieldInitializers = record.getInitializers();
-            for (Object initializer : fieldInitializers) {
-                initValue = callExtraInitializer(target, record, initializer, initValue);
+            if (record.hasInitializers()) {
+                for (int i = 0; i < record.getInitializers().size(); i++) {
+                    Object initializer = record.getInitializers().get(i);
+                    initValue = callExtraInitializer(target, initializer, initValue);
+                }
             }
             return writeValue(target, record, initValue);
         }
 
-        private Object callExtraInitializer(Object target, ClassElementDefinitionRecord record, Object initializer, Object initValue) {
-            assert record.getInitializers().length > 0;
+        private Object callExtraInitializer(Object target, Object initializer, Object initValue) {
             return getInitializersCallNode().executeCall(JSArguments.createOneArg(target, initializer, initValue));
         }
 

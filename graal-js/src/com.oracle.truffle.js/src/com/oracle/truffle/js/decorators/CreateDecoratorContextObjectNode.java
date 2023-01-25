@@ -42,8 +42,6 @@ package com.oracle.truffle.js.decorators;
 
 import static com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord.Kind.Getter;
 
-import java.util.List;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -80,7 +78,6 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.arguments.AccessThisNode;
 import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord;
 import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord.PrivateFrameBasedElementDefinitionRecord;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -96,6 +93,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 @ImportStatic({Strings.class})
 public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNode {
@@ -488,14 +486,14 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
             public Object execute(VirtualFrame frame) {
                 JSFunctionObject self = (JSFunctionObject) JSArguments.getFunctionObject(frame.getArguments());
                 Record state = (Record) getRecordKey.getValue(self);
-                List<Object> initializers = (List<Object>) getInitializersKey.getValue(self);
+                SimpleArrayList<Object> initializers = (SimpleArrayList<Object>) getInitializersKey.getValue(self);
                 if (state.finished) {
                     CompilerDirectives.transferToInterpreter();
                     throw Errors.createTypeError("Bad decorator initializer state");
                 }
                 Object[] args = frame.getArguments();
                 Object value = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
-                Boundaries.listAdd(initializers, value);
+                initializers.addUncached(value);
                 return Undefined.instance;
             }
         }.getCallTarget();

@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -73,17 +71,15 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * ES6 14.5.14 Runtime Semantics: ClassDefinitionEvaluation.
  */
 public final class ClassDefinitionNode extends NamedEvaluationTargetNode implements FunctionNameHolder, ResumableNode.WithObjectState {
-
-    private static final JSFunctionObject[] EMPTY = new JSFunctionObject[0];
 
     @Children private JavaScriptNode[] classDecorators;
     @Children private ObjectLiteralMemberNode[] memberNodes;
@@ -318,8 +314,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             writeClassBindingNode.executeWrite(frame, constructor);
         }
 
-        List<Object> staticExtraInitializers = new ArrayList<>();
-        List<Object> instanceExtraInitializers = new ArrayList<>();
+        SimpleArrayList<Object> staticExtraInitializers = SimpleArrayList.createEmpty();
+        SimpleArrayList<Object> instanceExtraInitializers = SimpleArrayList.createEmpty();
         applyDecoratorsAndDefineMethods(frame,
                         instanceElements,
                         instanceMethods,
@@ -333,7 +329,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         if (setElementsNode != null) {
             setElementsNode.setValue(constructor, instanceElements);
         }
-        setInitializersNode.setValue(constructor, instanceExtraInitializers.toArray(EMPTY));
+        setInitializersNode.setValue(constructor, instanceExtraInitializers.toArray());
 
         // If the class contains a private instance method or accessor, set F.[[PrivateBrand]].
         if (setPrivateBrandNode != null) {
@@ -347,7 +343,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             writeInternalConstructorBrand.executeWrite(frame, constructor);
         }
 
-        executeStaticExtraInitializers(constructor, staticExtraInitializers.toArray(EMPTY));
+        executeStaticExtraInitializers(constructor, staticExtraInitializers.toArray());
 
         if (staticElementCount != 0) {
             InitializeInstanceElementsNode initializeStaticElements = this.staticElementsNode;
@@ -358,15 +354,15 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             initializeStaticElements.executeStaticElements(constructor, staticElements);
         }
 
-        List<Object> classExtraInitializers = new ArrayList<>();
+        SimpleArrayList<Object> classExtraInitializers = SimpleArrayList.createEmpty();
         return applyDecoratorsToClassDefinition(frame, getClassName(), constructor, decorators, classExtraInitializers);
     }
 
     private void applyDecoratorsAndDefineMethods(VirtualFrame frame,
                     ClassElementDefinitionRecord[] instanceElements,
                     ClassElementDefinitionRecord[] instanceMethods,
-                    List<Object> instanceExtraInitializers,
-                    List<Object> staticExtraInitializers,
+                    SimpleArrayList<Object> instanceExtraInitializers,
+                    SimpleArrayList<Object> staticExtraInitializers,
                     ClassElementDefinitionRecord[] staticElements,
                     ClassElementDefinitionRecord[] staticMethods,
                     JSDynamicObject constructor,
@@ -384,7 +380,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void applyDecoratorsAndDefineMethods(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord[] methods, List<Object> extraInitializers, boolean isStatic) {
+    private void applyDecoratorsAndDefineMethods(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord[] methods, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
         if (methods == null) {
             return;
         }
@@ -404,7 +400,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void applyDecoratorsToElements(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord[] elements, List<Object> extraInitializers, boolean isStatic) {
+    private void applyDecoratorsToElements(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
         if (elements == null) {
             return;
         }
@@ -451,7 +447,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         return decorators;
     }
 
-    private Object applyDecoratorsToClassDefinition(VirtualFrame frame, Object name, JSObject constructor, Object[] decorators, List<Object> classExtraInitializers) {
+    private Object applyDecoratorsToClassDefinition(VirtualFrame frame, Object name, JSObject constructor, Object[] decorators, SimpleArrayList<Object> classExtraInitializers) {
         if (this.classDecorators.length == 0) {
             return constructor;
         }

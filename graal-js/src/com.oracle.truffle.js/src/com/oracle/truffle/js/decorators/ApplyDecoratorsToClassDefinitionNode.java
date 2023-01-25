@@ -53,8 +53,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.List;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public class ApplyDecoratorsToClassDefinitionNode extends Node {
 
@@ -75,7 +74,7 @@ public class ApplyDecoratorsToClassDefinitionNode extends Node {
     }
 
     @ExplodeLoop
-    public Object executeDecorators(VirtualFrame frame, Object className, JSObject constructor, Object[] decorators, List<Object> extraInitializers) {
+    public Object executeDecorators(VirtualFrame frame, Object className, JSObject constructor, Object[] decorators, SimpleArrayList<Object> extraInitializers) {
         Object classDef = constructor;
         for (Object decorator : decorators) {
             Record state = new Record();
@@ -92,7 +91,7 @@ public class ApplyDecoratorsToClassDefinitionNode extends Node {
         return classDef;
     }
 
-    private JSDynamicObject createDecoratorContextObject(VirtualFrame frame, Object className, List<Object> extraInitializers, Record state) {
+    private JSDynamicObject createDecoratorContextObject(VirtualFrame frame, Object className, SimpleArrayList<Object> extraInitializers, Record state) {
         return createDecoratorContextObject.evaluateClass(frame, className, extraInitializers, state);
     }
 }
