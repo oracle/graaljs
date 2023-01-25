@@ -290,6 +290,21 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
+    /**
+     * Base class for all private class elements.
+     */
+    public abstract static class PrivateClassElementNode extends ClassElementNode {
+
+        protected PrivateClassElementNode(boolean isStatic, boolean isFieldOrStaticBlock) {
+            super(isStatic, JSAttributes.getDefaultNotEnumerable(), isFieldOrStaticBlock, false);
+        }
+
+        @Override
+        public final boolean isPrivate() {
+            return true;
+        }
+    }
+
     private abstract static class CachingObjectLiteralMemberNode extends ClassElementNode {
         protected final Object name;
         @Child private DynamicObjectLibrary dynamicObjectLibrary;
@@ -849,13 +864,13 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
-    private static class PrivateFieldMemberNode extends ClassElementNode {
+    private static class PrivateFieldMemberNode extends PrivateClassElementNode {
         @Child private JavaScriptNode keyNode;
         @Child private JavaScriptNode valueNode;
         @Child private JSWriteFrameSlotNode writePrivateNode;
 
         PrivateFieldMemberNode(JavaScriptNode key, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode) {
-            super(isStatic, JSAttributes.getDefaultNotEnumerable(), true, false);
+            super(isStatic, true);
             this.keyNode = key;
             this.valueNode = valueNode;
             this.writePrivateNode = writePrivateNode;
@@ -878,18 +893,13 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public boolean isPrivate() {
-            return true;
-        }
-
-        @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new PrivateFieldMemberNode(JavaScriptNode.cloneUninitialized(keyNode, materializedTags), isStatic, JavaScriptNode.cloneUninitialized(valueNode, materializedTags),
                             JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags));
         }
     }
 
-    public static class PrivateMethodMemberNode extends ClassElementNode {
+    public static class PrivateMethodMemberNode extends PrivateClassElementNode {
         @Child private JavaScriptNode valueNode;
         @Child private JSWriteFrameSlotNode writePrivateNode;
 
@@ -897,7 +907,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         private final int privateBrandSlotIndex;
 
         PrivateMethodMemberNode(TruffleString privateName, boolean isStatic, JavaScriptNode valueNode, JSWriteFrameSlotNode writePrivateNode, int privateBrandSlotIndex) {
-            super(isStatic, JSAttributes.getDefaultNotEnumerable(), false, false);
+            super(isStatic, false);
             this.privateName = privateName;
             this.valueNode = valueNode;
             this.writePrivateNode = writePrivateNode;
@@ -922,18 +932,13 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @Override
-        public boolean isPrivate() {
-            return true;
-        }
-
-        @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new PrivateMethodMemberNode(privateName, isStatic, JavaScriptNode.cloneUninitialized(valueNode, materializedTags),
                             JavaScriptNode.cloneUninitialized(writePrivateNode, materializedTags), privateBrandSlotIndex);
         }
     }
 
-    public static class PrivateAccessorMemberNode extends ClassElementNode implements AccessorMemberNode {
+    public static class PrivateAccessorMemberNode extends PrivateClassElementNode implements AccessorMemberNode {
         @Child private JavaScriptNode getterNode;
         @Child private JavaScriptNode setterNode;
         @Child private JSWriteFrameSlotNode writePrivateNode;
@@ -941,7 +946,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         private final int privateBrandSlotIndex;
 
         PrivateAccessorMemberNode(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode, int privateBrandSlotIndex) {
-            super(isStatic, JSAttributes.getDefaultNotEnumerable(), false, false);
+            super(isStatic, false);
             this.getterNode = getterNode;
             this.setterNode = setterNode;
             this.writePrivateNode = writePrivateNode;
@@ -994,11 +999,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
             writePrivateNode.executeWrite(frame, accessor);
         }
 
-        @Override
-        public boolean isPrivate() {
-            return true;
-        }
-
         public boolean hasGetter() {
             return getterNode != null;
         }
@@ -1014,7 +1014,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
-    public static class PrivateAutoAccessorMemberNode extends ClassElementNode {
+    public static class PrivateAutoAccessorMemberNode extends PrivateClassElementNode {
         private static final HiddenKey STORAGE_KEY_MAGIC = new HiddenKey(":storage-key-magic");
 
         @Child private JavaScriptNode valueNode;
@@ -1028,7 +1028,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         PrivateAutoAccessorMemberNode(boolean isStatic, JavaScriptNode valueNode,
                         JSWriteFrameSlotNode writePrivateAccessorNode, JavaScriptNode storageKeyNode, int privateBrandSlot) {
-            super(isStatic, JSAttributes.getDefaultNotEnumerable(), false, false);
+            super(isStatic, false);
             this.valueNode = valueNode;
             this.storageKeyNode = storageKeyNode;
             this.writePrivateAccessorNode = writePrivateAccessorNode;
@@ -1059,11 +1059,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
          */
         @Override
         public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
-        }
-
-        @Override
-        public boolean isPrivate() {
-            return true;
         }
 
         private static HiddenKey checkAutoAccessorTarget(VirtualFrame frame, PropertyGetNode getStorageKeyNode, DynamicObjectLibrary storageLibrary, Object thiz) {
