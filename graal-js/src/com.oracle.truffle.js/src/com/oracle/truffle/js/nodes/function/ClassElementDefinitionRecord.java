@@ -40,11 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 public class ClassElementDefinitionRecord {
 
@@ -71,8 +68,9 @@ public class ClassElementDefinitionRecord {
     private Object setter;
     /** The decorators applied to the class element, if any. */
     private Object[] decorators;
-    /** The initializers of the field or accessor, if any. */
-    private SimpleArrayList<Object> initializers;
+    /** The initializers of the field or accessor, if any. May contain null elements. */
+    private Object[] initializers;
+    private int initializersCount;
     /** Private field storage key for an auto accessor or a private field. */
     private HiddenKey backingStorageKey;
 
@@ -146,6 +144,7 @@ public class ClassElementDefinitionRecord {
         this.anonymousFunctionDefinition = anonymousFunctionDefinition;
         this.isPrivate = isPrivate;
         this.decorators = decorators;
+        this.initializers = (decorators == null || decorators.length == 0) ? ScriptArray.EMPTY_OBJECT_ARRAY : new Object[decorators.length];
         this.backingStorageKey = backingStorageKey;
         assert kind == Kind.AutoAccessor
                         ? (value != null && getter != null && setter != null)
@@ -204,20 +203,25 @@ public class ClassElementDefinitionRecord {
         this.value = newValue;
     }
 
-    public SimpleArrayList<Object> getInitializers() {
+    public Object[] getInitializers() {
         return initializers;
     }
 
-    public void addInitializer(Object initializer, Node node, InlinedBranchProfile growBranch) {
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, initializers == null)) {
-            growBranch.enter(node);
-            initializers = new SimpleArrayList<>();
-        }
-        initializers.add(initializer, node, growBranch);
+    public int getInitializersCount() {
+        return initializersCount;
+    }
+
+    /**
+     * Adds an initializer to be applied when the field is defined. Each decorator invocation may
+     * add only one initializer to this list, therefore we can use a fixed size array here (unused
+     * elements will be null).
+     */
+    public void addInitializer(Object initializer) {
+        initializers[initializersCount++] = initializer;
     }
 
     public boolean hasInitializers() {
-        return initializers != null && initializers.size() != 0;
+        return initializersCount != 0;
     }
 
     public void cleanDecorator() {

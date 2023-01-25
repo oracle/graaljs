@@ -107,8 +107,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
     protected void decorateField(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, SimpleArrayList<Object> extraInitializers,
                     @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
-                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch,
-                    @Shared("growBranch") @Cached InlinedBranchProfile growBranch) {
+                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) {
         for (Object decorator : record.getDecorators()) {
             Record state = new Record();
             JSDynamicObject decoratorContext = createDecoratorContextNode.executeContext(frame, record, extraInitializers, state);
@@ -116,7 +115,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
             Object newValue = callNode.executeCall(JSArguments.create(Undefined.instance, decorator, value, decoratorContext));
             state.finished = true;
             if (isCallableNode.executeBoolean(newValue)) {
-                record.addInitializer(newValue, this, growBranch);
+                record.addInitializer(newValue);
             } else {
                 checkUndefined(newValue, this, errorBranch);
             }
@@ -201,8 +200,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Cached("createInitNode()") PropertyGetNode getInitNode,
                     @Cached("create(context)") CreateObjectNode createObjectNode,
                     @Cached IsObjectNode isObjectNode,
-                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch,
-                    @Shared("growBranch") @Cached InlinedBranchProfile growBranch) {
+                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) {
         for (Object decorator : record.getDecorators()) {
             Record state = new Record();
             JSDynamicObject decoratorContext = createDecoratorContextNode.executeContext(frame, record, extraInitializers, state);
@@ -227,7 +225,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                 patchAutoAccessor(proto, record);
                 Object newInit = getInitNode.getValue(newValue);
                 if (isCallableNode.executeBoolean(newInit)) {
-                    record.addInitializer(newInit, node, growBranch);
+                    record.addInitializer(newInit);
                 } else {
                     checkUndefined(newInit, node, errorBranch);
                 }

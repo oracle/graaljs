@@ -225,11 +225,9 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
                                 : JSArguments.createOneArg(target, initializer, Undefined.instance));
             }
             // run decorators-defined initializers
-            if (record.hasInitializers()) {
-                for (int i = 0; i < record.getInitializers().size(); i++) {
-                    Object initializer = record.getInitializers().get(i);
-                    initValue = callExtraInitializer(target, initializer, initValue);
-                }
+            for (int i = 0; i < record.getInitializersCount(); i++) {
+                Object initializer = record.getInitializers()[i];
+                initValue = callExtraInitializer(target, initializer, initValue);
             }
             return writeValue(target, record, initValue);
         }
