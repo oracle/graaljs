@@ -893,7 +893,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             writePrivateNode.execute(frame);
             Object key = keyNode.execute(frame);
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
-            return ClassElementDefinitionRecord.createPrivateField(key, value, isAnonymousFunctionDefinition(), decorators);
+            return ClassElementDefinitionRecord.createPrivateField(key, value, decorators);
         }
 
         /**
@@ -938,7 +938,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Override
         public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, JSRealm realm, Object[] decorators) {
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
-            return ClassElementDefinitionRecord.createPrivateMethod(privateName, value, isAnonymousFunctionDefinition(), decorators);
+            return ClassElementDefinitionRecord.createPrivateMethod(privateName, value, decorators);
         }
 
         @Override
@@ -985,12 +985,12 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
             assert getter != null || setter != null;
             if (hasGetter() && hasSetter()) {
-                return ClassElementDefinitionRecord.createPrivateAccessor(key, getter, setter, isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createPrivateAccessor(key, getter, setter, decorators);
             } else if (hasGetter()) {
-                return ClassElementDefinitionRecord.createPrivateGetter(key, getter, isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createPrivateGetter(key, getter, decorators);
             } else {
                 assert hasSetter();
-                return ClassElementDefinitionRecord.createPrivateSetter(key, setter, isAnonymousFunctionDefinition(), decorators);
+                return ClassElementDefinitionRecord.createPrivateSetter(key, setter, decorators);
             }
         }
 
@@ -1059,7 +1059,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             Accessor accessor = new Accessor(getter, setter);
             writePrivateNode.executeWrite(frame, accessor);
             Object accessorKey = writePrivateNode.getIdentifier();
-            return ClassElementDefinitionRecord.createPrivateAutoAccessor(accessorKey, storageKey, value, getter, setter, isAnonymousFunctionDefinition(), decorators);
+            return ClassElementDefinitionRecord.createPrivateAutoAccessor(accessorKey, storageKey, value, getter, setter, decorators);
         }
 
         /**

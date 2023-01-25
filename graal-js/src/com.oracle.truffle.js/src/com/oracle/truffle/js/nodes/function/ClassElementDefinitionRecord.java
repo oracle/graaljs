@@ -80,40 +80,40 @@ public final class ClassElementDefinitionRecord {
         return new ClassElementDefinitionRecord(Kind.Field, key, value, null, null, false, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateField(Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Field, key, value, null, null, true, anonymousFunctionDefinition, decorators, (HiddenKey) key);
+    public static ClassElementDefinitionRecord createPrivateField(Object key, Object value, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.Field, key, value, null, null, true, false, decorators, (HiddenKey) key);
     }
 
     public static ClassElementDefinitionRecord createPublicMethod(Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
         return new ClassElementDefinitionRecord(Kind.Method, key, value, null, null, false, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateMethod(Object key, Object value, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Method, key, value, null, null, true, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateMethod(Object key, Object value, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.Method, key, value, null, null, true, false, decorators);
     }
 
     public static ClassElementDefinitionRecord createPublicGetter(Object key, Object getter, boolean anonymousFunctionDefinition, Object[] decorators) {
         return new ClassElementDefinitionRecord(Kind.Getter, key, null, getter, null, false, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateGetter(Object key, Object getter, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Getter, key, null, getter, null, true, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateGetter(Object key, Object getter, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.Getter, key, null, getter, null, true, false, decorators);
     }
 
     public static ClassElementDefinitionRecord createPublicSetter(Object key, Object setter, boolean anonymousFunctionDefinition, Object[] decorators) {
         return new ClassElementDefinitionRecord(Kind.Setter, key, null, null, setter, false, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateSetter(Object key, Object setter, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.Setter, key, null, null, setter, true, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateSetter(Object key, Object setter, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.Setter, key, null, null, setter, true, false, decorators);
     }
 
     public static ClassElementDefinitionRecord createPublicAccessor(Object key, Object getter, Object setter, boolean anonymousFunctionDefinition, Object[] decorators) {
         return new ClassElementDefinitionRecord(Kind.AccessorPair, key, null, getter, setter, false, anonymousFunctionDefinition, decorators);
     }
 
-    public static ClassElementDefinitionRecord createPrivateAccessor(Object key, Object getter, Object setter, boolean anonymousFunctionDefinition, Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.AccessorPair, key, null, getter, setter, true, anonymousFunctionDefinition, decorators);
+    public static ClassElementDefinitionRecord createPrivateAccessor(Object key, Object getter, Object setter, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.AccessorPair, key, null, getter, setter, true, false, decorators);
     }
 
     public static ClassElementDefinitionRecord createPublicAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter,
@@ -121,9 +121,8 @@ public final class ClassElementDefinitionRecord {
         return new ClassElementDefinitionRecord(Kind.AutoAccessor, key, value, getter, setter, false, anonymousFunctionDefinition, decorators, backingStorageKey);
     }
 
-    public static ClassElementDefinitionRecord createPrivateAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter, boolean anonymousFunctionDefinition,
-                    Object[] decorators) {
-        return new ClassElementDefinitionRecord(Kind.AutoAccessor, key, value, getter, setter, true, anonymousFunctionDefinition, decorators, backingStorageKey);
+    public static ClassElementDefinitionRecord createPrivateAutoAccessor(Object key, HiddenKey backingStorageKey, Object value, Object getter, Object setter, Object[] decorators) {
+        return new ClassElementDefinitionRecord(Kind.AutoAccessor, key, value, getter, setter, true, false, decorators, backingStorageKey);
     }
 
     protected ClassElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
