@@ -40,12 +40,10 @@
  */
 package com.oracle.truffle.js.decorators;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -68,16 +66,14 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
-@ImportStatic(ClassElementDefinitionRecord.class)
+@ImportStatic({Strings.class})
 public abstract class ApplyDecoratorsToElementDefinition extends Node {
 
     protected final JSContext context;
@@ -191,13 +187,13 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
 
     @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"record.isAutoAccessor()", "record.hasDecorators()"})
-    protected void decorateAuto(VirtualFrame frame, JSDynamicObject proto, ClassElementDefinitionRecord record, SimpleArrayList<Object> extraInitializers,
+    protected void decorateAuto(VirtualFrame frame, @SuppressWarnings("unused") JSDynamicObject proto, ClassElementDefinitionRecord record, SimpleArrayList<Object> extraInitializers,
                     @Bind("this") Node node,
                     @Shared("callDecorator") @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
-                    @Cached("createGetterNode()") PropertyGetNode getGetterNode,
-                    @Cached("createSetterNode()") PropertyGetNode getSetterNode,
-                    @Cached("createInitNode()") PropertyGetNode getInitNode,
+                    @Cached("create(GET, context)") PropertyGetNode getGetterNode,
+                    @Cached("create(SET, context)") PropertyGetNode getSetterNode,
+                    @Cached("create(INIT, context)") PropertyGetNode getInitNode,
                     @Cached("create(context)") CreateObjectNode createObjectNode,
                     @Cached IsObjectNode isObjectNode,
                     @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) {
@@ -222,7 +218,6 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                 } else {
                     checkUndefined(newSetter, node, errorBranch);
                 }
-                patchAutoAccessor(proto, record);
                 Object newInit = getInitNode.getValue(newValue);
                 if (isCallableNode.executeBoolean(newInit)) {
                     record.addInitializer(newInit);
@@ -243,33 +238,6 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
         Object newValue = callNode.executeCall(JSArguments.create(Undefined.instance, decorator, value, decoratorContext));
         state.finished = true;
         return newValue;
-    }
-
-    @TruffleBoundary
-    private static void patchAutoAccessor(JSDynamicObject proto, ClassElementDefinitionRecord elementRecord) {
-        int propertyFlags = 0;
-        if (JSObject.hasProperty(proto, elementRecord.getKey())) {
-            propertyFlags = JSObject.getPropertyFlags(proto, elementRecord.getKey());
-        }
-        JSDynamicObject getterV = (JSDynamicObject) elementRecord.getGetter();
-        JSDynamicObject setterV = (JSDynamicObject) elementRecord.getSetter();
-        Accessor newAccessor = new Accessor(getterV, setterV);
-        JSObjectUtil.defineAccessorProperty(proto, elementRecord.getKey(), newAccessor, propertyFlags);
-    }
-
-    @NeverDefault
-    protected PropertyGetNode createGetterNode() {
-        return PropertyGetNode.create(Strings.GET, context);
-    }
-
-    @NeverDefault
-    protected PropertyGetNode createSetterNode() {
-        return PropertyGetNode.create(Strings.SET, context);
-    }
-
-    @NeverDefault
-    protected PropertyGetNode createInitNode() {
-        return PropertyGetNode.create(Strings.INIT, context);
     }
 
     protected static void checkUndefined(Object value, Node node, InlinedBranchProfile errorProfile) {

@@ -390,13 +390,13 @@ public class ObjectLiteralNode extends JavaScriptNode {
             HiddenKey backingStorageKey = createBackingStorageKey(key);
             JSFunctionObject setter = createAutoAccessorSetter(backingStorageKey, realm);
             JSFunctionObject getter = createAutoAccessorGetter(backingStorageKey, realm);
-            executeWithGetterSetter(homeObject, key, getter, setter);
             Object value = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
             return ClassElementDefinitionRecord.createPublicAutoAccessor(key, backingStorageKey, value, getter, setter, isAnonymousFunctionDefinition(), decorators);
         }
 
         @Override
         public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
+            executeWithGetterSetter(homeObject, classElement.getKey(), classElement.getGetter(), classElement.getSetter());
         }
 
         private static HiddenKey checkAutoAccessorTarget(VirtualFrame frame, PropertyGetNode getMagicNode, DynamicObjectLibrary storageLibrary, Object thiz) {

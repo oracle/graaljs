@@ -416,6 +416,10 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                 if (applyDecoratorsToElementDefinition != null && applyDecoratorsToElementDefinition[i] != null) {
                     applyDecoratorsToElementDefinition[i].executeDecorator(frame, homeObject, f, extraInitializers);
                 }
+                if (member.isAutoAccessor()) {
+                    // Note: We are actually performing ApplyDecoratorsAndDefineMethod here.
+                    member.defineClassElement(frame, homeObject, f);
+                }
                 elementIndex++;
             }
         }
