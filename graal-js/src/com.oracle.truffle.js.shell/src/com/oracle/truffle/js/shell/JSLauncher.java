@@ -47,7 +47,7 @@ import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.Unhandled;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -538,7 +538,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
             return source;
         }
 
-        private Source parseImpl() throws IOException, UnsupportedEncodingException {
+        private Source parseImpl() throws IOException {
             switch (type) {
                 case FILE:
                     return Source.newBuilder("js", new File(src)).build();
@@ -547,7 +547,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 case MODULE:
                     return Source.newBuilder("js", new File(src)).mimeType(MODULE_MIME_TYPE).build();
                 case STRICT:
-                    return Source.newBuilder("js", new File(src)).content("\"use strict\";" + new String(Files.readAllBytes(Paths.get(src)), "UTF-8")).build();
+                    return Source.newBuilder("js", new File(src)).content("\"use strict\";" + new String(Files.readAllBytes(Paths.get(src)), StandardCharsets.UTF_8)).build();
                 default:
                     throw new IllegalStateException();
             }
