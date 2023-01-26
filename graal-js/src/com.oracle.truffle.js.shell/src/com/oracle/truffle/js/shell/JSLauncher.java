@@ -170,7 +170,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
 
     protected PreprocessResult preprocessArgument(String argument) {
         switch (argument) {
-            case "printResult":
             case "print-result":
                 printResult = true;
                 return Consumed;
