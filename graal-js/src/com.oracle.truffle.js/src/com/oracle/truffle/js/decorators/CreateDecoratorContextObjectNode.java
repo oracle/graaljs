@@ -58,6 +58,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
@@ -121,9 +122,18 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     private final int privateMemberSlotIndex;
     private final int privateBrandSlotIndex;
 
-    @Child private PropertySetNode setDecorationState;
     @Child private CreateObjectNode createObjectNode;
     @Child private PropertySetNode setInitializersKey;
+    @Child private PropertySetNode setDecorationState;
+
+    @Child private CreateDataPropertyNode defineKind;
+    @Child private CreateDataPropertyNode defineName;
+    @Child private CreateDataPropertyNode defineAddInitializer;
+    @Child private CreateDataPropertyNode defineAccess;
+    @Child private CreateDataPropertyNode defineStatic;
+    @Child private CreateDataPropertyNode definePrivate;
+    @Child private CreateDataPropertyNode defineGet;
+    @Child private CreateDataPropertyNode defineSet;
 
     protected final boolean isStatic;
     protected final boolean isPrivate;
@@ -140,19 +150,31 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
             privateMemberSlotIndex = privateMember.getPrivateMemberSlotIndex();
             privateBrandSlotIndex = privateMember.getPrivateBrandSlotIndex();
         }
-        return CreateDecoratorContextObjectNodeGen.create(context, member.isStatic(), member.isPrivate(), privateScopeNode, privateMemberSlotIndex, privateBrandSlotIndex);
+        return CreateDecoratorContextObjectNodeGen.create(context, member.isStatic(), member.isPrivate(), privateScopeNode, privateMemberSlotIndex, privateBrandSlotIndex, false);
     }
 
     public static CreateDecoratorContextObjectNode createForClass(JSContext context) {
-        return CreateDecoratorContextObjectNodeGen.create(context, false, false, null, -1, -1);
+        return CreateDecoratorContextObjectNodeGen.create(context, false, false, null, -1, -1, true);
     }
 
     public abstract JSObject executeContext(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state);
 
-    CreateDecoratorContextObjectNode(JSContext context, boolean isStatic, boolean isPrivate, ScopeFrameNode privateScopeNode, int privateMemberSlotIndex, int privateBrandSlotIndex) {
+    CreateDecoratorContextObjectNode(JSContext context, boolean isStatic, boolean isPrivate, ScopeFrameNode privateScopeNode, int privateMemberSlotIndex, int privateBrandSlotIndex, boolean classDef) {
         this.createObjectNode = CreateObjectNode.create(context);
         this.setInitializersKey = PropertySetNode.createSetHidden(INIT_KEY, context);
         this.setDecorationState = PropertySetNode.createSetHidden(DECORATION_STATE_KEY, context);
+
+        this.defineKind = CreateDataPropertyNode.create(context, KIND);
+        this.defineName = CreateDataPropertyNode.create(context, NAME);
+        this.defineAddInitializer = CreateDataPropertyNode.create(context, ADD_INITIALIZER);
+        if (!classDef) {
+            this.defineAccess = CreateDataPropertyNode.create(context, ACCESS);
+            this.defineStatic = CreateDataPropertyNode.create(context, Strings.STATIC);
+            this.definePrivate = CreateDataPropertyNode.create(context, Strings.PRIVATE);
+            this.defineGet = CreateDataPropertyNode.create(context, Strings.GET);
+            this.defineSet = CreateDataPropertyNode.create(context, Strings.SET);
+        }
+
         this.isStatic = isStatic;
         this.isPrivate = isPrivate;
         this.privateMemberSlotIndex = privateMemberSlotIndex;
@@ -162,11 +184,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     }
 
     public final JSObject evaluateClass(VirtualFrame frame, Object className, Object initializers, DecorationState state) {
-        JSObject contextObj = createObjectNode.execute(frame);
-        JSRuntime.createDataPropertyOrThrow(contextObj, KIND, CLASS_KIND);
-        JSRuntime.createDataPropertyOrThrow(contextObj, NAME, className);
-        JSRuntime.createDataPropertyOrThrow(contextObj, ADD_INITIALIZER, createAddInitializerFunction(initializers, state));
-        return contextObj;
+        return createContextObject(frame, CLASS_KIND, className, initializers, state, null, null, true);
     }
 
     //
@@ -378,25 +396,32 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         return addInitializerFunction;
     }
 
-    private JSObject createContextObject(VirtualFrame frame, Object name, Object initializers,
+    public JSObject createContextObject(VirtualFrame frame, Object name, Object initializers,
                     DecorationState state,
                     JSObject getter,
                     JSObject setter,
                     TruffleString kindName) {
-        JSObject accessObject = createObjectNode.execute(frame);
-        if (getter != null) {
-            JSRuntime.createDataPropertyOrThrow(accessObject, Strings.GET, getter);
-        }
-        if (setter != null) {
-            JSRuntime.createDataPropertyOrThrow(accessObject, Strings.SET, setter);
-        }
+        return createContextObject(frame, kindName, name, initializers, state, getter, setter, false);
+    }
+
+    private JSObject createContextObject(VirtualFrame frame, TruffleString kindName, Object name, Object initializers, DecorationState state,
+                    JSObject getter, JSObject setter, boolean isClass) {
         JSObject contextObj = createObjectNode.execute(frame);
-        JSRuntime.createDataPropertyOrThrow(contextObj, KIND, kindName);
-        JSRuntime.createDataPropertyOrThrow(contextObj, ACCESS, accessObject);
-        JSRuntime.createDataPropertyOrThrow(contextObj, Strings.STATIC, isStatic);
-        JSRuntime.createDataPropertyOrThrow(contextObj, Strings.PRIVATE, isPrivate);
-        JSRuntime.createDataPropertyOrThrow(contextObj, NAME, name);
-        JSRuntime.createDataPropertyOrThrow(contextObj, ADD_INITIALIZER, createAddInitializerFunction(initializers, state));
+        defineKind.executeVoid(contextObj, KIND, kindName);
+        if (!isClass) {
+            JSObject accessObject = createObjectNode.execute(frame);
+            if (getter != null) {
+                defineGet.executeVoid(accessObject, Strings.GET, getter);
+            }
+            if (setter != null) {
+                defineSet.executeVoid(accessObject, Strings.SET, setter);
+            }
+            defineAccess.executeVoid(contextObj, ACCESS, accessObject);
+            defineStatic.executeVoid(contextObj, Strings.STATIC, isStatic);
+            definePrivate.executeVoid(contextObj, Strings.PRIVATE, isPrivate);
+        }
+        defineName.executeVoid(contextObj, NAME, name);
+        defineAddInitializer.executeVoid(contextObj, ADD_INITIALIZER, createAddInitializerFunction(initializers, state));
         return contextObj;
     }
 

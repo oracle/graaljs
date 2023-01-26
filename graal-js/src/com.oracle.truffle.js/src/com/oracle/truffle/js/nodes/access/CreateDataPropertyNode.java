@@ -50,6 +50,9 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
+/**
+ * CreateDataPropertyOrThrow abstract operation.
+ */
 public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     protected final JSContext context;
     protected final Object key;
@@ -75,6 +78,11 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     }
 
     public abstract void executeVoid(Object object, Object value);
+
+    public final void executeVoid(Object object, Object propertyKey, Object value) {
+        assert propertyKey.equals(this.key);
+        executeVoid(object, value);
+    }
 
     @Specialization(guards = {"context.getPropertyCacheLimit() > 0", "isObject.executeBoolean(object)"})
     protected static void doCached(Object object, Object value,
