@@ -53,6 +53,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
@@ -293,9 +294,35 @@ public class JSLauncher extends AbstractLanguageLauncher {
         if (useSharedEngine) {
             // We must pass engine-level polyglot options (i.e. 'engine' and instrument groups) to
             // the shared engine; the context would refuse them in this mode.
-            // As a simplification, we pass all polyglot options to the engine instead.
-            this.enginePolyglotOptions = new HashMap<>(polyglotOptions);
-            polyglotOptions.clear();
+            enginePolyglotOptions = new HashMap<>();
+            Engine tempEngine = null;
+            for (Iterator<Map.Entry<String, String>> iterator = polyglotOptions.entrySet().iterator(); iterator.hasNext();) {
+                Map.Entry<String, String> entry = iterator.next();
+                String name = entry.getKey();
+                String value = entry.getValue();
+                int groupEnd = name.indexOf('.');
+                if (groupEnd == -1) {
+                    groupEnd = name.length();
+                }
+                boolean engineLevel;
+                if (name.regionMatches(0, getLanguageId(), 0, groupEnd)) {
+                    engineLevel = false;
+                } else if (name.regionMatches(0, "engine", 0, groupEnd)) {
+                    engineLevel = true;
+                } else {
+                    if (tempEngine == null) {
+                        tempEngine = createTempEngine();
+                    }
+                    engineLevel = tempEngine.getInstruments().containsKey(name.substring(0, groupEnd));
+                }
+                if (engineLevel) {
+                    enginePolyglotOptions.put(name, value);
+                    iterator.remove();
+                }
+            }
+            if (tempEngine != null) {
+                tempEngine.close();
+            }
         }
     }
 
@@ -480,6 +507,10 @@ public class JSLauncher extends AbstractLanguageLauncher {
         for (PolyglotException.StackFrame s : stackTrace) {
             output.println("\tat " + s);
         }
+    }
+
+    private static Engine createTempEngine() {
+        return Engine.newBuilder().useSystemProperties(false).build();
     }
 
     private enum SourceType {
