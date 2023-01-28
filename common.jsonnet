@@ -43,7 +43,14 @@ local common_json = (import "common.json");
     python_version: "3",
   },
 
-  linux: common + {
+  ol7:: {
+    docker+: {
+      image: 'buildslave_ol7',
+      mount_modules: true,
+    }
+  },
+
+  linux: common + self.ol7 + {
     os:: 'linux',
     arch:: 'amd64',
     packages+: common_json.sulong.deps.linux.packages + {
@@ -53,10 +60,6 @@ local common_json = (import "common.json");
       maven: '==3.3.9',
     },
     capabilities+: ['linux', 'amd64'],
-  },
-
-  ol65: self.linux + {
-    capabilities+: ['ol65'],
   },
 
   x52: self.linux + {
