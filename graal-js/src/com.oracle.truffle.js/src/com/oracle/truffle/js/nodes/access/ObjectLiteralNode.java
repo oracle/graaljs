@@ -239,28 +239,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
         public int getAttributes() {
             return attributes;
         }
-
-        public final boolean isAutoAccessor() {
-            return this instanceof AutoAccessorDataMemberNode || this instanceof PrivateAutoAccessorMemberNode;
-        }
-
-        public final boolean isPrivateMethod() {
-            return this instanceof PrivateMethodMemberNode;
-        }
-
-        public final boolean isMethod() {
-            if (isPrivateMethod()) {
-                return true;
-            }
-            if (isAccessor() || isAutoAccessor()) {
-                return false;
-            }
-            return !this.isFieldOrStaticBlock();
-        }
-
-        public final boolean isAccessor() {
-            return this instanceof AccessorMemberNode;
-        }
     }
 
     /**
@@ -517,10 +495,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
-    public interface AccessorMemberNode {
-    }
-
-    public static class ObjectLiteralAccessorMemberNode extends CachingObjectLiteralMemberNode implements AccessorMemberNode {
+    public static class ObjectLiteralAccessorMemberNode extends CachingObjectLiteralMemberNode {
         @Child protected JavaScriptNode getterNode;
         @Child protected JavaScriptNode setterNode;
 
@@ -697,7 +672,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
-    private static class ComputedObjectLiteralAccessorMemberNode extends ClassElementNode implements AccessorMemberNode {
+    private static class ComputedObjectLiteralAccessorMemberNode extends ClassElementNode {
         @Child private JavaScriptNode propertyKey;
         @Child private JavaScriptNode getterNode;
         @Child private JavaScriptNode setterNode;
@@ -953,7 +928,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
-    public static class PrivateAccessorMemberNode extends PrivateClassElementNode implements AccessorMemberNode {
+    public static class PrivateAccessorMemberNode extends PrivateClassElementNode {
         @Child private JavaScriptNode getterNode;
         @Child private JavaScriptNode setterNode;
 
