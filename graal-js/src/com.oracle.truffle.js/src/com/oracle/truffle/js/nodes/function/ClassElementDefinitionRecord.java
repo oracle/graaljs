@@ -53,6 +53,7 @@ public final class ClassElementDefinitionRecord {
         AutoAccessor,
         /** Combined getter + setter pair. Cannot have any decorators. */
         AccessorPair,
+        StaticBlock,
     }
 
     private static final Object[] EMPTY = new Object[0];
@@ -125,6 +126,10 @@ public final class ClassElementDefinitionRecord {
         return new ClassElementDefinitionRecord(Kind.AutoAccessor, key, value, getter, setter, true, false, decorators, backingStorageKey);
     }
 
+    public static ClassElementDefinitionRecord createStaticBlock(Object initializer) {
+        return new ClassElementDefinitionRecord(Kind.StaticBlock, null, initializer, null, null, false, false, null);
+    }
+
     protected ClassElementDefinitionRecord(Kind kind, Object key, Object value, Object getter, Object setter, boolean isPrivate, boolean anonymousFunctionDefinition, Object[] decorators) {
         this(kind, key, value, getter, setter, isPrivate, anonymousFunctionDefinition, decorators, null);
     }
@@ -169,6 +174,10 @@ public final class ClassElementDefinitionRecord {
 
     public boolean isField() {
         return this.kind == Kind.Field;
+    }
+
+    public boolean isStaticBlock() {
+        return this.kind == Kind.StaticBlock;
     }
 
     public Kind getKind() {

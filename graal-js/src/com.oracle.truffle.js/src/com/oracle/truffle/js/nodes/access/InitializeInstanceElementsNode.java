@@ -185,10 +185,10 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             if (field.isAutoAccessor() || (field.isPrivate() && field.isField())) {
                 assert field.getBackingStorageKey() != null : key;
                 writeNode = PrivateFieldAddNode.create(context);
-            } else if (field.isField() && key != null) {
+            } else if (field.isField()) {
                 assert JSRuntime.isPropertyKey(key) : key;
                 writeNode = WriteElementNode.create(context, true, true);
-            } else if (!field.isField()) {
+            } else if (!field.isStaticBlock()) {
                 assert field.isMethod() || field.isAccessor() : field;
                 hasInitializer = false;
             }
@@ -235,6 +235,8 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
                     initValue = callExtraInitializer(target, initializer, initValue);
                 }
                 writeValue(target, record, initValue);
+            } else {
+                assert (record.isMethod() || record.isAccessor() || record.isStaticBlock()) && record.getInitializersCount() == 0 : record;
             }
         }
 

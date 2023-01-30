@@ -1141,6 +1141,30 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
+    private static class StaticBlockNode extends ClassElementNode {
+        @Child protected JavaScriptNode valueNode;
+
+        StaticBlockNode(JavaScriptNode valueNode) {
+            super(true, 0, true, false);
+            this.valueNode = valueNode;
+        }
+
+        @Override
+        public ClassElementDefinitionRecord evaluateClassElementDefinition(VirtualFrame frame, JSDynamicObject homeObject, JSRealm realm, Object[] decorators) {
+            Object initializer = evaluateWithHomeObject(valueNode, frame, homeObject, realm);
+            return ClassElementDefinitionRecord.createStaticBlock(initializer);
+        }
+
+        @Override
+        public void defineClassElement(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord classElement) {
+        }
+
+        @Override
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new StaticBlockNode(JavaScriptNode.cloneUninitialized(valueNode, materializedTags));
+        }
+    }
+
     public static ObjectLiteralMemberNode newDataMember(TruffleString name, boolean isStatic, boolean enumerable, JavaScriptNode valueNode, boolean isField) {
         return new ObjectLiteralDataMemberNode(name, isStatic, enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable(), valueNode, isField);
     }
@@ -1208,7 +1232,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
     }
 
     public static ObjectLiteralMemberNode newStaticBlockMember(JavaScriptNode valueNode) {
-        return new ObjectLiteralDataMemberNode(null, true, JSAttributes.getDefaultNotEnumerable(), valueNode, true);
+        return new StaticBlockNode(valueNode);
     }
 
     @Children private final ObjectLiteralMemberNode[] members;
