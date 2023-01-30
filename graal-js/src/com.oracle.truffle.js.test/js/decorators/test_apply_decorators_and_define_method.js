@@ -9,6 +9,8 @@
  * @option ecmascript-version=staging
  */
 
+'use strict';
+
 load('../assert.js')
 
 function saveName(f) {
@@ -16,8 +18,10 @@ function saveName(f) {
     return f;
 }
 
+let decorationOrder = [];
+
 function decorate(inner, context) {
-    'use strict';
+    decorationOrder.push(context.name);
     // decorators are called with undefined this
     assertSame(undefined, this);
     switch (context.kind) {
@@ -93,8 +97,12 @@ assertSame('newSetter', Object.getOwnPropertyDescriptor(C.prototype, 'ax').set.i
 // No SetFunctionName for field value
 assertSame('newValue',  Object.getOwnPropertyDescriptor(c, 'fx').value.name)
 assertSame('newValue',  Object.getOwnPropertyDescriptor(c, 'fx').value.initialName)
+
 // Check property order
-//assertSameContent(['constructor', 'ax', 'gx', 'sx', 'mx'], Object.getOwnPropertyNames(C.prototype));
+assertSameContent(['constructor', 'ax', 'gx', 'sx', 'mx'], Object.getOwnPropertyNames(C.prototype));
+// Check decorator invocation order
+assertSameContent(['ax', 'gx', 'sx', 'mx', 'fx'].flatMap(n => [n, n]), decorationOrder);
+
 // Check values
 assertSame(180, c.gx);   // 5 * 6 * 6
 assertSame(486, c.mx()); // 6 * 9 * 9
