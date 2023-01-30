@@ -224,7 +224,7 @@ public final class ClassElementDefinitionRecord {
         this.decorators = EMPTY;
     }
 
-    public Object isAnonymousFunction() {
+    public boolean isAnonymousFunction() {
         return anonymousFunctionDefinition;
     }
 

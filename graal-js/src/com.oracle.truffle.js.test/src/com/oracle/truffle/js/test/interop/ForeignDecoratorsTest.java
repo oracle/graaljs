@@ -90,7 +90,7 @@ public class ForeignDecoratorsTest {
                             """.stripIndent());
             var dec = new DecoratorClass();
             testCase.executeVoid(dec);
-            Assert.assertEquals("method_getter_setter_field_field_accessor_class_", dec.hits);
+            Assert.assertEquals("method_getter_setter_accessor_field_field_class_", dec.hits);
         }
     }
 }

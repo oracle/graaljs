@@ -100,7 +100,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         this.targetNode = targetNode;
         this.constructorNode = constructorNode;
         if (constructorNode != null) {
-            this.fieldsNode = PropertyNode.createGetHidden(context, null, JSFunction.CLASS_FIELDS_ID);
+            this.fieldsNode = PropertyNode.createGetHidden(context, null, JSFunction.CLASS_ELEMENTS_ID);
             this.brandNode = PropertyNode.createGetHidden(context, null, JSFunction.PRIVATE_BRAND_ID);
             this.initializersNode = PropertyNode.createGetHidden(context, null, JSFunction.CLASS_INITIALIZERS_ID);
         }
@@ -133,8 +133,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         int size = fieldNodes.length;
         assert size == fields.length;
         for (int i = 0; i < size; i++) {
-            ClassElementDefinitionRecord record = fields[i];
-            fieldNodes[i].defineField(target, record);
+            fieldNodes[i].defineField(target, fields[i]);
         }
         return target;
     }
@@ -180,17 +179,21 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             ClassElementDefinitionRecord field = fields[i];
             Object key = field.getKey();
             Object initializer = field.getValue();
-            boolean isAnonymousFunctionDefinition = (boolean) field.isAnonymousFunction();
+            boolean isAnonymousFunctionDefinition = field.isAnonymousFunction();
+            boolean hasInitializer = initializer != Undefined.instance;
             Node writeNode = null;
             if (field.isAutoAccessor() || (field.isPrivate() && field.isField())) {
                 assert field.getBackingStorageKey() != null : key;
                 writeNode = PrivateFieldAddNode.create(context);
-            } else if (key != null) {
+            } else if (field.isField() && key != null) {
                 assert JSRuntime.isPropertyKey(key) : key;
                 writeNode = WriteElementNode.create(context, true, true);
+            } else if (!field.isField()) {
+                assert field.isMethod() || field.isAccessor() : field;
+                hasInitializer = false;
             }
             JSFunctionCallNode callNode = null;
-            if (initializer != Undefined.instance) {
+            if (hasInitializer) {
                 callNode = JSFunctionCallNode.createCall();
             }
             fieldNodes[i] = new InitializeFieldOrAccessorNode(writeNode, callNode, isAnonymousFunctionDefinition);
@@ -211,10 +214,9 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
         }
 
-        Object defineField(Object target, ClassElementDefinitionRecord record) {
-            assert (callNode != null) == (record.getValue() != Undefined.instance);
+        void defineField(Object target, ClassElementDefinitionRecord record) {
             Object initValue = Undefined.instance;
-            // run default initializer
+            // run default (field or accessor) initializer or static initializer
             if (callNode != null) {
                 Object initializer = record.getValue();
                 Object key = record.getKey();
@@ -223,13 +225,17 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
                 initValue = callNode.executeCall(isAnonymousFunctionDefinition
                                 ? JSArguments.create(target, initializer, Undefined.instance, key)
                                 : JSArguments.createOneArg(target, initializer, Undefined.instance));
+            } else {
+                assert record.getValue() == Undefined.instance || record.isMethod() || record.isAccessor() : record;
             }
-            // run decorators-defined initializers
-            for (int i = 0; i < record.getInitializersCount(); i++) {
-                Object initializer = record.getInitializers()[i];
-                initValue = callExtraInitializer(target, initializer, initValue);
+            if (writeNode != null) {
+                // run decorators-defined initializers
+                for (int i = 0; i < record.getInitializersCount(); i++) {
+                    Object initializer = record.getInitializers()[i];
+                    initValue = callExtraInitializer(target, initializer, initValue);
+                }
+                writeValue(target, record, initValue);
             }
-            return writeValue(target, record, initValue);
         }
 
         private Object callExtraInitializer(Object target, Object initializer, Object initValue) {
@@ -244,7 +250,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             return callInitializersNode;
         }
 
-        private Object writeValue(Object target, ClassElementDefinitionRecord record, Object value) {
+        private void writeValue(Object target, ClassElementDefinitionRecord record, Object value) {
             if (writeNode instanceof PropertySetNode) {
                 ((PropertySetNode) writeNode).setValue(target, value);
             } else if (writeNode instanceof PrivateFieldAddNode) {
@@ -256,7 +262,6 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
                 assert JSRuntime.isPropertyKey(record.getKey()) : record.getKey();
                 ((WriteElementNode) writeNode).executeWithTargetAndIndexAndValue(target, record.getKey(), value);
             }
-            return value;
         }
     }
 }

@@ -958,10 +958,10 @@ public class NodeFactory {
 
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
                     JSWriteFrameSlotNode writeClassBinding, JSWriteFrameSlotNode writeInternalConstructorBrand, JavaScriptNode[] classDecorators, DecoratorListEvaluationNode[] memberDecorators,
-                    TruffleString className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, JSFrameSlot blockScopeSlot) {
+                    TruffleString className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, boolean hasInstanceFieldsOrAccessors, JSFrameSlot blockScopeSlot) {
         return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members,
-                        writeClassBinding, writeInternalConstructorBrand, className, classDecorators, memberDecorators, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods,
-                        blockScopeSlot);
+                        writeClassBinding, writeInternalConstructorBrand, className, classDecorators, memberDecorators,
+                        instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods, hasInstanceFieldsOrAccessors, blockScopeSlot);
     }
 
     public JavaScriptNode createMakeMethod(JSContext context, JavaScriptNode function) {

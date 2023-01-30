@@ -329,6 +329,9 @@ public final class ClassElement extends PropertyNode {
         }
         if (isStatic()) {
             sb.append("static ");
+            if (isClassStaticBlock()) {
+                sb.append("{}");
+            }
         }
         if (isAutoAccessor()) {
             sb.append("accessor ");

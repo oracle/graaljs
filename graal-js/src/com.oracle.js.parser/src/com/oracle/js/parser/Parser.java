@@ -1748,11 +1748,11 @@ public class Parser extends AbstractParser {
             ClassElement constructor = null;
             List<ClassElement> classElements = new ArrayList<>();
             Map<String, Integer> privateNameToAccessorIndexMap = new HashMap<>();
-            int instanceFieldCount = 0;
             int staticElementCount = 0;
             boolean hasPrivateMethods = false;
             boolean hasPrivateInstanceMethods = false;
             boolean hasClassElementDecorators = false;
+            boolean hasInstanceFieldsOrAccessors = false;
             for (;;) {
                 if (type == SEMICOLON) {
                     next();
@@ -1829,10 +1829,8 @@ public class Parser extends AbstractParser {
                 ClassElement classElement;
                 if (!generator && !async && isClassFieldDefinition(nameTokenType)) {
                     classElement = fieldDefinition(classElementName, isStatic, isAutoAccessor, classElementToken, computed, classElementDecorators);
-                    if (isStatic) {
-                        staticElementCount++;
-                    } else {
-                        instanceFieldCount++;
+                    if (!isStatic) {
+                        hasInstanceFieldsOrAccessors = true;
                     }
                 } else {
                     if (isAutoAccessor) {
@@ -1895,6 +1893,9 @@ public class Parser extends AbstractParser {
                     }
                 } else {
                     classElements.add(classElement);
+                    if (isStatic) {
+                        staticElementCount++;
+                    }
                 }
             }
 
@@ -1930,7 +1931,7 @@ public class Parser extends AbstractParser {
             classScope.close();
             classHeadScope.close();
             return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classDecorators, classScope,
-                            instanceFieldCount, staticElementCount, hasPrivateMethods, hasPrivateInstanceMethods, hasClassElementDecorators);
+                            staticElementCount, hasPrivateMethods, hasPrivateInstanceMethods, hasInstanceFieldsOrAccessors, hasClassElementDecorators);
         } finally {
             lc.pop(classNode);
         }

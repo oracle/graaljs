@@ -1708,7 +1708,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // A method using `super` also needs `this`.
             return true;
         }
-        if (function.isClassConstructor() && (lc.getCurrentClass().hasInstanceFields() || lc.getCurrentClass().hasPrivateInstanceMethods())) {
+        if (function.isClassConstructor() && (lc.getCurrentClass().needsInitializeInstanceElements())) {
             // Allocate the this slot to ensure InitializeInstanceElements is performed
             // regardless of whether the class constructor itself uses `this`.
             // Note: the this slot could be elided in this case.
@@ -2629,7 +2629,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode initializeInstanceElements(JavaScriptNode thisValueNode) {
         ClassNode classNode = lc.getCurrentClass();
-        if (!classNode.hasInstanceFields() && !classNode.hasPrivateInstanceMethods()) {
+        if (!classNode.needsInitializeInstanceElements()) {
             return thisValueNode;
         }
 
@@ -3754,9 +3754,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 : null;
 
                 classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                                members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, writeInternalConstructorBrand, classDecorators,
-                                decoratedElementNodes, className,
-                                classNode.getInstanceFieldCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), environment.getCurrentBlockScopeSlot());
+                                members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, writeInternalConstructorBrand,
+                                classDecorators, decoratedElementNodes, className,
+                                classNode.getInstanceElementCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), classNode.hasInstanceFieldsOrAccessors(),
+                                environment.getCurrentBlockScopeSlot());
                 classDefinition = privateEnv.wrapBlockScope(classDefinition);
             }
 
