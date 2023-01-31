@@ -958,10 +958,10 @@ public class NodeFactory {
 
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
                     JSWriteFrameSlotNode writeClassBinding, JSWriteFrameSlotNode writeInternalConstructorBrand, JavaScriptNode[] classDecorators, DecoratorListEvaluationNode[] memberDecorators,
-                    TruffleString className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, JSFrameSlot blockScopeSlot) {
+                    TruffleString className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, boolean hasInstanceFieldsOrAccessors, JSFrameSlot blockScopeSlot) {
         return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members,
-                        writeClassBinding, writeInternalConstructorBrand, className, classDecorators, memberDecorators, instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods,
-                        blockScopeSlot);
+                        writeClassBinding, writeInternalConstructorBrand, className, classDecorators, memberDecorators,
+                        instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods, hasInstanceFieldsOrAccessors, blockScopeSlot);
     }
 
     public JavaScriptNode createMakeMethod(JSContext context, JavaScriptNode function) {
@@ -1316,6 +1316,11 @@ public class NodeFactory {
     public ObjectLiteralMemberNode createPrivateAccessorMember(boolean isStatic, JavaScriptNode getterNode, JavaScriptNode setterNode, JSWriteFrameSlotNode writePrivateNode,
                     int privateBrandSlotIndex) {
         return ObjectLiteralNode.newPrivateAccessorMember(isStatic, getterNode, setterNode, writePrivateNode, privateBrandSlotIndex);
+    }
+
+    public ObjectLiteralMemberNode createPrivateAutoAccessorMember(boolean isStatic, JavaScriptNode valueNode,
+                    JSWriteFrameSlotNode writePrivateAccessor, JavaScriptNode storageKey, int privateBrandSlotIndex) {
+        return ObjectLiteralNode.newPrivateAutoAccessorMember(isStatic, valueNode, writePrivateAccessor, storageKey, privateBrandSlotIndex);
     }
 
     public JavaScriptNode createPrivateBrandCheck(JavaScriptNode targetNode, JavaScriptNode brandNode) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -65,6 +65,10 @@ assertSame('function', typeof access.set);
 assertSame(43, access.get.call(C));
 assertSame(undefined, access.set.call(C, 212));
 assertSame(212, access.get.call(C));
+assertFalse('#x' in C);
+assertFalse(Object.getOwnPropertyNames(C).includes('#x'));
+assertThrows(() => access.get.call({}), TypeError);
+assertThrows(() => access.set.call({}, 212), TypeError);
 
 // Getter
 C = class { @d static get x() { return 42; } };
@@ -149,6 +153,10 @@ assertSame('function', typeof access.set);
 assertSame(43, access.get.call(c));
 assertSame(undefined, access.set.call(c, 212));
 assertSame(212, access.get.call(c));
+assertFalse('#x' in C);
+assertFalse(Object.getOwnPropertyNames(C).includes('#x'));
+assertThrows(() => access.get.call({}), TypeError);
+assertThrows(() => access.set.call({}, 212), TypeError);
 
 // Getter
 C = class { @d get x() { return 42; } };

@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 /**
  * A simple array-based quasi list. Prepared for use-cases in Graal/Truffle to avoid
@@ -68,7 +69,7 @@ public class SimpleArrayList<E> {
     }
 
     public SimpleArrayList(int capacity) {
-        elements = new Object[capacity];
+        elements = capacity != 0 ? new Object[capacity] : ScriptArray.EMPTY_OBJECT_ARRAY;
     }
 
     public static <E> SimpleArrayList<E> create(long maxAssumedLength) {
@@ -76,8 +77,17 @@ public class SimpleArrayList<E> {
         return new SimpleArrayList<>((int) Math.min(maxAssumedLength, 100));
     }
 
+    public static <E> SimpleArrayList<E> createEmpty() {
+        return new SimpleArrayList<>(0);
+    }
+
     public void add(E e, Node node, InlinedBranchProfile growProfile) {
         ensureCapacity(size + 1, node, growProfile);
+        elements[size++] = e;
+    }
+
+    public void addUncached(E e) {
+        ensureCapacity(size + 1, null, InlinedBranchProfile.getUncached());
         elements[size++] = e;
     }
 

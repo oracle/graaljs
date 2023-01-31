@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -55,15 +53,11 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.decorators.ApplyDecoratorsToClassDefinitionNode;
 import com.oracle.truffle.js.decorators.ApplyDecoratorsToElementDefinition;
 import com.oracle.truffle.js.decorators.DecoratorListEvaluationNode;
-import com.oracle.truffle.js.decorators.DefineMethodPropertyNode;
 import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
-import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.AccessorMemberNode;
-import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.AutoAccessorDataMemberNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -77,35 +71,25 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
-
-import static com.oracle.truffle.js.nodes.access.ObjectLiteralNode.isAccessor;
-import static com.oracle.truffle.js.nodes.access.ObjectLiteralNode.isAutoAccessor;
-import static com.oracle.truffle.js.nodes.access.ObjectLiteralNode.isMethod;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * ES6 14.5.14 Runtime Semantics: ClassDefinitionEvaluation.
  */
 public final class ClassDefinitionNode extends NamedEvaluationTargetNode implements FunctionNameHolder, ResumableNode.WithObjectState {
 
-    private static final JSFunctionObject[] EMPTY = new JSFunctionObject[0];
-
     @Children private JavaScriptNode[] classDecorators;
     @Children private ObjectLiteralMemberNode[] memberNodes;
     @Children private DecoratorListEvaluationNode[] memberDecorators;
-    @Children private ApplyDecoratorsToElementDefinition[] defineStaticMethodDecorators;
-    @Children private ApplyDecoratorsToElementDefinition[] defineInstanceMethodDecorators;
-    @Children private ApplyDecoratorsToElementDefinition[] defineStaticElementDecorators;
-    @Children private ApplyDecoratorsToElementDefinition[] defineInstanceElementDecorators;
+    @Children private ApplyDecoratorsToElementDefinition[] applyDecoratorsToElementDefinition;
 
     @Child private JavaScriptNode constructorFunctionNode;
     @Child private JavaScriptNode classHeritageNode;
 
     @Child private ApplyDecoratorsToClassDefinitionNode decorateClassDefinition;
-    @Child private DefineMethodPropertyNode defineMethodProperty;
 
     @Child private JSWriteFrameSlotNode writeClassBindingNode;
     @Child private JSWriteFrameSlotNode writeInternalConstructorBrand;
@@ -126,14 +110,12 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     private final boolean hasName;
     private final int instanceElementCount;
     private final int staticElementCount;
-    private final int instanceMethodsCount;
-    private final int staticMethodsCount;
 
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ObjectLiteralMemberNode[] memberNodes,
                     JSWriteFrameSlotNode writeClassBindingNode, JSWriteFrameSlotNode writeInternalConstructorBrand, JavaScriptNode[] classDecorators, DecoratorListEvaluationNode[] memberDecorators,
-                    TruffleString className, int instanceElementsCount, int staticElementCount, boolean hasPrivateInstanceMethods, int blockScopeSlot) {
+                    TruffleString className, int instanceElementsCount, int staticElementCount, boolean hasPrivateInstanceMethods, boolean hasInstanceFieldsOrAccessors, int blockScopeSlot) {
 
         this.context = context;
         this.constructorFunctionNode = constructorFunctionNode;
@@ -143,8 +125,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         this.hasName = className != null;
         this.instanceElementCount = instanceElementsCount;
         this.staticElementCount = staticElementCount;
-        this.instanceMethodsCount = countMethods(memberNodes, false);
-        this.staticMethodsCount = countMethods(memberNodes, true);
+        assert staticElementCount + instanceElementsCount == memberNodes.length;
 
         this.writeClassBindingNode = writeClassBindingNode;
         this.writeInternalConstructorBrand = writeInternalConstructorBrand;
@@ -152,46 +133,23 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         this.setConstructorNode = CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR);
         this.createPrototypeNode = CreateObjectNode.createOrdinaryWithPrototype(context);
         this.defineConstructorMethodNode = DefineMethodNode.create(context, constructorFunctionNode, blockScopeSlot);
-        this.setElementsNode = instanceElementsCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
+        this.setElementsNode = hasInstanceFieldsOrAccessors ? PropertySetNode.createSetHidden(JSFunction.CLASS_ELEMENTS_ID, context) : null;
         this.setPrivateBrandNode = hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
         this.setFunctionName = hasName ? null : SetFunctionNameNode.create();
         this.isConstructorNode = IsConstructorNode.create();
         this.classDecorators = classDecorators;
         this.memberDecorators = memberDecorators;
         this.setInitializersNode = PropertySetNode.createSetHidden(JSFunction.CLASS_INITIALIZERS_ID, context);
-        this.defineStaticMethodDecorators = initDecoratorsElementDefinitionNodes(context, this.staticMethodsCount, true);
-        this.defineInstanceMethodDecorators = initDecoratorsElementDefinitionNodes(context, this.instanceMethodsCount, false);
-        this.defineStaticElementDecorators = initDecoratorsElementDefinitionNodes(context, this.staticElementCount, true);
-        this.defineInstanceElementDecorators = initDecoratorsElementDefinitionNodes(context, this.instanceElementCount, false);
+        this.applyDecoratorsToElementDefinition = initApplyDecoratorsToElementDefinitionNodes(context, memberNodes, memberDecorators);
         this.staticExtraInitializersCallNode = JSFunctionCallNode.createCall();
-    }
-
-    private static int countMethods(ObjectLiteralMemberNode[] memberNodes, boolean countStatic) {
-        int total = 0;
-        for (ObjectLiteralMemberNode member : memberNodes) {
-            if (countStatic == member.isStatic()) {
-                if (isMethod(member)) {
-                    total++;
-                } else if (isAccessor(member)) {
-                    AccessorMemberNode accessor = (AccessorMemberNode) member;
-                    assert accessor.hasGetter() || accessor.hasSetter();
-                    if (accessor.hasGetter()) {
-                        total++;
-                    }
-                    if (accessor.hasSetter()) {
-                        total++;
-                    }
-                }
-            }
-        }
-        return total;
     }
 
     public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
                     JSWriteFrameSlotNode writeClassBinding, JSWriteFrameSlotNode writeInternalConstructorBrand, TruffleString className, JavaScriptNode[] classDecorators,
-                    DecoratorListEvaluationNode[] memberDecorators, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, JSFrameSlot blockScopeSlot) {
+                    DecoratorListEvaluationNode[] memberDecorators, int instanceFieldCount, int staticElementCount, boolean hasPrivateInstanceMethods, boolean hasInstanceFieldsOrAccessors,
+                    JSFrameSlot blockScopeSlot) {
         return new ClassDefinitionNode(context, constructorFunction, classHeritage, members, writeClassBinding, writeInternalConstructorBrand, classDecorators, memberDecorators, className,
-                        instanceFieldCount, staticFieldCount, hasPrivateInstanceMethods,
+                        instanceFieldCount, staticElementCount, hasPrivateInstanceMethods, hasInstanceFieldsOrAccessors,
                         blockScopeSlot != null ? blockScopeSlot.getIndex() : -1);
     }
 
@@ -221,13 +179,9 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         JSObject constructor;
         Object[] decorators;
         ClassElementDefinitionRecord[] instanceElements;
-        ClassElementDefinitionRecord[] instanceMethods;
         ClassElementDefinitionRecord[] staticElements;
-        ClassElementDefinitionRecord[] staticMethods;
         int instanceElementIndex;
         int staticElementIndex;
-        int instanceMethodIndex;
-        int staticMethodIndex;
         int startIndex;
         JSRealm realm = getRealm();
         if (resumptionRecord == null) {
@@ -280,12 +234,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
             instanceElements = instanceElementCount == 0 ? null : new ClassElementDefinitionRecord[instanceElementCount];
             staticElements = staticElementCount == 0 ? null : new ClassElementDefinitionRecord[staticElementCount];
-            instanceMethods = instanceMethodsCount == 0 ? null : new ClassElementDefinitionRecord[instanceMethodsCount];
-            staticMethods = staticMethodsCount == 0 ? null : new ClassElementDefinitionRecord[staticMethodsCount];
             instanceElementIndex = 0;
             staticElementIndex = 0;
-            instanceMethodIndex = 0;
-            staticMethodIndex = 0;
             startIndex = 0;
         } else {
             proto = resumptionRecord.proto;
@@ -293,51 +243,50 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
             instanceElements = resumptionRecord.instanceElements;
             staticElements = resumptionRecord.staticElements;
-            instanceMethods = resumptionRecord.instanceMethods;
-            staticMethods = resumptionRecord.staticMethods;
 
             instanceElementIndex = resumptionRecord.instanceElementIndex;
             staticElementIndex = resumptionRecord.staticElementIndex;
-            instanceMethodIndex = resumptionRecord.instanceMethodIndex;
-            staticMethodIndex = resumptionRecord.staticMethodIndex;
             startIndex = resumptionRecord.startIndex;
 
             decorators = resumptionRecord.decorators;
         }
 
-        initializeMembers(frame, proto, constructor,
+        return defineClassElements(frame, proto, constructor, decorators,
                         instanceElements,
-                        instanceMethods,
                         staticElements,
-                        staticMethods,
                         startIndex,
                         instanceElementIndex,
-                        instanceMethodIndex,
                         staticElementIndex,
-                        staticMethodIndex,
+                        stateSlot,
+                        realm);
+    }
+
+    private Object defineClassElements(VirtualFrame frame, JSDynamicObject proto, JSObject constructor, Object[] decorators, ClassElementDefinitionRecord[] instanceElements,
+                    ClassElementDefinitionRecord[] staticElements, int startIndex, int instanceElementIndex,
+                    int staticElementIndex, int stateSlot, JSRealm realm) {
+        initializeMembers(frame, proto, constructor,
+                        instanceElements,
+                        staticElements,
+                        startIndex,
+                        instanceElementIndex,
+                        staticElementIndex,
                         stateSlot,
                         realm);
 
-        if (writeClassBindingNode != null) {
-            writeClassBindingNode.executeWrite(frame, constructor);
-        }
-
-        List<Object> staticExtraInitializers = new ArrayList<>();
-        List<Object> instanceExtraInitializers = new ArrayList<>();
-        applyDecorators(frame,
+        SimpleArrayList<Object> staticExtraInitializers = SimpleArrayList.createEmpty();
+        SimpleArrayList<Object> instanceExtraInitializers = SimpleArrayList.createEmpty();
+        applyDecoratorsAndDefineMethods(frame,
                         instanceElements,
-                        instanceMethods,
                         instanceExtraInitializers,
                         staticExtraInitializers,
                         staticElements,
-                        staticMethods,
                         constructor,
                         proto);
 
         if (setElementsNode != null) {
             setElementsNode.setValue(constructor, instanceElements);
         }
-        setInitializersNode.setValue(constructor, instanceExtraInitializers.toArray(EMPTY));
+        setInitializersNode.setValue(constructor, instanceExtraInitializers.toArray());
 
         // If the class contains a private instance method or accessor, set F.[[PrivateBrand]].
         if (setPrivateBrandNode != null) {
@@ -351,7 +300,14 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             writeInternalConstructorBrand.executeWrite(frame, constructor);
         }
 
-        executeStaticExtraInitializers(constructor, staticExtraInitializers.toArray(EMPTY));
+        SimpleArrayList<Object> classExtraInitializers = SimpleArrayList.createEmpty();
+        Object newConstructor = applyDecoratorsToClassDefinition(frame, getClassName(), constructor, decorators, classExtraInitializers);
+
+        if (writeClassBindingNode != null) {
+            writeClassBindingNode.executeWrite(frame, newConstructor);
+        }
+
+        executeStaticExtraInitializers(newConstructor, staticExtraInitializers.toArray());
 
         if (staticElementCount != 0) {
             InitializeInstanceElementsNode initializeStaticElements = this.staticElementsNode;
@@ -359,26 +315,24 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.staticElementsNode = initializeStaticElements = insert(InitializeInstanceElementsNode.create(context));
             }
-            initializeStaticElements.executeStaticElements(constructor, staticElements);
+            initializeStaticElements.executeStaticElements(newConstructor, staticElements);
         }
 
-        List<Object> classExtraInitializers = new ArrayList<>();
-        return applyDecoratorsClassDefinition(frame, getClassName(), constructor, decorators, classExtraInitializers);
+        executeStaticExtraInitializers(newConstructor, classExtraInitializers.toArray());
+        return newConstructor;
     }
 
-    private void applyDecorators(VirtualFrame frame,
+    private void applyDecoratorsAndDefineMethods(VirtualFrame frame,
                     ClassElementDefinitionRecord[] instanceElements,
-                    ClassElementDefinitionRecord[] instanceMethods,
-                    List<Object> instanceExtraInitializers,
-                    List<Object> staticExtraInitializers,
+                    SimpleArrayList<Object> instanceExtraInitializers,
+                    SimpleArrayList<Object> staticExtraInitializers,
                     ClassElementDefinitionRecord[] staticElements,
-                    ClassElementDefinitionRecord[] staticMethods,
                     JSDynamicObject constructor,
                     JSDynamicObject proto) {
-        applyDecoratorsStaticMethods(frame, staticMethods, staticExtraInitializers, constructor);
-        applyDecoratorsInstanceMethods(frame, instanceMethods, instanceExtraInitializers, proto);
-        applyDecoratorsStaticElements(frame, staticElements, staticExtraInitializers, constructor);
-        applyDecoratorsInstanceElements(frame, instanceElements, instanceExtraInitializers, proto);
+        applyDecoratorsAndDefineMethods(frame, constructor, staticElements, staticExtraInitializers, true);
+        applyDecoratorsAndDefineMethods(frame, proto, instanceElements, instanceExtraInitializers, false);
+        applyDecoratorsToElements(frame, constructor, staticElements, staticExtraInitializers, true);
+        applyDecoratorsToElements(frame, proto, instanceElements, instanceExtraInitializers, false);
     }
 
     private void executeStaticExtraInitializers(Object target, Object[] initializers) {
@@ -388,85 +342,80 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void applyDecoratorsStaticMethods(VirtualFrame frame, ClassElementDefinitionRecord[] staticMethods, List<Object> instanceExtraInitializers, JSDynamicObject proto) {
-        if (staticMethods == null) {
+    private void applyDecoratorsAndDefineMethods(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
+        if (elements == null) {
             return;
         }
-        int i = 0;
-        for (ClassElementDefinitionRecord m : staticMethods) {
-            assert (m.isMethod() || m.isSetter() || m.isGetter());
-            defineStaticMethodDecorators[i++].executeDecorator(frame, proto, m, instanceExtraInitializers);
-            getDefineMethodProperty().executeDefine(proto, m, false);
-        }
-    }
-
-    @ExplodeLoop
-    private void applyDecoratorsInstanceMethods(VirtualFrame frame, ClassElementDefinitionRecord[] instanceMethods, List<Object> extraInitializers, JSDynamicObject homeObject) {
-        if (instanceMethods == null) {
-            return;
-        }
-        int i = 0;
-        for (ClassElementDefinitionRecord m : instanceMethods) {
-            assert instanceMethods.length == instanceMethodsCount;
-            defineInstanceMethodDecorators[i++].executeDecorator(frame, homeObject, m, extraInitializers);
-            getDefineMethodProperty().executeDefine(homeObject, m, false);
-        }
-    }
-
-    @ExplodeLoop
-    private void applyDecoratorsStaticElements(VirtualFrame frame, ClassElementDefinitionRecord[] staticElements, List<Object> instanceExtraInitializers, JSDynamicObject proto) {
-        if (staticElements == null) {
-            return;
-        }
-        int i = 0;
-        for (ClassElementDefinitionRecord f : staticElements) {
-            if (!(f.isMethod() || f.isSetter() || f.isGetter())) {
-                defineStaticElementDecorators[i++].executeDecorator(frame, proto, f, instanceExtraInitializers);
+        CompilerAsserts.partialEvaluationConstant(memberNodes.length);
+        int elementIndex = 0;
+        for (int i = 0; i < memberNodes.length; i++) {
+            ObjectLiteralMemberNode member = memberNodes[i];
+            if (member.isStatic() == isStatic) {
+                if (!member.isFieldOrStaticBlock()) {
+                    ClassElementDefinitionRecord m = elements[elementIndex];
+                    if (applyDecoratorsToElementDefinition != null && applyDecoratorsToElementDefinition[i] != null) {
+                        applyDecoratorsToElementDefinition[i].executeDecorator(frame, homeObject, m, extraInitializers);
+                    }
+                    member.defineClassElement(frame, homeObject, m);
+                }
+                elementIndex++;
             }
         }
+        assert elementIndex == elements.length;
     }
 
     @ExplodeLoop
-    private void applyDecoratorsInstanceElements(VirtualFrame frame, ClassElementDefinitionRecord[] instanceFields, List<Object> instanceExtraInitializers, JSDynamicObject proto) {
-        if (instanceFields == null) {
+    private void applyDecoratorsToElements(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
+        if (elements == null) {
             return;
         }
-        int i = 0;
-        for (ClassElementDefinitionRecord f : instanceFields) {
-            defineInstanceElementDecorators[i++].executeDecorator(frame, proto, f, instanceExtraInitializers);
+        CompilerAsserts.partialEvaluationConstant(memberNodes.length);
+        int elementIndex = 0;
+        for (int i = 0; i < memberNodes.length; i++) {
+            ObjectLiteralMemberNode member = memberNodes[i];
+            if (member.isStatic() == isStatic) {
+                if (member.isFieldOrStaticBlock()) {
+                    ClassElementDefinitionRecord f = elements[elementIndex];
+                    if (applyDecoratorsToElementDefinition != null && applyDecoratorsToElementDefinition[i] != null) {
+                        applyDecoratorsToElementDefinition[i].executeDecorator(frame, homeObject, f, extraInitializers);
+                    }
+                }
+                elementIndex++;
+            }
         }
+        assert elementIndex == elements.length;
     }
 
-    private static ApplyDecoratorsToElementDefinition[] initDecoratorsElementDefinitionNodes(JSContext context, int size, boolean isStatic) {
+    private static ApplyDecoratorsToElementDefinition[] initApplyDecoratorsToElementDefinitionNodes(JSContext context,
+                    ObjectLiteralMemberNode[] memberNodes, DecoratorListEvaluationNode[] memberDecorators) {
         CompilerAsserts.neverPartOfCompilation();
-        if (size == 0) {
+        if (memberDecorators == null || memberDecorators.length == 0) {
             return null;
         }
+        assert memberNodes.length == memberDecorators.length;
+        int size = memberNodes.length;
         ApplyDecoratorsToElementDefinition[] nodes = new ApplyDecoratorsToElementDefinition[size];
         for (int i = 0; i < size; i++) {
-            nodes[i] = ApplyDecoratorsToElementDefinition.create(context, isStatic);
+            if (memberDecorators[i] != null) {
+                ObjectLiteralMemberNode memberNode = memberNodes[i];
+                nodes[i] = ApplyDecoratorsToElementDefinition.create(context, memberNode);
+            }
         }
         return nodes;
     }
 
-    private DefineMethodPropertyNode getDefineMethodProperty() {
-        if (defineMethodProperty == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            defineMethodProperty = insert(DefineMethodPropertyNode.create());
-        }
-        return defineMethodProperty;
-    }
-
+    @ExplodeLoop
     private Object[] classDecoratorListEvaluation(VirtualFrame frame) {
+        CompilerAsserts.partialEvaluationConstant(classDecorators.length);
         Object[] decorators = new Object[classDecorators.length];
-        for (int i = 0; i < decorators.length; i++) {
+        for (int i = 0; i < classDecorators.length; i++) {
             Object maybeDecorator = classDecorators[i].execute(frame);
             decorators[decorators.length - i - 1] = maybeDecorator;
         }
         return decorators;
     }
 
-    private Object applyDecoratorsClassDefinition(VirtualFrame frame, Object name, JSObject constructor, Object[] decorators, List<Object> classExtraInitializers) {
+    private Object applyDecoratorsToClassDefinition(VirtualFrame frame, Object name, JSObject constructor, Object[] decorators, SimpleArrayList<Object> classExtraInitializers) {
         if (this.classDecorators.length == 0) {
             return constructor;
         }
@@ -477,31 +426,13 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         return decorateClassDefinition.executeDecorators(frame, name, constructor, decorators, classExtraInitializers);
     }
 
-    private static void storeElement(ClassElementDefinitionRecordIndexes indexes, ClassElementDefinitionRecord[] staticStorage, ClassElementDefinitionRecord[] instanceStorage,
-                    ClassElementDefinitionRecord element, boolean isStatic) {
-        if (isStatic) {
-            staticStorage[indexes.staticElementIndex++] = element;
-        } else {
-            instanceStorage[indexes.instanceElementIndex++] = element;
-        }
-    }
-
-    private static void storeMethod(ClassElementDefinitionRecordIndexes indexes, ClassElementDefinitionRecord[] staticStorage, ClassElementDefinitionRecord[] instanceStorage,
-                    ClassElementDefinitionRecord element, boolean isStatic) {
-        if (isStatic) {
-            staticStorage[indexes.staticMethodIndex++] = element;
-        } else {
-            instanceStorage[indexes.instanceMethodIndex++] = element;
-        }
-    }
-
     @ExplodeLoop
     private void initializeMembers(VirtualFrame frame, JSDynamicObject proto, JSObject constructor, ClassElementDefinitionRecord[] instanceElements,
-                    ClassElementDefinitionRecord[] instanceMethods, ClassElementDefinitionRecord[] staticElements, ClassElementDefinitionRecord[] staticMethods,
-                    int startIndex, int instanceElementsIdx, int instanceMethodsIdx, int staticElementIdx, int staticMethodIdx,
-                    int stateSlot, JSRealm realm) {
+                    ClassElementDefinitionRecord[] staticElements, int startIndex, int instanceElementsIdx,
+                    int staticElementIdx, int stateSlot, JSRealm realm) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
-        ClassElementDefinitionRecordIndexes indexes = new ClassElementDefinitionRecordIndexes(instanceElementsIdx, instanceMethodsIdx, staticElementIdx, staticMethodIdx);
+        int instanceElementIndex = instanceElementsIdx;
+        int staticElementIndex = staticElementIdx;
         Object[] decorators = null;
         int i = 0;
         try {
@@ -510,68 +441,12 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                     ObjectLiteralMemberNode memberNode = memberNodes[i];
                     boolean isStatic = memberNode.isStatic();
                     JSDynamicObject homeObject = isStatic ? constructor : proto;
-                    decorators = memberDecorators[i] != null ? memberDecorators[i].execute(frame) : null;
-                    if (memberNode.isFieldOrStaticBlock()) {
-                        ClassElementDefinitionRecord field = initField(frame, realm, decorators, memberNode, homeObject);
-                        storeElement(indexes, staticElements, instanceElements, field, isStatic);
+                    decorators = memberDecorators != null && memberDecorators[i] != null ? memberDecorators[i].execute(frame) : null;
+                    ClassElementDefinitionRecord classElementDef = memberNode.evaluateClassElementDefinition(frame, homeObject, realm, decorators);
+                    if (isStatic) {
+                        staticElements[staticElementIndex++] = classElementDef;
                     } else {
-                        Object key = memberNode.evaluateKey(frame);
-                        if (isAutoAccessor(memberNode)) {
-                            ClassElementDefinitionRecord autoAccessor = initAutoAccessor(frame, realm, decorators, memberNode, homeObject, key);
-                            storeElement(indexes, staticElements, instanceElements, autoAccessor, isStatic);
-                        } else {
-                            if (isMethod(memberNode)) {
-                                Object value = memberNode.evaluateValue(frame, homeObject, key, realm);
-                                memberNode.evaluateWithKeyAndValue(frame, homeObject, key, value, realm);
-
-                                ClassElementDefinitionRecord method;
-                                if (memberNode instanceof ObjectLiteralNode.PrivateMethodMemberNode) {
-                                    ObjectLiteralNode.PrivateMethodMemberNode privateMember = (ObjectLiteralNode.PrivateMethodMemberNode) memberNode;
-                                    int slot = privateMember.getWritePrivateNode().getSlotIndex();
-                                    int brandSlot = privateMember.getPrivateBrandSlotIndex();
-                                    int blockSlot = defineConstructorMethodNode.getBlockScopeSlot();
-                                    method = ClassElementDefinitionRecord.createPrivateMethod(context, key, slot, brandSlot, blockSlot, value, memberNode.isAnonymousFunctionDefinition(), decorators);
-                                } else {
-                                    method = ClassElementDefinitionRecord.createPublicMethod(context, key, value, memberNode.isAnonymousFunctionDefinition(), decorators);
-                                }
-                                storeMethod(indexes, staticMethods, instanceMethods, method, isStatic);
-                            } else if (isAccessor(memberNode)) {
-                                // no need to eval 'value' for accessors: values are getter/setter.
-                                memberNode.evaluateWithKeyAndValue(frame, homeObject, key, null, realm);
-                                AccessorMemberNode accessorMember = (AccessorMemberNode) memberNode;
-                                assert accessorMember.hasGetter() || accessorMember.hasSetter();
-                                if (accessorMember.hasGetter()) {
-                                    Object getter = accessorMember.evaluateGetter(frame, homeObject, key, realm);
-                                    ClassElementDefinitionRecord element;
-                                    if (memberNode instanceof ObjectLiteralNode.PrivateAccessorMemberNode) {
-                                        ObjectLiteralNode.PrivateAccessorMemberNode privateMember = (ObjectLiteralNode.PrivateAccessorMemberNode) memberNode;
-                                        int slot = privateMember.getWritePrivateNode().getSlotIndex();
-                                        int brandSlot = privateMember.getPrivateBrandSlotIndex();
-                                        int blockSlot = defineConstructorMethodNode.getBlockScopeSlot();
-                                        element = ClassElementDefinitionRecord.createPrivateGetter(context, key, slot, brandSlot, blockSlot, getter, memberNode.isAnonymousFunctionDefinition(),
-                                                        decorators);
-                                    } else {
-                                        element = ClassElementDefinitionRecord.createPublicGetter(context, key, getter, memberNode.isAnonymousFunctionDefinition(), decorators);
-                                    }
-                                    storeMethod(indexes, staticMethods, instanceMethods, element, isStatic);
-                                }
-                                if (accessorMember.hasSetter()) {
-                                    Object setter = accessorMember.evaluateSetter(frame, homeObject, key, realm);
-                                    ClassElementDefinitionRecord element;
-                                    if (memberNode instanceof ObjectLiteralNode.PrivateAccessorMemberNode) {
-                                        ObjectLiteralNode.PrivateAccessorMemberNode privateMember = (ObjectLiteralNode.PrivateAccessorMemberNode) memberNode;
-                                        int slot = privateMember.getWritePrivateNode().getSlotIndex();
-                                        int brandSlot = privateMember.getPrivateBrandSlotIndex();
-                                        int blockSlot = defineConstructorMethodNode.getBlockScopeSlot();
-                                        element = ClassElementDefinitionRecord.createPrivateSetter(context, key, slot, brandSlot, blockSlot, setter, memberNode.isAnonymousFunctionDefinition(),
-                                                        decorators);
-                                    } else {
-                                        element = ClassElementDefinitionRecord.createPublicSetter(context, key, setter, memberNode.isAnonymousFunctionDefinition(), decorators);
-                                    }
-                                    storeMethod(indexes, staticMethods, instanceMethods, element, isStatic);
-                                }
-                            }
-                        }
+                        instanceElements[instanceElementIndex++] = classElementDef;
                     }
                 }
             }
@@ -581,39 +456,13 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                             constructor,
                             instanceElements,
                             staticElements,
-                            instanceMethods,
-                            staticMethods,
-                            indexes.instanceElementIndex,
-                            indexes.staticElementIndex,
-                            indexes.instanceMethodIndex,
-                            indexes.staticMethodIndex,
+                            instanceElementIndex,
+                            staticElementIndex,
                             decorators,
                             i));
             throw e;
         }
-        assert indexes.instanceElementIndex == instanceElementCount && indexes.staticElementIndex == staticElementCount;
-    }
-
-    private static ClassElementDefinitionRecord initField(VirtualFrame frame, JSRealm realm, Object[] decorators, ObjectLiteralMemberNode memberNode, JSDynamicObject homeObject) {
-        memberNode.executeVoid(frame, homeObject, realm);
-        Object key = memberNode.evaluateKey(frame);
-        Object value = memberNode.evaluateValue(frame, homeObject, key, realm);
-        return ClassElementDefinitionRecord.createField(realm.getContext(), key, value, memberNode.isPrivate(), memberNode.isAnonymousFunctionDefinition(), decorators);
-    }
-
-    private static ClassElementDefinitionRecord initAutoAccessor(VirtualFrame frame, JSRealm realm, Object[] decorators, ObjectLiteralMemberNode memberNode, JSDynamicObject homeObject,
-                    Object key) {
-        AutoAccessorDataMemberNode autoAccessorDataMemberNode = (AutoAccessorDataMemberNode) memberNode;
-        HiddenKey backingStorageKey = autoAccessorDataMemberNode.createBackingStorageKey(key);
-        JSFunctionObject setter = autoAccessorDataMemberNode.createAutoAccessorSetter(backingStorageKey);
-        JSFunctionObject getter = autoAccessorDataMemberNode.createAutoAccessorGetter(backingStorageKey);
-        autoAccessorDataMemberNode.executeWithGetterSetter(homeObject, key, getter, setter);
-        Object value = memberNode.evaluateValue(frame, homeObject, key, realm);
-        ClassElementDefinitionRecord field = ClassElementDefinitionRecord.createAutoAccessor(realm.getContext(), key, backingStorageKey, value, memberNode.isPrivate(),
-                        memberNode.isAnonymousFunctionDefinition(), decorators);
-        field.setSetter(setter);
-        field.setGetter(getter);
-        return field;
+        assert instanceElementIndex == instanceElementCount && staticElementIndex == staticElementCount;
     }
 
     @Override
@@ -649,21 +498,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         instanceElementCount,
                         staticElementCount,
                         setPrivateBrandNode != null,
+                        setElementsNode != null,
                         defineConstructorMethodNode.getBlockScopeSlot());
-    }
-
-    static class ClassElementDefinitionRecordIndexes {
-        int instanceElementIndex;
-        int instanceMethodIndex;
-        int staticElementIndex;
-        int staticMethodIndex;
-
-        ClassElementDefinitionRecordIndexes(int instanceElementsIdx, int instanceMethodsIdx, int staticElementIdx, int staticMethodIdx) {
-            this.instanceElementIndex = instanceElementsIdx;
-            this.instanceMethodIndex = instanceMethodsIdx;
-            this.staticElementIndex = staticElementIdx;
-            this.staticMethodIndex = staticMethodIdx;
-        }
     }
 
     static class ClassDefinitionResumptionRecord {
@@ -671,12 +507,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         final JSObject constructor;
         final ClassElementDefinitionRecord[] instanceElements;
         final ClassElementDefinitionRecord[] staticElements;
-        final ClassElementDefinitionRecord[] instanceMethods;
-        final ClassElementDefinitionRecord[] staticMethods;
         final int instanceElementIndex;
-        final int instanceMethodIndex;
         final int staticElementIndex;
-        final int staticMethodIndex;
         final int startIndex;
         final Object[] decorators;
 
@@ -685,24 +517,16 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         JSObject constructor,
                         ClassElementDefinitionRecord[] instanceFields,
                         ClassElementDefinitionRecord[] staticElements,
-                        ClassElementDefinitionRecord[] instanceMethods,
-                        ClassElementDefinitionRecord[] staticMethods,
                         int instanceElementIndex,
                         int staticElementIndex,
-                        int instanceMethodIndex,
-                        int staticMethodIndex,
                         Object[] decorators,
                         int startIndex) {
             this.proto = proto;
             this.constructor = constructor;
             this.instanceElements = instanceFields;
             this.staticElements = staticElements;
-            this.instanceMethods = instanceMethods;
-            this.staticMethods = staticMethods;
             this.instanceElementIndex = instanceElementIndex;
             this.staticElementIndex = staticElementIndex;
-            this.instanceMethodIndex = instanceMethodIndex;
-            this.staticMethodIndex = staticMethodIndex;
             this.startIndex = startIndex;
             this.decorators = decorators;
         }

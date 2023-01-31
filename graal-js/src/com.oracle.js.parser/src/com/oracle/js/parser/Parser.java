@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1748,10 +1748,11 @@ public class Parser extends AbstractParser {
             ClassElement constructor = null;
             List<ClassElement> classElements = new ArrayList<>();
             Map<String, Integer> privateNameToAccessorIndexMap = new HashMap<>();
-            int instanceFieldCount = 0;
             int staticElementCount = 0;
             boolean hasPrivateMethods = false;
             boolean hasPrivateInstanceMethods = false;
+            boolean hasClassElementDecorators = false;
+            boolean hasInstanceFieldsOrAccessors = false;
             for (;;) {
                 if (type == SEMICOLON) {
                     next();
@@ -1764,6 +1765,7 @@ public class Parser extends AbstractParser {
 
                 if (type == AT) {
                     classElementDecorators = decoratorList(yield, await);
+                    hasClassElementDecorators = true;
                 }
                 boolean isAutoAccessor = false;
                 if (isES2023() && type == ACCESSOR) {
@@ -1827,10 +1829,8 @@ public class Parser extends AbstractParser {
                 ClassElement classElement;
                 if (!generator && !async && isClassFieldDefinition(nameTokenType)) {
                     classElement = fieldDefinition(classElementName, isStatic, isAutoAccessor, classElementToken, computed, classElementDecorators);
-                    if (isStatic) {
-                        staticElementCount++;
-                    } else {
-                        instanceFieldCount++;
+                    if (!isStatic) {
+                        hasInstanceFieldsOrAccessors = true;
                     }
                 } else {
                     if (isAutoAccessor) {
@@ -1876,7 +1876,7 @@ public class Parser extends AbstractParser {
                 }
 
                 if (classElement.isPrivate()) {
-                    hasPrivateMethods = hasPrivateMethods || !classElement.isClassField();
+                    hasPrivateMethods = hasPrivateMethods || classElement.isMethodOrAccessor();
                     hasPrivateInstanceMethods = hasPrivateInstanceMethods || (!classElement.isClassField() && !classElement.isStatic());
                     declarePrivateName(classScope, classElement);
                 }
@@ -1893,6 +1893,9 @@ public class Parser extends AbstractParser {
                     }
                 } else {
                     classElements.add(classElement);
+                    if (isStatic) {
+                        staticElementCount++;
+                    }
                 }
             }
 
@@ -1928,7 +1931,7 @@ public class Parser extends AbstractParser {
             classScope.close();
             classHeadScope.close();
             return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classDecorators, classScope,
-                            instanceFieldCount, staticElementCount, hasPrivateMethods, hasPrivateInstanceMethods);
+                            staticElementCount, hasPrivateMethods, hasPrivateInstanceMethods, hasInstanceFieldsOrAccessors, hasClassElementDecorators);
         } finally {
             lc.pop(classNode);
         }
@@ -1968,10 +1971,10 @@ public class Parser extends AbstractParser {
     private void declarePrivateName(Scope classScope, ClassElement classElement) {
         // Syntax Error if PrivateBoundIdentifiers of ClassBody contains any duplicate entries,
         // unless the name is used once for a getter and once for a setter and in no other entries.
-        int privateFlags = (classElement.isStatic() ? Symbol.IS_PRIVATE_NAME_STATIC : 0);
-        if (!classElement.isClassField()) {
-            privateFlags |= classElement.isAccessor() ? Symbol.IS_PRIVATE_NAME_ACCESSOR : Symbol.IS_PRIVATE_NAME_METHOD;
-        }
+        int privateFlags = (classElement.isStatic() ? Symbol.IS_PRIVATE_NAME_STATIC : 0) |
+                        (classElement.isMethod() ? Symbol.IS_PRIVATE_NAME_METHOD : 0) |
+                        ((classElement.isAccessor() || classElement.isAutoAccessor()) ? Symbol.IS_PRIVATE_NAME_ACCESSOR : 0);
+
         if (!classScope.addPrivateName(classElement.getPrivateNameTS(), privateFlags)) {
             throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, classElement.getPrivateName()), classElement.getKey().getToken());
         }
@@ -3724,10 +3727,10 @@ public class Parser extends AbstractParser {
      * Parse throw statement.
      *
      * <pre>
-     * {@code
+     * <code>
      * ThrowStatement:
      *      throw Expression; // [no LineTerminator here]
-     * }
+     * </code>
      * </pre>
      */
     private void throwStatement(boolean yield, boolean await) {

@@ -1708,7 +1708,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // A method using `super` also needs `this`.
             return true;
         }
-        if (function.isClassConstructor() && (lc.getCurrentClass().hasInstanceFields() || lc.getCurrentClass().hasPrivateInstanceMethods())) {
+        if (function.isClassConstructor() && (lc.getCurrentClass().needsInitializeInstanceElements())) {
             // Allocate the this slot to ensure InitializeInstanceElements is performed
             // regardless of whether the class constructor itself uses `this`.
             // Note: the this slot could be elided in this case.
@@ -2629,7 +2629,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode initializeInstanceElements(JavaScriptNode thisValueNode) {
         ClassNode classNode = lc.getCurrentClass();
-        if (!classNode.hasInstanceFields() && !classNode.hasPrivateInstanceMethods()) {
+        if (!classNode.needsInitializeInstanceElements()) {
             return thisValueNode;
         }
 
@@ -3240,7 +3240,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assert !property.isCoverInitializedName();
 
             final ObjectLiteralMemberNode member;
-            if (property.getValue() != null || property.isClassField()) {
+            if (property.getValue() != null || (isClass && ((ClassElement) property).isClassFieldOrAutoAccessor())) {
                 member = enterObjectPropertyNode(property, isClass, classNameSymbol);
             } else if (property.isRest()) {
                 assert !isClass;
@@ -3332,7 +3332,22 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode value = transformPropertyValue(property.getValue(), classNameSymbol);
 
         boolean enumerable = !isClass || property.isClassField();
-        if (property instanceof ClassElement && ((ClassElement) property).isAutoAccessor()) {
+        if (isClass && property.isPrivate()) {
+            VarRef privateVar = environment.findLocalVar(property.getPrivateNameTS());
+            if (((ClassElement) property).isAutoAccessor()) {
+                JSWriteFrameSlotNode writePrivateAccessor = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
+                JavaScriptNode fieldStorageKey = factory.createNewPrivateName(property.getPrivateNameTS());
+                JSFrameSlot constructorSlot = getConstructorFrameSlotForVariable(privateVar);
+                return factory.createPrivateAutoAccessorMember(property.isStatic(), value, writePrivateAccessor, fieldStorageKey, constructorSlot.getIndex());
+            } else if (property.isClassField()) {
+                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(property.getPrivateNameTS()));
+                return factory.createPrivateFieldMember(privateVar.createReadNode(), property.isStatic(), value, writePrivateNode);
+            } else {
+                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
+                JSFrameSlot constructorSlot = getConstructorFrameSlotForVariable(privateVar);
+                return factory.createPrivateMethodMember(property.getPrivateNameTS(), property.isStatic(), value, writePrivateNode, constructorSlot.getIndex());
+            }
+        } else if (isClass && ((ClassElement) property).isAutoAccessor()) {
             if (property.isComputed()) {
                 JavaScriptNode computedKey = transform(property.getKey());
                 return factory.createComputedAutoAccessor(computedKey, property.isStatic(), enumerable, value);
@@ -3344,16 +3359,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return factory.createComputedDataMember(computedKey, property.isStatic(), enumerable, value, property.isClassField(), property.isAnonymousFunctionDefinition());
         } else if (!isClass && property.isProto()) {
             return factory.createProtoMember(property.getKeyNameTS(), property.isStatic(), value);
-        } else if (property.isPrivate()) {
-            VarRef privateVar = environment.findLocalVar(property.getPrivateNameTS());
-            if (property.isClassField()) {
-                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(factory.createNewPrivateName(property.getPrivateNameTS()));
-                return factory.createPrivateFieldMember(privateVar.createReadNode(), property.isStatic(), value, writePrivateNode);
-            } else {
-                JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
-                JSFrameSlot constructorSlot = getConstructorFrameSlotForVariable(privateVar);
-                return factory.createPrivateMethodMember(property.getPrivateNameTS(), property.isStatic(), value, writePrivateNode, constructorSlot.getIndex());
-            }
         } else if (isClass && property.isClassStaticBlock()) {
             return factory.createStaticBlockMember(value);
         } else {
@@ -3738,7 +3743,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
                 List<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
 
-                DecoratorListEvaluationNode[] decoratedElementNodes = transformClassElementsDecorators(classNode.getClassElements());
+                DecoratorListEvaluationNode[] decoratedElementNodes = classNode.hasClassElementDecorators() ? transformClassElementsDecorators(classNode.getClassElements()) : null;
                 JavaScriptNode[] classDecorators = transformClassDecorators(classNode.getDecorators());
 
                 JSWriteFrameSlotNode writeClassBinding = className == null ? null : (JSWriteFrameSlotNode) findScopeVar(className, true).createWriteNode(null);
@@ -3749,9 +3754,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 : null;
 
                 classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                                members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, writeInternalConstructorBrand, classDecorators,
-                                decoratedElementNodes, className,
-                                classNode.getInstanceFieldCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), environment.getCurrentBlockScopeSlot());
+                                members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, writeInternalConstructorBrand,
+                                classDecorators, decoratedElementNodes, className,
+                                classNode.getInstanceElementCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), classNode.hasInstanceFieldsOrAccessors(),
+                                environment.getCurrentBlockScopeSlot());
                 classDefinition = privateEnv.wrapBlockScope(classDefinition);
             }
 

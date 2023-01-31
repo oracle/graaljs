@@ -41,7 +41,10 @@
 package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -51,29 +54,48 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
-public class SetFunctionNameNode extends JavaScriptBaseNode {
-    private final ConditionProfile isSymbolProfile;
+@ImportStatic(Strings.class)
+public abstract class SetFunctionNameNode extends JavaScriptBaseNode {
 
     protected SetFunctionNameNode() {
-        this.isSymbolProfile = ConditionProfile.create();
     }
 
+    @NeverDefault
     public static SetFunctionNameNode create() {
-        return new SetFunctionNameNode();
+        return SetFunctionNameNodeGen.create();
     }
 
-    public Object execute(Object functionValue, Object propertyKey) {
-        return execute(functionValue, propertyKey, null);
+    public final void execute(Object callable, Object propertyKey) {
+        execute(callable, propertyKey, null);
     }
 
-    public Object execute(Object functionValue, Object propertyKey, TruffleString prefix) {
-        assert JSFunction.isJSFunction(functionValue);
-        assert JSRuntime.isPropertyKey(propertyKey);
-        TruffleString name = isSymbolProfile.profile(propertyKey instanceof Symbol) ? ((Symbol) propertyKey).toFunctionNameString() : (TruffleString) propertyKey;
-        if (prefix != null && !Strings.isEmpty(prefix)) {
-            name = concatenate(prefix, name);
-        }
-        return setFunctionName((JSFunctionObject) functionValue, name);
+    public abstract void execute(Object callable, Object propertyKey, TruffleString prefix);
+
+    @Specialization(guards = {"prefix == null || isEmpty(prefix)"})
+    protected static void doJSFunctionNoPrefix(JSFunctionObject function, TruffleString propertyKey, @SuppressWarnings("unused") TruffleString prefix) {
+        setFunctionName(function, propertyKey);
+    }
+
+    @Specialization(guards = {"prefix == null || isEmpty(prefix)"})
+    protected static void doJSFunctionNoPrefix(JSFunctionObject function, Symbol propertyKey, TruffleString prefix) {
+        doJSFunctionNoPrefix(function, propertyKey.toFunctionNameString(), prefix);
+    }
+
+    @Specialization(guards = {"prefix != null", "!isEmpty(prefix)"})
+    protected static void doJSFunctionWithPrefix(JSFunctionObject function, TruffleString propertyKey, TruffleString prefix) {
+        setFunctionName(function, concatenate(prefix, propertyKey));
+    }
+
+    @Specialization(guards = {"prefix != null", "!isEmpty(prefix)"})
+    protected static void doJSFunctionWithPrefix(JSFunctionObject function, Symbol propertyKey, TruffleString prefix) {
+        doJSFunctionWithPrefix(function, propertyKey.toFunctionNameString(), prefix);
+    }
+
+    @SuppressWarnings("unused")
+    @Fallback
+    protected static void doUnsupported(Object function, Object propertyKey, TruffleString prefix) {
+        assert JSRuntime.isPropertyKey(propertyKey) : propertyKey;
+        // cannot set function name of foreign objects
     }
 
     @TruffleBoundary
@@ -81,9 +103,8 @@ public class SetFunctionNameNode extends JavaScriptBaseNode {
         return Strings.concatAll(prefix, Strings.SPACE, name);
     }
 
-    private static Object setFunctionName(JSFunctionObject functionValue, TruffleString name) {
+    private static void setFunctionName(JSFunctionObject functionValue, TruffleString name) {
         PropertyDescriptor propDesc = PropertyDescriptor.createData(name, false, false, true);
         JSRuntime.definePropertyOrThrow(functionValue, JSFunction.NAME, propDesc);
-        return functionValue;
     }
 }

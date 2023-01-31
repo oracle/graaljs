@@ -43,62 +43,59 @@ package com.oracle.truffle.js.decorators;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
-import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
+import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
+import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.PrivateClassElementNode;
 import com.oracle.truffle.js.nodes.access.PrivateBrandCheckNode;
+import com.oracle.truffle.js.nodes.access.PrivateFieldGetNode;
+import com.oracle.truffle.js.nodes.access.PrivateFieldSetNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
+import com.oracle.truffle.js.nodes.arguments.AccessFunctionNode;
+import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
+import com.oracle.truffle.js.nodes.arguments.AccessThisNode;
 import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord;
-import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord.PrivateFrameBasedElementDefinitionRecord;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSErrorType;
-import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.objects.Accessor;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
-import java.util.List;
-
-import static com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord.Kind.Field;
-import static com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord.Kind.Getter;
-
-@ImportStatic({Strings.class, ClassElementDefinitionRecord.class})
+@ImportStatic({Strings.class})
 public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNode {
 
-    public static class Record {
+    public static class DecorationState {
         boolean finished = false;
     }
 
@@ -115,254 +112,263 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     private static final TruffleString ACCESS = Strings.constant("access");
 
     private static final HiddenKey INIT_KEY = new HiddenKey(":initializers");
-    protected static final HiddenKey MAGIC_KEY = new HiddenKey(":magic");
+    protected static final HiddenKey DECORATION_STATE_KEY = new HiddenKey("DecorationState");
+    protected static final HiddenKey ELEMENT_RECORD_KEY = new HiddenKey("ClassElementDefinitionRecord");
+    protected static final HiddenKey BACKING_STORAGE_KEY = new HiddenKey("BackingStorageKey");
 
     static final int LIMIT = 3;
 
-    @CompilationFinal private int blockScopeSlot = -1;
-    @CompilationFinal private JSFunctionData valueGetterFrameUncached;
-    @CompilationFinal private JSFunctionData valueGetterPropertyUncached;
-    @CompilationFinal private JSFunctionData valueSetterFrameUncached;
-    @CompilationFinal private JSFunctionData valueSetterPropertyUncached;
-    @CompilationFinal private JSFunctionData methodGetterFrameUncached;
-    @CompilationFinal private JSFunctionData methodGetterPropertyUncached;
+    @Child private ScopeFrameNode privateScopeNode;
+    private final int privateMemberSlotIndex;
+    private final int privateBrandSlotIndex;
 
-    @Child private PropertySetNode setRecordKey;
     @Child private CreateObjectNode createObjectNode;
     @Child private PropertySetNode setInitializersKey;
-    @Child protected TruffleString.RegionEqualByteIndexNode eqNode;
+    @Child private PropertySetNode setDecorationState;
 
-    private final boolean isStatic;
-    private final JSFunctionData initializerData;
+    @Child private CreateDataPropertyNode defineKind;
+    @Child private CreateDataPropertyNode defineName;
+    @Child private CreateDataPropertyNode defineAddInitializer;
+    @Child private CreateDataPropertyNode defineAccess;
+    @Child private CreateDataPropertyNode defineStatic;
+    @Child private CreateDataPropertyNode definePrivate;
+    @Child private CreateDataPropertyNode defineGet;
+    @Child private CreateDataPropertyNode defineSet;
+
+    protected final boolean isStatic;
+    protected final boolean isPrivate;
     protected final JSContext context;
 
     @NeverDefault
-    public static CreateDecoratorContextObjectNode create(JSContext context, boolean isStatic) {
-        return CreateDecoratorContextObjectNodeGen.create(context, isStatic);
+    public static CreateDecoratorContextObjectNode create(JSContext context, ObjectLiteralMemberNode member) {
+        ScopeFrameNode privateScopeNode = null;
+        int privateMemberSlotIndex = -1;
+        int privateBrandSlotIndex = -1;
+        if (member.isPrivate()) {
+            PrivateClassElementNode privateMember = (PrivateClassElementNode) member;
+            privateScopeNode = privateMember.getPrivateScopeNode();
+            privateMemberSlotIndex = privateMember.getPrivateMemberSlotIndex();
+            privateBrandSlotIndex = privateMember.getPrivateBrandSlotIndex();
+        }
+        return CreateDecoratorContextObjectNodeGen.create(context, member.isStatic(), member.isPrivate(), privateScopeNode, privateMemberSlotIndex, privateBrandSlotIndex, false);
     }
 
-    public abstract JSDynamicObject executeContext(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, Record state);
+    public static CreateDecoratorContextObjectNode createForClass(JSContext context) {
+        return CreateDecoratorContextObjectNodeGen.create(context, false, false, null, -1, -1, true);
+    }
 
-    CreateDecoratorContextObjectNode(JSContext context, boolean isStatic) {
-        this.initializerData = createInitializerFunctionData(context);
+    public abstract JSObject executeContext(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state);
+
+    CreateDecoratorContextObjectNode(JSContext context, boolean isStatic, boolean isPrivate, ScopeFrameNode privateScopeNode, int privateMemberSlotIndex, int privateBrandSlotIndex, boolean classDef) {
         this.createObjectNode = CreateObjectNode.create(context);
         this.setInitializersKey = PropertySetNode.createSetHidden(INIT_KEY, context);
-        this.setRecordKey = PropertySetNode.createSetHidden(MAGIC_KEY, context);
-        this.eqNode = TruffleString.RegionEqualByteIndexNode.create();
+        this.setDecorationState = PropertySetNode.createSetHidden(DECORATION_STATE_KEY, context);
+
+        this.defineKind = CreateDataPropertyNode.create(context, KIND);
+        this.defineName = CreateDataPropertyNode.create(context, NAME);
+        this.defineAddInitializer = CreateDataPropertyNode.create(context, ADD_INITIALIZER);
+        if (!classDef) {
+            this.defineAccess = CreateDataPropertyNode.create(context, ACCESS);
+            this.defineStatic = CreateDataPropertyNode.create(context, Strings.STATIC);
+            this.definePrivate = CreateDataPropertyNode.create(context, Strings.PRIVATE);
+            this.defineGet = CreateDataPropertyNode.create(context, Strings.GET);
+            this.defineSet = CreateDataPropertyNode.create(context, Strings.SET);
+        }
+
         this.isStatic = isStatic;
+        this.isPrivate = isPrivate;
+        this.privateMemberSlotIndex = privateMemberSlotIndex;
+        this.privateBrandSlotIndex = privateBrandSlotIndex;
+        this.privateScopeNode = privateScopeNode;
         this.context = context;
     }
 
-    public final JSDynamicObject evaluateClass(VirtualFrame frame, Object className, Object initializers, Record state) {
-        JSDynamicObject contextObj = createObjectNode.execute(frame);
-        JSRuntime.createDataPropertyOrThrow(contextObj, KIND, CLASS_KIND);
-        JSRuntime.createDataPropertyOrThrow(contextObj, NAME, className);
-        addInitializerFunction(contextObj, state, initializers);
-        return contextObj;
+    public final JSObject evaluateClass(VirtualFrame frame, Object className, Object initializers, DecorationState state) {
+        return createContextObject(frame, CLASS_KIND, className, initializers, state, null, null, true);
     }
 
     //
     // ##### Method
     //
 
-    @Specialization(guards = {"record.isMethod()", "nameEquals(strEq,record,cachedName)", "privateName"}, limit = "LIMIT")
-    public JSDynamicObject doPrivateMethodCached(VirtualFrame frame, PrivateFrameBasedElementDefinitionRecord record, Object initializers, Record state,
-                    @Cached("record.getKey()") Object cachedName,
-                    @Cached("getName(cachedName)") @SuppressWarnings("unused") Object description,
-                    @Cached @Shared("strEq") @SuppressWarnings("unused") TruffleString.EqualNode strEq,
-                    @Cached("createMethodGetterFromFrameCached(record)") JSFunctionData valueGetterFunctionData,
-                    @Cached("record.isPrivate()") boolean privateName) {
-        JSDynamicObject getter = JSFunction.create(getRealm(), valueGetterFunctionData, getScopeFrame(frame, record));
-        return createContextObject(frame, cachedName, initializers, state, getter, null, privateName, METHOD_KIND);
-    }
-
-    @Specialization(guards = {"record.isMethod()", "nameEquals(strEq,record,cachedName)", "!privateName"}, limit = "LIMIT")
-    public JSDynamicObject doPublicMethodCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
+    @Specialization(guards = {"!isPrivate", "record.isMethod()", "nameEquals(strEq, record, cachedName)"}, limit = "LIMIT")
+    public JSObject doPublicMethodCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
-                    @Cached("getName(cachedName)") Object description,
-                    @Cached @Shared("strEq") @SuppressWarnings("unused") TruffleString.EqualNode strEq,
-                    @Cached("record.isPrivate()") boolean privateName,
-                    @Cached("createValueGetterCached(cachedName,false)") JSFunctionData valueGetterFunctionData) {
-        JSDynamicObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
-        return createContextObject(frame, description, initializers, state, getter, null, privateName, METHOD_KIND);
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.EqualNode strEq,
+                    @Cached("createPropertyGetterCached(cachedName, context)") JSFunctionData valueGetterFunctionData) {
+        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
+        return createContextObject(frame, cachedName, initializers, state, getter, null, METHOD_KIND);
     }
 
-    @Specialization(guards = "record.isMethod()", replaces = {"doPublicMethodCached", "doPrivateMethodCached"})
-    public JSDynamicObject doMethodGeneric(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, Record state,
-                    @Cached("createSetHidden(MAGIC_KEY,context)") @Shared("setMagic") PropertySetNode setMagic) {
-        Object description = record.isPrivate() ? record.getKey() : getName(record.getKey());
-        JSFunctionData valueGetterFunctionData = record.isPrivate() ? getMethodGetterFrameUncached() : getMethodGetterPropertyUncached();
-        JSDynamicObject getter = initializeMagicField(frame, record, valueGetterFunctionData, setMagic);
-        return createContextObject(frame, description, initializers, state, getter, null, record.isPrivate(), METHOD_KIND);
+    @Specialization(guards = {"!isPrivate", "record.isMethod()"}, replaces = {"doPublicMethodCached"})
+    public JSObject doPublicMethodUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+                    @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
+                    @Cached("createGetterFromPropertyUncached(context)") @Shared("propertyGetterUncached") JSFunctionData valueGetterFunctionData) {
+        Object description = record.getKey();
+        JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
+        return createContextObject(frame, description, initializers, state, getter, null, METHOD_KIND);
+    }
+
+    @Specialization(guards = {"isPrivate", "record.isMethod()"})
+    public JSObject doPrivateMethod(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+                    @Cached("getName(record.getKey())") Object description,
+                    @Cached("createGetterForPrivateMethodOrAccessor()") @Exclusive JSFunctionData valueGetterFunctionData) {
+        assert description.equals(getName(record.getKey()));
+        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData, getScopeFrame(frame));
+        return createContextObject(frame, description, initializers, state, getter, null, METHOD_KIND);
     }
 
     //
     // ##### Field
     //
 
-    @Specialization(guards = {"record.isField()", "nameEquals(strEq,record,cachedName)"}, limit = "LIMIT")
-    public JSDynamicObject doFieldCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
+    @Specialization(guards = {"!isPrivate", "record.isField()", "nameEquals(strEq, record, cachedName)"}, limit = "LIMIT")
+    public JSObject doPublicFieldCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
-                    @Cached("getName(cachedName)") Object description,
-                    @Cached @Shared("strEq") @SuppressWarnings("unused") TruffleString.EqualNode strEq,
-                    @Cached("record.isPrivate()") boolean privateName,
-                    @Cached("createValueGetterCached(cachedName,privateName)") JSFunctionData valueGetterFunctionData,
-                    @Cached("createValueSetterCached(cachedName,privateName)") JSFunctionData valueSetterFunctionData) {
-        JSDynamicObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
-        JSDynamicObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
-        return createContextObject(frame, description, initializers, state, getter, setter, privateName, FIELD_KIND);
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.EqualNode strEq,
+                    @Cached("createPropertyGetterCached(cachedName, context)") JSFunctionData valueGetterFunctionData,
+                    @Cached("createPropertySetterCached(cachedName, context)") JSFunctionData valueSetterFunctionData) {
+        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
+        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
+        return createContextObject(frame, cachedName, initializers, state, getter, setter, FIELD_KIND);
     }
 
-    @Specialization(guards = "record.isField()", replaces = "doFieldCached")
-    public JSDynamicObject doFieldUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, Record state,
-                    @Cached("createSetHidden(MAGIC_KEY,context)") @Shared("setMagic") PropertySetNode setMagic) {
-        return createContextGetterSetter(frame, record, initializers, state, setMagic, FIELD_KIND);
+    @Specialization(guards = {"!isPrivate", "record.isField()"}, replaces = "doPublicFieldCached")
+    public JSObject doPublicFieldUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+                    @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
+                    @Cached("createGetterFromPropertyUncached(context)") @Shared("propertyGetterUncached") JSFunctionData valueGetterFunctionData,
+                    @Cached("createSetterFromPropertyUncached(context)") @Shared("propertySetterUncached") JSFunctionData valueSetterFunctionData) {
+        Object description = record.getKey();
+        JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
+        JSObject setter = createFunctionWithElementRecordField(record, valueSetterFunctionData, setElementRecord);
+        return createContextObject(frame, description, initializers, state, getter, setter, FIELD_KIND);
     }
 
+    @Specialization(guards = {"isPrivate", "record.isField()"})
+    public JSObject doPrivateField(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+                    @Cached("getName(record.getKey())") Object description,
+                    @Cached("createSetHidden(BACKING_STORAGE_KEY, context)") PropertySetNode setStorageKeyNode,
+                    @Cached("createPrivateFieldGetter(context)") JSFunctionData valueGetterFunctionData,
+                    @Cached("createPrivateFieldSetter(context)") JSFunctionData valueSetterFunctionData) {
+        assert description.equals(getName(record.getKey()));
+        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
+        setStorageKeyNode.setValue(getter, record.getBackingStorageKey());
+        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
+        setStorageKeyNode.setValue(setter, record.getBackingStorageKey());
+        return createContextObject(frame, description, initializers, state, getter, setter, FIELD_KIND);
+    }
     //
     // ##### AutoAccessor
     //
 
-    @Specialization(guards = {"record.isAutoAccessor()", "nameEquals(strEq,record,cachedName)"}, limit = "LIMIT")
-    public JSDynamicObject doAutoAccessorCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord.AutoAccessor record, Object initializers, Record state,
+    @Specialization(guards = {"!isPrivate", "record.isAutoAccessor()", "nameEquals(strEq, record, cachedName)"}, limit = "LIMIT")
+    public JSObject doPublicAutoAccessorCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
-                    @Cached("getName(cachedName)") Object description,
-                    @Cached @Shared("strEq") @SuppressWarnings("unused") TruffleString.EqualNode strEq,
-                    @Cached("record.isPrivate()") boolean privateName,
-                    @Cached("createValueGetterCached(cachedName,privateName)") JSFunctionData valueGetterFunctionData,
-                    @Cached("createValueSetterCached(cachedName,privateName)") JSFunctionData valueSetterFunctionData) {
-        JSDynamicObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
-        JSDynamicObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
-        return createContextObject(frame, description, initializers, state, getter, setter, privateName, AUTO_ACCESSOR_KIND);
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.EqualNode strEq,
+                    @Cached("createPropertyGetterCached(cachedName, context)") JSFunctionData valueGetterFunctionData,
+                    @Cached("createPropertySetterCached(cachedName, context)") JSFunctionData valueSetterFunctionData) {
+        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
+        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
+        return createContextObject(frame, cachedName, initializers, state, getter, setter, AUTO_ACCESSOR_KIND);
     }
 
-    @Specialization(guards = "record.isAutoAccessor()", replaces = "doAutoAccessorCached")
-    public JSDynamicObject doAutoAccessor(VirtualFrame frame, ClassElementDefinitionRecord.AutoAccessor record, Object initializers, Record state,
-                    @Cached("createSetHidden(MAGIC_KEY,context)") @Shared("setMagic") PropertySetNode setMagic) {
-        return createContextGetterSetter(frame, record, initializers, state, setMagic, AUTO_ACCESSOR_KIND);
+    @Specialization(guards = {"!isPrivate", "record.isAutoAccessor()"}, replaces = "doPublicAutoAccessorCached")
+    public JSObject doPublicAutoAccessor(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+                    @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
+                    @Cached("createGetterFromPropertyUncached(context)") @Shared("propertyGetterUncached") JSFunctionData valueGetterFunctionData,
+                    @Cached("createSetterFromPropertyUncached(context)") @Shared("propertySetterUncached") JSFunctionData valueSetterFunctionData) {
+        Object description = record.getKey();
+        JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
+        JSObject setter = createFunctionWithElementRecordField(record, valueSetterFunctionData, setElementRecord);
+        return createContextObject(frame, description, initializers, state, getter, setter, AUTO_ACCESSOR_KIND);
+    }
+
+    @Specialization(guards = {"isPrivate", "record.isAutoAccessor()"})
+    public JSObject doPrivateAutoAccessor(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+                    @Cached("getName(record.getKey())") Object description,
+                    @Cached("createGetterForPrivateMethodOrAccessor()") @Exclusive JSFunctionData valueGetterFunctionData,
+                    @Cached("createSetterForPrivateAccessor()") @Exclusive JSFunctionData valueSetterFunctionData) {
+        assert description.equals(getName(record.getKey()));
+        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData, getScopeFrame(frame));
+        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData, getScopeFrame(frame));
+        return createContextObject(frame, description, initializers, state, getter, setter, AUTO_ACCESSOR_KIND);
     }
 
     //
     // ##### Getter
     //
 
-    @Specialization(guards = {"record.isGetter()", "nameEquals(strEq,record,cachedName)", "!privateName"}, limit = "LIMIT")
-    public JSDynamicObject doGetterCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
+    @Specialization(guards = {"!isPrivate", "record.isGetter()", "nameEquals(strEq, record, cachedName)"}, limit = "LIMIT")
+    public JSObject doPublicGetterCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
-                    @Cached("getName(cachedName)") Object description,
-                    @Cached @Shared("strEq") @SuppressWarnings("unused") TruffleString.EqualNode strEq,
-                    @Cached("record.isPrivate()") boolean privateName,
-                    @Cached("createValueGetterCached(cachedName,privateName)") JSFunctionData valueGetterFunctionData) {
-        JSDynamicObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
-        return createContextObject(frame, description, initializers, state, getter, null, privateName, GETTER_KIND);
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.EqualNode strEq,
+                    @Cached("createPropertyGetterCached(cachedName, context)") JSFunctionData valueGetterFunctionData) {
+        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
+        return createContextObject(frame, cachedName, initializers, state, getter, null, GETTER_KIND);
     }
 
-    @Specialization(guards = "record.isGetter()", replaces = "doGetterCached")
-    public JSDynamicObject doGetter(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, Record state,
-                    @Cached("createSetHidden(MAGIC_KEY,context)") @Shared("setMagic") PropertySetNode setMagic) {
-        JSFunctionData valueGetterFunctionData = record.isPrivate() ? getValueGetterFrameUncached() : getValueGetterPropertyUncached();
-        JSDynamicObject getter = initializeMagicField(frame, record, valueGetterFunctionData, setMagic);
-        Object name = record.isPrivate() ? record.getKey() : getName(record.getKey());
-        return createContextObject(frame, name, initializers, state, getter, null, record.isPrivate(), GETTER_KIND);
+    @Specialization(guards = {"!isPrivate", "record.isGetter()"}, replaces = "doPublicGetterCached")
+    public JSObject doPublicGetterUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+                    @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
+                    @Cached("createGetterFromPropertyUncached(context)") @Shared("propertyGetterUncached") JSFunctionData valueGetterFunctionData) {
+        Object name = record.getKey();
+        JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
+        return createContextObject(frame, name, initializers, state, getter, null, GETTER_KIND);
+    }
+
+    @Specialization(guards = {"isPrivate", "record.isGetter()"})
+    public JSObject doPrivateGetter(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+                    @Cached("getName(record.getKey())") Object description,
+                    @Cached("createGetterForPrivateMethodOrAccessor()") @Exclusive JSFunctionData valueGetterFunctionData) {
+        assert description.equals(getName(record.getKey()));
+        JSObject getter = JSFunction.create(getRealm(), valueGetterFunctionData, getScopeFrame(frame));
+        return createContextObject(frame, description, initializers, state, getter, null, GETTER_KIND);
     }
 
     //
     // ##### Setter
     //
 
-    @Specialization(guards = {"record.isSetter()", "nameEquals(strEq,record,cachedName)", "!privateName"}, limit = "LIMIT")
-    public JSDynamicObject doSetterCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, Record state,
+    @Specialization(guards = {"!isPrivate", "record.isSetter()", "nameEquals(strEq, record, cachedName)"}, limit = "LIMIT")
+    public JSObject doPublicSetterCached(VirtualFrame frame, @SuppressWarnings("unused") ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("record.getKey()") @SuppressWarnings("unused") Object cachedName,
-                    @Cached("getName(cachedName)") Object description,
-                    @Cached @Shared("strEq") @SuppressWarnings("unused") TruffleString.EqualNode strEq,
-                    @Cached("record.isPrivate()") boolean privateName,
-                    @Cached("createValueSetterCached(cachedName,privateName)") JSFunctionData valueSetterFunctionData) {
-        JSDynamicObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
-        return createContextObject(frame, description, initializers, state, null, setter, privateName, SETTER_KIND);
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.EqualNode strEq,
+                    @Cached("createPropertySetterCached(cachedName, context)") JSFunctionData valueSetterFunctionData) {
+        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
+        return createContextObject(frame, cachedName, initializers, state, null, setter, SETTER_KIND);
     }
 
-    @Specialization(guards = "record.isSetter()", replaces = "doSetterCached")
-    public JSDynamicObject doSetter(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, Record state,
-                    @Cached("createSetHidden(MAGIC_KEY,context)") @Shared("setMagic") PropertySetNode setMagic) {
-        JSFunctionData valueSetterFunctionData = record.isPrivate() ? getValueSetterFrameUncached() : getValueSetterPropertyUncached();
-        JSDynamicObject setter = initializeMagicField(frame, record, valueSetterFunctionData, setMagic);
-        Object name = record.isPrivate() ? record.getKey() : getName(record.getKey());
-        return createContextObject(frame, name, initializers, state, null, setter, record.isPrivate(), SETTER_KIND);
+    @Specialization(guards = {"!isPrivate", "record.isSetter()"}, replaces = "doPublicSetterCached")
+    public JSObject doPublicSetterUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+                    @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
+                    @Cached("createSetterFromPropertyUncached(context)") @Shared("propertySetterUncached") JSFunctionData valueSetterFunctionData) {
+        Object name = record.getKey();
+        JSObject setter = createFunctionWithElementRecordField(record, valueSetterFunctionData, setElementRecord);
+        return createContextObject(frame, name, initializers, state, null, setter, SETTER_KIND);
+    }
+
+    @Specialization(guards = {"isPrivate", "record.isSetter()"})
+    public JSObject doPrivateSetter(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
+                    @Cached("getName(record.getKey())") Object description,
+                    @Cached("createSetterForPrivateAccessor()") @Exclusive JSFunctionData valueSetterFunctionData) {
+        assert description.equals(getName(record.getKey()));
+        JSObject setter = JSFunction.create(getRealm(), valueSetterFunctionData, getScopeFrame(frame));
+        return createContextObject(frame, description, initializers, state, null, setter, SETTER_KIND);
     }
 
     //
     // ##### Common
     //
 
-    private JSDynamicObject initializeMagicField(VirtualFrame frame, ClassElementDefinitionRecord record, JSFunctionData functionData, PropertySetNode setMagic) {
-        JSDynamicObject function;
-        if (record.isPrivate()) {
-            PrivateFrameBasedElementDefinitionRecord methodRecord = (PrivateFrameBasedElementDefinitionRecord) record;
-            function = JSFunction.create(getRealm(), functionData, getScopeFrame(frame, methodRecord));
-            int[] slots = {methodRecord.getKeySlot(), methodRecord.getBrandSlot()};
-            setMagic.setValue(function, slots);
-        } else {
-            function = JSFunction.create(getRealm(), functionData);
-            setMagic.setValue(function, record);
-        }
+    private JSObject createFunctionWithElementRecordField(ClassElementDefinitionRecord record, JSFunctionData functionData, PropertySetNode setElementRecord) {
+        assert !record.isPrivate();
+        JSObject function = JSFunction.create(getRealm(), functionData);
+        setElementRecord.setValue(function, record);
         return function;
     }
 
-    private MaterializedFrame getScopeFrame(VirtualFrame frame, PrivateFrameBasedElementDefinitionRecord record) {
-        if (this.blockScopeSlot == -1) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            blockScopeSlot = record.getBlockScopeSlot();
-        }
-        assert blockScopeSlot == record.getBlockScopeSlot() : "slot must not change";
-        return JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
-    }
-
-    protected JSFunctionData getMethodGetterFrameUncached() {
-        if (methodGetterFrameUncached == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            methodGetterFrameUncached = createGetterFromFrameUncached(context, ClassElementDefinitionRecord.Kind.Method, isStatic);
-        }
-        return methodGetterFrameUncached;
-    }
-
-    protected JSFunctionData getMethodGetterPropertyUncached() {
-        if (methodGetterPropertyUncached == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            methodGetterPropertyUncached = createGetterFromPropertyUncached(context);
-        }
-        return methodGetterPropertyUncached;
-    }
-
-    private JSFunctionData getValueGetterPropertyUncached() {
-        if (valueGetterPropertyUncached == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            valueGetterPropertyUncached = createGetterFromPropertyUncached(context);
-        }
-        return valueGetterPropertyUncached;
-    }
-
-    private JSFunctionData getValueGetterFrameUncached() {
-        if (valueGetterFrameUncached == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            valueGetterFrameUncached = createGetterFromFrameUncached(context, Getter, isStatic);
-        }
-        return valueGetterFrameUncached;
-    }
-
-    private JSFunctionData getValueSetterPropertyUncached() {
-        if (valueSetterPropertyUncached == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            valueSetterPropertyUncached = createSetterFromPropertyUncached(context);
-        }
-        return valueSetterPropertyUncached;
-    }
-
-    private JSFunctionData getValueSetterFrameUncached() {
-        if (valueSetterFrameUncached == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            valueSetterFrameUncached = createSetterFromFrameUncached(context, isStatic);
-        }
-        return valueSetterFrameUncached;
+    private MaterializedFrame getScopeFrame(VirtualFrame frame) {
+        return (MaterializedFrame) privateScopeNode.executeFrame(frame);
     }
 
     protected static boolean nameEquals(TruffleString.EqualNode strEq, ClassElementDefinitionRecord record, Object expected) {
@@ -372,6 +378,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         return false;
     }
 
+    @NeverDefault
     @TruffleBoundary
     protected Object getName(Object key) {
         if (key instanceof HiddenKey) {
@@ -382,45 +389,39 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         return key;
     }
 
-    private void addInitializerFunction(JSDynamicObject contextObj, Record state, Object initializers) {
-        JSFunctionObject initializerFunction = JSFunction.create(JSRealm.get(this), initializerData);
-        setInitializersKey.setValue(initializerFunction, initializers);
-        setRecordKey.setValue(initializerFunction, state);
-        JSRuntime.createDataPropertyOrThrow(contextObj, ADD_INITIALIZER, initializerFunction);
+    private JSFunctionObject createAddInitializerFunction(Object initializers, DecorationState state) {
+        JSFunctionObject addInitializerFunction = JSFunction.create(JSRealm.get(this), getAddInitializerFunctionData(context));
+        setInitializersKey.setValue(addInitializerFunction, initializers);
+        setDecorationState.setValue(addInitializerFunction, state);
+        return addInitializerFunction;
     }
 
-    public JSDynamicObject createContextGetterSetter(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, Record state,
-                    PropertySetNode setMagic, TruffleString kind) {
-        Object description = getName(record.getKey());
-        boolean privateName = record.isPrivate();
-        JSFunctionData valueGetterFunctionData = record.isPrivate() && record.getKind() != Field ? getValueGetterFrameUncached() : getValueGetterPropertyUncached();
-        JSFunctionData valueSetterFunctionData = record.isPrivate() && record.getKind() != Field ? getValueSetterFrameUncached() : getValueSetterPropertyUncached();
-        JSDynamicObject getter = JSFunction.create(getRealm(), valueGetterFunctionData);
-        JSDynamicObject setter = JSFunction.create(getRealm(), valueSetterFunctionData);
-        setMagic.setValue(getter, record);
-        setMagic.setValue(setter, record);
-        return createContextObject(frame, description, initializers, state, getter, setter, privateName, kind);
+    public JSObject createContextObject(VirtualFrame frame, Object name, Object initializers,
+                    DecorationState state,
+                    JSObject getter,
+                    JSObject setter,
+                    TruffleString kindName) {
+        return createContextObject(frame, kindName, name, initializers, state, getter, setter, false);
     }
 
-    public JSDynamicObject createContextObject(VirtualFrame frame, Object name, Object initializers,
-                    Record state,
-                    JSDynamicObject getter,
-                    JSDynamicObject setter,
-                    boolean privateName, TruffleString kindName) {
-        JSDynamicObject contextObj = createObjectNode.execute(frame);
-        JSRuntime.createDataPropertyOrThrow(contextObj, KIND, kindName);
-        JSDynamicObject accessObject = createObjectNode.execute(frame);
-        if (getter != null) {
-            JSRuntime.createDataPropertyOrThrow(accessObject, Strings.GET, getter);
+    private JSObject createContextObject(VirtualFrame frame, TruffleString kindName, Object name, Object initializers, DecorationState state,
+                    JSObject getter, JSObject setter, boolean isClass) {
+        JSObject contextObj = createObjectNode.execute(frame);
+        defineKind.executeVoid(contextObj, KIND, kindName);
+        if (!isClass) {
+            JSObject accessObject = createObjectNode.execute(frame);
+            if (getter != null) {
+                defineGet.executeVoid(accessObject, Strings.GET, getter);
+            }
+            if (setter != null) {
+                defineSet.executeVoid(accessObject, Strings.SET, setter);
+            }
+            defineAccess.executeVoid(contextObj, ACCESS, accessObject);
+            defineStatic.executeVoid(contextObj, Strings.STATIC, isStatic);
+            definePrivate.executeVoid(contextObj, Strings.PRIVATE, isPrivate);
         }
-        if (setter != null) {
-            JSRuntime.createDataPropertyOrThrow(accessObject, Strings.SET, setter);
-        }
-        JSRuntime.createDataPropertyOrThrow(contextObj, ACCESS, accessObject);
-        JSRuntime.createDataPropertyOrThrow(contextObj, Strings.STATIC, isStatic);
-        JSRuntime.createDataPropertyOrThrow(contextObj, Strings.PRIVATE, privateName);
-        JSRuntime.createDataPropertyOrThrow(contextObj, NAME, name);
-        addInitializerFunction(contextObj, state, initializers);
+        defineName.executeVoid(contextObj, NAME, name);
+        defineAddInitializer.executeVoid(contextObj, ADD_INITIALIZER, createAddInitializerFunction(initializers, state));
         return contextObj;
     }
 
@@ -429,101 +430,61 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     // key/frame/etc.
     //
 
-    @TruffleBoundary
-    protected static JSFunctionData createInitializerFunctionData(JSContext context) {
+    @NeverDefault
+    private static JSFunctionData getAddInitializerFunctionData(JSContext ctx) {
+        return ctx.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.DecoratorContextAddInitializer, CreateDecoratorContextObjectNode::createAddInitializerFunctionData);
+    }
+
+    private static JSFunctionData createAddInitializerFunctionData(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private PropertyGetNode getRecordKey = PropertyGetNode.createGetHidden(MAGIC_KEY, context);
+        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
+            @Child private PropertyGetNode getDecorationState = PropertyGetNode.createGetHidden(DECORATION_STATE_KEY, context);
             @Child private PropertyGetNode getInitializersKey = PropertyGetNode.createGetHidden(INIT_KEY, context);
 
             @SuppressWarnings("unchecked")
             @Override
             public Object execute(VirtualFrame frame) {
                 JSFunctionObject self = (JSFunctionObject) JSArguments.getFunctionObject(frame.getArguments());
-                Record state = (Record) getRecordKey.getValue(self);
-                List<Object> initializers = (List<Object>) getInitializersKey.getValue(self);
+                DecorationState state = (DecorationState) getDecorationState.getValue(self);
+                SimpleArrayList<Object> initializers = (SimpleArrayList<Object>) getInitializersKey.getValue(self);
                 if (state.finished) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw JSException.create(JSErrorType.TypeError, "Bad decorator initializer state");
+                    throw Errors.createTypeError("Bad decorator initializer state");
                 }
                 Object[] args = frame.getArguments();
                 Object value = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
-                Boundaries.listAdd(initializers, value);
+                initializers.addUncached(value);
                 return Undefined.instance;
             }
         }.getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 1, ADD_INITIALIZER);
     }
 
-    @TruffleBoundary
-    protected JSFunctionData createMethodGetterFromFrameCached(PrivateFrameBasedElementDefinitionRecord record) {
+    @NeverDefault
+    protected static JSFunctionData createPropertyGetterCached(Object name, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        assert record.getKind() == ClassElementDefinitionRecord.Kind.Method;
-        final int keySlot = record.getKeySlot();
-        final int constructorSlot = record.getBrandSlot();
-        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private JSReadFrameSlotNode readMethod;
-            @Child private PrivateBrandCheckNode brandCheckNode;
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                Object thiz = JSFrameUtil.getThisObj(frame);
-                VirtualFrame blockScopeFrame = JSFunction.getEnclosingFrame(functionObject);
-                if (brandCheckNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    JSReadFrameSlotNode readConstructor = JSReadFrameSlotNode.create(blockScopeFrame.getFrameDescriptor(), constructorSlot);
-                    JavaScriptNode brandNode;
-                    if (isStatic) {
-                        brandNode = readConstructor;
-                    } else {
-                        brandNode = PropertyNode.createGetHidden(context, readConstructor, JSFunction.PRIVATE_BRAND_ID);
-                    }
-                    this.readMethod = insert(JSReadFrameSlotNode.create(blockScopeFrame.getFrameDescriptor(), keySlot));
-                    this.brandCheckNode = insert(PrivateBrandCheckNode.create(readMethod, brandNode));
-                }
-                if (brandCheckNode.executeWithTarget(blockScopeFrame, thiz) != Undefined.instance) {
-                    return readMethod.execute(blockScopeFrame);
-                } else {
-                    throw Errors.createTypeErrorIllegalAccessorTarget(this);
-                }
-            }
-        }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
-    }
-
-    @TruffleBoundary
-    protected JSFunctionData createValueGetterCached(Object keyName, boolean isPrivateFieldGet) {
-        CompilerAsserts.neverPartOfCompilation();
-        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private PropertyGetNode propertyGetNode = PropertyGetNode.create(keyName, context);
-            @Child private HasPropertyCacheNode propertyHasNode = HasPropertyCacheNode.create(keyName, context);
+        assert JSRuntime.isPropertyKey(name) : name;
+        CallTarget getter = new JavaScriptRootNode(context.getLanguage()) {
+            @Child private PropertyGetNode propertyGetNode = PropertyGetNode.create(name, context);
 
             @Override
             public Object execute(VirtualFrame frame) {
                 Object thiz = JSFrameUtil.getThisObj(frame);
-                if (isPrivateFieldGet && !propertyHasNode.hasProperty(thiz)) {
-                    throw Errors.createTypeErrorIllegalAccessorTarget(this);
-                }
                 return propertyGetNode.getValue(thiz);
             }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
+        return JSFunctionData.createCallOnly(context, getter, 0, Strings.GET);
     }
 
-    @TruffleBoundary
-    protected JSFunctionData createValueSetterCached(Object name, boolean isPrivateFieldGet) {
+    @NeverDefault
+    protected static JSFunctionData createPropertySetterCached(Object name, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private HasPropertyCacheNode propertyHasNode = HasPropertyCacheNode.create(name, context);
+        assert JSRuntime.isPropertyKey(name) : name;
+        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
             @Child private PropertySetNode propertySetNode = PropertySetNode.create(name, false, context, true);
 
             @Override
             public Object execute(VirtualFrame frame) {
                 Object thiz = JSFrameUtil.getThisObj(frame);
-                if (isPrivateFieldGet && !propertyHasNode.hasProperty(thiz)) {
-                    throw Errors.createTypeErrorIllegalAccessorTarget(this);
-                }
                 Object[] args = frame.getArguments();
                 Object newValue = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
                 propertySetNode.setValue(thiz, newValue);
@@ -533,155 +494,154 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
         return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
     }
 
-    //
-    // ##### Generic Functions that are not cached in nodes and don't specialize on keys/frame.
-    //
-
-    @TruffleBoundary
-    private static JSFunctionData createGetterFromFrameUncached(JSContext context, ClassElementDefinitionRecord.Kind kind, boolean isStatic) {
+    @NeverDefault
+    protected static JSFunctionData createPrivateFieldGetter(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private PropertyGetNode getMagic = PropertyGetNode.createGetHidden(MAGIC_KEY, context);
-
-            @CompilationFinal private int keySlot = -1;
-            @CompilationFinal private int classSlot = -1;
+        JavaScriptRootNode getter = new JavaScriptRootNode(context.getLanguage()) {
+            @Child private PrivateFieldGetNode privateFieldGet = PrivateFieldGetNode.create(AccessThisNode.create(),
+                            PropertyNode.createGetHidden(context, AccessFunctionNode.create(), BACKING_STORAGE_KEY), context);
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                Object thiz = JSFrameUtil.getThisObj(frame);
-                Frame blockScopeFrame = JSFunction.getEnclosingFrame(functionObject);
-                int[] slots = (int[]) getMagic.getValue(functionObject);
-                if (keySlot == -1 || classSlot == -1) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    keySlot = slots[0];
-                    classSlot = slots[1];
+                return privateFieldGet.execute(frame);
+            }
+        };
+        return JSFunctionData.createCallOnly(context, getter.getCallTarget(), 0, Strings.GET);
+    }
+
+    @NeverDefault
+    protected static JSFunctionData createPrivateFieldSetter(JSContext context) {
+        CompilerAsserts.neverPartOfCompilation();
+        JavaScriptRootNode setter = new JavaScriptRootNode(context.getLanguage()) {
+            @Child private PrivateFieldSetNode privateFieldSet = PrivateFieldSetNode.create(AccessThisNode.create(),
+                            PropertyNode.createGetHidden(context, AccessFunctionNode.create(), BACKING_STORAGE_KEY),
+                            AccessIndexedArgumentNode.create(0), context);
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                privateFieldSet.executeVoid(frame);
+                return Undefined.instance;
+            }
+        };
+        return JSFunctionData.createCallOnly(context, setter.getCallTarget(), 1, Strings.SET);
+    }
+
+    @NeverDefault
+    protected final JSFunctionData createGetterForPrivateMethodOrAccessor() {
+        return createPrivateGetter(context, isStatic, privateMemberSlotIndex, privateBrandSlotIndex);
+    }
+
+    @NeverDefault
+    protected final JSFunctionData createSetterForPrivateAccessor() {
+        return createPrivateSetter(context, isStatic, privateMemberSlotIndex, privateBrandSlotIndex);
+    }
+
+    private static JSFunctionData createPrivateGetter(JSContext context, boolean isStatic, int memberSlot, int constructorSlot) {
+        CompilerAsserts.neverPartOfCompilation();
+        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
+            @Child private PrivateFieldGetNode privateGetNode;
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                if (privateGetNode == null) {
+                    initialize(frame);
                 }
-                assert slots[0] == keySlot && slots[1] == classSlot : "slot must not change";
-                if (blockScopeFrame.isObject(classSlot) && blockScopeFrame.isObject(keySlot)) {
-                    Object method = blockScopeFrame.getObject(keySlot);
-                    Object constructor = blockScopeFrame.getObject(classSlot);
-                    if (privateBrandCheck(thiz, constructor, isStatic)) {
-                        if (kind == Getter) {
-                            Accessor accessor = (Accessor) method;
-                            assert accessor.hasGetter();
-                            return JSRuntime.call(accessor.getGetter(), thiz, JSArguments.EMPTY_ARGUMENTS_ARRAY);
-                        }
-                        assert kind == ClassElementDefinitionRecord.Kind.Method;
-                        return method;
-                    }
+                return privateGetNode.execute(frame);
+            }
+
+            private void initialize(VirtualFrame frame) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                ScopeFrameNode enclosingFrameNode = ScopeFrameNode.create(1);
+                FrameDescriptor frameDescriptor = enclosingFrameNode.executeFrame(frame).getFrameDescriptor();
+                assert frameDescriptor.getNumberOfSlots() > 0 : frameDescriptor;
+                JSReadFrameSlotNode readConstructor = JSReadFrameSlotNode.create(JSFrameSlot.fromIndexedFrameSlot(frameDescriptor, constructorSlot), enclosingFrameNode, false);
+                JavaScriptNode readBrand;
+                if (isStatic) {
+                    readBrand = readConstructor;
+                } else {
+                    readBrand = PropertyNode.createGetHidden(context, readConstructor, JSFunction.PRIVATE_BRAND_ID);
                 }
-                throw Errors.createTypeErrorIllegalAccessorTarget(this);
+                JSReadFrameSlotNode readPrivateMemberSlot = JSReadFrameSlotNode.create(JSFrameSlot.fromIndexedFrameSlot(frameDescriptor, memberSlot), enclosingFrameNode, false);
+                privateGetNode = insert(PrivateFieldGetNode.create(PrivateBrandCheckNode.create(AccessThisNode.create(), readBrand), readPrivateMemberSlot, context));
             }
         }.getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
     }
 
-    private static boolean privateBrandCheck(Object target, Object constructor, boolean isStatic) {
-        if (isStatic) {
-            return target == constructor;
-        } else {
-            if (target instanceof JSObject && constructor instanceof JSObject) {
-                Object brandKey = Properties.getOrDefaultUncached((JSObject) constructor, JSFunction.PRIVATE_BRAND_ID, null);
-                if (brandKey instanceof HiddenKey) {
-                    return Properties.containsKeyUncached((JSObject) target, brandKey);
-                }
-            }
-            return false;
-        }
-    }
-
-    @TruffleBoundary
-    private static JSFunctionData createSetterFromFrameUncached(JSContext context, boolean isStatic) {
+    private static JSFunctionData createPrivateSetter(JSContext context, boolean isStatic, int memberSlot, int constructorSlot) {
         CompilerAsserts.neverPartOfCompilation();
-        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private PropertyGetNode getMagic = PropertyGetNode.createGetHidden(MAGIC_KEY, context);
-
-            @CompilationFinal private int keySlot = -1;
-            @CompilationFinal private int classSlot = -1;
+        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
+            @Child private PrivateFieldSetNode privateSetNode;
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                Object thiz = JSFrameUtil.getThisObj(frame);
-                Frame blockScopeFrame = JSFunction.getEnclosingFrame(functionObject);
-                int[] slots = (int[]) getMagic.getValue(functionObject);
-                if (keySlot == -1 || classSlot == -1) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    keySlot = slots[0];
-                    classSlot = slots[1];
+                if (privateSetNode == null) {
+                    initialize(frame);
                 }
-                assert slots[0] == keySlot && slots[1] == classSlot : "slot must not change";
-                if (blockScopeFrame.isObject(classSlot) && blockScopeFrame.isObject(keySlot)) {
-                    Object constructor = blockScopeFrame.getObject(classSlot);
-                    if (privateBrandCheck(thiz, constructor, isStatic)) {
-                        Object newValue;
-                        if (JSArguments.getUserArgumentCount(frame.getArguments()) > 0) {
-                            newValue = JSArguments.getUserArgument(frame.getArguments(), 0);
-                        } else {
-                            newValue = Undefined.instance;
-                        }
-                        Accessor accessor = (Accessor) blockScopeFrame.getObject(keySlot);
-                        assert accessor.hasSetter();
-                        JSRuntime.call(accessor.getSetter(), thiz, new Object[]{newValue});
-                        return Undefined.instance;
-                    }
+                privateSetNode.executeVoid(frame);
+                return Undefined.instance;
+            }
+
+            private void initialize(VirtualFrame frame) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                ScopeFrameNode enclosingFrameNode = ScopeFrameNode.create(1);
+                FrameDescriptor frameDescriptor = enclosingFrameNode.executeFrame(frame).getFrameDescriptor();
+                assert frameDescriptor.getNumberOfSlots() > 0 : frameDescriptor;
+                JSReadFrameSlotNode readConstructor = JSReadFrameSlotNode.create(JSFrameSlot.fromIndexedFrameSlot(frameDescriptor, constructorSlot), enclosingFrameNode, false);
+                JavaScriptNode readBrand;
+                if (isStatic) {
+                    readBrand = readConstructor;
+                } else {
+                    readBrand = PropertyNode.createGetHidden(context, readConstructor, JSFunction.PRIVATE_BRAND_ID);
                 }
-                throw Errors.createTypeErrorIllegalAccessorTarget(this);
+                JSReadFrameSlotNode readPrivateMemberSlot = JSReadFrameSlotNode.create(JSFrameSlot.fromIndexedFrameSlot(frameDescriptor, memberSlot), enclosingFrameNode, false);
+                privateSetNode = insert(PrivateFieldSetNode.create(
+                                PrivateBrandCheckNode.create(AccessThisNode.create(), readBrand),
+                                readPrivateMemberSlot, AccessIndexedArgumentNode.create(0), context));
             }
         }.getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 1, Strings.SET);
     }
 
-    private static Object checkPrivateAccess(VirtualFrame frame, Object thiz, PropertyGetNode getMagic, DynamicObjectLibrary access, Node self) {
-        Object function = JSFrameUtil.getFunctionObject(frame);
-        ClassElementDefinitionRecord record = (ClassElementDefinitionRecord) getMagic.getValue(function);
-        Object key = record.getKey();
-        if (record.isPrivate() && !(thiz instanceof JSDynamicObject && Properties.containsKey(access, (JSDynamicObject) thiz, key))) {
-            throw Errors.createTypeErrorIllegalAccessorTarget(self);
-        }
-        return key;
-    }
+    //
+    // ##### Generic Functions that are not cached in nodes and don't specialize on keys/frame.
+    //
 
-    @TruffleBoundary
+    @NeverDefault
     protected static JSFunctionData createGetterFromPropertyUncached(JSContext context) {
-        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private DynamicObjectLibrary access = DynamicObjectLibrary.getUncached();
+        CompilerAsserts.neverPartOfCompilation();
+        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
+            @Child private PropertyGetNode getElementRecord = PropertyGetNode.createGetHidden(ELEMENT_RECORD_KEY, context);
             @Child private ReadElementNode propertyGetNode = ReadElementNode.create(context);
-            @Child private PropertyGetNode getMagic = PropertyGetNode.createGetHidden(MAGIC_KEY, context);
 
             @Override
             public Object execute(VirtualFrame frame) {
                 Object thiz = JSFrameUtil.getThisObj(frame);
-                Object key = checkPrivateAccess(frame, thiz, getMagic, access, this);
-                if (key instanceof HiddenKey) {
-                    return Properties.getOrDefault(access, (JSDynamicObject) thiz, key, Undefined.instance);
-                } else {
-                    return propertyGetNode.executeWithTargetAndIndex(thiz, key);
-                }
+                Object function = JSFrameUtil.getFunctionObject(frame);
+                ClassElementDefinitionRecord record = (ClassElementDefinitionRecord) getElementRecord.getValue(function);
+                assert !record.isPrivate();
+                return propertyGetNode.executeWithTargetAndIndex(thiz, record.getKey());
             }
         }.getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 0, Strings.GET);
     }
 
-    @TruffleBoundary
+    @NeverDefault
     protected static JSFunctionData createSetterFromPropertyUncached(JSContext context) {
-        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private DynamicObjectLibrary access = DynamicObjectLibrary.getUncached();
-            @Child private PropertyGetNode getMagic = PropertyGetNode.createGetHidden(MAGIC_KEY, context);
+        CompilerAsserts.neverPartOfCompilation();
+        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage()) {
+            @Child private PropertyGetNode getElementRecord = PropertyGetNode.createGetHidden(ELEMENT_RECORD_KEY, context);
             @Child private WriteElementNode propertySetNode = WriteElementNode.create(context, false);
 
             @Override
             public Object execute(VirtualFrame frame) {
                 Object thiz = JSFrameUtil.getThisObj(frame);
-                Object key = checkPrivateAccess(frame, thiz, getMagic, access, this);
+                Object function = JSFrameUtil.getFunctionObject(frame);
+                ClassElementDefinitionRecord record = (ClassElementDefinitionRecord) getElementRecord.getValue(function);
+                assert !record.isPrivate();
                 Object[] args = frame.getArguments();
                 Object newValue = JSArguments.getUserArgumentCount(args) > 0 ? JSArguments.getUserArgument(args, 0) : Undefined.instance;
-                if (key instanceof HiddenKey) {
-                    Properties.putIfPresent(access, (JSDynamicObject) thiz, key, newValue);
-                } else {
-                    propertySetNode.executeWithTargetAndIndexAndValue(thiz, key, newValue);
-                }
+                propertySetNode.executeWithTargetAndIndexAndValue(thiz, record.getKey(), newValue);
                 return Undefined.instance;
             }
         }.getCallTarget();

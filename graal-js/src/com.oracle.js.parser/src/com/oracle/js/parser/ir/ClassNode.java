@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,10 +58,11 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
     private final List<ClassElement> classElements;
     private final List<Expression> classDecorators;
     private final Scope scope;
-    private final int instanceFieldCount;
     private final int staticElementCount;
     private final boolean hasPrivateMethods;
     private final boolean hasPrivateInstanceMethods;
+    private final boolean hasInstanceFieldsOrAccessors;
+    private final boolean hasClassElementDecorators;
 
     public static final TruffleString PRIVATE_CONSTRUCTOR_BINDING_NAME = ParserStrings.constant("#constructor");
 
@@ -71,21 +72,20 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
      * @param token token
      * @param finish finish
      */
-    public ClassNode(final long token, final int finish, final IdentNode ident, final Expression classHeritage, final ClassElement constructor, final List<ClassElement> classElements,
-                    final List<Expression> classDecorators,
-                    final Scope scope, final int instanceFieldCount, final int staticElementCount, final boolean hasPrivateMethods, final boolean hasPrivateInstanceMethods) {
+    public ClassNode(long token, int finish, IdentNode ident, Expression classHeritage, ClassElement constructor, List<ClassElement> classElements, List<Expression> classDecorators,
+                    Scope scope, int staticElementCount, boolean hasPrivateMethods, boolean hasPrivateInstanceMethods, boolean hasInstanceFieldsOrAccessors, boolean hasClassElementDecorators) {
         super(token, finish);
         this.ident = ident;
         this.classHeritage = classHeritage;
         this.constructor = constructor;
         this.classElements = List.copyOf(classElements);
         this.scope = scope;
-        this.instanceFieldCount = instanceFieldCount;
         this.staticElementCount = staticElementCount;
         this.hasPrivateMethods = hasPrivateMethods;
         this.hasPrivateInstanceMethods = hasPrivateInstanceMethods;
+        this.hasInstanceFieldsOrAccessors = hasInstanceFieldsOrAccessors;
+        this.hasClassElementDecorators = hasClassElementDecorators;
         this.classDecorators = classDecorators;
-        assert instanceFieldCount == elementCount(classElements, false);
         assert staticElementCount == elementCount(classElements, true);
     }
 
@@ -97,17 +97,18 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.constructor = constructor;
         this.classElements = List.copyOf(classElements);
         this.scope = classNode.scope;
-        this.instanceFieldCount = elementCount(classElements, false);
         this.staticElementCount = elementCount(classElements, true);
         this.hasPrivateMethods = classNode.hasPrivateMethods;
         this.hasPrivateInstanceMethods = classNode.hasPrivateInstanceMethods;
+        this.hasInstanceFieldsOrAccessors = classNode.hasInstanceFieldsOrAccessors;
+        this.hasClassElementDecorators = classNode.hasClassElementDecorators;
         this.classDecorators = classDecorators;
     }
 
     private static int elementCount(List<ClassElement> classElements, boolean isStatic) {
         int count = 0;
         for (ClassElement classElement : classElements) {
-            if (classElement.isStatic() == isStatic && (classElement.isClassField() || classElement.isClassStaticBlock())) {
+            if (classElement.isStatic() == isStatic) {
                 count++;
             }
         }
@@ -212,12 +213,12 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         return scope.isClassBodyScope() ? scope.getParent() : scope;
     }
 
-    public boolean hasInstanceFields() {
-        return instanceFieldCount != 0;
+    public boolean hasInstanceFieldsOrAccessors() {
+        return hasInstanceFieldsOrAccessors;
     }
 
-    public int getInstanceFieldCount() {
-        return instanceFieldCount;
+    public int getInstanceElementCount() {
+        return classElements.size() - getStaticElementCount();
     }
 
     public boolean hasStaticElements() {
@@ -234,6 +235,18 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
 
     public boolean hasPrivateInstanceMethods() {
         return hasPrivateInstanceMethods;
+    }
+
+    public boolean hasClassElementDecorators() {
+        return hasClassElementDecorators;
+    }
+
+    /**
+     * Returns true if the class has any instance elements that need to be initialized in the
+     * constructor (i.e. fields, accessors, or private methods).
+     */
+    public boolean needsInitializeInstanceElements() {
+        return hasInstanceFieldsOrAccessors() || hasPrivateInstanceMethods();
     }
 
     public boolean isAnonymous() {

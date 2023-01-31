@@ -53,9 +53,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord;
@@ -63,8 +60,8 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -89,7 +86,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
 
-    private static final JSFunctionObject[] EMPTY_INITIALIZERS = new JSFunctionObject[0];
+    private static final Object[] EMPTY_INITIALIZERS = ScriptArray.EMPTY_OBJECT_ARRAY;
 
     @Child @Executed protected JavaScriptNode targetNode;
     @Child @Executed protected JavaScriptNode constructorNode;
@@ -103,7 +100,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         this.targetNode = targetNode;
         this.constructorNode = constructorNode;
         if (constructorNode != null) {
-            this.fieldsNode = PropertyNode.createGetHidden(context, null, JSFunction.CLASS_FIELDS_ID);
+            this.fieldsNode = PropertyNode.createGetHidden(context, null, JSFunction.CLASS_ELEMENTS_ID);
             this.brandNode = PropertyNode.createGetHidden(context, null, JSFunction.PRIVATE_BRAND_ID);
             this.initializersNode = PropertyNode.createGetHidden(context, null, JSFunction.CLASS_INITIALIZERS_ID);
         }
@@ -121,13 +118,13 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         return executeEvaluated(targetConstructor, Undefined.instance, staticElements, EMPTY_INITIALIZERS, Undefined.instance);
     }
 
-    protected abstract Object executeEvaluated(Object target, Object constructor, ClassElementDefinitionRecord[] fields, JSFunctionObject[] initializers, Object brand);
+    protected abstract Object executeEvaluated(Object target, Object constructor, ClassElementDefinitionRecord[] fields, Object[] initializers, Object brand);
 
     @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL)
     @Specialization
-    protected static Object withFields(Object target, Object constructor, ClassElementDefinitionRecord[] fields, JSFunctionObject[] initializers, Object brand,
+    protected static Object withFields(Object target, Object constructor, ClassElementDefinitionRecord[] fields, Object[] initializers, Object brand,
                     @Cached(value = "createBrandAddNode(brand, context)", neverDefault = false) @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode,
-                    @Cached("createFieldNodes(fields, context)") DefineFieldNode[] fieldNodes,
+                    @Cached("createFieldNodes(fields, context)") InitializeFieldOrAccessorNode[] fieldNodes,
                     @Cached("createCall()") JSFunctionCallNode callInit) {
         privateBrandAdd(target, constructor, fields, initializers, brand, privateBrandAddNode);
 
@@ -136,20 +133,13 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         int size = fieldNodes.length;
         assert size == fields.length;
         for (int i = 0; i < size; i++) {
-            ClassElementDefinitionRecord record = fields[i];
-            // run default initializer
-            Object initValue = fieldNodes[i].defineField(target, record);
-            // run decorators-defined initializers
-            Object[] fieldInitializers = record.getInitializers();
-            for (Object initializer : fieldInitializers) {
-                initValue = fieldNodes[i].defineFieldWithInitializer(target, record, initializer, initValue);
-            }
+            fieldNodes[i].defineField(target, fields[i]);
         }
         return target;
     }
 
-    private static void executeInitializers(Object target, JSFunctionObject[] initializers, JSFunctionCallNode callInit) {
-        for (JSFunctionObject initializer : initializers) {
+    private static void executeInitializers(Object target, Object[] initializers, JSFunctionCallNode callInit) {
+        for (Object initializer : initializers) {
             callInit.executeCall(JSArguments.createZeroArg(target, initializer));
         }
     }
@@ -181,62 +171,77 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     }
 
     @NeverDefault
-    static DefineFieldNode[] createFieldNodes(ClassElementDefinitionRecord[] fields, JSContext context) {
+    static InitializeFieldOrAccessorNode[] createFieldNodes(ClassElementDefinitionRecord[] fields, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         int size = fields.length;
-        DefineFieldNode[] fieldNodes = new DefineFieldNode[size];
+        InitializeFieldOrAccessorNode[] fieldNodes = new InitializeFieldOrAccessorNode[size];
         for (int i = 0; i < size; i++) {
             ClassElementDefinitionRecord field = fields[i];
             Object key = field.getKey();
             Object initializer = field.getValue();
-            boolean isAnonymousFunctionDefinition = (boolean) field.isAnonymousFunction();
+            boolean isAnonymousFunctionDefinition = field.isAnonymousFunction();
+            boolean hasInitializer = initializer != Undefined.instance;
             Node writeNode = null;
-            if (field instanceof ClassElementDefinitionRecord.AutoAccessor) {
-                writeNode = DynamicObjectLibrary.getFactory().createDispatched(5);
-            } else if (key instanceof HiddenKey) {
+            if (field.isAutoAccessor() || (field.isPrivate() && field.isField())) {
+                assert field.getBackingStorageKey() != null : key;
                 writeNode = PrivateFieldAddNode.create(context);
-            } else if (key != null) {
+            } else if (field.isField()) {
+                assert JSRuntime.isPropertyKey(key) : key;
                 writeNode = WriteElementNode.create(context, true, true);
+            } else if (!field.isStaticBlock()) {
+                assert field.isMethod() || field.isAccessor() : field;
+                hasInitializer = false;
             }
             JSFunctionCallNode callNode = null;
-            if (initializer != Undefined.instance) {
+            if (hasInitializer) {
                 callNode = JSFunctionCallNode.createCall();
             }
-            fieldNodes[i] = new DefineFieldNode(writeNode, callNode, isAnonymousFunctionDefinition);
+            fieldNodes[i] = new InitializeFieldOrAccessorNode(writeNode, callNode, isAnonymousFunctionDefinition);
         }
         return fieldNodes;
     }
 
-    static final class DefineFieldNode extends JavaScriptBaseNode {
+    static final class InitializeFieldOrAccessorNode extends JavaScriptBaseNode {
         @Child Node writeNode;
         @Child JSFunctionCallNode callNode;
         @Child JSFunctionCallNode callInitializersNode;
 
         private final boolean isAnonymousFunctionDefinition;
 
-        DefineFieldNode(Node writeNode, JSFunctionCallNode callNode, boolean isAnonymousFunctionDefinition) {
+        InitializeFieldOrAccessorNode(Node writeNode, JSFunctionCallNode callNode, boolean isAnonymousFunctionDefinition) {
             this.writeNode = writeNode;
             this.callNode = callNode;
             this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
         }
 
-        Object defineField(Object target, ClassElementDefinitionRecord record) {
-            assert (callNode != null) == (record.getValue() != Undefined.instance);
-            Object value = Undefined.instance;
+        void defineField(Object target, ClassElementDefinitionRecord record) {
+            Object initValue = Undefined.instance;
+            // run default (field or accessor) initializer or static initializer
             if (callNode != null) {
                 Object initializer = record.getValue();
                 Object key = record.getKey();
-                value = callNode.executeCall(
-                                isAnonymousFunctionDefinition ? JSArguments.create(target, initializer, Undefined.instance, key) : JSArguments.createOneArg(target, initializer, Undefined.instance));
+                // In the case of an anonymous function definition, the property key is supplied as
+                // an extra internal, not user-visible, argument that is used for named evaluation.
+                initValue = callNode.executeCall(isAnonymousFunctionDefinition
+                                ? JSArguments.create(target, initializer, Undefined.instance, key)
+                                : JSArguments.createOneArg(target, initializer, Undefined.instance));
+            } else {
+                assert record.getValue() == Undefined.instance || record.isMethod() || record.isAccessor() : record;
             }
-            return writeValue(target, record, value);
+            if (writeNode != null) {
+                // run decorators-defined initializers
+                for (int i = 0; i < record.getInitializersCount(); i++) {
+                    Object initializer = record.getInitializers()[i];
+                    initValue = callExtraInitializer(target, initializer, initValue);
+                }
+                writeValue(target, record, initValue);
+            } else {
+                assert (record.isMethod() || record.isAccessor() || record.isStaticBlock()) && record.getInitializersCount() == 0 : record;
+            }
         }
 
-        Object defineFieldWithInitializer(Object target, ClassElementDefinitionRecord record, Object initializer, Object initValue) {
-            assert record.getInitializers().length > 0;
-            Object value = getInitializersCallNode().executeCall(
-                            isAnonymousFunctionDefinition ? JSArguments.create(target, initializer, initValue, record.getKey()) : JSArguments.createOneArg(target, initializer, initValue));
-            return writeValue(target, record, value);
+        private Object callExtraInitializer(Object target, Object initializer, Object initValue) {
+            return getInitializersCallNode().executeCall(JSArguments.createOneArg(target, initializer, initValue));
         }
 
         private JSFunctionCallNode getInitializersCallNode() {
@@ -247,20 +252,18 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             return callInitializersNode;
         }
 
-        private Object writeValue(Object target, ClassElementDefinitionRecord record, Object value) {
+        private void writeValue(Object target, ClassElementDefinitionRecord record, Object value) {
             if (writeNode instanceof PropertySetNode) {
                 ((PropertySetNode) writeNode).setValue(target, value);
             } else if (writeNode instanceof PrivateFieldAddNode) {
-                assert record.getKey() instanceof HiddenKey : record.getKey();
-                ((PrivateFieldAddNode) writeNode).execute(target, record.getKey(), value);
-            } else if (writeNode instanceof DynamicObjectLibrary) {
-                ClassElementDefinitionRecord.AutoAccessor autoAccessor = (ClassElementDefinitionRecord.AutoAccessor) record;
-                ((DynamicObjectLibrary) writeNode).put((DynamicObject) target, autoAccessor.getBackingStorageKey(), value);
+                // private field or backing storage of an auto accessor
+                assert record.getBackingStorageKey() != null : record.getKey();
+                ((PrivateFieldAddNode) writeNode).execute(target, record.getBackingStorageKey(), value);
             } else if (writeNode != null) {
+                // public field
                 assert JSRuntime.isPropertyKey(record.getKey()) : record.getKey();
                 ((WriteElementNode) writeNode).executeWithTargetAndIndexAndValue(target, record.getKey(), value);
             }
-            return value;
         }
     }
 }

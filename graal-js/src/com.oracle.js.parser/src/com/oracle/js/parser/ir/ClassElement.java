@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ public final class ClassElement extends PropertyNode {
     private static final int KIND_ACCESSOR = 1 << 1;
     private static final int KIND_FIELD = 1 << 2;
     private static final int KIND_STATIC_INIT = 1 << 3;
+    private static final int KIND_AUTO_ACCESSOR = 1 << 4;
 
     /** Class element kind. */
     private final int kind;
@@ -65,22 +66,18 @@ public final class ClassElement extends PropertyNode {
     /** Class element decorators. */
     private final List<Expression> decorators;
 
-    private final boolean isAutoAccessor;
-
     private ClassElement(long token, int finish, int kind, Expression key, Expression value, FunctionNode get, FunctionNode set, List<Expression> decorators,
-                    boolean hasComputedKey, boolean isAnonymousFunctionDefinition, boolean isStatic, boolean isAutoAccessor) {
+                    boolean hasComputedKey, boolean isAnonymousFunctionDefinition, boolean isStatic) {
         super(token, finish, key, value, get, set, isStatic, hasComputedKey, isAnonymousFunctionDefinition);
         this.kind = kind;
         this.decorators = decorators;
-        this.isAutoAccessor = isAutoAccessor;
     }
 
     private ClassElement(ClassElement element, int kind, Expression key, Expression value, FunctionNode get, FunctionNode set, List<Expression> decorators,
-                    boolean hasComputedKey, boolean isAnonymousFunctionDefinition, boolean isStatic, boolean isAutoAccessor) {
+                    boolean hasComputedKey, boolean isAnonymousFunctionDefinition, boolean isStatic) {
         super(element.getToken(), element.finish, key, value, get, set, isStatic, hasComputedKey, isAnonymousFunctionDefinition);
         this.kind = kind;
         this.decorators = decorators;
-        this.isAutoAccessor = isAutoAccessor;
     }
 
     /**
@@ -106,8 +103,7 @@ public final class ClassElement extends PropertyNode {
                         decorators,
                         hasComputedKey,
                         false,
-                        isStatic,
-                        false);
+                        isStatic);
     }
 
     /**
@@ -143,8 +139,7 @@ public final class ClassElement extends PropertyNode {
                         decorators,
                         hasComputedKey,
                         false,
-                        isStatic,
-                        false);
+                        isStatic);
     }
 
     /**
@@ -168,7 +163,7 @@ public final class ClassElement extends PropertyNode {
                     boolean isStatic,
                     boolean hasComputedKey,
                     boolean anonymousFunctionDefinition) {
-        return new ClassElement(token, finish, KIND_FIELD, key, initialize, null, null, decorators, hasComputedKey, anonymousFunctionDefinition, isStatic, false);
+        return new ClassElement(token, finish, KIND_FIELD, key, initialize, null, null, decorators, hasComputedKey, anonymousFunctionDefinition, isStatic);
     }
 
     /**
@@ -181,7 +176,7 @@ public final class ClassElement extends PropertyNode {
      * @return A ClassElement node representing a default constructor.
      */
     public static ClassElement createDefaultConstructor(long token, int finish, Expression key, Expression value) {
-        return new ClassElement(token, finish, KIND_METHOD, key, value, null, null, null, false, false, false, false);
+        return new ClassElement(token, finish, KIND_METHOD, key, value, null, null, null, false, false, false);
     }
 
     /**
@@ -193,7 +188,7 @@ public final class ClassElement extends PropertyNode {
      * @return A ClassElement node representing a static initializer.
      */
     public static ClassElement createStaticInitializer(long token, int finish, FunctionNode functionNode) {
-        return new ClassElement(token, finish, KIND_STATIC_INIT, null, functionNode, null, null, null, false, false, true, false);
+        return new ClassElement(token, finish, KIND_STATIC_INIT, null, functionNode, null, null, null, false, false, true);
     }
 
     /**
@@ -211,7 +206,7 @@ public final class ClassElement extends PropertyNode {
      */
     public static ClassElement createAutoAccessor(long token, int finish, Expression key, FunctionNode initializer, List<Expression> classElementDecorators, boolean isStatic, boolean hasComputedKey,
                     boolean anonymousFunctionDefinition) {
-        return new ClassElement(token, finish, KIND_FIELD, key, initializer, null, null, classElementDecorators, hasComputedKey, anonymousFunctionDefinition, isStatic, true);
+        return new ClassElement(token, finish, KIND_AUTO_ACCESSOR, key, initializer, null, null, classElementDecorators, hasComputedKey, anonymousFunctionDefinition, isStatic);
     }
 
     @Override
@@ -242,7 +237,7 @@ public final class ClassElement extends PropertyNode {
         if (this.decorators == decorators) {
             return this;
         }
-        return new ClassElement(this, kind, key, value, getter, setter, decorators, computed, isAnonymousFunctionDefinition, isStatic, isAutoAccessor);
+        return new ClassElement(this, kind, key, value, getter, setter, decorators, computed, isAnonymousFunctionDefinition, isStatic);
     }
 
     @Override
@@ -250,14 +245,14 @@ public final class ClassElement extends PropertyNode {
         if (this.getter == get) {
             return this;
         }
-        return new ClassElement(this, kind, key, value, get, setter, decorators, computed, isAnonymousFunctionDefinition, isStatic, isAutoAccessor);
+        return new ClassElement(this, kind, key, value, get, setter, decorators, computed, isAnonymousFunctionDefinition, isStatic);
     }
 
     public ClassElement setKey(final Expression key) {
         if (this.key == key) {
             return this;
         }
-        return new ClassElement(this, kind, key, value, getter, setter, decorators, computed, isAnonymousFunctionDefinition, isStatic, isAutoAccessor);
+        return new ClassElement(this, kind, key, value, getter, setter, decorators, computed, isAnonymousFunctionDefinition, isStatic);
     }
 
     @Override
@@ -265,7 +260,7 @@ public final class ClassElement extends PropertyNode {
         if (this.setter == set) {
             return this;
         }
-        return new ClassElement(this, kind, key, value, getter, set, decorators, computed, isAnonymousFunctionDefinition, isStatic, isAutoAccessor);
+        return new ClassElement(this, kind, key, value, getter, set, decorators, computed, isAnonymousFunctionDefinition, isStatic);
     }
 
     @Override
@@ -273,7 +268,7 @@ public final class ClassElement extends PropertyNode {
         if (this.value == value) {
             return this;
         }
-        return new ClassElement(this, kind, key, value, getter, setter, decorators, computed, isAnonymousFunctionDefinition, isStatic, isAutoAccessor);
+        return new ClassElement(this, kind, key, value, getter, setter, decorators, computed, isAnonymousFunctionDefinition, isStatic);
     }
 
     @Override
@@ -282,12 +277,19 @@ public final class ClassElement extends PropertyNode {
     }
 
     public boolean isAutoAccessor() {
-        return isAutoAccessor;
+        return (kind & KIND_AUTO_ACCESSOR) != 0;
     }
 
     @Override
     public boolean isClassField() {
         return (kind & KIND_FIELD) != 0;
+    }
+
+    /**
+     * Returns true if the class element is one of: field, auto accessor.
+     */
+    public boolean isClassFieldOrAutoAccessor() {
+        return isClassField() || isAutoAccessor();
     }
 
     @Override
@@ -297,6 +299,13 @@ public final class ClassElement extends PropertyNode {
 
     public boolean isMethod() {
         return (kind & KIND_METHOD) != 0;
+    }
+
+    /**
+     * Returns true if the class element is one of: method, getter, setter, auto accessor.
+     */
+    public boolean isMethodOrAccessor() {
+        return isMethod() || isAccessor() || isAutoAccessor();
     }
 
     @Override
@@ -320,6 +329,9 @@ public final class ClassElement extends PropertyNode {
         }
         if (isStatic()) {
             sb.append("static ");
+            if (isClassStaticBlock()) {
+                sb.append("{}");
+            }
         }
         if (isAutoAccessor()) {
             sb.append("accessor ");
@@ -340,9 +352,10 @@ public final class ClassElement extends PropertyNode {
                 setter.toStringTail(sb, printType);
             }
         }
-        if (isClassField()) {
+        if (isClassFieldOrAutoAccessor()) {
             toStringKey(sb, printType);
             if (value != null) {
+                sb.append(" = ");
                 value.toString(sb, printType);
             }
         }
