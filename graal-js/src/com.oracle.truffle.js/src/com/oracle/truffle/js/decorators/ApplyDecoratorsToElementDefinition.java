@@ -51,6 +51,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.DecorationState;
+import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
@@ -195,14 +196,16 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Cached("create(SET, context)") PropertyGetNode getSetterNode,
                     @Cached("create(INIT, context)") PropertyGetNode getInitNode,
                     @Cached("create(context)") CreateObjectNode createObjectNode,
+                    @Cached("create(context, GET)") CreateDataPropertyNode createGetDataPropertyNode,
+                    @Cached("create(context, SET)") CreateDataPropertyNode createSetDataPropertyNode,
                     @Cached IsObjectNode isObjectNode,
                     @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) {
         for (Object decorator : record.getDecorators()) {
             DecorationState state = new DecorationState();
             JSDynamicObject decoratorContext = createDecoratorContextNode.executeContext(frame, record, extraInitializers, state);
             JSDynamicObject value = createObjectNode.execute(frame);
-            JSRuntime.createDataPropertyOrThrow(value, Strings.GET, record.getGetter());
-            JSRuntime.createDataPropertyOrThrow(value, Strings.SET, record.getSetter());
+            createGetDataPropertyNode.executeVoid(value, Strings.GET, record.getGetter());
+            createSetDataPropertyNode.executeVoid(value, Strings.SET, record.getSetter());
             Object newValue = callNode.executeCall(JSArguments.create(Undefined.instance, decorator, value, decoratorContext));
             state.finished = true;
             if (isObjectNode.executeBoolean(newValue)) {
