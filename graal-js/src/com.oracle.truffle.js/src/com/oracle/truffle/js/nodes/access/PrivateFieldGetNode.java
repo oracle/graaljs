@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -104,7 +105,12 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     }
 
     @Specialization
-    Object doMethod(@SuppressWarnings("unused") JSObject target, JSFunctionObject method) {
+    Object doMethodJSFunction(@SuppressWarnings("unused") JSObject target, JSFunctionObject method) {
+        return method;
+    }
+
+    @Specialization(guards = {"!isUndefined(method)"}, replaces = "doMethodJSFunction")
+    Object doMethodGeneric(@SuppressWarnings("unused") JSObject target, TruffleObject method) {
         return method;
     }
 
