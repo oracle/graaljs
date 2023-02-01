@@ -1304,19 +1304,19 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
                 JSDynamicObject prototype = foreignObjectPrototypeNode.execute(thisObj);
-                return getFromJSObject(prototype, key);
+                return getFromJSObject(prototype, key, thisObj);
             }
             return Undefined.instance;
         }
 
-        private Object getFromJSObject(Object object, Object key) {
+        private Object getFromJSObject(Object object, Object key, Object receiver) {
             assert JSObject.isJSObject(object);
             if (getFromJSObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getFromJSObjectNode = insert(PropertyGetNode.create(key, context));
             }
             assert key.equals(getFromJSObjectNode.getKey());
-            return getFromJSObjectNode.getValue(object);
+            return getFromJSObjectNode.getValueOrUndefined(object, receiver);
         }
 
         // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()` or `javaObj.isXyz()`.
