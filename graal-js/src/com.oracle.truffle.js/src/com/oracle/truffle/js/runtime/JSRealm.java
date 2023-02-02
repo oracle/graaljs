@@ -289,6 +289,7 @@ public class JSRealm {
     private final JSDynamicObject foreignStringPrototype;
     private final JSDynamicObject foreignNumberPrototype;
     private final JSDynamicObject foreignBooleanPrototype;
+    private final JSDynamicObject foreignErrorPrototype;
     private final JSDynamicObject foreignFunctionPrototype;
     private final JSDynamicObject foreignObjectPrototype;
 
@@ -1058,6 +1059,7 @@ public class JSRealm {
         this.foreignStringPrototype = JSOrdinary.createInit(this, this.stringPrototype);
         this.foreignNumberPrototype = JSOrdinary.createInit(this, this.numberPrototype);
         this.foreignBooleanPrototype = JSOrdinary.createInit(this, this.booleanPrototype);
+        this.foreignErrorPrototype = JSOrdinary.createInit(this, getErrorPrototype(JSErrorType.Error));
         this.foreignFunctionPrototype = JSOrdinary.createInit(this, this.functionPrototype);
         this.foreignObjectPrototype = JSOrdinary.createInit(this, this.objectPrototype);
     }
@@ -1600,6 +1602,10 @@ public class JSRealm {
 
     public JSDynamicObject getForeignBooleanPrototype() {
         return foreignBooleanPrototype;
+    }
+
+    public JSDynamicObject getForeignErrorPrototype() {
+        return foreignErrorPrototype;
     }
 
     public JSDynamicObject getForeignFunctionPrototype() {
