@@ -55,6 +55,7 @@ import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototy
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeCauseNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeMessageNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeStackNodeGen;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -70,7 +71,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -131,8 +131,9 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             super(context, builtin);
         }
 
-        @Specialization(guards = "!isJSObject(thisObj)")
+        @Specialization(guards = "!isObjectNode.executeBoolean(thisObj)")
         protected Object toStringNonObject(Object thisObj,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
                         @Cached @Shared JSToStringNode toStringNode,
                         @Cached TruffleString.ConcatNode concatNode) {
             TruffleString name = toStringNode.executeString(thisObj);
@@ -140,8 +141,9 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             throw Errors.createTypeError(message, this);
         }
 
-        @Specialization
-        protected Object toStringObject(JSObject errorObj,
+        @Specialization(guards = "isObjectNode.executeBoolean(errorObj)")
+        protected Object toStringObject(Object errorObj,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
                         @Cached("create(NAME, false, getContext())") PropertyGetNode getNameNode,
                         @Cached("create(MESSAGE, false, getContext())") PropertyGetNode getMessageNode,
                         @Cached @Shared JSToStringNode toStringNode) {
