@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,21 +43,32 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeGetStackTraceNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeToStringNodeGen;
+import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeCauseNodeGen;
+import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeMessageNodeGen;
+import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeStackNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -204,4 +215,121 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             }
         }
     }
+
+    public static final class ForeignErrorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ForeignErrorPrototypeBuiltins.ForeignError> {
+        public static final JSBuiltinsContainer BUILTINS = new ForeignErrorPrototypeBuiltins();
+
+        protected ForeignErrorPrototypeBuiltins() {
+            super(JSError.PROTOTYPE_NAME, ForeignError.class);
+        }
+
+        public enum ForeignError implements BuiltinEnum<ForeignError> {
+            cause(0),
+            message(0),
+            stack(0);
+
+            private final int length;
+
+            ForeignError(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+
+            @Override
+            public boolean isGetter() {
+                return true;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ForeignError builtinEnum) {
+            switch (builtinEnum) {
+                case cause:
+                    return ForeignErrorPrototypeCauseNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case message:
+                    return ForeignErrorPrototypeMessageNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case stack:
+                    return ForeignErrorPrototypeStackNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            }
+            return null;
+        }
+    }
+
+    @ImportStatic(JSConfig.class)
+    public abstract static class ForeignErrorPrototypeMessageNode extends JSBuiltinNode {
+
+        public ForeignErrorPrototypeMessageNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object getMessage(Object error,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached ImportValueNode importNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (interop.hasExceptionMessage(error)) {
+                try {
+                    Object message = interop.getExceptionMessage(error);
+                    return importNode.executeWithTarget(message);
+                } catch (UnsupportedMessageException umex) {
+                    errorBranch.enter(this);
+                    throw Errors.createTypeErrorInteropException(error, umex, "getExceptionMessage", this);
+                }
+            }
+            return Strings.EMPTY_STRING;
+        }
+
+    }
+
+    @ImportStatic(JSConfig.class)
+    public abstract static class ForeignErrorPrototypeStackNode extends JSBuiltinNode {
+
+        public ForeignErrorPrototypeStackNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object getStack(Object error,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interopStr,
+                        @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+            if (interop.hasExceptionStackTrace(error)) {
+                String stack = JSInteropUtil.formatError(error, interop, interopStr);
+                return Strings.fromJavaString(fromJavaStringNode, stack);
+            }
+            return Undefined.instance;
+        }
+
+    }
+
+    @ImportStatic(JSConfig.class)
+    public abstract static class ForeignErrorPrototypeCauseNode extends JSBuiltinNode {
+
+        public ForeignErrorPrototypeCauseNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object getCause(Object error,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached ImportValueNode importNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (interop.hasExceptionCause(error)) {
+                try {
+                    Object cause = interop.getExceptionCause(error);
+                    return importNode.executeWithTarget(cause);
+                } catch (UnsupportedMessageException umex) {
+                    errorBranch.enter(this);
+                    throw Errors.createTypeErrorInteropException(error, umex, "getExceptionCause", this);
+                }
+            }
+            return Undefined.instance;
+        }
+
+    }
+
 }

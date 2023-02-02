@@ -1059,7 +1059,7 @@ public class JSRealm {
         this.foreignStringPrototype = JSOrdinary.createInit(this, this.stringPrototype);
         this.foreignNumberPrototype = JSOrdinary.createInit(this, this.numberPrototype);
         this.foreignBooleanPrototype = JSOrdinary.createInit(this, this.booleanPrototype);
-        this.foreignErrorPrototype = JSOrdinary.createInit(this, getErrorPrototype(JSErrorType.Error));
+        this.foreignErrorPrototype = JSError.createForeignErrorPrototype(this);
         this.foreignFunctionPrototype = JSOrdinary.createInit(this, this.functionPrototype);
         this.foreignObjectPrototype = JSOrdinary.createInit(this, this.objectPrototype);
     }
