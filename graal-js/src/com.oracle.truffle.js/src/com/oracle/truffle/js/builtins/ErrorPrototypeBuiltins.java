@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -123,11 +124,8 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
         }
     }
 
+    @ImportStatic(Strings.class)
     public abstract static class ErrorPrototypeToStringNode extends JSBuiltinNode {
-
-        @Child private PropertyGetNode getNameNode;
-        @Child private PropertyGetNode getMessageNode;
-        @Child private JSToStringNode toStringNode;
 
         public ErrorPrototypeToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -135,18 +133,22 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object toStringNonObject(Object thisObj,
+                        @Cached @Shared JSToStringNode toStringNode,
                         @Cached TruffleString.ConcatNode concatNode) {
-            TruffleString name = toStringConv(thisObj);
+            TruffleString name = toStringNode.executeString(thisObj);
             String message = Strings.toJavaString(Strings.concat(concatNode, Strings.METHOD_ERROR_PROTOTYPE_TO_STRING_CALLED_ON_INCOMPATIBLE_RECEIVER, name));
             throw Errors.createTypeError(message, this);
         }
 
-        @Specialization(guards = "isJSObject(errorObj)")
-        protected Object toStringObject(JSDynamicObject errorObj) {
-            Object objName = getName(errorObj);
-            TruffleString strName = (objName == Undefined.instance) ? Strings.UC_ERROR : toStringConv(objName);
-            Object objMessage = getMessage(errorObj);
-            TruffleString strMessage = (objMessage == Undefined.instance) ? Strings.EMPTY_STRING : toStringConv(objMessage);
+        @Specialization
+        protected Object toStringObject(JSObject errorObj,
+                        @Cached("create(NAME, false, getContext())") PropertyGetNode getNameNode,
+                        @Cached("create(MESSAGE, false, getContext())") PropertyGetNode getMessageNode,
+                        @Cached @Shared JSToStringNode toStringNode) {
+            Object objName = getNameNode.getValue(errorObj);
+            TruffleString strName = (objName == Undefined.instance) ? Strings.UC_ERROR : toStringNode.executeString(objName);
+            Object objMessage = getMessageNode.getValue(errorObj);
+            TruffleString strMessage = (objMessage == Undefined.instance) ? Strings.EMPTY_STRING : toStringNode.executeString(objMessage);
             if (Strings.length(strName) == 0) {
                 return strMessage;
             }
@@ -156,34 +158,11 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             return toStringIntl(strName, strMessage);
         }
 
-        private TruffleString toStringConv(Object value) {
-            if (toStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toStringNode = insert(JSToStringNode.create());
-            }
-            return toStringNode.executeString(value);
-        }
-
         @TruffleBoundary
         private static Object toStringIntl(TruffleString strName, TruffleString strMessage) {
             return Strings.concatAll(strName, Strings.COLON_SPACE, strMessage);
         }
 
-        protected Object getName(JSDynamicObject errObj) {
-            if (getNameNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getNameNode = insert(PropertyGetNode.create(JSError.NAME, false, getContext()));
-            }
-            return getNameNode.getValue(errObj);
-        }
-
-        protected Object getMessage(JSDynamicObject errObj) {
-            if (getMessageNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getMessageNode = insert(PropertyGetNode.create(JSError.MESSAGE, false, getContext()));
-            }
-            return getMessageNode.getValue(errObj);
-        }
     }
 
     public abstract static class ErrorPrototypeGetStackTraceNode extends JSBuiltinNode {
