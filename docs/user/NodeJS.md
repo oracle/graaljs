@@ -17,10 +17,10 @@ Since GraalVM 21.1, the Node.js support is packaged in a separate GraalVM compon
 It can be installed with the _GraalVM Updater_.
 
 ```shell
-$GRAALVM/bin/gu install nodejs
+$JAVA_HOME/bin/gu install nodejs
 ```
 
-This installs the `node` and `npm` binaries in the `$GRAALVM/bin` directory.
+This installs the `node` and `npm` binaries in the `$JAVA_HOME/bin` directory.
 
 ### Polyglot Support in Node.js
 
@@ -29,28 +29,28 @@ This feature is available by default in JVM mode (flag: `--jvm`).
 For polyglot access to the Ruby language, you can e.g. use this command:
 
 ```shell
-$GRAALVM_HOME/bin/node --jvm --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
+$JAVA_HOME/bin/node --jvm --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
 ```
 
 To use the polyglot capabilities of `node` in the native mode (flag: `--native`), the `libpolyglot` needs to be rebuilt first.
 For this, the `native-image` component and the other languages need to be installed first, before the image can be rebuilt:
 
 ```shell
-$GRAALVM_HOME/bin/gu install native-image
-$GRAALVM_HOME/bin/gu rebuild-images libpolyglot
+$JAVA_HOME/bin/gu install native-image
+$JAVA_HOME/bin/gu rebuild-images libpolyglot
 ```
 
 After a successfull rebuild, the polyglot access is also available in the `--native` mode:
 
 ```shell
-$GRAALVM_HOME/bin/node --native --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
+$JAVA_HOME/bin/node --native --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
 ```
 
 ## Running Node.js Applications
 
 To run Node.js-based applications, use the `node` launcher in the GraalVM distribution:
 ```shell
-$GRAALVM_HOME/bin/node [options] [filename] [args]
+$JAVA_HOME/bin/node [options] [filename] [args]
 ```
 
 GraalVM's Node.js runtime is based on a recent version of Node.js, and runs the
@@ -66,7 +66,7 @@ The `npm` command is equivalent to the default NPM command, and supports most of
 
 An NPM package can be installed with:
 ```shell
-$GRAALVM_HOME/bin/npm install <package>
+$JAVA_HOME/bin/npm install <package>
 ```
 
 As the `npm` command of GraalVM is largely compatible with NPM, packages will be installed in the `node_modules` folder, as expected.
@@ -75,13 +75,13 @@ As the `npm` command of GraalVM is largely compatible with NPM, packages will be
 
 Node packages can be installed globally using `npm` and the `-g` option.
 By default, `npm` installs global packages (links to their executables) in the path where the `node` executable is installed, typically `NODE/bin`.
-In GraalVM, while there is a `node` executable in `GRAALVM/bin`, this is just a link to the actual executable in the `GRAALVM/jre/languages/js/bin` folder.
+In GraalVM, while there is a `node` executable in `JAVA_HOME/bin`, this is just a link to the actual executable in the `JAVA_HOME/jre/languages/js/bin` folder.
 That folder is where global packages are installed.
 You might want to add that directory to your `$PATH` if you regularly use globally installed packages, especially their command line interfaces.
 
 Another option is to specify the global installation folder of `npm` by setting the `$PREFIX` environment variable, or by specifying the `--prefix` option when running `npm install`.
 For example, the following command will install global packages in the `/foo/bar` folder:
 ```shell
-$GRAALVM_HOME/bin/npm install --prefix /foo/bar -g <package>
+$JAVA_HOME/bin/npm install --prefix /foo/bar -g <package>
 ```
 More details about `prefix` can be found in the [official NPM documentation](https://docs.npmjs.com/cli/prefix.html).

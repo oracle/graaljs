@@ -16,18 +16,18 @@ Since GraalVM 22.2, the JavaScript support is packaged in a separate GraalVM com
 It can be installed with the _GraalVM Updater_:
 
 ```shell
-$GRAALVM/bin/gu install js
+$JAVA_HOME/bin/gu install js
 ```
 
 Alternatively, you can download the JavaScript component and install it from a file, e.g.:
 
 ```shell
-$GRAALVM/bin/gu install --file ~/Downloads/js-...-.jar
+$JAVA_HOME/bin/gu install --file ~/Downloads/js-...-.jar
 ```
-This installs `js` in the `$GRAALVM_HOME/bin` directory.
+This installs `js` in the `$JAVA_HOME/bin` directory.
 When the JavaScript component is installed, GraalVM can run plain JavaScript (ECMAScript) code:
 ```shell
-$GRAALVM/bin/js [options] [filename...] -- [args]
+$JAVA_HOME/bin/js [options] [filename...] -- [args]
 ```
 
 For information about the compatibility of GraalVM JavaScript with existing standards and engines, see [JavaScriptCompatibility](JavaScriptCompatibility.md).
@@ -39,22 +39,22 @@ Since GraalVM 21.1, the Node.js support is packaged in a separate GraalVM compon
 It can be installed with the _GraalVM Updater_:
 
 ```shell
-$GRAALVM/bin/gu install nodejs
+$JAVA_HOME/bin/gu install nodejs
 ```
 
 Alternatively, you can download the Node.js component and install it from a file, e.g.:
 
 ```shell
-$GRAALVM/bin/gu install --file ~/Downloads/nodejs-installable-...-.jar
+$JAVA_HOME/bin/gu install --file ~/Downloads/nodejs-installable-...-.jar
 ```
 
-This installs `node` and `npm` launchers in the `$GRAALVM_HOME/bin` directory.
+This installs `node` and `npm` launchers in the `$JAVA_HOME/bin` directory.
 Use the `node` utility to execute Node.js applications:
 ```shell
 node [options] [filename] [args]
 ```
 
-To install a Node.js package, use the `npm` launcher from `$GRAALVM_HOME/bin`.
+To install a Node.js package, use the `npm` launcher from `$JAVA_HOME/bin`.
 The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
 
 1. Install the `colors` and `ansispan` packages using `npm install` as follows:
