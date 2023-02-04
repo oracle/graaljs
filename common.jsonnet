@@ -25,8 +25,11 @@ local common_json = (import "common.json");
   daily:       {targets+: ['daily']},
   weekly:      {targets+: ['weekly']},
 
+  local packages(platform) =
+    if 'packages' in common_json.sulong.deps[platform] then common_json.sulong.deps[platform].packages else {},
+
   local common = {
-    packages+: {
+    packages+: packages('common') + {
       'mx': common_json.mx_version,
       'python3': '==3.8.10',
       'pip:pylint': '==2.4.4',
@@ -53,7 +56,7 @@ local common_json = (import "common.json");
   linux: common + self.ol7 + {
     os:: 'linux',
     arch:: 'amd64',
-    packages+: common_json.sulong.deps.linux.packages + {
+    packages+: packages('linux') + {
       'apache/ab': '==2.3',
       devtoolset: '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
       git: '>=1.8.3',
@@ -78,7 +81,7 @@ local common_json = (import "common.json");
   darwin: common + {
     os:: 'darwin',
     arch:: 'amd64',
-    packages+: common_json.sulong.deps.darwin_amd64.packages,
+    packages+: packages('darwin_amd64'),
     environment+: {
       // for compatibility with macOS El Capitan
       MACOSX_DEPLOYMENT_TARGET: '10.11',
@@ -89,7 +92,7 @@ local common_json = (import "common.json");
   darwin_aarch64: common + {
     os:: 'darwin',
     arch:: 'aarch64',
-    packages+: common_json.sulong.deps.darwin_aarch64.packages,
+    packages+: packages('darwin_aarch64'),
     environment+: {
       // for compatibility with macOS BigSur
       MACOSX_DEPLOYMENT_TARGET: '11.0',
@@ -101,7 +104,7 @@ local common_json = (import "common.json");
     os:: 'windows',
     arch:: 'amd64',
     capabilities: ['windows', 'amd64'],
-    packages+: common_json.devkits["windows-" + self.jdk].packages,
+    packages+: packages('windows') + common_json.devkits["windows-" + self.jdk].packages,
     devkit_version:: std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(self.packages))[0],
     setup+: [
       ['set-export', 'DEVKIT_VERSION', self.devkit_version],
