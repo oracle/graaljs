@@ -375,11 +375,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             case groupToMap:
                 return JSArrayGroupToMapNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
 
-            case groupBy:
-                return JSArrayGroupByNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
-            case groupByToMap:
-                return JSArrayGroupByToMapNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
-
             case toReversed:
                 return ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(0).createArgumentNodes(context));
             case toSorted:

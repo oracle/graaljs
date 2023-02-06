@@ -6568,9 +6568,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/order-dayPeriod.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/dateAdd/date-infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
