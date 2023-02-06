@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,7 +96,7 @@ public abstract class Log2Node extends MathOperation {
      * @return base 2 logarithm.
      */
     @TruffleBoundary
-    private static strictfp double log2Impl(final double x) {
+    private static double log2Impl(final double x) {
         double xAbs = Math.abs(x);
         final int hx = highBits(x);
         int ix = hx & 0x7fffffff;
