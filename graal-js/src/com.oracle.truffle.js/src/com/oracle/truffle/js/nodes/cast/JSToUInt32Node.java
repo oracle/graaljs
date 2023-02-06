@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -188,6 +189,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return unsignedRightShift;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"isUnsignedRightShift()"})
     protected Object doOverloadedOperator(JSOverloadedOperatorsObject value,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
