@@ -482,6 +482,19 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 LoopNode.reportLoopCount(node, count > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) count);
             }
         }
+
+        protected final Object createEmpty(JSDynamicObject thisObj, long length) {
+            if (isTypedArrayImplementation) {
+                return typedArrayCreateSameType(thisObj, length);
+            } else {
+                return JSArray.createEmpty(getContext(), getRealm(), length);
+            }
+        }
+
+        private Object typedArrayCreateSameType(JSDynamicObject thisObj, long length) {
+            JSDynamicObject constr = ArraySpeciesConstructorNode.getDefaultConstructor(getRealm(), thisObj);
+            return getArraySpeciesConstructorNode().typedArrayCreate(constr, length);
+        }
     }
 
     protected static class ArraySpeciesConstructorNode extends JavaScriptBaseNode {
@@ -522,7 +535,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         protected final JSTypedArrayObject typedArraySpeciesCreate(JSDynamicObject thisObj, Object... args) {
-            JSDynamicObject constr = speciesConstructor(thisObj, getDefaultConstructor(thisObj));
+            JSDynamicObject constr = speciesConstructor(thisObj, getDefaultConstructor(getRealm(), thisObj));
             return typedArrayCreate(constr, args);
         }
 
@@ -608,10 +621,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return constructorCall.executeCall(args);
         }
 
-        protected final JSDynamicObject getDefaultConstructor(JSDynamicObject thisObj) {
+        protected static final JSDynamicObject getDefaultConstructor(JSRealm realm, JSDynamicObject thisObj) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             TypedArray arrayType = JSArrayBufferView.typedArrayGetArrayType(thisObj);
-            return getRealm().getArrayBufferViewConstructor(arrayType.getFactory());
+            return realm.getArrayBufferViewConstructor(arrayType.getFactory());
         }
 
         /**
@@ -2714,14 +2727,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (isString(thisJSObj)) {
                 return reverseString((JSStringObject) thisJSObj);
             } else {
-                return reverseArray((JSDynamicObject) thisJSObj);
+                return reverseArray(thisJSObj);
             }
 
         }
 
-        private Object reverseArray(JSDynamicObject array) {
-            long length = arrayGetLength(array);
-            Object result = JSArray.createEmpty(getContext(), getRealm(), length);
+        private Object reverseArray(Object array) {
+            long length = getLength(array);
+            Object result = createEmpty((JSDynamicObject) array, length);
 
             for (long i = 0; i < length; i++) {
                 var value = read(array, length - 1 - i);
@@ -2765,13 +2778,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private Object sortArray(final Object thisJSObj, final Object compare) {
             JSArrayObject arrayObject = (JSArrayObject) thisJSObj;
-            long length = arrayGetLength((JSDynamicObject) thisJSObj);
+            long length = getLength(thisJSObj);
             Object[] array = JSArray.toArray(arrayObject);
             Comparator<Object> comparator = compare == null || compare == Undefined.instance ?
                     SortComparator.getDefaultComparator(arrayObject, isTypedArrayImplementation) :
                     new SortComparator(compare);
 
-            Object result = JSArray.createEmpty(getContext(), getRealm(), length);
+            Object result = createEmpty(arrayObject, length);
 
             Arrays.sort(array, comparator);
 

@@ -279,9 +279,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return GetTypedArrayBufferOrNameNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
 
             case toReversed:
-                return ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(0).createArgumentNodes(context));
+                return ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen.create(context, builtin, true, args().withThis().fixedArgs(0).createArgumentNodes(context));
             case toSorted:
-                return ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
