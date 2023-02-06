@@ -132,8 +132,8 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
     }
 
-    @Specialization(guards = "isForeignObject(value)")
-    protected Number doForeignObject(Object value,
+    @Specialization(guards = "isJSObject(value) || isForeignObject(value)", replaces = "doJSObject")
+    protected Number doJSOrForeignObject(Object value,
                     @Shared("toPrimitiveHintNumberNode") @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("toNumberNode") @Cached JSToNumberNode toNumberNode) {
         return toNumberNode.executeNumber(toPrimitiveNode.execute(value));

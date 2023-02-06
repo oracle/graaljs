@@ -133,9 +133,9 @@ public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
         return JSRuntime.toInt32(getToNumberNode().executeNumber(value));
     }
 
-    @Specialization(guards = "isForeignObject(object)")
-    protected int doForeignObject(Object object) {
-        return JSRuntime.toInt32(getToNumberNode().executeNumber(object));
+    @Specialization(guards = {"isJSObject(value) || isForeignObject(value)"}, replaces = "doJSObject")
+    protected int doJSOrForeignObject(Object value) {
+        return JSRuntime.toInt32(getToNumberNode().executeNumber(value));
     }
 
     private JSToNumberNode getToNumberNode() {

@@ -127,13 +127,13 @@ public abstract class JSToIntegerAsLongNode extends JavaScriptBaseNode {
 
     @Specialization
     protected long doJSObject(JSObject value,
-                    @Cached @Shared("toNumber") JSToNumberNode toNumberNode) {
+                    @Cached @Shared JSToNumberNode toNumberNode) {
         return JSRuntime.toInteger(toNumberNode.executeNumber(value));
     }
 
-    @Specialization(guards = "isForeignObject(value)")
-    protected long doForeignObject(Object value,
-                    @Cached @Shared("toNumber") JSToNumberNode toNumberNode) {
+    @Specialization(guards = {"isJSObject(value) || isForeignObject(value)"}, replaces = "doJSObject")
+    protected long doJSOrForeignObject(Object value,
+                    @Cached @Shared JSToNumberNode toNumberNode) {
         return JSRuntime.toInteger(toNumberNode.executeNumber(value));
     }
 
