@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -61,8 +60,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * This implements ECMA 9.3 ToNumber.
- *
+ * This implements the abstract operation ToNumber.
  */
 @GenerateUncached
 public abstract class JSToNumberNode extends JavaScriptBaseNode {
@@ -148,18 +146,13 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
 
     public abstract static class JSToNumberUnaryNode extends JSUnaryNode {
 
-        @Child private JSToNumberNode toNumberNode;
-
         protected JSToNumberUnaryNode(JavaScriptNode operand) {
             super(operand);
         }
 
         @Specialization
-        protected Object doDefault(Object value) {
-            if (toNumberNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toNumberNode = insert(JSToNumberNode.create());
-            }
+        protected static Object doDefault(Object value,
+                        @Cached JSToNumberNode toNumberNode) {
             return toNumberNode.executeNumber(value);
         }
 

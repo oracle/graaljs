@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -62,8 +62,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  * @see JSToIntegerAsLongNode
  */
 public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
-
-    @Child private JSToNumberNode toNumberNode;
 
     @NeverDefault
     public static JSToIntegerAsIntNode create() {
@@ -129,20 +127,14 @@ public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected int doJSObject(JSObject value) {
-        return JSRuntime.toInt32(getToNumberNode().executeNumber(value));
+    protected int doJSObject(JSObject value,
+                    @Shared @Cached JSToNumberNode toNumberNode) {
+        return JSRuntime.toInt32(toNumberNode.executeNumber(value));
     }
 
     @Specialization(guards = {"isJSObject(value) || isForeignObject(value)"}, replaces = "doJSObject")
-    protected int doJSOrForeignObject(Object value) {
-        return JSRuntime.toInt32(getToNumberNode().executeNumber(value));
-    }
-
-    private JSToNumberNode getToNumberNode() {
-        if (toNumberNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNumberNode = insert(JSToNumberNode.create());
-        }
-        return toNumberNode;
+    protected int doJSOrForeignObject(Object value,
+                    @Shared @Cached JSToNumberNode toNumberNode) {
+        return JSRuntime.toInt32(toNumberNode.executeNumber(value));
     }
 }

@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -56,7 +55,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
- * This implements ECMAScript 6 ToPropertyKey(argument).
+ * This implements the abstract operation ToPropertyKey(argument).
  */
 public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
 
@@ -92,7 +91,6 @@ public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
     }
 
     public abstract static class JSToPropertyKeyWrapperNode extends JSUnaryNode {
-        @Child private JSToPropertyKeyNode toPropertyKeyNode;
 
         protected JSToPropertyKeyWrapperNode(JavaScriptNode operand) {
             super(operand);
@@ -106,11 +104,8 @@ public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
         }
 
         @Specialization
-        protected Object doDefault(Object value) {
-            if (toPropertyKeyNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toPropertyKeyNode = insert(JSToPropertyKeyNode.create());
-            }
+        protected static Object doDefault(Object value,
+                        @Cached JSToPropertyKeyNode toPropertyKeyNode) {
             return toPropertyKeyNode.execute(value);
         }
 
