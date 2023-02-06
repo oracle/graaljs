@@ -52,10 +52,10 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSErrorType;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 
+@GenerateUncached
 public abstract class JSToBigIntNode extends JavaScriptBaseNode {
 
     public abstract BigInt execute(Object value);
@@ -71,7 +71,7 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
 
     @Specialization
     protected BigInt doIt(Object value,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Cached JSToBigIntInnerConversionNode innerConversionNode) {
 
         return innerConversionNode.execute(this, toPrimitiveNode.execute(value));
@@ -117,19 +117,5 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
                 throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.SyntaxError, value);
             }
         }
-    }
-
-    public static JSToBigIntNode getUncached() {
-        return new JSToBigIntNode() {
-            @Override
-            public BigInt execute(Object value) {
-                return JSRuntime.toBigInt(value);
-            }
-
-            @Override
-            public boolean isAdoptable() {
-                return false;
-            }
-        };
     }
 }

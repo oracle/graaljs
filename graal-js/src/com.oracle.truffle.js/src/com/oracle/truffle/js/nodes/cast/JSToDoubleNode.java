@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -56,6 +57,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  * This implements ECMA 9.3 ToNumber, but always converting the result to a double value.
  *
  */
+@GenerateUncached
 public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value);
@@ -105,8 +107,8 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     @Specialization
     protected double doJSObject(JSObject value,
-                    @Cached @Shared JSToDoubleNode recursiveToDouble,
-                    @Cached("createHintNumber()") @Shared("toPrimitiveHintNumber") JSToPrimitiveNode toPrimitiveNode) {
+                    @Shared @Cached JSToDoubleNode recursiveToDouble,
+                    @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
         return recursiveToDouble.executeDouble(toPrimitiveNode.execute(value));
     }
 
@@ -117,8 +119,8 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isJSObject(object) || isForeignObject(object)", replaces = "doJSObject")
     protected double doForeignObject(Object object,
-                    @Cached @Shared JSToDoubleNode recursiveToDouble,
-                    @Cached("createHintNumber()") @Shared("toPrimitiveHintNumber") JSToPrimitiveNode toPrimitiveNode) {
+                    @Shared @Cached JSToDoubleNode recursiveToDouble,
+                    @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
         return recursiveToDouble.executeDouble(toPrimitiveNode.execute(object));
     }
 
