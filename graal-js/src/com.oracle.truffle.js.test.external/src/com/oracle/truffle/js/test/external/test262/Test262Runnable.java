@@ -187,6 +187,7 @@ public class Test262Runnable extends TestRunnable {
                     "async-functions",
                     "async-iteration",
                     "caller",
+                    "change-array-by-copy",
                     "class",
                     "class-fields-private",
                     "class-fields-private-in",
@@ -250,7 +251,6 @@ public class Test262Runnable extends TestRunnable {
                     "String.prototype.isWellFormed",
                     "String.prototype.toWellFormed",
                     "arbitrary-module-namespace-names",
-                    "change-array-by-copy",
                     "regexp-duplicate-named-groups",
                     "regexp-v-flag",
                     "resizable-arraybuffer",
@@ -266,6 +266,7 @@ public class Test262Runnable extends TestRunnable {
                     "array-find-from-last",
                     "array-grouping",
                     "arraybuffer-transfer",
+                    "change-array-by-copy",
                     "decorators",
                     "symbols-as-weakmap-keys",
     });
