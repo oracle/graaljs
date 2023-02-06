@@ -14,6 +14,7 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 * Updated Node.js to version 18.12.1.
 * Implemented the [Symbols as WeakMap keys](https://github.com/tc39/proposal-symbols-as-weakmap-keys) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [ArrayBuffer.prototype.transfer and friends](https://github.com/tc39/proposal-arraybuffer-transfer) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Implemented the [Change Array by copy](https://github.com/tc39/proposal-change-array-by-copy) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 
 ## Version 22.3.0
 * Implemented the [WebAssembly multi-value](https://github.com/WebAssembly/multi-value) proposal.
