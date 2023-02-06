@@ -199,7 +199,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSConfig.ECMAScript2016;
             } else if (this == at) {
                 return JSConfig.ECMAScript2022;
-            } else if (EnumSet.of(findLast, findLastIndex).contains(this)) {
+            } else if (EnumSet.of(findLast, findLastIndex, toReversed, toSorted, with).contains(this)) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();

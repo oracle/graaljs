@@ -294,7 +294,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSConfig.ECMAScript2019;
             } else if (this == at) {
                 return JSConfig.ECMAScript2022;
-            } else if (EnumSet.of(group, groupToMap, findLast, findLastIndex).contains(this)) {
+            } else if (EnumSet.of(group, groupToMap, findLast, findLastIndex, toReversed, toSorted, toSpliced, with).contains(this)) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
