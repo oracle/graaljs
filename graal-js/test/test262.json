@@ -4,46 +4,6 @@
     "status" : "FAIL",
     "comment" : "Off spec test that even does not reflect web reality."
   }, {
-    "filePath" : "built-ins/Array/prototype/toSorted/comparefn-called-after-get-elements.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/toSorted/comparefn-stop-after-error.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/toSorted/frozen-this-value.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/toSorted/holes-not-preserved.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/toSorted/length-casted-to-zero.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/toSorted/length-decreased-while-iterating.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/toSorted/length-exceeding-array-length-limit.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/toSorted/length-increased-while-iterating.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/toSorted/length-tolength.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/toSorted/this-value-boolean.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
     "filePath" : "built-ins/Array/prototype/toSpliced/deleteCount-clamped-between-zero-and-remaining-count.js",
     "status" : "FAIL",
     "comment" : "Change-Array-By-Copy failures"
@@ -6767,22 +6727,6 @@
       "BIG_ENDIAN" : "FAIL"
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/toSorted/comparefn-stop-after-error.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/toSorted/ignores-species.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/toSorted/immutable.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/toSorted/length-property-ignored.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
   }, {
     "filePath" : "built-ins/TypedArray/prototype/with/BigInt/early-type-coercion-bigint.js",
     "status" : "FAIL",

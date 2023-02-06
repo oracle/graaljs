@@ -40,6 +40,19 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
+import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetLength;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -189,19 +202,6 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
-import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetLength;
 
 /**
  * Contains builtins for {@linkplain JSArray}.prototype.
@@ -482,19 +482,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 LoopNode.reportLoopCount(node, count > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) count);
             }
         }
-
-        protected final Object createEmpty(JSDynamicObject thisObj, long length) {
-            if (isTypedArrayImplementation) {
-                return typedArrayCreateSameType(thisObj, length);
-            } else {
-                return JSArray.createEmpty(getContext(), getRealm(), length);
-            }
-        }
-
-        private Object typedArrayCreateSameType(JSDynamicObject thisObj, long length) {
-            JSDynamicObject constr = ArraySpeciesConstructorNode.getDefaultConstructor(getRealm(), thisObj);
-            return getArraySpeciesConstructorNode().typedArrayCreate(constr, length);
-        }
     }
 
     protected static class ArraySpeciesConstructorNode extends JavaScriptBaseNode {
@@ -689,6 +676,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSArrayNextElementIndexNode nextElementIndexNode;
         @Child private JSArrayPreviousElementIndexNode previousElementIndexNode;
 
+        @Child private ArrayCreateNode arrayCreateNode;
+
         protected void setLength(Object thisObject, int length) {
             setLengthIntl(thisObject, length);
         }
@@ -796,6 +785,27 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected static final void throwLengthError() {
             throw Errors.createTypeError("length too big");
+        }
+
+        protected final Object createEmpty(JSDynamicObject thisObj, long length) {
+            if (isTypedArrayImplementation) {
+                return typedArrayCreateSameType(thisObj, length);
+            } else {
+                return arrayCreate(length);
+            }
+        }
+
+        private Object typedArrayCreateSameType(JSDynamicObject thisObj, long length) {
+            JSDynamicObject constr = ArraySpeciesConstructorNode.getDefaultConstructor(getRealm(), thisObj);
+            return getArraySpeciesConstructorNode().typedArrayCreate(constr, length);
+        }
+
+        private Object arrayCreate(long length) {
+            if (arrayCreateNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                arrayCreateNode = insert(ArrayCreateNode.create(getContext()));
+            }
+            return arrayCreateNode.execute(length);
         }
     }
 
@@ -2762,7 +2772,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        public Object sort(final Object thisObj, final Object compare) {
+        public Object sort(final Object thisObj, final Object compare,
+                        @Cached InlinedBranchProfile growProfile) {
             if (!(compare == Undefined.instance || isCallable(compare))) {
                 throw Errors.createTypeError("The comparison function must be either a function or undefined");
             }
@@ -2772,24 +2783,30 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (isString(thisJSObj)) {
                 return sortString(thisJSObj, compare);
             } else {
-                return sortArray(thisJSObj, compare);
+                return sortArrayOrObject(thisJSObj, compare, growProfile);
             }
         }
 
-        private Object sortArray(final Object thisJSObj, final Object compare) {
-            JSArrayObject arrayObject = (JSArrayObject) thisJSObj;
+        private Object sortArrayOrObject(final Object thisJSObj, final Object compare, InlinedBranchProfile growProfile) {
+            JSDynamicObject arrayObject = (JSDynamicObject) thisJSObj;
             long length = getLength(thisJSObj);
-            Object[] array = JSArray.toArray(arrayObject);
-            Comparator<Object> comparator = compare == null || compare == Undefined.instance ?
-                    SortComparator.getDefaultComparator(arrayObject, isTypedArrayImplementation) :
-                    new SortComparator(compare);
-
             Object result = createEmpty(arrayObject, length);
+            
+            // TODO optimize the fast array case
+            Object[] array = JSArraySortNode.jsobjectToArray(arrayObject, length, this, growProfile);
+
+            Comparator<Object> comparator = compare == null || compare == Undefined.instance ? SortComparator.getDefaultComparator(arrayObject, isTypedArrayImplementation)
+                            : new SortComparator(compare);
 
             Arrays.sort(array, comparator);
 
             for (int i = 0; i < array.length; i++) {
                 write(result, i, array[i]);
+            }
+
+            // fill holes at the end
+            for (int i = array.length; i < length; i++) {
+                write(result, i, Undefined.instance);
             }
 
             return result;
@@ -2814,12 +2831,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             StringBuilder resultBuilder = new StringBuilder();
             JSStringObject jsString = (JSStringObject) thisJSObj;
             String string = jsString.asString();
-            Comparator<Object> comparator = compare == null || compare == Undefined.instance ?
-                    Comparator.comparing(Object::toString) :
-                    new SortComparator(compare);
+            Comparator<Object> comparator = compare == null || compare == Undefined.instance ? Comparator.comparing(Object::toString) : new SortComparator(compare);
             char[] array = string.toCharArray();
 
-           insertionSortCharArray(array, comparator);
+            insertionSortCharArray(array, comparator);
 
             for (Object character : array) {
                 resultBuilder.append(character);
