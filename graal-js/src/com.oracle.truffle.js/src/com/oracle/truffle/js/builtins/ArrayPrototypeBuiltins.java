@@ -117,8 +117,6 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeN
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySortNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySpliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshiftNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToSplicedNodeGen;
@@ -3561,9 +3559,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayToSplicedNode extends JSArrayOperationWithToInt {
 
         private final BranchProfile objectBranch = BranchProfile.create();
-        private final ConditionProfile argsLength0Profile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile argsLength1Profile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile offsetProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile argsLength0Profile = ConditionProfile.create();
+        private final ConditionProfile argsLength1Profile = ConditionProfile.create();
+
         @Child private InteropLibrary arrayInterop;
 
         public JSArrayToSplicedNode(JSContext context, JSBuiltin builtin) {
@@ -3571,10 +3569,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected JSDynamicObject toSpliced(Object thisArg, Object[] args) {
+        protected JSDynamicObject toSpliced(Object thisArg, Object[] args,
+                        @Cached InlinedConditionProfile offsetProfile) {
             Object thisObj = toObject(thisArg);
             long len = getLength(thisObj);
-            long actualStart = JSRuntime.getOffset(toIntegerAsLong(JSRuntime.getArgOrUndefined(args, 0)), len, offsetProfile);
+            long actualStart = JSRuntime.getOffset(toIntegerAsLong(JSRuntime.getArgOrUndefined(args, 0)), len, this, offsetProfile);
 
             long insertCount;
             long actualDeleteCount;
