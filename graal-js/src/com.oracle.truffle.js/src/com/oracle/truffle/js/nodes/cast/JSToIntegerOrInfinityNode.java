@@ -128,7 +128,7 @@ public abstract class JSToIntegerOrInfinityNode extends JavaScriptBaseNode {
         return toIntOrInf.executeNumber(stringToNumberNode.executeString(value));
     }
 
-    @Specialization(guards = "isForeignObject(value)||isJSObject(value)")
+    @Specialization(guards = "isJSObject(value) || isForeignObject(value)")
     protected Number doJSOrForeignObject(Object value,
                     @Shared("recToIntOrInf") @Cached JSToIntegerOrInfinityNode toIntOrInf,
                     @Cached JSToNumberNode toNumberNode) {
