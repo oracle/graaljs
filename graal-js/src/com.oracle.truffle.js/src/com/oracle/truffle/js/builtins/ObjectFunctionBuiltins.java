@@ -303,6 +303,12 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
+        @Specialization(guards = "isJSObject(object)")
+        protected JSDynamicObject getPrototypeOfJSObject(JSDynamicObject object,
+                        @Cached GetPrototypeNode getPrototypeNode) {
+            return getPrototypeNode.execute(object);
+        }
+
         @Specialization(guards = "!isJSObject(object)")
         protected JSDynamicObject getPrototypeOfNonObject(Object object,
                         @Cached InlinedConditionProfile isForeignProfile) {
@@ -337,12 +343,6 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
             }
             return foreignObjectPrototypeNode.execute(truffleObject);
-        }
-
-        @Specialization(guards = "isJSObject(object)")
-        protected JSDynamicObject getPrototypeOfJSObject(JSDynamicObject object,
-                        @Cached GetPrototypeNode getPrototypeNode) {
-            return getPrototypeNode.execute(object);
         }
     }
 
