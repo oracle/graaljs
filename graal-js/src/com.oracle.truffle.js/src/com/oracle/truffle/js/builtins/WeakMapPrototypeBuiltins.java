@@ -161,7 +161,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @Cached InlinedConditionProfile hasInvertedProfile) {
-            WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
+            WeakMap map = (WeakMap) thisObj.getWeakHashMap();
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(this, inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
@@ -199,7 +199,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @Cached InlinedConditionProfile hasInvertedProfile) {
-            WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
+            WeakMap map = (WeakMap) thisObj.getWeakHashMap();
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(this, inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
@@ -246,7 +246,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedSetter,
                         @Cached InlinedConditionProfile hasInvertedProfile) {
-            WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
+            WeakMap map = (WeakMap) thisObj.getWeakHashMap();
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(this, inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
@@ -296,7 +296,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @Cached InlinedConditionProfile hasInvertedProfile) {
-            WeakMap map = (WeakMap) JSWeakMap.getInternalWeakMap(thisObj);
+            WeakMap map = (WeakMap) thisObj.getWeakHashMap();
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(this, inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);

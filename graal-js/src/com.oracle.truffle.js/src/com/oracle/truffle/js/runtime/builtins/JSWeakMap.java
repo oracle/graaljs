@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -71,12 +69,6 @@ public final class JSWeakMap extends JSNonProxy implements JSConstructorFactory.
         JSObjectFactory factory = context.getWeakMapFactory();
         JSWeakMapObject obj = factory.initProto(new JSWeakMapObject(factory.getShape(realm), weakMap), realm);
         return context.trackAllocation(obj);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static Map<Object, Object> getInternalWeakMap(JSDynamicObject obj) {
-        assert isJSWeakMap(obj);
-        return ((JSWeakMapObject) obj).getWeakHashMap();
     }
 
     @Override

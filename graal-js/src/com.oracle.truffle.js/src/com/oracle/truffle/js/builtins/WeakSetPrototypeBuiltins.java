@@ -120,7 +120,7 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
         protected static boolean delete(JSWeakSetObject thisObj, Object key,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
-            return Boundaries.mapRemove(JSWeakSet.getInternalWeakMap(thisObj), key) != null;
+            return Boundaries.mapRemove(thisObj.getWeakHashMap(), key) != null;
         }
 
         @SuppressWarnings("unused")
@@ -149,7 +149,7 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
         protected static JSWeakSetObject add(JSWeakSetObject thisObj, Object key,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
-            Boundaries.mapPut(JSWeakSet.getInternalWeakMap(thisObj), key, PRESENT);
+            Boundaries.mapPut(thisObj.getWeakHashMap(), key, PRESENT);
             return thisObj;
         }
 
@@ -179,7 +179,7 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
         protected static boolean has(JSWeakSetObject thisObj, Object key,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
-            return Boundaries.mapContainsKey(JSWeakSet.getInternalWeakMap(thisObj), key);
+            return Boundaries.mapContainsKey(thisObj.getWeakHashMap(), key);
         }
 
         @SuppressWarnings("unused")
