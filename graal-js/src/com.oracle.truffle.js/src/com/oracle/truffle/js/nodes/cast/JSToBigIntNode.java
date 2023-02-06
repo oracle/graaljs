@@ -41,8 +41,12 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -54,10 +58,10 @@ import com.oracle.truffle.js.runtime.Symbol;
 
 public abstract class JSToBigIntNode extends JavaScriptBaseNode {
 
-    public abstract Object execute(Object value);
+    public abstract BigInt execute(Object value);
 
     public final BigInt executeBigInteger(Object value) {
-        return (BigInt) execute(value);
+        return execute(value);
     }
 
     @NeverDefault
@@ -66,20 +70,19 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected Object doIt(Object value,
+    protected BigInt doIt(Object value,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Cached JSToBigIntInnerConversionNode innerConversionNode) {
 
-        return innerConversionNode.execute(toPrimitiveNode.execute(value));
+        return innerConversionNode.execute(this, toPrimitiveNode.execute(value));
     }
 
+    @GenerateInline
+    @GenerateCached(false)
+    @GenerateUncached
     public abstract static class JSToBigIntInnerConversionNode extends JavaScriptBaseNode {
 
-        public abstract Object execute(Object value);
-
-        public final BigInt executeBigInteger(Object value) {
-            return (BigInt) execute(value);
-        }
+        public abstract BigInt execute(Node node, Object value);
 
         @Specialization
         protected static BigInt doBoolean(boolean value) {
@@ -119,7 +122,7 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
     public static JSToBigIntNode getUncached() {
         return new JSToBigIntNode() {
             @Override
-            public Object execute(Object value) {
+            public BigInt execute(Object value) {
                 return JSRuntime.toBigInt(value);
             }
 
