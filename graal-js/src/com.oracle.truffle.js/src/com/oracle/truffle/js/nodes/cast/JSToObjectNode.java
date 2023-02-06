@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -139,36 +140,43 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return Errors.createTypeErrorNotObjectCoercible(value, this, context);
     }
 
+    @InliningCutoff
     @Specialization
     protected JSDynamicObject doBoolean(boolean value) {
         return JSBoolean.create(context, getRealm(), value);
     }
 
+    @InliningCutoff
     @Specialization
     protected JSDynamicObject doString(TruffleString value) {
         return JSString.create(getContext(), getRealm(), value);
     }
 
+    @InliningCutoff
     @Specialization
     protected JSDynamicObject doInt(int value) {
         return JSNumber.create(getContext(), getRealm(), value);
     }
 
+    @InliningCutoff
     @Specialization
     protected JSDynamicObject doDouble(double value) {
         return JSNumber.create(getContext(), getRealm(), value);
     }
 
+    @InliningCutoff
     @Specialization
     protected JSDynamicObject doBigInt(BigInt value) {
         return JSBigInt.create(getContext(), getRealm(), value);
     }
 
+    @InliningCutoff
     @Specialization(guards = "isJavaNumber(value)")
     protected JSDynamicObject doNumber(Object value) {
         return JSNumber.create(getContext(), getRealm(), (Number) value);
     }
 
+    @InliningCutoff
     @Specialization
     protected JSDynamicObject doSymbol(Symbol value) {
         return JSSymbol.create(getContext(), getRealm(), value);
@@ -226,6 +234,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         throw Errors.createTypeError("Foreign TruffleObject not supported", this);
     }
 
+    @InliningCutoff
     @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isJSObject(object)", "!isForeignObject(object)"})
     protected Object doJavaGeneric(Object object) {
         // assume these to be Java objects
