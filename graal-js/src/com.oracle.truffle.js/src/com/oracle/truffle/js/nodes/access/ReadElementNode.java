@@ -48,6 +48,7 @@ import java.util.concurrent.locks.Lock;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.InlineSupport.StateField;
 import com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField;
@@ -1687,6 +1688,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
+        @InliningCutoff
         private Object maybeReadFromPrototype(Object truffleObject, Object key, JSContext context) {
             assert JSRuntime.isPropertyKey(key);
             if (context.getContextOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(truffleObject, interop)) {

@@ -47,6 +47,7 @@ import java.nio.file.NoSuchFileException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -243,6 +244,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             return value;
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isString(identifier)"})
         protected Object doMaybeUnbox(TruffleObject identifier, Object value,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
@@ -290,6 +292,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             }
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isString(identifier)"})
         protected Object doMaybeUnbox(TruffleObject identifier,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
@@ -442,6 +445,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @SuppressWarnings("unused")
+        @InliningCutoff
         @Specialization(guards = {"!isString(key)", "!isNumber(key)"})
         protected Object unsupportedKey(TruffleObject obj, Object key,
                         @Shared("importValue") @Cached ImportValueNode foreignConvert,
@@ -520,6 +524,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @SuppressWarnings("unused")
+        @InliningCutoff
         @Specialization(guards = {"!isString(key)", "!isNumber(key)"})
         protected Object unsupportedKey(TruffleObject obj, Object key, Object value,
                         @Shared("exportValue") @Cached ExportValueNode exportValue,
@@ -593,6 +598,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @SuppressWarnings("unused")
+        @InliningCutoff
         @Specialization(guards = {"!isString(key)", "!isNumber(key)"})
         protected Object unsupportedKey(TruffleObject obj, Object key,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,

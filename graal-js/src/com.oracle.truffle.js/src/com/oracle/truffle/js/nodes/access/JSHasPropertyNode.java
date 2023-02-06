@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -184,6 +185,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         }
     }
 
+    @InliningCutoff
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
     public boolean foreignObject(Object object, Object propertyName,
                     @CachedLibrary("object") InteropLibrary interop,

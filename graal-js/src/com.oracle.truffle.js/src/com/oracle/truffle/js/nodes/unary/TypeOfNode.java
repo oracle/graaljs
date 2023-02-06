@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.unary;
 import java.util.Set;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -170,6 +171,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return JSSymbol.TYPE_NAME;
     }
 
+    @InliningCutoff
     @Specialization(guards = "isForeignObject(operand)", limit = "InteropLibraryLimit")
     protected TruffleString doTruffleObject(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {

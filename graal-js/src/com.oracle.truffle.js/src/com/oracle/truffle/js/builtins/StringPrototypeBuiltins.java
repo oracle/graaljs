@@ -49,6 +49,7 @@ import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -1884,6 +1885,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSString.getString(thisStr);
         }
 
+        @InliningCutoff
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
         protected TruffleString toStringForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop) {

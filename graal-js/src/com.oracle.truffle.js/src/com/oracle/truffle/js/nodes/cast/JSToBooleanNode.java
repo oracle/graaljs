@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -129,6 +130,7 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
         return true;
     }
 
+    @InliningCutoff
     @Specialization(guards = "isForeignObject(value)", limit = "InteropLibraryLimit")
     protected final boolean doForeignObject(Object value,
                     @CachedLibrary("value") InteropLibrary interop) {

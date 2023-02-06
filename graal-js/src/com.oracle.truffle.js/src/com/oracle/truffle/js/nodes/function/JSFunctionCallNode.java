@@ -53,6 +53,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -1620,6 +1621,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return convertForeignReturn(callReturn);
         }
 
+        @InliningCutoff
         private Object fallback(Object receiver, Object[] arguments, Object[] callArguments, InteropException caughtException) {
             InteropException ex = caughtException;
             if (getContext().getContextOptions().hasForeignObjectPrototype() || JSInteropUtil.isBoxedPrimitive(receiver, interop)) {

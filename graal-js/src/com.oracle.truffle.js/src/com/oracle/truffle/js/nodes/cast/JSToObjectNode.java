@@ -213,6 +213,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         throw createTypeError(object);
     }
 
+    @InliningCutoff
     @Specialization(guards = {"isAllowForeign()", "isForeignObject(obj)"}, limit = "InteropLibraryLimit")
     protected Object doForeignObjectAllowed(Object obj,
                     @Cached("createToObject(context, checkForNullOrUndefined, fromWith, allowForeign)") JSToObjectNode toObjectNode,

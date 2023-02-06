@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.List;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -349,6 +350,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return JSRuntime.nullToUndefined(classProfile.getJSClass(target).getHelper(target, receiver, key, this));
         }
 
+        @InliningCutoff
         @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected Object doForeignObject(Object target, Object propertyKey, Object[] optionalArgs,
                         @CachedLibrary("target") InteropLibrary interop,
@@ -426,6 +428,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return JSObject.hasProperty(target, key, jsclassProfile);
         }
 
+        @InliningCutoff
         @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected Object doForeignObject(Object target, Object propertyKey,
                         @CachedLibrary("target") InteropLibrary interop,

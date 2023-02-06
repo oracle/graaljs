@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -235,6 +236,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
+    @InliningCutoff
     private Object tryInvokeForeignMethod(Object object, InteropLibrary interop, String methodName) {
         if (interop.hasMembers(object) && interop.isMemberInvocable(object, methodName)) {
             // Avoid calling toString() on Java arrays; use Array.prototype.toString() instead.

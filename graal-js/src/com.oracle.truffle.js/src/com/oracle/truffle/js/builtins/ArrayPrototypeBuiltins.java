@@ -56,6 +56,7 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -1152,6 +1153,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return firstObj;
         }
 
+        @InliningCutoff
         @Specialization(guards = {"isForeignObject(thisObj)"})
         protected Object shiftForeign(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary arrays,

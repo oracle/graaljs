@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -165,6 +166,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
     }
 
     @SuppressWarnings("truffle-static-method")
+    @InliningCutoff
     @Specialization(guards = "isForeignObject(obj)", limit = "InteropLibraryLimit")
     protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNamesForeign(Object obj,
                     @Bind("this") Node node,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.function;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
@@ -248,6 +249,7 @@ public abstract class EvalNode extends JavaScriptNode {
             return script.runEval(callNode, realm, evalThis, blockScopeFrame);
         }
 
+        @InliningCutoff
         @Specialization(guards = {"isForeignObject(sourceCode)"}, limit = "3")
         protected Object directEvalForeignObject(VirtualFrame frame, Object sourceCode,
                         @CachedLibrary("sourceCode") InteropLibrary interop) {
