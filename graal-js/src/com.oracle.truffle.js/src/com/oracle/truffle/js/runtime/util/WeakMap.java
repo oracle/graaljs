@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -55,27 +56,32 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
  * JavaScript WeakMap that emulates ephemeron semantics by storing the value in the key itself
  * (i.e., in a hidden property within the key object).
  */
-public final class WeakMap implements Map<JSObject, Object> {
+public final class WeakMap implements Map<Object, Object> {
     public static final HiddenKey INVERTED_WEAK_MAP_KEY = new HiddenKey("InvertedWeakMap");
 
     public WeakMap() {
     }
 
-    private static JSObject checkKey(Object key) {
-        if (!(key instanceof JSObject)) {
-            throw new IllegalArgumentException("key must be instanceof JSObject");
-        }
-        return (JSObject) key;
-    }
-
     @SuppressWarnings("unchecked")
-    private static Map<WeakMap, Object> getInvertedMap(JSObject k) {
-        return (Map<WeakMap, Object>) JSDynamicObject.getOrNull(k, INVERTED_WEAK_MAP_KEY);
+    private static Map<WeakMap, Object> getInvertedMap(Object k) {
+        if (k instanceof JSObject) {
+            return (Map<WeakMap, Object>) JSDynamicObject.getOrNull((JSObject) k, INVERTED_WEAK_MAP_KEY);
+        } else if (k instanceof Symbol) {
+            return ((Symbol) k).getInvertedMap();
+        } else {
+            throw new IllegalArgumentException("key must be instanceof JSObject or Symbol");
+        }
     }
 
-    private static Map<WeakMap, Object> putInvertedMap(JSObject k) {
+    private static Map<WeakMap, Object> putInvertedMap(Object k) {
         Map<WeakMap, Object> invertedMap = newInvertedMap();
-        JSObjectUtil.putHiddenProperty(k, INVERTED_WEAK_MAP_KEY, invertedMap);
+        if (k instanceof JSObject) {
+            JSObjectUtil.putHiddenProperty((JSObject) k, INVERTED_WEAK_MAP_KEY, invertedMap);
+        } else if (k instanceof Symbol) {
+            ((Symbol) k).setInvertedMap(invertedMap);
+        } else {
+            throw new IllegalArgumentException("key must be instanceof JSObject or Symbol");
+        }
         return invertedMap;
     }
 
@@ -85,7 +91,7 @@ public final class WeakMap implements Map<JSObject, Object> {
     }
 
     @TruffleBoundary
-    public Map<WeakMap, Object> newInvertedMapWithEntry(JSObject key, Object value) {
+    public Map<WeakMap, Object> newInvertedMapWithEntry(Object key, Object value) {
         assert getInvertedMap(key) == null;
         Map<WeakMap, Object> map = new WeakHashMap<>();
         map.put(this, value);
@@ -94,37 +100,33 @@ public final class WeakMap implements Map<JSObject, Object> {
 
     @Override
     public boolean containsKey(Object key) {
-        JSObject k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         return invertedMap == null ? false : invertedMap.containsKey(this);
     }
 
     @Override
     public Object get(Object key) {
-        JSObject k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         return invertedMap == null ? null : invertedMap.get(this);
     }
 
     @Override
-    public Object put(JSObject key, Object value) {
-        JSObject k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+    public Object put(Object key, Object value) {
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         if (invertedMap == null) {
-            invertedMap = putInvertedMap(k);
+            invertedMap = putInvertedMap(key);
         }
         return invertedMap.put(this, value);
     }
 
     @Override
     public Object remove(Object key) {
-        JSObject k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         return invertedMap == null ? null : invertedMap.remove(this);
     }
 
     @Override
-    public void putAll(Map<? extends JSObject, ? extends Object> m) {
+    public void putAll(Map<? extends Object, ? extends Object> m) {
         m.forEach(this::put);
     }
 
@@ -149,7 +151,7 @@ public final class WeakMap implements Map<JSObject, Object> {
     }
 
     @Override
-    public Set<JSObject> keySet() {
+    public Set<Object> keySet() {
         throw unsupported();
     }
 
@@ -159,7 +161,7 @@ public final class WeakMap implements Map<JSObject, Object> {
     }
 
     @Override
-    public Set<java.util.Map.Entry<JSObject, Object>> entrySet() {
+    public Set<java.util.Map.Entry<Object, Object>> entrySet() {
         throw unsupported();
     }
 

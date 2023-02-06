@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,22 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.builtins.helper;
 
-import java.util.Map;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+@GenerateInline
+@GenerateCached(false)
+public abstract class CanBeHeldWeaklyNode extends JavaScriptBaseNode {
 
-public final class JSWeakMapObject extends JSNonProxyObject {
-    private final Map<Object, Object> weakHashMap;
-
-    protected JSWeakMapObject(Shape shape, Map<Object, Object> weakHashMap) {
-        super(shape);
-        this.weakHashMap = weakHashMap;
+    protected CanBeHeldWeaklyNode() {
     }
 
-    public Map<Object, Object> getWeakHashMap() {
-        return weakHashMap;
+    public abstract boolean execute(Node node, Object value);
+
+    @Specialization
+    static boolean doJSObject(@SuppressWarnings("unused") JSObject value) {
+        return true;
     }
+
+    @Specialization
+    static boolean doSymbol(Node node, Symbol value) {
+        return !value.isRegistered() && JavaScriptLanguage.get(node).getJSContext().getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion;
+    }
+
+    @Fallback
+    static boolean doOther(@SuppressWarnings("unused") Object value) {
+        return false;
+    }
+
 }

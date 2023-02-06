@@ -77,12 +77,6 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
         return new WeakHashMap<>();
     }
 
-    @SuppressWarnings("unchecked")
-    public static Map<Object, Object> getInternalWeakMap(JSDynamicObject obj) {
-        assert isJSWeakSet(obj);
-        return ((JSWeakSetObject) obj).getWeakHashMap();
-    }
-
     @Override
     public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);

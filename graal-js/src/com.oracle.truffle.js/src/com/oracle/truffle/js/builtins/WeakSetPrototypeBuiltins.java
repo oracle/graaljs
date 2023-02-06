@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltinsFactory.JSWeakSetAddNodeGen;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltinsFactory.JSWeakSetDeleteNodeGen;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltinsFactory.JSWeakSetHasNodeGen;
+import com.oracle.truffle.js.builtins.helper.CanBeHeldWeaklyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -51,7 +54,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSWeakSetObject;
 
 /**
  * Contains builtins for {@linkplain JSWeakSet}.prototype.
@@ -98,7 +101,7 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
     protected static final Object PRESENT = new Object();
 
     protected static RuntimeException typeErrorKeyIsNotObject() {
-        throw Errors.createTypeError("WeakSet key must be an object");
+        throw Errors.createTypeError("Invalid value used in weak set");
     }
 
     protected static RuntimeException typeErrorWeakSetExpected() {
@@ -114,14 +117,16 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSWeakSet(thisObj)", "isJSObject(key)"})
-        protected static boolean delete(JSDynamicObject thisObj, JSDynamicObject key) {
-            return Boundaries.mapRemove(JSWeakSet.getInternalWeakMap(thisObj), key) != null;
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        protected static boolean delete(JSWeakSetObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
+            return Boundaries.mapRemove(thisObj.getWeakHashMap(), key) != null;
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isJSWeakSet(thisObj)", "!isJSObject(key)"})
-        protected static boolean deleteNonObjectKey(Object thisObj, Object key) {
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        protected static boolean deleteNonObjectKey(JSWeakSetObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             return false;
         }
 
@@ -141,21 +146,23 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSWeakSet(thisObj)", "isJSObject(key)"})
-        protected static JSDynamicObject add(JSDynamicObject thisObj, JSDynamicObject key) {
-            Boundaries.mapPut(JSWeakSet.getInternalWeakMap(thisObj), key, PRESENT);
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        protected static JSWeakSetObject add(JSWeakSetObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
+            Boundaries.mapPut(thisObj.getWeakHashMap(), key, PRESENT);
             return thisObj;
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isJSWeakSet(thisObj)", "!isJSObject(key)"})
-        protected static JSDynamicObject addNonObjectKey(Object thisObj, Object key) {
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        protected static JSWeakSetObject addNonObjectKey(JSWeakSetObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             throw typeErrorKeyIsNotObject();
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSWeakSet(thisObj)")
-        protected static JSDynamicObject notWeakSet(Object thisObj, Object key) {
+        protected static JSWeakSetObject notWeakSet(Object thisObj, Object key) {
             throw typeErrorWeakSetExpected();
         }
     }
@@ -169,14 +176,16 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSWeakSet(thisObj)", "isJSObject(key)"})
-        protected static boolean has(JSDynamicObject thisObj, JSDynamicObject key) {
-            return Boundaries.mapContainsKey(JSWeakSet.getInternalWeakMap(thisObj), key);
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        protected static boolean has(JSWeakSetObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
+            return Boundaries.mapContainsKey(thisObj.getWeakHashMap(), key);
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isJSWeakSet(thisObj)", "!isJSObject(key)"})
-        protected static boolean hasNonObjectKey(Object thisObj, Object key) {
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        protected static boolean hasNonObjectKey(JSWeakSetObject thisObj, Object key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             return false;
         }
 

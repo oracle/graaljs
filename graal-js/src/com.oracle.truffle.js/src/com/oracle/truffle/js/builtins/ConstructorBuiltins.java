@@ -136,6 +136,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAss
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWebAssemblyTableNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
+import com.oracle.truffle.js.builtins.helper.CanBeHeldWeaklyNode;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -1611,13 +1612,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, newTargetCase);
         }
 
-        @Specialization(guards = {"isJSObject(target)"})
-        protected JSDynamicObject constructWeakRef(JSDynamicObject newTarget, Object target) {
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, target)"}, limit = "1")
+        protected JSDynamicObject constructWeakRef(JSDynamicObject newTarget, Object target,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             return swapPrototype(JSWeakRef.create(getContext(), getRealm(), target), newTarget);
         }
 
-        @Specialization(guards = {"!isJSObject(target)"})
-        protected JSDynamicObject constructWeakRefNonObject(@SuppressWarnings("unused") JSDynamicObject newTarget, @SuppressWarnings("unused") Object target) {
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, target)"}, limit = "1")
+        protected static JSDynamicObject constructWeakRefNonObject(@SuppressWarnings("unused") JSDynamicObject newTarget, @SuppressWarnings("unused") Object target,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             throw Errors.createTypeError("WeakRef: invalid target");
         }
 
@@ -2944,7 +2947,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                             @Cached("value") TruffleString cachedValue,
                             @Cached TruffleString.EqualNode equalNode,
                             @Cached("createSymbolUsageMarker()") AtomicReference<Object> symbolUsageMarker,
-                            @Cached("createCachedSingletonSymbol(value)") Symbol cachedSymbol) {
+                            @Cached(value = "createCachedSingletonSymbol(value)", weak = true) Symbol cachedSymbol) {
                 return cachedSymbol;
             }
 
