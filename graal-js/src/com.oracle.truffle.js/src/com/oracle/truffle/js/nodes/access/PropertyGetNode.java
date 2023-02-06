@@ -538,18 +538,22 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         protected abstract Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard);
 
+        @InliningCutoff
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
             return JSTypesGen.expectInteger(getValue(thisObj, receiver, Undefined.instance, root, guard));
         }
 
+        @InliningCutoff
         protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
             return JSTypesGen.expectDouble(getValue(thisObj, receiver, Undefined.instance, root, guard));
         }
 
+        @InliningCutoff
         protected boolean getValueBoolean(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
             return JSTypesGen.expectBoolean(getValue(thisObj, receiver, Undefined.instance, root, guard));
         }
 
+        @InliningCutoff
         protected long getValueLong(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
             return JSTypesGen.expectLong(getValue(thisObj, receiver, Undefined.instance, root, guard));
         }
@@ -1396,6 +1400,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             super(null);
         }
 
+        @InliningCutoff
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             if (isJSObject.profile(JSDynamicObject.isJSDynamicObject(thisObj))) {

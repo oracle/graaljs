@@ -793,6 +793,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             this.toObjectNode = JSToObjectNode.createToObjectNoCheck(context);
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             if (isObject.profile(JSDynamicObject.isJSDynamicObject(thisObj))) {
@@ -828,16 +829,19 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
             return setValue(thisObj, value, receiver, root, guard);
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
             return setValue(thisObj, value, receiver, root, guard);
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValueBoolean(Object thisObj, boolean value, Object receiver, PropertySetNode root, boolean guard) {
             return setValue(thisObj, value, receiver, root, guard);
