@@ -177,9 +177,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         findLast(1),
         findLastIndex(1),
 
-        // Next
+        // Change-Array-By-Copy
         toReversed(0),
-        toSorted(1);
+        toSorted(1),
+        with(2);
 
         private final int functionLength;
 
@@ -282,6 +283,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen.create(context, builtin, true, args().withThis().fixedArgs(0).createArgumentNodes(context));
             case toSorted:
                 return ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case with:
+                return ArrayPrototypeBuiltinsFactory.JSArrayWithNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }

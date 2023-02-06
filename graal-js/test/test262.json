@@ -4,78 +4,6 @@
     "status" : "FAIL",
     "comment" : "Off spec test that even does not reflect web reality."
   }, {
-    "filePath" : "built-ins/Array/prototype/with/frozen-this-value.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/holes-not-preserved.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/ignores-species.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/immutable.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/index-bigger-or-eq-than-length.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/index-casted-to-number.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/index-negative.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/index-smaller-than-minus-length.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/length-decreased-while-iterating.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/length-exceeding-array-length-limit.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/length-increased-while-iterating.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/length-tolength.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/metadata/length.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/metadata/name.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/metadata/property-descriptor.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/no-get-replaced-index.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/not-a-constructor.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/Array/prototype/with/this-value-boolean.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
     "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -6611,58 +6539,6 @@
       "BIG_ENDIAN" : "FAIL"
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/BigInt/early-type-coercion-bigint.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/early-type-coercion.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/ignores-species.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/immutable.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/index-bigger-or-eq-than-length.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/index-casted-to-number.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/index-negative.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/index-smaller-than-minus-length.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/length-property-ignored.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/metadata/length.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/metadata/name.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/metadata/property-descriptor.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/with/not-a-constructor.js",
-    "status" : "FAIL",
-    "comment" : "Change-Array-By-Copy failures"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",

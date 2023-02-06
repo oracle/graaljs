@@ -117,9 +117,9 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeN
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySortNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySpliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToSplicedNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshiftNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToSplicedNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayWithNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.sort.SortComparator;
@@ -151,9 +151,11 @@ import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.array.JSSetLengthNode;
 import com.oracle.truffle.js.nodes.array.TestArrayNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -387,7 +389,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             case toSpliced:
                 return JSArrayToSplicedNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
             case with:
-                return JSArrayWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSArrayWithNodeGen.create(context, builtin, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -3560,7 +3562,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    // TODO Schlaegl: Optimizations possible
     public abstract static class JSArrayToSplicedNode extends JSArrayOperationWithToInt {
 
         private final BranchProfile objectBranch = BranchProfile.create();
@@ -3663,22 +3664,38 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class JSArrayWithNode extends JSArrayOperationWithToInt {
 
-        public JSArrayWithNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
+        @Child private JSToNumberNode toNumberNode;
+        @Child private JSToBigIntNode toBigIntNode;
+
+        public JSArrayWithNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        protected Object toNumber(Object value) {
+            if (toNumberNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toNumberNode = insert(JSToNumberNode.create());
+            }
+            return toNumberNode.execute(value);
+        }
+
+        protected Object toBigInt(Object value) {
+            if (toBigIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toBigIntNode = insert(JSToBigIntNode.create());
+            }
+            return toBigIntNode.execute(value);
         }
 
         @Specialization
-        protected Object withJSArray(JSArrayObject thisObj, Object index, Object value) {
-            return with(thisObj, index, value);
-        }
-
-        @Specialization(replaces = "withJSArray")
         protected Object withGeneric(Object thisObj, Object index, Object value) {
-            final Object array = toObject(thisObj);
+            final Object array = toObjectOrValidateTypedArray(thisObj);
             return with(array, index, value);
         }
 
-        private Object with(Object array, Object index, Object value) {
+        private Object with(Object array, Object index, Object valueParam) {
+            Object value = valueParam;
+            toObjectOrValidateTypedArray(array);
             long len = getLength(array);
             long relativeIndex = TemporalUtil.toIntegerOrInfinity(index).longValue();
             long actualIndex;
@@ -3687,11 +3704,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             } else {
                 actualIndex = len + relativeIndex;
             }
+
+            if (isTypedArrayImplementation) {
+                if (JSArrayBufferView.isJSArrayBufferView(array) && JSArrayBufferView.isBigIntArrayBufferView((JSDynamicObject) array)) {
+                    value = toBigInt(value);
+                } else {
+                    value = toNumber(value);
+                }
+            }
+
             if (actualIndex >= len || actualIndex < 0) {
                 errorBranch.enter();
-                throw Errors.createRangeError(""); /* TODO: which string */
+                throw Errors.createRangeError("invalid index");
             }
-            JSDynamicObject resultArray = (JSDynamicObject) getArraySpeciesConstructorNode().arrayCreate(len);
+            JSDynamicObject resultArray = (JSDynamicObject) createEmpty((JSDynamicObject) array, len);
 
             long k;
             for (k = 0; k < len; k++) {
