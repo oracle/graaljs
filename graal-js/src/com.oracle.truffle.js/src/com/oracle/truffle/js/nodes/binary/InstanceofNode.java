@@ -392,8 +392,8 @@ public abstract class InstanceofNode extends JSBinaryNode {
         @SuppressWarnings("unused")
         @Specialization(guards = {"!multiContext", "func == cachedFunction"}, limit = "1")
         protected static boolean doCachedInstance(JSDynamicObject func,
-                        @Cached(value = "func", neverDefault = true) JSDynamicObject cachedFunction,
-                        @Cached(value = "isBoundFunction(func)", neverDefault = false) boolean cachedIsBound) {
+                        @Cached(value = "func") JSDynamicObject cachedFunction,
+                        @Cached(value = "isBoundFunction(func)") boolean cachedIsBound) {
             assert isBoundFunction(func) == cachedIsBound;
             return cachedIsBound;
         }
@@ -402,7 +402,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         @Specialization(guards = "cachedShape.check(func)", replaces = "doCachedInstance", limit = "1")
         protected static boolean doCachedShape(JSDynamicObject func,
                         @Cached("func.getShape()") Shape cachedShape,
-                        @Cached(value = "isBoundFunction(func)", neverDefault = false) boolean cachedIsBound) {
+                        @Cached(value = "isBoundFunction(func)") boolean cachedIsBound) {
             assert isBoundFunction(func) == cachedIsBound;
             return cachedIsBound;
         }

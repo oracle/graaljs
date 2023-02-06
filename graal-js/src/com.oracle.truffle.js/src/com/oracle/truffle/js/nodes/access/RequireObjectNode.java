@@ -65,7 +65,7 @@ public abstract class RequireObjectNode extends JavaScriptNode {
     @Specialization(guards = "cachedShape.check(object)", limit = "1")
     protected static Object doObjectShape(JSDynamicObject object,
                     @SuppressWarnings("unused") @Cached("object.getShape()") Shape cachedShape,
-                    @Cached(value = "isJSObject(object)", neverDefault = false) boolean cachedResult) {
+                    @Cached(value = "isJSObject(object)") boolean cachedResult) {
         return requireObject(object, cachedResult);
     }
 

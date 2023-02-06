@@ -142,7 +142,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static boolean doJSObjectCached(Object object,
-                    @Cached(value = "getClassIfJSObject(object)", neverDefault = false) Class<?> cachedClass) {
+                    @Cached(value = "getClassIfJSObject(object)") Class<?> cachedClass) {
         assert !JSGuards.isNullOrUndefined(object);
         return false;
     }

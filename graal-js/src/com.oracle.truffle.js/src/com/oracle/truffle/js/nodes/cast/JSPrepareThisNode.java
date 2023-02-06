@@ -92,7 +92,7 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected Object doJSObjectCached(Object object,
-                    @Cached(value = "getClassIfJSObject(object)", neverDefault = false) Class<?> cachedClass) {
+                    @Cached(value = "getClassIfJSObject(object)") Class<?> cachedClass) {
         return object;
     }
 

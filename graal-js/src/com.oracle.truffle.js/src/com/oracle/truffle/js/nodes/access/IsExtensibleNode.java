@@ -72,7 +72,7 @@ public abstract class IsExtensibleNode extends JavaScriptBaseNode {
     @Specialization(guards = {"getJSClass(cachedShape).usesOrdinaryIsExtensible()", "cachedShape.check(object)"}, limit = "1")
     protected static boolean doCachedShape(JSDynamicObject object,
                     @Cached("object.getShape()") Shape cachedShape,
-                    @Cached(value = "isExtensible(cachedShape)", neverDefault = false) boolean result) {
+                    @Cached(value = "isExtensible(cachedShape)") boolean result) {
         return result;
     }
 

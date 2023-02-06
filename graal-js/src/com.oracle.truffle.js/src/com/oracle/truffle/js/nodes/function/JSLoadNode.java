@@ -83,7 +83,7 @@ public abstract class JSLoadNode extends JavaScriptBaseNode {
     @Specialization(guards = {"cachedSource.isCached()", "equals(source, cachedSource)"}, limit = "1")
     static Object cachedLoad(Source source, JSRealm realm,
                     @Cached @Shared("importValue") ImportValueNode importValue,
-                    @Cached(value = "source", neverDefault = true) Source cachedSource,
+                    @Cached(value = "source") Source cachedSource,
                     @Cached("create(loadScript(source, realm))") DirectCallNode callNode) {
         return importValue.executeWithTarget(callNode.call(JSArguments.EMPTY_ARGUMENTS_ARRAY));
     }
