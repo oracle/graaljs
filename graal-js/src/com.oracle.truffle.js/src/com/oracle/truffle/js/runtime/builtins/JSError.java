@@ -497,4 +497,11 @@ public final class JSError extends JSNonProxy {
     public static TruffleString getAnonymousFunctionNameStackTrace(JSContext context) {
         return context.isOptionNashornCompatibilityMode() ? ANONYMOUS_FUNCTION_NAME_NASHORN : ANONYMOUS_FUNCTION_NAME;
     }
+
+    public static JSObject createForeignErrorPrototype(JSRealm realm) {
+        JSObject prototype = JSOrdinary.createInit(realm, realm.getErrorPrototype(JSErrorType.Error));
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, ErrorPrototypeBuiltins.ForeignErrorPrototypeBuiltins.BUILTINS);
+        return prototype;
+    }
+
 }

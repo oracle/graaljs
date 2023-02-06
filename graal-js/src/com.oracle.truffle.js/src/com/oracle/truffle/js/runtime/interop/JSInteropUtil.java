@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.interop;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
@@ -52,12 +53,14 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
@@ -261,6 +264,75 @@ public final class JSInteropUtil {
                             interop.isArrayElementRemovable(object, index));
         }
         return null;
+    }
+
+    @TruffleBoundary
+    public static String formatError(Object error, InteropLibrary interopExc, InteropLibrary interopStr) {
+        if (interopExc.isException(error)) {
+            try {
+                String message = null;
+                if (interopExc.hasExceptionMessage(error)) {
+                    message = interopStr.asString(interopExc.getExceptionMessage(error));
+                }
+                StringBuilder sb = new StringBuilder();
+                sb.append(Objects.requireNonNullElse(message, "Error"));
+
+                if (interopExc.hasExceptionStackTrace(error)) {
+                    Object stackTrace = interopExc.getExceptionStackTrace(error);
+                    InteropLibrary interopST = InteropLibrary.getUncached(stackTrace);
+                    long length = interopST.getArraySize(stackTrace);
+                    for (long i = 0; i < length; i++) {
+                        Object stackTraceElement = interopST.readArrayElement(stackTrace, i);
+                        InteropLibrary interopSTE = InteropLibrary.getUncached(stackTraceElement);
+
+                        String name = null;
+                        SourceSection sourceLocation = null;
+                        if (interopSTE.hasExecutableName(stackTraceElement)) {
+                            name = interopStr.asString(interopSTE.getExecutableName(stackTraceElement));
+                        }
+                        if (interopSTE.hasSourceLocation(stackTraceElement)) {
+                            sourceLocation = interopSTE.getSourceLocation(stackTraceElement);
+                        }
+
+                        if (name == null && sourceLocation == null) {
+                            continue;
+                        }
+
+                        sb.append('\n');
+                        sb.append("    at ");
+                        sb.append(Objects.requireNonNullElse(name, JSError.ANONYMOUS_FUNCTION_NAME));
+                        if (sourceLocation != null) {
+                            sb.append(" (").append(formatSourceLocation(sourceLocation)).append(")");
+                        }
+                    }
+                }
+                return sb.toString();
+            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                assert false : e;
+            }
+        }
+
+        return JSRuntime.safeToString(error).toString();
+    }
+
+    private static String formatSourceLocation(SourceSection sourceSection) {
+        if (sourceSection == null) {
+            return "Unknown";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(sourceSection.getSource().getName());
+
+        sb.append(":");
+        sb.append(sourceSection.getStartLine());
+        if (sourceSection.getStartLine() < sourceSection.getEndLine()) {
+            sb.append("-").append(sourceSection.getEndLine());
+        }
+        sb.append(":");
+        sb.append(sourceSection.getCharIndex());
+        if (sourceSection.getCharLength() > 1) {
+            sb.append("-").append(sourceSection.getCharEndIndex() - 1);
+        }
+        return sb.toString();
     }
 
 }

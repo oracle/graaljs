@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,22 +45,19 @@ import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
-import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -161,71 +158,7 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
         CompilerAsserts.neverPartOfCompilation();
         InteropLibrary interopExc = InteropLibrary.getUncached(error);
         InteropLibrary interopStr = InteropLibrary.getUncached();
-        if (interopExc.isException(error)) {
-            try {
-                String message = null;
-                if (interopExc.hasExceptionMessage(error)) {
-                    message = interopStr.asString(interopExc.getExceptionMessage(error));
-                }
-                StringBuilder sb = new StringBuilder();
-                sb.append(Objects.requireNonNullElse(message, "Error"));
-
-                if (interopExc.hasExceptionStackTrace(error)) {
-                    Object stackTrace = interopExc.getExceptionStackTrace(error);
-                    InteropLibrary interopST = InteropLibrary.getUncached(stackTrace);
-                    long length = interopST.getArraySize(stackTrace);
-                    for (long i = 0; i < length; i++) {
-                        Object stackTraceElement = interopST.readArrayElement(stackTrace, i);
-                        InteropLibrary interopSTE = InteropLibrary.getUncached(stackTraceElement);
-
-                        String name = null;
-                        SourceSection sourceLocation = null;
-                        if (interopSTE.hasExecutableName(stackTraceElement)) {
-                            name = interopStr.asString(interopSTE.getExecutableName(stackTraceElement));
-                        }
-                        if (interopSTE.hasSourceLocation(stackTraceElement)) {
-                            sourceLocation = interopSTE.getSourceLocation(stackTraceElement);
-                        }
-
-                        if (name == null && sourceLocation == null) {
-                            continue;
-                        }
-
-                        sb.append('\n');
-                        sb.append("    at ");
-                        sb.append(Objects.requireNonNullElse(name, JSError.ANONYMOUS_FUNCTION_NAME));
-                        if (sourceLocation != null) {
-                            sb.append(" (").append(formatSourceLocation(sourceLocation)).append(")");
-                        }
-                    }
-                }
-                return sb.toString();
-            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                assert false : e;
-            }
-        }
-
-        return JSRuntime.safeToString(error).toString();
-    }
-
-    private static String formatSourceLocation(SourceSection sourceSection) {
-        if (sourceSection == null) {
-            return "Unknown";
-        }
-        StringBuilder sb = new StringBuilder();
-        sb.append(sourceSection.getSource().getName());
-
-        sb.append(":");
-        sb.append(sourceSection.getStartLine());
-        if (sourceSection.getStartLine() < sourceSection.getEndLine()) {
-            sb.append("-").append(sourceSection.getEndLine());
-        }
-        sb.append(":");
-        sb.append(sourceSection.getCharIndex());
-        if (sourceSection.getCharLength() > 1) {
-            sb.append("-").append(sourceSection.getCharEndIndex() - 1);
-        }
-        return sb.toString();
+        return JSInteropUtil.formatError(error, interopExc, interopStr);
     }
 
     private static class PromiseChainInfoRecord {
