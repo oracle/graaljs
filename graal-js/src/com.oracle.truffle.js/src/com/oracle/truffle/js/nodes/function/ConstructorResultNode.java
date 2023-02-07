@@ -42,52 +42,51 @@ package com.oracle.truffle.js.nodes.function;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class ConstructorResultNode extends JavaScriptNode {
-    @Child private JavaScriptNode bodyNode;
+public abstract class ConstructorResultNode extends JavaScriptNode {
+    @Child @Executed protected JavaScriptNode bodyNode;
     @Child private JavaScriptNode thisNode;
     private final boolean derived;
 
-    @Child private IsObjectNode isObjectNode;
-    private final ConditionProfile isObject = ConditionProfile.create();
-    private final ConditionProfile isNotUndefined = ConditionProfile.create();
-
-    private ConstructorResultNode(boolean derived, JavaScriptNode bodyNode, JavaScriptNode thisNode) {
+    protected ConstructorResultNode(boolean derived, JavaScriptNode bodyNode, JavaScriptNode thisNode) {
         this.bodyNode = bodyNode;
         this.derived = derived;
         this.thisNode = thisNode;
-        this.isObjectNode = IsObjectNode.create();
     }
 
     public static JavaScriptNode createBase(JavaScriptNode bodyNode, JavaScriptNode thisNode) {
-        return new ConstructorResultNode(false, bodyNode, thisNode);
+        return ConstructorResultNodeGen.create(false, bodyNode, thisNode);
     }
 
     public static JavaScriptNode createDerived(JavaScriptNode bodyNode, JavaScriptNode thisNode) {
-        return new ConstructorResultNode(true, bodyNode, thisNode);
+        return ConstructorResultNodeGen.create(true, bodyNode, thisNode);
     }
 
     /**
-     * @see ConstructorRootNode#execute
+     * @see ConstructorRootNode
      */
-    @Override
-    public Object execute(VirtualFrame frame) {
-        Object result = bodyNode.execute(frame);
-
-        if (isObject.profile(isObjectNode.executeBoolean(result))) {
+    @Specialization
+    protected final Object constructorBodyReturnValue(VirtualFrame frame, Object result,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached InlinedConditionProfile isObject,
+                    @Cached InlinedConditionProfile isNotUndefined) {
+        if (isObject.profile(this, isObjectNode.executeBoolean(result))) {
             return result;
         }
 
         // If [[ConstructorKind]] == "base" or result is undefined return this, otherwise throw
-        if (derived && isNotUndefined.profile(result != Undefined.instance)) {
+        if (derived && isNotUndefined.profile(this, result != Undefined.instance)) {
             // Constructor result is not as expected, i.e. neither object nor undefined.
             // By returning null, we let the caller know that it should throw a TypeError.
             // The TypeError needs to be of the caller realm, so we do not throw it here.
@@ -103,6 +102,6 @@ public final class ConstructorResultNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new ConstructorResultNode(derived, cloneUninitialized(bodyNode, materializedTags), cloneUninitialized(thisNode, materializedTags));
+        return ConstructorResultNodeGen.create(derived, cloneUninitialized(bodyNode, materializedTags), cloneUninitialized(thisNode, materializedTags));
     }
 }
