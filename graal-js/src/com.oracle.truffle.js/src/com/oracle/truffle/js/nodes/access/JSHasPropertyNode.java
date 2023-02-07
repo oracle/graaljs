@@ -40,16 +40,18 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.IntToLongTypeSystem;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -84,7 +86,6 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     private final boolean hasOwnProperty;
     private final JSClassProfile classProfile = JSClassProfile.create();
-    private final ConditionProfile hasElementProfile = ConditionProfile.create();
 
     static final int MAX_ARRAY_TYPES = 3;
 
@@ -106,19 +107,23 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     public abstract boolean executeBoolean(Object object, long index);
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isJSFastArray(object)", "isArrayIndex(index)", "cachedArrayType.isInstance(getArrayType(object))"}, limit = "MAX_ARRAY_TYPES")
     public boolean arrayLongCached(JSDynamicObject object, long index,
-                    @Cached("getArrayType(object)") ScriptArray cachedArrayType) {
-        return checkInteger(object, index, cachedArrayType.cast(getArrayType(object)));
+                    @Bind("this") Node node,
+                    @Cached("getArrayType(object)") ScriptArray cachedArrayType,
+                    @Shared @Cached InlinedConditionProfile hasElementProfile) {
+        return checkInteger(object, index, cachedArrayType.cast(getArrayType(object)), node, hasElementProfile);
     }
 
     @Specialization(guards = {"isJSFastArray(object)", "isArrayIndex(index)"}, replaces = {"arrayLongCached"})
-    public boolean arrayLong(JSDynamicObject object, long index) {
-        return checkInteger(object, index, getArrayType(object));
+    public boolean arrayLong(JSDynamicObject object, long index,
+                    @Shared @Cached InlinedConditionProfile hasElementProfile) {
+        return checkInteger(object, index, getArrayType(object), this, hasElementProfile);
     }
 
-    private boolean checkInteger(JSDynamicObject object, long index, ScriptArray arrayType) {
-        if (hasElementProfile.profile(arrayType.hasElement(object, index))) {
+    private boolean checkInteger(JSDynamicObject object, long index, ScriptArray arrayType, Node node, InlinedConditionProfile hasElementProfile) {
+        if (hasElementProfile.profile(node, arrayType.hasElement(object, index))) {
             return true;
         } else {
             return objectLong(object, index);

@@ -41,12 +41,13 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
@@ -74,8 +75,6 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callTrapNode;
     protected final boolean isNew;
     protected final boolean isNewTarget;
-    private final ConditionProfile pxTrapFunProfile = ConditionProfile.create();
-    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected JSProxyCallNode(JSContext context, boolean isNew, boolean isNewTarget) {
         this.callNode = (isNew || isNewTarget) ? JSFunctionCallNode.createNewTarget() : JSFunctionCallNode.createCall();
@@ -97,24 +96,26 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
      */
     @Specialization(guards = {"!isNew", "!isNewTarget"})
     protected Object doCall(Object[] arguments,
-                    @Cached IsCallableNode isCallable) {
+                    @Cached IsCallableNode isCallable,
+                    @Shared @Cached InlinedConditionProfile pxTrapFunProfile,
+                    @Shared @Cached InlinedBranchProfile errorBranch) {
         Object thisObj = JSArguments.getThisObject(arguments);
         Object function = JSArguments.getFunctionObject(arguments);
         JSProxyObject proxy = (JSProxyObject) function;
 
         if (!isCallable.executeBoolean(JSProxy.getTarget(proxy))) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorNotAFunction(function, this);
         } else {
             JSDynamicObject pxHandler = JSProxy.getHandler(proxy);
             if (pxHandler == Null.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorProxyRevoked(JSProxy.APPLY, this);
             }
             Object pxTarget = JSProxy.getTarget(proxy);
             Object pxTrapFun = trapGetter.executeWithTarget(pxHandler);
             Object[] proxyArguments = JSArguments.extractUserArguments(arguments);
-            if (pxTrapFunProfile.profile(pxTrapFun == Undefined.instance)) {
+            if (pxTrapFunProfile.profile(this, pxTrapFun == Undefined.instance)) {
                 return callNode.executeCall(JSArguments.create(thisObj, pxTarget, proxyArguments));
             }
             Object[] trapArgs = new Object[]{pxTarget, thisObj, JSArray.createConstant(context, getRealm(), proxyArguments)};
@@ -127,24 +128,26 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
      */
     @Specialization(guards = {"isNew || isNewTarget"})
     protected Object doConstruct(Object[] arguments,
-                    @Cached IsConstructorNode isConstructor) {
+                    @Cached IsConstructorNode isConstructor,
+                    @Shared @Cached InlinedConditionProfile pxTrapFunProfile,
+                    @Shared @Cached InlinedBranchProfile errorBranch) {
         Object function = JSArguments.getFunctionObject(arguments);
         JSProxyObject proxy = (JSProxyObject) function;
 
         if (!isConstructor.executeBoolean(JSProxy.getTarget(proxy))) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorNotAFunction(function, this);
         } else {
             JSDynamicObject pxHandler = JSProxy.getHandler(proxy);
             if (pxHandler == Null.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorProxyRevoked(JSProxy.CONSTRUCT, this);
             }
             Object pxTarget = JSProxy.getTarget(proxy);
             Object pxTrapFun = trapGetter.executeWithTarget(pxHandler);
             Object newTarget = isNewTarget ? JSArguments.getNewTarget(arguments) : proxy;
             Object[] constructorArguments = JSArguments.extractUserArguments(arguments, isNewTarget ? 1 : 0);
-            if (pxTrapFunProfile.profile(pxTrapFun == Undefined.instance)) {
+            if (pxTrapFunProfile.profile(this, pxTrapFun == Undefined.instance)) {
                 if (JSDynamicObject.isJSDynamicObject(pxTarget)) {
                     return callNode.executeCall(JSArguments.createWithNewTarget(JSFunction.CONSTRUCT, pxTarget, newTarget, constructorArguments));
                 } else {
@@ -154,7 +157,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
             Object[] trapArgs = new Object[]{pxTarget, JSArray.createConstant(context, getRealm(), constructorArguments), newTarget};
             Object result = callTrapNode.executeCall(JSArguments.create(pxHandler, pxTrapFun, trapArgs));
             if (!JSRuntime.isObject(result)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorNotAnObject(result, this);
             }
             return result;
