@@ -565,7 +565,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.4.
      */
     public abstract static class JSStringCharAtNode extends JSStringOperation implements JSBuiltinNode.Inlineable {
-        private final ConditionProfile indexOutOfBounds = ConditionProfile.create();
 
         @Child private TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
 
@@ -574,8 +573,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected TruffleString stringCharAt(TruffleString thisObj, int pos) {
-            if (indexOutOfBounds.profile(pos < 0 || pos >= Strings.length(thisObj))) {
+        protected TruffleString stringCharAt(TruffleString thisObj, int pos,
+                        @Shared @Cached InlinedConditionProfile indexOutOfBounds) {
+            if (indexOutOfBounds.profile(this, pos < 0 || pos >= Strings.length(thisObj))) {
                 return Strings.EMPTY_STRING;
             } else {
                 return Strings.substring(getContext(), substringNode, thisObj, pos, 1);
@@ -583,9 +583,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected TruffleString charAt(Object thisObj, Object index) {
+        protected TruffleString charAt(Object thisObj, Object index,
+                        @Shared @Cached InlinedConditionProfile indexOutOfBounds) {
             requireObjectCoercible(thisObj);
-            return stringCharAt(toString(thisObj), toIntegerAsInt(index));
+            return stringCharAt(toString(thisObj), toIntegerAsInt(index), indexOutOfBounds);
         }
 
         @Override
@@ -600,7 +601,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             @Override
             @Specialization
-            protected TruffleString charAt(Object thisObj, Object indexObj) {
+            protected TruffleString charAt(Object thisObj, Object indexObj,
+                            @Shared @Cached InlinedConditionProfile indexOutOfBounds) {
                 throw rewriteToCall();
             }
 
