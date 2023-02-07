@@ -41,12 +41,16 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
@@ -72,8 +76,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 @ImportStatic({JSConfig.class})
 public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     private final Hint hint;
-    private final ConditionProfile toStringFunctionProfile = ConditionProfile.create();
-    private final ConditionProfile valueOfFunctionProfile = ConditionProfile.create();
     @Child private PropertyGetNode getToStringNode;
     @Child private PropertyGetNode getValueOfNode;
     @Child private IsCallableNode isCallableNode;
@@ -92,23 +94,29 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     public abstract Object execute(Object object);
 
     @Specialization
-    protected Object doObject(JSObject object) {
+    protected Object doObject(JSObject object,
+                    @Shared @Cached InlinedConditionProfile toStringIsFunction,
+                    @Shared @Cached InlinedConditionProfile valueOfIsFunction) {
         if (hint == Hint.String) {
-            return doHintString(object);
+            return doHintString(object, this, toStringIsFunction, valueOfIsFunction);
         } else {
             assert hint == Hint.Number;
-            return doHintNumber(object);
+            return doHintNumber(object, this, toStringIsFunction, valueOfIsFunction);
         }
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isForeignObject(object)"}, limit = "InteropLibraryLimit")
-    protected Object doForeign(Object object,
-                    @CachedLibrary("object") InteropLibrary interop) {
+    protected final Object doForeign(Object object,
+                    @Bind("this") Node node,
+                    @CachedLibrary("object") InteropLibrary interop,
+                    @Shared @Cached InlinedConditionProfile toStringIsFunction,
+                    @Shared @Cached InlinedConditionProfile valueOfIsFunction) {
         if (hint == Hint.String) {
-            return doForeignHintString(object, interop);
+            return doForeignHintString(object, node, interop, toStringIsFunction, valueOfIsFunction);
         } else {
             assert hint == Hint.Number;
-            return doForeignHintNumber(object, interop);
+            return doForeignHintNumber(object, node, interop, toStringIsFunction, valueOfIsFunction);
         }
     }
 
@@ -124,9 +132,10 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         return OrdinaryToPrimitiveNodeGen.create(hint);
     }
 
-    private Object doHintString(JSObject object) {
+    private Object doHintString(JSObject object,
+                    Node node, InlinedConditionProfile toStringIsFunction, InlinedConditionProfile valueOfIsFunction) {
         Object toString = getToString().getValue(object);
-        if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(toString))) {
+        if (toStringIsFunction.profile(node, isCallableNode.executeBoolean(toString))) {
             Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, toString));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
@@ -134,7 +143,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         }
 
         Object valueOf = getValueOf().getValue(object);
-        if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(valueOf))) {
+        if (valueOfIsFunction.profile(node, isCallableNode.executeBoolean(valueOf))) {
             Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, valueOf));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
@@ -144,10 +153,11 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
-    private Object doHintNumber(JSObject object) {
+    private Object doHintNumber(JSObject object,
+                    Node node, InlinedConditionProfile toStringIsFunction, InlinedConditionProfile valueOfIsFunction) {
         assert JSGuards.isJSObject(object);
         Object valueOf = getValueOf().getValue(object);
-        if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(valueOf))) {
+        if (valueOfIsFunction.profile(node, isCallableNode.executeBoolean(valueOf))) {
             Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, valueOf));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
@@ -155,7 +165,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         }
 
         Object toString = getToString().getValue(object);
-        if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(toString))) {
+        if (toStringIsFunction.profile(node, isCallableNode.executeBoolean(toString))) {
             Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, toString));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
@@ -165,14 +175,15 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
-    private Object doForeignHintString(Object object, InteropLibrary interop) {
+    private Object doForeignHintString(Object object,
+                    Node node, InteropLibrary interop, InlinedConditionProfile toStringIsFunction, InlinedConditionProfile valueOfIsFunction) {
         Object result = tryInvokeForeignMethod(object, interop, Strings.TO_STRING_JLS);
         if (result != null) {
             return result;
         }
         JSDynamicObject proto = getForeignObjectPrototype(object);
         Object func = getToString().getValue(proto);
-        if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
+        if (toStringIsFunction.profile(node, isCallableNode.executeBoolean(func))) {
             result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
@@ -184,7 +195,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             return result;
         }
         func = getValueOf().getValue(proto);
-        if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
+        if (valueOfIsFunction.profile(node, isCallableNode.executeBoolean(func))) {
             result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
@@ -194,14 +205,15 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
-    private Object doForeignHintNumber(Object object, InteropLibrary interop) {
+    private Object doForeignHintNumber(Object object,
+                    Node node, InteropLibrary interop, InlinedConditionProfile toStringIsFunction, InlinedConditionProfile valueOfIsFunction) {
         Object result = tryInvokeForeignMethod(object, interop, Strings.VALUE_OF_JLS);
         if (result != null) {
             return result;
         }
         JSDynamicObject proto = getForeignObjectPrototype(object);
         Object func = getValueOf().getValue(proto);
-        if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
+        if (valueOfIsFunction.profile(node, isCallableNode.executeBoolean(func))) {
             result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
@@ -213,7 +225,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             return result;
         }
         func = getToString().getValue(proto);
-        if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(func))) {
+        if (toStringIsFunction.profile(node, isCallableNode.executeBoolean(func))) {
             result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
