@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,22 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.function.Consumer;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.function.Consumer;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 public class ArrayPrototypeBuiltins {
 
@@ -198,7 +199,8 @@ public class ArrayPrototypeBuiltins {
         public void throwsTypeErrorIfCompareFunctionIsInvalid() {
             String src = "[41, 42, 43, 44, 45].toSorted(32);";
             try {
-                executeSourceForResult(src, value -> { });
+                executeSourceForResult(src, value -> {
+                });
                 fail("expected TypeError to be thrown");
             } catch (PolyglotException e) {
                 assertEquals("TypeError: The comparison function must be either a function or undefined", e.getMessage());
@@ -225,10 +227,10 @@ public class ArrayPrototypeBuiltins {
         public void complexComparator() {
             // Comparator moves uneven numbers to the front
             String src = "[1, 2, 3, 4, 5].toSorted((a, b) => {" +
-                    "   if (a % 2 == 0) return 1;" +
-                    "   else if (b % 2 == 0) return -1;" +
-                    "   else return a - b;" +
-                    "});";
+                            "   if (a % 2 == 0) return 1;" +
+                            "   else if (b % 2 == 0) return -1;" +
+                            "   else return a - b;" +
+                            "});";
             Integer[] expected = new Integer[]{1, 3, 5, 2, 4};
 
             testArray(src, expected.length, expected);
@@ -261,14 +263,15 @@ public class ArrayPrototypeBuiltins {
                 assertEquals("abcd", value.asString());
             });
 
-//            Complex comparators with strings fail with
-//            org.graalvm.polyglot.PolyglotException: com.oracle.truffle.api.dsl.UnsupportedSpecializationException:
-//              Unexpected values provided for JSToStringNodeGen@72c8e7b: [a], [Character]
-//            src = "Array.prototype.toSorted.call('abcd', (a, b) => String(a).localCompare(String(b)))";
+// Complex comparators with strings fail with
+// org.graalvm.polyglot.PolyglotException:
+// com.oracle.truffle.api.dsl.UnsupportedSpecializationException:
+// Unexpected values provided for JSToStringNodeGen@72c8e7b: [a], [Character]
+// src = "Array.prototype.toSorted.call('abcd', (a, b) => String(a).localCompare(String(b)))";
 //
-//            executeSourceForResult(src, value -> {
-//                assertEquals("dcba", value.asString());
-//            });
+// executeSourceForResult(src, value -> {
+// assertEquals("dcba", value.asString());
+// });
         }
     }
 

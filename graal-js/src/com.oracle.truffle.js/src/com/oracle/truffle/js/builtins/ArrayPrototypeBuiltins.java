@@ -2765,6 +2765,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return result;
         }
 
+        @TruffleBoundary
         private Object reverseString(final JSStringObject jsString) {
             String reversedString = new StringBuilder(jsString.asString()).reverse().toString();
             TruffleString reversedTruffleString = TruffleString.fromJavaStringUncached(reversedString, TruffleString.Encoding.UTF_8);
@@ -2809,7 +2810,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Comparator<Object> comparator = compare == null || compare == Undefined.instance ? SortComparator.getDefaultComparator(arrayObject, isTypedArrayImplementation)
                             : new SortComparator(compare);
 
-            Arrays.sort(array, comparator);
+            sortIntl(array, comparator);
 
             for (int i = 0; i < array.length; i++) {
                 write(result, i, array[i]);
@@ -2823,7 +2824,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return result;
         }
 
+        @TruffleBoundary
+        private static void sortIntl(Object[] array, Comparator<Object> comparator) {
+            Arrays.sort(array, comparator);
+        }
+
         // Arrays.sort has no method to sort a char array _with_ a comparator.
+        @TruffleBoundary
         private void insertionSortCharArray(char[] array, Comparator<Object> comparator) {
             for (int i = 1; i < array.length; i++) {
                 int j = i - 1;
@@ -2838,6 +2845,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
+        @TruffleBoundary
         private Object sortString(final Object thisJSObj, final Object compare) {
             StringBuilder resultBuilder = new StringBuilder();
             JSStringObject jsString = (JSStringObject) thisJSObj;
@@ -3635,7 +3643,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void spliceForeignArray(JSDynamicObject dstObj, Object srcObj, long len, long actualStart, long actualDeleteCount, Object args[]) {
+        private void spliceForeignArray(JSDynamicObject dstObj, Object srcObj, long len, long actualStart, long actualDeleteCount, Object[] args) {
             InteropLibrary arrays = arrayInterop;
             if (arrays == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -3697,7 +3705,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object value = valueParam;
             toObjectOrValidateTypedArray(array);
             long len = getLength(array);
-            long relativeIndex = TemporalUtil.toIntegerOrInfinity(index).longValue();
+            long relativeIndex = JSRuntime.longValue(TemporalUtil.toIntegerOrInfinity(index));
             long actualIndex;
             if (relativeIndex >= 0) {
                 actualIndex = relativeIndex;
