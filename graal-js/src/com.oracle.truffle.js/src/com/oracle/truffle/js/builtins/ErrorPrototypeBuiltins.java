@@ -131,7 +131,7 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             super(context, builtin);
         }
 
-        @Specialization(guards = "!isObjectNode.executeBoolean(thisObj)")
+        @Specialization(guards = "!isObjectNode.executeBoolean(thisObj)", limit = "1")
         protected Object toStringNonObject(Object thisObj,
                         @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
                         @Cached @Shared JSToStringNode toStringNode,
@@ -141,7 +141,7 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             throw Errors.createTypeError(message, this);
         }
 
-        @Specialization(guards = "isObjectNode.executeBoolean(errorObj)")
+        @Specialization(guards = "isObjectNode.executeBoolean(errorObj)", limit = "1")
         protected Object toStringObject(Object errorObj,
                         @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
                         @Cached("create(NAME, false, getContext())") PropertyGetNode getNameNode,

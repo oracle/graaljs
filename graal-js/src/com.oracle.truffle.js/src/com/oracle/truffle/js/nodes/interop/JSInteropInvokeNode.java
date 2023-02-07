@@ -65,7 +65,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
 
     @Specialization(guards = {"stringEquals(equalNode, cachedName, name)"}, limit = "1")
     Object doCached(JSDynamicObject receiver, @SuppressWarnings("unused") TruffleString name, Object[] arguments,
-                    @Cached(value = "name", neverDefault = true) TruffleString cachedName,
+                    @Cached(value = "name") TruffleString cachedName,
                     @Cached @SuppressWarnings("unused") TruffleString.EqualNode equalNode,
                     @Cached("createGetProperty(cachedName)") PropertyGetNode functionPropertyGetNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,

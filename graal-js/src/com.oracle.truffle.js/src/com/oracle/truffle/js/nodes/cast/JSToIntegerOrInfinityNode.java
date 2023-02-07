@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * This implements ECMA2022 7.1.5 ToIntegerOrInfinity.
@@ -123,15 +124,22 @@ public abstract class JSToIntegerOrInfinityNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Number doString(TruffleString value,
-                    @Shared("recToIntOrInf") @Cached JSToIntegerOrInfinityNode toIntOrInf,
+                    @Shared @Cached JSToIntegerOrInfinityNode toIntOrInf,
                     @Cached JSStringToNumberNode stringToNumberNode) {
         return toIntOrInf.executeNumber(stringToNumberNode.executeString(value));
     }
 
-    @Specialization(guards = "isForeignObject(value)||isJSObject(value)")
+    @Specialization
+    protected Number doJSObject(JSObject value,
+                    @Shared @Cached JSToIntegerOrInfinityNode toIntOrInf,
+                    @Shared @Cached JSToNumberNode toNumberNode) {
+        return toIntOrInf.executeNumber(toNumberNode.executeNumber(value));
+    }
+
+    @Specialization(guards = "isJSObject(value) || isForeignObject(value)", replaces = "doJSObject")
     protected Number doJSOrForeignObject(Object value,
-                    @Shared("recToIntOrInf") @Cached JSToIntegerOrInfinityNode toIntOrInf,
-                    @Cached JSToNumberNode toNumberNode) {
+                    @Shared @Cached JSToIntegerOrInfinityNode toIntOrInf,
+                    @Shared @Cached JSToNumberNode toNumberNode) {
         return toIntOrInf.executeNumber(toNumberNode.executeNumber(value));
     }
 

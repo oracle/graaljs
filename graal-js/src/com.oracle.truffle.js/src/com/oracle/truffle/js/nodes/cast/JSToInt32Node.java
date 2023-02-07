@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -70,6 +71,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  * This node implements the behavior of ToInt32. Not to confuse with ToInteger, etc.
  *
  */
+@GenerateUncached
 public abstract class JSToInt32Node extends JavaScriptBaseNode {
 
     protected JSToInt32Node() {
@@ -189,7 +191,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
 
     @Specialization(guards = "isForeignObject(object)")
     protected static int doForeignObject(Object object,
-                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Cached JSToInt32Node toInt32Node) {
         return toInt32Node.executeInt(toPrimitiveNode.execute(object));
     }
@@ -343,19 +345,5 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
         public Object getNodeObject() {
             return isBitwiseOr() ? super.getNodeObject() : null;
         }
-    }
-
-    public static JSToInt32Node getUncached() {
-        return new JSToInt32Node() {
-            @Override
-            public int executeInt(Object value) {
-                return JSRuntime.toInt32(value);
-            }
-
-            @Override
-            public boolean isAdoptable() {
-                return false;
-            }
-        };
     }
 }

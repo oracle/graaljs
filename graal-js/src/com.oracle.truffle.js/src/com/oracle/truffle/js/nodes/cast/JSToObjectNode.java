@@ -176,7 +176,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static Object doJSObjectCached(Object object,
-                    @Cached(value = "getClassIfObject(object)", neverDefault = false) Class<?> cachedClass) {
+                    @Cached(value = "getClassIfObject(object)") Class<?> cachedClass) {
         return cachedClass.cast(object);
     }
 

@@ -41,13 +41,13 @@
 package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -59,16 +59,12 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class ConstructorRootNode extends JavaScriptRootNode {
-    private final JSFunctionData functionData;
-    private final CallTarget callTarget;
+public abstract class ConstructorRootNode extends JavaScriptRootNode {
+    protected final JSFunctionData functionData;
+    protected final CallTarget callTarget;
 
-    @Child private DirectCallNode callNode;
-    @Child private SpecializedNewObjectNode newObjectNode;
-    @Child private IsObjectNode isObjectNode;
-    private final ConditionProfile isObject = ConditionProfile.create();
-    private final boolean newTarget;
-    private final JSOrdinary instanceLayout;
+    protected final boolean newTarget;
+    protected final JSOrdinary instanceLayout;
 
     protected ConstructorRootNode(JSFunctionData functionData, CallTarget callTarget, boolean newTarget, JSOrdinary instanceLayout) {
         super(functionData.getContext().getLanguage(), ((RootCallTarget) callTarget).getRootNode().getSourceSection(), null);
@@ -79,14 +75,14 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
     }
 
     public static ConstructorRootNode create(JSFunctionData functionData, CallTarget callTarget, boolean newTarget, JSOrdinary instanceLayout) {
-        return new ConstructorRootNode(functionData, callTarget, newTarget, instanceLayout);
+        return ConstructorRootNodeGen.create(functionData, callTarget, newTarget, instanceLayout);
     }
 
     public static ConstructorRootNode create(JSFunctionData functionData, CallTarget callTarget, boolean newTarget) {
         return create(functionData, callTarget, newTarget, JSOrdinary.INSTANCE);
     }
 
-    private Object allocateThisObject(VirtualFrame frame, Object[] arguments) {
+    private Object allocateThisObject(VirtualFrame frame, Object[] arguments, SpecializedNewObjectNode newObjectNode) {
         // Only base constructors allocate a new object. Derived constructors have to call the super
         // constructor to get the `this` object (which is then returned).
         Object thisObject;
@@ -101,10 +97,10 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
     }
 
     /**
-     * @see ConstructorResultNode#execute
+     * @see ConstructorResultNode
      */
-    private Object filterConstructorResult(Object thisObject, Object result) {
-        if (isObject.profile(isObjectNode.executeBoolean(result))) {
+    private Object filterConstructorResult(Object thisObject, Object result, IsObjectNode isObjectNode, InlinedConditionProfile isObject) {
+        if (isObject.profile(this, isObjectNode.executeBoolean(result))) {
             return result;
         }
         // If [[ConstructorKind]] == "base" or result is undefined return this, otherwise throw
@@ -122,22 +118,16 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
         }
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        if (callNode == null || newObjectNode == null || isObjectNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            initialize();
-        }
+    @Specialization
+    protected final Object construct(VirtualFrame frame,
+                    @Cached("create(callTarget)") DirectCallNode callNode,
+                    @Cached("create(functionData, instanceLayout)") SpecializedNewObjectNode newObjectNode,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached InlinedConditionProfile isObjectProfile) {
         Object[] arguments = frame.getArguments();
-        Object thisObject = allocateThisObject(frame, arguments);
+        Object thisObject = allocateThisObject(frame, arguments, newObjectNode);
         Object result = callNode.call(arguments);
-        return filterConstructorResult(thisObject, result);
-    }
-
-    private void initialize() {
-        this.callNode = insert(Truffle.getRuntime().createDirectCallNode(callTarget));
-        this.newObjectNode = insert(SpecializedNewObjectNode.create(functionData, instanceLayout));
-        this.isObjectNode = insert(IsObjectNode.create());
+        return filterConstructorResult(thisObject, result, isObjectNode, isObjectProfile);
     }
 
     private JSFunctionData getFunctionData() {
@@ -161,7 +151,7 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
 
     @Override
     protected JavaScriptRootNode cloneUninitialized() {
-        return new ConstructorRootNode(functionData, callTarget, newTarget, instanceLayout);
+        return ConstructorRootNodeGen.create(functionData, callTarget, newTarget, instanceLayout);
     }
 
     @Override

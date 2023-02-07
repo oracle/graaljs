@@ -114,7 +114,7 @@ public abstract class IsPristineObjectNode extends JavaScriptBaseNode {
     @Specialization(guards = {"cachedShape.check(object)"}, assumptions = "getPropertyFinalAssumptions()", limit = "1")
     boolean doCached(@SuppressWarnings("unused") JSDynamicObject object,
                     @Cached("object.getShape()") @SuppressWarnings("unused") Shape cachedShape,
-                    @Cached(value = "isInstanceAndDoesNotOverwriteProps(cachedShape)", neverDefault = false) boolean isInstanceAndDoesNotOverwriteProps) {
+                    @Cached(value = "isInstanceAndDoesNotOverwriteProps(cachedShape)") boolean isInstanceAndDoesNotOverwriteProps) {
         return isInstanceAndDoesNotOverwriteProps && prototypeShapeUnchanged(object);
     }
 

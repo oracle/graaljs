@@ -2143,10 +2143,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("unused")
         @Specialization(guards = {"equals(cachedParamList, paramList)", "equals(cachedBody, body)", "equals(cachedSourceName, sourceName)"}, limit = "1")
         protected final JSFunctionObject doCached(String paramList, String body, String sourceName,
-                        @Cached(value = "paramList", neverDefault = true) String cachedParamList,
-                        @Cached(value = "body", neverDefault = true) String cachedBody,
-                        @Cached(value = "sourceName", neverDefault = true) String cachedSourceName,
-                        @Cached(value = "createAssumedValue()", neverDefault = true) AssumedValue<ScriptNode> cachedParsedFunction) {
+                        @Cached(value = "paramList") String cachedParamList,
+                        @Cached(value = "body") String cachedBody,
+                        @Cached(value = "sourceName") String cachedSourceName,
+                        @Cached(value = "createAssumedValue()") AssumedValue<ScriptNode> cachedParsedFunction) {
             ScriptNode parsedFunction = cachedParsedFunction.get();
             if (parsedFunction == null) {
                 parsedFunction = parseFunction(paramList, body, sourceName);

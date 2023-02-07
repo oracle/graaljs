@@ -168,7 +168,7 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
         return (Number) toIntOrInf.execute(stringToNumberNode.executeString(value));
     }
 
-    @Specialization(guards = "isForeignObject(value)||isJSObject(value)")
+    @Specialization(guards = "isJSObject(value) || isForeignObject(value)")
     protected Number doJSOrForeignObject(Object value,
                     @Shared("recToIntOrInf") @Cached JSToIntegerThrowOnInfinityNode toIntOrInf,
                     @Cached JSToNumberNode toNumberNode) {

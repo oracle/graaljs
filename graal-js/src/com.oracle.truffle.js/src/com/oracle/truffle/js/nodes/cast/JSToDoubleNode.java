@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -57,9 +57,8 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  * This implements ECMA 9.3 ToNumber, but always converting the result to a double value.
  *
  */
+@GenerateUncached
 public abstract class JSToDoubleNode extends JavaScriptBaseNode {
-
-    @Child private JSToDoubleNode toDoubleNode;
 
     public abstract Object execute(Object value);
 
@@ -108,8 +107,9 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     @Specialization
     protected double doJSObject(JSObject value,
-                    @Cached("createHintNumber()") @Shared("toPrimitiveHintNumber") JSToPrimitiveNode toPrimitiveNode) {
-        return getToDoubleNode().executeDouble(toPrimitiveNode.execute(value));
+                    @Shared @Cached JSToDoubleNode recursiveToDouble,
+                    @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
+        return recursiveToDouble.executeDouble(toPrimitiveNode.execute(value));
     }
 
     @Specialization
@@ -117,18 +117,11 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
-    @Specialization(guards = "isForeignObject(object)")
+    @Specialization(guards = "isJSObject(object) || isForeignObject(object)", replaces = "doJSObject")
     protected double doForeignObject(Object object,
-                    @Cached("createHintNumber()") @Shared("toPrimitiveHintNumber") JSToPrimitiveNode toPrimitiveNode) {
-        return getToDoubleNode().executeDouble(toPrimitiveNode.execute(object));
-    }
-
-    private JSToDoubleNode getToDoubleNode() {
-        if (toDoubleNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toDoubleNode = insert(JSToDoubleNode.create());
-        }
-        return toDoubleNode;
+                    @Shared @Cached JSToDoubleNode recursiveToDouble,
+                    @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
+        return recursiveToDouble.executeDouble(toPrimitiveNode.execute(object));
     }
 
     @Specialization(guards = "isJavaNumber(value)")

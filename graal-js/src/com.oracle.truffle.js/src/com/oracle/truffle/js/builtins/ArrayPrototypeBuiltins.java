@@ -1268,8 +1268,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private InteropLibrary interopLibrary;
         @Child private ImportValueNode importValueNode;
 
-        private final ConditionProfile isJSObjectProfile = ConditionProfile.create();
-
         public JSArrayToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.joinPropertyNode = PropertyNode.createProperty(context, null, Strings.JOIN);
@@ -1390,9 +1388,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object toString(Object thisObj) {
+        protected Object toString(Object thisObj,
+                        @Cached InlinedConditionProfile isJSObjectProfile) {
             Object arrayObj = toObject(thisObj);
-            if (isJSObjectProfile.profile(JSDynamicObject.isJSDynamicObject(arrayObj))) {
+            if (isJSObjectProfile.profile(this, JSObject.isJSObject(arrayObj))) {
                 Object join = getJoinProperty(arrayObj);
                 if (isCallable(join)) {
                     return callJoin(arrayObj, join);
@@ -3178,15 +3177,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayReverseNode extends JSArrayOperation {
-        @Child private TestArrayNode hasHolesNode;
         @Child private DeletePropertyNode deletePropertyNode;
-        private final ConditionProfile bothExistProfile = ConditionProfile.create();
-        private final ConditionProfile onlyUpperExistsProfile = ConditionProfile.create();
-        private final ConditionProfile onlyLowerExistsProfile = ConditionProfile.create();
 
         public JSArrayReverseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.hasHolesNode = TestArrayNode.createHasHoles();
         }
 
         private boolean deleteProperty(Object array, long index) {
@@ -3198,17 +3192,31 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object reverseJSArray(JSArrayObject thisObj) {
-            return reverse(thisObj, true);
+        protected final Object reverseJSArray(JSArrayObject thisObj,
+                        @Shared @Cached("createHasHoles()") TestArrayNode hasHolesNode,
+                        @Shared @Cached InlinedConditionProfile bothExistProfile,
+                        @Shared @Cached InlinedConditionProfile onlyUpperExistsProfile,
+                        @Shared @Cached InlinedConditionProfile onlyLowerExistsProfile) {
+            return reverse(thisObj, true,
+                            hasHolesNode, bothExistProfile, onlyUpperExistsProfile, onlyLowerExistsProfile);
         }
 
         @Specialization(replaces = "reverseJSArray")
-        protected Object reverseGeneric(Object thisObj) {
+        protected final Object reverseGeneric(Object thisObj,
+                        @Shared @Cached("createHasHoles()") TestArrayNode hasHolesNode,
+                        @Shared @Cached InlinedConditionProfile bothExistProfile,
+                        @Shared @Cached InlinedConditionProfile onlyUpperExistsProfile,
+                        @Shared @Cached InlinedConditionProfile onlyLowerExistsProfile) {
             final Object array = toObject(thisObj);
-            return reverse(array, JSArray.isJSArray(array));
+            return reverse(array, JSArray.isJSArray(array),
+                            hasHolesNode, bothExistProfile, onlyUpperExistsProfile, onlyLowerExistsProfile);
         }
 
-        private Object reverse(Object array, boolean isArray) {
+        private Object reverse(Object array, boolean isArray,
+                        TestArrayNode hasHolesNode,
+                        InlinedConditionProfile bothExistProfile,
+                        InlinedConditionProfile onlyUpperExistsProfile,
+                        InlinedConditionProfile onlyLowerExistsProfile) {
             final long length = getLength(array);
             long lower = 0;
             long upper = length - 1;
@@ -3236,13 +3244,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     }
                 }
 
-                if (bothExistProfile.profile(lowerExists && upperExists)) {
+                if (bothExistProfile.profile(this, lowerExists && upperExists)) {
                     write(array, lower, upperValue);
                     write(array, upper, lowerValue);
-                } else if (onlyUpperExistsProfile.profile(!lowerExists && upperExists)) {
+                } else if (onlyUpperExistsProfile.profile(this, !lowerExists && upperExists)) {
                     write(array, lower, upperValue);
                     deleteProperty(array, upper);
-                } else if (onlyLowerExistsProfile.profile(lowerExists && !upperExists)) {
+                } else if (onlyLowerExistsProfile.profile(this, lowerExists && !upperExists)) {
                     deleteProperty(array, lower);
                     write(array, upper, lowerValue);
                 } else {

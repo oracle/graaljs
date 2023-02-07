@@ -86,14 +86,17 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
         this.getPrototypeNode = (!isBuiltin && isConstructor) ? PropertyNode.createProperty(context, null, JSObject.PROTOTYPE) : null;
     }
 
+    @NeverDefault
     public static SpecializedNewObjectNode create(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, boolean isAsyncGenerator, JSOrdinary instanceLayout) {
         return SpecializedNewObjectNodeGen.create(context, isBuiltin, isConstructor, isGenerator, isAsyncGenerator, instanceLayout);
     }
 
+    @NeverDefault
     public static SpecializedNewObjectNode create(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, boolean isAsyncGenerator) {
         return create(context, isBuiltin, isConstructor, isGenerator, isAsyncGenerator, JSOrdinary.INSTANCE);
     }
 
+    @NeverDefault
     public static SpecializedNewObjectNode create(JSFunctionData functionData, JSOrdinary instanceLayout) {
         return create(functionData.getContext(), functionData.isBuiltin(), functionData.isConstructor(), functionData.isGenerator(), functionData.isAsyncGenerator(), instanceLayout);
     }
@@ -139,7 +142,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "prototypeClass != null", "prototypeClass.isInstance(prototype)"}, limit = "1")
     public JSDynamicObject createWithProtoCachedClass(@SuppressWarnings("unused") JSDynamicObject target, Object prototype,
                     @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
-                    @Cached(value = "getClassIfJSObject(prototype)", neverDefault = false) Class<?> prototypeClass,
+                    @Cached(value = "getClassIfJSObject(prototype)") Class<?> prototypeClass,
                     @Cached("getShapeWithoutProto()") @Shared("shapeWithoutProto") Shape cachedShape) {
         return createWithProto(target, (JSDynamicObject) prototypeClass.cast(prototype), setProtoNode, cachedShape);
     }

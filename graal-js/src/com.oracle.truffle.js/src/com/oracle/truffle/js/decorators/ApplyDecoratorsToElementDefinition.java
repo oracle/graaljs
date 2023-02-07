@@ -115,7 +115,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Shared @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared @Cached IsCallableNode isCallableNode,
                     @Shared @Cached InlinedBranchProfile errorBranch,
-                    @Cached SetFunctionNameNode setFunctionName) {
+                    @Shared @Cached SetFunctionNameNode setFunctionName) {
         for (Object decorator : record.getDecorators()) {
             Object value = record.getValue();
             Object newValue = executeDecoratorWithContext(frame, record, value, extraInitializers, decorator, createDecoratorContextNode, callNode);
@@ -136,7 +136,7 @@ public abstract class ApplyDecoratorsToElementDefinition extends Node {
                     @Shared @Cached("createCall()") JSFunctionCallNode callNode,
                     @Shared @Cached IsCallableNode isCallableNode,
                     @Shared @Cached InlinedBranchProfile errorBranch,
-                    @Cached SetFunctionNameNode setFunctionName) {
+                    @Shared @Cached SetFunctionNameNode setFunctionName) {
         for (Object decorator : record.getDecorators()) {
             boolean isGetter = record.isGetter();
             Object value = isGetter ? record.getGetter() : record.getSetter();

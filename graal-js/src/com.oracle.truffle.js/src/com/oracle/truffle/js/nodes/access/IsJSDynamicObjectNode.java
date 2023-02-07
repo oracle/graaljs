@@ -63,8 +63,8 @@ public abstract class IsJSDynamicObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static boolean isObjectCached(@SuppressWarnings("unused") Object object,
-                    @Cached(value = "getClassIfJSDynamicObject(object)", neverDefault = false) @SuppressWarnings("unused") Class<?> cachedClass,
-                    @Cached(value = "isJSDynamicObject(object)", neverDefault = false) boolean cachedResult) {
+                    @Cached(value = "getClassIfJSDynamicObject(object)") @SuppressWarnings("unused") Class<?> cachedClass,
+                    @Cached(value = "isJSDynamicObject(object)") boolean cachedResult) {
         return cachedResult;
     }
 

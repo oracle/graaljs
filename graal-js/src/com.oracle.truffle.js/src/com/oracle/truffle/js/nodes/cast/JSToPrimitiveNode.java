@@ -46,6 +46,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -303,5 +305,39 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     protected OrdinaryToPrimitiveNode createOrdinaryToPrimitive() {
         return OrdinaryToPrimitiveNode.create(isHintString() ? Hint.String : Hint.Number);
+    }
+
+    @DenyReplace
+    @GenerateCached(false)
+    private static final class Uncached extends JSToPrimitiveNode {
+
+        private static final JSToPrimitiveNode HINT_DEFAULT = new Uncached(Hint.Default);
+        private static final JSToPrimitiveNode HINT_NUMBER = new Uncached(Hint.Number);
+        private static final JSToPrimitiveNode HINT_STRING = new Uncached(Hint.String);
+
+        protected Uncached(Hint hint) {
+            super(hint);
+        }
+
+        @Override
+        public Object execute(Object value) {
+            return JSRuntime.toPrimitive(value, hint);
+        }
+
+    }
+
+    @NeverDefault
+    public static JSToPrimitiveNode getUncachedHintDefault() {
+        return Uncached.HINT_DEFAULT;
+    }
+
+    @NeverDefault
+    public static JSToPrimitiveNode getUncachedHintNumber() {
+        return Uncached.HINT_NUMBER;
+    }
+
+    @NeverDefault
+    public static JSToPrimitiveNode getUncachedHintString() {
+        return Uncached.HINT_STRING;
     }
 }

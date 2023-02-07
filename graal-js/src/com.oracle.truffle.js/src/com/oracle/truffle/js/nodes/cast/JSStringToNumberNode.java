@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -54,10 +57,28 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 
 /**
- * This implements ECMA 9.3.1 ToNumber applied to the String Type.
- *
+ * This implements ToNumber applied to the String type.
  */
+@GenerateUncached
 public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
+
+    public abstract double executeString(TruffleString input);
+
+    @Specialization
+    protected static double trimmedStringToNumber(TruffleString input,
+                    @Cached JSTrimWhitespaceNode trimWhitespaceNode,
+                    @Cached JSStringToNumberNoTrimNode stringToNumberNode) {
+        return stringToNumberNode.executeNoTrim(trimWhitespaceNode.executeString(input));
+    }
+
+    @NeverDefault
+    public static JSStringToNumberNode create() {
+        return JSStringToNumberNodeGen.create();
+    }
+}
+
+@GenerateUncached
+abstract class JSStringToNumberNoTrimNode extends JavaScriptBaseNode {
 
     static final int PREFIX_LENGTH = 2;
     static final int SAFE_HEX_DIGITS = PREFIX_LENGTH + 13;
@@ -68,46 +89,26 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
     static final int MAX_SAFE_INTEGER_LENGTH = 17;
     static final int SMALL_INT_LENGTH = 9;
 
-    @Child private TruffleString.ReadCharUTF16Node stringReadNode;
-    @Child private JSTrimWhitespaceNode trimWhitespaceNode;
+    abstract double executeNoTrim(TruffleString input);
 
-    public final double executeString(TruffleString input) {
-        if (trimWhitespaceNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            trimWhitespaceNode = insert(JSTrimWhitespaceNode.create());
-        }
-        return executeNoTrim(trimWhitespaceNode.executeString(input));
+    protected static char charAt(TruffleString s, int i, TruffleString.ReadCharUTF16Node readChar) {
+        return Strings.charAt(readChar, s, i);
     }
 
-    protected char charAt(TruffleString s, int i) {
-        if (stringReadNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stringReadNode = insert(TruffleString.ReadCharUTF16Node.create());
-        }
-        return Strings.charAt(stringReadNode, s, i);
-    }
-
-    protected abstract double executeNoTrim(TruffleString input);
-
-    @NeverDefault
-    public static JSStringToNumberNode create() {
-        return JSStringToNumberNodeGen.create();
-    }
-
-    protected final boolean startsWithI(TruffleString input) {
+    protected static boolean startsWithI(TruffleString input, TruffleString.ReadCharUTF16Node readChar) {
         return Strings.length(input) >= Strings.length(Strings.INFINITY) && Strings.length(input) <= (Strings.length(Strings.INFINITY) + 1) &&
-                        (charAt(input, 0) == 'I' || charAt(input, 1) == 'I');
+                        (charAt(input, 0, readChar) == 'I' || charAt(input, 1, readChar) == 'I');
     }
 
     /**
      * First two chars are valid finite double. Implies
      * {@code !startsWithI && !isHex && !isOctal && !isBinary}.
      */
-    protected final boolean startsWithValidDouble(TruffleString input) {
-        char firstChar = charAt(input, 0);
+    protected static boolean startsWithValidDouble(TruffleString input, TruffleString.ReadCharUTF16Node readChar) {
+        char firstChar = charAt(input, 0, readChar);
         if (JSRuntime.isAsciiDigit(firstChar) || firstChar == '-' || firstChar == '.' || firstChar == '+') {
             if (Strings.length(input) >= 2) {
-                char secondChar = charAt(input, 1);
+                char secondChar = charAt(input, 1, readChar);
                 return JSRuntime.isAsciiDigit(secondChar) || secondChar == '.' || secondChar == 'e' || secondChar == 'E';
             } else {
                 return true;
@@ -117,65 +118,73 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
         }
     }
 
-    protected final boolean startsWithValidInt(TruffleString input) {
-        char firstChar = charAt(input, 0);
-        return (JSRuntime.isAsciiDigit(firstChar) || firstChar == '-' || firstChar == '+') && (Strings.length(input) < 2 || JSRuntime.isAsciiDigit(charAt(input, 1)));
+    protected static boolean startsWithValidInt(TruffleString input, TruffleString.ReadCharUTF16Node readChar) {
+        char firstChar = charAt(input, 0, readChar);
+        return (JSRuntime.isAsciiDigit(firstChar) || firstChar == '-' || firstChar == '+') && (Strings.length(input) < 2 || JSRuntime.isAsciiDigit(charAt(input, 1, readChar)));
     }
 
-    protected final boolean allDigits(TruffleString input, int maxLength) {
+    protected static boolean allDigits(TruffleString input, int maxLength, TruffleString.ReadCharUTF16Node readChar) {
         assert Strings.length(input) <= maxLength;
         for (int i = 0; i < maxLength; i++) {
             if (i >= Strings.length(input)) {
                 return true;
-            } else if (!JSRuntime.isAsciiDigit(charAt(input, i))) {
+            } else if (!JSRuntime.isAsciiDigit(charAt(input, i, readChar))) {
                 return false;
             }
         }
         return false;
     }
 
-    protected final boolean isHex(TruffleString input) {
-        return Strings.length(input) >= 2 && charAt(input, 0) == '0' && (charAt(input, 1) == 'x' || charAt(input, 1) == 'X');
+    protected static boolean isHex(TruffleString input, TruffleString.ReadCharUTF16Node readChar) {
+        return Strings.length(input) >= 2 && charAt(input, 0, readChar) == '0' && (charAt(input, 1, readChar) == 'x' || charAt(input, 1, readChar) == 'X');
     }
 
-    protected final boolean isOctal(TruffleString input) {
-        return Strings.length(input) >= 2 && charAt(input, 0) == '0' && (charAt(input, 1) == 'o' || charAt(input, 1) == 'O');
+    protected static boolean isOctal(TruffleString input, TruffleString.ReadCharUTF16Node readChar) {
+        return Strings.length(input) >= 2 && charAt(input, 0, readChar) == '0' && (charAt(input, 1, readChar) == 'o' || charAt(input, 1, readChar) == 'O');
     }
 
-    protected final boolean isBinary(TruffleString input) {
-        return Strings.length(input) >= 2 && charAt(input, 0) == '0' && (charAt(input, 1) == 'b' || charAt(input, 1) == 'B');
+    protected static boolean isBinary(TruffleString input, TruffleString.ReadCharUTF16Node readChar) {
+        return Strings.length(input) >= 2 && charAt(input, 0, readChar) == '0' && (charAt(input, 1, readChar) == 'b' || charAt(input, 1, readChar) == 'B');
     }
 
     @Specialization(guards = "stringLength(input) == 0")
-    protected double doLengthIsZero(@SuppressWarnings("unused") TruffleString input) {
+    protected static double doLengthIsZero(@SuppressWarnings("unused") TruffleString input) {
         return 0;
     }
 
-    @Specialization(guards = "startsWithI(input)")
-    protected double doInfinity(TruffleString input,
+    @Specialization(guards = "startsWithI(input, readChar)", limit = "1")
+    protected static double doInfinity(TruffleString input,
+                    @Bind("this") Node node,
                     @Cached InlinedConditionProfile endsWithInfinity,
-                    @Cached TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
-        if (endsWithInfinity.profile(this, Strings.endsWith(regionEqualsNode, input, Strings.INFINITY))) {
-            return JSRuntime.identifyInfinity(charAt(input, 0), Strings.length(input));
+                    @Cached TruffleString.RegionEqualByteIndexNode regionEqualsNode,
+                    @Cached @Shared TruffleString.ReadCharUTF16Node readChar) {
+        if (endsWithInfinity.profile(node, Strings.endsWith(regionEqualsNode, input, Strings.INFINITY))) {
+            return JSRuntime.identifyInfinity(charAt(input, 0, readChar), Strings.length(input));
         } else {
             return Double.NaN;
         }
     }
 
-    @Specialization(guards = {"stringLength(input) > 0", "!startsWithI(input)", "!startsWithValidDouble(input)", "!isHex(input)", "!isOctal(input)", "!isBinary(input)"})
-    protected double doNaN(@SuppressWarnings("unused") TruffleString input) {
+    @Specialization(guards = {"stringLength(input) > 0",
+                    "!startsWithI(input, readChar)",
+                    "!startsWithValidDouble(input, readChar)",
+                    "!isHex(input, readChar)", "!isOctal(input, readChar)", "!isBinary(input, readChar)"}, limit = "1")
+    protected static double doNaN(@SuppressWarnings("unused") TruffleString input,
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
         return Double.NaN;
     }
 
-    @Specialization(guards = {"isHex(input)", "stringLength(input) <= SAFE_HEX_DIGITS"})
+    @Specialization(guards = {"isHex(input, readChar)", "stringLength(input) <= SAFE_HEX_DIGITS"}, limit = "1")
     @TruffleBoundary
-    protected double doHexSafe(TruffleString input) {
+    protected static double doHexSafe(TruffleString input,
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
         return safeIntegerToDouble(JSRuntime.parseSafeInteger(input, 2, Strings.length(input), 16));
     }
 
-    @Specialization(guards = {"isHex(input)", "stringLength(input) > SAFE_HEX_DIGITS"})
+    @Specialization(guards = {"isHex(input, readChar)", "stringLength(input) > SAFE_HEX_DIGITS"}, limit = "1")
     @TruffleBoundary
-    protected double doHex(TruffleString input) {
+    protected static double doHex(TruffleString input,
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
         try {
             return Strings.parseBigInteger(Strings.lazySubstring(input, 2), 16).doubleValue();
         } catch (NumberFormatException ex) {
@@ -183,15 +192,17 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = {"isOctal(input)", "stringLength(input) <= SAFE_OCTAL_DIGITS"})
+    @Specialization(guards = {"isOctal(input, readChar)", "stringLength(input) <= SAFE_OCTAL_DIGITS"}, limit = "1")
     @TruffleBoundary
-    protected double doOctalSafe(TruffleString input) {
+    protected static double doOctalSafe(TruffleString input,
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
         return safeIntegerToDouble(JSRuntime.parseSafeInteger(input, 2, Strings.length(input), 8));
     }
 
-    @Specialization(guards = {"isOctal(input)", "stringLength(input) > SAFE_OCTAL_DIGITS"})
+    @Specialization(guards = {"isOctal(input, readChar)", "stringLength(input) > SAFE_OCTAL_DIGITS"}, limit = "1")
     @TruffleBoundary
-    protected double doOctal(TruffleString input) {
+    protected static double doOctal(TruffleString input,
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
         try {
             return Strings.parseBigInteger(Strings.lazySubstring(input, 2), 8).doubleValue();
         } catch (NumberFormatException ex) {
@@ -199,15 +210,17 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = {"isBinary(input)", "stringLength(input) <= SAFE_BINARY_DIGITS"})
+    @Specialization(guards = {"isBinary(input, readChar)", "stringLength(input) <= SAFE_BINARY_DIGITS"}, limit = "1")
     @TruffleBoundary
-    protected double doBinarySafe(TruffleString input) {
+    protected static double doBinarySafe(TruffleString input,
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
         return safeIntegerToDouble(JSRuntime.parseSafeInteger(input, 2, Strings.length(input), 2));
     }
 
-    @Specialization(guards = {"isBinary(input)", "stringLength(input) > SAFE_BINARY_DIGITS"})
+    @Specialization(guards = {"isBinary(input, readChar)", "stringLength(input) > SAFE_BINARY_DIGITS"}, limit = "1")
     @TruffleBoundary
-    protected double doBinary(TruffleString input) {
+    protected static double doBinary(TruffleString input,
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
         try {
             return Strings.parseBigInteger(Strings.lazySubstring(input, 2), 2).doubleValue();
         } catch (NumberFormatException ex) {
@@ -215,13 +228,16 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = {"stringLength(input) > 0", "stringLength(input) <= SMALL_INT_LENGTH", "allDigits(input, SMALL_INT_LENGTH)"})
-    protected double doSmallPosInt(TruffleString input) {
+    @Specialization(guards = {"stringLength(input) > 0",
+                    "stringLength(input) <= SMALL_INT_LENGTH",
+                    "allDigits(input, SMALL_INT_LENGTH, readChar)"}, limit = "1")
+    protected static double doSmallPosInt(TruffleString input,
+                    @Cached @Shared TruffleString.ReadCharUTF16Node readChar) {
         int result = 0;
         int pos = 0;
         int len = Strings.length(input);
         while (pos < len) {
-            char c = charAt(input, pos);
+            char c = charAt(input, pos, readChar);
             assert JSRuntime.isAsciiDigit(c);
             result *= 10;
             result += c - '0';
@@ -231,9 +247,11 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
         return result;
     }
 
-    @Specialization(guards = {"stringLength(input) > 0", "stringLength(input) <= MAX_SAFE_INTEGER_LENGTH",
-                    "startsWithValidInt(input)"}, rewriteOn = SlowPathException.class, replaces = "doSmallPosInt")
-    protected double doInteger(TruffleString input) throws SlowPathException {
+    @Specialization(guards = {"stringLength(input) > 0",
+                    "stringLength(input) <= MAX_SAFE_INTEGER_LENGTH",
+                    "startsWithValidInt(input, readChar)"}, rewriteOn = SlowPathException.class, replaces = "doSmallPosInt", limit = "1")
+    protected static double doInteger(TruffleString input,
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) throws SlowPathException {
         long result = JSRuntime.parseSafeInteger(input);
         if (result == JSRuntime.INVALID_SAFE_INTEGER) {
             throw JSNodeUtil.slowPathException();
@@ -243,8 +261,10 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    @Specialization(guards = {"stringLength(input) > 0", "startsWithValidDouble(input)"}, replaces = "doInteger")
-    protected double doDouble(TruffleString input) {
+    @Specialization(guards = {"stringLength(input) > 0",
+                    "startsWithValidDouble(input, readChar)"}, replaces = "doInteger", limit = "1")
+    protected static double doDouble(TruffleString input,
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.ReadCharUTF16Node readChar) {
         return JSRuntime.parseDoubleOrNaN(input);
     }
 

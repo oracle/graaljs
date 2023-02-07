@@ -126,7 +126,7 @@ public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode 
         return toIntOrInf.executeDouble(stringToNumberNode.executeString(value));
     }
 
-    @Specialization(guards = "isForeignObject(value)||isJSObject(value)")
+    @Specialization(guards = "isJSObject(value) || isForeignObject(value)")
     protected double doJSOrForeignObject(Object value,
                     @Shared("recToIntOrInf") @Cached JSToIntegerWithoutRoundingNode toIntOrInf,
                     @Cached JSToNumberNode toNumberNode) {
