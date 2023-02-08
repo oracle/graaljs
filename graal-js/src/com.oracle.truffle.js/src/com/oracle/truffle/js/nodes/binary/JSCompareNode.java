@@ -40,19 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 
 public abstract class JSCompareNode extends JSBinaryNode {
 
     protected JSCompareNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
     }
-
-    @Child private JSStringToNumberNode stringToNumberNode;
 
     @Override
     public final Object execute(VirtualFrame frame) {
@@ -61,14 +56,6 @@ public abstract class JSCompareNode extends JSBinaryNode {
 
     @Override
     public abstract boolean executeBoolean(VirtualFrame frame);
-
-    protected double stringToDouble(TruffleString value) {
-        if (stringToNumberNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stringToNumberNode = insert(JSStringToNumberNode.create());
-        }
-        return stringToNumberNode.execute(value);
-    }
 
     @Override
     public final boolean isResultAlwaysOfType(Class<?> clazz) {

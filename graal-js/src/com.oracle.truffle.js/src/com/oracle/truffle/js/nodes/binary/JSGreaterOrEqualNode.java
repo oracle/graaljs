@@ -46,11 +46,13 @@ import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringOrNumberNode;
@@ -109,13 +111,15 @@ public abstract class JSGreaterOrEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doStringDouble(TruffleString a, double b) {
-        return doDouble(stringToDouble(a), b);
+    protected boolean doStringDouble(TruffleString a, double b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doDouble(stringToDouble.execute(a), b);
     }
 
     @Specialization
-    protected boolean doDoubleString(double a, TruffleString b) {
-        return doDouble(a, stringToDouble(b));
+    protected boolean doDoubleString(double a, TruffleString b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doDouble(a, stringToDouble.execute(b));
     }
 
     @Specialization
