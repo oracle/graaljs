@@ -164,7 +164,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
     @Specialization
     protected int doString(TruffleString value,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return doubleToInt32(stringToNumberNode.executeString(value));
+        return doubleToInt32(stringToNumberNode.execute(value));
     }
 
     @Specialization
@@ -278,7 +278,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
         @Specialization
         protected int doString(TruffleString value,
                         @Cached JSStringToNumberNode stringToNumberNode) {
-            return doubleToInt32(stringToNumberNode.executeString(value));
+            return doubleToInt32(stringToNumberNode.execute(value));
         }
 
         @Specialization

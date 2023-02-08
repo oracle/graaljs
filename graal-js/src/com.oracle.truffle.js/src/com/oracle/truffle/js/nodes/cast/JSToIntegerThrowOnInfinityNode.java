@@ -165,7 +165,7 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
     protected Number doString(TruffleString value,
                     @Shared("recToIntOrInf") @Cached JSToIntegerThrowOnInfinityNode toIntOrInf,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return (Number) toIntOrInf.execute(stringToNumberNode.executeString(value));
+        return (Number) toIntOrInf.execute(stringToNumberNode.execute(value));
     }
 
     @Specialization(guards = "isJSObject(value) || isForeignObject(value)")

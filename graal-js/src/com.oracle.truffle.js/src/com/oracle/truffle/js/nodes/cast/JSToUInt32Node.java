@@ -168,7 +168,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     @Specialization
     protected double doString(TruffleString value,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return JSRuntime.toUInt32(stringToNumberNode.executeString(value));
+        return JSRuntime.toUInt32(stringToNumberNode.execute(value));
     }
 
     private static double doStringStatic(TruffleString value) {

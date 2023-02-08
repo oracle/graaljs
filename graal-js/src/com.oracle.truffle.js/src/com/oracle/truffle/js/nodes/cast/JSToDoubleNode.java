@@ -102,7 +102,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
     @Specialization
     protected static double doStringDouble(TruffleString value,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return stringToNumberNode.executeString(value);
+        return stringToNumberNode.execute(value);
     }
 
     @Specialization
