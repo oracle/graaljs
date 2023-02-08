@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.cast;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -206,12 +205,11 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return JSRuntime.toUInt32(toNumberNode.executeNumber(value));
     }
 
-    @TruffleBoundary
     @Specialization(guards = "isForeignObject(object)")
     protected static double doForeignObject(Object object,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Cached JSToUInt32Node toUInt32Node) {
-        return ((Number) toUInt32Node.execute(toPrimitiveNode.execute(object))).doubleValue();
+        return JSRuntime.toDouble(toUInt32Node.execute(toPrimitiveNode.execute(object)));
     }
 
     public abstract static class JSToUInt32WrapperNode extends JSUnaryNode {
