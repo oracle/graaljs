@@ -2791,12 +2791,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
 
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
-
-            if (isString(thisJSObj)) {
-                return sortString(thisJSObj, compare);
-            } else {
-                return sortArrayOrObject(thisJSObj, compare, growProfile);
-            }
+            return sortArrayOrObject(thisJSObj, compare, growProfile);
         }
 
         private Object sortArrayOrObject(final Object thisJSObj, final Object compare, InlinedBranchProfile growProfile) {
@@ -2827,44 +2822,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @TruffleBoundary
         private static void sortIntl(Object[] array, Comparator<Object> comparator) {
             Arrays.sort(array, comparator);
-        }
-
-        // Arrays.sort has no method to sort a char array _with_ a comparator.
-        @TruffleBoundary
-        private void insertionSortCharArray(char[] array, Comparator<Object> comparator) {
-            for (int i = 1; i < array.length; i++) {
-                int j = i - 1;
-                char key = array[i];
-
-                while (j >= 0 && comparator.compare(array[j], key) > 0) {
-                    array[j + 1] = array[j];
-                    j = j - 1;
-                }
-
-                array[j + 1] = key;
-            }
-        }
-
-        @TruffleBoundary
-        private Object sortString(final Object thisJSObj, final Object compare) {
-            StringBuilder resultBuilder = new StringBuilder();
-            JSStringObject jsString = (JSStringObject) thisJSObj;
-            String string = jsString.asString();
-            Comparator<Object> comparator = compare == null || compare == Undefined.instance ? Comparator.comparing(Object::toString) : new SortComparator(compare);
-            char[] array = string.toCharArray();
-
-            insertionSortCharArray(array, comparator);
-
-            for (Object character : array) {
-                resultBuilder.append(character);
-            }
-
-            return JSStringObject.create(jsString.getShape(), TruffleString.fromJavaStringUncached(resultBuilder.toString(), TruffleString.Encoding.UTF_8));
-        }
-
-        private boolean isString(final Object object) {
-            Object thisJSObj = toObjectOrValidateTypedArray(object);
-            return thisJSObj instanceof JSStringObject;
         }
     }
 

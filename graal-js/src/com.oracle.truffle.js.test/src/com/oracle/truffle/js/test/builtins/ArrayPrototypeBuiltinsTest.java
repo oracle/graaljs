@@ -253,25 +253,26 @@ public class ArrayPrototypeBuiltins {
         public void sortString() {
             String src = "Array.prototype.toSorted.call('dcba')";
 
-            executeSourceForResult(src, value -> {
-                assertEquals("abcd", value.asString());
-            });
+            String[] expected = new String[]{"a", "b", "c", "d"};
+            testArray(src, expected.length, expected);
 
             src = "Array.prototype.toSorted.call('abcd', (a, b) => 0)";
+            testArray(src, expected.length, expected);
 
-            executeSourceForResult(src, value -> {
-                assertEquals("abcd", value.asString());
-            });
+            src = "Array.prototype.toSorted.call('dcba', (a, b) => 0)";
+            expected = new String[]{"d", "c", "b", "a"};
+            testArray(src, expected.length, expected);
+        }
 
-// Complex comparators with strings fail with
-// org.graalvm.polyglot.PolyglotException:
-// com.oracle.truffle.api.dsl.UnsupportedSpecializationException:
-// Unexpected values provided for JSToStringNodeGen@72c8e7b: [a], [Character]
-// src = "Array.prototype.toSorted.call('abcd', (a, b) => String(a).localCompare(String(b)))";
-//
-// executeSourceForResult(src, value -> {
-// assertEquals("dcba", value.asString());
-// });
+        @Test
+        public void testToSortedComplexComparator() {
+            String[] expected = new String[]{"a", "b", "c", "d"};
+
+            String src = "Array.prototype.toSorted.call('abcd', (a, b) => String(a).localeCompare(String(b)))";
+            testArray(src, expected.length, expected);
+
+            src = "Array.prototype.toSorted.call('dcba', (a, b) => String(a).localeCompare(String(b)))";
+            testArray(src, expected.length, expected);
         }
     }
 
