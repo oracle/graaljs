@@ -123,11 +123,11 @@ public abstract class JSGetLengthNode extends JavaScriptBaseNode {
     }
 
     private double toUInt32Double(Object target) {
-        return JSRuntime.doubleValue((Number) getUInt32Node().execute(target));
+        return JSRuntime.doubleValue(getUInt32Node().executeNumber(target));
     }
 
     private long toUInt32Long(Object target) {
-        return JSRuntime.longValue((Number) getUInt32Node().execute(target));
+        return JSRuntime.longValue(getUInt32Node().executeNumber(target));
     }
 
     private double toLengthDouble(Object target) {

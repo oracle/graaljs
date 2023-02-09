@@ -905,7 +905,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toUInt32Node = insert(JSToUInt32Node.create());
             }
-            return (int) Math.min(Integer.MAX_VALUE, JSRuntime.toInteger((Number) toUInt32Node.execute(target)));
+            return (int) Math.min(Integer.MAX_VALUE, JSRuntime.toInteger(toUInt32Node.executeNumber(target)));
         }
 
         private TruffleString toString2(Object obj) {

@@ -102,8 +102,12 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value);
 
+    public final Number executeNumber(Object value) {
+        return (Number) execute(value);
+    }
+
     public final long executeLong(Object value) {
-        return JSRuntime.longValue((Number) execute(value));
+        return JSRuntime.longValue(executeNumber(value));
     }
 
     @Specialization(guards = "value >= 0")
@@ -209,7 +213,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     protected static double doForeignObject(Object object,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Cached JSToUInt32Node toUInt32Node) {
-        return JSRuntime.toDouble(toUInt32Node.execute(toPrimitiveNode.execute(object)));
+        return JSRuntime.toDouble(toUInt32Node.executeNumber(toPrimitiveNode.execute(object)));
     }
 
     public abstract static class JSToUInt32WrapperNode extends JSUnaryNode {

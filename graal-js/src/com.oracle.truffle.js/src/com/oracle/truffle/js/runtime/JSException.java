@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -146,7 +146,7 @@ public final class JSException extends GraalJSException {
         if (JSProperty.isData(lib.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
             Object stackTraceLimit = lib.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
             if (JSRuntime.isNumber(stackTraceLimit)) {
-                final long limit = JSRuntime.toInteger(stackTraceLimit);
+                final long limit = JSRuntime.toInteger((Number) stackTraceLimit);
                 return (int) Math.max(0, Math.min(limit, Integer.MAX_VALUE));
             }
         }
