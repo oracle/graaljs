@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -217,9 +216,9 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     }
 
     public abstract static class JSToUInt32WrapperNode extends JSUnaryNode {
-        @Child private JSToUInt32Node toUInt32Node;
-        private final boolean unsignedRightShift;
-        private final int shiftValue;
+
+        protected final boolean unsignedRightShift;
+        protected final int shiftValue;
 
         protected JSToUInt32WrapperNode(JavaScriptNode operand, boolean unsignedRightShift, int shiftValue) {
             super(operand);
@@ -262,11 +261,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         }
 
         @Specialization
-        protected Object doDefault(Object value) {
-            if (toUInt32Node == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toUInt32Node = insert(JSToUInt32Node.create(unsignedRightShift, shiftValue));
-            }
+        protected static Object doDefault(Object value,
+                        @Cached("create(unsignedRightShift, shiftValue)") JSToUInt32Node toUInt32Node) {
             return toUInt32Node.execute(value);
         }
 

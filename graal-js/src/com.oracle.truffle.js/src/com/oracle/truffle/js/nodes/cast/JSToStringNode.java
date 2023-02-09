@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -172,8 +171,6 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
 
     public abstract static class JSToStringWrapperNode extends JSUnaryNode {
 
-        @Child private JSToStringNode toStringNode;
-
         protected JSToStringWrapperNode(JavaScriptNode operand) {
             super(operand);
         }
@@ -188,11 +185,8 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         }
 
         @Specialization
-        protected Object doDefault(Object value) {
-            if (toStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toStringNode = insert(JSToStringNode.create());
-            }
+        protected static Object doDefault(Object value,
+                        @Cached JSToStringNode toStringNode) {
             return toStringNode.executeString(value);
         }
 
