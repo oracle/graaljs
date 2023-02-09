@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.unary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -65,6 +66,13 @@ public abstract class JSUnaryPlusNode extends JSUnaryNode {
         return JSUnaryPlusNodeGen.create(operand);
     }
 
+    @Specialization(guards = {"!hasOverloadedOperators(value)"})
+    protected Object doDefault(Object value,
+                    @Cached JSToNumberNode toNumberNode) {
+        return toNumberNode.executeNumber(value);
+    }
+
+    @InliningCutoff
     @Specialization
     protected Object doOverloaded(JSOverloadedOperatorsObject value,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
@@ -73,12 +81,6 @@ public abstract class JSUnaryPlusNode extends JSUnaryNode {
 
     protected TruffleString getOverloadedOperatorName() {
         return Strings.POS;
-    }
-
-    @Specialization(guards = {"!hasOverloadedOperators(value)"})
-    protected Object doDefault(Object value,
-                    @Cached JSToNumberNode toNumberNode) {
-        return toNumberNode.executeNumber(value);
     }
 
     @Override

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -493,6 +494,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             return iterator;
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isJSMap(map)", "isForeignHash(map, mapLib)"})
         protected final JSDynamicObject doForeignMap(Object map,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,

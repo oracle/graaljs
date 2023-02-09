@@ -44,6 +44,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -265,6 +266,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         return result;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"isForeignObject(target)", "!interop.hasArrayElements(target)"})
     protected boolean member(Object target, TruffleString name,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
@@ -296,6 +298,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         return true;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"isForeignObject(target)", "interop.hasArrayElements(target)"})
     protected boolean arrayElementInt(Object target, int index,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
@@ -337,6 +340,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     }
 
     @SuppressWarnings("unused")
+    @InliningCutoff
     @Specialization(guards = {"isForeignObject(target)"}, replaces = {"member", "arrayElementInt"})
     protected boolean foreignObject(Object target, Object key,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,

@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -125,6 +126,7 @@ public abstract class JSModuloNode extends JSBinaryNode {
         return a.remainder(b);
     }
 
+    @InliningCutoff
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
     protected Object doOverloaded(Object a, Object b,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {

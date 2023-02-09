@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -116,6 +117,7 @@ public abstract class IsPrimitiveNode extends JavaScriptBaseNode {
         return false;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"isForeignObject(operand)"}, limit = "InteropLibraryLimit")
     protected static boolean doForeignObject(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {

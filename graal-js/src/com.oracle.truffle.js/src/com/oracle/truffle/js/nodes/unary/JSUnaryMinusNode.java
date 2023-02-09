@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.unary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -119,6 +120,7 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
         return a.negate();
     }
 
+    @InliningCutoff
     @Specialization
     protected Object doOverloaded(JSOverloadedOperatorsObject a,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {

@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -128,6 +129,7 @@ public final class JSInteropUtil {
         }
     }
 
+    @InliningCutoff
     public static Object toPrimitiveOrDefault(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode) {
         if (interop.isNull(obj)) {
             return Null.instance;
@@ -224,6 +226,7 @@ public final class JSInteropUtil {
         return getOwnProperty(object, propertyKey, InteropLibrary.getUncached(), ImportValueNode.getUncached(), TruffleString.ReadCharUTF16Node.getUncached());
     }
 
+    @InliningCutoff
     public static PropertyDescriptor getOwnProperty(Object object, TruffleString propertyKey, InteropLibrary interop, ImportValueNode importValueNode, TruffleString.ReadCharUTF16Node charAtNode) {
         try {
             String key = Strings.toJavaString(propertyKey);
@@ -242,6 +245,7 @@ public final class JSInteropUtil {
         return null;
     }
 
+    @InliningCutoff
     public static PropertyDescriptor getExistingMemberProperty(Object object, String key, InteropLibrary interop, ImportValueNode importValueNode) throws InteropException {
         assert interop.hasMembers(object) && interop.isMemberExisting(object, key);
         if (interop.isMemberReadable(object, key)) {
@@ -254,6 +258,7 @@ public final class JSInteropUtil {
         return null;
     }
 
+    @InliningCutoff
     public static PropertyDescriptor getArrayElementProperty(Object object, long index, InteropLibrary interop, ImportValueNode importValueNode) throws InteropException {
         assert interop.hasArrayElements(object) && JSRuntime.isArrayIndex(index);
         if (interop.isArrayElementExisting(object, index) && interop.isArrayElementReadable(object, index)) {

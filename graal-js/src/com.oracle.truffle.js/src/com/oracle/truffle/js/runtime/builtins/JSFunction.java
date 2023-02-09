@@ -343,7 +343,7 @@ public final class JSFunction extends JSNonProxy {
         if (targetHasLength) {
             Object targetLen = JSObject.get(thisFnObj, JSFunction.LENGTH);
             if (JSRuntime.isNumber(targetLen)) {
-                long targetLenInt = JSRuntime.toInteger(targetLen);
+                long targetLenInt = JSRuntime.toInteger((Number) targetLen);
                 length = Math.max(0, targetLenInt - boundArguments.length);
                 if (targetLenInt == getLength(thisFnObj)) {
                     mustSetLength = false;

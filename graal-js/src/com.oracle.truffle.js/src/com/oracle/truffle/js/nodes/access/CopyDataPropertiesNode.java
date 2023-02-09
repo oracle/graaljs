@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -135,6 +136,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
         return false;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"!isJSDynamicObject(from)"}, limit = "InteropLibraryLimit")
     protected final JSDynamicObject copyDataPropertiesForeign(JSDynamicObject target, Object from, Object[] excludedItems, boolean withExcluded,
                     @CachedLibrary("from") InteropLibrary objInterop,

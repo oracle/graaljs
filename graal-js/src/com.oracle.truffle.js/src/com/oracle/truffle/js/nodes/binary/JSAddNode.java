@@ -46,6 +46,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -214,6 +215,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
      * overloaded operators. The only change to the rest of the node is adding guards to the generic
      * cases which restrict them to cases that don't feature overloaded operators.
      */
+    @InliningCutoff
     @Specialization(guards = "hasOverloadedOperators(a) || hasOverloadedOperators(b)")
     protected Object doOverloaded(Object a, Object b,
                     @Cached("createHintDefault(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {

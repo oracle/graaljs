@@ -80,10 +80,10 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
 
         if (n instanceof Integer) {
             isIntProfile.enter();
-            return n.intValue();
+            return ((Integer) n).intValue();
         } else if (n instanceof Long) {
             isLongProfile.enter();
-            long l = n.longValue();
+            long l = ((Long) n).longValue();
             if (l < Integer.MIN_VALUE || Integer.MAX_VALUE < l) {
                 errorBranch.enter();
                 throw Errors.createRangeError("value out of range");
@@ -91,7 +91,7 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
             return (int) l;
         } else {
             isDoubleProfile.enter();
-            double d = n.doubleValue();
+            double d = JSRuntime.doubleValue(n);
             if (d < Integer.MIN_VALUE || Integer.MAX_VALUE < d) {
                 errorBranch.enter();
                 throw Errors.createRangeError("value out of range");
@@ -101,7 +101,7 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
     }
 
     public final double executeDouble(Object value) {
-        return ((Number) execute(value)).doubleValue();
+        return JSRuntime.doubleValue((Number) execute(value));
     }
 
     @NeverDefault
@@ -165,7 +165,7 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
     protected Number doString(TruffleString value,
                     @Shared("recToIntOrInf") @Cached JSToIntegerThrowOnInfinityNode toIntOrInf,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return (Number) toIntOrInf.execute(stringToNumberNode.executeString(value));
+        return (Number) toIntOrInf.execute(stringToNumberNode.execute(value));
     }
 
     @Specialization(guards = "isJSObject(value) || isForeignObject(value)")

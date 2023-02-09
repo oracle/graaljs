@@ -42,8 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -102,8 +101,12 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value);
 
+    public final Number executeNumber(Object value) {
+        return (Number) execute(value);
+    }
+
     public final long executeLong(Object value) {
-        return JSRuntime.longValue((Number) execute(value));
+        return JSRuntime.longValue(executeNumber(value));
     }
 
     @Specialization(guards = "value >= 0")
@@ -167,7 +170,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     @Specialization
     protected double doString(TruffleString value,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return JSRuntime.toUInt32(stringToNumberNode.executeString(value));
+        return JSRuntime.toUInt32(stringToNumberNode.execute(value));
     }
 
     private static double doStringStatic(TruffleString value) {
@@ -188,6 +191,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return unsignedRightShift;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"isUnsignedRightShift()"})
     protected Object doOverloadedOperator(JSOverloadedOperatorsObject value,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
@@ -204,18 +208,17 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return JSRuntime.toUInt32(toNumberNode.executeNumber(value));
     }
 
-    @TruffleBoundary
     @Specialization(guards = "isForeignObject(object)")
     protected static double doForeignObject(Object object,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Cached JSToUInt32Node toUInt32Node) {
-        return ((Number) toUInt32Node.execute(toPrimitiveNode.execute(object))).doubleValue();
+        return JSRuntime.toDouble(toUInt32Node.executeNumber(toPrimitiveNode.execute(object)));
     }
 
     public abstract static class JSToUInt32WrapperNode extends JSUnaryNode {
-        @Child private JSToUInt32Node toUInt32Node;
-        private final boolean unsignedRightShift;
-        private final int shiftValue;
+
+        protected final boolean unsignedRightShift;
+        protected final int shiftValue;
 
         protected JSToUInt32WrapperNode(JavaScriptNode operand, boolean unsignedRightShift, int shiftValue) {
             super(operand);
@@ -258,11 +261,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         }
 
         @Specialization
-        protected Object doDefault(Object value) {
-            if (toUInt32Node == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toUInt32Node = insert(JSToUInt32Node.create(unsignedRightShift, shiftValue));
-            }
+        protected static Object doDefault(Object value,
+                        @Cached("create(unsignedRightShift, shiftValue)") JSToUInt32Node toUInt32Node) {
             return toUInt32Node.execute(value);
         }
 

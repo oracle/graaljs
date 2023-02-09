@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -112,6 +113,7 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
         return getIterator(items, method, isCallableNode, iteratorCallNode, isObjectNode, getNextMethodNode, errorBranch, node);
     }
 
+    @InliningCutoff
     private static Object getIteratorMethodUncached(Object items, Node node) {
         Object method;
         Object obj = JSRuntime.toObject(JavaScriptLanguage.get(node).getJSContext(), items);

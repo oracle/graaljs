@@ -111,7 +111,7 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     @Specialization
     protected Number doString(TruffleString value,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        double doubleValue = stringToNumberNode.executeString(value);
+        double doubleValue = stringToNumberNode.execute(value);
         return JSRuntime.doubleToNarrowestNumber(doubleValue);
     }
 

@@ -126,7 +126,7 @@ public abstract class JSToIntegerOrInfinityNode extends JavaScriptBaseNode {
     protected Number doString(TruffleString value,
                     @Shared @Cached JSToIntegerOrInfinityNode toIntOrInf,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return toIntOrInf.executeNumber(stringToNumberNode.executeString(value));
+        return toIntOrInf.executeNumber(stringToNumberNode.execute(value));
     }
 
     @Specialization

@@ -44,6 +44,7 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -265,6 +266,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class ObjectPrototypeToStringNode extends ObjectOperation {
         @Child private PropertyGetNode getStringTagNode;
         @Child private FormatCacheNode formatCacheNode;
@@ -328,8 +330,8 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return Strings.TO_STRING_VALUE_UNDEFINED;
         }
 
-        @Specialization(guards = "isForeignObject(thisObj)", limit = "1")
-        @TruffleBoundary
+        @InliningCutoff
+        @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
         protected TruffleString doForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop) {
             if (interop.isNull(thisObj)) {

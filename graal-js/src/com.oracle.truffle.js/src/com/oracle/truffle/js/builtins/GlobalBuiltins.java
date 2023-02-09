@@ -60,6 +60,7 @@ import java.util.StringTokenizer;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
@@ -1247,6 +1248,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return parseIndirectEval(realm, Strings.toJavaString(source)).runEval(callNode, realm);
         }
 
+        @InliningCutoff
         @Specialization(guards = "isForeignObject(source)", limit = "3")
         protected Object indirectEvalForeignObject(Object source,
                         @CachedLibrary("source") InteropLibrary interop) {

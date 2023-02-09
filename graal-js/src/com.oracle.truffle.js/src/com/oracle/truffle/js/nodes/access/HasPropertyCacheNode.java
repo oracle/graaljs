@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -282,6 +283,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
+        @InliningCutoff
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             if (JSDynamicObject.isJSDynamicObject(thisObj)) {

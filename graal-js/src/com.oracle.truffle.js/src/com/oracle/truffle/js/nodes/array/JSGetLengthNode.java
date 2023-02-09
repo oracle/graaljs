@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -104,6 +105,7 @@ public abstract class JSGetLengthNode extends JavaScriptBaseNode {
         return toLengthDouble(getLengthPropertyNode.getValue(target));
     }
 
+    @InliningCutoff
     @Specialization(guards = "!isJSDynamicObject(target)", limit = "3")
     public double getLengthForeign(Object target,
                     @CachedLibrary("target") InteropLibrary interop,
@@ -121,11 +123,11 @@ public abstract class JSGetLengthNode extends JavaScriptBaseNode {
     }
 
     private double toUInt32Double(Object target) {
-        return JSRuntime.doubleValue((Number) getUInt32Node().execute(target));
+        return JSRuntime.doubleValue(getUInt32Node().executeNumber(target));
     }
 
     private long toUInt32Long(Object target) {
-        return JSRuntime.longValue((Number) getUInt32Node().execute(target));
+        return JSRuntime.longValue(getUInt32Node().executeNumber(target));
     }
 
     private double toLengthDouble(Object target) {

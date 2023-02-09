@@ -123,7 +123,7 @@ public abstract class JSToIntegerAsIntNode extends JavaScriptBaseNode {
     protected int doString(TruffleString value,
                     @Cached JSToIntegerAsIntNode nestedToIntegerNode,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return nestedToIntegerNode.executeInt(stringToNumberNode.executeString(value));
+        return nestedToIntegerNode.executeInt(stringToNumberNode.execute(value));
     }
 
     @Specialization

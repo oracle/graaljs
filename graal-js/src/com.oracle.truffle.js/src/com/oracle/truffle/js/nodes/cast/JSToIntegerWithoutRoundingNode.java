@@ -123,7 +123,7 @@ public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode 
     protected double doString(TruffleString value,
                     @Shared("recToIntOrInf") @Cached JSToIntegerWithoutRoundingNode toIntOrInf,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return toIntOrInf.executeDouble(stringToNumberNode.executeString(value));
+        return toIntOrInf.executeDouble(stringToNumberNode.execute(value));
     }
 
     @Specialization(guards = "isJSObject(value) || isForeignObject(value)")

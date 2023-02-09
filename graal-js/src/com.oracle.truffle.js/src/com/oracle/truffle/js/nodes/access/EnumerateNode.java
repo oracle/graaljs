@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
@@ -154,6 +155,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
     }
 
     @SuppressWarnings("truffle-static-method")
+    @InliningCutoff
     @Specialization(guards = {"isForeignObject(iteratedObject)"}, limit = "InteropLibraryLimit")
     protected JSDynamicObject doEnumerateTruffleObject(Object iteratedObject,
                     @Bind("this") Node node,

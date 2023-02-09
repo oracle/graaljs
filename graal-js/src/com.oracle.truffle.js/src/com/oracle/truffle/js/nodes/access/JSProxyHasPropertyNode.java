@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -125,6 +126,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
         }
     }
 
+    @InliningCutoff
     private boolean maybeHasInPrototype(Object target, Object propertyKey) {
         assert JSRuntime.isPropertyKey(propertyKey);
         if (getLanguage().getJSContext().getContextOptions().hasForeignObjectPrototype()) {

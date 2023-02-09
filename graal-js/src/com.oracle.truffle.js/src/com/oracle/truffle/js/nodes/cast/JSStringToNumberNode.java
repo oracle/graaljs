@@ -62,7 +62,7 @@ import com.oracle.truffle.js.runtime.Strings;
 @GenerateUncached
 public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
 
-    public abstract double executeString(TruffleString input);
+    public abstract double execute(TruffleString input);
 
     @Specialization
     protected static double trimmedStringToNumber(TruffleString input,

@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -163,7 +164,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
     @Specialization
     protected int doString(TruffleString value,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return doubleToInt32(stringToNumberNode.executeString(value));
+        return doubleToInt32(stringToNumberNode.execute(value));
     }
 
     @Specialization
@@ -277,7 +278,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
         @Specialization
         protected int doString(TruffleString value,
                         @Cached JSStringToNumberNode stringToNumberNode) {
-            return doubleToInt32(stringToNumberNode.executeString(value));
+            return doubleToInt32(stringToNumberNode.execute(value));
         }
 
         @Specialization
@@ -290,6 +291,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
             throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
         }
 
+        @InliningCutoff
         @Specialization(guards = {"isBitwiseOr()"})
         protected Object doOverloadedOperator(JSOverloadedOperatorsObject value,
                         @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {

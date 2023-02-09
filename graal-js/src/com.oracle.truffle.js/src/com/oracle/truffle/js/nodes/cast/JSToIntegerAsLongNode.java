@@ -122,7 +122,7 @@ public abstract class JSToIntegerAsLongNode extends JavaScriptBaseNode {
     protected long doString(TruffleString value,
                     @Cached JSToIntegerAsLongNode nestedToIntegerNode,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        return nestedToIntegerNode.executeLong(stringToNumberNode.executeString(value));
+        return nestedToIntegerNode.executeLong(stringToNumberNode.execute(value));
     }
 
     @Specialization

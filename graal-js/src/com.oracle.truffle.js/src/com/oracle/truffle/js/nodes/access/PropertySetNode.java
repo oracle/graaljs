@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.ArityException;
@@ -792,6 +793,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             this.toObjectNode = JSToObjectNode.createToObjectNoCheck(context);
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             if (isObject.profile(JSDynamicObject.isJSDynamicObject(thisObj))) {
@@ -827,16 +829,19 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
             return setValue(thisObj, value, receiver, root, guard);
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
             return setValue(thisObj, value, receiver, root, guard);
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValueBoolean(Object thisObj, boolean value, Object receiver, PropertySetNode root, boolean guard) {
             return setValue(thisObj, value, receiver, root, guard);
@@ -886,6 +891,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return performWriteMember(truffleObject, value, root);
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             Object key = root.getKey();

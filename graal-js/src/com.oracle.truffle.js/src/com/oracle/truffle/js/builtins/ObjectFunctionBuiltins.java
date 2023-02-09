@@ -47,6 +47,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -426,6 +427,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @SuppressWarnings("truffle-static-method")
+        @InliningCutoff
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "InteropLibraryLimit")
         protected JSDynamicObject getForeignObject(Object thisObj,
                         @Bind("this") Node node,
@@ -978,6 +980,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isJSObject(from)"}, limit = "InteropLibraryLimit")
         protected final void doObject(Object to, Object from, WriteElementNode write,
                         @CachedLibrary("from") InteropLibrary fromInterop,

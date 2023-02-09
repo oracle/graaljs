@@ -49,6 +49,7 @@ import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -904,7 +905,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toUInt32Node = insert(JSToUInt32Node.create());
             }
-            return (int) Math.min(Integer.MAX_VALUE, JSRuntime.toInteger((Number) toUInt32Node.execute(target)));
+            return (int) Math.min(Integer.MAX_VALUE, JSRuntime.toInteger(toUInt32Node.executeNumber(target)));
         }
 
         private TruffleString toString2(Object obj) {
@@ -1884,6 +1885,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSString.getString(thisStr);
         }
 
+        @InliningCutoff
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
         protected TruffleString toStringForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop) {

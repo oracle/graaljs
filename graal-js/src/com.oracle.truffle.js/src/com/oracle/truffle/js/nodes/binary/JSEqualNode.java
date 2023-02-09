@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
+import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
@@ -133,8 +135,9 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doDoubleString(double a, TruffleString b) {
-        return doDouble(a, stringToDouble(b));
+    protected boolean doDoubleString(double a, TruffleString b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doDouble(a, stringToDouble.execute(b));
     }
 
     @Specialization
@@ -158,8 +161,9 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doBooleanString(boolean a, TruffleString b) {
-        return doBooleanDouble(a, stringToDouble(b));
+    protected boolean doBooleanString(boolean a, TruffleString b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doBooleanDouble(a, stringToDouble.execute(b));
     }
 
     @SuppressWarnings("unused")
@@ -175,13 +179,15 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doStringDouble(TruffleString a, double b) {
-        return doDouble(stringToDouble(a), b);
+    protected boolean doStringDouble(TruffleString a, double b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doDouble(stringToDouble.execute(a), b);
     }
 
     @Specialization
-    protected boolean doStringBoolean(TruffleString a, boolean b) {
-        return doDoubleBoolean(stringToDouble(a), b);
+    protected boolean doStringBoolean(TruffleString a, boolean b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doDoubleBoolean(stringToDouble.execute(a), b);
     }
 
     @Specialization
@@ -223,6 +229,7 @@ public abstract class JSEqualNode extends JSCompareNode {
         return isNullish(a, aInterop);
     }
 
+    @InliningCutoff
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
     protected static boolean doOverloaded(Object a, Object b,
                     @Bind("this") Node node,
@@ -353,13 +360,15 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization(guards = "isJavaNumber(a)")
-    protected boolean doNumberString(Object a, TruffleString b) {
-        return doDoubleString(JSRuntime.doubleValue((Number) a), b);
+    protected boolean doNumberString(Object a, TruffleString b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doDoubleString(JSRuntime.doubleValue((Number) a), b, stringToDouble);
     }
 
     @Specialization(guards = "isJavaNumber(b)")
-    protected boolean doStringNumber(TruffleString a, Object b) {
-        return doStringDouble(a, JSRuntime.doubleValue((Number) b));
+    protected boolean doStringNumber(TruffleString a, Object b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doStringDouble(a, JSRuntime.doubleValue((Number) b), stringToDouble);
     }
 
     @Fallback

@@ -45,6 +45,7 @@ import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -363,6 +364,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     @SuppressWarnings("truffle-static-method")
+    @InliningCutoff
     @Specialization(guards = {"!isUndefined(newTarget)", "isForeignObject(object)"}, limit = "InteropLibraryLimit")
     protected JSDynamicObject doForeignObject(JSDynamicObject newTarget, Object object, Object byteOffset0, Object length0,
                     @Bind("this") Node node,
