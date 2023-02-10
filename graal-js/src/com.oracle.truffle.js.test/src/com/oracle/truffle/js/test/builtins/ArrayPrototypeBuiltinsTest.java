@@ -138,6 +138,7 @@ public class ArrayPrototypeBuiltinsTest {
         }
     }
 
+    // note: more tests, especially around Strings, are in js/array_toReversed.js
     public static class ToReversedTests {
         @Test
         public void reversesNumberArrays() {
@@ -171,18 +172,6 @@ public class ArrayPrototypeBuiltinsTest {
             Object[] expected = new Object[]{0, null, null, "hello"};
 
             testArray(src, expected.length, expected);
-        }
-
-        @Test
-        public void reverseStringUsingPrototypeCall() {
-            String src = "Array.prototype.toReversed.call('a string')";
-
-            Context.Builder builder = JSTest.newContextBuilder();
-            builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
-            try (Context context = builder.build()) {
-                var value = context.eval(JavaScriptLanguage.ID, src);
-                assertEquals("gnirts a", value.asString());
-            }
         }
 
         @Test

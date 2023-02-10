@@ -193,7 +193,6 @@ import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
-import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -811,7 +810,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return getArraySpeciesConstructorNode().typedArrayCreate(constr, length);
         }
 
-        private Object arrayCreate(long length) {
+        protected Object arrayCreate(long length) {
             if (arrayCreateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 arrayCreateNode = insert(ArrayCreateNode.create(getContext()));
@@ -2744,37 +2743,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object reverse(final Object thisObj) {
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
-
-            if (isString(thisJSObj)) {
-                return reverseString((JSStringObject) thisJSObj);
-            } else {
-                return reverseArray(thisJSObj);
-            }
-
-        }
-
-        private Object reverseArray(Object array) {
-            long length = getLength(array);
-            Object result = createEmpty((JSDynamicObject) array, length);
-
+            long length = getLength(thisJSObj);
+            Object result = createEmpty((JSDynamicObject) thisJSObj, length);
             for (long i = 0; i < length; i++) {
-                var value = read(array, length - 1 - i);
+                var value = read(thisJSObj, length - 1 - i);
                 write(result, i, value);
             }
-
             return result;
-        }
-
-        @TruffleBoundary
-        private Object reverseString(final JSStringObject jsString) {
-            String reversedString = new StringBuilder(jsString.asString()).reverse().toString();
-            TruffleString reversedTruffleString = TruffleString.fromJavaStringUncached(reversedString, TruffleString.Encoding.UTF_8);
-            return JSStringObject.create(jsString.getShape(), reversedTruffleString);
-        }
-
-        private boolean isString(final Object object) {
-            Object thisJSObj = toObjectOrValidateTypedArray(object);
-            return thisJSObj instanceof JSStringObject;
         }
     }
 
