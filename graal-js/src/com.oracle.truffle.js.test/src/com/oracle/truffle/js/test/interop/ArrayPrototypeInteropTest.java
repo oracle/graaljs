@@ -283,7 +283,7 @@ public class ArrayPrototypeInteropTest {
     private static final TypeLiteral<List<Integer>> LIST_OF_INTEGER = new TypeLiteral<>() {
     };
 
-    private static class MyProxyArray implements ProxyArray {
+    public static class MyProxyArray implements ProxyArray {
         protected final List<Object> values;
 
         protected MyProxyArray(List<Object> values) {

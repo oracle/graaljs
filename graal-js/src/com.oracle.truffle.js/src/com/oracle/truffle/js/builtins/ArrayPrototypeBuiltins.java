@@ -797,9 +797,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             throw Errors.createTypeError("length too big");
         }
 
-        protected final Object createEmpty(JSDynamicObject thisObj, long length) {
+        protected final Object createEmpty(Object thisObj, long length) {
             if (isTypedArrayImplementation) {
-                return typedArrayCreateSameType(thisObj, length);
+                return typedArrayCreateSameType((JSDynamicObject) thisObj, length);
             } else {
                 return arrayCreate(length);
             }
@@ -2753,61 +2753,102 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public abstract static class JSArrayToSortedNode extends JSArrayOperation {
+    public abstract static class JSArrayAbstractSortNode extends JSArrayOperation {
+
+        @Child private InteropLibrary interopNode;
+        @Child private ImportValueNode importValueNode;
+
+        public JSArrayAbstractSortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        @TruffleBoundary
+        protected static Object[] jsobjectToArray(JSDynamicObject thisObj, long len, Node node, InlinedBranchProfile growProfile) {
+            SimpleArrayList<Object> list = SimpleArrayList.create(len);
+            for (long k = 0; k < len; k++) {
+                if (JSObject.hasProperty(thisObj, k)) {
+                    list.add(JSObject.get(thisObj, k), node, growProfile);
+                }
+            }
+            return list.toArray();
+        }
+
+        protected Object[] foreignArrayToObjectArray(Object thisObj, int len) {
+            InteropLibrary interop = interopNode;
+            ImportValueNode importValue = importValueNode;
+            if (interop == null || importValue == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+                importValueNode = importValue = insert(ImportValueNode.create());
+            }
+            Object[] array = new Object[len];
+            for (int index = 0; index < len; index++) {
+                array[index] = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue, this);
+            }
+            return array;
+        }
+
+        @TruffleBoundary
+        protected static void sortIntl(Comparator<Object> comparator, Object[] array) {
+            try {
+                Arrays.sort(array, comparator);
+            } catch (IllegalArgumentException e) {
+                // Collections.sort throws IllegalArgumentException when
+                // Comparison method violates its general contract
+
+                // See ECMA spec 15.4.4.11 Array.prototype.sort (comparefn).
+                // If "comparefn" is not undefined and is not a consistent
+                // comparison function for the elements of this array, the
+                // behaviour of sort is implementation-defined.
+            }
+        }
+    }
+
+    public abstract static class JSArrayToSortedNode extends JSArrayAbstractSortNode {
         public JSArrayToSortedNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
         }
 
         @Specialization
-        public Object sort(final Object thisObj, final Object compare,
-                        @Cached InlinedBranchProfile growProfile) {
+        public Object toSorted(final Object thisObj, final Object compare,
+                        @Cached InlinedBranchProfile growProfile,
+                        @Cached InlinedConditionProfile isJSObject) {
             if (!(compare == Undefined.instance || isCallable(compare))) {
                 throw Errors.createTypeError("The comparison function must be either a function or undefined");
             }
-
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
-            return sortArrayOrObject(thisJSObj, compare, growProfile);
-        }
-
-        private Object sortArrayOrObject(final Object thisJSObj, final Object compare, InlinedBranchProfile growProfile) {
-            JSDynamicObject arrayObject = (JSDynamicObject) thisJSObj;
             long length = getLength(thisJSObj);
-            Object result = createEmpty(arrayObject, length);
+            Object result = createEmpty(thisJSObj, length);
 
             // TODO optimize the fast array case
-            Object[] array = JSArraySortNode.jsobjectToArray(arrayObject, length, this, growProfile);
+            Object[] array;
+            if (isJSObject.profile(this, JSDynamicObject.isJSDynamicObject(thisJSObj))) {
+                array = jsobjectToArray((JSDynamicObject) thisJSObj, length, this, growProfile);
+            } else {
+                array = foreignArrayToObjectArray(thisObj, (int) length);
+            }
 
-            Comparator<Object> comparator = compare == null || compare == Undefined.instance ? SortComparator.getDefaultComparator(arrayObject, isTypedArrayImplementation)
+            Comparator<Object> comparator = compare == null || compare == Undefined.instance ? SortComparator.getDefaultComparator(thisJSObj, isTypedArrayImplementation)
                             : new SortComparator(compare);
-
-            sortIntl(array, comparator);
+            sortIntl(comparator, array);
 
             for (int i = 0; i < array.length; i++) {
                 write(result, i, array[i]);
             }
-
             // fill holes at the end
             for (int i = array.length; i < length; i++) {
                 write(result, i, Undefined.instance);
             }
-
             return result;
-        }
-
-        @TruffleBoundary
-        private static void sortIntl(Object[] array, Comparator<Object> comparator) {
-            Arrays.sort(array, comparator);
         }
     }
 
-    public abstract static class JSArraySortNode extends JSArrayOperation {
+    public abstract static class JSArraySortNode extends JSArrayAbstractSortNode {
 
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
         private final ConditionProfile isSparse = ConditionProfile.create();
         private final BranchProfile hasCompareFnBranch = BranchProfile.create();
         private final BranchProfile noCompareFnBranch = BranchProfile.create();
-        @Child private InteropLibrary interopNode;
-        @Child private ImportValueNode importValueNode;
 
         public JSArraySortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -2950,21 +2991,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @TruffleBoundary
-        private static void sortIntl(Comparator<Object> comparator, Object[] array) {
-            try {
-                Arrays.sort(array, comparator);
-            } catch (IllegalArgumentException e) {
-                // Collections.sort throws IllegalArgumentException when
-                // Comparison method violates its general contract
-
-                // See ECMA spec 15.4.4.11 Array.prototype.sort (comparefn).
-                // If "comparefn" is not undefined and is not a consistent
-                // comparison function for the elements of this array, the
-                // behaviour of sort is implementation-defined.
-            }
-        }
-
         private static void prepareForDefaultComparator(Object[] array) {
             // Default comparator (based on Comparable.compareTo) cannot be used
             // for elements of different type (for example, Integer.compareTo()
@@ -2983,32 +3009,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     array[i] = JSRuntime.toDouble(array[i]);
                 }
             }
-        }
-
-        @TruffleBoundary
-        private static Object[] jsobjectToArray(JSDynamicObject thisObj, long len, Node node, InlinedBranchProfile growProfile) {
-            SimpleArrayList<Object> list = SimpleArrayList.create(len);
-            for (long k = 0; k < len; k++) {
-                if (JSObject.hasProperty(thisObj, k)) {
-                    list.add(JSObject.get(thisObj, k), node, growProfile);
-                }
-            }
-            return list.toArray();
-        }
-
-        private Object[] foreignArrayToObjectArray(Object thisObj, int len) {
-            InteropLibrary interop = interopNode;
-            ImportValueNode importValue = importValueNode;
-            if (interop == null || importValue == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-                importValueNode = importValue = insert(ImportValueNode.create());
-            }
-            Object[] array = new Object[len];
-            for (int index = 0; index < len; index++) {
-                array[index] = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue, this);
-            }
-            return array;
         }
     }
 
