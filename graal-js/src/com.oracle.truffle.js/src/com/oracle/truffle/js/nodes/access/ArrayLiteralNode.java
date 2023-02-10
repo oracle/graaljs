@@ -57,6 +57,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNodeFactory.DefaultArrayLiteralWithSpreadNodeGen;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
@@ -564,7 +565,8 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         @ExplodeLoop
         @Specialization
         public JSArrayObject doDefault(VirtualFrame frame,
-                        @Cached InlinedBranchProfile growProfile) {
+                        @Cached InlinedBranchProfile growProfile,
+                        @Cached InlinedConditionProfile holesProfile) {
             SimpleArrayList<Object> evaluatedElements = new SimpleArrayList<>(elements.length + JSConfig.SpreadArgumentPlaceholderCount);
             int holeCount = 0;
             int holesBeforeLastNonEmpty = 0;
@@ -597,7 +599,13 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
             }
             int usedLength = lastNonEmptyPlusOne - arrayOffset;
             int holesInUsedLength = holesBeforeLastNonEmpty - arrayOffset;
-            return JSArray.createZeroBasedHolesObjectArray(context, getRealm(), evaluatedElements.toArray(), usedLength, arrayOffset, holesInUsedLength);
+            JSRealm realm = getRealm();
+            Object[] objectArray = evaluatedElements.toArray();
+            if (holesProfile.profile(this, holeCount == 0)) {
+                return JSArray.createZeroBasedObjectArray(context, realm, objectArray);
+            } else {
+                return JSArray.createZeroBasedHolesObjectArray(context, realm, objectArray, usedLength, arrayOffset, holesInUsedLength);
+            }
         }
 
         @Override
