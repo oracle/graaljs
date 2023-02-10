@@ -3657,7 +3657,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 errorBranch.enter();
                 throw Errors.createRangeError("invalid index");
             }
-            JSDynamicObject resultArray = (JSDynamicObject) createEmpty((JSDynamicObject) array, len);
+            JSDynamicObject resultArray = (JSDynamicObject) createEmpty(array, len);
 
             long k;
             for (k = 0; k < len; k++) {

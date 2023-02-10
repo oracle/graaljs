@@ -100,6 +100,14 @@ public class ChangeArrayByCopyInteropTest {
                         Arrays.asList(10, 42, 40, 50));
     }
 
+    @Test
+    public void testWith() {
+        testWithArray("Array.prototype.with.call(a, 1, 42)",
+                        Arrays.asList(10, 20, 30, 40, 50),
+                        Arrays.asList(10, 20, 30, 40, 50), // unmodified
+                        Arrays.asList(10, 42, 30, 40, 50));
+    }
+
     private static final TypeLiteral<List<Integer>> LIST_OF_INTEGER = new TypeLiteral<>() {
     };
 
