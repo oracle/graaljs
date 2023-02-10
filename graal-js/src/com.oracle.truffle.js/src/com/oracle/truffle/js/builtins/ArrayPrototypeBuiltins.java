@@ -2744,7 +2744,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object reverse(final Object thisObj) {
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long length = getLength(thisJSObj);
-            Object result = createEmpty((JSDynamicObject) thisJSObj, length);
+            Object result = createEmpty(thisJSObj, length);
             for (long i = 0; i < length; i++) {
                 var value = read(thisJSObj, length - 1 - i);
                 write(result, i, value);

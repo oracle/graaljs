@@ -84,6 +84,14 @@ public class ChangeArrayByCopyInteropTest {
                         Arrays.asList(50, 40, 30, 20, 10));
     }
 
+    @Test
+    public void testToReversed() {
+        testWithArray("Array.prototype.toReversed.call(a)",
+                        Arrays.asList(50, 40, 30, 20, 10),
+                        Arrays.asList(50, 40, 30, 20, 10), // unmodified
+                        Arrays.asList(10, 20, 30, 40, 50));
+    }
+
     private static final TypeLiteral<List<Integer>> LIST_OF_INTEGER = new TypeLiteral<>() {
     };
 
