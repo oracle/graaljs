@@ -27,6 +27,7 @@ test-worker-prof: FAIL
 test-gc-http-client: SKIP
 test-gc-http-client-timeout: SKIP
 test-vm-break-on-sigint: FAIL
+test-watch-mode: SKIP
 test-worker-http2-stream-terminate: SKIP
 
 [$system==solaris]
@@ -43,9 +44,6 @@ test-fs-stat-sync-overflow: SKIP
 test-child-process-pass-fd: SKIP
 test-worker-fshandles-error-on-termination: SKIP
 test-worker-fshandles-open-close-on-termination: SKIP
-
-# Long-running test that exceeds the timeout sometimes
-test-watch-mode: SKIP
 
 ### Graal-specific end ###
 
