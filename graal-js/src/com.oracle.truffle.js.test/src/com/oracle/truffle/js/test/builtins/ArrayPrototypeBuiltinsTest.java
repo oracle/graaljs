@@ -138,7 +138,7 @@ public class ArrayPrototypeBuiltinsTest {
         }
     }
 
-    // note: more tests, especially around Strings, are in js/array_toReversed.js
+    // note: more tests, especially around Strings, are in js/array_to_reversed.js
     public static class ToReversedTests {
         @Test
         public void reversesNumberArrays() {
