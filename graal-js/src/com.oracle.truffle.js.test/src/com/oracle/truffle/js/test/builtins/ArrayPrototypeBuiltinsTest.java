@@ -57,7 +57,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 
-public class ArrayPrototypeBuiltins {
+public class ArrayPrototypeBuiltinsTest {
 
     @Test
     public void testUnshift() {
