@@ -131,7 +131,7 @@ def _graal_js_gate_runner(args, tasks):
             jsonResultsFile = tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz').name
             try:
                 mx_truffle._tck(['--json-results=' + jsonResultsFile])
-                mx_gate.make_test_report(jsonResultsFile, tags={'task': t.title})
+                mx_gate.make_test_report(jsonResultsFile, task=t.title)
             finally:
                 os.unlink(jsonResultsFile)
 
