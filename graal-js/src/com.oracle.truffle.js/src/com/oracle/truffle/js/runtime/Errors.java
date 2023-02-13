@@ -595,6 +595,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorInvalidDetachKey() {
+        return Errors.createTypeError("Invalid detach key");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorReadOnlyBuffer() {
         return Errors.createTypeError("Read-only buffer");
     }
