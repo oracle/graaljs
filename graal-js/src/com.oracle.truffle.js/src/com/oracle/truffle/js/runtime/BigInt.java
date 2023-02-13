@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -341,9 +341,16 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         return value.toString(10);
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean isNumber() {
-        return fitsInLong() || fitsInDouble();
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean fitsInBigInteger() {
+        return true;
     }
 
     @ExportMessage
@@ -396,6 +403,11 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
             }
             return new BigDecimal(floatValue).toBigIntegerExact().equals(value);
         }
+    }
+
+    @ExportMessage
+    BigInteger asBigInteger() {
+        return value;
     }
 
     @ExportMessage
