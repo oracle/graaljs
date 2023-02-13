@@ -75,7 +75,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                     _setEnvVar('NODE_OPTIONS', '')
                     _setEnvVar('NODE_POLYGLOT_OPTIONS', '')
 
-                mx_gate.make_test_report(jsonResultsFile, tags={'task': t.title})
+                mx_gate.make_test_report(jsonResultsFile, task=t.title)
             finally:
                 os.unlink(jsonResultsFile)
 

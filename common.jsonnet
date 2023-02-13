@@ -116,10 +116,10 @@ local common_json = (import "common.json");
   eclipse : {
     downloads+: {
       ECLIPSE: {name: 'eclipse', version: '4.14.0', platformspecific: true},
-      JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
     },
     environment+: {
       ECLIPSE_EXE: '$ECLIPSE/eclipse',
+      JDT: "builtin",
     },
   },
 
