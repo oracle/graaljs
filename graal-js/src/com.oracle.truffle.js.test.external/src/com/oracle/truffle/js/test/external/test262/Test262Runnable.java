@@ -182,6 +182,7 @@ public class Test262Runnable extends TestRunnable {
                     "align-detached-buffer-semantics-with-web-reality",
                     "array-find-from-last",
                     "array-grouping",
+                    "arraybuffer-transfer",
                     "arrow-function",
                     "async-functions",
                     "async-iteration",
@@ -264,6 +265,7 @@ public class Test262Runnable extends TestRunnable {
                     "ShadowRealm",
                     "array-find-from-last",
                     "array-grouping",
+                    "arraybuffer-transfer",
                     "decorators",
                     "symbols-as-weakmap-keys",
     });
