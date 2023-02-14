@@ -525,7 +525,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 : CallNumberNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
             case BigInt:
                 return construct ? ConstructBigIntNodeGen.create(context, builtin, args().createArgumentNodes(context))
-                                : CallBigIntNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                                : CallBigIntNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case Function:
                 if (newTarget) {
                     return ConstructFunctionNodeGen.create(context, builtin, false, false, true, args().newTarget().varArgs().createArgumentNodes(context));
@@ -1992,31 +1992,16 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     public abstract static class CallBigIntNode extends JSBuiltinNode {
 
-        @Child JSToPrimitiveNode toPrimitiveNode;
-
         public CallBigIntNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        private Object toPrimitive(Object target) {
-            if (toPrimitiveNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toPrimitiveNode = insert(JSToPrimitiveNode.createHintNumber());
-            }
-            return toPrimitiveNode.execute(target);
-        }
-
-        @Specialization(guards = {"args.length == 0"})
-        protected void callBigIntZero(@SuppressWarnings("unused") Object[] args) {
-            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, Undefined.instance);
-        }
-
-        @Specialization(guards = {"args.length > 0"})
-        protected Object callBigInt(Object[] args,
+        @Specialization
+        protected static Object callBigInt(Object value,
                         @Cached JSNumberToBigIntNode numberToBigIntNode,
-                        @Cached JSToBigIntNode toBigIntNode) {
-            Object value = args[0];
-            Object primitiveObj = toPrimitive(value);
+                        @Cached JSToBigIntNode toBigIntNode,
+                        @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
+            Object primitiveObj = toPrimitiveNode.execute(value);
             if (JSRuntime.isNumber(primitiveObj)) {
                 return numberToBigIntNode.executeBigInt(primitiveObj);
             } else {
@@ -2025,6 +2010,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
     }
 
+    /**
+     * @see CallBigIntNode
+     */
     public abstract static class ConstructBigIntNode extends JSBuiltinNode {
 
         public ConstructBigIntNode(JSContext context, JSBuiltin builtin) {
