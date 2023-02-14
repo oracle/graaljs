@@ -58,6 +58,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
@@ -146,6 +147,8 @@ public final class JSInteropUtil {
                     return interop.asLong(obj);
                 } else if (interop.fitsInDouble(obj)) {
                     return interop.asDouble(obj);
+                } else if (interop.fitsInBigInteger(obj)) {
+                    return BigInt.fromBigInteger(interop.asBigInteger(obj));
                 }
             }
         } catch (UnsupportedMessageException e) {

@@ -229,6 +229,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
                     return interop.asLong(object);
                 } else if (interop.fitsInDouble(object)) {
                     return interop.asDouble(object);
+                } else if (interop.fitsInBigInteger(object)) {
+                    return BigInt.fromBigInteger(interop.asBigInteger(object));
                 }
             }
         } catch (UnsupportedMessageException e) {
