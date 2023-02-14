@@ -205,7 +205,6 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Contains builtins for {@linkplain JSArray}.prototype.
@@ -2763,10 +2762,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
-        protected static Object[] jsobjectToArray(JSDynamicObject thisObj, long len, Node node, InlinedBranchProfile growProfile) {
+        protected static Object[] jsobjectToArray(JSDynamicObject thisObj, long len, boolean skipHoles, Node node, InlinedBranchProfile growProfile) {
             SimpleArrayList<Object> list = SimpleArrayList.create(len);
             for (long k = 0; k < len; k++) {
-                if (JSObject.hasProperty(thisObj, k)) {
+                if (!skipHoles || JSObject.hasProperty(thisObj, k)) {
                     list.add(JSObject.get(thisObj, k), node, growProfile);
                 }
             }
@@ -2823,21 +2822,22 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             // TODO optimize the fast array case
             Object[] array;
             if (isJSObject.profile(this, JSDynamicObject.isJSDynamicObject(thisJSObj))) {
-                array = jsobjectToArray((JSDynamicObject) thisJSObj, length, this, growProfile);
+                array = jsobjectToArray((JSDynamicObject) thisJSObj, length, false, this, growProfile);
             } else {
+                if (length >= Integer.MAX_VALUE) {
+                    errorBranch.enter();
+                    throw Errors.createRangeErrorInvalidArrayLength();
+                }
                 array = foreignArrayToObjectArray(thisObj, (int) length);
             }
 
-            Comparator<Object> comparator = compare == null || compare == Undefined.instance ? SortComparator.getDefaultComparator(thisJSObj, isTypedArrayImplementation)
+            Comparator<Object> comparator = compare == Undefined.instance ? (isTypedArrayImplementation ? null : JSArray.DEFAULT_JSARRAY_COMPARATOR)
                             : new SortComparator(compare);
             sortIntl(comparator, array);
 
+            assert length == array.length;
             for (int i = 0; i < array.length; i++) {
                 write(result, i, array[i]);
-            }
-            // fill holes at the end
-            for (int i = array.length; i < length; i++) {
-                write(result, i, Undefined.instance);
             }
             return result;
         }
@@ -2912,7 +2912,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return thisJSObj;
             }
 
-            Object[] array = jsobjectToArray(thisJSObj, len, this, growProfile);
+            Object[] array = jsobjectToArray(thisJSObj, len, true, this, growProfile);
 
             Comparator<Object> comparator = getComparator(thisJSObj, comparefn);
             if (isTypedArrayImplementation && comparefn == Undefined.instance) {
@@ -3510,6 +3510,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Child private InteropLibrary arrayInterop;
 
+        @Child private ImportValueNode importValueNode;
+
         public JSArrayToSplicedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -3556,7 +3558,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private static long spliceInsert(JSDynamicObject dstObj, long toIndex, Object[] args) {
-            final int itemOffset = 2;
+            int itemOffset = 2; // toSpliced(start, deleteCount, ...args)
             long dstIdx = toIndex;
             for (int argIdx = itemOffset; argIdx < args.length; argIdx++) {
                 JSRuntime.createDataPropertyOrThrow(dstObj, Strings.fromLong(dstIdx++), args[argIdx]);
@@ -3581,24 +3583,23 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.arrayInterop = arrays = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            try {
-                long dstIdx = 0;
-                for (long srcIdx = 0; srcIdx < actualStart; srcIdx++) {
-                    spliceForeignMoveValue(dstObj, srcObj, srcIdx, dstIdx++, arrays);
-                }
-                dstIdx = spliceInsert(dstObj, dstIdx, args);
-                for (long srcIdx = actualStart + actualDeleteCount; srcIdx < len; srcIdx++) {
-                    spliceForeignMoveValue(dstObj, srcObj, srcIdx, dstIdx++, arrays);
-                }
-            } catch (UnsupportedMessageException | InvalidArrayIndexException | UnsupportedTypeException e) {
-                throw Errors.createTypeErrorInteropException(srcObj, e, "splice", this);
+            long dstIdx = 0;
+            for (long srcIdx = 0; srcIdx < actualStart; srcIdx++) {
+                spliceForeignMoveValue(dstObj, srcObj, srcIdx, dstIdx++, arrays);
+            }
+            dstIdx = spliceInsert(dstObj, dstIdx, args);
+            for (long srcIdx = actualStart + actualDeleteCount; srcIdx < len; srcIdx++) {
+                spliceForeignMoveValue(dstObj, srcObj, srcIdx, dstIdx++, arrays);
             }
         }
 
-        private static void spliceForeignMoveValue(JSDynamicObject destObj, Object srcObj, long fromIndex, long toIndex, InteropLibrary arrays)
-                        throws UnsupportedMessageException, InvalidArrayIndexException, UnsupportedTypeException {
-            Object val = arrays.readArrayElement(srcObj, fromIndex);
-            arrays.writeArrayElement(destObj, toIndex, val);
+        private void spliceForeignMoveValue(JSDynamicObject destObj, Object srcObj, long fromIndex, long toIndex, InteropLibrary arrays) {
+            if (importValueNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                importValueNode = insert(ImportValueNode.create());
+            }
+            Object val = JSInteropUtil.readArrayElementOrDefault(srcObj, fromIndex, Undefined.instance, arrays, importValueNode, this);
+            JSRuntime.createDataPropertyOrThrow(destObj, Strings.fromLong(toIndex), val);
         }
     }
 
@@ -3628,16 +3629,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object withGeneric(Object thisObj, Object index, Object value) {
-            final Object array = toObjectOrValidateTypedArray(thisObj);
-            return with(array, index, value);
-        }
-
-        private Object with(Object array, Object index, Object valueParam) {
+        protected Object withGeneric(Object thisObj, Object index, Object valueParam) {
             Object value = valueParam;
-            toObjectOrValidateTypedArray(array);
+            final Object array = toObjectOrValidateTypedArray(thisObj);
             long len = getLength(array);
-            long relativeIndex = JSRuntime.longValue(TemporalUtil.toIntegerOrInfinity(index));
+            long relativeIndex = toIntegerAsLong(index);
             long actualIndex;
             if (relativeIndex >= 0) {
                 actualIndex = relativeIndex;

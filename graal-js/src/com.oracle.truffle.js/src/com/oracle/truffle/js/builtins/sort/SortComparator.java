@@ -85,7 +85,7 @@ public class SortComparator implements Comparator<Object> {
         return convertResult(retObj);
     }
 
-    private int convertResult(Object retObj) {
+    private static int convertResult(Object retObj) {
         if (retObj instanceof Integer) {
             return (int) retObj;
         } else {
