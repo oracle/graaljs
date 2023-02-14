@@ -42,27 +42,51 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.math.BigInteger;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
+/**
+ * Abstract operation NumberToBigInt(number).
+ */
 public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
 
-    public abstract Object execute(Object value);
+    protected abstract Object execute(Object value);
 
     public final BigInt executeBigInt(Object value) {
+        BigInt result = executeBigIntIfNumberOrNull(value);
+        if (result == null) {
+            throw CompilerDirectives.shouldNotReachHere("not a Number");
+        }
+        return result;
+    }
+
+    public final BigInt executeBigIntIfNumberOrNull(Object value) {
         return (BigInt) execute(value);
     }
 
     @Specialization
-    protected BigInt doInteger(int value) {
+    protected static BigInt doInteger(int value) {
         return BigInt.valueOf(value);
     }
 
-    protected boolean doubleRepresentsSameValueAsLong(double value) {
+    @Specialization
+    protected static BigInt doSafeInteger(SafeInteger value) {
+        return BigInt.valueOf(value.longValue());
+    }
+
+    @Specialization
+    protected static BigInt doLong(long value) {
+        return BigInt.valueOf(value);
+    }
+
+    protected static boolean doubleRepresentsSameValueAsLong(double value) {
         // (long) Math.pow(2, 63) == Long.MAX_VALUE
         // and (double) Long.MAX_VALUE == Math.pow(2, 63)
         // but Long.MAX_VALUE is one less than 2^63
@@ -70,13 +94,13 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "doubleRepresentsSameValueAsLong(value)")
-    protected BigInt doDoubleAsLong(double value) {
+    protected static BigInt doDoubleAsLong(double value) {
         return BigInt.valueOf((long) value);
     }
 
     @TruffleBoundary
     @Specialization(guards = "!doubleRepresentsSameValueAsLong(value)")
-    protected BigInt doDoubleOther(double value) {
+    protected static BigInt doDoubleOther(double value) {
         if (!JSRuntime.isInteger(value)) {
             throw Errors.createRangeError("BigInt out of range");
         }
@@ -90,8 +114,8 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
         return new BigInt(bigInteger);
     }
 
-    @Specialization(guards = "isJSNull(value)")
-    protected static BigInt doNull(@SuppressWarnings("unused") Object value) {
-        return BigInt.ZERO;
+    @Fallback
+    protected static BigInt doOtherType(@SuppressWarnings("unused") Object value) {
+        return null;
     }
 }
