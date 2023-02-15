@@ -45,7 +45,6 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.ArrayBufferPrototype;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferAbstractSliceNode;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.ByteLengthGetterNodeGen;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.JSSharedArrayBufferSliceNodeGen;
@@ -54,6 +53,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -61,16 +61,38 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 /**
  * Contains builtins for {@linkplain JSSharedArrayBuffer}.prototype.
  */
-public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ArrayBufferPrototypeBuiltins.ArrayBufferPrototype> {
+public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SharedArrayBufferPrototypeBuiltins.SharedArrayBufferPrototype> {
 
     public static final JSBuiltinsContainer BUILTINS = new SharedArrayBufferPrototypeBuiltins();
 
     protected SharedArrayBufferPrototypeBuiltins() {
-        super(JSSharedArrayBuffer.PROTOTYPE_NAME, ArrayBufferPrototype.class);
+        super(JSSharedArrayBuffer.PROTOTYPE_NAME, SharedArrayBufferPrototype.class);
+    }
+
+    public enum SharedArrayBufferPrototype implements BuiltinEnum<SharedArrayBufferPrototype> {
+        byteLength(0),
+        slice(2);
+
+        private final int length;
+
+        SharedArrayBufferPrototype(int length) {
+            this.length = length;
+        }
+
+        @Override
+        public int getLength() {
+            return length;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return this == byteLength;
+        }
+
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ArrayBufferPrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, SharedArrayBufferPrototype builtinEnum) {
         switch (builtinEnum) {
             case byteLength:
                 return ByteLengthGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));

@@ -64,6 +64,7 @@ import com.oracle.truffle.js.runtime.array.ByteArrayAccess;
 import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 public abstract class JSArrayBufferObject extends JSNonProxyObject {
@@ -85,6 +86,20 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     public abstract void detachArrayBuffer();
 
     public abstract boolean isDetached();
+
+    @SuppressWarnings("static-method")
+    public final boolean isResizable() {
+        return false;
+    }
+
+    public final int getMaxByteLength() {
+        return getByteLength();
+    }
+
+    @SuppressWarnings("static-method")
+    public final Object getDetachKey() {
+        return Undefined.instance;
+    }
 
     public static byte[] getByteArray(Object thisObj) {
         assert JSArrayBuffer.isJSHeapArrayBuffer(thisObj);

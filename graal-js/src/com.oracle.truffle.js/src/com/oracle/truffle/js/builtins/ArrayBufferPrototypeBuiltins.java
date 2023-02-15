@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import java.nio.ByteBuffer;
+import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -53,9 +54,13 @@ import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.ByteLengthGetterNodeGen;
+import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.DetachedGetterNodeGen;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.JSArrayBufferSliceNodeGen;
+import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.JSArrayBufferTransferNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
+import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -63,11 +68,14 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 /**
  * Contains builtins for {@linkplain JSArrayBuffer}.prototype.
@@ -82,7 +90,12 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
     public enum ArrayBufferPrototype implements BuiltinEnum<ArrayBufferPrototype> {
         byteLength(0),
-        slice(2);
+        slice(2),
+
+        // arraybuffer-transfer proposal
+        detached(0),
+        transfer(0),
+        transferToFixedLength(0);
 
         private final int length;
 
@@ -97,8 +110,17 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Override
         public boolean isGetter() {
-            return this == byteLength;
+            return this == byteLength || this == detached;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (EnumSet.of(detached, transfer, transferToFixedLength).contains(this)) {
+                return JSConfig.StagingECMAScriptVersion;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
+
     }
 
     @Override
@@ -108,6 +130,12 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return JSArrayBufferSliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case byteLength:
                 return ByteLengthGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case detached:
+                return DetachedGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case transfer:
+                return JSArrayBufferTransferNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case transferToFixedLength:
+                return JSArrayBufferTransferNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -387,4 +415,127 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return interop.hasBufferElements(buffer);
         }
     }
+
+    public abstract static class DetachedGetterNode extends JSBuiltinNode {
+
+        public DetachedGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = {"!isJSSharedArrayBuffer(arrayBuffer)"})
+        protected boolean detached(JSArrayBufferObject arrayBuffer) {
+            if (getContext().getTypedArrayNotDetachedAssumption().isValid()) {
+                return false;
+            }
+            return arrayBuffer.isDetached();
+        }
+
+        @Fallback
+        protected static boolean error(@SuppressWarnings("unused") Object thisObj) {
+            throw Errors.createTypeErrorArrayBufferExpected();
+        }
+
+    }
+
+    public abstract static class JSArrayBufferTransferNode extends JSBuiltinNode {
+        private final boolean preserveResizability;
+
+        public JSArrayBufferTransferNode(JSContext context, JSBuiltin builtin, boolean preserveResizability) {
+            super(context, builtin);
+            this.preserveResizability = preserveResizability;
+        }
+
+        @Specialization(guards = {"!isJSSharedArrayBuffer(arrayBuffer)"})
+        protected Object transfer(JSArrayBufferObject arrayBuffer, Object newLength,
+                        @Cached JSToIndexNode toIndexNode,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedBranchProfile differentByteLengthBranch,
+                        @Cached InlinedConditionProfile heapBufferProfile,
+                        @Cached InlinedConditionProfile directBufferProfile) {
+            int newByteLength = 0;
+            if (newLength != Undefined.instance) {
+                long byteLength = toIndexNode.executeLong(newLength);
+                if (byteLength > getContext().getContextOptions().getMaxTypedArrayLength()) {
+                    errorBranch.enter(this);
+                    throw Errors.createRangeErrorInvalidBufferSize();
+                }
+                newByteLength = (int) byteLength;
+            } // else postpone the reading of byteLength after the detach check below
+
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorDetachedBuffer();
+            }
+
+            int oldByteLength = getByteLength(arrayBuffer, heapBufferProfile, directBufferProfile);
+            if (newLength == Undefined.instance) {
+                newByteLength = oldByteLength;
+            }
+
+            @SuppressWarnings("unused")
+            int newMaxByteLength;
+            if (preserveResizability && arrayBuffer.isResizable()) {
+                newMaxByteLength = arrayBuffer.getMaxByteLength();
+            } else {
+                newMaxByteLength = -1; // empty
+            }
+
+            if (arrayBuffer.getDetachKey() != Undefined.instance) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorInvalidDetachKey();
+            }
+
+            boolean sameByteLength = (newByteLength == oldByteLength);
+            int copyLength = Math.min(newByteLength, oldByteLength);
+            JSContext context = getContext();
+            JSRealm realm = getRealm();
+            JSArrayBufferObject newBuffer;
+
+            if (heapBufferProfile.profile(this, JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer))) {
+                JSArrayBufferObject.Heap heapArrayBuffer = (JSArrayBufferObject.Heap) arrayBuffer;
+                byte[] array = heapArrayBuffer.getByteArray();
+                if (!sameByteLength) {
+                    differentByteLengthBranch.enter(this);
+                    byte[] newArray = new byte[newByteLength];
+                    System.arraycopy(array, 0, newArray, 0, copyLength);
+                    array = newArray;
+                }
+                newBuffer = JSArrayBuffer.createArrayBuffer(context, realm, array);
+            } else if (directBufferProfile.profile(this, JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer))) {
+                JSArrayBufferObject.Direct directArrayBuffer = (JSArrayBufferObject.Direct) arrayBuffer;
+                ByteBuffer byteBuffer = directArrayBuffer.getByteBuffer();
+                if (!sameByteLength) {
+                    differentByteLengthBranch.enter(this);
+                    ByteBuffer newByteBuffer = DirectByteBufferHelper.allocateDirect(newByteLength);
+                    Boundaries.byteBufferPutSlice(newByteBuffer, 0, byteBuffer, 0, copyLength);
+                    byteBuffer = newByteBuffer;
+                }
+                newBuffer = JSArrayBuffer.createDirectArrayBuffer(context, realm, byteBuffer);
+            } else {
+                assert JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
+                throw Errors.createTypeError("Cannot transfer an interop ArrayBuffer");
+            }
+
+            JSArrayBuffer.detachArrayBuffer(arrayBuffer);
+
+            return newBuffer;
+        }
+
+        private int getByteLength(JSArrayBufferObject arrayBuffer, InlinedConditionProfile heapBufferProfile, InlinedConditionProfile directBufferProfile) {
+            if (heapBufferProfile.profile(this, JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer))) {
+                return JSArrayBuffer.getHeapByteLength(arrayBuffer);
+            } else if (directBufferProfile.profile(this, JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer))) {
+                return JSArrayBuffer.getDirectByteLength(arrayBuffer);
+            } else {
+                return ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
+            }
+        }
+
+        @Fallback
+        protected static Object error(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object newLength) {
+            throw Errors.createTypeErrorArrayBufferExpected();
+        }
+
+    }
+
 }
