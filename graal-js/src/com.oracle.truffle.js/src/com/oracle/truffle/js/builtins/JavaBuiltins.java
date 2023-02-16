@@ -54,7 +54,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -95,6 +94,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -505,19 +505,17 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
     }
 
+    @ImportStatic({JSConfig.class})
     abstract static class JavaSuperNode extends JSBuiltinNode {
         JavaSuperNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        @TruffleBoundary
-        protected Object superAdapter(Object adapter) {
-            try {
-                return InteropLibrary.getUncached().readMember(adapter, "super");
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                return Undefined.instance;
-            }
+        protected Object superAdapter(Object adapter,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached ImportValueNode toJSType) {
+            return JSInteropUtil.readMemberOrDefault(adapter, Strings.SUPER, Undefined.instance, interop, toJSType, this);
         }
     }
 
