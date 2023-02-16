@@ -603,7 +603,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return isArrayNode.execute(thisObj);
         }
 
-        private Object arrayCreate(long length) {
+        private JSArrayObject arrayCreate(long length) {
             if (arrayCreateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 arrayCreateNode = insert(ArrayCreateNode.create(context));
@@ -796,7 +796,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             throw Errors.createTypeError("length too big");
         }
 
-        protected final Object createEmpty(Object thisObj, long length) {
+        protected final JSObject createEmpty(Object thisObj, long length) {
             if (isTypedArrayImplementation) {
                 return typedArrayCreateSameType((JSDynamicObject) thisObj, length);
             } else {
@@ -804,12 +804,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private Object typedArrayCreateSameType(JSDynamicObject thisObj, long length) {
+        private JSTypedArrayObject typedArrayCreateSameType(JSDynamicObject thisObj, long length) {
             JSDynamicObject constr = ArraySpeciesConstructorNode.getDefaultConstructor(getRealm(), thisObj);
             return getArraySpeciesConstructorNode().typedArrayCreate(constr, length);
         }
 
-        protected Object arrayCreate(long length) {
+        protected JSArrayObject arrayCreate(long length) {
             if (arrayCreateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 arrayCreateNode = insert(ArrayCreateNode.create(getContext()));
@@ -2813,6 +2813,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached InlinedBranchProfile growProfile,
                         @Cached InlinedConditionProfile isJSObject) {
             if (!(compare == Undefined.instance || isCallable(compare))) {
+                errorBranch.enter();
                 throw Errors.createTypeError("The comparison function must be either a function or undefined");
             }
             Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
@@ -3504,10 +3505,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class JSArrayToSplicedNode extends JSArrayOperationWithToInt {
 
-        private final BranchProfile objectBranch = BranchProfile.create();
-        private final ConditionProfile argsLength0Profile = ConditionProfile.create();
-        private final ConditionProfile argsLength1Profile = ConditionProfile.create();
-
         @Child private InteropLibrary arrayInterop;
 
         @Child private ImportValueNode importValueNode;
@@ -3518,17 +3515,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected JSDynamicObject toSpliced(Object thisArg, Object[] args,
-                        @Cached InlinedConditionProfile offsetProfile) {
+                        @Cached InlinedConditionProfile offsetProfile,
+                        @Cached InlinedConditionProfile argsLength0Profile,
+                        @Cached InlinedConditionProfile argsLength1Profile,
+                        @Cached InlinedBranchProfile objectBranch) {
             Object thisObj = toObject(thisArg);
             long len = getLength(thisObj);
             long actualStart = JSRuntime.getOffset(toIntegerAsLong(JSRuntime.getArgOrUndefined(args, 0)), len, this, offsetProfile);
 
             long insertCount;
             long actualDeleteCount;
-            if (argsLength0Profile.profile(args.length == 0)) {
+            if (argsLength0Profile.profile(this, args.length == 0)) {
                 insertCount = 0;
                 actualDeleteCount = 0;
-            } else if (argsLength1Profile.profile(args.length == 1)) {
+            } else if (argsLength1Profile.profile(this, args.length == 1)) {
                 insertCount = 0;
                 actualDeleteCount = len - actualStart;
             } else {
@@ -3544,10 +3544,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throwLengthError();
             }
 
-            JSDynamicObject resObj = (JSDynamicObject) getArraySpeciesConstructorNode().arrayCreate(newLen);
+            JSArrayObject resObj = getArraySpeciesConstructorNode().arrayCreate(newLen);
 
             if (JSDynamicObject.isJSDynamicObject(thisObj)) {
-                objectBranch.enter();
+                objectBranch.enter(this);
                 spliceJSObject(resObj, thisObj, len, actualStart, actualDeleteCount, args);
             } else {
                 spliceForeignArray(resObj, thisObj, len, actualStart, actualDeleteCount, args);
@@ -3557,27 +3557,27 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return resObj;
         }
 
-        private static long spliceInsert(JSDynamicObject dstObj, long toIndex, Object[] args) {
+        private long spliceInsert(JSDynamicObject dstObj, long toIndex, Object[] args) {
             int itemOffset = 2; // toSpliced(start, deleteCount, ...args)
             long dstIdx = toIndex;
             for (int argIdx = itemOffset; argIdx < args.length; argIdx++) {
-                JSRuntime.createDataPropertyOrThrow(dstObj, Strings.fromLong(dstIdx++), args[argIdx]);
+                writeOwn(dstObj, dstIdx++, args[argIdx]);
             }
             return dstIdx;
         }
 
-        private void spliceJSObject(JSDynamicObject dstObj, Object srcObj, long len, long actualStart, long actualDeleteCount, Object[] args) {
+        private void spliceJSObject(JSArrayObject dstObj, Object srcObj, long len, long actualStart, long actualDeleteCount, Object[] args) {
             long dstIdx = 0;
             for (long srcIdx = 0; srcIdx < actualStart; srcIdx++) {
-                JSRuntime.createDataPropertyOrThrow(dstObj, Strings.fromLong(dstIdx++), read(srcObj, srcIdx));
+                writeOwn(dstObj, dstIdx++, read(srcObj, srcIdx));
             }
             dstIdx = spliceInsert(dstObj, dstIdx, args);
             for (long srcIdx = actualStart + actualDeleteCount; srcIdx < len; srcIdx++) {
-                JSRuntime.createDataPropertyOrThrow(dstObj, Strings.fromLong(dstIdx++), read(srcObj, srcIdx));
+                writeOwn(dstObj, dstIdx++, read(srcObj, srcIdx));
             }
         }
 
-        private void spliceForeignArray(JSDynamicObject dstObj, Object srcObj, long len, long actualStart, long actualDeleteCount, Object[] args) {
+        private void spliceForeignArray(JSArrayObject dstObj, Object srcObj, long len, long actualStart, long actualDeleteCount, Object[] args) {
             InteropLibrary arrays = arrayInterop;
             if (arrays == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -3593,13 +3593,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void spliceForeignMoveValue(JSDynamicObject destObj, Object srcObj, long fromIndex, long toIndex, InteropLibrary arrays) {
+        private void spliceForeignMoveValue(JSArrayObject destObj, Object srcObj, long fromIndex, long toIndex, InteropLibrary arrays) {
             if (importValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 importValueNode = insert(ImportValueNode.create());
             }
             Object val = JSInteropUtil.readArrayElementOrDefault(srcObj, fromIndex, Undefined.instance, arrays, importValueNode, this);
-            JSRuntime.createDataPropertyOrThrow(destObj, Strings.fromLong(toIndex), val);
+            writeOwn(destObj, toIndex, val);
         }
     }
 
@@ -3653,7 +3653,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 errorBranch.enter();
                 throw Errors.createRangeError("invalid index");
             }
-            JSDynamicObject resultArray = (JSDynamicObject) createEmpty(array, len);
+            JSDynamicObject resultArray = createEmpty(array, len);
 
             long k;
             for (k = 0; k < len; k++) {
@@ -3664,7 +3664,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     val = read(array, k);
                 }
 
-                JSRuntime.createDataPropertyOrThrow(resultArray, Strings.fromLong(k), val);
+                writeOwn(resultArray, k, val);
                 TruffleSafepoint.poll(this);
             }
             reportLoopCount(k);
