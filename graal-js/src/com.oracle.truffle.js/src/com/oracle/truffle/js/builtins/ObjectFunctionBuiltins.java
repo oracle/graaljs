@@ -960,8 +960,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         abstract void executeVoid(Object to, Object from, WriteElementNode write);
 
-        @Specialization(guards = {"isJSObject(from)"})
-        protected static void copyPropertiesFromJSObject(Object to, JSDynamicObject from, WriteElementNode write,
+        @Specialization
+        protected static void copyPropertiesFromJSObject(Object to, JSObject from, WriteElementNode write,
                         @Cached("create(context)") ReadElementNode read,
                         @Cached("create(false)") JSGetOwnPropertyNode getOwnProperty,
                         @Cached ListSizeNode listSize,
@@ -985,7 +985,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final void doObject(Object to, Object from, WriteElementNode write,
                         @CachedLibrary("from") InteropLibrary fromInterop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop,
+                        @Cached ImportValueNode toJSType) {
             if (fromInterop.isNull(from)) {
                 return;
             }
@@ -995,7 +996,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 for (long i = 0; i < length; i++) {
                     Object key = keysInterop.readArrayElement(members, i);
                     String stringKey = Strings.interopAsString(stringInterop, key);
-                    Object value = fromInterop.readMember(from, stringKey);
+                    Object value = toJSType.executeWithTarget(fromInterop.readMember(from, stringKey));
                     write.executeWithTargetAndIndexAndValue(to, Strings.fromJavaString(stringKey), value);
                 }
             } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
