@@ -67,4 +67,13 @@ public class GR44209 {
         }
     }
 
+    @Test
+    public void testJavaSuper() {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
+            ProxyObject proxyObject = ProxyObject.fromMap(Map.of("super", "IAmSuper"));
+            context.getBindings("js").putMember("o", proxyObject);
+            context.eval("js", "Java.super(o)"); // should not throw
+        }
+    }
+
 }
