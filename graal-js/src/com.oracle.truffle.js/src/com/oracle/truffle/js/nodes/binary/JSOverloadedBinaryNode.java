@@ -44,6 +44,7 @@ import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.nodes.Node;
@@ -220,7 +221,8 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         return overloadedOperatorName;
     }
 
-    protected boolean isNumeric() {
+    @Idempotent
+    protected final boolean isNumeric() {
         return numeric;
     }
 
@@ -228,6 +230,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         return hint;
     }
 
+    @Idempotent
     protected boolean isAddition() {
         return Strings.equals(Strings.SYMBOL_PLUS, overloadedOperatorName);
     }
@@ -358,6 +361,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return overloadedOperatorName;
         }
 
+        @Idempotent
         protected boolean isAddition() {
             return Strings.equals(Strings.SYMBOL_PLUS, overloadedOperatorName);
         }

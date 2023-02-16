@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -80,7 +81,7 @@ public abstract class JSLoadNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedSource.isCached()", "equals(source, cachedSource)"}, limit = "1")
+    @Specialization(guards = {"isCached(cachedSource)", "equals(source, cachedSource)"}, limit = "1")
     static Object cachedLoad(Source source, JSRealm realm,
                     @Cached @Shared("importValue") ImportValueNode importValue,
                     @Cached(value = "source") Source cachedSource,
@@ -93,5 +94,10 @@ public abstract class JSLoadNode extends JavaScriptBaseNode {
                     @Cached @Shared("importValue") ImportValueNode importValue,
                     @Cached IndirectCallNode callNode) {
         return importValue.executeWithTarget(callNode.call(loadScript(source, realm), JSArguments.EMPTY_ARGUMENTS_ARRAY));
+    }
+
+    @Idempotent
+    static boolean isCached(Source source) {
+        return source.isCached();
     }
 }

@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -267,6 +268,7 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return false;
     }
 
+    @Idempotent
     protected static boolean isJavaNumberType(Class<?> clazz) {
         return Number.class.isAssignableFrom(clazz);
     }

@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -215,6 +216,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return expression instanceof FunctionNameHolder && ((FunctionNameHolder) expression).isAnonymous();
         }
 
+        @Idempotent
         protected static boolean isMethodNode(JavaScriptNode valueNode) {
             return valueNode instanceof MakeMethodNode;
         }

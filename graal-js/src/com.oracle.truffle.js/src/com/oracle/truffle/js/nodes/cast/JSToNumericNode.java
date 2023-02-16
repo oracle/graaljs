@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOp
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -161,6 +162,7 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return toNumberNode.executeNumber(primValue);
     }
 
+    @Idempotent
     protected final boolean isToNumericOperand() {
         return toNumericOperand;
     }

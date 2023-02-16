@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -128,6 +129,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             return uint32Len;
         }
 
+        @Idempotent
         protected static boolean isLengthAlwaysInt(ScriptArray arrayType) {
             return !(arrayType instanceof SparseArray);
         }

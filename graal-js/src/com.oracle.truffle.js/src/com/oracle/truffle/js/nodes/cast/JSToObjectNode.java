@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -120,6 +121,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return context;
     }
 
+    @Idempotent
     protected final boolean isCheckForNullOrUndefined() {
         return checkForNullOrUndefined;
     }
@@ -128,6 +130,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return fromWith;
     }
 
+    @Idempotent
     protected final boolean isAllowForeign() {
         return allowForeign;
     }

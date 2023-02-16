@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -196,10 +197,12 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
             return prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
         }
 
+        @Idempotent
         final boolean isOrdinaryObject() {
             return jsclass == JSOrdinary.INSTANCE;
         }
 
+        @Idempotent
         final boolean isPromiseObject() {
             return jsclass == JSPromise.INSTANCE;
         }

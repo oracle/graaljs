@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -409,6 +410,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             throw Errors.createTypeErrorNotAFunction(fnObj);
         }
 
+        @Idempotent
         final boolean isES2019OrLater() {
             return getContext().getEcmaScriptVersion() >= JSConfig.ECMAScript2019;
         }

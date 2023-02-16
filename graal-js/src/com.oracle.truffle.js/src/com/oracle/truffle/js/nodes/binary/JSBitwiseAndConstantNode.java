@@ -179,12 +179,7 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
         return JSBitwiseAndConstantNodeGen.create(null, isInt ? rightIntValue : rightBigIntValue);
     }
 
-    // Workaround for SpotBugs warning in JSBitwiseAndConstantNodeGen
-    protected final boolean isInt() {
-        return isInt;
-    }
-
-    @Specialization(guards = {"!hasOverloadedOperators(a)", "!isInt()"}, replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"})
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!isInt"}, replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"})
     protected BigInt doGenericBigIntCase(Object a,
                     @Cached @Shared("toNumeric") JSToNumericNode toNumeric,
                     @Cached @Shared("isBigInt") InlinedConditionProfile profileIsBigInt) {

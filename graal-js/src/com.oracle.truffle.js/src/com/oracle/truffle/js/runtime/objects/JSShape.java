@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
@@ -94,11 +95,13 @@ public final class JSShape {
         return Shape.newBuilder(rootShape).addConstantProperty(JSObject.HIDDEN_PROTO, prototype, 0).build();
     }
 
+    @Idempotent
     @NeverDefault
     public static JSClass getJSClass(Shape shape) {
         return (JSClass) shape.getDynamicType();
     }
 
+    @Idempotent
     public static Object getJSClassNoCast(Shape shape) {
         return shape.getDynamicType();
     }

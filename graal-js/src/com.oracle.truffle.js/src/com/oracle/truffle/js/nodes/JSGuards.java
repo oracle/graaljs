@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes;
 
 import java.util.List;
 
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -112,6 +113,7 @@ public final class JSGuards {
      * Checks if this value is a JSObject; this excludes Null and Undefined, and foreign objects
      * (values from other languages).
      */
+    @Idempotent
     public static boolean isJSObject(Object value) {
         return JSRuntime.isObject(value);
     }
@@ -147,6 +149,7 @@ public final class JSGuards {
         return JSFunction.isJSFunction(value);
     }
 
+    @Idempotent
     public static boolean isJSFunctionShape(Shape shape) {
         return shape.getDynamicType() == JSFunction.INSTANCE;
     }
@@ -403,6 +406,7 @@ public final class JSGuards {
         return JSWebAssemblyModule.isJSWebAssemblyModule(object);
     }
 
+    @Idempotent
     public static boolean isValidPrototype(Object prototype) {
         return isJSObject(prototype) || isJSNull(prototype);
     }

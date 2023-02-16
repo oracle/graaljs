@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -187,7 +188,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
     }
 
-    protected boolean isUnsignedRightShift() {
+    @Idempotent
+    protected final boolean isUnsignedRightShift() {
         return unsignedRightShift;
     }
 

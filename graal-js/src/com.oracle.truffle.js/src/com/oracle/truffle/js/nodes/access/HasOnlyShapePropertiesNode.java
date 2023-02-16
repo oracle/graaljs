@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -84,6 +85,7 @@ public abstract class HasOnlyShapePropertiesNode extends JavaScriptBaseNode {
         return jsclass.hasOnlyShapeProperties(object);
     }
 
+    @Idempotent
     static boolean isJSObjectPrototype(JSClass jsclass) {
         return jsclass == JSObjectPrototype.INSTANCE;
     }
