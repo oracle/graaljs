@@ -221,6 +221,10 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
+    "filePath" : "intl/number-format/rounding-mode-v3.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test: roundingMode is not read after signDisplay anymore."
+  }, {
     "filePath" : "intl/overrides/caching.js",
     "status" : "SKIP",
     "comment" : "suspicious performance test"
