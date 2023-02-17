@@ -698,7 +698,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
     public static class BasicInternalState {
         private UnlocalizedNumberFormatter unlocalizedFormatter;
-        private Precision precision;
 
         private Locale javaLocale;
         private String locale;
@@ -710,6 +709,9 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         private Integer minimumSignificantDigits;
         private Integer maximumSignificantDigits;
         private String roundingType;
+        private String roundingMode;
+        private int roundingIncrement;
+        private String trailingZeroDisplay;
 
         JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             JSDynamicObject resolvedOptions = JSOrdinary.create(context, realm);
@@ -731,6 +733,9 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             if (maximumSignificantDigits != null) {
                 JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MAXIMUM_SIGNIFICANT_DIGITS, maximumSignificantDigits, JSAttributes.getDefault());
             }
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_MODE, Strings.fromJavaString(roundingMode), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_INCREMENT, roundingIncrement, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, Strings.fromJavaString(trailingZeroDisplay), JSAttributes.getDefault());
         }
 
         @TruffleBoundary
@@ -768,10 +773,11 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         public void initializeNumberFormatter() {
             UnlocalizedNumberFormatter formatter = NumberFormatter.with();
 
-            formatter = formatter.roundingMode(RoundingMode.HALF_UP);
+            formatter = formatter.roundingMode(roundingModeToICURoundingMode(roundingMode));
             formatter = formatter.symbols(NumberingSystem.getInstanceByName(numberingSystem));
             formatter = formatter.integerWidth(IntegerWidth.zeroFillTo(minimumIntegerDigits));
 
+            Precision precision;
             if (IntlUtil.SIGNIFICANT_DIGITS.equals(roundingType)) {
                 precision = Precision.minMaxSignificantDigits(minimumSignificantDigits, maximumSignificantDigits);
             } else {
@@ -785,6 +791,16 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                                     morePrecision ? NumberFormatter.RoundingPriority.RELAXED : NumberFormatter.RoundingPriority.STRICT);
                 }
             }
+
+            if (roundingIncrement != 1) {
+                // ICU-21887: Note that minimumFractionDigits digits are ignored here.
+                // ICU4J does not support the combination of increment and minimumFractionDigits
+                BigDecimal increment = BigDecimal.ONE.movePointLeft(getMaximumFractionDigits()).multiply(BigDecimal.valueOf(roundingIncrement));
+                precision = Precision.increment(increment);
+            }
+            if (IntlUtil.STRIP_IF_INTEGER.equals(trailingZeroDisplay)) {
+                precision = precision.trailingZeroDisplay(NumberFormatter.TrailingZeroDisplay.HIDE_IF_WHOLE);
+            }
             formatter = formatter.precision(precision);
 
             this.unlocalizedFormatter = formatter;
@@ -792,10 +808,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
         public UnlocalizedNumberFormatter getUnlocalizedFormatter() {
             return unlocalizedFormatter;
-        }
-
-        public Precision getPrecision() {
-            return precision;
         }
 
         public Locale getJavaLocale() {
@@ -857,6 +869,23 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         public String getRoundingType() {
             return roundingType;
         }
+
+        public void setRoundingMode(String roundingMode) {
+            this.roundingMode = roundingMode;
+        }
+
+        public String getRoundingMode() {
+            return roundingMode;
+        }
+
+        public void setRoundingIncrement(int roundingIncrement) {
+            this.roundingIncrement = roundingIncrement;
+        }
+
+        public void setTrailingZeroDisplay(String trailingZeroDisplay) {
+            this.trailingZeroDisplay = trailingZeroDisplay;
+        }
+
     }
 
     public static class InternalState extends BasicInternalState {
@@ -874,9 +903,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         private String notation;
         private String compactDisplay;
         private String signDisplay;
-        private String roundingMode;
-        private int roundingIncrement;
-        private String trailingZeroDisplay;
 
         JSDynamicObject boundFormatFunction;
 
@@ -912,9 +938,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                 JSObjectUtil.putDataProperty(result, IntlUtil.KEY_COMPACT_DISPLAY, Strings.fromJavaString(compactDisplay), JSAttributes.getDefault());
             }
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_SIGN_DISPLAY, Strings.fromJavaString(signDisplay), JSAttributes.getDefault());
-            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_MODE, Strings.fromJavaString(roundingMode), JSAttributes.getDefault());
-            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_INCREMENT, roundingIncrement, JSAttributes.getDefault());
-            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, Strings.fromJavaString(trailingZeroDisplay), JSAttributes.getDefault());
 
             String roundingType = getRoundingType();
             String resolvedRoundingType = (IntlUtil.MORE_PRECISION.equals(roundingType) || IntlUtil.LESS_PRECISION.equals(roundingType)) ? roundingType : IntlUtil.AUTO;
@@ -953,20 +976,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
             formatter = formatter.sign(signDisplay(signDisplay, IntlUtil.ACCOUNTING.equals(currencySign)));
 
-            formatter = formatter.roundingMode(roundingModeToICURoundingMode(roundingMode));
-
-            Precision precision = getPrecision();
-            if (roundingIncrement != 1) {
-                // ICU-21887: Note that minimumFractionDigits digits are ignored here.
-                // ICU4J does not support the combination of increment and minimumFractionDigits
-                BigDecimal increment = BigDecimal.ONE.movePointLeft(getMaximumFractionDigits()).multiply(BigDecimal.valueOf(roundingIncrement));
-                precision = Precision.increment(increment);
-            }
-            if (IntlUtil.STRIP_IF_INTEGER.equals(trailingZeroDisplay)) {
-                precision = precision.trailingZeroDisplay(NumberFormatter.TrailingZeroDisplay.HIDE_IF_WHOLE);
-            }
-            formatter = formatter.precision(precision);
-
             LocalizedNumberRangeFormatter rangeFormatter = NumberRangeFormatter.withLocale(getJavaLocale());
             this.numberRangeFormatter = new LocalizedNumberRangeFormatter[3];
 
@@ -975,6 +984,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             // for positive and negative numbers and range types (negative-to-negative,
             // negative-to-positive, positive-to-positive)
             this.positiveNumberFormatter = formatter.locale(getJavaLocale());
+            String roundingMode = getRoundingMode();
             if (IntlUtil.HALF_CEIL.equals(roundingMode)) {
                 UnlocalizedNumberFormatter negativeFormatter = formatter.roundingMode(RoundingMode.HALF_DOWN);
                 numberRangeFormatter[0] = rangeFormatter.numberFormatterBoth(negativeFormatter);
@@ -1039,18 +1049,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
         public void setSignDisplay(String signDisplay) {
             this.signDisplay = signDisplay;
-        }
-
-        public void setRoundingMode(String roundingMode) {
-            this.roundingMode = roundingMode;
-        }
-
-        public void setRoundingIncrement(int roundingIncrement) {
-            this.roundingIncrement = roundingIncrement;
-        }
-
-        public void setTrailingZeroDisplay(String trailingZeroDisplay) {
-            this.trailingZeroDisplay = trailingZeroDisplay;
         }
 
         public LocalizedNumberFormatter getNumberFormatter(boolean forNegativeNumbers) {
