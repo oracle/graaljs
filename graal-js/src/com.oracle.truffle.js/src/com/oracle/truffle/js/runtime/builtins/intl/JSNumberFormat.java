@@ -49,6 +49,7 @@ import java.util.Currency;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -793,8 +794,11 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             }
 
             if (roundingIncrement != 1) {
-                // ICU-21887: Note that minimumFractionDigits digits are ignored here.
-                // ICU4J does not support the combination of increment and minimumFractionDigits
+                assert Objects.equals(getMinimumFractionDigits(), getMaximumFractionDigits());
+                // Note that minimumFractionDigits digits are ignored here (ICU4J does not support
+                // the combination of increment and minimumFractionDigits, see ICU-21887)
+                // but this should be fine because minimumFractionDigits == maximumFractionDigits
+                // here (according to the latest version of the specification).
                 BigDecimal increment = BigDecimal.ONE.movePointLeft(getMaximumFractionDigits()).multiply(BigDecimal.valueOf(roundingIncrement));
                 precision = Precision.increment(increment);
             }
