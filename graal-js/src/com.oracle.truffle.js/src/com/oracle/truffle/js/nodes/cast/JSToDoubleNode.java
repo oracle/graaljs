@@ -84,6 +84,16 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
         return value;
     }
 
+    @Specialization(guards = "longFitsInDouble(value)")
+    protected static double doLongFitsInDouble(long value) {
+        return value;
+    }
+
+    @Specialization(guards = "!longFitsInDouble(value)")
+    protected final double doLongNotFitsInDouble(@SuppressWarnings("unused") long value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Long value", this);
+    }
+
     @Specialization
     protected final double doBigInt(@SuppressWarnings("unused") BigInt value) {
         throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);

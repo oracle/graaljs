@@ -132,16 +132,21 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
     }
 
+    @Specialization(guards = "longFitsInDouble(value)")
+    protected static double doLongFitsInDouble(long value) {
+        return value;
+    }
+
+    @Specialization(guards = "!longFitsInDouble(value)")
+    protected final Number doLongNotFitsInDouble(@SuppressWarnings("unused") long value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Long value", this);
+    }
+
     @Specialization(guards = "isJSObject(value) || isForeignObject(value)", replaces = "doJSObject")
     protected Number doJSOrForeignObject(Object value,
                     @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
         return toNumberNode.executeNumber(toPrimitiveNode.execute(value));
-    }
-
-    @Specialization(guards = "isJavaNumber(value)")
-    protected static double doJavaObject(Object value) {
-        return JSRuntime.doubleValue((Number) value);
     }
 
     public abstract static class JSToNumberUnaryNode extends JSUnaryNode {
