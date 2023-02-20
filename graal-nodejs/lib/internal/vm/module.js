@@ -11,7 +11,7 @@ const {
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
   ReflectApply,
-  SafePromiseAll,
+  SafePromiseAllReturnVoid,
   SafeWeakMap,
   Symbol,
   SymbolToStringTag,
@@ -21,7 +21,6 @@ const {
 const { isContext } = internalBinding('contextify');
 const {
   isModuleNamespaceObject,
-  isArrayBufferView,
 } = require('internal/util/types');
 const {
   customInspectSymbol,
@@ -41,6 +40,7 @@ const {
 } = require('internal/errors').codes;
 const {
   validateBoolean,
+  validateBuffer,
   validateFunction,
   validateInt32,
   validateObject,
@@ -276,25 +276,16 @@ class SourceTextModule extends Module {
     validateInt32(lineOffset, 'options.lineOffset');
     validateInt32(columnOffset, 'options.columnOffset');
 
-    if (initializeImportMeta !== undefined &&
-        typeof initializeImportMeta !== 'function') {
-      throw new ERR_INVALID_ARG_TYPE(
-        'options.initializeImportMeta', 'function', initializeImportMeta);
+    if (initializeImportMeta !== undefined) {
+      validateFunction(initializeImportMeta, 'options.initializeImportMeta');
     }
 
-    if (importModuleDynamically !== undefined &&
-        typeof importModuleDynamically !== 'function') {
-      throw new ERR_INVALID_ARG_TYPE(
-        'options.importModuleDynamically', 'function',
-        importModuleDynamically);
+    if (importModuleDynamically !== undefined) {
+      validateFunction(importModuleDynamically, 'options.importModuleDynamically');
     }
 
-    if (cachedData !== undefined && !isArrayBufferView(cachedData)) {
-      throw new ERR_INVALID_ARG_TYPE(
-        'options.cachedData',
-        ['Buffer', 'TypedArray', 'DataView'],
-        cachedData
-      );
+    if (cachedData !== undefined) {
+      validateBuffer(cachedData, 'options.cachedData');
     }
 
     super({
@@ -330,7 +321,7 @@ class SourceTextModule extends Module {
 
       try {
         if (promises !== undefined) {
-          await SafePromiseAll(promises);
+          await SafePromiseAllReturnVoid(promises);
         }
       } catch (e) {
         this.#error = e;

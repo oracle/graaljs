@@ -43,7 +43,6 @@
 'use strict';
 
 const {
-  ArrayPrototypeConcat,
   ArrayPrototypeFilter,
   ArrayPrototypeFindIndex,
   ArrayPrototypeForEach,
@@ -52,6 +51,7 @@ const {
   ArrayPrototypeMap,
   ArrayPrototypePop,
   ArrayPrototypePush,
+  ArrayPrototypePushApply,
   ArrayPrototypeReverse,
   ArrayPrototypeShift,
   ArrayPrototypeSlice,
@@ -77,8 +77,6 @@ const {
   ReflectApply,
   RegExp,
   RegExpPrototypeExec,
-  RegExpPrototypeSymbolReplace,
-  RegExpPrototypeSymbolSplit,
   SafePromiseRace,
   SafeSet,
   SafeWeakSet,
@@ -111,7 +109,9 @@ const {
 const {
   decorateErrorStack,
   isError,
-  deprecate
+  deprecate,
+  SideEffectFreeRegExpPrototypeSymbolReplace,
+  SideEffectFreeRegExpPrototypeSymbolSplit,
 } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
 const vm = require('vm');
@@ -166,11 +166,11 @@ const {
   setupReverseSearch,
 } = require('internal/repl/utils');
 const {
-  getOwnNonIndexProperties,
-  propertyFilter: {
+  constants: {
     ALL_PROPERTIES,
-    SKIP_SYMBOLS
-  }
+    SKIP_SYMBOLS,
+  },
+  getOwnNonIndexProperties,
 } = internalBinding('util');
 const {
   startSigintWatchdog,
@@ -456,7 +456,7 @@ function REPLServer(prompt,
 
           // Remove all "await"s and attempt running the script
           // in order to detect if error is truly non recoverable
-          const fallbackCode = RegExpPrototypeSymbolReplace(/\bawait\b/g, code, '');
+          const fallbackCode = SideEffectFreeRegExpPrototypeSymbolReplace(/\bawait\b/g, code, '');
           try {
             vm.createScript(fallbackCode, {
               filename: file,
@@ -685,22 +685,22 @@ function REPLServer(prompt,
         if (e.stack) {
           if (e.name === 'SyntaxError') {
             // Remove stack trace.
-            e.stack = RegExpPrototypeSymbolReplace(
+            e.stack = SideEffectFreeRegExpPrototypeSymbolReplace(
               /^\s+at\s.*\n?/gm,
-              RegExpPrototypeSymbolReplace(/^REPL\d+:\d+\r?\n/, e.stack, ''),
+              SideEffectFreeRegExpPrototypeSymbolReplace(/^REPL\d+:\d+\r?\n/, e.stack, ''),
               '');
             const importErrorStr = 'Cannot use import statement outside a ' +
               'module';
             if (StringPrototypeIncludes(e.message, importErrorStr)) {
               e.message = 'Cannot use import statement inside the Node.js ' +
                 'REPL, alternatively use dynamic import';
-              e.stack = RegExpPrototypeSymbolReplace(
+              e.stack = SideEffectFreeRegExpPrototypeSymbolReplace(
                 /SyntaxError:.*\n/,
                 e.stack,
                 `SyntaxError: ${e.message}\n`);
             }
           } else if (self.replMode === module.exports.REPL_MODE_STRICT) {
-            e.stack = RegExpPrototypeSymbolReplace(
+            e.stack = SideEffectFreeRegExpPrototypeSymbolReplace(
               /(\s+at\s+REPL\d+:)(\d+)/,
               e.stack,
               (_, pre, line) => pre + (line - 1)
@@ -732,7 +732,7 @@ function REPLServer(prompt,
       if (errStack === '') {
         errStack = self.writer(e);
       }
-      const lines = RegExpPrototypeSymbolSplit(/(?<=\n)/, errStack);
+      const lines = SideEffectFreeRegExpPrototypeSymbolSplit(/(?<=\n)/, errStack);
       let matched = false;
 
       errStack = '';
@@ -1337,7 +1337,9 @@ function complete(line, callback) {
       } else if (RegExpPrototypeExec(/^\.\.?\//, completeOn) !== null) {
         paths = [process.cwd()];
       } else {
-        paths = ArrayPrototypeConcat(module.paths, CJSModule.globalPaths);
+        paths = [];
+        ArrayPrototypePushApply(paths, module.paths);
+        ArrayPrototypePushApply(paths, CJSModule.globalPaths);
       }
 
       ArrayPrototypeForEach(paths, (dir) => {

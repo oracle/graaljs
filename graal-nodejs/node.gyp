@@ -24,8 +24,7 @@
     'node_use_openssl%': 'true',
     'node_shared_openssl%': 'false',
     'node_v8_options%': '',
-    'node_target_type%': 'executable',
-    'node_production%': 'false',
+    'node_enable_v8_vtunejit%': 'false',
     'node_core_target_name%': 'node',
     'node_lib_target_name%': 'libnode',
     'node_intermediate_lib_type%': 'static_library',
@@ -52,9 +51,7 @@
       'deps/v8/tools/tickprocessor-driver.mjs',
       'deps/acorn/acorn/dist/acorn.js',
       'deps/acorn/acorn-walk/dist/walk.js',
-      'deps/cjs-module-lexer/lexer.js',
-      'deps/cjs-module-lexer/dist/lexer.js',
-      'deps/undici/undici.js',
+      '<@(node_builtin_shareable_builtins)',
     ],
     'node_mksnapshot_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)node_mksnapshot<(EXECUTABLE_SUFFIX)',
     'conditions': [
@@ -101,6 +98,7 @@
         '-W',
         '-Wno-unused-parameter',
         '-Werror=undefined-inline',
+        '-Werror=extra-semi',
       ],
     },
 
@@ -458,7 +456,7 @@
                'inputs': [ '<(opensslconfig)', ],
                'outputs': [ '<(opensslconfig_internal)', ],
                'action': [
-                 'python', 'tools/copyfile.py',
+                 '<(python)', 'tools/copyfile.py',
                  '<(opensslconfig)',
                  '<(opensslconfig_internal)',
                ],
@@ -486,6 +484,7 @@
         'deps/googletest/googletest.gyp:gtest_prod',
         'deps/histogram/histogram.gyp:histogram',
         'deps/uvwasi/uvwasi.gyp:uvwasi',
+        'deps/simdutf/simdutf.gyp:simdutf',
       ],
 
       'sources': [
@@ -498,6 +497,7 @@
         'src/api/hooks.cc',
         'src/api/utils.cc',
         'src/async_wrap.cc',
+        'src/base_object.cc',
         'src/cares_wrap.cc',
         'src/cleanup_queue.cc',
         'src/connect_wrap.cc',
@@ -546,10 +546,12 @@
         'src/node_process_events.cc',
         'src/node_process_methods.cc',
         'src/node_process_object.cc',
+        'src/node_realm.cc',
         'src/node_report.cc',
         'src/node_report_module.cc',
         'src/node_report_utils.cc',
         'src/node_serdes.cc',
+        'src/node_shadow_realm.cc',
         'src/node_snapshotable.cc',
         'src/node_sockaddr.cc',
         'src/node_stat_watcher.cc',
@@ -605,6 +607,7 @@
         'src/connection_wrap.h',
         'src/debug_utils.h',
         'src/debug_utils-inl.h',
+        'src/env_properties.h',
         'src/env.h',
         'src/env-inl.h',
         'src/handle_wrap.h',
@@ -652,9 +655,12 @@
         'src/node_platform.h',
         'src/node_process.h',
         'src/node_process-inl.h',
+        'src/node_realm.h',
+        'src/node_realm-inl.h',
         'src/node_report.h',
         'src/node_revert.h',
         'src/node_root_certs.h',
+        'src/node_shadow_realm.h',
         'src/node_snapshotable.h',
         'src/node_snapshot_builder.h',
         'src/node_sockaddr.h',
@@ -662,6 +668,7 @@
         'src/node_stat_watcher.h',
         'src/node_union_bytes.h',
         'src/node_url.h',
+        'src/node_util.h',
         'src/node_version.h',
         'src/node_v8.h',
         'src/node_v8_platform-inl.h',
@@ -701,12 +708,6 @@
         # node.gyp is added by default, common.gypi is added for change detection
         'common.gypi',
       ],
-      'conditions': [
-        # Production build
-        [ 'node_production=="true"', {
-          'defines': [ 'NDEBUG' ],
-        }],
-     ],
 
       'variables': {
         'openssl_system_ca_path%': '',
@@ -953,6 +954,9 @@
               ],
             },
           ],
+        }],
+        [ 'debug_nghttp2==1', {
+          'defines': [ 'NODE_DEBUG_NGHTTP2=1' ]
         }],
       ],
       'actions': [
@@ -1216,6 +1220,7 @@
         'node_dtrace_header',
         'node_dtrace_ustack',
         'node_dtrace_provider',
+        'deps/simdutf/simdutf.gyp:simdutf',
       ],
 
       'includes': [
@@ -1247,7 +1252,6 @@
         'test/cctest/test_base_object_ptr.cc',
         'test/cctest/test_node_postmortem_metadata.cc',
         'test/cctest/test_environment.cc',
-        'test/cctest/test_js_native_api_v8.cc',
         'test/cctest/test_linked_binding.cc',
         'test/cctest/test_node_api.cc',
         'test/cctest/test_per_process.cc',

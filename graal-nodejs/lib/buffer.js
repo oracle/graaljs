@@ -58,6 +58,7 @@ const {
   compareOffset,
   createFromString,
   fill: bindingFill,
+  isUtf8: bindingIsUtf8,
   indexOfBuffer,
   indexOfNumber,
   indexOfString,
@@ -68,11 +69,11 @@ const {
   kStringMaxLength
 } = internalBinding('buffer');
 const {
-  getOwnNonIndexProperties,
-  propertyFilter: {
+  constants: {
     ALL_PROPERTIES,
-    ONLY_ENUMERABLE
+    ONLY_ENUMERABLE,
   },
+  getOwnNonIndexProperties,
 } = internalBinding('util');
 const {
   customInspectSymbol,
@@ -84,7 +85,8 @@ const {
 const {
   isAnyArrayBuffer,
   isArrayBufferView,
-  isUint8Array
+  isUint8Array,
+  isTypedArray,
 } = require('internal/util/types');
 const {
   inspect: utilInspect
@@ -126,6 +128,10 @@ const {
   Blob,
   resolveObjectURL,
 } = require('internal/blob');
+
+const {
+  File,
+} = require('internal/file');
 
 FastBuffer.prototype.constructor = Buffer;
 Buffer.prototype = FastBuffer.prototype;
@@ -1321,12 +1327,22 @@ function atob(input) {
   return Buffer.from(input, 'base64').toString('latin1');
 }
 
+function isUtf8(input) {
+  if (isTypedArray(input) || isAnyArrayBuffer(input)) {
+    return bindingIsUtf8(input);
+  }
+
+  throw new ERR_INVALID_ARG_TYPE('input', ['TypedArray', 'Buffer'], input);
+}
+
 module.exports = {
   Blob,
+  File,
   resolveObjectURL,
   Buffer,
   SlowBuffer,
   transcode,
+  isUtf8,
 
   // Legacy
   kMaxLength,

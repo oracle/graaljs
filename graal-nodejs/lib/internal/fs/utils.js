@@ -10,7 +10,6 @@ const {
   FunctionPrototypeCall,
   Number,
   NumberIsFinite,
-  NumberIsInteger,
   MathMin,
   MathRound,
   ObjectIs,
@@ -770,7 +769,7 @@ const validateRmOptions = hideStackFrames((path, options, expectDir, cb) => {
   options = validateRmdirOptions(options, defaultRmOptions);
   validateBoolean(options.force, 'options.force');
 
-  lazyLoadFs().stat(path, (err, stats) => {
+  lazyLoadFs().lstat(path, (err, stats) => {
     if (err) {
       if (options.force && err.code === 'ENOENT') {
         return cb(null, options);
@@ -801,7 +800,7 @@ const validateRmOptionsSync = hideStackFrames((path, options, expectDir) => {
 
   if (!options.force || expectDir || !options.recursive) {
     const isDirectory = lazyLoadFs()
-      .statSync(path, { throwIfNoEntry: !options.force })?.isDirectory();
+      .lstatSync(path, { throwIfNoEntry: !options.force })?.isDirectory();
 
     if (expectDir && !isDirectory) {
       return false;
@@ -863,14 +862,8 @@ const getValidMode = hideStackFrames((mode, type) => {
   if (mode == null) {
     return def;
   }
-  if (NumberIsInteger(mode) && mode >= min && mode <= max) {
-    return mode;
-  }
-  if (typeof mode !== 'number') {
-    throw new ERR_INVALID_ARG_TYPE('mode', 'integer', mode);
-  }
-  throw new ERR_OUT_OF_RANGE(
-    'mode', `an integer >= ${min} && <= ${max}`, mode);
+  validateInteger(mode, 'mode', min, max);
+  return mode;
 });
 
 const validateStringAfterArrayBufferView = hideStackFrames((buffer, name) => {

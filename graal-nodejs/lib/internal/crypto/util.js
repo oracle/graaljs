@@ -62,15 +62,6 @@ const {
 const kHandle = Symbol('kHandle');
 const kKeyObject = Symbol('kKeyObject');
 
-const lazyRequireCache = {};
-
-function lazyRequire(name) {
-  let ret = lazyRequireCache[name];
-  if (ret === undefined)
-    ret = lazyRequireCache[name] = require(name);
-  return ret;
-}
-
 let defaultEncoding = 'buffer';
 
 function setDefaultEncoding(val) {
@@ -286,10 +277,15 @@ function onDone(resolve, reject, err, result) {
   resolve(result);
 }
 
-function jobPromise(job) {
+function jobPromise(getJob) {
   return new Promise((resolve, reject) => {
-    job.ondone = FunctionPrototypeBind(onDone, job, resolve, reject);
-    job.run();
+    try {
+      const job = getJob();
+      job.ondone = FunctionPrototypeBind(onDone, job, resolve, reject);
+      job.run();
+    } catch (err) {
+      onDone(resolve, reject, err);
+    }
   });
 }
 
@@ -340,12 +336,12 @@ function getUsagesUnion(usageSet, ...usages) {
   return newset;
 }
 
-function getHashLength(name) {
+function getBlockSize(name) {
   switch (name) {
-    case 'SHA-1': return 160;
-    case 'SHA-256': return 256;
-    case 'SHA-384': return 384;
-    case 'SHA-512': return 512;
+    case 'SHA-1': return 512;
+    case 'SHA-256': return 512;
+    case 'SHA-384': return 1024;
+    case 'SHA-512': return 1024;
   }
 }
 
@@ -426,12 +422,11 @@ module.exports = {
   validateByteSource,
   validateKeyOps,
   jobPromise,
-  lazyRequire,
   validateMaxBufferLength,
   bigIntArrayToUnsignedBigInt,
   bigIntArrayToUnsignedInt,
+  getBlockSize,
   getStringOption,
   getUsagesUnion,
-  getHashLength,
   secureHeapUsed,
 };

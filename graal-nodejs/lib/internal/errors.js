@@ -19,7 +19,6 @@ const {
   ArrayPrototypeIndexOf,
   ArrayPrototypeJoin,
   ArrayPrototypeMap,
-  ArrayPrototypePop,
   ArrayPrototypePush,
   ArrayPrototypeSlice,
   ArrayPrototypeSplice,
@@ -166,6 +165,13 @@ const aggregateTwoErrors = hideStackFrames((innerError, outerError) => {
     return err;
   }
   return innerError || outerError;
+});
+
+const aggregateErrors = hideStackFrames((errors, message, code) => {
+  // eslint-disable-next-line no-restricted-syntax
+  const err = new AggregateError(new SafeArrayIterator(errors), message);
+  err.code = errors[0]?.code;
+  return err;
 });
 
 // Lazily loaded
@@ -809,16 +815,14 @@ const fatalExceptionStackEnhancers = {
   }
 };
 
-// Ensures the printed error line is from user code.
-let _kArrowMessagePrivateSymbol, _setHiddenValue;
-function setArrowMessage(err, arrowMessage) {
-  if (!_kArrowMessagePrivateSymbol) {
-    ({
-      arrow_message_private_symbol: _kArrowMessagePrivateSymbol,
-      setHiddenValue: _setHiddenValue,
-    } = internalBinding('util'));
+const {
+  privateSymbols: {
+    arrow_message_private_symbol,
   }
-  _setHiddenValue(err, _kArrowMessagePrivateSymbol, arrowMessage);
+} = internalBinding('util');
+// Ensures the printed error line is from user code.
+function setArrowMessage(err, arrowMessage) {
+  err[arrow_message_private_symbol] = arrowMessage;
 }
 
 // Hide stack lines before the first user code line.
@@ -890,9 +894,23 @@ function determineSpecificType(value) {
   return `type ${typeof value} (${inspected})`;
 }
 
+/**
+ * Create a list string in the form like 'A and B' or 'A, B, ..., and Z'.
+ * We cannot use Intl.ListFormat because it's not available in
+ * --without-intl builds.
+ * @param {string[]} array An array of strings.
+ * @param {string} [type] The list type to be inserted before the last element.
+ * @returns {string}
+ */
+function formatList(array, type = 'and') {
+  return array.length < 3 ? ArrayPrototypeJoin(array, ` ${type} `) :
+    `${ArrayPrototypeJoin(ArrayPrototypeSlice(array, 0, -1), ', ')}, ${type} ${array[array.length - 1]}`;
+}
+
 module.exports = {
   AbortError,
   aggregateTwoErrors,
+  aggregateErrors,
   captureLargerStackTrace,
   codes,
   connResetException,
@@ -903,6 +921,7 @@ module.exports = {
   errnoException,
   exceptionWithHostPort,
   fatalExceptionStackEnhancers,
+  formatList,
   genericNodeError,
   getMessage,
   hideInternalStackFrames,
@@ -943,8 +962,6 @@ module.exports = {
 E('ERR_AMBIGUOUS_ARGUMENT', 'The "%s" argument is ambiguous. %s', TypeError);
 E('ERR_ARG_NOT_ITERABLE', '%s must be iterable', TypeError);
 E('ERR_ASSERTION', '%s', Error);
-E('ERR_ASSERT_SNAPSHOT_NOT_SUPPORTED',
-  'Snapshot is not supported in this context ', TypeError);
 E('ERR_ASYNC_CALLBACK', '%s must be a function', TypeError);
 E('ERR_ASYNC_TYPE', 'Invalid name for async "type": %s', TypeError);
 E('ERR_BROTLI_INVALID_PARAM', '%s is not a valid Brotli parameter', RangeError);
@@ -1234,39 +1251,20 @@ E('ERR_INVALID_ARG_TYPE',
     }
 
     if (types.length > 0) {
-      if (types.length > 2) {
-        const last = ArrayPrototypePop(types);
-        msg += `one of type ${ArrayPrototypeJoin(types, ', ')}, or ${last}`;
-      } else if (types.length === 2) {
-        msg += `one of type ${types[0]} or ${types[1]}`;
-      } else {
-        msg += `of type ${types[0]}`;
-      }
+      msg += `${types.length > 1 ? 'one of type' : 'of type'} ${formatList(types, 'or')}`;
       if (instances.length > 0 || other.length > 0)
         msg += ' or ';
     }
 
     if (instances.length > 0) {
-      if (instances.length > 2) {
-        const last = ArrayPrototypePop(instances);
-        msg +=
-          `an instance of ${ArrayPrototypeJoin(instances, ', ')}, or ${last}`;
-      } else {
-        msg += `an instance of ${instances[0]}`;
-        if (instances.length === 2) {
-          msg += ` or ${instances[1]}`;
-        }
-      }
+      msg += `an instance of ${formatList(instances, 'or')}`;
       if (other.length > 0)
         msg += ' or ';
     }
 
     if (other.length > 0) {
-      if (other.length > 2) {
-        const last = ArrayPrototypePop(other);
-        msg += `one of ${ArrayPrototypeJoin(other, ', ')}, or ${last}`;
-      } else if (other.length === 2) {
-        msg += `one of ${other[0]} or ${other[1]}`;
+      if (other.length > 1) {
+        msg += `one of ${formatList(other, 'or')}`;
       } else {
         if (StringPrototypeToLowerCase(other[0]) !== other[0])
           msg += 'an ';
@@ -1310,6 +1308,10 @@ E('ERR_INVALID_FILE_URL_PATH', 'File URL path %s', TypeError);
 E('ERR_INVALID_HANDLE_TYPE', 'This handle type cannot be sent', TypeError);
 E('ERR_INVALID_HTTP_TOKEN', '%s must be a valid HTTP token ["%s"]', TypeError);
 E('ERR_INVALID_IP_ADDRESS', 'Invalid IP address: %s', TypeError);
+E('ERR_INVALID_MIME_SYNTAX', (production, str, invalidIndex) => {
+  const msg = invalidIndex !== -1 ? ` at ${invalidIndex}` : '';
+  return `The MIME syntax for a ${production} in "${str}" is invalid` + msg;
+}, TypeError);
 E('ERR_INVALID_MODULE_SPECIFIER', (request, reason, base = undefined) => {
   return `Invalid module "${request}" ${reason}${base ?
     ` imported from ${base}` : ''}`;
@@ -1442,18 +1444,7 @@ E('ERR_MISSING_ARGS',
         ArrayPrototypeJoin(ArrayPrototypeMap(a, wrap), ' or ') :
         wrap(a))
     );
-    switch (len) {
-      case 1:
-        msg += `${args[0]} argument`;
-        break;
-      case 2:
-        msg += `${args[0]} and ${args[1]} arguments`;
-        break;
-      default:
-        msg += ArrayPrototypeJoin(ArrayPrototypeSlice(args, 0, len - 1), ', ');
-        msg += `, and ${args[len - 1]} arguments`;
-        break;
-    }
+    msg += `${formatList(args)} argument${len > 1 ? 's' : ''}`;
     return `${msg} must be specified`;
   }, TypeError);
 E('ERR_MISSING_OPTION', '%s is required', TypeError);
@@ -1565,7 +1556,7 @@ E('ERR_SOCKET_BAD_PORT', (name, port, allowZero = true) => {
   assert(typeof allowZero === 'boolean',
          "The 'allowZero' argument must be of type boolean.");
   const operator = allowZero ? '>=' : '>';
-  return `${name} should be ${operator} 0 and < 65536. Received ${port}.`;
+  return `${name} should be ${operator} 0 and < 65536. Received ${determineSpecificType(port)}.`;
 }, RangeError);
 E('ERR_SOCKET_BAD_TYPE',
   'Bad socket type specified. Valid types are: udp4, udp6', TypeError);
@@ -1573,6 +1564,9 @@ E('ERR_SOCKET_BUFFER_SIZE',
   'Could not get or set buffer size',
   SystemError);
 E('ERR_SOCKET_CLOSED', 'Socket is closed', Error);
+E('ERR_SOCKET_CLOSED_BEFORE_CONNECTION',
+  'Socket closed before the connection was established',
+  Error);
 E('ERR_SOCKET_DGRAM_IS_CONNECTED', 'Already connected', Error);
 E('ERR_SOCKET_DGRAM_NOT_CONNECTED', 'Not connected', Error);
 E('ERR_SOCKET_DGRAM_NOT_RUNNING', 'Not running', Error);
@@ -1593,6 +1587,21 @@ E('ERR_STREAM_WRAP', 'Stream has StringDecoder set or is in objectMode', Error);
 E('ERR_STREAM_WRITE_AFTER_END', 'write after end', Error);
 E('ERR_SYNTHETIC', 'JavaScript Callstack', Error);
 E('ERR_SYSTEM_ERROR', 'A system error occurred', SystemError);
+E('ERR_TAP_LEXER_ERROR', function(errorMsg) {
+  hideInternalStackFrames(this);
+  return errorMsg;
+}, Error);
+E('ERR_TAP_PARSER_ERROR', function(errorMsg, details, tokenCausedError, source) {
+  hideInternalStackFrames(this);
+  this.cause = tokenCausedError;
+  const { column, line, start, end } = tokenCausedError.location;
+  const errorDetails = `${details} at line ${line}, column ${column} (start ${start}, end ${end})`;
+  return errorMsg + errorDetails;
+}, SyntaxError);
+E('ERR_TAP_VALIDATION_ERROR', function(errorMsg) {
+  hideInternalStackFrames(this);
+  return errorMsg;
+}, Error);
 E('ERR_TEST_FAILURE', function(error, failureType) {
   hideInternalStackFrames(this);
   assert(typeof failureType === 'string',
@@ -1671,7 +1680,7 @@ E('ERR_UNKNOWN_SIGNAL', 'Unknown signal: %s', TypeError);
 E('ERR_UNSUPPORTED_DIR_IMPORT', "Directory import '%s' is not supported " +
 'resolving ES modules imported from %s', Error);
 E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url, supported) => {
-  let msg = `Only URLs with a scheme in: ${ArrayPrototypeJoin(supported, ', ')} are supported by the default ESM loader`;
+  let msg = `Only URLs with a scheme in: ${formatList(supported)} are supported by the default ESM loader`;
   if (isWindows && url.protocol.length === 2) {
     msg +=
       '. On Windows, absolute paths must be valid file:// URLs';

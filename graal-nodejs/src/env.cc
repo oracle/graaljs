@@ -37,7 +37,6 @@ using v8::Context;
 using v8::EmbedderGraph;
 using v8::EscapableHandleScope;
 using v8::Function;
-using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::HandleScope;
 using v8::HeapSpaceStatistics;
@@ -58,15 +57,13 @@ using v8::TracingController;
 using v8::TryCatch;
 using v8::Undefined;
 using v8::Value;
-using v8::WeakCallbackInfo;
-using v8::WeakCallbackType;
 using worker::Worker;
 
 int const ContextEmbedderTag::kNodeContextTag = 0x6e6f64;
 void* const ContextEmbedderTag::kNodeContextTagPtr = const_cast<void*>(
     static_cast<const void*>(&ContextEmbedderTag::kNodeContextTag));
 
-void AsyncHooks::SetJSPromiseHooks(Local<Function> init,
+void AsyncHooks::ResetPromiseHooks(Local<Function> init,
                                    Local<Function> before,
                                    Local<Function> after,
                                    Local<Function> resolve) {
@@ -74,12 +71,20 @@ void AsyncHooks::SetJSPromiseHooks(Local<Function> init,
   js_promise_hooks_[1].Reset(env()->isolate(), before);
   js_promise_hooks_[2].Reset(env()->isolate(), after);
   js_promise_hooks_[3].Reset(env()->isolate(), resolve);
+}
+
+void Environment::ResetPromiseHooks(Local<Function> init,
+                                    Local<Function> before,
+                                    Local<Function> after,
+                                    Local<Function> resolve) {
+  async_hooks()->ResetPromiseHooks(init, before, after, resolve);
+
   for (auto it = contexts_.begin(); it != contexts_.end(); it++) {
     if (it->IsEmpty()) {
       contexts_.erase(it--);
       continue;
     }
-    PersistentToLocal::Weak(env()->isolate(), *it)
+    PersistentToLocal::Weak(isolate_, *it)
         ->SetPromiseHooks(init, before, after, resolve);
   }
 }
@@ -182,7 +187,7 @@ void AsyncHooks::clear_async_id_stack() {
   fields_[kStackLength] = 0;
 }
 
-void AsyncHooks::AddContext(Local<Context> ctx) {
+void AsyncHooks::InstallPromiseHooks(Local<Context> ctx) {
   ctx->SetPromiseHooks(js_promise_hooks_[0].IsEmpty()
                            ? Local<Function>()
                            : PersistentToLocal::Strong(js_promise_hooks_[0]),
@@ -195,23 +200,24 @@ void AsyncHooks::AddContext(Local<Context> ctx) {
                        js_promise_hooks_[3].IsEmpty()
                            ? Local<Function>()
                            : PersistentToLocal::Strong(js_promise_hooks_[3]));
+}
 
+void Environment::TrackContext(Local<Context> context) {
   size_t id = contexts_.size();
   contexts_.resize(id + 1);
-  contexts_[id].Reset(env()->isolate(), ctx);
+  contexts_[id].Reset(isolate_, context);
   contexts_[id].SetWeak();
 }
 
-void AsyncHooks::RemoveContext(Local<Context> ctx) {
-  Isolate* isolate = env()->isolate();
-  HandleScope handle_scope(isolate);
+void Environment::UntrackContext(Local<Context> context) {
+  HandleScope handle_scope(isolate_);
   contexts_.erase(std::remove_if(contexts_.begin(),
                                  contexts_.end(),
                                  [&](auto&& el) { return el.IsEmpty(); }),
                   contexts_.end());
   for (auto it = contexts_.begin(); it != contexts_.end(); it++) {
-    Local<Context> saved_context = PersistentToLocal::Weak(isolate, *it);
-    if (saved_context == ctx) {
+    Local<Context> saved_context = PersistentToLocal::Weak(isolate_, *it);
+    if (saved_context == context) {
       it->Reset();
       contexts_.erase(it);
       break;
@@ -261,6 +267,21 @@ std::ostream& operator<<(std::ostream& output,
          << "// -- template_values begins --\n"
          << i.template_values << ",\n"
          << "// -- template_values ends --\n"
+         << "}";
+  return output;
+}
+
+std::ostream& operator<<(std::ostream& output, const SnapshotMetadata& i) {
+  output << "{\n"
+         << "  "
+         << (i.type == SnapshotMetadata::Type::kDefault
+                 ? "SnapshotMetadata::Type::kDefault"
+                 : "SnapshotMetadata::Type::kFullyCustomized")
+         << ", // type\n"
+         << "  \"" << i.node_version << "\", // node_version\n"
+         << "  \"" << i.node_arch << "\", // node_arch\n"
+         << "  \"" << i.node_platform << "\", // node_platform\n"
+         << "  " << i.v8_cache_version_tag << ", // v8_cache_version_tag\n"
          << "}";
   return output;
 }
@@ -433,8 +454,13 @@ void IsolateData::CreateProperties() {
 #undef V
 
   // TODO(legendecas): eagerly create per isolate templates.
-  set_contextify_global_template(
-      contextify::ContextifyContext::CreateGlobalTemplate(isolate_));
+  Local<FunctionTemplate> templ = FunctionTemplate::New(isolate());
+  templ->InstanceTemplate()->SetInternalFieldCount(
+      BaseObject::kInternalFieldCount);
+  templ->Inherit(BaseObject::GetConstructorTemplate(this));
+  set_binding_data_ctor_template(templ);
+
+  contextify::ContextifyContext::InitializeGlobalTemplates(this);
 }
 
 IsolateData::IsolateData(Isolate* isolate,
@@ -487,6 +513,10 @@ void TrackingTraceStateObserver::UpdateTraceCategoryState() {
     return;
   }
 
+  if (env_->principal_realm() == nullptr) {
+    return;
+  }
+
   bool async_hooks_enabled = (*(TRACE_EVENT_API_GET_CATEGORY_GROUP_ENABLED(
                                  TRACING_CATEGORY_NODE1(async_hooks)))) != 0;
 
@@ -502,9 +532,11 @@ void TrackingTraceStateObserver::UpdateTraceCategoryState() {
 }
 
 void Environment::AssignToContext(Local<v8::Context> context,
+                                  Realm* realm,
                                   const ContextInfo& info) {
   context->SetAlignedPointerInEmbedderData(ContextEmbedderIndex::kEnvironment,
                                            this);
+  context->SetAlignedPointerInEmbedderData(ContextEmbedderIndex::kRealm, realm);
   // Used to retrieve bindings
   context->SetAlignedPointerInEmbedderData(
       ContextEmbedderIndex::kBindingListIndex, &(this->bindings_));
@@ -520,7 +552,8 @@ void Environment::AssignToContext(Local<v8::Context> context,
   inspector_agent()->ContextCreated(context, info);
 #endif  // HAVE_INSPECTOR
 
-  this->async_hooks()->AddContext(context);
+  this->async_hooks()->InstallPromiseHooks(context);
+  TrackContext(context);
 }
 
 void Environment::TryLoadAddon(
@@ -579,63 +612,13 @@ std::unique_ptr<v8::BackingStore> Environment::release_managed_buffer(
   return bs;
 }
 
-void Environment::CreateProperties() {
-  HandleScope handle_scope(isolate_);
-  Local<Context> ctx = context();
-
-  {
-    Context::Scope context_scope(ctx);
-    Local<FunctionTemplate> templ = FunctionTemplate::New(isolate());
-    templ->InstanceTemplate()->SetInternalFieldCount(
-        BaseObject::kInternalFieldCount);
-    templ->Inherit(BaseObject::GetConstructorTemplate(this));
-
-    set_binding_data_ctor_template(templ);
-  }
-
-  // Store primordials setup by the per-context script in the environment.
-  Local<Object> per_context_bindings =
-      GetPerContextExports(ctx).ToLocalChecked();
-  Local<Value> primordials =
-      per_context_bindings->Get(ctx, primordials_string()).ToLocalChecked();
-  CHECK(primordials->IsObject());
-  set_primordials(primordials.As<Object>());
-
-  Local<String> prototype_string =
-      FIXED_ONE_BYTE_STRING(isolate(), "prototype");
-
-#define V(EnvPropertyName, PrimordialsPropertyName)                            \
-  {                                                                            \
-    Local<Value> ctor =                                                        \
-        primordials.As<Object>()                                               \
-            ->Get(ctx,                                                         \
-                  FIXED_ONE_BYTE_STRING(isolate(), PrimordialsPropertyName))   \
-            .ToLocalChecked();                                                 \
-    CHECK(ctor->IsObject());                                                   \
-    Local<Value> prototype =                                                   \
-        ctor.As<Object>()->Get(ctx, prototype_string).ToLocalChecked();        \
-    CHECK(prototype->IsObject());                                              \
-    set_##EnvPropertyName(prototype.As<Object>());                             \
-  }
-
-  V(primordials_safe_map_prototype_object, "SafeMap");
-  V(primordials_safe_set_prototype_object, "SafeSet");
-  V(primordials_safe_weak_map_prototype_object, "SafeWeakMap");
-  V(primordials_safe_weak_set_prototype_object, "SafeWeakSet");
-#undef V
-
-  Local<Object> process_object =
-      node::CreateProcessObject(this).FromMaybe(Local<Object>());
-  set_process_object(process_object);
-}
-
 std::string GetExecPath(const std::vector<std::string>& argv) {
   char exec_path_buf[2 * PATH_MAX];
   size_t exec_path_len = sizeof(exec_path_buf);
   std::string exec_path;
   if (uv_exepath(exec_path_buf, &exec_path_len) == 0) {
     exec_path = std::string(exec_path_buf, exec_path_len);
-  } else {
+  } else if (argv.size() > 0) {
     exec_path = argv[0];
   }
 
@@ -666,6 +649,7 @@ Environment::Environment(IsolateData* isolate_data,
       isolate_data_(isolate_data),
       async_hooks_(isolate, MAYBE_FIELD_PTR(env_info, async_hooks)),
       immediate_info_(isolate, MAYBE_FIELD_PTR(env_info, immediate_info)),
+      timeout_info_(isolate_, 1, MAYBE_FIELD_PTR(env_info, timeout_info)),
       tick_info_(isolate, MAYBE_FIELD_PTR(env_info, tick_info)),
       timer_base_(uv_now(isolate_data->event_loop())),
       exec_argv_(exec_args),
@@ -766,12 +750,11 @@ Environment::Environment(IsolateData* isolate_data,
 
 void Environment::InitializeMainContext(Local<Context> context,
                                         const EnvSerializeInfo* env_info) {
-  context_.Reset(context->GetIsolate(), context);
-  AssignToContext(context, ContextInfo(""));
+  principal_realm_ = std::make_unique<Realm>(
+      this, context, MAYBE_FIELD_PTR(env_info, principal_realm));
+  AssignToContext(context, principal_realm_.get(), ContextInfo(""));
   if (env_info != nullptr) {
     DeserializeProperties(env_info);
-  } else {
-    CreateProperties();
   }
 
   if (!options_->force_async_hooks_checks) {
@@ -796,6 +779,9 @@ void Environment::InitializeMainContext(Local<Context> context,
 }
 
 Environment::~Environment() {
+  HandleScope handle_scope(isolate());
+  Local<Context> ctx = context();
+
   if (Environment** interrupt_data = interrupt_data_.load()) {
     // There are pending RequestInterrupt() callbacks. Tell them not to run,
     // then force V8 to run interrupts by compiling and running an empty script
@@ -803,9 +789,8 @@ Environment::~Environment() {
     *interrupt_data = nullptr;
 
     Isolate::AllowJavascriptExecutionScope allow_js_here(isolate());
-    HandleScope handle_scope(isolate());
     TryCatch try_catch(isolate());
-    Context::Scope context_scope(context());
+    Context::Scope context_scope(ctx);
 
 #ifdef DEBUG
     bool consistency_check = false;
@@ -815,8 +800,8 @@ Environment::~Environment() {
 #endif
 
     Local<Script> script;
-    if (Script::Compile(context(), String::Empty(isolate())).ToLocal(&script))
-      USE(script->Run(context()));
+    if (Script::Compile(ctx, String::Empty(isolate())).ToLocal(&script))
+      USE(script->Run(ctx));
 
     DCHECK(consistency_check);
   }
@@ -831,16 +816,15 @@ Environment::~Environment() {
   isolate()->GetHeapProfiler()->RemoveBuildEmbedderGraphCallback(
       BuildEmbedderGraph, this);
 
-  HandleScope handle_scope(isolate());
-
 #if HAVE_INSPECTOR
   // Destroy inspector agent before erasing the context. The inspector
   // destructor depends on the context still being accessible.
   inspector_agent_.reset();
 #endif
 
-  context()->SetAlignedPointerInEmbedderData(ContextEmbedderIndex::kEnvironment,
-                                             nullptr);
+  ctx->SetAlignedPointerInEmbedderData(ContextEmbedderIndex::kEnvironment,
+                                       nullptr);
+  ctx->SetAlignedPointerInEmbedderData(ContextEmbedderIndex::kRealm, nullptr);
 
   if (trace_state_observer_) {
     tracing::AgentWriterHandle* writer = GetTracingAgentWriter();
@@ -863,8 +847,6 @@ Environment::~Environment() {
       addon.Close();
     }
   }
-
-  CHECK_EQ(base_object_count_, 0);
 }
 
 void Environment::InitializeLibuv() {
@@ -921,10 +903,13 @@ void Environment::InitializeLibuv() {
 }
 
 void Environment::ExitEnv() {
-  set_can_call_into_js(false);
+  // Should not access non-thread-safe methods here.
   set_stopping(true);
   isolate_->TerminateExecution();
-  SetImmediateThreadsafe([](Environment* env) { uv_stop(env->event_loop()); });
+  SetImmediateThreadsafe([](Environment* env) {
+    env->set_can_call_into_js(false);
+    uv_stop(env->event_loop());
+  });
 }
 
 void Environment::RegisterHandleCleanups() {
@@ -1025,11 +1010,16 @@ void Environment::RunCleanup() {
   started_cleanup_ = true;
   TRACE_EVENT0(TRACING_CATEGORY_NODE1(environment), "RunCleanup");
   bindings_.clear();
+  // Only BaseObject's cleanups are registered as per-realm cleanup hooks now.
+  // Defer the BaseObject cleanup after handles are cleaned up.
   CleanupHandles();
 
-  while (!cleanup_queue_.empty() || native_immediates_.size() > 0 ||
+  while (!cleanup_queue_.empty() || principal_realm_->HasCleanupHooks() ||
+         native_immediates_.size() > 0 ||
          native_immediates_threadsafe_.size() > 0 ||
          native_immediates_interrupts_.size() > 0) {
+    // TODO(legendecas): cleanup handles in per-realm cleanup hooks as well.
+    principal_realm_->RunCleanup();
     cleanup_queue_.Drain();
     CleanupHandles();
   }
@@ -1489,8 +1479,9 @@ AsyncHooks::SerializeInfo AsyncHooks::Serialize(Local<Context> context,
                 context,
                 native_execution_async_resources_[i]);
   }
-  CHECK_EQ(contexts_.size(), 1);
-  CHECK_EQ(contexts_[0], env()->context());
+
+  // At the moment, promise hooks are not supported in the startup snapshot.
+  // TODO(joyeecheung): support promise hooks in the startup snapshot.
   CHECK(js_promise_hooks_[0].IsEmpty());
   CHECK(js_promise_hooks_[1].IsEmpty());
   CHECK(js_promise_hooks_[2].IsEmpty());
@@ -1588,13 +1579,13 @@ void Environment::RemoveUnmanagedFd(int fd) {
 
 void Environment::PrintInfoForSnapshotIfDebug() {
   if (enabled_debug_list()->enabled(DebugCategory::MKSNAPSHOT)) {
-    fprintf(stderr, "BaseObjects at the exit of the Environment:\n");
-    PrintAllBaseObjects();
-    fprintf(stderr, "\nNative modules without cache:\n");
+    fprintf(stderr, "At the exit of the Environment:\n");
+    principal_realm()->PrintInfoForSnapshot();
+    fprintf(stderr, "\nBuiltins without cache:\n");
     for (const auto& s : builtins_without_cache) {
       fprintf(stderr, "%s\n", s.c_str());
     }
-    fprintf(stderr, "\nNative modules with cache:\n");
+    fprintf(stderr, "\nBuiltins with cache:\n");
     for (const auto& s : builtins_with_cache) {
       fprintf(stderr, "%s\n", s.c_str());
     }
@@ -1605,50 +1596,10 @@ void Environment::PrintInfoForSnapshotIfDebug() {
   }
 }
 
-void Environment::PrintAllBaseObjects() {
-  size_t i = 0;
-  std::cout << "BaseObjects\n";
-  ForEachBaseObject([&](BaseObject* obj) {
-    std::cout << "#" << i++ << " " << obj << ": " <<
-      obj->MemoryInfoName() << "\n";
-  });
-}
-
-void Environment::VerifyNoStrongBaseObjects() {
-  // When a process exits cleanly, i.e. because the event loop ends up without
-  // things to wait for, the Node.js objects that are left on the heap should
-  // be:
-  //
-  //   1. weak, i.e. ready for garbage collection once no longer referenced, or
-  //   2. detached, i.e. scheduled for destruction once no longer referenced, or
-  //   3. an unrefed libuv handle, i.e. does not keep the event loop alive, or
-  //   4. an inactive libuv handle (essentially the same here)
-  //
-  // There are a few exceptions to this rule, but generally, if there are
-  // C++-backed Node.js objects on the heap that do not fall into the above
-  // categories, we may be looking at a potential memory leak. Most likely,
-  // the cause is a missing MakeWeak() call on the corresponding object.
-  //
-  // In order to avoid this kind of problem, we check the list of BaseObjects
-  // for these criteria. Currently, we only do so when explicitly instructed to
-  // or when in debug mode (where --verify-base-objects is always-on).
-
-  if (!options()->verify_base_objects) return;
-
-  ForEachBaseObject([](BaseObject* obj) {
-    if (obj->IsNotIndicativeOfMemoryLeakAtExit()) return;
-    fprintf(stderr, "Found bad BaseObject during clean exit: %s\n",
-            obj->MemoryInfoName().c_str());
-    fflush(stderr);
-    ABORT();
-  });
-}
-
 EnvSerializeInfo Environment::Serialize(SnapshotCreator* creator) {
   EnvSerializeInfo info;
   Local<Context> ctx = context();
 
-  SerializeBindingData(this, creator, &info);
   // Currently all modules are compiled without cache in builtin snapshot
   // builder.
   info.builtins = std::vector<std::string>(builtins_without_cache.begin(),
@@ -1656,6 +1607,7 @@ EnvSerializeInfo Environment::Serialize(SnapshotCreator* creator) {
 
   info.async_hooks = async_hooks_.Serialize(ctx, creator);
   info.immediate_info = immediate_info_.Serialize(ctx, creator);
+  info.timeout_info = timeout_info_.Serialize(ctx, creator);
   info.tick_info = tick_info_.Serialize(ctx, creator);
   info.performance_state = performance_state_->Serialize(ctx, creator);
   info.exiting = exiting_.Serialize(ctx, creator);
@@ -1663,81 +1615,19 @@ EnvSerializeInfo Environment::Serialize(SnapshotCreator* creator) {
   info.should_abort_on_uncaught_toggle =
       should_abort_on_uncaught_toggle_.Serialize(ctx, creator);
 
-  uint32_t id = 0;
-#define V(PropertyName, TypeName)                                              \
-  do {                                                                         \
-    Local<TypeName> field = PropertyName();                                    \
-    if (!field.IsEmpty()) {                                                    \
-      size_t index = creator->AddData(ctx, field);                             \
-      info.persistent_values.push_back({#PropertyName, id, index});            \
-    }                                                                          \
-    id++;                                                                      \
-  } while (0);
-  ENVIRONMENT_STRONG_PERSISTENT_VALUES(V)
-#undef V
-
-  info.context = creator->AddData(ctx, context());
+  info.principal_realm = principal_realm_->Serialize(creator);
+  // For now we only support serialization of the main context.
+  // TODO(joyeecheung): support de/serialization of vm contexts.
+  CHECK_EQ(contexts_.size(), 1);
+  CHECK_EQ(contexts_[0], context());
   return info;
-}
-
-std::ostream& operator<<(std::ostream& output,
-                         const std::vector<PropInfo>& vec) {
-  output << "{\n";
-  for (const auto& info : vec) {
-    output << "  " << info << ",\n";
-  }
-  output << "}";
-  return output;
-}
-
-std::ostream& operator<<(std::ostream& output, const PropInfo& info) {
-  output << "{ \"" << info.name << "\", " << std::to_string(info.id) << ", "
-         << std::to_string(info.index) << " }";
-  return output;
-}
-
-std::ostream& operator<<(std::ostream& output,
-                         const std::vector<std::string>& vec) {
-  output << "{\n";
-  for (const auto& info : vec) {
-    output << "  \"" << info << "\",\n";
-  }
-  output << "}";
-  return output;
-}
-
-std::ostream& operator<<(std::ostream& output, const EnvSerializeInfo& i) {
-  output << "{\n"
-         << "// -- bindings begins --\n"
-         << i.bindings << ",\n"
-         << "// -- bindings ends --\n"
-         << "// -- builtins begins --\n"
-         << i.builtins << ",\n"
-         << "// -- builtins ends --\n"
-         << "// -- async_hooks begins --\n"
-         << i.async_hooks << ",\n"
-         << "// -- async_hooks ends --\n"
-         << i.tick_info << ",  // tick_info\n"
-         << i.immediate_info << ",  // immediate_info\n"
-         << "// -- performance_state begins --\n"
-         << i.performance_state << ",\n"
-         << "// -- performance_state ends --\n"
-         << i.exiting << ",  // exiting\n"
-         << i.stream_base_state << ",  // stream_base_state\n"
-         << i.should_abort_on_uncaught_toggle
-         << ",  // should_abort_on_uncaught_toggle\n"
-         << "// -- persistent_values begins --\n"
-         << i.persistent_values << ",\n"
-         << "// -- persistent_values ends --\n"
-         << i.context << ",  // context\n"
-         << "}";
-  return output;
 }
 
 void Environment::EnqueueDeserializeRequest(DeserializeRequestCallback cb,
                                             Local<Object> holder,
                                             int index,
-                                            InternalFieldInfo* info) {
+                                            InternalFieldInfoBase* info) {
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
   DeserializeRequest request{cb, {isolate(), holder}, index, info};
   deserialize_requests_.push_back(std::move(request));
 }
@@ -1764,50 +1654,19 @@ void Environment::DeserializeProperties(const EnvSerializeInfo* info) {
   builtins_in_snapshot = info->builtins;
   async_hooks_.Deserialize(ctx);
   immediate_info_.Deserialize(ctx);
+  timeout_info_.Deserialize(ctx);
   tick_info_.Deserialize(ctx);
   performance_state_->Deserialize(ctx);
   exiting_.Deserialize(ctx);
   stream_base_state_.Deserialize(ctx);
   should_abort_on_uncaught_toggle_.Deserialize(ctx);
 
+  principal_realm_->DeserializeProperties(&info->principal_realm);
+
   if (enabled_debug_list_.enabled(DebugCategory::MKSNAPSHOT)) {
     fprintf(stderr, "deserializing...\n");
     std::cerr << *info << "\n";
   }
-
-  const std::vector<PropInfo>& values = info->persistent_values;
-  size_t i = 0;  // index to the array
-  uint32_t id = 0;
-#define V(PropertyName, TypeName)                                              \
-  do {                                                                         \
-    if (values.size() > i && id == values[i].id) {                             \
-      const PropInfo& d = values[i];                                           \
-      DCHECK_EQ(d.name, #PropertyName);                                        \
-      MaybeLocal<TypeName> maybe_field =                                       \
-          ctx->GetDataFromSnapshotOnce<TypeName>(d.index);                     \
-      Local<TypeName> field;                                                   \
-      if (!maybe_field.ToLocal(&field)) {                                      \
-        fprintf(stderr,                                                        \
-                "Failed to deserialize environment value " #PropertyName       \
-                "\n");                                                         \
-      }                                                                        \
-      set_##PropertyName(field);                                               \
-      i++;                                                                     \
-    }                                                                          \
-    id++;                                                                      \
-  } while (0);
-
-  ENVIRONMENT_STRONG_PERSISTENT_VALUES(V);
-#undef V
-
-  MaybeLocal<Context> maybe_ctx_from_snapshot =
-      ctx->GetDataFromSnapshotOnce<Context>(info->context);
-  Local<Context> ctx_from_snapshot;
-  if (!maybe_ctx_from_snapshot.ToLocal(&ctx_from_snapshot)) {
-    fprintf(stderr,
-            "Failed to deserialize context back reference from the snapshot\n");
-  }
-  CHECK_EQ(ctx_from_snapshot, ctx);
 }
 
 uint64_t GuessMemoryAvailableToTheProcess() {
@@ -1834,6 +1693,7 @@ void Environment::BuildEmbedderGraph(Isolate* isolate,
                                      void* data) {
   MemoryTracker tracker(isolate, graph);
   Environment* env = static_cast<Environment*>(data);
+  // Start traversing embedder objects from the root Environment object.
   tracker.Track(env);
 }
 
@@ -1991,12 +1851,9 @@ void Environment::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("cleanup_queue", cleanup_queue_);
   tracker->TrackField("async_hooks", async_hooks_);
   tracker->TrackField("immediate_info", immediate_info_);
+  tracker->TrackField("timeout_info", timeout_info_);
   tracker->TrackField("tick_info", tick_info_);
-
-#define V(PropertyName, TypeName)                                              \
-  tracker->TrackField(#PropertyName, PropertyName());
-  ENVIRONMENT_STRONG_PERSISTENT_VALUES(V)
-#undef V
+  tracker->TrackField("principal_realm", principal_realm_);
 
   // FIXME(joyeecheung): track other fields in Environment.
   // Currently MemoryTracker is unable to track these
@@ -2012,140 +1869,4 @@ void Environment::MemoryInfo(MemoryTracker* tracker) const {
 void Environment::RunWeakRefCleanup() {
   isolate()->ClearKeptObjects();
 }
-
-// Not really any better place than env.cc at this moment.
-BaseObject::BaseObject(Environment* env, Local<Object> object)
-    : persistent_handle_(env->isolate(), object), env_(env) {
-  CHECK_EQ(false, object.IsEmpty());
-  CHECK_GT(object->InternalFieldCount(), 0);
-  object->SetAlignedPointerInInternalField(BaseObject::kSlot,
-                                           static_cast<void*>(this));
-  env->AddCleanupHook(DeleteMe, static_cast<void*>(this));
-  env->modify_base_object_count(1);
-}
-
-BaseObject::~BaseObject() {
-  env()->modify_base_object_count(-1);
-  env()->RemoveCleanupHook(DeleteMe, static_cast<void*>(this));
-
-  if (UNLIKELY(has_pointer_data())) {
-    PointerData* metadata = pointer_data();
-    CHECK_EQ(metadata->strong_ptr_count, 0);
-    metadata->self = nullptr;
-    if (metadata->weak_ptr_count == 0) delete metadata;
-  }
-
-  if (persistent_handle_.IsEmpty()) {
-    // This most likely happened because the weak callback below cleared it.
-    return;
-  }
-
-  {
-    HandleScope handle_scope(env()->isolate());
-    object()->SetAlignedPointerInInternalField(BaseObject::kSlot, nullptr);
-  }
-}
-
-void BaseObject::MakeWeak() {
-  if (has_pointer_data()) {
-    pointer_data()->wants_weak_jsobj = true;
-    if (pointer_data()->strong_ptr_count > 0) return;
-  }
-
-  persistent_handle_.SetWeak(
-      this,
-      [](const WeakCallbackInfo<BaseObject>& data) {
-        BaseObject* obj = data.GetParameter();
-        // Clear the persistent handle so that ~BaseObject() doesn't attempt
-        // to mess with internal fields, since the JS object may have
-        // transitioned into an invalid state.
-        // Refs: https://github.com/nodejs/node/issues/18897
-        obj->persistent_handle_.Reset();
-        CHECK_IMPLIES(obj->has_pointer_data(),
-                      obj->pointer_data()->strong_ptr_count == 0);
-        obj->OnGCCollect();
-      },
-      WeakCallbackType::kParameter);
-}
-
-void BaseObject::LazilyInitializedJSTemplateConstructor(
-    const FunctionCallbackInfo<Value>& args) {
-  DCHECK(args.IsConstructCall());
-  DCHECK_GT(args.This()->InternalFieldCount(), 0);
-  args.This()->SetAlignedPointerInInternalField(BaseObject::kSlot, nullptr);
-}
-
-Local<FunctionTemplate> BaseObject::MakeLazilyInitializedJSTemplate(
-    Environment* env) {
-  Local<FunctionTemplate> t = NewFunctionTemplate(
-      env->isolate(), LazilyInitializedJSTemplateConstructor);
-  t->Inherit(BaseObject::GetConstructorTemplate(env));
-  t->InstanceTemplate()->SetInternalFieldCount(BaseObject::kInternalFieldCount);
-  return t;
-}
-
-BaseObject::PointerData* BaseObject::pointer_data() {
-  if (!has_pointer_data()) {
-    PointerData* metadata = new PointerData();
-    metadata->wants_weak_jsobj = persistent_handle_.IsWeak();
-    metadata->self = this;
-    pointer_data_ = metadata;
-  }
-  CHECK(has_pointer_data());
-  return pointer_data_;
-}
-
-void BaseObject::decrease_refcount() {
-  CHECK(has_pointer_data());
-  PointerData* metadata = pointer_data();
-  CHECK_GT(metadata->strong_ptr_count, 0);
-  unsigned int new_refcount = --metadata->strong_ptr_count;
-  if (new_refcount == 0) {
-    if (metadata->is_detached) {
-      OnGCCollect();
-    } else if (metadata->wants_weak_jsobj && !persistent_handle_.IsEmpty()) {
-      MakeWeak();
-    }
-  }
-}
-
-void BaseObject::increase_refcount() {
-  unsigned int prev_refcount = pointer_data()->strong_ptr_count++;
-  if (prev_refcount == 0 && !persistent_handle_.IsEmpty())
-    persistent_handle_.ClearWeak();
-}
-
-void BaseObject::DeleteMe(void* data) {
-  BaseObject* self = static_cast<BaseObject*>(data);
-  if (self->has_pointer_data() &&
-      self->pointer_data()->strong_ptr_count > 0) {
-    return self->Detach();
-  }
-  delete self;
-}
-
-bool BaseObject::IsDoneInitializing() const { return true; }
-
-Local<Object> BaseObject::WrappedObject() const {
-  return object();
-}
-
-bool BaseObject::IsRootNode() const {
-  return !persistent_handle_.IsWeak();
-}
-
-Local<FunctionTemplate> BaseObject::GetConstructorTemplate(Environment* env) {
-  Local<FunctionTemplate> tmpl = env->base_object_ctor_template();
-  if (tmpl.IsEmpty()) {
-    tmpl = NewFunctionTemplate(env->isolate(), nullptr);
-    tmpl->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "BaseObject"));
-    env->set_base_object_ctor_template(tmpl);
-  }
-  return tmpl;
-}
-
-bool BaseObject::IsNotIndicativeOfMemoryLeakAtExit() const {
-  return IsWeakOrDetached();
-}
-
 }  // namespace node

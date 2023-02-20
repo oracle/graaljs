@@ -59,6 +59,227 @@ functions for streams that return `Promise` objects rather than using
 callbacks. The API is accessible via `require('node:stream/promises')`
 or `require('node:stream').promises`.
 
+### `stream.pipeline(source[, ...transforms], destination[, options])`
+
+### `stream.pipeline(streams[, options])`
+
+<!-- YAML
+added: v15.0.0
+-->
+
+* `streams` {Stream\[]|Iterable\[]|AsyncIterable\[]|Function\[]}
+* `source` {Stream|Iterable|AsyncIterable|Function}
+  * Returns: {Promise|AsyncIterable}
+* `...transforms` {Stream|Function}
+  * `source` {AsyncIterable}
+  * Returns: {Promise|AsyncIterable}
+* `destination` {Stream|Function}
+  * `source` {AsyncIterable}
+  * Returns: {Promise|AsyncIterable}
+* `options` {Object}
+  * `signal` {AbortSignal}
+  * `end` {boolean}
+* Returns: {Promise} Fulfills when the pipeline is complete.
+
+```cjs
+const { pipeline } = require('node:stream/promises');
+const fs = require('node:fs');
+const zlib = require('node:zlib');
+
+async function run() {
+  await pipeline(
+    fs.createReadStream('archive.tar'),
+    zlib.createGzip(),
+    fs.createWriteStream('archive.tar.gz'),
+  );
+  console.log('Pipeline succeeded.');
+}
+
+run().catch(console.error);
+```
+
+```mjs
+import { pipeline } from 'node:stream/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { createGzip } from 'node:zlib';
+
+await pipeline(
+  createReadStream('archive.tar'),
+  createGzip(),
+  createWriteStream('archive.tar.gz'),
+);
+console.log('Pipeline succeeded.');
+```
+
+To use an `AbortSignal`, pass it inside an options object, as the last argument.
+When the signal is aborted, `destroy` will be called on the underlying pipeline,
+with an `AbortError`.
+
+```cjs
+const { pipeline } = require('node:stream/promises');
+const fs = require('node:fs');
+const zlib = require('node:zlib');
+
+async function run() {
+  const ac = new AbortController();
+  const signal = ac.signal;
+
+  setImmediate(() => ac.abort());
+  await pipeline(
+    fs.createReadStream('archive.tar'),
+    zlib.createGzip(),
+    fs.createWriteStream('archive.tar.gz'),
+    { signal },
+  );
+}
+
+run().catch(console.error); // AbortError
+```
+
+```mjs
+import { pipeline } from 'node:stream/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { createGzip } from 'node:zlib';
+
+const ac = new AbortController();
+const { signal } = ac;
+setImmediate(() => ac.abort());
+try {
+  await pipeline(
+    createReadStream('archive.tar'),
+    createGzip(),
+    createWriteStream('archive.tar.gz'),
+    { signal },
+  );
+} catch (err) {
+  console.error(err); // AbortError
+}
+```
+
+The `pipeline` API also supports async generators:
+
+```cjs
+const { pipeline } = require('node:stream/promises');
+const fs = require('node:fs');
+
+async function run() {
+  await pipeline(
+    fs.createReadStream('lowercase.txt'),
+    async function* (source, { signal }) {
+      source.setEncoding('utf8');  // Work with strings rather than `Buffer`s.
+      for await (const chunk of source) {
+        yield await processChunk(chunk, { signal });
+      }
+    },
+    fs.createWriteStream('uppercase.txt'),
+  );
+  console.log('Pipeline succeeded.');
+}
+
+run().catch(console.error);
+```
+
+```mjs
+import { pipeline } from 'node:stream/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+
+await pipeline(
+  createReadStream('lowercase.txt'),
+  async function* (source, { signal }) {
+    source.setEncoding('utf8');  // Work with strings rather than `Buffer`s.
+    for await (const chunk of source) {
+      yield await processChunk(chunk, { signal });
+    }
+  },
+  createWriteStream('uppercase.txt'),
+);
+console.log('Pipeline succeeded.');
+```
+
+Remember to handle the `signal` argument passed into the async generator.
+Especially in the case where the async generator is the source for the
+pipeline (i.e. first argument) or the pipeline will never complete.
+
+```cjs
+const { pipeline } = require('node:stream/promises');
+const fs = require('node:fs');
+
+async function run() {
+  await pipeline(
+    async function* ({ signal }) {
+      await someLongRunningfn({ signal });
+      yield 'asd';
+    },
+    fs.createWriteStream('uppercase.txt'),
+  );
+  console.log('Pipeline succeeded.');
+}
+
+run().catch(console.error);
+```
+
+```mjs
+import { pipeline } from 'node:stream/promises';
+import fs from 'node:fs';
+await pipeline(
+  async function* ({ signal }) {
+    await someLongRunningfn({ signal });
+    yield 'asd';
+  },
+  fs.createWriteStream('uppercase.txt'),
+);
+console.log('Pipeline succeeded.');
+```
+
+The `pipeline` API provides [callback version][stream-pipeline]:
+
+### `stream.finished(stream[, options])`
+
+<!-- YAML
+added: v15.0.0
+-->
+
+* `stream` {Stream}
+* `options` {Object}
+  * `error` {boolean|undefined}
+  * `readable` {boolean|undefined}
+  * `writable` {boolean|undefined}
+  * `signal`: {AbortSignal|undefined}
+* Returns: {Promise} Fulfills when the stream is no
+  longer readable or writable.
+
+```cjs
+const { finished } = require('node:stream/promises');
+const fs = require('node:fs');
+
+const rs = fs.createReadStream('archive.tar');
+
+async function run() {
+  await finished(rs);
+  console.log('Stream is done reading.');
+}
+
+run().catch(console.error);
+rs.resume(); // Drain the stream.
+```
+
+```mjs
+import { finished } from 'node:stream/promises';
+import { createReadStream } from 'node:fs';
+
+const rs = createReadStream('archive.tar');
+
+async function run() {
+  await finished(rs);
+  console.log('Stream is done reading.');
+}
+
+run().catch(console.error);
+rs.resume(); // Drain the stream.
+```
+
+The `finished` API provides [callback version][stream-finished]:
+
 ### Object mode
 
 All streams created by Node.js APIs operate exclusively on strings and `Buffer`
@@ -172,7 +393,7 @@ server.listen(1337);
 // $ curl localhost:1337 -d "\"foo\""
 // string
 // $ curl localhost:1337 -d "not json"
-// error: Unexpected token o in JSON at position 1
+// error: Unexpected token 'o', "not json" is not valid JSON
 ```
 
 [`Writable`][] streams (such as `res` in the example) expose methods such as
@@ -880,8 +1101,10 @@ pass.unpipe(writable);
 // readableFlowing is now false.
 
 pass.on('data', (chunk) => { console.log(chunk.toString()); });
+// readableFlowing is still false.
 pass.write('ok');  // Will not emit 'data'.
 pass.resume();     // Must be called to make stream emit 'data'.
+// readableFlowing is now true.
 ```
 
 While `readable.readableFlowing` is `false`, data may be accumulating
@@ -1679,6 +1902,41 @@ option. In the code example above, data will be in a single chunk if the file
 has less then 64 KiB of data because no `highWaterMark` option is provided to
 [`fs.createReadStream()`][].
 
+##### `readable.compose(stream[, options])`
+
+<!-- YAML
+added: v18.13.0
+-->
+
+> Stability: 1 - Experimental
+
+* `stream` {Stream|Iterable|AsyncIterable|Function}
+* `options` {Object}
+  * `signal` {AbortSignal} allows destroying the stream if the signal is
+    aborted.
+* Returns: {Duplex} a stream composed with the stream `stream`.
+
+```mjs
+import { Readable } from 'node:stream';
+
+async function* splitToWords(source) {
+  for await (const chunk of source) {
+    const words = String(chunk).split(' ');
+
+    for (const word of words) {
+      yield word;
+    }
+  }
+}
+
+const wordsStream = Readable.from(['this is', 'compose as operator']).compose(splitToWords);
+const words = await wordsStream.toArray();
+
+console.log(words); // prints ['this', 'is', 'compose', 'as', 'operator']
+```
+
+See [`stream.compose`][] for more information.
+
 ##### `readable.iterator([options])`
 
 <!-- YAML
@@ -2341,6 +2599,7 @@ changes:
 -->
 
 * `stream` {Stream} A readable and/or writable stream.
+
 * `options` {Object}
   * `error` {boolean} If set to `false`, then a call to `emit('error', err)` is
     not treated as finished. **Default:** `true`.
@@ -2354,8 +2613,12 @@ changes:
     underlying stream will _not_ be aborted if the signal is aborted. The
     callback will get called with an `AbortError`. All registered
     listeners added by this function will also be removed.
+  * `cleanup` {boolean} remove all registered stream listeners.
+    **Default:** `false`.
+
 * `callback` {Function} A callback function that takes an optional error
   argument.
+
 * Returns: {Function} A cleanup function which removes all registered
   listeners.
 
@@ -2383,22 +2646,7 @@ Especially useful in error handling scenarios where a stream is destroyed
 prematurely (like an aborted HTTP request), and will not emit `'end'`
 or `'finish'`.
 
-The `finished` API provides promise version:
-
-```js
-const { finished } = require('node:stream/promises');
-const fs = require('node:fs');
-
-const rs = fs.createReadStream('archive.tar');
-
-async function run() {
-  await finished(rs);
-  console.log('Stream is done reading.');
-}
-
-run().catch(console.error);
-rs.resume(); // Drain the stream.
-```
+The `finished` API provides [promise version][stream-finished-promise].
 
 `stream.finished()` leaves dangling event listeners (in particular
 `'error'`, `'end'`, `'finish'` and `'close'`) after `callback` has been
@@ -2474,101 +2722,11 @@ pipeline(
     } else {
       console.log('Pipeline succeeded.');
     }
-  }
+  },
 );
 ```
 
-The `pipeline` API provides a promise version, which can also
-receive an options argument as the last parameter with a
-`signal` {AbortSignal} property. When the signal is aborted,
-`destroy` will be called on the underlying pipeline, with an
-`AbortError`.
-
-```js
-const { pipeline } = require('node:stream/promises');
-const fs = require('node:fs');
-const zlib = require('node:zlib');
-
-async function run() {
-  await pipeline(
-    fs.createReadStream('archive.tar'),
-    zlib.createGzip(),
-    fs.createWriteStream('archive.tar.gz')
-  );
-  console.log('Pipeline succeeded.');
-}
-
-run().catch(console.error);
-```
-
-To use an `AbortSignal`, pass it inside an options object,
-as the last argument:
-
-```js
-const { pipeline } = require('node:stream/promises');
-const fs = require('node:fs');
-const zlib = require('node:zlib');
-
-async function run() {
-  const ac = new AbortController();
-  const signal = ac.signal;
-
-  setTimeout(() => ac.abort(), 1);
-  await pipeline(
-    fs.createReadStream('archive.tar'),
-    zlib.createGzip(),
-    fs.createWriteStream('archive.tar.gz'),
-    { signal },
-  );
-}
-
-run().catch(console.error); // AbortError
-```
-
-The `pipeline` API also supports async generators:
-
-```js
-const { pipeline } = require('node:stream/promises');
-const fs = require('node:fs');
-
-async function run() {
-  await pipeline(
-    fs.createReadStream('lowercase.txt'),
-    async function* (source, { signal }) {
-      source.setEncoding('utf8');  // Work with strings rather than `Buffer`s.
-      for await (const chunk of source) {
-        yield await processChunk(chunk, { signal });
-      }
-    },
-    fs.createWriteStream('uppercase.txt')
-  );
-  console.log('Pipeline succeeded.');
-}
-
-run().catch(console.error);
-```
-
-Remember to handle the `signal` argument passed into the async generator.
-Especially in the case where the async generator is the source for the
-pipeline (i.e. first argument) or the pipeline will never complete.
-
-```js
-const { pipeline } = require('node:stream/promises');
-const fs = require('node:fs');
-
-async function run() {
-  await pipeline(
-    async function* ({ signal }) {
-      await someLongRunningfn({ signal });
-      yield 'asd';
-    },
-    fs.createWriteStream('uppercase.txt')
-  );
-  console.log('Pipeline succeeded.');
-}
-
-run().catch(console.error);
-```
+The `pipeline` API provides a [promise version][stream-pipeline-promise].
 
 `stream.pipeline()` will call `stream.destroy(err)` on all streams except:
 
@@ -2634,7 +2792,7 @@ import { compose, Transform } from 'node:stream';
 const removeSpaces = new Transform({
   transform(chunk, encoding, callback) {
     callback(null, String(chunk).replace(' ', ''));
-  }
+  },
 });
 
 async function* toUpper(source) {
@@ -2693,6 +2851,8 @@ await finished(compose(s1, s2, s3));
 console.log(res); // prints 'HELLOWORLD'
 ```
 
+See [`readable.compose(stream)`][] for `stream.compose` as operator.
+
 ### `stream.Readable.from(iterable[, options])`
 
 <!-- YAML
@@ -2729,6 +2889,18 @@ readable.on('data', (chunk) => {
 Calling `Readable.from(string)` or `Readable.from(buffer)` will not have
 the strings or buffers be iterated to match the other streams semantics
 for performance reasons.
+
+If an `Iterable` object containing promises is passed as an argument,
+it might result in unhandled rejection.
+
+```js
+const { Readable } = require('node:stream');
+
+Readable.from([
+  new Promise((resolve) => setTimeout(resolve('1'), 1500)),
+  new Promise((_, reject) => setTimeout(reject(new Error('2')), 1000)), // Unhandled rejection
+]);
+```
 
 ### `stream.Readable.fromWeb(readableStream[, options])`
 
@@ -2860,6 +3032,18 @@ A utility method for creating duplex streams.
 * `Promise` converts into readable `Duplex`. Value `null` is ignored.
 * Returns: {stream.Duplex}
 
+If an `Iterable` object containing promises is passed as an argument,
+it might result in unhandled rejection.
+
+```js
+const { Duplex } = require('node:stream');
+
+Duplex.from([
+  new Promise((resolve) => setTimeout(resolve('1'), 1500)),
+  new Promise((_, reject) => setTimeout(reject(new Error('2')), 1000)), // Unhandled rejection
+]);
+```
+
 ### `stream.Duplex.fromWeb(pair[, options])`
 
 <!-- YAML
@@ -2884,7 +3068,7 @@ added: v17.0.0
 import { Duplex } from 'node:stream';
 import {
   ReadableStream,
-  WritableStream
+  WritableStream,
 } from 'node:stream/web';
 
 const readable = new ReadableStream({
@@ -2896,12 +3080,12 @@ const readable = new ReadableStream({
 const writable = new WritableStream({
   write(chunk) {
     console.log('writable', chunk);
-  }
+  },
 });
 
 const pair = {
   readable,
-  writable
+  writable,
 };
 const duplex = Duplex.fromWeb(pair, { encoding: 'utf8', objectMode: true });
 
@@ -2916,7 +3100,7 @@ for await (const chunk of duplex) {
 const { Duplex } = require('node:stream');
 const {
   ReadableStream,
-  WritableStream
+  WritableStream,
 } = require('node:stream/web');
 
 const readable = new ReadableStream({
@@ -2928,12 +3112,12 @@ const readable = new ReadableStream({
 const writable = new WritableStream({
   write(chunk) {
     console.log('writable', chunk);
-  }
+  },
 });
 
 const pair = {
   readable,
-  writable
+  writable,
 };
 const duplex = Duplex.fromWeb(pair, { encoding: 'utf8', objectMode: true });
 
@@ -2966,7 +3150,7 @@ const duplex = Duplex({
   write(chunk, encoding, callback) {
     console.log('writable', chunk);
     callback();
-  }
+  },
 });
 
 const { readable, writable } = Duplex.toWeb(duplex);
@@ -2988,7 +3172,7 @@ const duplex = Duplex({
   write(chunk, encoding, callback) {
     console.log('writable', chunk);
     callback();
-  }
+  },
 });
 
 const { readable, writable } = Duplex.toWeb(duplex);
@@ -3021,7 +3205,7 @@ const fs = require('node:fs');
 const controller = new AbortController();
 const read = addAbortSignal(
   controller.signal,
-  fs.createReadStream(('object.json'))
+  fs.createReadStream(('object.json')),
 );
 // Later, abort the operation closing the stream
 controller.abort();
@@ -3034,7 +3218,7 @@ const controller = new AbortController();
 setTimeout(() => controller.abort(), 10_000); // set a timeout
 const stream = addAbortSignal(
   controller.signal,
-  fs.createReadStream(('object.json'))
+  fs.createReadStream(('object.json')),
 );
 (async () => {
   try {
@@ -3128,7 +3312,7 @@ const myWritable = new Writable({
   },
   destroy() {
     // Free resources...
-  }
+  },
 });
 ```
 
@@ -3235,7 +3419,7 @@ const myWritable = new Writable({
   },
   writev(chunks, callback) {
     // ...
-  }
+  },
 });
 ```
 
@@ -3254,7 +3438,7 @@ const myWritable = new Writable({
   writev(chunks, callback) {
     // ...
   },
-  signal: controller.signal
+  signal: controller.signal,
 });
 // Later, abort the operation closing the stream
 controller.abort();
@@ -3445,7 +3629,7 @@ const myWritable = new Writable({
     } else {
       callback();
     }
-  }
+  },
 });
 ```
 
@@ -3592,7 +3776,7 @@ const { Readable } = require('node:stream');
 const myReadable = new Readable({
   read(size) {
     // ...
-  }
+  },
 });
 ```
 
@@ -3607,7 +3791,7 @@ const read = new Readable({
   read(size) {
     // ...
   },
-  signal: controller.signal
+  signal: controller.signal,
 });
 // Later, abort the operation closing the stream
 controller.abort();
@@ -3815,7 +3999,7 @@ const myReadable = new Readable({
     } else {
       // Do some work.
     }
-  }
+  },
 });
 ```
 
@@ -3933,7 +4117,7 @@ const myDuplex = new Duplex({
   },
   write(chunk, encoding, callback) {
     // ...
-  }
+  },
 });
 ```
 
@@ -3965,7 +4149,7 @@ pipeline(
       } catch (err) {
         callback(err);
       }
-    }
+    },
   }),
   fs.createWriteStream('valid-object.json'),
   (err) => {
@@ -3974,7 +4158,7 @@ pipeline(
     } else {
       console.log('completed');
     }
-  }
+  },
 );
 ```
 
@@ -4045,7 +4229,7 @@ const myTransform = new Transform({
 
     // Push the data onto the readable queue.
     callback(null, '0'.repeat(data.length % 2) + data);
-  }
+  },
 });
 
 myTransform.setEncoding('ascii');
@@ -4127,7 +4311,7 @@ const { Transform } = require('node:stream');
 const myTransform = new Transform({
   transform(chunk, encoding, callback) {
     // ...
-  }
+  },
 });
 ```
 
@@ -4460,11 +4644,13 @@ contain multi-byte characters.
 [`process.stdin`]: process.md#processstdin
 [`process.stdout`]: process.md#processstdout
 [`readable._read()`]: #readable_readsize
+[`readable.compose(stream)`]: #readablecomposestream-options
 [`readable.map`]: #readablemapfn-options
 [`readable.push('')`]: #readablepush
 [`readable.setEncoding()`]: #readablesetencodingencoding
 [`stream.Readable.from()`]: #streamreadablefromiterable-options
 [`stream.addAbortSignal()`]: #streamaddabortsignalsignal-stream
+[`stream.compose`]: #streamcomposestreams
 [`stream.cork()`]: #writablecork
 [`stream.finished()`]: #streamfinishedstream-options-callback
 [`stream.pipe()`]: #readablepipedestination-options
@@ -4498,7 +4684,11 @@ contain multi-byte characters.
 [stream-_write]: #writable_writechunk-encoding-callback
 [stream-_writev]: #writable_writevchunks-callback
 [stream-end]: #writableendchunk-encoding-callback
+[stream-finished]: #streamfinishedstream-options-callback
+[stream-finished-promise]: #streamfinishedstream-options
 [stream-pause]: #readablepause
+[stream-pipeline]: #streampipelinesource-transforms-destination-callback
+[stream-pipeline-promise]: #streampipelinesource-transforms-destination-options
 [stream-push]: #readablepushchunk-encoding
 [stream-read]: #readablereadsize
 [stream-resume]: #readableresume

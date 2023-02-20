@@ -57,6 +57,11 @@ valid_intl_modes = ('none', 'small-icu', 'full-icu', 'system-icu')
 with open ('tools/icu/icu_versions.json') as f:
   icu_versions = json.load(f)
 
+shareable_builtins = {'cjs_module_lexer/lexer': 'deps/cjs-module-lexer/lexer.js',
+                     'cjs_module_lexer/dist/lexer': 'deps/cjs-module-lexer/dist/lexer.js',
+                     'undici/undici': 'deps/undici/undici.js'
+}
+
 # create option groups
 shared_optgroup = parser.add_argument_group("Shared libraries",
     "Flags that allows you to control whether you want to build against "
@@ -70,6 +75,9 @@ intl_optgroup = parser.add_argument_group("Internationalization",
     "library you want to build against.")
 http2_optgroup = parser.add_argument_group("HTTP2",
     "Flags that allows you to control HTTP2 features in Node.js")
+shared_builtin_optgroup = parser.add_argument_group("Shared builtins",
+    "Flags that allows you to control whether you want to build against "
+    "internal builtins or shared files.")
 
 # Options should be in alphabetical order but keep --prefix at the top,
 # that's arguably the one people will be looking for most.
@@ -151,6 +159,13 @@ parser.add_argument("--partly-static",
     default=None,
     help="Generate an executable with libgcc and libstdc++ libraries. This "
          "will not work on OSX when using the default compilation environment")
+
+parser.add_argument("--enable-vtune-profiling",
+    action="store_true",
+    dest="enable_vtune_profiling",
+    help="Enable profiling support for Intel VTune profiler to profile "
+         "JavaScript code executed in Node.js. This feature is only available "
+         "for x32, x86, and x64 architectures.")
 
 parser.add_argument("--enable-pgo-generate",
     action="store_true",
@@ -442,6 +457,16 @@ shared_optgroup.add_argument('--shared-cares-libpath',
 
 parser.add_argument_group(shared_optgroup)
 
+for builtin in shareable_builtins:
+  builtin_id = 'shared_builtin_' + builtin + '_path'
+  shared_builtin_optgroup.add_argument('--shared-builtin-' + builtin + '-path',
+    action='store',
+    dest='node_shared_builtin_' + builtin.replace('/', '_') + '_path',
+    help='Path to shared file for ' + builtin + ' builtin. '
+         'Will be used instead of bundled version at runtime')
+
+parser.add_argument_group(shared_builtin_optgroup)
+
 static_optgroup.add_argument('--static-zoslib-gyp',
     action='store',
     dest='static_zoslib_gyp',
@@ -483,6 +508,12 @@ parser.add_argument('--experimental-enable-pointer-compression',
     dest='enable_pointer_compression',
     default=None,
     help='[Experimental] Enable V8 pointer compression (limits max heap to 4GB and breaks ABI compatibility)')
+
+parser.add_argument('--disable-shared-readonly-heap',
+    action='store_true',
+    dest='disable_shared_ro_heap',
+    default=None,
+    help='Disable the shared read-only heap feature in V8')
 
 parser.add_argument('--v8-options',
     action='store',
@@ -812,7 +843,13 @@ parser.add_argument('--v8-enable-object-print',
     action='store_true',
     dest='v8_enable_object_print',
     default=True,
-    help='compile V8 with auxiliar functions for native debuggers')
+    help='compile V8 with auxiliary functions for native debuggers')
+
+parser.add_argument('--v8-disable-object-print',
+    action='store_true',
+    dest='v8_disable_object_print',
+    default=False,
+    help='disable the V8 auxiliary functions for native debuggers')
 
 parser.add_argument('--v8-enable-hugepage',
     action='store_true',
@@ -827,6 +864,12 @@ parser.add_argument('--v8-enable-short-builtin-calls',
     default=None,
     help='Enable V8 short builtin calls support. This feature is enabled '+
          'on x86_64 platform by default.')
+
+parser.add_argument('--v8-enable-snapshot-compression',
+    action='store_true',
+    dest='v8_enable_snapshot_compression',
+    default=None,
+    help='Enable the built-in snapshot compression in V8.')
 
 parser.add_argument('--node-builtin-modules-path',
     action='store',
@@ -1276,6 +1319,7 @@ def configure_node(o):
   # Enable branch protection for arm64
   if target_arch == 'arm64':
     o['cflags']+=['-msign-return-address=all']
+    o['variables']['arm_fpu'] = options.arm_fpu or 'neon'
 
   if options.node_snapshot_main is not None:
     if options.shared:
@@ -1311,6 +1355,15 @@ def configure_node(o):
 
   if flavor == 'aix':
     o['variables']['node_target_type'] = 'static_library'
+
+  if target_arch in ('x86', 'x64', 'ia32', 'x32'):
+    o['variables']['node_enable_v8_vtunejit'] = b(options.enable_vtune_profiling)
+  elif options.enable_vtune_profiling:
+    raise Exception(
+       'The VTune profiler for JavaScript is only supported on x32, x86, and x64 '
+       'architectures.')
+  else:
+    o['variables']['node_enable_v8_vtunejit'] = 'false'
 
   if flavor != 'linux' and (options.enable_pgo_generate or options.enable_pgo_use):
     raise Exception(
@@ -1517,13 +1570,13 @@ def configure_v8(o):
   o['variables']['v8_no_strict_aliasing'] = 1  # Work around compiler bugs.
   o['variables']['v8_optimized_debug'] = 0 if options.v8_non_optimized_debug else 1
   o['variables']['dcheck_always_on'] = 1 if options.v8_with_dchecks else 0
-  o['variables']['v8_enable_object_print'] = 1 if options.v8_enable_object_print else 0
+  o['variables']['v8_enable_object_print'] = 0 if options.v8_disable_object_print else 1
   o['variables']['v8_random_seed'] = 0  # Use a random seed for hash tables.
   o['variables']['v8_promise_internal_field_count'] = 1 # Add internal field to promises for async hooks.
   o['variables']['v8_use_siphash'] = 0 if options.without_siphash else 1
   o['variables']['v8_enable_pointer_compression'] = 1 if options.enable_pointer_compression else 0
   o['variables']['v8_enable_31bit_smis_on_64bit_arch'] = 1 if options.enable_pointer_compression else 0
-  o['variables']['v8_enable_shared_ro_heap'] = 0 if options.enable_pointer_compression else 1
+  o['variables']['v8_enable_shared_ro_heap'] = 0 if options.enable_pointer_compression or options.disable_shared_ro_heap else 1
   o['variables']['v8_trace_maps'] = 1 if options.trace_maps else 0
   o['variables']['node_use_v8_platform'] = b(not options.without_v8_platform)
   o['variables']['node_use_bundled_v8'] = b(not options.without_bundled_v8)
@@ -1540,6 +1593,12 @@ def configure_v8(o):
   o['variables']['v8_enable_hugepage'] = 1 if options.v8_enable_hugepage else 0
   if options.v8_enable_short_builtin_calls or o['variables']['target_arch'] == 'x64':
     o['variables']['v8_enable_short_builtin_calls'] = 1
+  if options.v8_enable_snapshot_compression:
+    o['variables']['v8_enable_snapshot_compression'] = 1
+  if options.v8_enable_object_print and options.v8_disable_object_print:
+    raise Exception(
+        'Only one of the --v8-enable-object-print or --v8-disable-object-print options '
+        'can be specified at a time.')
 
 def configure_openssl(o):
   variables = o['variables']
@@ -1713,6 +1772,9 @@ def configure_intl(o):
 
   # always set icu_small, node.gyp depends on it being defined.
   o['variables']['icu_small'] = b(False)
+
+  # prevent data override
+  o['defines'] += ['ICU_NO_USER_DATA_OVERRIDE']
 
   with_intl = options.with_intl
   with_icu_source = options.with_icu_source
@@ -2063,6 +2125,15 @@ configure_intl(output)
 configure_static(output)
 configure_inspector(output)
 configure_section_file(output)
+
+# configure shareable builtins
+output['variables']['node_builtin_shareable_builtins'] = []
+for builtin in shareable_builtins:
+  builtin_id = 'node_shared_builtin_' + builtin.replace('/', '_') + '_path'
+  if getattr(options, builtin_id):
+    output['defines'] += [builtin_id.upper() + '=' + getattr(options, builtin_id)]
+  else:
+    output['variables']['node_builtin_shareable_builtins'] += [shareable_builtins[builtin]]
 
 # Forward OSS-Fuzz settings
 output['variables']['ossfuzz'] = b(options.ossfuzz)

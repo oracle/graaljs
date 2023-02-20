@@ -34,7 +34,8 @@ Mutex cli_options_mutex;
 std::shared_ptr<PerProcessOptions> cli_options{new PerProcessOptions()};
 }  // namespace per_process
 
-void DebugOptions::CheckOptions(std::vector<std::string>* errors) {
+void DebugOptions::CheckOptions(std::vector<std::string>* errors,
+                                std::vector<std::string>* argv) {
 #if !NODE_USE_V8_PLATFORM && !HAVE_INSPECTOR
   if (inspector_enabled) {
     errors->push_back("Inspector is not available when Node is compiled "
@@ -64,7 +65,8 @@ void DebugOptions::CheckOptions(std::vector<std::string>* errors) {
   }
 }
 
-void PerProcessOptions::CheckOptions(std::vector<std::string>* errors) {
+void PerProcessOptions::CheckOptions(std::vector<std::string>* errors,
+                                     std::vector<std::string>* argv) {
 #if HAVE_OPENSSL
   if (use_openssl_ca && use_bundled_ca) {
     errors->push_back("either --use-openssl-ca or --use-bundled-ca can be "
@@ -91,14 +93,16 @@ void PerProcessOptions::CheckOptions(std::vector<std::string>* errors) {
       use_largepages != "silent") {
     errors->push_back("invalid value for --use-largepages");
   }
-  per_isolate->CheckOptions(errors);
+  per_isolate->CheckOptions(errors, argv);
 }
 
-void PerIsolateOptions::CheckOptions(std::vector<std::string>* errors) {
-  per_env->CheckOptions(errors);
+void PerIsolateOptions::CheckOptions(std::vector<std::string>* errors,
+                                     std::vector<std::string>* argv) {
+  per_env->CheckOptions(errors, argv);
 }
 
-void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors) {
+void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors,
+                                      std::vector<std::string>* argv) {
   if (has_policy_integrity_string && experimental_policy.empty()) {
     errors->push_back("--policy-integrity requires "
                       "--experimental-policy be enabled");
@@ -156,9 +160,9 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors) {
       errors->push_back("either --test or --interactive can be used, not both");
     }
 
-    if (watch_mode) {
-      // TODO(MoLow): Support (incremental?) watch mode within test runner
-      errors->push_back("either --test or --watch can be used, not both");
+    if (watch_mode_paths.size() > 0) {
+      errors->push_back(
+          "--watch-path cannot be used in combination with --test");
     }
 
 #ifndef ALLOW_ATTACHING_DEBUGGER_IN_TEST_RUNNER
@@ -169,15 +173,13 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors) {
   if (watch_mode) {
     if (syntax_check_only) {
       errors->push_back("either --watch or --check can be used, not both");
-    }
-
-    if (has_eval_string) {
+    } else if (has_eval_string) {
       errors->push_back("either --watch or --eval can be used, not both");
-    }
-
-    if (force_repl) {
+    } else if (force_repl) {
       errors->push_back("either --watch or --interactive "
                         "can be used, not both");
+    } else if (argv->size() < 1 || (*argv)[1].empty()) {
+      errors->push_back("--watch requires specifying a file");
     }
 
 #ifndef ALLOW_ATTACHING_DEBUGGER_IN_WATCH_MODE
@@ -222,7 +224,7 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors) {
     heap_prof_dir = diagnostic_dir;
   }
 
-  debug_options_.CheckOptions(errors);
+  debug_options_.CheckOptions(errors, argv);
 #endif  // HAVE_INSPECTOR
 }
 
@@ -622,6 +624,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "path to watch",
             &EnvironmentOptions::watch_mode_paths,
             kAllowedInEnvironment);
+  AddOption("--watch-preserve-output",
+            "preserve outputs on watch mode restart",
+            &EnvironmentOptions::watch_mode_preserve_output,
+            kAllowedInEnvironment);
   Implies("--watch-path", "--watch");
   AddOption("--check",
             "syntax check script without executing",
@@ -653,11 +659,6 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "to be a terminal",
             &EnvironmentOptions::force_repl);
   AddAlias("-i", "--interactive");
-
-  AddOption("--update-assert-snapshot",
-            "update assert snapshot files",
-            &EnvironmentOptions::update_assert_snapshot,
-            kAllowedInEnvironment);
 
   AddOption("--napi-modules", "", NoOp{}, kAllowedInEnvironment);
 
@@ -712,6 +713,7 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
             "help system profilers to translate JavaScript interpreted frames",
             V8Option{}, kAllowedInEnvironment);
   AddOption("--max-old-space-size", "", V8Option{}, kAllowedInEnvironment);
+  AddOption("--max-semi-space-size", "", V8Option{}, kAllowedInEnvironment);
   AddOption("--perf-basic-prof", "", V8Option{}, kAllowedInEnvironment);
   AddOption("--perf-basic-prof-only-functions",
             "",
@@ -753,6 +755,15 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
 
   AddOption(
       "--experimental-top-level-await", "", NoOp{}, kAllowedInEnvironment);
+
+  AddOption("--experimental-shadow-realm",
+            "",
+            &PerIsolateOptions::experimental_shadow_realm,
+            kAllowedInEnvironment);
+  AddOption("--harmony-shadow-realm", "", V8Option{});
+  Implies("--experimental-shadow-realm", "--harmony-shadow-realm");
+  Implies("--harmony-shadow-realm", "--experimental-shadow-realm");
+  ImpliesNot("--no-harmony-shadow-realm", "--experimental-shadow-realm");
 
   Insert(eop, &PerIsolateOptions::get_per_env_options);
 }
@@ -1293,6 +1304,6 @@ std::vector<std::string> ParseNodeOptionsEnvVar(
 }
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(options, node::options_parser::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(options,
-                               node::options_parser::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(options, node::options_parser::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(
+    options, node::options_parser::RegisterExternalReferences)

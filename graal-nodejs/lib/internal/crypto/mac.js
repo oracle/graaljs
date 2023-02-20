@@ -14,7 +14,7 @@ const {
 } = internalBinding('crypto');
 
 const {
-  getHashLength,
+  getBlockSize,
   hasAnyNotIn,
   jobPromise,
   normalizeHashName,
@@ -54,7 +54,7 @@ async function hmacGenerateKey(algorithm, extractable, keyUsages) {
     throw new ERR_MISSING_OPTION('algorithm.hash');
 
   if (length === undefined)
-    length = getHashLength(hash.name);
+    length = getBlockSize(hash.name);
 
   validateBitLength(length, 'algorithm.length', true);
 
@@ -183,7 +183,7 @@ async function hmacImportKey(
 
 function hmacSignVerify(key, data, algorithm, signature) {
   const mode = signature === undefined ? kSignJobModeSign : kSignJobModeVerify;
-  return jobPromise(new HmacJob(
+  return jobPromise(() => new HmacJob(
     kCryptoJobAsync,
     mode,
     normalizeHashName(key.algorithm.hash.name),

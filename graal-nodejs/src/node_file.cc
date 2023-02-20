@@ -302,7 +302,9 @@ FileHandle::TransferData::~TransferData() {
   if (fd_ > 0) {
     uv_fs_t close_req;
     CHECK_NE(fd_, -1);
+    FS_SYNC_TRACE_BEGIN(close);
     CHECK_EQ(0, uv_fs_close(nullptr, &close_req, fd_, nullptr));
+    FS_SYNC_TRACE_END(close);
     uv_fs_req_cleanup(&close_req);
   }
 }
@@ -327,7 +329,9 @@ inline void FileHandle::Close() {
   if (closed_ || closing_) return;
   uv_fs_t req;
   CHECK_NE(fd_, -1);
+  FS_SYNC_TRACE_BEGIN(close);
   int ret = uv_fs_close(env()->event_loop(), &req, fd_, nullptr);
+  FS_SYNC_TRACE_END(close);
   uv_fs_req_cleanup(&req);
 
   struct err_detail { int ret; int fd; };
@@ -460,7 +464,10 @@ MaybeLocal<Promise> FileHandle::ClosePromise() {
 
   CloseReq* req = new CloseReq(env(), close_req_obj, promise, object());
   auto AfterClose = uv_fs_callback_t{[](uv_fs_t* req) {
-    BaseObjectPtr<CloseReq> close(CloseReq::from_req(req));
+    CloseReq* req_wrap = CloseReq::from_req(req);
+    FS_ASYNC_TRACE_END1(
+        req->fs_type, req_wrap, "result", static_cast<int>(req->result))
+    BaseObjectPtr<CloseReq> close(req_wrap);
     CHECK(close);
     close->file_handle()->AfterClose();
     if (!close->env()->can_call_into_js()) return;
@@ -474,6 +481,7 @@ MaybeLocal<Promise> FileHandle::ClosePromise() {
     }
   }};
   CHECK_NE(fd_, -1);
+  FS_ASYNC_TRACE_BEGIN0(UV_FS_CLOSE, req)
   int ret = req->Dispatch(uv_fs_close, fd_, AfterClose);
   if (ret < 0) {
     req->Reject(UVException(isolate, ret, "close"));
@@ -569,7 +577,7 @@ int FileHandle::ReadStart() {
   read_wrap->buffer_ = EmitAlloc(recommended_read);
 
   current_read_ = std::move(read_wrap);
-
+  FS_ASYNC_TRACE_BEGIN0(UV_FS_READ, current_read_.get())
   current_read_->Dispatch(uv_fs_read,
                           fd_,
                           &current_read_->buffer_,
@@ -579,6 +587,8 @@ int FileHandle::ReadStart() {
     FileHandle* handle;
     {
       FileHandleReadWrap* req_wrap = FileHandleReadWrap::from_req(req);
+      FS_ASYNC_TRACE_END1(
+          req->fs_type, req_wrap, "result", static_cast<int>(req->result))
       handle = req_wrap->file_handle_;
       CHECK_EQ(handle->current_read_.get(), req_wrap);
     }
@@ -652,9 +662,12 @@ int FileHandle::DoShutdown(ShutdownWrap* req_wrap) {
   FileHandleCloseWrap* wrap = static_cast<FileHandleCloseWrap*>(req_wrap);
   closing_ = true;
   CHECK_NE(fd_, -1);
+  FS_ASYNC_TRACE_BEGIN0(UV_FS_CLOSE, wrap)
   wrap->Dispatch(uv_fs_close, fd_, uv_fs_callback_t{[](uv_fs_t* req) {
     FileHandleCloseWrap* wrap = static_cast<FileHandleCloseWrap*>(
         FileHandleCloseWrap::from_req(req));
+    FS_ASYNC_TRACE_END1(
+        req->fs_type, wrap, "result", static_cast<int>(req->result))
     FileHandle* handle = static_cast<FileHandle*>(wrap->stream());
     handle->AfterClose();
 
@@ -1211,7 +1224,7 @@ static void Symlink(const FunctionCallbackInfo<Value>& args) {
                           TRACE_STR_COPY(*path))
     AsyncDestCall(env, req_wrap_async, args, "symlink", *path, path.length(),
                   UTF8, AfterNoArgs, uv_fs_symlink, *target, *path, flags);
-  } else {  // symlink(target, path, flags, undefinec, ctx)
+  } else {  // symlink(target, path, flags, undefined, ctx)
     CHECK_EQ(argc, 5);
     FSReqWrapSync req_wrap_sync;
     FS_SYNC_TRACE_BEGIN(symlink);
@@ -1571,7 +1584,7 @@ int MKDirpAsync(uv_loop_t* loop,
           std::string dirname = path.substr(0,
                                             path.find_last_of(kPathSeparator));
           if (dirname != path) {
-            req_wrap->continuation_data()->PushPath(std::move(path));
+            req_wrap->continuation_data()->PushPath(path);
             req_wrap->continuation_data()->PushPath(std::move(dirname));
           } else if (req_wrap->continuation_data()->paths().size() == 0) {
             err = UV_EEXIST;
@@ -2566,26 +2579,30 @@ BindingData::BindingData(Environment* env, v8::Local<v8::Object> wrap)
 void BindingData::Deserialize(Local<Context> context,
                               Local<Object> holder,
                               int index,
-                              InternalFieldInfo* info) {
-  DCHECK_EQ(index, BaseObject::kSlot);
+                              InternalFieldInfoBase* info) {
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
   HandleScope scope(context->GetIsolate());
   Environment* env = Environment::GetCurrent(context);
   BindingData* binding = env->AddBindingData<BindingData>(context, holder);
   CHECK_NOT_NULL(binding);
 }
 
-void BindingData::PrepareForSerialization(Local<Context> context,
+bool BindingData::PrepareForSerialization(Local<Context> context,
                                           v8::SnapshotCreator* creator) {
   CHECK(file_handle_read_wrap_freelist.empty());
   // We'll just re-initialize the buffers in the constructor since their
   // contents can be thrown away once consumed in the previous call.
   stats_field_array.Release();
   stats_field_bigint_array.Release();
+  // Return true because we need to maintain the reference to the binding from
+  // JS land.
+  return true;
 }
 
-InternalFieldInfo* BindingData::Serialize(int index) {
-  DCHECK_EQ(index, BaseObject::kSlot);
-  InternalFieldInfo* info = InternalFieldInfo::New(type());
+InternalFieldInfoBase* BindingData::Serialize(int index) {
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
+  InternalFieldInfo* info =
+      InternalFieldInfoBase::New<InternalFieldInfo>(type());
   return info;
 }
 
@@ -2767,5 +2784,5 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 
 }  // end namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(fs, node::fs::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(fs, node::fs::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(fs, node::fs::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(fs, node::fs::RegisterExternalReferences)

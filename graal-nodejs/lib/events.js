@@ -1002,7 +1002,7 @@ function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
  * @param {{ signal: AbortSignal; }} [options]
  * @returns {AsyncIterator}
  */
-function on(emitter, event, options) {
+function on(emitter, event, options = kEmptyObject) {
   const signal = options?.signal;
   validateAbortSignal(signal, 'options.signal');
   if (signal?.aborted)
@@ -1091,8 +1091,6 @@ function on(emitter, event, options) {
       { once: true });
   }
 
-  return iterator;
-
   function abortListener() {
     errorHandler(new AbortError(undefined, { cause: signal?.reason }));
   }
@@ -1120,4 +1118,5 @@ function on(emitter, event, options) {
 
     iterator.return();
   }
+  return iterator;
 }

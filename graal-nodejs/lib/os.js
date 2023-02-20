@@ -45,6 +45,7 @@ const {
 const { validateInt32 } = require('internal/validators');
 
 const {
+  getAvailableParallelism,
   getCPUs,
   getFreeMem,
   getHomeDirectory: _getHomeDirectory,
@@ -100,6 +101,7 @@ const getOSVersion = () => version;
  */
 const getMachine = () => machine;
 
+getAvailableParallelism[SymbolToPrimitive] = () => getAvailableParallelism();
 getFreeMem[SymbolToPrimitive] = () => getFreeMem();
 getHostname[SymbolToPrimitive] = () => getHostname();
 getOSVersion[SymbolToPrimitive] = () => getOSVersion();
@@ -354,11 +356,17 @@ function userInfo(options) {
   if (user === undefined)
     throw new ERR_SYSTEM_ERROR(ctx);
 
+  if (isWindows) {
+    user.uid |= 0;
+    user.gid |= 0;
+  }
+
   return user;
 }
 
 module.exports = {
   arch,
+  availableParallelism: getAvailableParallelism,
   cpus,
   endianness,
   freemem: getFreeMem,

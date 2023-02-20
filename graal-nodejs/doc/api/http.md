@@ -106,7 +106,7 @@ http.get({
   hostname: 'localhost',
   port: 80,
   path: '/',
-  agent: false  // Create a new agent just for this one request
+  agent: false,  // Create a new agent just for this one request
 }, (res) => {
   // Do stuff with response
 });
@@ -502,7 +502,7 @@ proxy.listen(1337, '127.0.0.1', () => {
     port: 1337,
     host: '127.0.0.1',
     method: 'CONNECT',
-    path: 'www.google.com:80'
+    path: 'www.google.com:80',
   };
 
   const req = http.request(options);
@@ -573,7 +573,7 @@ const http = require('node:http');
 const options = {
   host: '127.0.0.1',
   port: 8080,
-  path: '/length_request'
+  path: '/length_request',
 };
 
 // Make a request
@@ -671,8 +671,8 @@ server.listen(1337, '127.0.0.1', () => {
     host: '127.0.0.1',
     headers: {
       'Connection': 'Upgrade',
-      'Upgrade': 'websocket'
-    }
+      'Upgrade': 'websocket',
+    },
   };
 
   const req = http.request(options);
@@ -748,12 +748,15 @@ See [`writable.cork()`][].
 <!-- YAML
 added: v0.1.90
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33155
+    description: The `data` parameter can now be a `Uint8Array`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/18780
     description: This method now returns a reference to `ClientRequest`.
 -->
 
-* `data` {string|Buffer}
+* `data` {string|Buffer|Uint8Array}
 * `encoding` {string}
 * `callback` {Function}
 * Returns: {this}
@@ -1203,9 +1206,13 @@ before the [`'finish'`][] event is emitted.
 
 <!-- YAML
 added: v0.1.29
+changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33155
+    description: The `chunk` parameter can now be a `Uint8Array`.
 -->
 
-* `chunk` {string|Buffer}
+* `chunk` {string|Buffer|Uint8Array}
 * `encoding` {string}
 * `callback` {Function}
 * Returns: {boolean}
@@ -1495,9 +1502,13 @@ or waiting for a response.
 added:
  - v11.3.0
  - v10.14.0
+changes:
+  - version: v18.14.0
+    pr-url: https://github.com/nodejs/node/pull/45778
+    description: The default is now set to the minimum between 60000 (60 seconds) or `requestTimeout`.
 -->
 
-* {number} **Default:** `60000`
+* {number} **Default:** The minimum between [`server.requestTimeout`][] or `60000`.
 
 Limit the amount of time the parser will wait to receive the complete HTTP
 headers.
@@ -1727,12 +1738,15 @@ See [`writable.cork()`][].
 <!-- YAML
 added: v0.1.90
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33155
+    description: The `data` parameter can now be a `Uint8Array`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/18780
     description: This method now returns a reference to `ServerResponse`.
 -->
 
-* `data` {string|Buffer}
+* `data` {string|Buffer|Uint8Array}
 * `encoding` {string}
 * `callback` {Function}
 * Returns: {this}
@@ -2081,9 +2095,13 @@ before the [`'finish'`][] event is emitted.
 
 <!-- YAML
 added: v0.1.29
+changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33155
+    description: The `chunk` parameter can now be a `Uint8Array`.
 -->
 
-* `chunk` {string|Buffer}
+* `chunk` {string|Buffer|Uint8Array}
 * `encoding` {string} **Default:** `'utf8'`
 * `callback` {Function}
 * Returns: {boolean}
@@ -2158,11 +2176,13 @@ const earlyHintsLinks = [
 ];
 response.writeEarlyHints({
   'link': earlyHintsLinks,
-  'x-trace-id': 'id for diagnostics'
+  'x-trace-id': 'id for diagnostics',
 });
 
 const earlyHintsCallback = () => console.log('early hints message sent');
-response.writeEarlyHints(earlyHintsLinks, earlyHintsCallback);
+response.writeEarlyHints({
+  'link': earlyHintsLinks,
+}, earlyHintsCallback);
 ```
 
 ### `response.writeHead(statusCode[, statusMessage][, headers])`
@@ -2209,7 +2229,7 @@ const body = 'hello world';
 response
   .writeHead(200, {
     'Content-Length': Buffer.byteLength(body),
-    'Content-Type': 'text/plain'
+    'Content-Type': 'text/plain',
   })
   .end(body);
 ```
@@ -2346,7 +2366,7 @@ server fully transmitted a message before a connection was terminated:
 const req = http.request({
   host: '127.0.0.1',
   port: 8080,
-  method: 'POST'
+  method: 'POST',
 }, (res) => {
   res.resume();
   res.on('end', () => {
@@ -2393,6 +2413,13 @@ as an argument to any listeners on the event.
 <!-- YAML
 added: v0.1.5
 changes:
+  - version: v18.14.0
+    pr-url: https://github.com/nodejs/node/pull/45982
+    description: >-
+     The `joinDuplicateHeaders` option in the `http.request()`
+     and `http.createServer()` functions ensures that duplicate
+     headers are not discarded, but rather combined using a
+     comma separator, in accordance with RFC 9110 Section 5.3.
   - version: v15.1.0
     pr-url: https://github.com/nodejs/node/pull/35281
     description: >-
@@ -2422,6 +2449,10 @@ header name:
   `etag`, `expires`, `from`, `host`, `if-modified-since`, `if-unmodified-since`,
   `last-modified`, `location`, `max-forwards`, `proxy-authorization`, `referer`,
   `retry-after`, `server`, or `user-agent` are discarded.
+  To allow duplicate values of the headers listed above to be joined,
+  use the option `joinDuplicateHeaders` in [`http.request()`][]
+  and [`http.createServer()`][]. See RFC 9110 Section 5.3 for more
+  information.
 * `set-cookie` is always an array. Duplicates are added to the array.
 * For duplicate `cookie` headers, the values are joined together with `; `.
 * For all other headers, the values are joined together with `, `.
@@ -2763,11 +2794,14 @@ and is connected, that socket will be destroyed as well.
 <!-- YAML
 added: v0.1.90
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33155
+    description: The `chunk` parameter can now be a `Uint8Array`.
   - version: v0.11.6
     description: add `callback` argument.
 -->
 
-* `chunk` {string | Buffer}
+* `chunk` {string|Buffer|Uint8Array}
 * `encoding` {string} Optional, **Default**: `utf8`
 * `callback` {Function} Optional
 * Returns: {this}
@@ -3023,11 +3057,14 @@ Always `false`.
 <!-- YAML
 added: v0.1.29
 changes:
+  - version: v15.0.0
+    pr-url: https://github.com/nodejs/node/pull/33155
+    description: The `chunk` parameter can now be a `Uint8Array`.
   - version: v0.11.6
     description: The `callback` argument was added.
 -->
 
-* `chunk` {string | Buffer}
+* `chunk` {string|Buffer|Uint8Array}
 * `encoding` {string} **Default**: `utf8`
 * `callback` {Function}
 * Returns {boolean}
@@ -3099,39 +3136,20 @@ changes:
 -->
 
 * `options` {Object}
-  * `IncomingMessage` {http.IncomingMessage} Specifies the `IncomingMessage`
-    class to be used. Useful for extending the original `IncomingMessage`.
-    **Default:** `IncomingMessage`.
-  * `ServerResponse` {http.ServerResponse} Specifies the `ServerResponse` class
-    to be used. Useful for extending the original `ServerResponse`. **Default:**
-    `ServerResponse`.
-  * `requestTimeout`: Sets the timeout value in milliseconds for receiving
-    the entire request from the client.
-    See [`server.requestTimeout`][] for more information.
-    **Default:** `300000`.
+  * `connectionsCheckingInterval`: Sets the interval value in milliseconds to
+    check for request and headers timeout in incomplete requests.
+    **Default:** `30000`.
   * `headersTimeout`: Sets the timeout value in milliseconds for receiving
     the complete HTTP headers from the client.
     See [`server.headersTimeout`][] for more information.
     **Default:** `60000`.
-  * `keepAliveTimeout`: The number of milliseconds of inactivity a server
-    needs to wait for additional incoming data, after it has finished writing
-    the last response, before a socket will be destroyed.
-    See [`server.keepAliveTimeout`][] for more information.
-    **Default:** `5000`.
-  * `connectionsCheckingInterval`: Sets the interval value in milliseconds to
-    check for request and headers timeout in incomplete requests.
-    **Default:** `30000`.
   * `insecureHTTPParser` {boolean} Use an insecure HTTP parser that accepts
     invalid HTTP headers when `true`. Using the insecure parser should be
     avoided. See [`--insecure-http-parser`][] for more information.
-    **Default:** `false`
-  * `maxHeaderSize` {number} Optionally overrides the value of
-    [`--max-http-header-size`][] for requests received by this server, i.e.
-    the maximum length of request headers in bytes.
-    **Default:** 16384 (16 KiB).
-  * `noDelay` {boolean} If set to `true`, it disables the use of Nagle's
-    algorithm immediately after a new incoming connection is received.
-    **Default:** `true`.
+    **Default:** `false`.
+  * `IncomingMessage` {http.IncomingMessage} Specifies the `IncomingMessage`
+    class to be used. Useful for extending the original `IncomingMessage`.
+    **Default:** `IncomingMessage`.
   * `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality
     on the socket immediately after a new incoming connection is received,
     similarly on what is done in \[`socket.setKeepAlive([enable][, initialDelay])`]\[`socket.setKeepAlive(enable, initialDelay)`].
@@ -3139,6 +3157,17 @@ changes:
   * `keepAliveInitialDelay` {number} If set to a positive number, it sets the
     initial delay before the first keepalive probe is sent on an idle socket.
     **Default:** `0`.
+  * `requestTimeout`: Sets the timeout value in milliseconds for receiving
+    the entire request from the client.
+    See [`server.requestTimeout`][] for more information.
+  * `joinDuplicateHeaders` {boolean} It joins the field line values of multiple
+    headers in a request with `, ` instead of discarding the duplicates.
+    See [`message.headers`][] for more information.
+    **Default:** `false`.
+  * `ServerResponse` {http.ServerResponse} Specifies the `ServerResponse` class
+    to be used. Useful for extending the original `ServerResponse`. **Default:**
+    `ServerResponse`.
+    **Default:** `300000`.
   * `uniqueHeaders` {Array} A list of response headers that should be sent only
     once. If the header's value is an array, the items will be joined
     using `; `.
@@ -3159,7 +3188,7 @@ const http = require('node:http');
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({
-    data: 'Hello World!'
+    data: 'Hello World!',
   }));
 });
 
@@ -3176,7 +3205,7 @@ const server = http.createServer();
 server.on('request', (request, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({
-    data: 'Hello World!'
+    data: 'Hello World!',
   }));
 });
 
@@ -3258,7 +3287,7 @@ http.get('http://localhost:8000/', (res) => {
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({
-    data: 'Hello World!'
+    data: 'Hello World!',
   }));
 });
 
@@ -3385,6 +3414,10 @@ changes:
   * `uniqueHeaders` {Array} A list of request headers that should be sent
     only once. If the header's value is an array, the items will be joined
     using `; `.
+  * `joinDuplicateHeaders` {boolean} It joins the field line values of
+    multiple headers in a request with `, ` instead of discarding
+    the duplicates. See [`message.headers`][] for more information.
+    **Default:** `false`.
 * `callback` {Function}
 * Returns: {http.ClientRequest}
 
@@ -3411,7 +3444,7 @@ upload a file with a POST request, then write to the `ClientRequest` object.
 const http = require('node:http');
 
 const postData = JSON.stringify({
-  'msg': 'Hello World!'
+  'msg': 'Hello World!',
 });
 
 const options = {
@@ -3421,8 +3454,8 @@ const options = {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(postData)
-  }
+    'Content-Length': Buffer.byteLength(postData),
+  },
 };
 
 const req = http.request(options, (res) => {
@@ -3586,13 +3619,18 @@ Passing an `AbortSignal` and then calling `abort` on the corresponding
 `AbortController` will behave the same way as calling `.destroy()` on the
 request itself.
 
-## `http.validateHeaderName(name)`
+## `http.validateHeaderName(name[, label])`
 
 <!-- YAML
 added: v14.3.0
+changes:
+  - version: v18.14.0
+    pr-url: https://github.com/nodejs/node/pull/46143
+    description: The `label` parameter is added.
 -->
 
 * `name` {string}
+* `label` {string} Label for error message. **Default:** `'Header name'`.
 
 Performs the low-level validations on the provided `name` that are done when
 `res.setHeader(name, value)` is called.
@@ -3612,9 +3650,9 @@ const { validateHeaderName } = require('node:http');
 try {
   validateHeaderName('');
 } catch (err) {
-  err instanceof TypeError; // --> true
-  err.code; // --> 'ERR_INVALID_HTTP_TOKEN'
-  err.message; // --> 'Header name must be a valid HTTP token [""]'
+  console.error(err instanceof TypeError); // --> true
+  console.error(err.code); // --> 'ERR_INVALID_HTTP_TOKEN'
+  console.error(err.message); // --> 'Header name must be a valid HTTP token [""]'
 }
 ```
 
@@ -3646,29 +3684,29 @@ const { validateHeaderValue } = require('node:http');
 try {
   validateHeaderValue('x-my-header', undefined);
 } catch (err) {
-  err instanceof TypeError; // --> true
-  err.code === 'ERR_HTTP_INVALID_HEADER_VALUE'; // --> true
-  err.message; // --> 'Invalid value "undefined" for header "x-my-header"'
+  console.error(err instanceof TypeError); // --> true
+  console.error(err.code === 'ERR_HTTP_INVALID_HEADER_VALUE'); // --> true
+  console.error(err.message); // --> 'Invalid value "undefined" for header "x-my-header"'
 }
 
 try {
   validateHeaderValue('x-my-header', 'oʊmɪɡə');
 } catch (err) {
-  err instanceof TypeError; // --> true
-  err.code === 'ERR_INVALID_CHAR'; // --> true
-  err.message; // --> 'Invalid character in header content ["x-my-header"]'
+  console.error(err instanceof TypeError); // --> true
+  console.error(err.code === 'ERR_INVALID_CHAR'); // --> true
+  console.error(err.message); // --> 'Invalid character in header content ["x-my-header"]'
 }
 ```
 
-## `http.setMaxIdleHTTPParsers`
+## `http.setMaxIdleHTTPParsers(max)`
 
 <!-- YAML
 added: v18.8.0
 -->
 
-* {number}
+* `max` {number} **Default:** `1000`.
 
-Set the maximum number of idle HTTP parsers. **Default:** `1000`.
+Set the maximum number of idle HTTP parsers.
 
 [RFC 8187]: https://www.rfc-editor.org/rfc/rfc8187.txt
 [`'ERR_HTTP_CONTENT_LENGTH_MISMATCH'`]: errors.md#err_http_content_length_mismatch
@@ -3696,6 +3734,7 @@ Set the maximum number of idle HTTP parsers. **Default:** `1000`.
 [`http.IncomingMessage`]: #class-httpincomingmessage
 [`http.ServerResponse`]: #class-httpserverresponse
 [`http.Server`]: #class-httpserver
+[`http.createServer()`]: #httpcreateserveroptions-requestlistener
 [`http.get()`]: #httpgetoptions-callback
 [`http.globalAgent`]: #httpglobalagent
 [`http.request()`]: #httprequestoptions-callback
@@ -3733,7 +3772,6 @@ Set the maximum number of idle HTTP parsers. **Default:** `1000`.
 [`response.writeContinue()`]: #responsewritecontinue
 [`response.writeHead()`]: #responsewriteheadstatuscode-statusmessage-headers
 [`server.headersTimeout`]: #serverheaderstimeout
-[`server.keepAliveTimeout`]: #serverkeepalivetimeout
 [`server.listen()`]: net.md#serverlisten
 [`server.requestTimeout`]: #serverrequesttimeout
 [`server.timeout`]: #servertimeout

@@ -54,6 +54,7 @@ const EE = require('events');
 const net = require('net');
 const tls = require('tls');
 const common = require('_tls_common');
+const { kWrapConnectedHandle } = require('internal/net');
 const JSStreamSocket = require('internal/js_stream_socket');
 const { Buffer } = require('buffer');
 let debug = require('internal/util/debuglog').debuglog('tls', (fn) => {
@@ -598,11 +599,10 @@ TLSSocket.prototype.disableRenegotiation = function disableRenegotiation() {
   this[kDisableRenegotiation] = true;
 };
 
-TLSSocket.prototype._wrapHandle = function(wrap) {
-  let handle;
-
-  if (wrap)
+TLSSocket.prototype._wrapHandle = function(wrap, handle) {
+  if (!handle && wrap) {
     handle = wrap._handle;
+  }
 
   const options = this._tlsOptions;
   if (!handle) {
@@ -631,6 +631,16 @@ TLSSocket.prototype._wrapHandle = function(wrap) {
   this.on('close', onSocketCloseDestroySSL);
 
   return res;
+};
+
+TLSSocket.prototype[kWrapConnectedHandle] = function(handle) {
+  this._handle = this._wrapHandle(null, handle);
+  this.ssl = this._handle;
+  this._init();
+
+  if (this._tlsOptions.enableTrace) {
+    this._handle.enableTrace();
+  }
 };
 
 // This eliminates a cyclic reference to TLSWrap
@@ -786,11 +796,8 @@ TLSSocket.prototype._init = function(socket, wrap) {
     ssl.enableCertCb();
   }
 
-  if (options.ALPNProtocols) {
-    // Keep reference in secureContext not to be GC-ed
-    ssl._secureContext.alpnBuffer = options.ALPNProtocols;
-    ssl.setALPNProtocols(ssl._secureContext.alpnBuffer);
-  }
+  if (options.ALPNProtocols)
+    ssl.setALPNProtocols(options.ALPNProtocols);
 
   if (options.pskCallback && ssl.enablePskCallback) {
     validateFunction(options.pskCallback, 'pskCallback');
@@ -1217,21 +1224,16 @@ function Server(options, listener) {
 
   validateNumber(this[kHandshakeTimeout], 'options.handshakeTimeout');
 
-  if (this[kSNICallback] && typeof this[kSNICallback] !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE(
-      'options.SNICallback', 'function', options.SNICallback);
+  if (this[kSNICallback]) {
+    validateFunction(this[kSNICallback], 'options.SNICallback');
   }
 
-  if (this[kPskCallback] && typeof this[kPskCallback] !== 'function') {
-    throw new ERR_INVALID_ARG_TYPE(
-      'options.pskCallback', 'function', options.pskCallback);
+  if (this[kPskCallback]) {
+    validateFunction(this[kPskCallback], 'options.pskCallback');
   }
-  if (this[kPskIdentityHint] && typeof this[kPskIdentityHint] !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE(
-      'options.pskIdentityHint',
-      'string',
-      options.pskIdentityHint
-    );
+
+  if (this[kPskIdentityHint]) {
+    validateString(this[kPskIdentityHint], 'options.pskIdentityHint');
   }
 
   // constructor call

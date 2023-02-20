@@ -23,12 +23,13 @@
 
 const {
   ArrayIsArray,
-  ArrayPrototypeConcat,
   ArrayPrototypeFilter,
   ArrayPrototypeIncludes,
   ArrayPrototypeIndexOf,
   ArrayPrototypeJoin,
+  ArrayPrototypeMap,
   ArrayPrototypePush,
+  ArrayPrototypePushApply,
   ArrayPrototypeSlice,
   ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
@@ -86,7 +87,8 @@ const {
   filterOwnProperties,
   setOwnProperty,
 } = require('internal/util');
-const vm = require('vm');
+const { Script } = require('vm');
+const { internalCompileFunction } = require('internal/vm');
 const assert = require('internal/assert');
 const fs = require('fs');
 const internalFS = require('internal/fs/utils');
@@ -95,6 +97,11 @@ const { sep } = path;
 const { internalModuleStat } = internalBinding('fs');
 const packageJsonReader = require('internal/modules/package_json_reader');
 const { safeGetenv } = internalBinding('credentials');
+const {
+  privateSymbols: {
+    require_private_symbol,
+  },
+} = internalBinding('util');
 const {
   cjsConditions,
   hasEsmSyntax,
@@ -129,9 +136,10 @@ const { validateString } = require('internal/validators');
 const pendingDeprecation = getOptionValue('--pending-deprecation');
 
 const {
-  CHAR_FORWARD_SLASH,
   CHAR_BACKWARD_SLASH,
-  CHAR_COLON
+  CHAR_COLON,
+  CHAR_DOT,
+  CHAR_FORWARD_SLASH,
 } = require('internal/constants');
 
 const {
@@ -154,6 +162,20 @@ const relativeResolveCache = ObjectCreate(null);
 let requireDepth = 0;
 let statCache = null;
 let isPreloading = false;
+
+function internalRequire(module, id) {
+  validateString(id, 'id');
+  if (id === '') {
+    throw new ERR_INVALID_ARG_VALUE('id', id,
+                                    'must be a non-empty string');
+  }
+  requireDepth++;
+  try {
+    return Module._load(id, module, /* isMain */ false);
+  } finally {
+    requireDepth--;
+  }
+}
 
 function stat(filename) {
   filename = path.toNamespacedPath(filename);
@@ -189,7 +211,13 @@ function updateChildren(parent, child, scan) {
 
 function reportModuleToWatchMode(filename) {
   if (shouldReportRequiredModules && process.send) {
-    process.send({ 'watch:require': filename });
+    process.send({ 'watch:require': [filename] });
+  }
+}
+
+function reportModuleNotFoundToWatchMode(basePath, extensions) {
+  if (shouldReportRequiredModules && process.send) {
+    process.send({ 'watch:require': ArrayPrototypeMap(extensions, (ext) => path.resolve(`${basePath}${ext}`)) });
   }
 }
 
@@ -203,6 +231,14 @@ function Module(id = '', parent) {
   this.filename = null;
   this.loaded = false;
   this.children = [];
+  let redirects;
+  if (policy?.manifest) {
+    const moduleURL = pathToFileURL(id);
+    redirects = policy.manifest.getDependencyMapper(moduleURL);
+    // TODO(rafaelgss): remove the necessity of this branch
+    setOwnProperty(this, 'require', makeRequireFunction(this, redirects));
+  }
+  this[require_private_symbol] = internalRequire;
 }
 
 const builtinModules = [];
@@ -537,7 +573,12 @@ function resolveExports(nmPath, request) {
   }
 }
 
-const trailingSlashRegex = /(?:^|\/)\.?\.$/;
+/**
+ * @param {string} request a relative or absolute file path
+ * @param {Array<string>} paths file system directories to search as file paths
+ * @param {boolean} isMain if the request is the main app entry point
+ * @returns {string | false}
+ */
 Module._findPath = function(request, paths, isMain) {
   const absoluteRequest = path.isAbsolute(request);
   if (absoluteRequest) {
@@ -552,18 +593,42 @@ Module._findPath = function(request, paths, isMain) {
     return entry;
 
   let exts;
-  let trailingSlash = request.length > 0 &&
-    StringPrototypeCharCodeAt(request, request.length - 1) ===
-    CHAR_FORWARD_SLASH;
-  if (!trailingSlash) {
-    trailingSlash = RegExpPrototypeExec(trailingSlashRegex, request) !== null;
+  const trailingSlash = request.length > 0 &&
+    (StringPrototypeCharCodeAt(request, request.length - 1) === CHAR_FORWARD_SLASH || (
+      StringPrototypeCharCodeAt(request, request.length - 1) === CHAR_DOT &&
+      (
+        request.length === 1 ||
+        StringPrototypeCharCodeAt(request, request.length - 2) === CHAR_FORWARD_SLASH ||
+        (StringPrototypeCharCodeAt(request, request.length - 2) === CHAR_DOT && (
+          request.length === 2 ||
+          StringPrototypeCharCodeAt(request, request.length - 3) === CHAR_FORWARD_SLASH
+        ))
+      )
+    ));
+
+  const isRelative = StringPrototypeCharCodeAt(request, 0) === CHAR_DOT &&
+    (
+      request.length === 1 ||
+      StringPrototypeCharCodeAt(request, 1) === CHAR_FORWARD_SLASH ||
+      (isWindows && StringPrototypeCharCodeAt(request, 1) === CHAR_BACKWARD_SLASH) ||
+      (StringPrototypeCharCodeAt(request, 1) === CHAR_DOT && ((
+        request.length === 2 ||
+        StringPrototypeCharCodeAt(request, 2) === CHAR_FORWARD_SLASH) ||
+        (isWindows && StringPrototypeCharCodeAt(request, 2) === CHAR_BACKWARD_SLASH)))
+    );
+  let insidePath = true;
+  if (isRelative) {
+    const normalizedRequest = path.normalize(request);
+    if (StringPrototypeStartsWith(normalizedRequest, '..')) {
+      insidePath = false;
+    }
   }
 
   // For each path
   for (let i = 0; i < paths.length; i++) {
-    // Don't search further if path doesn't exist
+    // Don't search further if path doesn't exist and request is inside the path
     const curPath = paths[i];
-    if (curPath && _stat(curPath) < 1) continue;
+    if (insidePath && curPath && _stat(curPath) < 1) continue;
 
     if (!absoluteRequest) {
       const exportsResolved = resolveExports(curPath, request);
@@ -617,6 +682,12 @@ Module._findPath = function(request, paths, isMain) {
       Module._pathCache[cacheKey] = filename;
       return filename;
     }
+
+    const extensions = [''];
+    if (exts !== undefined) {
+      ArrayPrototypePushApply(extensions, exts);
+    }
+    reportModuleNotFoundToWatchMode(basePath, extensions);
   }
 
   return false;
@@ -712,8 +783,13 @@ if (isWindows) {
 }
 
 Module._resolveLookupPaths = function(request, parent) {
-  if (BuiltinModule.canBeRequiredByUsers(request) &&
-      BuiltinModule.canBeRequiredWithoutScheme(request)) {
+  if ((
+    StringPrototypeStartsWith(request, 'node:') &&
+    BuiltinModule.canBeRequiredByUsers(StringPrototypeSlice(request, 5))
+  ) || (
+    BuiltinModule.canBeRequiredByUsers(request) &&
+    BuiltinModule.canBeRequiredWithoutScheme(request)
+  )) {
     debug('looking for %j in []', request);
     return null;
   }
@@ -725,9 +801,12 @@ Module._resolveLookupPaths = function(request, parent) {
       StringPrototypeCharAt(request, 1) !== '/' &&
       (!isWindows || StringPrototypeCharAt(request, 1) !== '\\'))) {
 
-    let paths = modulePaths;
+    let paths;
     if (parent?.paths?.length) {
-      paths = ArrayPrototypeConcat(parent.paths, paths);
+      paths = ArrayPrototypeSlice(modulePaths);
+      ArrayPrototypeUnshiftApply(paths, parent.paths);
+    } else {
+      paths = modulePaths;
     }
 
     debug('looking for %j in %j', request, paths);
@@ -863,6 +942,7 @@ Module._load = function(request, parent, isMain) {
 
   if (isMain) {
     process.mainModule = module;
+    setOwnProperty(module.require, 'main', process.mainModule);
     module.id = '.';
   }
 
@@ -1047,9 +1127,9 @@ Module.prototype.load = function(filename) {
     esmLoader.cjsCache.set(this, exports);
 };
 
-
 // Loads a module at the given file path. Returns that module's
 // `exports` property.
+// Note: when using the experimental policy mechanism this function is overridden
 Module.prototype.require = function(id) {
   validateString(id, 'id');
   if (id === '') {
@@ -1064,7 +1144,6 @@ Module.prototype.require = function(id) {
   }
 };
 
-
 // Resolved path to process.argv[1] will be lazily placed here
 // (needed for setting breakpoint when called with --inspect-brk)
 let resolvedArgv;
@@ -1073,19 +1152,28 @@ let hasPausedEntry = false;
 function wrapSafe(filename, content, cjsModuleInstance) {
   if (patched) {
     const wrapper = Module.wrap(content);
-    return vm.runInThisContext(wrapper, {
+    const script = new Script(wrapper, {
       filename,
       lineOffset: 0,
-      displayErrors: true,
       importModuleDynamically: async (specifier, _, importAssertions) => {
         const loader = asyncESM.esmLoader;
         return loader.import(specifier, normalizeReferrerURL(filename),
                              importAssertions);
       },
     });
+
+    // Cache the source map for the module if present.
+    if (script.sourceMapURL) {
+      maybeCacheSourceMap(filename, content, this, false, undefined, script.sourceMapURL);
+    }
+
+    return script.runInThisContext({
+      displayErrors: true,
+    });
   }
+
   try {
-    return vm.compileFunction(content, [
+    const result = internalCompileFunction(content, [
       'exports',
       'require',
       'module',
@@ -1099,6 +1187,13 @@ function wrapSafe(filename, content, cjsModuleInstance) {
                              importAssertions);
       },
     });
+
+    // Cache the source map for the module if present.
+    if (result.sourceMapURL) {
+      maybeCacheSourceMap(filename, content, this, false, undefined, result.sourceMapURL);
+    }
+
+    return result.function;
   } catch (err) {
     if (process.mainModule === cjsModuleInstance)
       enrichCJSError(err, content);
@@ -1113,13 +1208,13 @@ function wrapSafe(filename, content, cjsModuleInstance) {
 Module.prototype._compile = function(content, filename) {
   let moduleURL;
   let redirects;
-  if (policy?.manifest) {
+  const manifest = policy?.manifest;
+  if (manifest) {
     moduleURL = pathToFileURL(filename);
-    redirects = policy.manifest.getDependencyMapper(moduleURL);
-    policy.manifest.assertIntegrity(moduleURL, content);
+    redirects = manifest.getDependencyMapper(moduleURL);
+    manifest.assertIntegrity(moduleURL, content);
   }
 
-  maybeCacheSourceMap(filename, content, this);
   const compiledWrapper = wrapSafe(filename, content, this);
 
   let inspectorWrapper = null;
@@ -1333,7 +1428,7 @@ Module._preloadModules = function(requests) {
     }
   }
   for (let n = 0; n < requests.length; n++)
-    parent.require(requests[n]);
+    internalRequire(parent, requests[n]);
   isPreloading = false;
 };
 

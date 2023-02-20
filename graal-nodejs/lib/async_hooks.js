@@ -23,6 +23,7 @@ const {
 const { kEmptyObject } = require('internal/util');
 const {
   validateFunction,
+  validateObject,
   validateString,
 } = require('internal/validators');
 const internal_async_hooks = require('internal/async_hooks');
@@ -268,15 +269,23 @@ const storageHook = createHook({
     const currentResource = executionAsyncResource();
     // Value of currentResource is always a non null object
     for (let i = 0; i < storageList.length; ++i) {
-      storageList[i]._propagate(resource, currentResource);
+      storageList[i]._propagate(resource, currentResource, type);
     }
   }
 });
 
 class AsyncLocalStorage {
-  constructor() {
+  constructor(options = kEmptyObject) {
+    validateObject(options, 'options');
+
+    const { onPropagate = null } = options;
+    if (onPropagate !== null) {
+      validateFunction(onPropagate, 'options.onPropagate');
+    }
+
     this.kResourceStore = Symbol('kResourceStore');
     this.enabled = false;
+    this._onPropagate = onPropagate;
   }
 
   disable() {
@@ -300,10 +309,12 @@ class AsyncLocalStorage {
   }
 
   // Propagate the context from a parent resource to a child one
-  _propagate(resource, triggerResource) {
+  _propagate(resource, triggerResource, type) {
     const store = triggerResource[this.kResourceStore];
     if (this.enabled) {
-      resource[this.kResourceStore] = store;
+      if (this._onPropagate === null || this._onPropagate(type, store)) {
+        resource[this.kResourceStore] = store;
+      }
     }
   }
 

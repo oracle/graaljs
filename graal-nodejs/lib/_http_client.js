@@ -82,6 +82,7 @@ const {
 } = codes;
 const {
   validateInteger,
+  validateBoolean,
 } = require('internal/validators');
 const { getTimerDuration } = require('internal/timers');
 const {
@@ -178,8 +179,10 @@ function ClientRequest(input, options, cb) {
 
   if (options.path) {
     const path = String(options.path);
-    if (RegExpPrototypeExec(INVALID_PATH_REGEX, path) !== null)
+    if (RegExpPrototypeExec(INVALID_PATH_REGEX, path) !== null) {
+      debug('Path contains unescaped characters: "%s"', path);
       throw new ERR_UNESCAPED_CHARACTERS('Request path');
+    }
   }
 
   if (protocol !== expectedProtocol) {
@@ -225,12 +228,17 @@ function ClientRequest(input, options, cb) {
   this.maxHeaderSize = maxHeaderSize;
 
   const insecureHTTPParser = options.insecureHTTPParser;
-  if (insecureHTTPParser !== undefined &&
-      typeof insecureHTTPParser !== 'boolean') {
-    throw new ERR_INVALID_ARG_TYPE(
-      'options.insecureHTTPParser', 'boolean', insecureHTTPParser);
+  if (insecureHTTPParser !== undefined) {
+    validateBoolean(insecureHTTPParser, 'options.insecureHTTPParser');
   }
+
   this.insecureHTTPParser = insecureHTTPParser;
+
+  if (options.joinDuplicateHeaders !== undefined) {
+    validateBoolean(options.joinDuplicateHeaders, 'options.joinDuplicateHeaders');
+  }
+
+  this.joinDuplicateHeaders = options.joinDuplicateHeaders;
 
   this.path = options.path || '/';
   if (cb) {
@@ -815,6 +823,8 @@ function tickOnSocket(req, socket) {
   if (typeof req.maxHeadersCount === 'number') {
     parser.maxHeaderPairs = req.maxHeadersCount << 1;
   }
+
+  parser.joinDuplicateHeaders = req.joinDuplicateHeaders;
 
   parser.onIncoming = parserOnIncomingClient;
   socket.on('error', socketErrorListener);

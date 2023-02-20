@@ -51,8 +51,8 @@ const {
 
 const {
   getArrayBufferOrView,
+  getBlockSize,
   hasAnyNotIn,
-  lazyRequire,
   normalizeAlgorithm,
   normalizeHashName,
   validateMaxBufferLength,
@@ -98,7 +98,7 @@ async function generateKey(
       // Fall through
     case 'RSA-OAEP':
       resultType = 'CryptoKeyPair';
-      result = await lazyRequire('internal/crypto/rsa')
+      result = await require('internal/crypto/rsa')
         .rsaKeyGenerate(algorithm, extractable, keyUsages);
       break;
     case 'Ed25519':
@@ -109,19 +109,19 @@ async function generateKey(
       // Fall through
     case 'X448':
       resultType = 'CryptoKeyPair';
-      result = await lazyRequire('internal/crypto/cfrg')
+      result = await require('internal/crypto/cfrg')
         .cfrgGenerateKey(algorithm, extractable, keyUsages);
       break;
     case 'ECDSA':
       // Fall through
     case 'ECDH':
       resultType = 'CryptoKeyPair';
-      result = await lazyRequire('internal/crypto/ec')
+      result = await require('internal/crypto/ec')
         .ecGenerateKey(algorithm, extractable, keyUsages);
       break;
     case 'HMAC':
       resultType = 'CryptoKey';
-      result = await lazyRequire('internal/crypto/mac')
+      result = await require('internal/crypto/mac')
         .hmacGenerateKey(algorithm, extractable, keyUsages);
       break;
     case 'AES-CTR':
@@ -132,7 +132,7 @@ async function generateKey(
       // Fall through
     case 'AES-KW':
       resultType = 'CryptoKey';
-      result = await lazyRequire('internal/crypto/aes')
+      result = await require('internal/crypto/aes')
         .aesGenerateKey(algorithm, extractable, keyUsages);
       break;
     default:
@@ -171,13 +171,13 @@ async function deriveBits(algorithm, baseKey, length) {
     case 'X448':
       // Fall through
     case 'ECDH':
-      return lazyRequire('internal/crypto/diffiehellman')
-        .asyncDeriveBitsECDH(algorithm, baseKey, length);
+      return require('internal/crypto/diffiehellman')
+        .ecdhDeriveBits(algorithm, baseKey, length);
     case 'HKDF':
-      return lazyRequire('internal/crypto/hkdf')
+      return require('internal/crypto/hkdf')
         .hkdfDeriveBits(algorithm, baseKey, length);
     case 'PBKDF2':
-      return lazyRequire('internal/crypto/pbkdf2')
+      return require('internal/crypto/pbkdf2')
         .pbkdf2DeriveBits(algorithm, baseKey, length);
   }
   throw lazyDOMException('Unrecognized name.');
@@ -195,16 +195,7 @@ function getKeyLength({ name, length, hash }) {
       return length;
     case 'HMAC':
       if (length === undefined) {
-        switch (hash?.name) {
-          case 'SHA-1':
-            return 160;
-          case 'SHA-256':
-            return 256;
-          case 'SHA-384':
-            return 384;
-          case 'SHA-512':
-            return 512;
-        }
+        return getBlockSize(hash?.name);
       }
 
       if (typeof length === 'number' && length !== 0) {
@@ -250,15 +241,15 @@ async function deriveKey(
     case 'X448':
       // Fall through
     case 'ECDH':
-      bits = await lazyRequire('internal/crypto/diffiehellman')
-        .asyncDeriveBitsECDH(algorithm, baseKey, length);
+      bits = await require('internal/crypto/diffiehellman')
+        .ecdhDeriveBits(algorithm, baseKey, length);
       break;
     case 'HKDF':
-      bits = await lazyRequire('internal/crypto/hkdf')
+      bits = await require('internal/crypto/hkdf')
         .hkdfDeriveBits(algorithm, baseKey, length);
       break;
     case 'PBKDF2':
-      bits = await lazyRequire('internal/crypto/pbkdf2')
+      bits = await require('internal/crypto/pbkdf2')
         .pbkdf2DeriveBits(algorithm, baseKey, length);
       break;
     default:
@@ -280,7 +271,7 @@ async function exportKeySpki(key) {
       // Fall through
     case 'RSA-OAEP':
       if (key.type === 'public') {
-        return lazyRequire('internal/crypto/rsa')
+        return require('internal/crypto/rsa')
           .rsaExportKey(key, kWebCryptoKeyFormatSPKI);
       }
       break;
@@ -288,7 +279,7 @@ async function exportKeySpki(key) {
       // Fall through
     case 'ECDH':
       if (key.type === 'public') {
-        return lazyRequire('internal/crypto/ec')
+        return require('internal/crypto/ec')
           .ecExportKey(key, kWebCryptoKeyFormatSPKI);
       }
       break;
@@ -300,7 +291,7 @@ async function exportKeySpki(key) {
       // Fall through
     case 'X448':
       if (key.type === 'public') {
-        return lazyRequire('internal/crypto/cfrg')
+        return require('internal/crypto/cfrg')
           .cfrgExportKey(key, kWebCryptoKeyFormatSPKI);
       }
       break;
@@ -319,7 +310,7 @@ async function exportKeyPkcs8(key) {
       // Fall through
     case 'RSA-OAEP':
       if (key.type === 'private') {
-        return lazyRequire('internal/crypto/rsa')
+        return require('internal/crypto/rsa')
           .rsaExportKey(key, kWebCryptoKeyFormatPKCS8);
       }
       break;
@@ -327,7 +318,7 @@ async function exportKeyPkcs8(key) {
       // Fall through
     case 'ECDH':
       if (key.type === 'private') {
-        return lazyRequire('internal/crypto/ec')
+        return require('internal/crypto/ec')
           .ecExportKey(key, kWebCryptoKeyFormatPKCS8);
       }
       break;
@@ -339,7 +330,7 @@ async function exportKeyPkcs8(key) {
       // Fall through
     case 'X448':
       if (key.type === 'private') {
-        return lazyRequire('internal/crypto/cfrg')
+        return require('internal/crypto/cfrg')
           .cfrgExportKey(key, kWebCryptoKeyFormatPKCS8);
       }
       break;
@@ -356,7 +347,7 @@ async function exportKeyRaw(key) {
       // Fall through
     case 'ECDH':
       if (key.type === 'public') {
-        return lazyRequire('internal/crypto/ec')
+        return require('internal/crypto/ec')
           .ecExportKey(key, kWebCryptoKeyFormatRaw);
       }
       break;
@@ -368,7 +359,7 @@ async function exportKeyRaw(key) {
       // Fall through
     case 'X448':
       if (key.type === 'public') {
-        return lazyRequire('internal/crypto/cfrg')
+        return require('internal/crypto/cfrg')
           .cfrgExportKey(key, kWebCryptoKeyFormatRaw);
       }
       break;
@@ -433,7 +424,7 @@ async function exportKeyJWK(key) {
     case 'AES-GCM':
       // Fall through
     case 'AES-KW':
-      jwk.alg = lazyRequire('internal/crypto/aes')
+      jwk.alg = require('internal/crypto/aes')
         .getAlgorithmName(key.algorithm.name, key.algorithm.length);
       return jwk;
     case 'HMAC':
@@ -532,12 +523,12 @@ async function importKey(
     case 'RSA-PSS':
       // Fall through
     case 'RSA-OAEP':
-      return lazyRequire('internal/crypto/rsa')
+      return require('internal/crypto/rsa')
         .rsaImportKey(format, keyData, algorithm, extractable, keyUsages);
     case 'ECDSA':
       // Fall through
     case 'ECDH':
-      return lazyRequire('internal/crypto/ec')
+      return require('internal/crypto/ec')
         .ecImportKey(format, keyData, algorithm, extractable, keyUsages);
     case 'Ed25519':
       // Fall through
@@ -546,10 +537,10 @@ async function importKey(
     case 'X25519':
       // Fall through
     case 'X448':
-      return lazyRequire('internal/crypto/cfrg')
+      return require('internal/crypto/cfrg')
         .cfrgImportKey(format, keyData, algorithm, extractable, keyUsages);
     case 'HMAC':
-      return lazyRequire('internal/crypto/mac')
+      return require('internal/crypto/mac')
         .hmacImportKey(format, keyData, algorithm, extractable, keyUsages);
     case 'AES-CTR':
       // Fall through
@@ -558,7 +549,7 @@ async function importKey(
     case 'AES-GCM':
       // Fall through
     case 'AES-KW':
-      return lazyRequire('internal/crypto/aes')
+      return require('internal/crypto/aes')
         .aesImportKey(algorithm, format, keyData, extractable, keyUsages);
     case 'HKDF':
       // Fall through
@@ -658,19 +649,19 @@ function signVerify(algorithm, key, data, signature) {
     case 'RSA-PSS':
       // Fall through
     case 'RSASSA-PKCS1-v1_5':
-      return lazyRequire('internal/crypto/rsa')
+      return require('internal/crypto/rsa')
         .rsaSignVerify(key, data, algorithm, signature);
     case 'ECDSA':
-      return lazyRequire('internal/crypto/ec')
+      return require('internal/crypto/ec')
         .ecdsaSignVerify(key, data, algorithm, signature);
     case 'Ed25519':
       // Fall through
     case 'Ed448':
       // Fall through
-      return lazyRequire('internal/crypto/cfrg')
+      return require('internal/crypto/cfrg')
         .eddsaSignVerify(key, data, algorithm, signature);
     case 'HMAC':
-      return lazyRequire('internal/crypto/mac')
+      return require('internal/crypto/mac')
         .hmacSignVerify(key, data, algorithm, signature);
   }
   throw lazyDOMException('Unrecognized named.', 'NotSupportedError');
@@ -713,18 +704,18 @@ async function cipherOrWrap(mode, algorithm, key, data, op) {
 
   switch (algorithm.name) {
     case 'RSA-OAEP':
-      return lazyRequire('internal/crypto/rsa')
+      return require('internal/crypto/rsa')
         .rsaCipher(mode, key, data, algorithm);
     case 'AES-CTR':
       // Fall through
     case 'AES-CBC':
       // Fall through
     case 'AES-GCM':
-      return lazyRequire('internal/crypto/aes')
+      return require('internal/crypto/aes')
         .aesCipher(mode, key, data, algorithm);
     case 'AES-KW':
       if (op === 'wrapKey' || op === 'unwrapKey') {
-        return lazyRequire('internal/crypto/aes')
+        return require('internal/crypto/aes')
           .aesCipher(mode, key, data, algorithm);
       }
   }

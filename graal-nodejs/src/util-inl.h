@@ -514,8 +514,9 @@ SlicedArguments::SlicedArguments(
 template <typename T, size_t S>
 ArrayBufferViewContents<T, S>::ArrayBufferViewContents(
     v8::Local<v8::Value> value) {
-  CHECK(value->IsArrayBufferView());
-  Read(value.As<v8::ArrayBufferView>());
+  DCHECK(value->IsArrayBufferView() || value->IsSharedArrayBuffer() ||
+         value->IsArrayBuffer());
+  ReadValue(value);
 }
 
 template <typename T, size_t S>
@@ -543,6 +544,27 @@ void ArrayBufferViewContents<T, S>::Read(v8::Local<v8::ArrayBufferView> abv) {
   }
 }
 
+template <typename T, size_t S>
+void ArrayBufferViewContents<T, S>::ReadValue(v8::Local<v8::Value> buf) {
+  static_assert(sizeof(T) == 1, "Only supports one-byte data at the moment");
+  DCHECK(buf->IsArrayBufferView() || buf->IsSharedArrayBuffer() ||
+         buf->IsArrayBuffer());
+
+  if (buf->IsArrayBufferView()) {
+    Read(buf.As<v8::ArrayBufferView>());
+  } else if (buf->IsArrayBuffer()) {
+    auto ab = buf.As<v8::ArrayBuffer>();
+    length_ = ab->ByteLength();
+    data_ = static_cast<T*>(ab->Data());
+    was_detached_ = ab->WasDetached();
+  } else {
+    CHECK(buf->IsSharedArrayBuffer());
+    auto sab = buf.As<v8::SharedArrayBuffer>();
+    length_ = sab->ByteLength();
+    data_ = static_cast<T*>(sab->Data());
+  }
+}
+
 // ECMA262 20.1.2.5
 inline bool IsSafeJsInt(v8::Local<v8::Value> v) {
   if (!v->IsNumber()) return false;
@@ -554,11 +576,11 @@ inline bool IsSafeJsInt(v8::Local<v8::Value> v) {
   return false;
 }
 
-constexpr size_t FastStringKey::HashImpl(const char* str) {
+constexpr size_t FastStringKey::HashImpl(std::string_view str) {
   // Low-quality hash (djb2), but just fine for current use cases.
   size_t h = 5381;
-  while (*str != '\0') {
-    h = h * 33 + *(str++);  // NOLINT(readability/pointer_notation)
+  for (const char c : str) {
+    h = h * 33 + c;
   }
   return h;
 }
@@ -569,19 +591,13 @@ constexpr size_t FastStringKey::Hash::operator()(
 }
 
 constexpr bool FastStringKey::operator==(const FastStringKey& other) const {
-  const char* p1 = name_;
-  const char* p2 = other.name_;
-  if (p1 == p2) return true;
-  do {
-    if (*(p1++) != *(p2++)) return false;
-  } while (*p1 != '\0');
-  return *p2 == '\0';
+  return name_ == other.name_;
 }
 
-constexpr FastStringKey::FastStringKey(const char* name)
-  : name_(name), cached_hash_(HashImpl(name)) {}
+constexpr FastStringKey::FastStringKey(std::string_view name)
+    : name_(name), cached_hash_(HashImpl(name)) {}
 
-constexpr const char* FastStringKey::c_str() const {
+constexpr std::string_view FastStringKey::as_string_view() const {
   return name_;
 }
 

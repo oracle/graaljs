@@ -306,13 +306,12 @@ void Blob::GetDataObject(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 }
 
-FixedSizeBlobCopyJob::FixedSizeBlobCopyJob(
-    Environment* env,
-    Local<Object> object,
-    Blob* blob,
-    FixedSizeBlobCopyJob::Mode mode)
+FixedSizeBlobCopyJob::FixedSizeBlobCopyJob(Environment* env,
+                                           Local<Object> object,
+                                           Blob* blob,
+                                           FixedSizeBlobCopyJob::Mode mode)
     : AsyncWrap(env, object, AsyncWrap::PROVIDER_FIXEDSIZEBLOBCOPY),
-      ThreadPoolWork(env),
+      ThreadPoolWork(env, "blob"),
       mode_(mode) {
   if (mode == FixedSizeBlobCopyJob::Mode::SYNC) MakeWeak();
   source_ = blob->entries();
@@ -460,12 +459,11 @@ BlobBindingData::StoredDataObject BlobBindingData::get_data_object(
   return entry->second;
 }
 
-void BlobBindingData::Deserialize(
-    Local<Context> context,
-    Local<Object> holder,
-    int index,
-    InternalFieldInfo* info) {
-  DCHECK_EQ(index, BaseObject::kSlot);
+void BlobBindingData::Deserialize(Local<Context> context,
+                                  Local<Object> holder,
+                                  int index,
+                                  InternalFieldInfoBase* info) {
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
   HandleScope scope(context->GetIsolate());
   Environment* env = Environment::GetCurrent(context);
   BlobBindingData* binding =
@@ -473,15 +471,18 @@ void BlobBindingData::Deserialize(
   CHECK_NOT_NULL(binding);
 }
 
-void BlobBindingData::PrepareForSerialization(
-    Local<Context> context,
-    v8::SnapshotCreator* creator) {
+bool BlobBindingData::PrepareForSerialization(Local<Context> context,
+                                              v8::SnapshotCreator* creator) {
   // Stored blob objects are not actually persisted.
+  // Return true because we need to maintain the reference to the binding from
+  // JS land.
+  return true;
 }
 
-InternalFieldInfo* BlobBindingData::Serialize(int index) {
-  DCHECK_EQ(index, BaseObject::kSlot);
-  InternalFieldInfo* info = InternalFieldInfo::New(type());
+InternalFieldInfoBase* BlobBindingData::Serialize(int index) {
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
+  InternalFieldInfo* info =
+      InternalFieldInfoBase::New<InternalFieldInfo>(type());
   return info;
 }
 
@@ -498,5 +499,5 @@ void Blob::RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(blob, node::Blob::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(blob, node::Blob::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(blob, node::Blob::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(blob, node::Blob::RegisterExternalReferences)

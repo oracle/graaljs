@@ -3,6 +3,7 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
+#include <list>
 #include <map>
 #include <memory>
 #include <set>
@@ -55,6 +56,7 @@ class NODE_EXTERN_PRIVATE BuiltinLoader {
   static v8::Local<v8::String> GetConfigString(v8::Isolate* isolate);
   static bool Exists(const char* id);
   static bool Add(const char* id, const UnionBytes& source);
+  static bool Add(const char* id, std::string_view utf8source);
 
   static bool CompileAllBuiltins(v8::Local<v8::Context> context);
   static void RefreshCodeCache(const std::vector<CodeCacheInfo>& in);
@@ -119,6 +121,8 @@ class NODE_EXTERN_PRIVATE BuiltinLoader {
   static void CompileFunction(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void HasCachedBuiltins(
       const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  static void AddExternalizedBuiltin(const char* id, const char* filename);
 
   static BuiltinLoader instance_;
   BuiltinCategories builtin_categories_;

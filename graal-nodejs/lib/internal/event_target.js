@@ -56,7 +56,7 @@ const kEvents = Symbol('kEvents');
 const kIsBeingDispatched = Symbol('kIsBeingDispatched');
 const kStop = Symbol('kStop');
 const kTarget = Symbol('kTarget');
-const kHandlers = Symbol('khandlers');
+const kHandlers = Symbol('kHandlers');
 const kWeakHandler = Symbol('kWeak');
 
 const kHybridDispatch = SymbolFor('nodejs.internal.kHybridDispatch');
@@ -236,7 +236,7 @@ class Event {
   get returnValue() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return !this.defaultPrevented;
+    return !this.#cancelable || !this.#defaultPrevented;
   }
 
   /**
@@ -633,6 +633,8 @@ class EventTarget {
   removeEventListener(type, listener, options = kEmptyObject) {
     if (!isEventTarget(this))
       throw new ERR_INVALID_THIS('EventTarget');
+    if (arguments.length < 2)
+      throw new ERR_MISSING_ARGS('type', 'listener');
     if (!validateEventListener(listener))
       return;
 
@@ -663,6 +665,8 @@ class EventTarget {
   dispatchEvent(event) {
     if (!isEventTarget(this))
       throw new ERR_INVALID_THIS('EventTarget');
+    if (arguments.length < 1)
+      throw new ERR_MISSING_ARGS('event');
 
     if (!(event instanceof Event))
       throw new ERR_INVALID_ARG_TYPE('event', 'Event', event);
@@ -818,7 +822,7 @@ class NodeEventTarget extends EventTarget {
   }
 
   /**
-   * @param {string} [type]
+   * @param {string} type
    * @returns {number}
    */
   listenerCount(type) {

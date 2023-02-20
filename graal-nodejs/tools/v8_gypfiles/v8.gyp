@@ -327,7 +327,7 @@
              '<(V8_ROOT)/src/builtins/builtins-intl-gen.cc',
            ],
          }],
-        ['OS=="win" and _toolset=="target"', {
+        ['OS=="win"', {
           'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
           'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
           'sources': [
@@ -604,7 +604,7 @@
       ],
       'sources': ['<@(v8_compiler_sources)'],
       'conditions': [
-        ['OS=="win" and _toolset=="target"', {
+        ['OS=="win"', {
           'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
           'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
           'sources': [
@@ -629,7 +629,7 @@
       ],
       'sources': ['<@(v8_compiler_sources)'],
       'conditions': [
-        ['OS=="win" and _toolset=="target"', {
+        ['OS=="win"', {
           'msvs_precompiled_header': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.h',
           'msvs_precompiled_source': '<(V8_ROOT)/../../tools/msvs/pch/v8_pch.cc',
           'sources': [
@@ -1342,7 +1342,7 @@
             }],
           ],
           'action': [
-            'python', '<(V8_ROOT)/tools/testrunner/utils/dump_build_config_gyp.py',
+            '<(python)', '<(V8_ROOT)/tools/testrunner/utils/dump_build_config_gyp.py',
             '<@(v8_dump_build_config_args)',
           ],
         },
@@ -1436,7 +1436,7 @@
             '<(SHARED_INTERMEDIATE_DIR)/debug-support.cc',
           ],
           'action': [
-            'python',
+            '<(python)',
             '<(V8_ROOT)/tools/gen-postmortem-metadata.py',
             '<@(_outputs)',
             '<@(heapobject_files)'

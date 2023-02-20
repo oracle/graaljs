@@ -53,10 +53,15 @@ class ProxyAgent extends DispatcherBase {
 
     this[kRequestTls] = opts.requestTls
     this[kProxyTls] = opts.proxyTls
-    this[kProxyHeaders] = {}
+    this[kProxyHeaders] = opts.headers || {}
 
-    if (opts.auth) {
+    if (opts.auth && opts.token) {
+      throw new InvalidArgumentError('opts.auth cannot be used in combination with opts.token')
+    } else if (opts.auth) {
+      /* @deprecated in favour of opts.token */
       this[kProxyHeaders]['proxy-authorization'] = `Basic ${opts.auth}`
+    } else if (opts.token) {
+      this[kProxyHeaders]['proxy-authorization'] = opts.token
     }
 
     const resolvedUrl = new URL(opts.uri)

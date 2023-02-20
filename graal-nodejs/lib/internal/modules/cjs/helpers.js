@@ -27,6 +27,12 @@ const { getOptionValue } = require('internal/options');
 const { setOwnProperty } = require('internal/util');
 const userConditions = getOptionValue('--conditions');
 
+const {
+  privateSymbols: {
+    require_private_symbol,
+  },
+} = internalBinding('util');
+
 let debug = require('internal/util/debuglog').debuglog('module', (fn) => {
   debug = fn;
 });
@@ -86,7 +92,7 @@ function makeRequireFunction(mod, redirects) {
             filepath = fileURLToPath(destination);
             urlToFileCache.set(href, filepath);
           }
-          return mod.require(filepath);
+          return mod[require_private_symbol](mod, filepath);
         }
       }
       if (missing) {
@@ -96,10 +102,11 @@ function makeRequireFunction(mod, redirects) {
           ArrayPrototypeJoin([...conditions], ', ')
         ));
       }
-      return mod.require(specifier);
+      return mod[require_private_symbol](mod, specifier);
     };
   } else {
     require = function require(path) {
+      // When no policy manifest, the original prototype.require is sustained
       return mod.require(path);
     };
   }
@@ -176,16 +183,19 @@ function addBuiltinLibsToObject(object, dummyModuleName) {
       get: () => {
         const lib = dummyModule.require(name);
 
-        // Disable the current getter/setter and set up a new
-        // non-enumerable property.
-        delete object[name];
-        ObjectDefineProperty(object, name, {
-          __proto__: null,
-          get: () => lib,
-          set: setReal,
-          configurable: true,
-          enumerable: false
-        });
+        try {
+          // Override the current getter/setter and set up a new
+          // non-enumerable property.
+          ObjectDefineProperty(object, name, {
+            __proto__: null,
+            get: () => lib,
+            set: setReal,
+            configurable: true,
+            enumerable: false,
+          });
+        } catch {
+          // If the property is no longer configurable, ignore the error.
+        }
 
         return lib;
       },
