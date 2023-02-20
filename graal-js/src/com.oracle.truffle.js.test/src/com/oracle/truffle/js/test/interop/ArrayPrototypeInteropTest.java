@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -283,7 +283,7 @@ public class ArrayPrototypeInteropTest {
     private static final TypeLiteral<List<Integer>> LIST_OF_INTEGER = new TypeLiteral<>() {
     };
 
-    private static class MyProxyArray implements ProxyArray {
+    public static class MyProxyArray implements ProxyArray {
         protected final List<Object> values;
 
         protected MyProxyArray(List<Object> values) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -272,6 +272,9 @@ public final class Strings {
     public static final TruffleString TO_STRING_TAG = constant("toStringTag");
     public static final TruffleString TO_PRIMITIVE = constant("toPrimitive");
     public static final TruffleString UNSCOPABLES = constant("unscopables");
+    public static final TruffleString TO_REVERSED = constant("toReversed");
+    public static final TruffleString TO_SORTED = constant("toSorted");
+    public static final TruffleString TO_SPLICED = constant("toSpliced");
 
     public static final TruffleString UC_ARRAY = constant("Array");
     public static final TruffleString UC_OBJECT = constant("Object");

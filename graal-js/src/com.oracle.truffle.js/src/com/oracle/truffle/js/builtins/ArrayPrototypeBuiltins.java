@@ -117,9 +117,12 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeN
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySortNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySpliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToSplicedNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshiftNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayWithNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
+import com.oracle.truffle.js.builtins.sort.SortComparator;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -148,9 +151,11 @@ import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.array.JSSetLengthNode;
 import com.oracle.truffle.js.nodes.array.TestArrayNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -176,11 +181,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
-import com.oracle.truffle.js.runtime.array.dyn.AbstractDoubleArray;
-import com.oracle.truffle.js.runtime.array.dyn.AbstractIntArray;
-import com.oracle.truffle.js.runtime.array.dyn.ConstantByteArray;
-import com.oracle.truffle.js.runtime.array.dyn.ConstantDoubleArray;
-import com.oracle.truffle.js.runtime.array.dyn.ConstantIntArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -263,7 +263,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         group(1),
         groupToMap(1),
         findLast(1),
-        findLastIndex(1);
+        findLastIndex(1),
+
+        // Next
+        toReversed(0),
+        toSorted(1),
+        toSpliced(2),
+        with(2);
 
         private final int length;
 
@@ -286,7 +292,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSConfig.ECMAScript2019;
             } else if (this == at) {
                 return JSConfig.ECMAScript2022;
-            } else if (EnumSet.of(group, groupToMap, findLast, findLastIndex).contains(this)) {
+            } else if (EnumSet.of(group, groupToMap, findLast, findLastIndex, toReversed, toSorted, toSpliced, with).contains(this)) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -368,10 +374,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             case at:
                 return JSArrayAtNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
+
             case group:
                 return JSArrayGroupNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case groupToMap:
                 return JSArrayGroupToMapNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+
+            case toReversed:
+                return ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(0).createArgumentNodes(context));
+            case toSorted:
+                return ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case toSpliced:
+                return JSArrayToSplicedNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
+            case with:
+                return JSArrayWithNodeGen.create(context, builtin, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -515,7 +531,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         protected final JSTypedArrayObject typedArraySpeciesCreate(JSDynamicObject thisObj, Object... args) {
-            JSDynamicObject constr = speciesConstructor(thisObj, getDefaultConstructor(thisObj));
+            JSDynamicObject constr = speciesConstructor(thisObj, getDefaultConstructor(getRealm(), thisObj));
             return typedArrayCreate(constr, args);
         }
 
@@ -587,7 +603,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return isArrayNode.execute(thisObj);
         }
 
-        private Object arrayCreate(long length) {
+        private JSArrayObject arrayCreate(long length) {
             if (arrayCreateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 arrayCreateNode = insert(ArrayCreateNode.create(context));
@@ -601,10 +617,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return constructorCall.executeCall(args);
         }
 
-        protected final JSDynamicObject getDefaultConstructor(JSDynamicObject thisObj) {
+        protected static final JSDynamicObject getDefaultConstructor(JSRealm realm, JSDynamicObject thisObj) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             TypedArray arrayType = JSArrayBufferView.typedArrayGetArrayType(thisObj);
-            return getRealm().getArrayBufferViewConstructor(arrayType.getFactory());
+            return realm.getArrayBufferViewConstructor(arrayType.getFactory());
         }
 
         /**
@@ -668,6 +684,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSHasPropertyNode hasPropertyNode;
         @Child private JSArrayNextElementIndexNode nextElementIndexNode;
         @Child private JSArrayPreviousElementIndexNode previousElementIndexNode;
+
+        @Child private ArrayCreateNode arrayCreateNode;
 
         protected void setLength(Object thisObject, int length) {
             setLengthIntl(thisObject, length);
@@ -776,6 +794,27 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected static final void throwLengthError() {
             throw Errors.createTypeError("length too big");
+        }
+
+        protected final JSObject createEmpty(Object thisObj, long length) {
+            if (isTypedArrayImplementation) {
+                return typedArrayCreateSameType((JSDynamicObject) thisObj, length);
+            } else {
+                return arrayCreate(length);
+            }
+        }
+
+        private JSTypedArrayObject typedArrayCreateSameType(JSDynamicObject thisObj, long length) {
+            JSDynamicObject constr = ArraySpeciesConstructorNode.getDefaultConstructor(getRealm(), thisObj);
+            return getArraySpeciesConstructorNode().typedArrayCreate(constr, length);
+        }
+
+        protected JSArrayObject arrayCreate(long length) {
+            if (arrayCreateNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                arrayCreateNode = insert(ArrayCreateNode.create(getContext()));
+            }
+            return arrayCreateNode.execute(length);
         }
     }
 
@@ -2695,14 +2734,122 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public abstract static class JSArraySortNode extends JSArrayOperation {
+    public abstract static class JSArrayToReversedNode extends JSArrayOperation {
+        public JSArrayToReversedNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        @Specialization
+        protected Object reverse(final Object thisObj) {
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
+            long length = getLength(thisJSObj);
+            Object result = createEmpty(thisJSObj, length);
+            for (long i = 0; i < length; i++) {
+                var value = read(thisJSObj, length - 1 - i);
+                write(result, i, value);
+            }
+            return result;
+        }
+    }
+
+    public abstract static class JSArrayAbstractSortNode extends JSArrayOperation {
+
+        @Child private InteropLibrary interopNode;
+        @Child private ImportValueNode importValueNode;
+
+        public JSArrayAbstractSortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        @TruffleBoundary
+        protected static Object[] jsobjectToArray(JSDynamicObject thisObj, long len, boolean skipHoles, Node node, InlinedBranchProfile growProfile) {
+            SimpleArrayList<Object> list = SimpleArrayList.create(len);
+            for (long k = 0; k < len; k++) {
+                if (!skipHoles || JSObject.hasProperty(thisObj, k)) {
+                    list.add(JSObject.get(thisObj, k), node, growProfile);
+                }
+            }
+            return list.toArray();
+        }
+
+        protected Object[] foreignArrayToObjectArray(Object thisObj, int len) {
+            InteropLibrary interop = interopNode;
+            ImportValueNode importValue = importValueNode;
+            if (interop == null || importValue == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+                importValueNode = importValue = insert(ImportValueNode.create());
+            }
+            Object[] array = new Object[len];
+            for (int index = 0; index < len; index++) {
+                array[index] = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue, this);
+            }
+            return array;
+        }
+
+        @TruffleBoundary
+        protected static void sortIntl(Comparator<Object> comparator, Object[] array) {
+            try {
+                Arrays.sort(array, comparator);
+            } catch (IllegalArgumentException e) {
+                // Collections.sort throws IllegalArgumentException when
+                // Comparison method violates its general contract
+
+                // See ECMA spec 15.4.4.11 Array.prototype.sort (comparefn).
+                // If "comparefn" is not undefined and is not a consistent
+                // comparison function for the elements of this array, the
+                // behaviour of sort is implementation-defined.
+            }
+        }
+    }
+
+    public abstract static class JSArrayToSortedNode extends JSArrayAbstractSortNode {
+        public JSArrayToSortedNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        @Specialization
+        public Object toSorted(final Object thisObj, final Object compare,
+                        @Cached InlinedBranchProfile growProfile,
+                        @Cached InlinedConditionProfile isJSObject) {
+            if (!(compare == Undefined.instance || isCallable(compare))) {
+                errorBranch.enter();
+                throw Errors.createTypeError("The comparison function must be either a function or undefined");
+            }
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
+            long length = getLength(thisJSObj);
+            Object result = createEmpty(thisJSObj, length);
+
+            // TODO optimize the fast array case
+            Object[] array;
+            if (isJSObject.profile(this, JSDynamicObject.isJSDynamicObject(thisJSObj))) {
+                array = jsobjectToArray((JSDynamicObject) thisJSObj, length, false, this, growProfile);
+            } else {
+                if (length >= Integer.MAX_VALUE) {
+                    errorBranch.enter();
+                    throw Errors.createRangeErrorInvalidArrayLength();
+                }
+                array = foreignArrayToObjectArray(thisObj, (int) length);
+            }
+
+            Comparator<Object> comparator = compare == Undefined.instance ? (isTypedArrayImplementation ? null : JSArray.DEFAULT_JSARRAY_COMPARATOR)
+                            : new SortComparator(compare);
+            sortIntl(comparator, array);
+
+            assert length == array.length;
+            for (int i = 0; i < array.length; i++) {
+                write(result, i, array[i]);
+            }
+            return result;
+        }
+    }
+
+    public abstract static class JSArraySortNode extends JSArrayAbstractSortNode {
 
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
         private final ConditionProfile isSparse = ConditionProfile.create();
         private final BranchProfile hasCompareFnBranch = BranchProfile.create();
         private final BranchProfile noCompareFnBranch = BranchProfile.create();
-        @Child private InteropLibrary interopNode;
-        @Child private ImportValueNode importValueNode;
 
         public JSArraySortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -2766,7 +2913,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return thisJSObj;
             }
 
-            Object[] array = jsobjectToArray(thisJSObj, len, this, growProfile);
+            Object[] array = jsobjectToArray(thisJSObj, len, true, this, growProfile);
 
             Comparator<Object> comparator = getComparator(thisJSObj, comparefn);
             if (isTypedArrayImplementation && comparefn == Undefined.instance) {
@@ -2831,19 +2978,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private Comparator<Object> getDefaultComparator(Object thisObj) {
-            if (isTypedArrayImplementation) {
-                return null; // use Comparable.compareTo (equivalent to Comparator.naturalOrder())
-            } else {
-                if (JSArray.isJSArray(thisObj)) {
-                    ScriptArray array = arrayGetArrayType((JSDynamicObject) thisObj);
-                    if (array instanceof AbstractIntArray || array instanceof ConstantByteArray || array instanceof ConstantIntArray) {
-                        return JSArray.DEFAULT_JSARRAY_INTEGER_COMPARATOR;
-                    } else if (array instanceof AbstractDoubleArray || array instanceof ConstantDoubleArray) {
-                        return JSArray.DEFAULT_JSARRAY_DOUBLE_COMPARATOR;
-                    }
-                }
-                return JSArray.DEFAULT_JSARRAY_COMPARATOR;
-            }
+            return SortComparator.getDefaultComparator(thisObj, isTypedArrayImplementation);
         }
 
         /**
@@ -2854,21 +2989,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private void deleteGenericElements(Object obj, long fromIndex, long toIndex) {
             for (long index = fromIndex; index < toIndex; index++) {
                 delete(obj, index);
-            }
-        }
-
-        @TruffleBoundary
-        private static void sortIntl(Comparator<Object> comparator, Object[] array) {
-            try {
-                Arrays.sort(array, comparator);
-            } catch (IllegalArgumentException e) {
-                // Collections.sort throws IllegalArgumentException when
-                // Comparison method violates its general contract
-
-                // See ECMA spec 15.4.4.11 Array.prototype.sort (comparefn).
-                // If "comparefn" is not undefined and is not a consistent
-                // comparison function for the elements of this array, the
-                // behaviour of sort is implementation-defined.
             }
         }
 
@@ -2890,77 +3010,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     array[i] = JSRuntime.toDouble(array[i]);
                 }
             }
-        }
-
-        private class SortComparator implements Comparator<Object> {
-            private final Object compFnObj;
-            private final boolean isFunction;
-
-            SortComparator(Object compFnObj) {
-                this.compFnObj = compFnObj;
-                this.isFunction = JSFunction.isJSFunction(compFnObj);
-            }
-
-            @Override
-            public int compare(Object arg0, Object arg1) {
-                if (arg0 == Undefined.instance) {
-                    if (arg1 == Undefined.instance) {
-                        return 0;
-                    }
-                    return 1;
-                } else if (arg1 == Undefined.instance) {
-                    return -1;
-                }
-                Object retObj;
-                if (isFunction) {
-                    retObj = JSFunction.call((JSFunctionObject) compFnObj, Undefined.instance, new Object[]{arg0, arg1});
-                } else {
-                    retObj = JSRuntime.call(compFnObj, Undefined.instance, new Object[]{arg0, arg1});
-                }
-                return convertResult(retObj);
-            }
-
-            private int convertResult(Object retObj) {
-                if (retObj instanceof Integer) {
-                    return (int) retObj;
-                } else {
-                    double d = JSRuntime.toDouble(retObj);
-                    if (d < 0) {
-                        return -1;
-                    } else if (d > 0) {
-                        return 1;
-                    } else {
-                        // +/-0 or NaN
-                        return 0;
-                    }
-                }
-            }
-        }
-
-        @TruffleBoundary
-        private static Object[] jsobjectToArray(JSDynamicObject thisObj, long len, Node node, InlinedBranchProfile growProfile) {
-            SimpleArrayList<Object> list = SimpleArrayList.create(len);
-            for (long k = 0; k < len; k++) {
-                if (JSObject.hasProperty(thisObj, k)) {
-                    list.add(JSObject.get(thisObj, k), node, growProfile);
-                }
-            }
-            return list.toArray();
-        }
-
-        private Object[] foreignArrayToObjectArray(Object thisObj, int len) {
-            InteropLibrary interop = interopNode;
-            ImportValueNode importValue = importValueNode;
-            if (interop == null || importValue == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-                importValueNode = importValue = insert(ImportValueNode.create());
-            }
-            Object[] array = new Object[len];
-            for (int index = 0; index < len; index++) {
-                array[index] = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue, this);
-            }
-            return array;
         }
     }
 
@@ -3451,6 +3500,175 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 internalMap.put(entry.getKey(), elements);
             }
             return map;
+        }
+    }
+
+    public abstract static class JSArrayToSplicedNode extends JSArrayOperationWithToInt {
+
+        @Child private InteropLibrary arrayInterop;
+
+        @Child private ImportValueNode importValueNode;
+
+        public JSArrayToSplicedNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected JSDynamicObject toSpliced(Object thisArg, Object[] args,
+                        @Cached InlinedConditionProfile offsetProfile,
+                        @Cached InlinedConditionProfile argsLength0Profile,
+                        @Cached InlinedConditionProfile argsLength1Profile,
+                        @Cached InlinedBranchProfile objectBranch) {
+            Object thisObj = toObject(thisArg);
+            long len = getLength(thisObj);
+            long actualStart = JSRuntime.getOffset(toIntegerAsLong(JSRuntime.getArgOrUndefined(args, 0)), len, this, offsetProfile);
+
+            long insertCount;
+            long actualDeleteCount;
+            if (argsLength0Profile.profile(this, args.length == 0)) {
+                insertCount = 0;
+                actualDeleteCount = 0;
+            } else if (argsLength1Profile.profile(this, args.length == 1)) {
+                insertCount = 0;
+                actualDeleteCount = len - actualStart;
+            } else {
+                assert args.length >= 2;
+                insertCount = args.length - 2;
+                long deleteCount = toIntegerAsLong(JSRuntime.getArgOrUndefined(args, 1));
+                actualDeleteCount = Math.min(Math.max(deleteCount, 0), len - actualStart);
+            }
+
+            long newLen = len + insertCount - actualDeleteCount;
+            if (newLen > JSRuntime.MAX_SAFE_INTEGER_LONG) {
+                errorBranch.enter();
+                throwLengthError();
+            }
+
+            JSArrayObject resObj = getArraySpeciesConstructorNode().arrayCreate(newLen);
+
+            if (JSDynamicObject.isJSDynamicObject(thisObj)) {
+                objectBranch.enter(this);
+                spliceJSObject(resObj, thisObj, len, actualStart, actualDeleteCount, args);
+            } else {
+                spliceForeignArray(resObj, thisObj, len, actualStart, actualDeleteCount, args);
+            }
+
+            reportLoopCount(len);
+            return resObj;
+        }
+
+        private long spliceInsert(JSDynamicObject dstObj, long toIndex, Object[] args) {
+            int itemOffset = 2; // toSpliced(start, deleteCount, ...args)
+            long dstIdx = toIndex;
+            for (int argIdx = itemOffset; argIdx < args.length; argIdx++) {
+                writeOwn(dstObj, dstIdx++, args[argIdx]);
+            }
+            return dstIdx;
+        }
+
+        private void spliceJSObject(JSArrayObject dstObj, Object srcObj, long len, long actualStart, long actualDeleteCount, Object[] args) {
+            long dstIdx = 0;
+            for (long srcIdx = 0; srcIdx < actualStart; srcIdx++) {
+                writeOwn(dstObj, dstIdx++, read(srcObj, srcIdx));
+            }
+            dstIdx = spliceInsert(dstObj, dstIdx, args);
+            for (long srcIdx = actualStart + actualDeleteCount; srcIdx < len; srcIdx++) {
+                writeOwn(dstObj, dstIdx++, read(srcObj, srcIdx));
+            }
+        }
+
+        private void spliceForeignArray(JSArrayObject dstObj, Object srcObj, long len, long actualStart, long actualDeleteCount, Object[] args) {
+            InteropLibrary arrays = arrayInterop;
+            if (arrays == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.arrayInterop = arrays = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+            }
+            long dstIdx = 0;
+            for (long srcIdx = 0; srcIdx < actualStart; srcIdx++) {
+                spliceForeignMoveValue(dstObj, srcObj, srcIdx, dstIdx++, arrays);
+            }
+            dstIdx = spliceInsert(dstObj, dstIdx, args);
+            for (long srcIdx = actualStart + actualDeleteCount; srcIdx < len; srcIdx++) {
+                spliceForeignMoveValue(dstObj, srcObj, srcIdx, dstIdx++, arrays);
+            }
+        }
+
+        private void spliceForeignMoveValue(JSArrayObject destObj, Object srcObj, long fromIndex, long toIndex, InteropLibrary arrays) {
+            if (importValueNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                importValueNode = insert(ImportValueNode.create());
+            }
+            Object val = JSInteropUtil.readArrayElementOrDefault(srcObj, fromIndex, Undefined.instance, arrays, importValueNode, this);
+            writeOwn(destObj, toIndex, val);
+        }
+    }
+
+    public abstract static class JSArrayWithNode extends JSArrayOperationWithToInt {
+
+        @Child private JSToNumberNode toNumberNode;
+        @Child private JSToBigIntNode toBigIntNode;
+
+        public JSArrayWithNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        protected Object toNumber(Object value) {
+            if (toNumberNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toNumberNode = insert(JSToNumberNode.create());
+            }
+            return toNumberNode.execute(value);
+        }
+
+        protected Object toBigInt(Object value) {
+            if (toBigIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toBigIntNode = insert(JSToBigIntNode.create());
+            }
+            return toBigIntNode.execute(value);
+        }
+
+        @Specialization
+        protected Object withGeneric(Object thisObj, Object index, Object valueParam) {
+            Object value = valueParam;
+            final Object array = toObjectOrValidateTypedArray(thisObj);
+            long len = getLength(array);
+            long relativeIndex = toIntegerAsLong(index);
+            long actualIndex;
+            if (relativeIndex >= 0) {
+                actualIndex = relativeIndex;
+            } else {
+                actualIndex = len + relativeIndex;
+            }
+
+            if (isTypedArrayImplementation) {
+                if (JSArrayBufferView.isJSArrayBufferView(array) && JSArrayBufferView.isBigIntArrayBufferView((JSDynamicObject) array)) {
+                    value = toBigInt(value);
+                } else {
+                    value = toNumber(value);
+                }
+            }
+
+            if (actualIndex >= len || actualIndex < 0) {
+                errorBranch.enter();
+                throw Errors.createRangeError("invalid index");
+            }
+            JSDynamicObject resultArray = createEmpty(array, len);
+
+            long k;
+            for (k = 0; k < len; k++) {
+                Object val;
+                if (k == actualIndex) {
+                    val = value;
+                } else {
+                    val = read(array, k);
+                }
+
+                writeOwn(resultArray, k, val);
+                TruffleSafepoint.poll(this);
+            }
+            reportLoopCount(k);
+            return resultArray;
         }
     }
 }

@@ -239,6 +239,9 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             names.add(Strings.INCLUDES);
         }
         names.add(Strings.KEYS);
+        names.add(Strings.TO_REVERSED);
+        names.add(Strings.TO_SORTED);
+        names.add(Strings.TO_SPLICED);
         names.add(Strings.VALUES);
         assert isSorted(names);
         return names;
