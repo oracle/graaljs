@@ -44,11 +44,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.math.BigInteger;
+import java.util.List;
+
+import org.graalvm.collections.Pair;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.test.JSTest;
 
 public class BigIntTest {
@@ -206,4 +212,271 @@ public class BigIntTest {
         }
     }
 
+    @Test
+    public void testBigIntegerEquality() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value strictlyEqual = context.eval(JavaScriptLanguage.ID, "(function(a, b) { return a === b; })");
+            Value looselyEqual = context.eval(JavaScriptLanguage.ID, "(function(a, b) { return a == b; })");
+            Value toBigInt = context.eval(JavaScriptLanguage.ID, "(function(value) { return BigInt(value); })");
+            Value isOfBigIntType = context.eval(JavaScriptLanguage.ID, "(function(value) { return typeof value === 'bigint'; })");
+
+            for (Pair<String, BigInteger> pair : List.of(
+                            Pair.create("0n", BigInteger.valueOf(0)),
+                            Pair.create("0", BigInteger.valueOf(0)),
+
+                            Pair.create("2147483647", BigInteger.valueOf(Integer.MAX_VALUE)),
+                            Pair.create("-2147483648", BigInteger.valueOf(Integer.MIN_VALUE)),
+
+                            Pair.create("2147483647n", BigInteger.valueOf(Integer.MAX_VALUE)),
+                            Pair.create("-2147483648n", BigInteger.valueOf(Integer.MIN_VALUE)),
+                            Pair.create("2147483648n", BigInteger.valueOf(Integer.MAX_VALUE + 1L)),
+                            Pair.create("-2147483649n", BigInteger.valueOf(Integer.MIN_VALUE - 1L)),
+
+                            Pair.create("9007199254740991", BigInteger.valueOf(JSRuntime.MAX_SAFE_INTEGER_LONG)),
+                            Pair.create("-9007199254740991", BigInteger.valueOf(JSRuntime.MIN_SAFE_INTEGER_LONG)),
+
+                            Pair.create("9007199254740991n", BigInteger.valueOf(JSRuntime.MAX_SAFE_INTEGER_LONG)),
+                            Pair.create("-9007199254740991n", BigInteger.valueOf(JSRuntime.MIN_SAFE_INTEGER_LONG)),
+                            Pair.create("9007199254740992n", BigInteger.valueOf(JSRuntime.MAX_SAFE_INTEGER_LONG + 1L)),
+                            Pair.create("-9007199254740992n", BigInteger.valueOf(JSRuntime.MIN_SAFE_INTEGER_LONG - 1L)),
+
+                            Pair.create("9223372036854775807n", BigInteger.valueOf(Long.MAX_VALUE)),
+                            Pair.create("-9223372036854775808n", BigInteger.valueOf(Long.MIN_VALUE)),
+                            Pair.create("9223372036854775808n", BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.valueOf(1))),
+                            Pair.create("-9223372036854775809n", BigInteger.valueOf(Long.MIN_VALUE).subtract(BigInteger.valueOf(1))),
+
+                            Pair.create("2n**1000n", BigInteger.valueOf(2).pow(1000)),
+                            Pair.create("-(2n**1000n)", BigInteger.valueOf(2).pow(1000).negate()),
+                            Pair.create("2n**1100n", BigInteger.valueOf(2).pow(1100)),
+                            Pair.create("-(2n**1100n)", BigInteger.valueOf(2).pow(1100).negate()))) {
+                String numericLiteralString = pair.getLeft();
+                BigInteger bigInteger = pair.getRight();
+                BigInteger bigIntegerCopy = bigInteger.negate().negate();
+                String message = pair.toString();
+
+                Value jsValue = context.eval(JavaScriptLanguage.ID, numericLiteralString);
+
+                assertTrue(message, jsValue.fitsInBigInteger());
+                assertEquals(message, bigInteger, jsValue.asBigInteger());
+                assertEquals(message, bigInteger, jsValue.as(BigInteger.class));
+
+                Value bigIntegerAsValue = context.asValue(bigInteger);
+                Value bigIntegerAsJSBigInt = toBigInt.execute(bigInteger);
+                assertEquals(message, bigInteger, bigIntegerAsJSBigInt.asBigInteger());
+
+                assertEquals(bigIntegerAsValue.fitsInDouble(), jsValue.fitsInDouble());
+                assertEquals(bigIntegerAsValue.fitsInBigInteger(), jsValue.fitsInBigInteger());
+
+                assertTrue(message, strictlyEqual.execute(jsValue, jsValue).asBoolean());
+                assertTrue(message, looselyEqual.execute(jsValue, jsValue).asBoolean());
+
+                assertTrue(message, strictlyEqual.execute(bigInteger, bigInteger).asBoolean());
+                assertTrue(message, looselyEqual.execute(bigInteger, bigInteger).asBoolean());
+
+                boolean isJSBigInt = isOfBigIntType.execute(jsValue).asBoolean();
+                boolean sameNumType = isJSBigInt == !bigIntegerAsValue.fitsInDouble();
+                /*
+                 * '===' does not convert the value; a comparison between a numeric value and a host
+                 * object always returns false.
+                 */
+                assertEquals(message, sameNumType, strictlyEqual.execute(jsValue, bigInteger).asBoolean());
+                assertEquals(message, sameNumType, strictlyEqual.execute(bigInteger, jsValue).asBoolean());
+
+                /*
+                 * '==' applies ToPrimitive conversion to the operands; java.math.BigInteger may be
+                 * treated as a JS Number (double) or BigInt value; either way, they will be equal
+                 * and fit the same numeric types.
+                 */
+                assertTrue(message, looselyEqual.execute(jsValue, bigInteger).asBoolean());
+                assertTrue(message, looselyEqual.execute(bigInteger, jsValue).asBoolean());
+
+                /*
+                 * '===' returns false because java.math.BigInteger objects currently are not
+                 * treated as primitive values but as host objects (that are also Number and fit in
+                 * BigInteger), and therefore compared using isIdentical semantics.
+                 */
+                assertTrue(strictlyEqual.execute(bigInteger, bigIntegerCopy).asBoolean());
+                // Of course, when explicitly converted to JS BigInt, JS value semantics apply.
+                assertTrue(strictlyEqual.execute(toBigInt.execute(bigInteger), toBigInt.execute(bigIntegerCopy)).asBoolean());
+
+                // Two equal BigIntegers are converted to the same numeric value+type, and hence ==.
+                assertTrue(looselyEqual.execute(bigInteger, bigIntegerCopy).asBoolean());
+
+                // (bigint) === (numeric) will be true iff the numeric value is a BigInt, too.
+                assertEquals(message, isJSBigInt, strictlyEqual.execute(jsValue, bigIntegerAsJSBigInt).asBoolean());
+                assertEquals(message, isJSBigInt, strictlyEqual.execute(bigIntegerAsJSBigInt, jsValue).asBoolean());
+
+                // (bigint) == (numeric) of the same value; must always be true.
+                assertTrue(message, looselyEqual.execute(jsValue, bigIntegerAsJSBigInt).asBoolean());
+                assertTrue(message, looselyEqual.execute(bigIntegerAsJSBigInt, jsValue).asBoolean());
+
+                if (bigIntegerAsValue.fitsInLong()) {
+                    assertTrue(message, looselyEqual.execute(bigInteger, bigInteger.longValue()).asBoolean());
+                    assertTrue(message, looselyEqual.execute(bigInteger.longValue(), bigInteger).asBoolean());
+
+                    assertTrue(message, looselyEqual.execute(bigIntegerAsJSBigInt, bigInteger.longValue()).asBoolean());
+                    assertTrue(message, looselyEqual.execute(bigInteger.longValue(), bigIntegerAsJSBigInt).asBoolean());
+
+                    assertTrue(message, strictlyEqual.execute(bigInteger, bigInteger.longValue()).asBoolean());
+                    assertTrue(message, strictlyEqual.execute(bigInteger.longValue(), bigInteger).asBoolean());
+
+                    boolean fitsOnlyInBigInt = bigIntegerAsValue.fitsInLong() && !bigIntegerAsValue.fitsInDouble();
+                    assertEquals(message, fitsOnlyInBigInt, strictlyEqual.execute(bigIntegerAsJSBigInt, bigInteger.longValue()).asBoolean());
+                    assertEquals(message, fitsOnlyInBigInt, strictlyEqual.execute(bigInteger.longValue(), bigIntegerAsJSBigInt).asBoolean());
+                } else if (bigIntegerAsValue.fitsInDouble()) {
+                    assertTrue(message, looselyEqual.execute(bigInteger, bigInteger.doubleValue()).asBoolean());
+                    assertTrue(message, looselyEqual.execute(bigInteger.doubleValue(), bigInteger).asBoolean());
+
+                    assertTrue(message, looselyEqual.execute(bigIntegerAsJSBigInt, bigInteger.doubleValue()).asBoolean());
+                    assertTrue(message, looselyEqual.execute(bigInteger.doubleValue(), bigIntegerAsJSBigInt).asBoolean());
+
+                    assertTrue(message, strictlyEqual.execute(bigInteger, bigInteger.doubleValue()).asBoolean());
+                    assertTrue(message, strictlyEqual.execute(bigInteger.doubleValue(), bigInteger).asBoolean());
+
+                    assertFalse(message, strictlyEqual.execute(bigIntegerAsJSBigInt, bigInteger.doubleValue()).asBoolean());
+                    assertFalse(message, strictlyEqual.execute(bigInteger.doubleValue(), bigIntegerAsJSBigInt).asBoolean());
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testBigIntegerArithmetic() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value toBigInt = context.eval(JavaScriptLanguage.ID, "(function(value) { return BigInt(value); })");
+
+            Value add = context.eval(JavaScriptLanguage.ID, "(function(a, b) { return a + b; })");
+            Value sub = context.eval(JavaScriptLanguage.ID, "(function(a, b) { return a - b; })");
+            Value mul = context.eval(JavaScriptLanguage.ID, "(function(a, b) { return a * b; })");
+            Value div = context.eval(JavaScriptLanguage.ID, "(function(a, b) { return a / b; })");
+            Value mod = context.eval(JavaScriptLanguage.ID, "(function(a, b) { return a % b; })");
+            Value plus = context.eval(JavaScriptLanguage.ID, "(function(value) { return +(value); })");
+            Value minus = context.eval(JavaScriptLanguage.ID, "(function(value) { return -(value); })");
+
+            Value[] binaryOps = new Value[]{add, sub, mul, div, mod};
+            Value[] unaryOps = new Value[]{plus, minus};
+
+            List<BigInteger> bigIntegers = List.of(
+                            BigInteger.valueOf(0),
+
+                            BigInteger.valueOf(Integer.MAX_VALUE),
+                            BigInteger.valueOf(Integer.MIN_VALUE),
+                            BigInteger.valueOf(Integer.MAX_VALUE + 1L),
+                            BigInteger.valueOf(Integer.MIN_VALUE - 1L),
+
+                            BigInteger.valueOf(JSRuntime.MAX_SAFE_INTEGER_LONG),
+                            BigInteger.valueOf(JSRuntime.MIN_SAFE_INTEGER_LONG),
+                            BigInteger.valueOf(JSRuntime.MAX_SAFE_INTEGER_LONG + 1L),
+                            BigInteger.valueOf(JSRuntime.MIN_SAFE_INTEGER_LONG - 1L),
+
+                            BigInteger.valueOf(Long.MAX_VALUE),
+                            BigInteger.valueOf(Long.MIN_VALUE),
+                            BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.valueOf(1)),
+                            BigInteger.valueOf(Long.MIN_VALUE).subtract(BigInteger.valueOf(1)),
+
+                            BigInteger.valueOf(2).pow(1000),
+                            BigInteger.valueOf(2).pow(1000).negate(),
+                            BigInteger.valueOf(2).pow(1100),
+                            BigInteger.valueOf(2).pow(1100).negate());
+
+            for (int i = 0; i < bigIntegers.size(); i++) {
+                BigInteger a = bigIntegers.get(i);
+                Value aAsValue = context.asValue(a);
+
+                Value result = add.execute(a, a);
+                assertTrue(result.fitsInBigInteger());
+                assertEquals(a.add(a), result.asBigInteger());
+
+                for (Value unaryOp : unaryOps) {
+                    if (aAsValue.fitsInDouble()) {
+                        result = unaryOp.execute(a);
+                        assertEquals(unaryOp.execute(a.doubleValue()).asDouble(), result.asDouble(), 0);
+                        assertTrue(result.toString(), result.fitsInBigInteger() || Double.isInfinite(result.asDouble()));
+                        if (aAsValue.fitsInLong()) {
+                            assertEquals(unaryOp.execute(a.doubleValue()).asDouble(), unaryOp.execute(a.longValue()).asDouble(), 0);
+                        }
+                    } else {
+                        assert aAsValue.fitsInBigInteger();
+                        if (unaryOp == plus) {
+                            // TypeError: Cannot convert a BigInt value to a number.
+                            JSTest.assertThrows(() -> unaryOp.execute(a), JSErrorType.TypeError);
+                            if (aAsValue.fitsInLong()) {
+                                JSTest.assertThrows(() -> unaryOp.execute(a.longValue()), JSErrorType.TypeError);
+                            }
+                        } else {
+                            result = unaryOp.execute(a);
+                            assertTrue(result.fitsInBigInteger());
+                            assertEquals(unaryOp.execute(toBigInt.execute(a)).asBigInteger(), result.asBigInteger());
+                            if (aAsValue.fitsInLong()) {
+                                assertEquals(unaryOp.execute(toBigInt.execute(a)).asBigInteger(), unaryOp.execute(a.longValue()).asBigInteger());
+                            }
+                        }
+                    }
+                }
+
+                for (int j = i + 1; j < bigIntegers.size(); j++) {
+                    BigInteger b = bigIntegers.get(j);
+                    Value bAsValue = context.asValue(b);
+
+                    assertTrue(aAsValue.fitsInBigInteger() && bAsValue.fitsInBigInteger());
+                    boolean bothDouble = aAsValue.fitsInDouble() && bAsValue.fitsInDouble();
+                    boolean bothBigInteger = !aAsValue.fitsInDouble() && !bAsValue.fitsInDouble();
+
+                    for (Value binaryOp : binaryOps) {
+                        if (bothDouble) {
+                            result = binaryOp.execute(a, b);
+                            assertEquals(binaryOp.execute(a.doubleValue(), b.doubleValue()).asDouble(), result.asDouble(), 0);
+                            if (binaryOp != div && binaryOp != mod) {
+                                assertTrue(result.toString(), result.fitsInBigInteger() || Double.isInfinite(result.asDouble()));
+                            }
+                            // TypeError: Cannot mix BigInt and other types
+                            JSTest.assertThrows(() -> binaryOp.execute(toBigInt.execute(a), b), JSErrorType.TypeError);
+                            JSTest.assertThrows(() -> binaryOp.execute(a, toBigInt.execute(b)), JSErrorType.TypeError);
+                        } else if (bothBigInteger) {
+                            result = binaryOp.execute(a, b);
+                            assertTrue(result.fitsInBigInteger());
+                            assertEquals(binaryOp.execute(toBigInt.execute(a), toBigInt.execute(b)).asBigInteger(), result.asBigInteger());
+
+                            result = binaryOp.execute(toBigInt.execute(a), b);
+                            assertTrue(result.fitsInBigInteger());
+                            assertEquals(binaryOp.execute(toBigInt.execute(a), toBigInt.execute(b)).asBigInteger(), result.asBigInteger());
+
+                            result = binaryOp.execute(a, toBigInt.execute(b));
+                            assertTrue(result.fitsInBigInteger());
+                            assertEquals(binaryOp.execute(toBigInt.execute(a), toBigInt.execute(b)).asBigInteger(), result.asBigInteger());
+                        } else {
+                            // TypeError: Cannot mix BigInt and other types
+                            JSTest.assertThrows(() -> binaryOp.execute(a, b), JSErrorType.TypeError);
+                        }
+                    }
+                }
+
+                for (Value binaryOp : binaryOps) {
+                    if (aAsValue.fitsInDouble()) {
+                        result = binaryOp.execute(a, a);
+                        assertEquals(binaryOp.execute(a.doubleValue(), a.doubleValue()).asDouble(), result.asDouble(), 0);
+                        if (binaryOp != div && binaryOp != mod) {
+                            assertTrue(result.toString(), result.fitsInBigInteger() || Double.isInfinite(result.asDouble()));
+                        }
+                        // TypeError: Cannot mix BigInt and other types
+                        JSTest.assertThrows(() -> binaryOp.execute(toBigInt.execute(a), a), JSErrorType.TypeError);
+                        JSTest.assertThrows(() -> binaryOp.execute(a, toBigInt.execute(a)), JSErrorType.TypeError);
+                    } else {
+                        assert aAsValue.fitsInBigInteger();
+                        result = binaryOp.execute(a, a);
+                        assertTrue(result.fitsInBigInteger());
+                        assertEquals(binaryOp.execute(toBigInt.execute(a), toBigInt.execute(a)).asBigInteger(), result.asBigInteger());
+
+                        result = binaryOp.execute(toBigInt.execute(a), a);
+                        assertTrue(result.fitsInBigInteger());
+                        assertEquals(binaryOp.execute(toBigInt.execute(a), toBigInt.execute(a)).asBigInteger(), result.asBigInteger());
+
+                        result = binaryOp.execute(a, toBigInt.execute(a));
+                        assertTrue(result.fitsInBigInteger());
+                        assertEquals(binaryOp.execute(toBigInt.execute(a), toBigInt.execute(a)).asBigInteger(), result.asBigInteger());
+                    }
+                }
+            }
+        }
+    }
 }
