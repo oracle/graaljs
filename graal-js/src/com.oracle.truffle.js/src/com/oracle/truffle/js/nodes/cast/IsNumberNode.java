@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,11 +59,6 @@ public abstract class IsNumberNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static boolean doInt(@SuppressWarnings("unused") int value) {
-        return true;
-    }
-
-    @Specialization
-    protected static boolean doLong(@SuppressWarnings("unused") long value) {
         return true;
     }
 

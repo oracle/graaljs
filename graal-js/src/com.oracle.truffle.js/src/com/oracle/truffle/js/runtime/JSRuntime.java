@@ -470,7 +470,7 @@ public final class JSRuntime {
     }
 
     public static boolean isNumber(Object value) {
-        return value instanceof Integer || value instanceof Double || value instanceof Long || value instanceof SafeInteger;
+        return value instanceof Integer || value instanceof Double || value instanceof SafeInteger;
     }
 
     @TruffleBoundary
