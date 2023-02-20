@@ -40,13 +40,22 @@
  */
 package com.oracle.truffle.js.test;
 
+import static org.hamcrest.CoreMatchers.startsWith;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.function.Consumer;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.Strings;
 
 public abstract class JSTest {
@@ -77,5 +86,24 @@ public abstract class JSTest {
 
     public static void assertTStringEquals(String a, Object b) {
         Assert.assertEquals(Strings.fromJavaString(a), b);
+    }
+
+    public static void assertThrows(Runnable test, Consumer<PolyglotException> exceptionVerifier) {
+        try {
+            test.run();
+            fail("should have thrown");
+        } catch (PolyglotException e) {
+            exceptionVerifier.accept(e);
+        }
+    }
+
+    public static void assertThrows(Runnable test, JSErrorType expectedJSError) {
+        try {
+            test.run();
+            fail("should have thrown " + expectedJSError.name());
+        } catch (PolyglotException e) {
+            assertTrue(e.isGuestException());
+            assertThat(e.getMessage(), startsWith(expectedJSError.name()));
+        }
     }
 }

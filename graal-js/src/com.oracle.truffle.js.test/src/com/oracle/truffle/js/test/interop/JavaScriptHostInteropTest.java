@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.test.JSTest.assertThrows;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -63,6 +64,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.test.JSTest;
 
 public class JavaScriptHostInteropTest {
@@ -217,16 +219,6 @@ public class JavaScriptHostInteropTest {
         }
     }
 
-    static void assertThrows(Runnable test, Consumer<PolyglotException> exceptionVerifier) {
-        try {
-            test.run();
-            fail("should have thrown");
-        } catch (PolyglotException e) {
-            assertTrue(e.isGuestException());
-            exceptionVerifier.accept(e);
-        }
-    }
-
     @Test
     public void hostObjectIdentity() {
         try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).build()) {
@@ -272,8 +264,7 @@ public class JavaScriptHostInteropTest {
             context.eval(ID, "var array = [3,13,3,7];");
 
             // TypeError: Multiple applicable overloads found
-            assertThrows(() -> context.eval(ID, "api.sort(array, (a, b) => a - b);"),
-                            e -> assertTrue(e.getMessage(), e.getMessage().startsWith("TypeError")));
+            assertThrows(() -> context.eval(ID, "api.sort(array, (a, b) => a - b);"), JSErrorType.TypeError);
 
             Value result;
             result = context.eval(ID, "api['sort(java.util.List,java.util.Comparator)'](array, (a, b) => a - b);");
@@ -319,6 +310,7 @@ public class JavaScriptHostInteropTest {
 
         @Override
         public void accept(PolyglotException e) {
+            assertTrue(e.isGuestException());
             String message = e.getMessage();
             for (String substring : substrings) {
                 assertThat(message, message, containsString(substring));
