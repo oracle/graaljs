@@ -45,11 +45,13 @@ import static org.graalvm.polyglot.tck.TypeDescriptor.ANY;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.math.BigInteger;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
 import org.graalvm.polyglot.Context;
@@ -96,8 +98,16 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // boolean
         vals.add(createValueConstructor(context, "false", TypeDescriptor.BOOLEAN));
         // number
+        vals.add(createValueConstructor(context, "0", TypeDescriptor.NUMBER));
         vals.add(createValueConstructor(context, "1", TypeDescriptor.NUMBER));
+        vals.add(createValueConstructor(context, "-1", TypeDescriptor.NUMBER));
         vals.add(createValueConstructor(context, "1.1", TypeDescriptor.NUMBER));
+        // bigint
+        vals.add(createValueConstructor(context, "0n", TypeDescriptor.NUMBER));
+        vals.add(createValueConstructor(context, "9223372036854775807n", TypeDescriptor.NUMBER));
+        vals.add(createValueConstructor(context, "9223372036854775808n", TypeDescriptor.NUMBER));
+        vals.add(createValueConstructor(context, "-9223372036854775808n", TypeDescriptor.NUMBER));
+        vals.add(createValueConstructor(context, "-9223372036854775809n", TypeDescriptor.NUMBER));
         // string
         vals.add(createValueConstructor(context, "'test'", TypeDescriptor.STRING));
         // lazy string
@@ -163,40 +173,53 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.BOOLEAN,
                         TypeDescriptor.NULL);
         final TypeDescriptor nonNumeric = ANY.subtract(numericAndNull);
+        // BINARY
         // +
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY, JavaScriptVerifier.numericVerifier(JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null))));
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, ANY, nonNumeric, JavaScriptVerifier.numericVerifier(JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null))));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull, JavaScriptVerifier.cannotMixBigInt(null)));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY,
+                        JavaScriptVerifier.numericVerifier(JavaScriptVerifier.cannotMixBigInt(null, true))));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, ANY, nonNumeric,
+                        JavaScriptVerifier.numericVerifier(JavaScriptVerifier.cannotMixBigInt(null, true))));
         // -
-        ops.add(createBinaryOperator(context, "-", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, "-", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.cannotMixBigInt(null)));
         // *
-        ops.add(createBinaryOperator(context, "*", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
-        // /
-        ops.add(createBinaryOperator(context, "/", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
-        // %
-        ops.add(createBinaryOperator(context, "%", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
-        // **
-        ops.add(createBinaryOperator(context, "**", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, "*", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.cannotMixBigInt(null)));
+        // / (x / y): RangeError if y is 0 of type bigint.
+        ops.add(createBinaryOperator(context, "/", TypeDescriptor.NUMBER, ANY, ANY,
+                        JavaScriptVerifier.bigIntNonZero(1, JavaScriptVerifier.cannotMixBigInt(null))));
+        // % (x % y): RangeError if y is 0 of type bigint.
+        ops.add(createBinaryOperator(context, "%", TypeDescriptor.NUMBER, ANY, ANY,
+                        JavaScriptVerifier.bigIntNonZero(1, JavaScriptVerifier.cannotMixBigInt(null))));
+        // ** (x ** y): RangeError if y is a BigInt and negative or result too large
+        ops.add(createBinaryOperator(context, "**", TypeDescriptor.NUMBER, ANY, ANY,
+                        JavaScriptVerifier.bigIntRangeBinary(JavaScriptVerifier.cannotMixBigInt(null),
+                                        (x, y) -> y.compareTo(BigInteger.ZERO) >= 0 &&
+                                                        (x.equals(BigInteger.ZERO) || x.equals(BigInteger.ONE) || y.compareTo(BigInteger.valueOf(10)) <= 0))));
         // <
-        ops.add(createBinaryOperator(context, "<", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, "<", TypeDescriptor.BOOLEAN, ANY, ANY));
         // >
-        ops.add(createBinaryOperator(context, ">", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, ">", TypeDescriptor.BOOLEAN, ANY, ANY));
         // <=
-        ops.add(createBinaryOperator(context, "<=", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, "<=", TypeDescriptor.BOOLEAN, ANY, ANY));
         // <=
-        ops.add(createBinaryOperator(context, ">=", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
-        // <<
-        ops.add(createBinaryOperator(context, "<<", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
-        // >>
-        ops.add(createBinaryOperator(context, ">>", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, ">=", TypeDescriptor.BOOLEAN, ANY, ANY));
+        // << (x << y): RangeError if y is a BigInt and result is too large (y >> 0)
+        ops.add(createBinaryOperator(context, "<<", TypeDescriptor.NUMBER, ANY, ANY,
+                        JavaScriptVerifier.bigIntRangeBinary(JavaScriptVerifier.cannotMixBigInt(null),
+                                        (x, y) -> (x.equals(BigInteger.ZERO) || y.compareTo(BigInteger.valueOf(1000)) <= 0))));
+        // >> (x >> y): RangeError if y is a BigInt and result is too large (y << 0)
+        ops.add(createBinaryOperator(context, ">>", TypeDescriptor.NUMBER, ANY, ANY,
+                        JavaScriptVerifier.bigIntRangeBinary(JavaScriptVerifier.cannotMixBigInt(null),
+                                        (x, y) -> (x.equals(BigInteger.ZERO) || y.compareTo(BigInteger.valueOf(-1000)) >= 0))));
         // >>>
-        ops.add(createBinaryOperator(context, ">>>", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        // (BIGINT >>> ANY): TypeError: BigInts have no unsigned right shift
+        ops.add(createBinaryOperator(context, ">>>", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.noBigInt(0, JavaScriptVerifier.cannotMixBigInt(null))));
         // &
-        ops.add(createBinaryOperator(context, "&", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, "&", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.cannotMixBigInt(null)));
         // |
-        ops.add(createBinaryOperator(context, "|", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, "|", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.cannotMixBigInt(null)));
         // ^
-        ops.add(createBinaryOperator(context, "^", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, "^", TypeDescriptor.NUMBER, ANY, ANY, JavaScriptVerifier.cannotMixBigInt(null)));
         // &&
         ops.add(createBinaryOperator(context, "&&", ANY, ANY, ANY));
         // ||
@@ -204,9 +227,9 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // ??
         ops.add(createBinaryOperator(context, "??", ANY, ANY, ANY));
         // ==
-        ops.add(createBinaryOperator(context, "==", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, "==", TypeDescriptor.BOOLEAN, ANY, ANY));
         // !=
-        ops.add(createBinaryOperator(context, "!=", TypeDescriptor.BOOLEAN, ANY, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createBinaryOperator(context, "!=", TypeDescriptor.BOOLEAN, ANY, ANY));
         // ===
         ops.add(createBinaryOperator(context, "===", TypeDescriptor.BOOLEAN, ANY, ANY));
         // !==
@@ -216,20 +239,22 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // instanceof
         ops.add(createBinaryOperator(context, "instanceof", TypeDescriptor.BOOLEAN, ANY, TypeDescriptor.META_OBJECT));
 
+        // UNARY
         // +
-        ops.add(createPrefixOperator(context, "+", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        // (+BIGINT): TypeError: Cannot convert a BigInt value to a number
+        ops.add(createPrefixOperator(context, "+", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.noBigInt(0, JavaScriptVerifier.cannotMixBigInt(null))));
         // -
-        ops.add(createPrefixOperator(context, "-", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createPrefixOperator(context, "-", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.cannotMixBigInt(null)));
         // ~
-        ops.add(createPrefixOperator(context, "~", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createPrefixOperator(context, "~", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.cannotMixBigInt(null)));
         // ++
-        ops.add(createPrefixOperator(context, "++", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createPrefixOperator(context, "++", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.cannotMixBigInt(null)));
         // --
-        ops.add(createPrefixOperator(context, "--", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createPrefixOperator(context, "--", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.cannotMixBigInt(null)));
         // ++
-        ops.add(createPostfixOperator(context, "++", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createPostfixOperator(context, "++", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.cannotMixBigInt(null)));
         // --
-        ops.add(createPostfixOperator(context, "--", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.nonPrimitiveNumberParameterThrows(null)));
+        ops.add(createPostfixOperator(context, "--", TypeDescriptor.NUMBER, ANY, JavaScriptVerifier.cannotMixBigInt(null)));
         // typeof
         ops.add(createPrefixOperator(context, "typeof", TypeDescriptor.STRING, ANY));
         // void
@@ -237,6 +262,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // !
         ops.add(createPrefixOperator(context, "!", TypeDescriptor.BOOLEAN, ANY));
 
+        // TERTIARY
         // a ? b : c
         final Value conditional = eval(context, "(function (a,b,c) {return a ? b : c;})");
         ops.add(Snippet.newBuilder("?:", conditional, TypeDescriptor.ANY).parameterTypes(TypeDescriptor.ANY, TypeDescriptor.ANY, TypeDescriptor.ANY).build());
@@ -381,7 +407,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     final String operator,
                     final TypeDescriptor type,
                     final TypeDescriptor rtype) {
-        return createUnaryOperator(context, PATTERN_PREFIX_OP_FNC, operator, type, rtype, null);
+        return createPrefixOperator(context, operator, type, rtype, null);
     }
 
     private static Snippet createPrefixOperator(
@@ -563,7 +589,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
          * the combination of allowed and subtracted traits). The operator also throws when there is
          * an object on the right side and a non-primitive number on the left side that is also not
          * a host object.
-         * 
+         *
          * @param next the next {@link ResultVerifier} to be called, null for last one
          * @return the {@link ResultVerifier}
          */
@@ -579,7 +605,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                                      * an object. That is why we don't need a special check for
                                      * haystack being an object on the following line
                                      */
-                                    (needle.isNumber() && !needle.fitsInLong() && !needle.fitsInDouble() && !needle.isHostObject());
+                                    (needle.isNumber() && !needle.fitsInLong() && !needle.fitsInDouble() && !needle.fitsInBigInteger() && !needle.isHostObject());
                     if (shouldThrow) {
                         if (snippetRun.getException() == null) {
                             throw new AssertionError("TypeError expected but no error has been thrown.");
@@ -626,26 +652,28 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
             };
         }
 
+        private static boolean isBigInt(Value value) {
+            return value.isNumber() && value.fitsInBigInteger() && (!value.fitsInDouble() || isJSBigInt(value));
+        }
+
+        private static boolean isJSBigInt(Value value) {
+            return value.isNumber() && value.fitsInBigInteger() && value.getMetaObject() != null && value.getMetaObject().getMetaQualifiedName().equals("bigint");
+        }
+
         /**
-         * Creates a {@link ResultVerifier} which expects an error whenever at least one of the
-         * parameters is a non-primitive number.
-         * 
-         * @param next the next {@link ResultVerifier} to be called in case none of the parameters
-         *            is a non-primitive number, null for last one
+         * Creates a {@link ResultVerifier} which expects a TypeError when the specified parameter
+         * is a BigInt.
+         *
+         * @param paramIndex the parameter to be checked if it is of type BigInt
+         * @param next the next {@link ResultVerifier} to be called
          * @return the {@link ResultVerifier}
          */
-        static ResultVerifier nonPrimitiveNumberParameterThrows(ResultVerifier next) {
+        static ResultVerifier noBigInt(int paramIndex, ResultVerifier next) {
             return new JavaScriptVerifier(next) {
                 @Override
                 public void accept(SnippetRun snippetRun) throws PolyglotException {
-                    boolean nonPrimitiveNumberParameter = false;
-                    for (Value actualParameter : snippetRun.getParameters()) {
-                        if (actualParameter.isNumber() && !actualParameter.fitsInLong() && !actualParameter.fitsInDouble()) {
-                            nonPrimitiveNumberParameter = true;
-                            break;
-                        }
-                    }
-                    if (nonPrimitiveNumberParameter) {
+                    Value value = snippetRun.getParameters().get(paramIndex);
+                    if (isBigInt(value)) {
                         if (snippetRun.getException() == null) {
                             throw new AssertionError("TypeError expected but no error has been thrown.");
                         } // else exception expected => ignore
@@ -654,6 +682,103 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     }
                 }
             };
+        }
+
+        /**
+         * Creates a {@link ResultVerifier} which expects a RangeError when the specified parameter
+         * is a BigInt of value zero.
+         *
+         * @param paramIndex the parameter to be checked if it is of type BigInt
+         * @param next the next {@link ResultVerifier} to be called
+         * @return the {@link ResultVerifier}
+         */
+        static ResultVerifier bigIntNonZero(int paramIndex, ResultVerifier next) {
+            return new JavaScriptVerifier(next) {
+                @Override
+                public void accept(SnippetRun snippetRun) throws PolyglotException {
+                    Value value = snippetRun.getParameters().get(paramIndex);
+                    if (isBigInt(value) && value.asBigInteger().equals(BigInteger.ZERO)) {
+                        if (snippetRun.getException() == null) {
+                            throw new AssertionError("RangeError expected but no error has been thrown.");
+                        } // else exception expected => ignore
+                    } else {
+                        super.accept(snippetRun); // no exception expected
+                    }
+                }
+            };
+        }
+
+        /**
+         * Creates a {@link ResultVerifier} for a binary expression which expects a RangeError when
+         * both parameters are of type BigInt and outside the valid/supported range.
+         *
+         * @param next the next {@link ResultVerifier} to be called
+         * @param argsValid a lambda checking if the BigInteger args are valid/supported.
+         *
+         * @return the {@link ResultVerifier}
+         */
+        static ResultVerifier bigIntRangeBinary(ResultVerifier next, BiPredicate<BigInteger, BigInteger> argsValid) {
+            return new JavaScriptVerifier(next) {
+                @Override
+                public void accept(SnippetRun snippetRun) throws PolyglotException {
+                    assert snippetRun.getParameters().size() == 2 : snippetRun.getParameters();
+                    Value x = snippetRun.getParameters().get(0);
+                    Value y = snippetRun.getParameters().get(1);
+                    if (isBigInt(x) && isBigInt(y) && !argsValid.test(x.asBigInteger(), y.asBigInteger())) {
+                        if (snippetRun.getException() == null) {
+                            throw new AssertionError("RangeError expected but no error has been thrown.");
+                        } // else exception expected => ignore
+                    } else {
+                        super.accept(snippetRun); // no exception expected
+                    }
+                }
+            };
+        }
+
+        /**
+         * Creates a {@link ResultVerifier} which expects a TypeError whenever one of the parameters
+         * is a non-primitive number (i.e. a BigInt) and the other parameter is a primitive number
+         * or, unless hintDefault, non-numeric.
+         *
+         * @param next the next {@link ResultVerifier} to be called in case none of the parameters
+         *            is a non-primitive number, null for last one
+         * @param hintDefault ToPrimitive hint - true: "default", false: hint "number".
+         * @return the {@link ResultVerifier}
+         */
+        static ResultVerifier cannotMixBigInt(ResultVerifier next, boolean hintDefault) {
+            return new JavaScriptVerifier(next) {
+                @Override
+                public void accept(SnippetRun snippetRun) throws PolyglotException {
+                    boolean nonPrimitiveNumberParameter = false;
+                    boolean primitiveNumberParameter = false;
+                    boolean nonNumberParameter = false;
+                    for (Value actualParameter : snippetRun.getParameters()) {
+                        if (isBigInt(actualParameter)) {
+                            nonPrimitiveNumberParameter = true;
+                        } else if (actualParameter.fitsInDouble()) {
+                            primitiveNumberParameter = true;
+                        } else if (actualParameter.isInstant()) {
+                            // Instant/Date parameter is converted to Number (fitsInDouble).
+                            primitiveNumberParameter = true;
+                        } else {
+                            nonNumberParameter = true;
+                        }
+                    }
+                    if (nonPrimitiveNumberParameter && (hintDefault
+                                    ? (primitiveNumberParameter)
+                                    : (primitiveNumberParameter || nonNumberParameter))) {
+                        if (snippetRun.getException() == null) {
+                            throw new AssertionError("TypeError expected but no error has been thrown.");
+                        } // else exception expected => ignore
+                    } else {
+                        super.accept(snippetRun); // no exception expected
+                    }
+                }
+            };
+        }
+
+        static ResultVerifier cannotMixBigInt(ResultVerifier next) {
+            return cannotMixBigInt(next, false);
         }
     }
 }
