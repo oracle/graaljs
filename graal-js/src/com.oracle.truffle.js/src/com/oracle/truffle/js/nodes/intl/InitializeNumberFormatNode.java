@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,9 +79,6 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getCompactDisplayOption;
     @Child GetStringOrBooleanOptionNode getUseGroupingOption;
     @Child GetStringOptionNode getSignDisplayOption;
-    @Child GetNumberOptionNode getRoundingIncrementOption;
-    @Child GetStringOptionNode getTrailingZeroDisplayOption;
-    @Child GetStringOptionNode getRoundingModeOption;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializeNumberFormatNode(JSContext context) {
@@ -104,10 +101,6 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         this.getSignDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_SIGN_DISPLAY,
                         new String[]{IntlUtil.AUTO, IntlUtil.NEVER, IntlUtil.ALWAYS, IntlUtil.EXCEPT_ZERO, IntlUtil.NEGATIVE},
                         IntlUtil.AUTO);
-        this.getRoundingIncrementOption = GetNumberOptionNode.create(context, IntlUtil.KEY_ROUNDING_INCREMENT);
-        this.getTrailingZeroDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, new String[]{IntlUtil.AUTO, IntlUtil.STRIP_IF_INTEGER}, IntlUtil.AUTO);
-        this.getRoundingModeOption = GetStringOptionNode.create(context, IntlUtil.KEY_ROUNDING_MODE, new String[]{IntlUtil.CEIL, IntlUtil.FLOOR, IntlUtil.EXPAND, IntlUtil.TRUNC, IntlUtil.HALF_CEIL,
-                        IntlUtil.HALF_FLOOR, IntlUtil.HALF_EXPAND, IntlUtil.HALF_TRUNC, IntlUtil.HALF_EVEN}, IntlUtil.HALF_EXPAND);
         this.setNumberFormatDigitOptions = SetNumberFormatDigitOptionsNode.create(context);
     }
 
@@ -147,36 +140,11 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
                 mxfdDefault = IntlUtil.PERCENT.equals(style) ? 0 : 3;
             }
 
-            int roundingIncrement = getRoundingIncrementOption.executeInt(options, 1, 5000, 1);
-            if (!isValidRoundingIncrement(roundingIncrement)) {
-                errorBranch.enter();
-                throw Errors.createRangeError("roundingIncrement value is out of range.");
-            }
-
-            if (roundingIncrement != 1) {
-                mxfdDefault = mnfdDefault;
-            }
-
             String notation = getNotationOption.executeValue(options);
             state.setNotation(notation);
 
             boolean compactNotation = IntlUtil.COMPACT.equals(notation);
             setNumberFormatDigitOptions.execute(state, options, mnfdDefault, mxfdDefault, compactNotation);
-
-            if (roundingIncrement != 1) {
-                if (!IntlUtil.FRACTION_DIGITS.equals(state.getRoundingType())) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError("roundingIncrement can be used with fractionDigits rounding type only");
-                }
-                if (state.getMinimumFractionDigits().intValue() != state.getMaximumFractionDigits().intValue()) {
-                    errorBranch.enter();
-                    throw Errors.createRangeError("roundingIncrement can be used when minimumFractionDigits and maximumFractionDigits are equal only");
-                }
-            }
-            state.setRoundingIncrement(roundingIncrement);
-
-            String trailingZeroDisplay = getTrailingZeroDisplayOption.executeValue(options);
-            state.setTrailingZeroDisplay(trailingZeroDisplay);
 
             String compactDisplay = getCompactDisplayOption.executeValue(options);
             String defaultUseGrouping = IntlUtil.AUTO;
@@ -193,9 +161,6 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
             String signDisplay = getSignDisplayOption.executeValue(options);
             state.setSignDisplay(signDisplay);
-
-            String roundingMode = getRoundingModeOption.executeValue(options);
-            state.setRoundingMode(roundingMode);
 
             state.initializeNumberFormatter();
         } catch (MissingResourceException e) {
@@ -242,29 +207,6 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         } else if (styleIsUnit) {
             state.setUnit(unit);
             state.setUnitDisplay(unitDisplay);
-        }
-    }
-
-    private static boolean isValidRoundingIncrement(int roundingIncrement) {
-        switch (roundingIncrement) {
-            case 1:
-            case 2:
-            case 5:
-            case 10:
-            case 20:
-            case 25:
-            case 50:
-            case 100:
-            case 200:
-            case 250:
-            case 500:
-            case 1000:
-            case 2000:
-            case 2500:
-            case 5000:
-                return true;
-            default:
-                return false;
         }
     }
 
