@@ -76,13 +76,8 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
         return context.trackAllocation(obj);
     }
 
-    private static Number getNumberField(JSDynamicObject obj) {
-        assert isJSNumber(obj);
-        return ((JSNumberObject) obj).getNumber();
-    }
-
     public static Number valueOf(JSDynamicObject obj) {
-        return getNumberField(obj);
+        return ((JSNumberObject) obj).getNumber();
     }
 
     @Override
