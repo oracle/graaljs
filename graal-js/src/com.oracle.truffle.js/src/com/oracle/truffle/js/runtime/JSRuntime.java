@@ -196,6 +196,11 @@ public final class JSRuntime {
         }
     }
 
+    public static boolean longFitsInDouble(long l) {
+        double d = l;
+        return l != Long.MAX_VALUE && (long) d == l;
+    }
+
     public static boolean isNaN(Object value) {
         if (!(value instanceof Double)) {
             return false;
