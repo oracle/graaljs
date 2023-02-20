@@ -114,12 +114,15 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static long doLong(long value) {
+    protected static BigInt doBigInt(BigInt value) {
         return value;
     }
 
+    /**
+     * Treat long values as BigInt for comparison purposes.
+     */
     @Specialization
-    protected static BigInt doBigInt(BigInt value) {
-        return value;
+    protected static BigInt doLong(long value) {
+        return BigInt.valueOf(value);
     }
 }

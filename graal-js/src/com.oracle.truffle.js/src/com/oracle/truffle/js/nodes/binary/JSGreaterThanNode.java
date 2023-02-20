@@ -149,11 +149,6 @@ public abstract class JSGreaterThanNode extends JSCompareNode {
     }
 
     @Specialization
-    protected static boolean doBigIntAndLong(BigInt a, long b) {
-        return a.compareValueTo(b) > 0;
-    }
-
-    @Specialization
     protected static boolean doBigIntAndNumber(BigInt a, double b) {
         if (Double.isNaN(b)) {
             return false;
@@ -167,21 +162,11 @@ public abstract class JSGreaterThanNode extends JSCompareNode {
     }
 
     @Specialization
-    protected static boolean doLongAndBigInt(long a, BigInt b) {
-        return b.compareValueTo(a) < 0;
-    }
-
-    @Specialization
     protected static boolean doNumberAndBigInt(double a, BigInt b) {
         if (Double.isNaN(a)) {
             return false;
         }
         return b.compareValueTo(a) < 0;
-    }
-
-    @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"})
-    protected static boolean doJavaNumber(Object a, Object b) {
-        return doDouble(JSRuntime.doubleValue((Number) a), JSRuntime.doubleValue((Number) b));
     }
 
     @InliningCutoff
@@ -197,8 +182,9 @@ public abstract class JSGreaterThanNode extends JSCompareNode {
         return Strings.ANGLE_BRACKET_OPEN;
     }
 
-    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString",
-                    "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {
+                    "doString", "doStringDouble", "doDoubleString", "doStringBigInt", "doBigIntString",
+                    "doBigInt", "doBigIntAndInt", "doIntAndBigInt", "doBigIntAndNumber", "doNumberAndBigInt"})
     protected static boolean doGeneric(Object a, Object b,
                     @Cached JSToStringOrNumberNode toStringOrNumber1,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive1,
