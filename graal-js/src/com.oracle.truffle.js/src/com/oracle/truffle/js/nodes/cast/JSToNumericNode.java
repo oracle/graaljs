@@ -128,19 +128,13 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization(guards = "isJSBigInt(value)")
-    protected Object doJSBigInt(Object value,
-                    @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
-        return toPrimitiveNode.execute(value);
-    }
-
     @Specialization(guards = {"isToNumericOperand()"})
     protected Object doOverloaded(JSOverloadedOperatorsObject arg) {
         checkOverloadedOperatorsAllowed(arg, this);
         return arg;
     }
 
-    @Specialization(guards = {"isToNumericOperand()", "!isJSBigInt(value)", "!hasOverloadedOperators(value)"})
+    @Specialization(guards = {"isToNumericOperand()", "!hasOverloadedOperators(value)"})
     protected Object doToNumericOperandOther(Object value,
                     @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
@@ -151,7 +145,7 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return toNumberNode.executeNumber(primValue);
     }
 
-    @Specialization(guards = {"!isToNumericOperand()", "!isJSBigInt(value)"})
+    @Specialization(guards = {"!isToNumericOperand()"})
     protected Object doToNumericOther(Object value,
                     @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
