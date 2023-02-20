@@ -498,6 +498,14 @@ public final class JSGuards {
         return value instanceof Number && JSRuntime.isJavaPrimitive(value);
     }
 
+    public static boolean isForeignObjectOrNumber(Object a) {
+        return isForeignObject(a) || isForeignNumber(a);
+    }
+
+    public static boolean isForeignNumber(Object a) {
+        return a instanceof Number && !JSRuntime.isNumber(a);
+    }
+
     public static boolean isNullOrUndefined(Object value) {
         return JSRuntime.isNullOrUndefined(value);
     }
