@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -139,6 +139,11 @@ public class ObjectIdentityTest {
         try (Context context = JSTest.newContextBuilder().build()) {
             Object value1 = ForeignBoxedObject.createNew(42);
             Object value2 = ForeignBoxedObject.createNew(42);
+            Object value3 = ForeignBoxedObject.createNew(43);
+
+            // Numbers have no identity.
+            assertFalse(InteropLibrary.getUncached().isIdentical(value1, value1, InteropLibrary.getUncached()));
+            assertFalse(InteropLibrary.getUncached().isIdentical(value1, value2, InteropLibrary.getUncached()));
 
             Value equals = context.eval(ID, "(function(a, b){return a == b;})");
             Value identical = context.eval(ID, "(function(a, b){return a === b;})");
@@ -146,10 +151,15 @@ public class ObjectIdentityTest {
             // Value equality comparison
             assertTrue(equals.execute(value1, value1).asBoolean());
             assertTrue(equals.execute(value1, value2).asBoolean());
+            assertFalse(equals.execute(value2, value3).asBoolean());
 
-            // Always false because these values have no identity!
-            assertFalse(identical.execute(value1, value1).asBoolean());
-            assertFalse(identical.execute(value1, value2).asBoolean());
+            assertTrue(equals.execute(value1, 42).asBoolean());
+
+            assertTrue(identical.execute(value1, value1).asBoolean());
+            assertTrue(identical.execute(value1, value2).asBoolean());
+            assertFalse(identical.execute(value2, value3).asBoolean());
+
+            assertTrue(identical.execute(value1, 42).asBoolean());
         }
     }
 
