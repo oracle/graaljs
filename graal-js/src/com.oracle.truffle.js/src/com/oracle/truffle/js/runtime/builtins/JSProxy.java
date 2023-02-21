@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -305,7 +305,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @TruffleBoundary
     @Override
     public boolean hasOwnProperty(JSDynamicObject thisObj, long index) {
-        return hasOwnProperty(thisObj, JSRuntime.toString(index));
+        return hasOwnProperty(thisObj, Strings.fromLong(index));
     }
 
     @TruffleBoundary
@@ -320,7 +320,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @TruffleBoundary
     @Override
     public boolean hasProperty(JSDynamicObject thisObj, long index) {
-        return hasProperty(thisObj, JSRuntime.toString(index));
+        return hasProperty(thisObj, Strings.fromLong(index));
     }
 
     @TruffleBoundary

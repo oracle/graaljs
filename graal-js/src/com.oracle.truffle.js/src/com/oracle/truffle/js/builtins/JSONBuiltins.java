@@ -244,11 +244,12 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
         @Specialization(guards = "isArray(replacerObj)")
         protected Object stringifyReplacerArray(Object value, JSDynamicObject replacerObj, Object spaceParam) {
-            int len = (int) JSRuntime.toLength(JSObject.get(replacerObj, JSArray.LENGTH));
+            long len = JSRuntime.toLength(JSObject.get(replacerObj, JSArray.LENGTH));
             List<Object> replacerList = new ArrayList<>();
-            for (int i = 0; i < len; i++) {
+            for (long i = 0; i < len; i++) {
                 // harmony/proxies-json.js requires toString()
-                Object v = JSObject.get(replacerObj, JSRuntime.toString(i));
+                TruffleString k = Strings.fromLong(i);
+                Object v = JSObject.get(replacerObj, k);
                 Object item = null; // Let item be undefined.
                 if (Strings.isTString(v)) {
                     item = JSRuntime.toStringIsString(v);
