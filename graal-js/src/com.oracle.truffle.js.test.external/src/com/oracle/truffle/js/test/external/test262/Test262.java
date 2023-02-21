@@ -47,7 +47,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Source;
@@ -189,9 +188,6 @@ public class Test262 extends TestSuite {
 
     public static void main(String[] args) throws Exception {
         SuiteConfig.Builder configBuilder = new SuiteConfig.Builder(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
-
-        TimeZone pstZone = TimeZone.getTimeZone("PST"); // =Californian Time (PST)
-        TimeZone.setDefault(pstZone);
 
         System.out.println("Checking your Javascript conformance. Using ECMAScript Test262 testsuite.\n");
 

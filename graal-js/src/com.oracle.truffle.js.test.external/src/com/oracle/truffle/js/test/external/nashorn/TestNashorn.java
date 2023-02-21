@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,9 +47,7 @@ import java.io.PrintStream;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.TimeZone;
 
 import com.oracle.truffle.js.test.external.suite.SuiteConfig;
 import com.oracle.truffle.js.test.external.suite.TestFile;
@@ -224,10 +222,6 @@ public class TestNashorn extends TestSuite {
 
     public static void main(String[] args) throws Exception {
         SuiteConfig.Builder configBuilder = new SuiteConfig.Builder(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
-
-        Locale.setDefault(Locale.US);
-        TimeZone pstZone = TimeZone.getTimeZone("PST"); // Californian Time (PST)
-        TimeZone.setDefault(pstZone);
 
         System.out.println("Checking your Javascript conformance. Using Nashorn testsuite.\n");
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.test.external.suite;
 
 import java.nio.file.Paths;
+import java.time.ZoneId;
+import java.util.Locale;
 import java.util.Map;
 
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -94,11 +96,15 @@ public class SuiteConfig {
 
     private final String extLauncher;
 
+    private final String locale;
+    private final ZoneId timeZone;
+
     SuiteConfig(String suiteName, String suiteDescription,
                     String suiteLoc, String suiteTestsLoc, String suiteHarnessLoc, String suiteConfigLoc,
                     boolean useThreads, boolean verbose, boolean verboseFail, boolean runOnGate, boolean gateResume, boolean printCommand, boolean printScript, boolean saveOutput, boolean compile,
                     boolean instrument, boolean snapshot, boolean polyglot, boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int timeoutTest, int timeoutOverall,
-                    String containsFilter, String regexFilter, String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher, boolean shareEngine, int minESVersion) {
+                    String containsFilter, String regexFilter, String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher, boolean shareEngine, int minESVersion,
+                    String locale, ZoneId timeZone) {
         this.suiteName = suiteName;
         this.suiteDescription = suiteDescription;
         this.suiteLoc = suiteLoc;
@@ -130,6 +136,8 @@ public class SuiteConfig {
         this.extLauncher = extLauncher;
         this.shareEngine = shareEngine;
         this.minESVersion = minESVersion;
+        this.locale = locale;
+        this.timeZone = timeZone;
     }
 
     public String getSuiteName() {
@@ -264,6 +272,14 @@ public class SuiteConfig {
         return extLauncher;
     }
 
+    public String getLocale() {
+        return locale;
+    }
+
+    public ZoneId getTimeZone() {
+        return timeZone;
+    }
+
     public void addCommonOptions(Map<String, String> options) {
         if (isCompile()) {
             options.put("engine.CompileImmediately", "true");
@@ -316,6 +332,9 @@ public class SuiteConfig {
         private int minESVersion = JSConfig.LatestECMAScriptVersion;
 
         private String extLauncher;
+
+        private String locale = Locale.US.toLanguageTag(); // en-US
+        private ZoneId timeZone = ZoneId.of("PST", ZoneId.SHORT_IDS);
 
         public Builder(String suiteName, String suiteDescription, String defaultSuiteLoc, String defaultSuiteConfigLoc, String suiteTestsRelLoc, String suiteHarnessRelLoc) {
             this.suiteName = suiteName;
@@ -450,7 +469,7 @@ public class SuiteConfig {
         public SuiteConfig build() {
             return new SuiteConfig(suiteName, suiteDescription, suiteLoc, suiteTestsLoc, suiteHarnessLoc, suiteConfigLoc, useThreads, verbose, verboseFail, runOnGate, gateResume, printCommand,
                             printScript, saveOutput, compile, instrument, snapshot, polyglot, htmlOutput, textOutput, regenerateConfig, timeoutTest, timeoutOverall, containsFilter, regexFilter,
-                            endsWithFilter, printFullOutput, outputFilter, extLauncher, shareEngine, minESVersion);
+                            endsWithFilter, printFullOutput, outputFilter, extLauncher, shareEngine, minESVersion, locale, timeZone);
         }
     }
 }

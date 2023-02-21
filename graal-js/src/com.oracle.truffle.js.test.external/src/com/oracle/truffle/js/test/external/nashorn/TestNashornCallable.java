@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
@@ -86,7 +85,6 @@ public class TestNashornCallable extends TestCallable {
 
         int ecmaScriptVersion = languageES6 ? 6 : TESTNASHORN_ECMASCRIPT_VERSION;
 
-        Context.Builder contextBuilder = Context.newBuilder(JavaScriptLanguage.ID);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         contextBuilder.out(out);
         ByteArrayOutputStream err = new ByteArrayOutputStream();
@@ -96,7 +94,6 @@ public class TestNashornCallable extends TestCallable {
         contextBuilder.allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build());
         contextBuilder.allowExperimentalOptions(true);
 
-        contextBuilder.option("engine.WarnInterpreterOnly", Boolean.toString(false));
         contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, ecmaScriptVersionToOptionString(ecmaScriptVersion));
         contextBuilder.option(JSContextOptions.STRICT_NAME, Boolean.toString(forceStrictMode));
         contextBuilder.option(JSContextOptions.SCRIPTING_NAME, Boolean.toString(scripting));
@@ -108,6 +105,9 @@ public class TestNashornCallable extends TestCallable {
         contextBuilder.option(JSContextOptions.GLOBAL_ARGUMENTS_NAME, "true");
         if (!arguments.isEmpty()) {
             contextBuilder.arguments(JavaScriptLanguage.ID, arguments.toArray(new String[0]));
+        }
+        if (locale != null) {
+            contextBuilder.option(JSContextOptions.LOCALE_NAME, locale);
         }
         if (timezone != null) {
             contextBuilder.option(JSContextOptions.TIME_ZONE_NAME, timezone);
@@ -135,8 +135,6 @@ public class TestNashornCallable extends TestCallable {
         if (localeIndex > 0) {
             int localeEndIndex = scriptCode.indexOf("\n", localeIndex);
             locale = scriptCode.substring(localeIndex + 17, localeEndIndex);
-            Locale loc = Locale.forLanguageTag(locale);
-            Locale.setDefault(loc);
         }
         int argumentIndex = scriptCode.indexOf("@argument");
         while (argumentIndex >= 0) {
