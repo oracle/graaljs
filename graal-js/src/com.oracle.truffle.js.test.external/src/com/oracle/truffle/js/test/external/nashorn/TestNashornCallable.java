@@ -187,8 +187,4 @@ public class TestNashornCallable extends TestCallable {
     public String getResultError() {
         return resultErr;
     }
-
-    boolean usedCustomLocale() {
-        return locale != null;
-    }
 }
