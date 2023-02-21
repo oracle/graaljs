@@ -100,6 +100,11 @@ public abstract class JSGreaterOrEqualNode extends JSCompareNode {
     }
 
     @Specialization
+    protected static boolean doLong(long a, long b) {
+        return a >= b;
+    }
+
+    @Specialization
     protected static boolean doDouble(double a, double b) {
         return a >= b;
     }
@@ -145,6 +150,11 @@ public abstract class JSGreaterOrEqualNode extends JSCompareNode {
     }
 
     @Specialization
+    protected static boolean doBigIntAndLong(BigInt a, long b) {
+        return a.compareValueTo(b) >= 0;
+    }
+
+    @Specialization
     protected static boolean doBigIntAndNumber(BigInt a, double b) {
         if (Double.isNaN(b)) {
             return false;
@@ -154,6 +164,11 @@ public abstract class JSGreaterOrEqualNode extends JSCompareNode {
 
     @Specialization
     protected static boolean doIntAndBigInt(int a, BigInt b) {
+        return b.compareValueTo(a) <= 0;
+    }
+
+    @Specialization
+    protected static boolean doLongAndBigInt(long a, BigInt b) {
         return b.compareValueTo(a) <= 0;
     }
 
