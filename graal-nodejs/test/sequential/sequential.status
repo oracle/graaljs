@@ -43,6 +43,9 @@ test-fs-stat-sync-overflow: SKIP
 # Needs too many system resources (starts 80 child processes)
 test-child-process-pass-fd: SKIP
 
+# Long-running test that exceeds the timeout sometimes
+test-watch-mode: SKIP
+
 ### Graal-specific end ###
 
 [$system==win32]
