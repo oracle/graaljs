@@ -7,6 +7,9 @@ prefix sequential
 [true] # This section applies to all platforms
 # https://github.com/nodejs/node/issues/27611#issuecomment-613100468
 test-cpu-prof-dir-worker: PASS, FLAKY
+# https://github.com/nodejs/node/issues/44898
+test-watch-mode: PASS, FLAKY
+test-watch-mode-inspect: PASS, FLAKY
 
 ### Graal.js-specific ###
 
@@ -39,6 +42,9 @@ test-fs-stat-sync-overflow: SKIP
 
 # Needs too many system resources (starts 80 child processes)
 test-child-process-pass-fd: SKIP
+
+# Long-running test that exceeds the timeout sometimes
+test-watch-mode: SKIP
 
 ### Graal-specific end ###
 

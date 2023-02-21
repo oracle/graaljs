@@ -29,6 +29,7 @@
     'error_on_warn%': 'false',
 
     'openssl_fips%': '',
+    'openssl_product': '<(STATIC_LIB_PREFIX)openssl<(STATIC_LIB_SUFFIX)',
     'openssl_no_asm%': 0,
 
     # Don't use ICU data file (icudtl.dat) from V8, we use our own.
@@ -36,7 +37,7 @@
 
     # Reset this number to 0 on major V8 upgrades.
     # Increment by one for each non-official patch applied to deps/v8.
-    'v8_embedder_string': '-node.22',
+    'v8_embedder_string': '-node.24',
 
     ##### V8 defaults for Node.js #####
 
@@ -100,11 +101,6 @@
       }, {
         'obj_dir%': '<(PRODUCT_DIR)/obj.target',
         'v8_base': '<(PRODUCT_DIR)/obj.target/tools/v8_gypfiles/libv8_snapshot.a',
-      }],
-      ['openssl_fips != ""', {
-        'openssl_product': '<(STATIC_LIB_PREFIX)openssl<(STATIC_LIB_SUFFIX)',
-      }, {
-        'openssl_product': '<(STATIC_LIB_PREFIX)openssl<(STATIC_LIB_SUFFIX)',
       }],
       ['OS=="mac"', {
         'clang%': 1,

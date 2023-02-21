@@ -7,7 +7,7 @@ import { URL, URLSearchParams } from 'url'
 import { ReadableStream } from 'stream/web'
 import { FormData } from './formdata'
 
-import Dispatcher = require('./dispatcher')
+import Dispatcher from './dispatcher'
 
 export type RequestInfo = string | URL | Request
 
@@ -59,6 +59,7 @@ export declare class Headers implements SpecIterable<[string, string]> {
   readonly get: (name: string) => string | null
   readonly has: (name: string) => boolean
   readonly set: (name: string, value: string) => void
+  readonly getSetCookie: () => string[]
   readonly forEach: (
     callbackfn: (value: string, key: string, iterable: Headers) => void,
     thisArg?: unknown
@@ -114,6 +115,7 @@ export interface RequestInit {
   referrerPolicy?: ReferrerPolicy
   window?: null
   dispatcher?: Dispatcher
+  duplex?: RequestDuplex
 }
 
 export type ReferrerPolicy =
@@ -131,6 +133,8 @@ export type RequestMode = 'cors' | 'navigate' | 'no-cors' | 'same-origin'
 
 export type RequestRedirect = 'error' | 'follow' | 'manual'
 
+export type RequestDuplex = 'half'
+
 export declare class Request implements BodyMixin {
   constructor (input: RequestInfo, init?: RequestInit)
 
@@ -147,6 +151,7 @@ export declare class Request implements BodyMixin {
 
   readonly keepalive: boolean
   readonly signal: AbortSignal
+  readonly duplex: RequestDuplex
 
   readonly body: ReadableStream | null
   readonly bodyUsed: boolean

@@ -17,7 +17,7 @@ const {
   ERR_MANIFEST_DEPENDENCY_MISSING,
   ERR_UNKNOWN_BUILTIN_MODULE
 } = require('internal/errors').codes;
-const { NativeModule } = require('internal/bootstrap/loaders');
+const { BuiltinModule } = require('internal/bootstrap/loaders');
 
 const { validateString } = require('internal/validators');
 const path = require('path');
@@ -26,6 +26,10 @@ const { pathToFileURL, fileURLToPath, URL } = require('internal/url');
 const { getOptionValue } = require('internal/options');
 const { setOwnProperty } = require('internal/util');
 const userConditions = getOptionValue('--conditions');
+
+const {
+  require_private_symbol,
+} = internalBinding('util');
 
 let debug = require('internal/util/debuglog').debuglog('module', (fn) => {
   debug = fn;
@@ -42,10 +46,10 @@ const cjsConditions = new SafeSet([
   ...userConditions,
 ]);
 
-function loadNativeModule(filename, request) {
-  const mod = NativeModule.map.get(filename);
+function loadBuiltinModule(filename, request) {
+  const mod = BuiltinModule.map.get(filename);
   if (mod?.canBeRequiredByUsers) {
-    debug('load native module %s', request);
+    debug('load built-in module %s', request);
     // compileForPublicLoader() throws if mod.canBeRequiredByUsers is false:
     mod.compileForPublicLoader();
     return mod;
@@ -73,7 +77,7 @@ function makeRequireFunction(mod, redirects) {
         const href = destination.href;
         if (destination.protocol === 'node:') {
           const specifier = destination.pathname;
-          const mod = loadNativeModule(specifier, href);
+          const mod = loadBuiltinModule(specifier, href);
           if (mod && mod.canBeRequiredByUsers) {
             return mod.exports;
           }
@@ -86,7 +90,7 @@ function makeRequireFunction(mod, redirects) {
             filepath = fileURLToPath(destination);
             urlToFileCache.set(href, filepath);
           }
-          return mod.require(filepath);
+          return mod[require_private_symbol](mod, filepath);
         }
       }
       if (missing) {
@@ -96,10 +100,11 @@ function makeRequireFunction(mod, redirects) {
           ArrayPrototypeJoin([...conditions], ', ')
         ));
       }
-      return mod.require(specifier);
+      return mod[require_private_symbol](mod, specifier);
     };
   } else {
     require = function require(path) {
+      // When no policy manifest, the original prototype.require is sustained
       return mod.require(path);
     };
   }
@@ -230,7 +235,7 @@ module.exports = {
   addBuiltinLibsToObject,
   cjsConditions,
   hasEsmSyntax,
-  loadNativeModule,
+  loadBuiltinModule,
   makeRequireFunction,
   normalizeReferrerURL,
   stripBOM,

@@ -74,7 +74,7 @@ module.exports = {
   get hasLoadedAnyUserCJSModule() { return hasLoadedAnyUserCJSModule; }
 };
 
-const { NativeModule } = require('internal/bootstrap/loaders');
+const { BuiltinModule } = require('internal/bootstrap/loaders');
 const {
   maybeCacheSourceMap,
 } = require('internal/source_map/source_map_cache');
@@ -96,9 +96,12 @@ const { internalModuleStat } = internalBinding('fs');
 const packageJsonReader = require('internal/modules/package_json_reader');
 const { safeGetenv } = internalBinding('credentials');
 const {
+  require_private_symbol,
+} = internalBinding('util');
+const {
   cjsConditions,
   hasEsmSyntax,
-  loadNativeModule,
+  loadBuiltinModule,
   makeRequireFunction,
   normalizeReferrerURL,
   stripBOM,
@@ -106,6 +109,7 @@ const {
 const { getOptionValue } = require('internal/options');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
+const shouldReportRequiredModules = process.env.WATCH_REPORT_DEPENDENCIES;
 // Do not eagerly grab .manifest, it may be in TDZ
 const policy = getOptionValue('--experimental-policy') ?
   require('internal/process/policy') :
@@ -154,6 +158,20 @@ let requireDepth = 0;
 let statCache = null;
 let isPreloading = false;
 
+function internalRequire(module, id) {
+  validateString(id, 'id');
+  if (id === '') {
+    throw new ERR_INVALID_ARG_VALUE('id', id,
+                                    'must be a non-empty string');
+  }
+  requireDepth++;
+  try {
+    return Module._load(id, module, /* isMain */ false);
+  } finally {
+    requireDepth--;
+  }
+}
+
 function stat(filename) {
   filename = path.toNamespacedPath(filename);
   if (statCache !== null) {
@@ -186,6 +204,12 @@ function updateChildren(parent, child, scan) {
     ArrayPrototypePush(children, child);
 }
 
+function reportModuleToWatchMode(filename) {
+  if (shouldReportRequiredModules && process.send) {
+    process.send({ 'watch:require': filename });
+  }
+}
+
 const moduleParentCache = new SafeWeakMap();
 function Module(id = '', parent) {
   this.id = id;
@@ -196,12 +220,20 @@ function Module(id = '', parent) {
   this.filename = null;
   this.loaded = false;
   this.children = [];
+  let redirects;
+  if (policy?.manifest) {
+    const moduleURL = pathToFileURL(id);
+    redirects = policy.manifest.getDependencyMapper(moduleURL);
+    // TODO(rafaelgss): remove the necessity of this branch
+    setOwnProperty(this, 'require', makeRequireFunction(this, redirects));
+  }
+  this[require_private_symbol] = internalRequire;
 }
 
 const builtinModules = [];
-for (const { 0: id, 1: mod } of NativeModule.map) {
+for (const { 0: id, 1: mod } of BuiltinModule.map) {
   if (mod.canBeRequiredByUsers &&
-    NativeModule.canBeRequiredWithoutScheme(id)) {
+    BuiltinModule.canBeRequiredWithoutScheme(id)) {
     ArrayPrototypePush(builtinModules, id);
   }
 }
@@ -209,7 +241,7 @@ for (const { 0: id, 1: mod } of NativeModule.map) {
 const allBuiltins = new SafeSet(
   ArrayPrototypeFlatMap(builtinModules, (bm) => [bm, `node:${bm}`])
 );
-NativeModule.getSchemeOnlyModuleNames().forEach((builtin) => allBuiltins.add(`node:${builtin}`));
+BuiltinModule.getSchemeOnlyModuleNames().forEach((builtin) => allBuiltins.add(`node:${builtin}`));
 
 ObjectFreeze(builtinModules);
 Module.builtinModules = builtinModules;
@@ -272,7 +304,7 @@ ObjectDefineProperty(Module, 'wrapper', {
 
 const isPreloadingDesc = { get() { return isPreloading; } };
 ObjectDefineProperty(Module.prototype, 'isPreloading', isPreloadingDesc);
-ObjectDefineProperty(NativeModule.prototype, 'isPreloading', isPreloadingDesc);
+ObjectDefineProperty(BuiltinModule.prototype, 'isPreloading', isPreloadingDesc);
 
 function getModuleParent() {
   return moduleParentCache.get(this);
@@ -705,8 +737,8 @@ if (isWindows) {
 }
 
 Module._resolveLookupPaths = function(request, parent) {
-  if (NativeModule.canBeRequiredByUsers(request) &&
-      NativeModule.canBeRequiredWithoutScheme(request)) {
+  if (BuiltinModule.canBeRequiredByUsers(request) &&
+      BuiltinModule.canBeRequiredWithoutScheme(request)) {
     debug('looking for %j in []', request);
     return null;
   }
@@ -793,7 +825,7 @@ function getExportsForCircularRequire(module) {
 // Check the cache for the requested file.
 // 1. If a module already exists in the cache: return its exports object.
 // 2. If the module is native: call
-//    `NativeModule.prototype.compileForPublicLoader()` and return the exports.
+//    `BuiltinModule.prototype.compileForPublicLoader()` and return the exports.
 // 3. Otherwise, create a new module for the file and save it to the cache.
 //    Then have it load  the file contents before returning its exports
 //    object.
@@ -806,6 +838,7 @@ Module._load = function(request, parent, isMain) {
     // cache key names.
     relResolveCacheIdentifier = `${parent.path}\x00${request}`;
     const filename = relativeResolveCache[relResolveCacheIdentifier];
+    reportModuleToWatchMode(filename);
     if (filename !== undefined) {
       const cachedModule = Module._cache[filename];
       if (cachedModule !== undefined) {
@@ -822,7 +855,7 @@ Module._load = function(request, parent, isMain) {
     // Slice 'node:' prefix
     const id = StringPrototypeSlice(request, 5);
 
-    const module = loadNativeModule(id, request);
+    const module = loadBuiltinModule(id, request);
     if (!module?.canBeRequiredByUsers) {
       throw new ERR_UNKNOWN_BUILTIN_MODULE(request);
     }
@@ -844,9 +877,9 @@ Module._load = function(request, parent, isMain) {
     }
   }
 
-  const mod = loadNativeModule(filename, request);
+  const mod = loadBuiltinModule(filename, request);
   if (mod?.canBeRequiredByUsers &&
-      NativeModule.canBeRequiredWithoutScheme(filename)) {
+      BuiltinModule.canBeRequiredWithoutScheme(filename)) {
     return mod.exports;
   }
 
@@ -855,8 +888,11 @@ Module._load = function(request, parent, isMain) {
 
   if (isMain) {
     process.mainModule = module;
+    setOwnProperty(module.require, 'main', process.mainModule);
     module.id = '.';
   }
+
+  reportModuleToWatchMode(filename);
 
   Module._cache[filename] = module;
   if (parent !== undefined) {
@@ -895,10 +931,10 @@ Module._resolveFilename = function(request, parent, isMain, options) {
   if (
     (
       StringPrototypeStartsWith(request, 'node:') &&
-      NativeModule.canBeRequiredByUsers(StringPrototypeSlice(request, 5))
+      BuiltinModule.canBeRequiredByUsers(StringPrototypeSlice(request, 5))
     ) || (
-      NativeModule.canBeRequiredByUsers(request) &&
-      NativeModule.canBeRequiredWithoutScheme(request)
+      BuiltinModule.canBeRequiredByUsers(request) &&
+      BuiltinModule.canBeRequiredWithoutScheme(request)
     )
   ) {
     return request;
@@ -1043,9 +1079,9 @@ Module.prototype.load = function(filename) {
     esmLoader.cjsCache.set(this, exports);
 };
 
-
 // Loads a module at the given file path. Returns that module's
 // `exports` property.
+// Note: when using the experimental policy mechanism this function is overridden
 Module.prototype.require = function(id) {
   validateString(id, 'id');
   if (id === '') {
@@ -1059,7 +1095,6 @@ Module.prototype.require = function(id) {
     requireDepth--;
   }
 };
-
 
 // Resolved path to process.argv[1] will be lazily placed here
 // (needed for setting breakpoint when called with --inspect-brk)
@@ -1109,10 +1144,11 @@ function wrapSafe(filename, content, cjsModuleInstance) {
 Module.prototype._compile = function(content, filename) {
   let moduleURL;
   let redirects;
-  if (policy?.manifest) {
+  const manifest = policy?.manifest;
+  if (manifest) {
     moduleURL = pathToFileURL(filename);
-    redirects = policy.manifest.getDependencyMapper(moduleURL);
-    policy.manifest.assertIntegrity(moduleURL, content);
+    redirects = manifest.getDependencyMapper(moduleURL);
+    manifest.assertIntegrity(moduleURL, content);
   }
 
   maybeCacheSourceMap(filename, content, this);
@@ -1329,14 +1365,14 @@ Module._preloadModules = function(requests) {
     }
   }
   for (let n = 0; n < requests.length; n++)
-    parent.require(requests[n]);
+    internalRequire(parent, requests[n]);
   isPreloading = false;
 };
 
 Module.syncBuiltinESMExports = function syncBuiltinESMExports() {
-  for (const mod of NativeModule.map.values()) {
+  for (const mod of BuiltinModule.map.values()) {
     if (mod.canBeRequiredByUsers &&
-        NativeModule.canBeRequiredWithoutScheme(mod.id)) {
+        BuiltinModule.canBeRequiredWithoutScheme(mod.id)) {
       mod.syncExports();
     }
   }

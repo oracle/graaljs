@@ -16,10 +16,21 @@ const MockPool = require('./lib/mock/mock-pool')
 const mockErrors = require('./lib/mock/mock-errors')
 const ProxyAgent = require('./lib/proxy-agent')
 const { getGlobalDispatcher, setGlobalDispatcher } = require('./lib/global')
+const DecoratorHandler = require('./lib/handler/DecoratorHandler')
+const RedirectHandler = require('./lib/handler/RedirectHandler')
+const createRedirectInterceptor = require('./lib/interceptor/redirectInterceptor')
 
 const nodeVersion = process.versions.node.split('.')
 const nodeMajor = Number(nodeVersion[0])
 const nodeMinor = Number(nodeVersion[1])
+
+let hasCrypto
+try {
+  require('crypto')
+  hasCrypto = true
+} catch {
+  hasCrypto = false
+}
 
 Object.assign(Dispatcher.prototype, api)
 
@@ -29,6 +40,10 @@ module.exports.Pool = Pool
 module.exports.BalancedPool = BalancedPool
 module.exports.Agent = Agent
 module.exports.ProxyAgent = ProxyAgent
+
+module.exports.DecoratorHandler = DecoratorHandler
+module.exports.RedirectHandler = RedirectHandler
+module.exports.createRedirectInterceptor = createRedirectInterceptor
 
 module.exports.buildConnector = buildConnector
 module.exports.errors = errors
@@ -89,16 +104,47 @@ if (nodeMajor > 16 || (nodeMajor === 16 && nodeMinor >= 8)) {
   let fetchImpl = null
   module.exports.fetch = async function fetch (resource) {
     if (!fetchImpl) {
-      fetchImpl = require('./lib/fetch')
+      fetchImpl = require('./lib/fetch').fetch
     }
-    const dispatcher = (arguments[1] && arguments[1].dispatcher) || getGlobalDispatcher()
-    return fetchImpl.apply(dispatcher, arguments)
+
+    try {
+      return await fetchImpl(...arguments)
+    } catch (err) {
+      Error.captureStackTrace(err, this)
+      throw err
+    }
   }
   module.exports.Headers = require('./lib/fetch/headers').Headers
   module.exports.Response = require('./lib/fetch/response').Response
   module.exports.Request = require('./lib/fetch/request').Request
   module.exports.FormData = require('./lib/fetch/formdata').FormData
   module.exports.File = require('./lib/fetch/file').File
+  module.exports.FileReader = require('./lib/fileapi/filereader').FileReader
+
+  const { setGlobalOrigin, getGlobalOrigin } = require('./lib/fetch/global')
+
+  module.exports.setGlobalOrigin = setGlobalOrigin
+  module.exports.getGlobalOrigin = getGlobalOrigin
+}
+
+if (nodeMajor >= 16) {
+  const { deleteCookie, getCookies, getSetCookies, setCookie } = require('./lib/cookies')
+
+  module.exports.deleteCookie = deleteCookie
+  module.exports.getCookies = getCookies
+  module.exports.getSetCookies = getSetCookies
+  module.exports.setCookie = setCookie
+
+  const { parseMIMEType, serializeAMimeType } = require('./lib/fetch/dataURL')
+
+  module.exports.parseMIMEType = parseMIMEType
+  module.exports.serializeAMimeType = serializeAMimeType
+}
+
+if (nodeMajor >= 18 && hasCrypto) {
+  const { WebSocket } = require('./lib/websocket/websocket')
+
+  module.exports.WebSocket = WebSocket
 }
 
 module.exports.request = makeDispatcher(api.request)

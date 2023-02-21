@@ -473,6 +473,10 @@ class ESMLoader {
       getOptionValue('--inspect-brk')
     );
 
+    if (process.env.WATCH_REPORT_DEPENDENCIES && process.send) {
+      process.send({ 'watch:import': url });
+    }
+
     const job = new ModuleJob(
       this,
       url,
@@ -717,7 +721,7 @@ class ESMLoader {
           filename: '<preload>',
         }
       );
-      const { NativeModule } = require('internal/bootstrap/loaders');
+      const { BuiltinModule } = require('internal/bootstrap/loaders');
       // We only allow replacing the importMetaInitializer during preload,
       // after preload is finished, we disable the ability to replace it
       //
@@ -735,8 +739,8 @@ class ESMLoader {
           globalThis,
           // Param getBuiltin
           (builtinName) => {
-            if (NativeModule.canBeRequiredByUsers(builtinName) &&
-                NativeModule.canBeRequiredWithoutScheme(builtinName)) {
+            if (BuiltinModule.canBeRequiredByUsers(builtinName) &&
+                BuiltinModule.canBeRequiredWithoutScheme(builtinName)) {
               return require(builtinName);
             }
             throw new ERR_INVALID_ARG_VALUE('builtinName', builtinName);

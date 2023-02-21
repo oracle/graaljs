@@ -201,9 +201,9 @@ GitHub projects using CMake.js.
 #### prebuildify
 
 [prebuildify][] is a tool based on node-gyp. The advantage of prebuildify is
-that the built binaries are bundled with the native module when it's
+that the built binaries are bundled with the native addon when it's
 uploaded to npm. The binaries are downloaded from npm and are immediately
-available to the module user when the native module is installed.
+available to the module user when the native addon is installed.
 
 ## Usage
 
@@ -579,6 +579,7 @@ typedef enum {
   napi_arraybuffer_expected,
   napi_detachable_arraybuffer_expected,
   napi_would_deadlock,  /* unused */
+  napi_no_external_buffers_allowed
 } napi_status;
 ```
 
@@ -1380,7 +1381,7 @@ callback throws an exception with no way to recover.
 
 ### Fatal errors
 
-In the event of an unrecoverable error in a native module, a fatal error can be
+In the event of an unrecoverable error in a native addon, a fatal error can be
 thrown to immediately terminate the process.
 
 #### `napi_fatal_error`
@@ -2399,6 +2400,19 @@ napi_create_external_arraybuffer(napi_env env,
 
 Returns `napi_ok` if the API succeeded.
 
+**Some runtimes other than Node.js have dropped support for external buffers**.
+On runtimes other than Node.js this method may return
+`napi_no_external_buffers_allowed` to indicate that external
+buffers are not supported. One such runtime is Electron as
+described in this issue
+[electron/issues/35801](https://github.com/electron/electron/issues/35801).
+
+In order to maintain broadest compatibility with all runtimes
+you may define `NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED` in your addon before
+includes for the node-api headers. Doing so will hide the 2 functions
+that create external buffers. This will ensure a compilation error
+occurs if you accidentally use one of these methods.
+
 This API returns a Node-API value corresponding to a JavaScript `ArrayBuffer`.
 The underlying byte buffer of the `ArrayBuffer` is externally allocated and
 managed. The caller must ensure that the byte buffer remains valid until the
@@ -2442,6 +2456,19 @@ napi_status napi_create_external_buffer(napi_env env,
 * `[out] result`: A `napi_value` representing a `node::Buffer`.
 
 Returns `napi_ok` if the API succeeded.
+
+**Some runtimes other than Node.js have dropped support for external buffers**.
+On runtimes other than Node.js this method may return
+`napi_no_external_buffers_allowed` to indicate that external
+buffers are not supported. One such runtime is Electron as
+described in this issue
+[electron/issues/35801](https://github.com/electron/electron/issues/35801).
+
+In order to maintain broadest compatibility with all runtimes
+you may define `NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED` in your addon before
+includes for the node-api headers. Doing so will hide the 2 functions
+that create external buffers. This will ensure a compilation error
+occurs if you accidentally use one of these methods.
 
 This API allocates a `node::Buffer` object and initializes it with data
 backed by the passed in buffer. While this is still a fully-supported data
@@ -5718,7 +5745,7 @@ Returns `napi_ok` if the API succeeded.
 
 This function gives V8 an indication of the amount of externally allocated
 memory that is kept alive by JavaScript objects (i.e. a JavaScript object
-that points to its own memory allocated by a native module). Registering
+that points to its own memory allocated by a native addon). Registering
 externally allocated memory will trigger global garbage collections more
 often than it would otherwise.
 
