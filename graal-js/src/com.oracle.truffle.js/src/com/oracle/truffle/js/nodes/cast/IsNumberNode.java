@@ -41,7 +41,10 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
@@ -49,13 +52,11 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 /**
  * @see JSRuntime#isNumber(Object)
  */
+@GenerateInline
+@GenerateCached(false)
 public abstract class IsNumberNode extends JavaScriptBaseNode {
 
-    public static IsNumberNode create() {
-        return IsNumberNodeGen.create();
-    }
-
-    public abstract boolean execute(Object value);
+    public abstract boolean execute(Node node, Object value);
 
     @Specialization
     protected static boolean doInt(@SuppressWarnings("unused") int value) {
