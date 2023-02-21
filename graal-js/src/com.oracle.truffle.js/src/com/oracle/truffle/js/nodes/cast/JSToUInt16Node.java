@@ -52,11 +52,11 @@ import com.oracle.truffle.js.runtime.JSRuntime;
  */
 public abstract class JSToUInt16Node extends JavaScriptBaseNode {
 
-    public static JSToUInt16Node create() {
-        return JSToUInt16NodeGen.create();
-    }
-
     public abstract int executeInt(Object value);
+
+    public final char executeChar(Object value) {
+        return (char) executeInt(value);
+    }
 
     @Specialization
     protected int doInt(int value) {

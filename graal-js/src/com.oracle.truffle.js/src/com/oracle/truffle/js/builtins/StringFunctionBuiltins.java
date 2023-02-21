@@ -43,11 +43,11 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
-import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCharCodeNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCodePointNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.StringRawNodeGen;
@@ -118,20 +118,10 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         return null;
     }
 
-    public abstract static class JSFromCharCodeNode extends JSNumberOperation {
+    public abstract static class JSFromCharCodeNode extends JSBuiltinNode {
 
         public JSFromCharCodeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-        }
-
-        @Child private JSToUInt16Node toUInt16Node;
-
-        private char toChar(Object target) {
-            if (toUInt16Node == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toUInt16Node = insert(JSToUInt16Node.create());
-            }
-            return (char) toUInt16Node.executeInt(target);
         }
 
         @Specialization(guards = "args.length == 0")
@@ -141,16 +131,18 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "args.length == 1")
         protected Object fromCharCodeOneArg(Object[] args,
+                        @Shared @Cached JSToUInt16Node toUint16,
                         @Cached TruffleString.FromCodePointNode fromCodePointNode) {
-            return Strings.fromCodePoint(fromCodePointNode, toChar(args[0]));
+            return Strings.fromCodePoint(fromCodePointNode, toUint16.executeChar(args[0]));
         }
 
         @Specialization(guards = "args.length >= 2")
         protected Object fromCharCodeTwoOrMore(Object[] args,
+                        @Shared @Cached JSToUInt16Node toUint16,
                         @Cached TruffleString.FromCharArrayUTF16Node fromCharArrayNode) {
             char[] chars = new char[args.length];
             for (int i = 0; i < args.length; i++) {
-                chars[i] = toChar(args[i]);
+                chars[i] = toUint16.executeChar(args[i]);
             }
             return Strings.fromCharArray(fromCharArrayNode, chars);
         }
