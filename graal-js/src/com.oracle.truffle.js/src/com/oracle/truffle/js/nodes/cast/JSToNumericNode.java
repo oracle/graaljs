@@ -47,9 +47,13 @@ import java.util.Set;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -135,23 +139,27 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isToNumericOperand()", "!hasOverloadedOperators(value)"})
-    protected Object doToNumericOperandOther(Object value,
+    protected final Object doToNumericOperandOther(Object value,
                     @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached PrimitiveToNumericOrNullNode numericOrNullNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
         Object primValue = toPrimitiveNode.execute(value);
-        if (JSRuntime.isBigInt(primValue)) {
-            return primValue;
+        Object alreadyNumeric = numericOrNullNode.execute(this, primValue);
+        if (alreadyNumeric != null) {
+            return alreadyNumeric;
         }
         return toNumberNode.executeNumber(primValue);
     }
 
     @Specialization(guards = {"!isToNumericOperand()"})
-    protected Object doToNumericOther(Object value,
+    protected final Object doToNumericOther(Object value,
                     @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached PrimitiveToNumericOrNullNode numericOrNullNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
         Object primValue = toPrimitiveNode.execute(value);
-        if (JSRuntime.isBigInt(primValue)) {
-            return primValue;
+        Object alreadyNumeric = numericOrNullNode.execute(this, primValue);
+        if (alreadyNumeric != null) {
+            return alreadyNumeric;
         }
         return toNumberNode.executeNumber(primValue);
     }
@@ -184,6 +192,36 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         @Override
         public String expressionToString() {
             return getOperand().expressionToString();
+        }
+    }
+
+    /**
+     * Returns true if the value is already a numeric value that should not be converted ToNumber.
+     */
+    @GenerateInline
+    @GenerateCached(false)
+    protected abstract static class PrimitiveToNumericOrNullNode extends JavaScriptBaseNode {
+
+        public abstract Object execute(Node node, Object value);
+
+        @Specialization
+        protected static BigInt doBigInt(@SuppressWarnings("unused") BigInt value) {
+            return value;
+        }
+
+        @Specialization(guards = "longFitsInDouble(value)")
+        protected static double doLongFitsInDouble(long value) {
+            return value;
+        }
+
+        @Specialization(guards = "!longFitsInDouble(value)")
+        protected static BigInt doLongNotFitsInDouble(@SuppressWarnings("unused") long value) {
+            return BigInt.valueOf(value);
+        }
+
+        @Fallback
+        protected static Object doOther(@SuppressWarnings("unused") Object value) {
+            return null;
         }
     }
 }
