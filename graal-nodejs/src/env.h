@@ -35,8 +35,8 @@
 #include "node.h"
 #include "node_binding.h"
 #include "node_external_reference.h"
+#include "node_builtins.h"
 #include "node_main_instance.h"
-#include "node_native_module.h"
 #include "node_options.h"
 #include "node_perf_common.h"
 #include "node_snapshotable.h"
@@ -174,7 +174,8 @@ class NoArrayBufferZeroFillScope {
   V(napi_type_tag, "node:napi:type_tag")                                       \
   V(napi_wrapper, "node:napi:wrapper")                                         \
   V(untransferable_object_private_symbol, "node:untransferableObject")         \
-  V(exiting_aliased_Uint32Array, "node:exiting_aliased_Uint32Array")
+  V(exiting_aliased_Uint32Array, "node:exiting_aliased_Uint32Array")           \
+  V(require_private_symbol, "node:require_private_symbol")
 
 // Symbols are per-isolate primitives but Environment proxies them
 // for the sake of convenience.
@@ -548,7 +549,7 @@ class NoArrayBufferZeroFillScope {
   V(maybe_cache_generated_source_map, v8::Function)                            \
   V(messaging_deserialize_create_object, v8::Function)                         \
   V(message_port, v8::Object)                                                  \
-  V(native_module_require, v8::Function)                                       \
+  V(builtin_module_require, v8::Function)                                      \
   V(performance_entry_callback, v8::Function)                                  \
   V(performance_entry_template, v8::Function)                                  \
   V(prepare_stack_trace_callback, v8::Function)                                \
@@ -947,7 +948,7 @@ struct DeserializeRequest {
 
 struct EnvSerializeInfo {
   std::vector<PropInfo> bindings;
-  std::vector<std::string> native_modules;
+  std::vector<std::string> builtins;
   AsyncHooks::SerializeInfo async_hooks;
   TickInfo::SerializeInfo tick_info;
   ImmediateInfo::SerializeInfo immediate_info;
@@ -1154,11 +1155,11 @@ class Environment : public MemoryRetainer {
   inline std::vector<double>* destroy_async_id_list();
 
   std::set<struct node_module*> internal_bindings;
-  std::set<std::string> native_modules_with_cache;
-  std::set<std::string> native_modules_without_cache;
+  std::set<std::string> builtins_with_cache;
+  std::set<std::string> builtins_without_cache;
   // This is only filled during deserialization. We use a vector since
   // it's only used for tests.
-  std::vector<std::string> native_modules_in_snapshot;
+  std::vector<std::string> builtins_in_snapshot;
 
   std::unordered_multimap<int, loader::ModuleWrap*> hash_to_module_map;
   std::unordered_map<uint32_t, loader::ModuleWrap*> id_to_module_map;
@@ -1243,56 +1244,6 @@ class Environment : public MemoryRetainer {
                                const char* message = nullptr,
                                const char* path = nullptr,
                                const char* dest = nullptr);
-
-  v8::Local<v8::FunctionTemplate> NewFunctionTemplate(
-      v8::FunctionCallback callback,
-      v8::Local<v8::Signature> signature = v8::Local<v8::Signature>(),
-      v8::ConstructorBehavior behavior = v8::ConstructorBehavior::kAllow,
-      v8::SideEffectType side_effect = v8::SideEffectType::kHasSideEffect,
-      const v8::CFunction* c_function = nullptr);
-
-  // Convenience methods for NewFunctionTemplate().
-  void SetMethod(v8::Local<v8::Object> that,
-                 const char* name,
-                 v8::FunctionCallback callback);
-
-  void SetFastMethod(v8::Local<v8::Object> that,
-                     const char* name,
-                     v8::FunctionCallback slow_callback,
-                     const v8::CFunction* c_function);
-
-  void SetProtoMethod(v8::Local<v8::FunctionTemplate> that,
-                      const char* name,
-                      v8::FunctionCallback callback);
-
-  void SetInstanceMethod(v8::Local<v8::FunctionTemplate> that,
-                         const char* name,
-                         v8::FunctionCallback callback);
-
-  // Safe variants denote the function has no side effects.
-  void SetMethodNoSideEffect(v8::Local<v8::Object> that,
-                             const char* name,
-                             v8::FunctionCallback callback);
-  void SetProtoMethodNoSideEffect(v8::Local<v8::FunctionTemplate> that,
-                                  const char* name,
-                                  v8::FunctionCallback callback);
-
-  enum class SetConstructorFunctionFlag {
-    NONE,
-    SET_CLASS_NAME,
-  };
-
-  void SetConstructorFunction(v8::Local<v8::Object> that,
-                              const char* name,
-                              v8::Local<v8::FunctionTemplate> tmpl,
-                              SetConstructorFunctionFlag flag =
-                                  SetConstructorFunctionFlag::SET_CLASS_NAME);
-
-  void SetConstructorFunction(v8::Local<v8::Object> that,
-                              v8::Local<v8::String> name,
-                              v8::Local<v8::FunctionTemplate> tmpl,
-                              SetConstructorFunctionFlag flag =
-                                  SetConstructorFunctionFlag::SET_CLASS_NAME);
 
   void AtExit(void (*cb)(void* arg), void* arg);
   void RunAtExitCallbacks();

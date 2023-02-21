@@ -1,12 +1,10 @@
 'use strict'
 
-const { redirectStatus } = require('./constants')
+const { redirectStatus, badPorts, referrerPolicy: referrerPolicyTokens } = require('./constants')
 const { performance } = require('perf_hooks')
 const { isBlobLike, toUSVString, ReadableStreamFrom } = require('../core/util')
 const assert = require('assert')
 const { isUint8Array } = require('util/types')
-
-let File
 
 // https://nodejs.org/api/crypto.html#determining-if-crypto-support-is-unavailable
 /** @type {import('crypto')|undefined} */
@@ -17,16 +15,6 @@ try {
 } catch {
 
 }
-
-// https://fetch.spec.whatwg.org/#block-bad-port
-const badPorts = [
-  '1', '7', '9', '11', '13', '15', '17', '19', '20', '21', '22', '23', '25', '37', '42', '43', '53', '69', '77', '79',
-  '87', '95', '101', '102', '103', '104', '109', '110', '111', '113', '115', '117', '119', '123', '135', '137',
-  '139', '143', '161', '179', '389', '427', '465', '512', '513', '514', '515', '526', '530', '531', '532',
-  '540', '548', '554', '556', '563', '587', '601', '636', '989', '990', '993', '995', '1719', '1720', '1723',
-  '2049', '3659', '4045', '5060', '5061', '6000', '6566', '6665', '6666', '6667', '6668', '6669', '6697',
-  '10080'
-]
 
 function responseURL (response) {
   // https://fetch.spec.whatwg.org/#responses
@@ -79,18 +67,6 @@ function requestBadPort (request) {
 
   // 3. Return allowed.
   return 'allowed'
-}
-
-function isFileLike (object) {
-  if (!File) {
-    File = require('./file').File
-  }
-  return object instanceof File || (
-    object &&
-    (typeof object.stream === 'function' ||
-     typeof object.arrayBuffer === 'function') &&
-    /^(File)$/.test(object[Symbol.toStringTag])
-  )
 }
 
 function isErrorLike (object) {
@@ -170,13 +146,7 @@ function isValidHeaderName (potentialValue) {
     return false
   }
 
-  for (const char of potentialValue) {
-    if (!isValidHTTPToken(char)) {
-      return false
-    }
-  }
-
-  return true
+  return isValidHTTPToken(potentialValue)
 }
 
 /**
@@ -214,8 +184,31 @@ function setRequestReferrerPolicyOnRedirect (request, actualResponse) {
 
   // 1. Let policy be the result of executing § 8.1 Parse a referrer policy
   // from a Referrer-Policy header on actualResponse.
-  // TODO:  https://w3c.github.io/webappsec-referrer-policy/#parse-referrer-policy-from-header
-  const policy = ''
+
+  // 8.1 Parse a referrer policy from a Referrer-Policy header
+  // 1. Let policy-tokens be the result of extracting header list values given `Referrer-Policy` and response’s header list.
+  const { headersList } = actualResponse
+  // 2. Let policy be the empty string.
+  // 3. For each token in policy-tokens, if token is a referrer policy and token is not the empty string, then set policy to token.
+  // 4. Return policy.
+  const policyHeader = (headersList.get('referrer-policy') ?? '').split(',')
+
+  // Note: As the referrer-policy can contain multiple policies
+  // separated by comma, we need to loop through all of them
+  // and pick the first valid one.
+  // Ref: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy#specify_a_fallback_policy
+  let policy = ''
+  if (policyHeader.length > 0) {
+    // The right-most policy takes precedence.
+    // The left-most policy is the fallback.
+    for (let i = policyHeader.length; i !== 0; i--) {
+      const token = policyHeader[i - 1].trim()
+      if (referrerPolicyTokens.includes(token)) {
+        policy = token
+        break
+      }
+    }
+  }
 
   // 2. If policy is not the empty string, then set request’s referrer policy to policy.
   if (policy !== '') {
@@ -346,8 +339,175 @@ function clonePolicyContainer () {
 
 // https://w3c.github.io/webappsec-referrer-policy/#determine-requests-referrer
 function determineRequestsReferrer (request) {
-  // TODO
-  return 'no-referrer'
+  // 1. Let policy be request's referrer policy.
+  const policy = request.referrerPolicy
+
+  // Return no-referrer when empty or policy says so
+  if (policy == null || policy === '' || policy === 'no-referrer') {
+    return 'no-referrer'
+  }
+
+  // 2. Let environment be the request client
+  const environment = request.client
+  let referrerSource = null
+
+  /**
+   * 3, Switch on request’s referrer:
+    "client"
+      If environment’s global object is a Window object, then
+        Let document be the associated Document of environment’s global object.
+        If document’s origin is an opaque origin, return no referrer.
+        While document is an iframe srcdoc document,
+        let document be document’s browsing context’s browsing context container’s node document.
+        Let referrerSource be document’s URL.
+
+      Otherwise, let referrerSource be environment’s creation URL.
+
+    a URL
+    Let referrerSource be request’s referrer.
+   */
+  if (request.referrer === 'client') {
+    // Not defined in Node but part of the spec
+    if (request.client?.globalObject?.constructor?.name === 'Window' ) { // eslint-disable-line
+      const origin = environment.globalObject.self?.origin ?? environment.globalObject.location?.origin
+
+      // If document’s origin is an opaque origin, return no referrer.
+      if (origin == null || origin === 'null') return 'no-referrer'
+
+      // Let referrerSource be document’s URL.
+      referrerSource = new URL(environment.globalObject.location.href)
+    } else {
+      // 3(a)(II) If environment's global object is not Window,
+      // Let referrerSource be environments creationURL
+      if (environment?.globalObject?.location == null) {
+        return 'no-referrer'
+      }
+
+      referrerSource = new URL(environment.globalObject.location.href)
+    }
+  } else if (request.referrer instanceof URL) {
+    // 3(b) If requests's referrer is a URL instance, then make
+    // referrerSource be requests's referrer.
+    referrerSource = request.referrer
+  } else {
+    // If referrerSource neither client nor instance of URL
+    // then return "no-referrer".
+    return 'no-referrer'
+  }
+
+  const urlProtocol = referrerSource.protocol
+
+  // If url's scheme is a local scheme (i.e. one of "about", "data", "javascript", "file")
+  // then return "no-referrer".
+  if (
+    urlProtocol === 'about:' || urlProtocol === 'data:' ||
+    urlProtocol === 'blob:'
+  ) {
+    return 'no-referrer'
+  }
+
+  let temp
+  let referrerOrigin
+  // 4. Let requests's referrerURL be the result of stripping referrer
+  // source for use as referrer (using util function, without origin only)
+  const referrerUrl = (temp = stripURLForReferrer(referrerSource)).length > 4096
+  // 5. Let referrerOrigin be the result of stripping referrer
+  // source for use as referrer (using util function, with originOnly true)
+    ? (referrerOrigin = stripURLForReferrer(referrerSource, true))
+  // 6. If result of seralizing referrerUrl is a string whose length is greater than
+  // 4096, then set referrerURL to referrerOrigin
+    : temp
+  const areSameOrigin = sameOrigin(request, referrerUrl)
+  const isNonPotentiallyTrustWorthy = isURLPotentiallyTrustworthy(referrerUrl) &&
+    !isURLPotentiallyTrustworthy(request.url)
+
+  // NOTE: How to treat step 7?
+  // 8. Execute the switch statements corresponding to the value of policy:
+  switch (policy) {
+    case 'origin': return referrerOrigin != null ? referrerOrigin : stripURLForReferrer(referrerSource, true)
+    case 'unsafe-url': return referrerUrl
+    case 'same-origin':
+      return areSameOrigin ? referrerOrigin : 'no-referrer'
+    case 'origin-when-cross-origin':
+      return areSameOrigin ? referrerUrl : referrerOrigin
+    case 'strict-origin-when-cross-origin':
+      /**
+         * 1. If the origin of referrerURL and the origin of request’s current URL are the same,
+         * then return referrerURL.
+         * 2. If referrerURL is a potentially trustworthy URL and request’s current URL is not a
+         * potentially trustworthy URL, then return no referrer.
+         * 3. Return referrerOrigin
+      */
+      if (areSameOrigin) return referrerOrigin
+      // else return isNonPotentiallyTrustWorthy ? 'no-referrer' : referrerOrigin
+    case 'strict-origin': // eslint-disable-line
+      /**
+         * 1. If referrerURL is a potentially trustworthy URL and
+         * request’s current URL is not a potentially trustworthy URL,
+         * then return no referrer.
+         * 2. Return referrerOrigin
+        */
+    case 'no-referrer-when-downgrade': // eslint-disable-line
+      /**
+       * 1. If referrerURL is a potentially trustworthy URL and
+       * request’s current URL is not a potentially trustworthy URL,
+       * then return no referrer.
+       * 2. Return referrerOrigin
+      */
+
+    default: // eslint-disable-line
+      return isNonPotentiallyTrustWorthy ? 'no-referrer' : referrerOrigin
+  }
+
+  function stripURLForReferrer (url, originOnly = false) {
+    const urlObject = new URL(url.href)
+    urlObject.username = ''
+    urlObject.password = ''
+    urlObject.hash = ''
+
+    return originOnly ? urlObject.origin : urlObject.href
+  }
+}
+
+function isURLPotentiallyTrustworthy (url) {
+  if (!(url instanceof URL)) {
+    return false
+  }
+
+  // If child of about, return true
+  if (url.href === 'about:blank' || url.href === 'about:srcdoc') {
+    return true
+  }
+
+  // If scheme is data, return true
+  if (url.protocol === 'data:') return true
+
+  // If file, return true
+  if (url.protocol === 'file:') return true
+
+  return isOriginPotentiallyTrustworthy(url.origin)
+
+  function isOriginPotentiallyTrustworthy (origin) {
+    // If origin is explicitly null, return false
+    if (origin == null || origin === 'null') return false
+
+    const originAsURL = new URL(origin)
+
+    // If secure, return true
+    if (originAsURL.protocol === 'https:' || originAsURL.protocol === 'wss:') {
+      return true
+    }
+
+    // If localhost or variants, return true
+    if (/^127(?:\.[0-9]+){0,2}\.[0-9]+$|^\[(?:0*:)*?:?0*1\]$/.test(originAsURL.hostname) ||
+     (originAsURL.hostname === 'localhost' || originAsURL.hostname.includes('localhost.')) ||
+     (originAsURL.hostname.endsWith('.localhost'))) {
+      return true
+    }
+
+    // If any other, return false
+    return false
+  }
 }
 
 /**
@@ -379,8 +539,11 @@ function bytesMatch (bytes, metadataList) {
 
   // 4. Let metadata be the result of getting the strongest
   //    metadata from parsedMetadata.
-  // Note: this will only work for SHA- algorithms and it's lazy *at best*.
-  const metadata = parsedMetadata.sort((c, d) => d.algo.localeCompare(c.algo))
+  const list = parsedMetadata.sort((c, d) => d.algo.localeCompare(c.algo))
+  // get the strongest algorithm
+  const strongest = list[0].algo
+  // get all entries that use the strongest algorithm; ignore weaker
+  const metadata = list.filter((item) => item.algo === strongest)
 
   // 5. For each item in metadata:
   for (const item of metadata) {
@@ -391,7 +554,6 @@ function bytesMatch (bytes, metadataList) {
     const expectedValue = item.hash
 
     // 3. Let actualValue be the result of applying algorithm to bytes.
-    // Note: "applying algorithm to bytes" converts the result to base64
     const actualValue = crypto.createHash(algorithm).update(bytes).digest('base64')
 
     // 4. If actualValue is a case-sensitive match for expectedValue,
@@ -406,10 +568,9 @@ function bytesMatch (bytes, metadataList) {
 }
 
 // https://w3c.github.io/webappsec-subresource-integrity/#grammardef-hash-with-options
-// hash-algo is defined in Content Security Policy 2 Section 4.2
-// base64-value is similary defined there
-// VCHAR is defined https://www.rfc-editor.org/rfc/rfc5234#appendix-B.1
-const parseHashWithOptions = /((?<algo>sha256|sha384|sha512)-(?<hash>[A-z0-9+/]{1}.*={1,2}))( +[\x21-\x7e]?)?/i
+// https://www.w3.org/TR/CSP2/#source-list-syntax
+// https://www.rfc-editor.org/rfc/rfc5234#appendix-B.1
+const parseHashWithOptions = /((?<algo>sha256|sha384|sha512)-(?<hash>[A-z0-9+/]{1}.*={0,2}))( +[\x21-\x7e]?)?/i
 
 /**
  * @see https://w3c.github.io/webappsec-subresource-integrity/#parse-metadata
@@ -531,17 +692,61 @@ function serializeJavascriptValueToJSONString (value) {
 // https://tc39.es/ecma262/#sec-%25iteratorprototype%25-object
 const esIteratorPrototype = Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]()))
 
-// https://webidl.spec.whatwg.org/#dfn-iterator-prototype-object
-function makeIterator (iterator, name) {
+/**
+ * @see https://webidl.spec.whatwg.org/#dfn-iterator-prototype-object
+ * @param {() => unknown[]} iterator
+ * @param {string} name name of the instance
+ * @param {'key'|'value'|'key+value'} kind
+ */
+function makeIterator (iterator, name, kind) {
+  const object = {
+    index: 0,
+    kind,
+    target: iterator
+  }
+
   const i = {
     next () {
+      // 1. Let interface be the interface for which the iterator prototype object exists.
+
+      // 2. Let thisValue be the this value.
+
+      // 3. Let object be ? ToObject(thisValue).
+
+      // 4. If object is a platform object, then perform a security
+      //    check, passing:
+
+      // 5. If object is not a default iterator object for interface,
+      //    then throw a TypeError.
       if (Object.getPrototypeOf(this) !== i) {
         throw new TypeError(
           `'next' called on an object that does not implement interface ${name} Iterator.`
         )
       }
 
-      return iterator.next()
+      // 6. Let index be object’s index.
+      // 7. Let kind be object’s kind.
+      // 8. Let values be object’s target's value pairs to iterate over.
+      const { index, kind, target } = object
+      const values = target()
+
+      // 9. Let len be the length of values.
+      const len = values.length
+
+      // 10. If index is greater than or equal to len, then return
+      //     CreateIterResultObject(undefined, true).
+      if (index >= len) {
+        return { value: undefined, done: true }
+      }
+
+      // 11. Let pair be the entry in values at index index.
+      const pair = values[index]
+
+      // 12. Set object’s index to index + 1.
+      object.index = index + 1
+
+      // 13. Return the iterator result for pair and kind.
+      return iteratorResult(pair, kind)
     },
     // The class string of an iterator prototype object for a given interface is the
     // result of concatenating the identifier of the interface and the string " Iterator".
@@ -555,51 +760,183 @@ function makeIterator (iterator, name) {
   return Object.setPrototypeOf({}, i)
 }
 
+// https://webidl.spec.whatwg.org/#iterator-result
+function iteratorResult (pair, kind) {
+  let result
+
+  // 1. Let result be a value determined by the value of kind:
+  switch (kind) {
+    case 'key': {
+      // 1. Let idlKey be pair’s key.
+      // 2. Let key be the result of converting idlKey to an
+      //    ECMAScript value.
+      // 3. result is key.
+      result = pair[0]
+      break
+    }
+    case 'value': {
+      // 1. Let idlValue be pair’s value.
+      // 2. Let value be the result of converting idlValue to
+      //    an ECMAScript value.
+      // 3. result is value.
+      result = pair[1]
+      break
+    }
+    case 'key+value': {
+      // 1. Let idlKey be pair’s key.
+      // 2. Let idlValue be pair’s value.
+      // 3. Let key be the result of converting idlKey to an
+      //    ECMAScript value.
+      // 4. Let value be the result of converting idlValue to
+      //    an ECMAScript value.
+      // 5. Let array be ! ArrayCreate(2).
+      // 6. Call ! CreateDataProperty(array, "0", key).
+      // 7. Call ! CreateDataProperty(array, "1", value).
+      // 8. result is array.
+      result = pair
+      break
+    }
+  }
+
+  // 2. Return CreateIterResultObject(result, false).
+  return { value: result, done: false }
+}
+
 /**
  * @see https://fetch.spec.whatwg.org/#body-fully-read
  */
-async function fullyReadBody (body, processBody, processBodyError) {
+function fullyReadBody (body, processBody, processBodyError) {
   // 1. If taskDestination is null, then set taskDestination to
   //    the result of starting a new parallel queue.
 
-  // 2. Let promise be the result of fully reading body as promise
-  //    given body.
+  // 2. Let successSteps given a byte sequence bytes be to queue a
+  //    fetch task to run processBody given bytes, with taskDestination.
+  const successSteps = (bytes) => queueMicrotask(() => processBody(bytes))
+
+  // 3. Let errorSteps be to queue a fetch task to run processBodyError,
+  //    with taskDestination.
+  const errorSteps = (error) => queueMicrotask(() => processBodyError(error))
+
+  // 4. Let reader be the result of getting a reader for body’s stream.
+  //    If that threw an exception, then run errorSteps with that
+  //    exception and return.
+  let reader
+
   try {
-    /** @type {Uint8Array[]} */
-    const chunks = []
-    let length = 0
-
-    const reader = body.stream.getReader()
-
-    while (true) {
-      const { done, value } = await reader.read()
-
-      if (done === true) {
-        break
-      }
-
-      // read-loop chunk steps
-      assert(isUint8Array(value))
-
-      chunks.push(value)
-      length += value.byteLength
-    }
-
-    // 3. Let fulfilledSteps given a byte sequence bytes be to queue
-    //    a fetch task to run processBody given bytes, with
-    //    taskDestination.
-    const fulfilledSteps = (bytes) => queueMicrotask(() => {
-      processBody(bytes)
-    })
-
-    fulfilledSteps(Buffer.concat(chunks, length))
-  } catch (err) {
-    // 4. Let rejectedSteps be to queue a fetch task to run
-    //    processBodyError, with taskDestination.
-    queueMicrotask(() => processBodyError(err))
+    reader = body.stream.getReader()
+  } catch (e) {
+    errorSteps(e)
+    return
   }
 
-  // 5. React to promise with fulfilledSteps and rejectedSteps.
+  // 5. Read all bytes from reader, given successSteps and errorSteps.
+  readAllBytes(reader, successSteps, errorSteps)
+}
+
+/** @type {ReadableStream} */
+let ReadableStream = globalThis.ReadableStream
+
+function isReadableStreamLike (stream) {
+  if (!ReadableStream) {
+    ReadableStream = require('stream/web').ReadableStream
+  }
+
+  return stream instanceof ReadableStream || (
+    stream[Symbol.toStringTag] === 'ReadableStream' &&
+    typeof stream.tee === 'function'
+  )
+}
+
+const MAXIMUM_ARGUMENT_LENGTH = 65535
+
+/**
+ * @see https://infra.spec.whatwg.org/#isomorphic-decode
+ * @param {number[]|Uint8Array} input
+ */
+function isomorphicDecode (input) {
+  // 1. To isomorphic decode a byte sequence input, return a string whose code point
+  //    length is equal to input’s length and whose code points have the same values
+  //    as the values of input’s bytes, in the same order.
+
+  if (input.length < MAXIMUM_ARGUMENT_LENGTH) {
+    return String.fromCharCode(...input)
+  }
+
+  return input.reduce((previous, current) => previous + String.fromCharCode(current), '')
+}
+
+/**
+ * @param {ReadableStreamController<Uint8Array>} controller
+ */
+function readableStreamClose (controller) {
+  try {
+    controller.close()
+  } catch (err) {
+    // TODO: add comment explaining why this error occurs.
+    if (!err.message.includes('Controller is already closed')) {
+      throw err
+    }
+  }
+}
+
+/**
+ * @see https://infra.spec.whatwg.org/#isomorphic-encode
+ * @param {string} input
+ */
+function isomorphicEncode (input) {
+  // 1. Assert: input contains no code points greater than U+00FF.
+  for (let i = 0; i < input.length; i++) {
+    assert(input.charCodeAt(i) <= 0xFF)
+  }
+
+  // 2. Return a byte sequence whose length is equal to input’s code
+  //    point length and whose bytes have the same values as the
+  //    values of input’s code points, in the same order
+  return input
+}
+
+/**
+ * @see https://streams.spec.whatwg.org/#readablestreamdefaultreader-read-all-bytes
+ * @see https://streams.spec.whatwg.org/#read-loop
+ * @param {ReadableStreamDefaultReader} reader
+ * @param {(bytes: Uint8Array) => void} successSteps
+ * @param {(error: Error) => void} failureSteps
+ */
+async function readAllBytes (reader, successSteps, failureSteps) {
+  const bytes = []
+  let byteLength = 0
+
+  while (true) {
+    let done
+    let chunk
+
+    try {
+      ({ done, value: chunk } = await reader.read())
+    } catch (e) {
+      // 1. Call failureSteps with e.
+      failureSteps(e)
+      return
+    }
+
+    if (done) {
+      // 1. Call successSteps with bytes.
+      successSteps(Buffer.concat(bytes, byteLength))
+      return
+    }
+
+    // 1. If chunk is not a Uint8Array object, call failureSteps
+    //    with a TypeError and abort these steps.
+    if (!isUint8Array(chunk)) {
+      failureSteps(new TypeError('Received non-Uint8Array chunk'))
+      return
+    }
+
+    // 2. Append the bytes represented by chunk to bytes.
+    bytes.push(chunk)
+    byteLength += chunk.length
+
+    // 3. Read-loop given reader, bytes, successSteps, and failureSteps.
+  }
 }
 
 /**
@@ -631,7 +968,7 @@ module.exports = {
   responseURL,
   responseLocationURL,
   isBlobLike,
-  isFileLike,
+  isURLPotentiallyTrustworthy,
   isValidReasonPhrase,
   sameOrigin,
   normalizeMethod,
@@ -642,5 +979,9 @@ module.exports = {
   hasOwn,
   isErrorLike,
   fullyReadBody,
-  bytesMatch
+  bytesMatch,
+  isReadableStreamLike,
+  readableStreamClose,
+  isomorphicEncode,
+  isomorphicDecode
 }

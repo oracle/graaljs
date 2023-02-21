@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2016-2023 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the OpenSSL license (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -84,20 +84,6 @@ struct sslapitest_log_counts {
     unsigned int exporter_secret_count;
 };
 
-
-static unsigned char serverinfov1[] = {
-    0xff, 0xff, /* Dummy extension type */
-    0x00, 0x01, /* Extension length is 1 byte */
-    0xff        /* Dummy extension data */
-};
-
-static unsigned char serverinfov2[] = {
-    0x00, 0x00, 0x00,
-    (unsigned char)(SSL_EXT_CLIENT_HELLO & 0xff), /* Dummy context - 4 bytes */
-    0xff, 0xff, /* Dummy extension type */
-    0x00, 0x01, /* Extension length is 1 byte */
-    0xff        /* Dummy extension data */
-};
 
 static int hostname_cb(SSL *s, int *al, void *arg)
 {
@@ -807,6 +793,157 @@ static int test_large_message_dtls(void)
                                       0);
 }
 #endif
+
+/*
+ * Test we can successfully send the maximum amount of application data. We
+ * test each protocol version individually, each with and without EtM enabled.
+ * TLSv1.3 doesn't use EtM so technically it is redundant to test both but it is
+ * simpler this way. We also test all combinations with and without the
+ * SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS option which affects the size of the
+ * underlying buffer.
+ */
+static int test_large_app_data(int tst)
+{
+    SSL_CTX *cctx = NULL, *sctx = NULL;
+    SSL *clientssl = NULL, *serverssl = NULL;
+    int testresult = 0, prot;
+    unsigned char *msg, *buf = NULL;
+    size_t written, readbytes;
+    const SSL_METHOD *smeth = TLS_server_method();
+    const SSL_METHOD *cmeth = TLS_client_method();
+
+    switch (tst >> 2) {
+    case 0:
+#ifndef OPENSSL_NO_TLS1_3
+        prot = TLS1_3_VERSION;
+        break;
+#else
+        return 1;
+#endif
+
+    case 1:
+#ifndef OPENSSL_NO_TLS1_2
+        prot = TLS1_2_VERSION;
+        break;
+#else
+        return 1;
+#endif
+
+    case 2:
+#ifndef OPENSSL_NO_TLS1_1
+        prot = TLS1_1_VERSION;
+        break;
+#else
+        return 1;
+#endif
+
+    case 3:
+#ifndef OPENSSL_NO_TLS1
+        prot = TLS1_VERSION;
+        break;
+#else
+        return 1;
+#endif
+
+    case 4:
+#ifndef OPENSSL_NO_SSL3
+        prot = SSL3_VERSION;
+        break;
+#else
+        return 1;
+#endif
+
+    case 5:
+#ifndef OPENSSL_NO_DTLS1_2
+        prot = DTLS1_2_VERSION;
+        smeth = DTLS_server_method();
+        cmeth = DTLS_client_method();
+        break;
+#else
+        return 1;
+#endif
+
+    case 6:
+#ifndef OPENSSL_NO_DTLS1
+        prot = DTLS1_VERSION;
+        smeth = DTLS_server_method();
+        cmeth = DTLS_client_method();
+        break;
+#else
+        return 1;
+#endif
+
+    default:
+        /* Shouldn't happen */
+        return 0;
+    }
+
+    /* Maximal sized message of zeros */
+    msg = OPENSSL_zalloc(SSL3_RT_MAX_PLAIN_LENGTH);
+    if (!TEST_ptr(msg))
+        goto end;
+
+    buf = OPENSSL_malloc(SSL3_RT_MAX_PLAIN_LENGTH + 1);
+    if (!TEST_ptr(buf))
+        goto end;
+    /* Set whole buffer to all bits set */
+    memset(buf, 0xff, SSL3_RT_MAX_PLAIN_LENGTH + 1);
+
+    if (!TEST_true(create_ssl_ctx_pair(smeth, cmeth, prot, prot, &sctx, &cctx,
+                                       cert, privkey)))
+        goto end;
+
+    if (!TEST_true(create_ssl_objects(sctx, cctx, &serverssl,
+                                      &clientssl, NULL, NULL)))
+        goto end;
+
+    if ((tst & 1) != 0) {
+        /* Setting this option gives us a minimally sized underlying buffer */
+        if (!TEST_true(SSL_set_options(serverssl,
+                                       SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS))
+                || !TEST_true(SSL_set_options(clientssl,
+                                              SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS)))
+            goto end;
+    }
+
+    if ((tst & 2) != 0) {
+        /*
+         * Setting this option means the MAC is added before encryption
+         * giving us a larger record for the encryption process
+         */
+        if (!TEST_true(SSL_set_options(serverssl, SSL_OP_NO_ENCRYPT_THEN_MAC))
+                || !TEST_true(SSL_set_options(clientssl,
+                                              SSL_OP_NO_ENCRYPT_THEN_MAC)))
+            goto end;
+    }
+
+    if (!TEST_true(create_ssl_connection(serverssl, clientssl, SSL_ERROR_NONE)))
+        goto end;
+
+    if (!TEST_true(SSL_write_ex(clientssl, msg, SSL3_RT_MAX_PLAIN_LENGTH,
+                                &written))
+            || !TEST_size_t_eq(written, SSL3_RT_MAX_PLAIN_LENGTH))
+        goto end;
+
+    /* We provide a buffer slightly larger than what we are actually expecting */
+    if (!TEST_true(SSL_read_ex(serverssl, buf, SSL3_RT_MAX_PLAIN_LENGTH + 1,
+                               &readbytes)))
+        goto end;
+
+    if (!TEST_mem_eq(msg, written, buf, readbytes))
+        goto end;
+
+    testresult = 1;
+end:
+    OPENSSL_free(msg);
+    OPENSSL_free(buf);
+    SSL_free(serverssl);
+    SSL_free(clientssl);
+    SSL_CTX_free(sctx);
+    SSL_CTX_free(cctx);
+    return testresult;
+}
+
 
 #ifndef OPENSSL_NO_OCSP
 static int ocsp_server_cb(SSL *s, void *arg)
@@ -4511,62 +4648,137 @@ end:
     return testresult;
 }
 
-/*
- * Test loading of serverinfo data in various formats. test_sslmessages actually
- * tests to make sure the extensions appear in the handshake
- */
-static int test_serverinfo(int tst)
-{
-    unsigned int version;
-    unsigned char *sibuf;
-    size_t sibuflen;
-    int ret, expected, testresult = 0;
-    SSL_CTX *ctx;
+#if !defined(OPENSSL_NO_TLS1_2) && !defined(OPENSSL_NO_TLS1_3)
 
-    ctx = SSL_CTX_new(TLS_method());
-    if (!TEST_ptr(ctx))
+#define  SYNTHV1CONTEXT     (SSL_EXT_TLS1_2_AND_BELOW_ONLY \
+                             | SSL_EXT_CLIENT_HELLO \
+                             | SSL_EXT_TLS1_2_SERVER_HELLO \
+                             | SSL_EXT_IGNORE_ON_RESUMPTION)
+
+#define TLS13CONTEXT (SSL_EXT_TLS1_3_CERTIFICATE \
+                      | SSL_EXT_TLS1_2_SERVER_HELLO \
+                      | SSL_EXT_CLIENT_HELLO)
+
+#define SERVERINFO_CUSTOM                                 \
+    0x00, (char)TLSEXT_TYPE_signed_certificate_timestamp, \
+    0x00, 0x03,                                           \
+    0x04, 0x05, 0x06                                      \
+
+static const unsigned char serverinfo_custom_tls13[] = {
+    0x00, 0x00, (TLS13CONTEXT >> 8) & 0xff, TLS13CONTEXT & 0xff,
+    SERVERINFO_CUSTOM
+};
+static const unsigned char serverinfo_custom_v2[] = {
+    0x00, 0x00, (SYNTHV1CONTEXT >> 8) & 0xff,  SYNTHV1CONTEXT & 0xff,
+    SERVERINFO_CUSTOM
+};
+static const unsigned char serverinfo_custom_v1[] = {
+    SERVERINFO_CUSTOM
+};
+static const size_t serverinfo_custom_tls13_len = sizeof(serverinfo_custom_tls13);
+static const size_t serverinfo_custom_v2_len = sizeof(serverinfo_custom_v2);
+static const size_t serverinfo_custom_v1_len = sizeof(serverinfo_custom_v1);
+
+static int serverinfo_custom_parse_cb(SSL *s, unsigned int ext_type,
+                                      unsigned int context,
+                                      const unsigned char *in,
+                                      size_t inlen, X509 *x,
+                                      size_t chainidx, int *al,
+                                      void *parse_arg)
+{
+    const size_t len = serverinfo_custom_v1_len;
+    const unsigned char *si = &serverinfo_custom_v1[len - 3];
+    int *p_cb_result = (int*)parse_arg;
+    *p_cb_result = TEST_mem_eq(in, inlen, si, 3);
+    return 1;
+}
+
+static int test_serverinfo_custom(const int idx)
+{
+    SSL_CTX *sctx = NULL, *cctx = NULL;
+    SSL *clientssl = NULL, *serverssl = NULL;
+    int testresult = 0;
+    int cb_result = 0;
+
+    /*
+     * Following variables are set in the switch statement
+     *  according to the test iteration.
+     * Default values do not make much sense: test would fail with them.
+     */
+    int serverinfo_version = 0;
+    int protocol_version = 0;
+    unsigned int extension_context = 0;
+    const unsigned char *si = NULL;
+    size_t si_len = 0;
+
+    const int call_use_serverinfo_ex = idx > 0;
+    switch (idx) {
+    case 0: /* FALLTHROUGH */
+    case 1:
+        serverinfo_version = SSL_SERVERINFOV1;
+        protocol_version = TLS1_2_VERSION;
+        extension_context = SYNTHV1CONTEXT;
+        si = serverinfo_custom_v1;
+        si_len = serverinfo_custom_v1_len;
+        break;
+    case 2:
+        serverinfo_version = SSL_SERVERINFOV2;
+        protocol_version = TLS1_2_VERSION;
+        extension_context = SYNTHV1CONTEXT;
+        si = serverinfo_custom_v2;
+        si_len = serverinfo_custom_v2_len;
+        break;
+    case 3:
+        serverinfo_version = SSL_SERVERINFOV2;
+        protocol_version = TLS1_3_VERSION;
+        extension_context = TLS13CONTEXT;
+        si = serverinfo_custom_tls13;
+        si_len = serverinfo_custom_tls13_len;
+        break;
+    }
+
+    if (!TEST_true(create_ssl_ctx_pair(TLS_method(),
+                                       TLS_method(),
+                                       protocol_version,
+                                       protocol_version,
+                                       &sctx, &cctx, cert, privkey)))
         goto end;
 
-    if ((tst & 0x01) == 0x01)
-        version = SSL_SERVERINFOV2;
-    else
-        version = SSL_SERVERINFOV1;
-
-    if ((tst & 0x02) == 0x02) {
-        sibuf = serverinfov2;
-        sibuflen = sizeof(serverinfov2);
-        expected = (version == SSL_SERVERINFOV2);
+    if (call_use_serverinfo_ex) {
+        if (!TEST_true(SSL_CTX_use_serverinfo_ex(sctx, serverinfo_version,
+                                                 si, si_len)))
+            goto end;
     } else {
-        sibuf = serverinfov1;
-        sibuflen = sizeof(serverinfov1);
-        expected = (version == SSL_SERVERINFOV1);
+        if (!TEST_true(SSL_CTX_use_serverinfo(sctx, si, si_len)))
+            goto end;
     }
 
-    if ((tst & 0x04) == 0x04) {
-        ret = SSL_CTX_use_serverinfo_ex(ctx, version, sibuf, sibuflen);
-    } else {
-        ret = SSL_CTX_use_serverinfo(ctx, sibuf, sibuflen);
+    if (!TEST_true(SSL_CTX_add_custom_ext(cctx, TLSEXT_TYPE_signed_certificate_timestamp,
+                                          extension_context,
+                                          NULL, NULL, NULL,
+                                          serverinfo_custom_parse_cb,
+                                          &cb_result))
+        || !TEST_true(create_ssl_objects(sctx, cctx, &serverssl, &clientssl,
+                                         NULL, NULL))
+        || !TEST_true(create_ssl_connection(serverssl, clientssl,
+                                            SSL_ERROR_NONE))
+        || !TEST_int_eq(SSL_do_handshake(clientssl), 1))
+        goto end;
 
-        /*
-         * The version variable is irrelevant in this case - it's what is in the
-         * buffer that matters
-         */
-        if ((tst & 0x02) == 0x02)
-            expected = 0;
-        else
-            expected = 1;
-    }
-
-    if (!TEST_true(ret == expected))
+    if (!TEST_true(cb_result))
         goto end;
 
     testresult = 1;
 
  end:
-    SSL_CTX_free(ctx);
+    SSL_free(serverssl);
+    SSL_free(clientssl);
+    SSL_CTX_free(sctx);
+    SSL_CTX_free(cctx);
 
     return testresult;
 }
+#endif
 
 /*
  * Test that SSL_export_keying_material() produces expected results. There are
@@ -7629,6 +7841,7 @@ int setup_tests(void)
 #ifndef OPENSSL_NO_DTLS
     ADD_TEST(test_large_message_dtls);
 #endif
+    ADD_ALL_TESTS(test_large_app_data, 28);
 #ifndef OPENSSL_NO_OCSP
     ADD_TEST(test_tlsext_status_type);
 #endif
@@ -7691,7 +7904,6 @@ int setup_tests(void)
 #else
     ADD_ALL_TESTS(test_custom_exts, 3);
 #endif
-    ADD_ALL_TESTS(test_serverinfo, 8);
     ADD_ALL_TESTS(test_export_key_mat, 6);
 #ifndef OPENSSL_NO_TLS1_3
     ADD_ALL_TESTS(test_export_key_mat_early, 3);
@@ -7723,6 +7935,9 @@ int setup_tests(void)
     ADD_TEST(test_set_verify_cert_store_ssl_ctx);
     ADD_TEST(test_set_verify_cert_store_ssl);
     ADD_TEST(test_inherit_verify_param);
+#if !defined(OPENSSL_NO_TLS1_2) && !defined(OPENSSL_NO_TLS1_3)
+    ADD_ALL_TESTS(test_serverinfo_custom, 4);
+#endif
 #ifndef OPENSSL_NO_QUIC
     ADD_ALL_TESTS(test_quic_api, 9);
     ADD_ALL_TESTS(test_quic_early_data, 3);

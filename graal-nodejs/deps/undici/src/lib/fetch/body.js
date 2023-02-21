@@ -1,22 +1,31 @@
 'use strict'
 
+const Busboy = require('busboy')
 const util = require('../core/util')
-const { ReadableStreamFrom, toUSVString, isBlobLike } = require('./util')
+const {
+  ReadableStreamFrom,
+  isBlobLike,
+  isReadableStreamLike,
+  readableStreamClose,
+  createDeferredPromise,
+  fullyReadBody
+} = require('./util')
 const { FormData } = require('./formdata')
 const { kState } = require('./symbols')
 const { webidl } = require('./webidl')
-const { Blob } = require('buffer')
+const { DOMException, structuredClone } = require('./constants')
+const { Blob, File: NativeFile } = require('buffer')
 const { kBodyUsed } = require('../core/symbols')
 const assert = require('assert')
-const { NotSupportedError } = require('../core/errors')
 const { isErrored } = require('../core/util')
 const { isUint8Array, isArrayBuffer } = require('util/types')
+const { File: UndiciFile } = require('./file')
+const { parseMIMEType, serializeAMimeType } = require('./dataURL')
 
-let ReadableStream
+let ReadableStream = globalThis.ReadableStream
 
-async function * blobGen (blob) {
-  yield * blob.stream()
-}
+/** @type {globalThis['File']} */
+const File = NativeFile ?? UndiciFile
 
 // https://fetch.spec.whatwg.org/#concept-bodyinit-extract
 function extractBody (object, keepalive = false) {
@@ -24,26 +33,54 @@ function extractBody (object, keepalive = false) {
     ReadableStream = require('stream/web').ReadableStream
   }
 
-  // 1. Let stream be object if object is a ReadableStream object.
-  // Otherwise, let stream be a new ReadableStream, and set up stream.
+  // 1. Let stream be null.
   let stream = null
 
-  // 2. Let action be null.
+  // 2. If object is a ReadableStream object, then set stream to object.
+  if (object instanceof ReadableStream) {
+    stream = object
+  } else if (isBlobLike(object)) {
+    // 3. Otherwise, if object is a Blob object, set stream to the
+    //    result of running object’s get stream.
+    stream = object.stream()
+  } else {
+    // 4. Otherwise, set stream to a new ReadableStream object, and set
+    //    up stream.
+    stream = new ReadableStream({
+      async pull (controller) {
+        controller.enqueue(
+          typeof source === 'string' ? new TextEncoder().encode(source) : source
+        )
+        queueMicrotask(() => readableStreamClose(controller))
+      },
+      start () {},
+      type: undefined
+    })
+  }
+
+  // 5. Assert: stream is a ReadableStream object.
+  assert(isReadableStreamLike(stream))
+
+  // 6. Let action be null.
   let action = null
 
-  // 3. Let source be null.
+  // 7. Let source be null.
   let source = null
 
-  // 4. Let length be null.
+  // 8. Let length be null.
   let length = null
 
-  // 5. Let Content-Type be null.
-  let contentType = null
+  // 9. Let type be null.
+  let type = null
 
-  // 6. Switch on object:
-  if (object == null) {
-    // Note: The IDL processor cannot handle this situation. See
-    // https://crbug.com/335871.
+  // 10. Switch on object:
+  if (typeof object === 'string') {
+    // Set source to the UTF-8 encoding of object.
+    // Note: setting source to a Uint8Array here breaks some mocking assumptions.
+    source = object
+
+    // Set type to `text/plain;charset=UTF-8`.
+    type = 'text/plain;charset=UTF-8'
   } else if (object instanceof URLSearchParams) {
     // URLSearchParams
 
@@ -55,8 +92,8 @@ function extractBody (object, keepalive = false) {
     // Set source to the result of running the application/x-www-form-urlencoded serializer with object’s list.
     source = object.toString()
 
-    // Set Content-Type to `application/x-www-form-urlencoded;charset=UTF-8`.
-    contentType = 'application/x-www-form-urlencoded;charset=UTF-8'
+    // Set type to `application/x-www-form-urlencoded;charset=UTF-8`.
+    type = 'application/x-www-form-urlencoded;charset=UTF-8'
   } else if (isArrayBuffer(object)) {
     // BufferSource/ArrayBuffer
 
@@ -68,7 +105,7 @@ function extractBody (object, keepalive = false) {
     // Set source to a copy of the bytes held by object.
     source = new Uint8Array(object.buffer.slice(object.byteOffset, object.byteOffset + object.byteLength))
   } else if (util.isFormDataLike(object)) {
-    const boundary = '----formdata-undici-' + Math.random()
+    const boundary = `----formdata-undici-${Math.random()}`.replace('.', '').slice(0, 32)
     const prefix = `--${boundary}\r\nContent-Disposition: form-data`
 
     /*! formdata-polyfill. MIT License. Jimmy Wärting <https://jimmy.warting.se/opensource> */
@@ -78,51 +115,56 @@ function extractBody (object, keepalive = false) {
 
     // Set action to this step: run the multipart/form-data
     // encoding algorithm, with object’s entry list and UTF-8.
-    action = async function * (object) {
-      const enc = new TextEncoder()
+    // - This ensures that the body is immutable and can't be changed afterwords
+    // - That the content-length is calculated in advance.
+    // - And that all parts are pre-encoded and ready to be sent.
 
-      for (const [name, value] of object) {
-        if (typeof value === 'string') {
-          yield enc.encode(
-            prefix +
-              `; name="${escape(normalizeLinefeeds(name))}"` +
-              `\r\n\r\n${normalizeLinefeeds(value)}\r\n`
-          )
-        } else {
-          yield enc.encode(
-            prefix +
-              `; name="${escape(normalizeLinefeeds(name))}"` +
-              (value.name ? `; filename="${escape(value.name)}"` : '') +
-              '\r\n' +
-              `Content-Type: ${
-                value.type || 'application/octet-stream'
-              }\r\n\r\n`
-          )
+    const enc = new TextEncoder()
+    const blobParts = []
+    const rn = new Uint8Array([13, 10]) // '\r\n'
+    length = 0
 
-          yield * blobGen(value)
-
-          yield enc.encode('\r\n')
-        }
+    for (const [name, value] of object) {
+      if (typeof value === 'string') {
+        const chunk = enc.encode(prefix +
+          `; name="${escape(normalizeLinefeeds(name))}"` +
+          `\r\n\r\n${normalizeLinefeeds(value)}\r\n`)
+        blobParts.push(chunk)
+        length += chunk.byteLength
+      } else {
+        const chunk = enc.encode(`${prefix}; name="${escape(normalizeLinefeeds(name))}"` +
+          (value.name ? `; filename="${escape(value.name)}"` : '') + '\r\n' +
+          `Content-Type: ${
+            value.type || 'application/octet-stream'
+          }\r\n\r\n`)
+        blobParts.push(chunk, value, rn)
+        length += chunk.byteLength + value.size + rn.byteLength
       }
-
-      yield enc.encode(`--${boundary}--`)
     }
+
+    const chunk = enc.encode(`--${boundary}--`)
+    blobParts.push(chunk)
+    length += chunk.byteLength
 
     // Set source to object.
     source = object
 
-    // Set length to unclear, see html/6424 for improving this.
-    // TODO
+    action = async function * () {
+      for (const part of blobParts) {
+        if (part.stream) {
+          yield * part.stream()
+        } else {
+          yield part
+        }
+      }
+    }
 
-    // Set Content-Type to `multipart/form-data; boundary=`,
+    // Set type to `multipart/form-data; boundary=`,
     // followed by the multipart/form-data boundary string generated
     // by the multipart/form-data encoding algorithm.
-    contentType = 'multipart/form-data; boundary=' + boundary
+    type = 'multipart/form-data; boundary=' + boundary
   } else if (isBlobLike(object)) {
     // Blob
-
-    // Set action to this step: read object.
-    action = blobGen
 
     // Set source to object.
     source = object
@@ -131,9 +173,9 @@ function extractBody (object, keepalive = false) {
     length = object.size
 
     // If object’s type attribute is not the empty byte sequence, set
-    // Content-Type to its value.
+    // type to its value.
     if (object.type) {
-      contentType = object.type
+      type = object.type
     }
   } else if (typeof object[Symbol.asyncIterator] === 'function') {
     // If keepalive is true, then throw a TypeError.
@@ -150,22 +192,15 @@ function extractBody (object, keepalive = false) {
 
     stream =
       object instanceof ReadableStream ? object : ReadableStreamFrom(object)
-  } else {
-    // TODO: byte sequence?
-    // TODO: scalar value string?
-    // TODO: else?
-    source = toUSVString(object)
-    contentType = 'text/plain;charset=UTF-8'
   }
 
-  // 7. If source is a byte sequence, then set action to a
+  // 11. If source is a byte sequence, then set action to a
   // step that returns source and length to source’s length.
-  // TODO: What is a "byte sequence?"
   if (typeof source === 'string' || util.isBuffer(source)) {
     length = Buffer.byteLength(source)
   }
 
-  // 8. If action is non-null, then run these steps in in parallel:
+  // 12. If action is non-null, then run these steps in in parallel:
   if (action != null) {
     // Run action.
     let iterator
@@ -192,28 +227,17 @@ function extractBody (object, keepalive = false) {
       },
       async cancel (reason) {
         await iterator.return()
-      }
-    })
-  } else if (!stream) {
-    // TODO: Spec doesn't say anything about this?
-    stream = new ReadableStream({
-      async pull (controller) {
-        controller.enqueue(
-          typeof source === 'string' ? new TextEncoder().encode(source) : source
-        )
-        queueMicrotask(() => {
-          controller.close()
-        })
-      }
+      },
+      type: undefined
     })
   }
 
-  // 9. Let body be a body whose stream is stream, source is source,
+  // 13. Let body be a body whose stream is stream, source is source,
   // and length is length.
   const body = { stream, source, length }
 
-  // 10. Return body and Content-Type.
-  return [body, contentType]
+  // 14. Return (body, type).
+  return [body, type]
 }
 
 // https://fetch.spec.whatwg.org/#bodyinit-safely-extract
@@ -230,9 +254,9 @@ function safelyExtractBody (object, keepalive = false) {
   if (object instanceof ReadableStream) {
     // Assert: object is neither disturbed nor locked.
     // istanbul ignore next
-    assert(!util.isDisturbed(object), 'disturbed')
+    assert(!util.isDisturbed(object), 'The body has already been consumed.')
     // istanbul ignore next
-    assert(!object.locked, 'locked')
+    assert(!object.locked, 'The stream is locked.')
   }
 
   // 2. Return the results of extracting object.
@@ -246,13 +270,17 @@ function cloneBody (body) {
 
   // 1. Let « out1, out2 » be the result of teeing body’s stream.
   const [out1, out2] = body.stream.tee()
+  const out2Clone = structuredClone(out2, { transfer: [out2] })
+  // This, for whatever reasons, unrefs out2Clone which allows
+  // the process to exit by itself.
+  const [, finalClone] = out2Clone.tee()
 
   // 2. Set body’s stream to out1.
   body.stream = out1
 
   // 3. Return a body whose stream is out2 and other members are copied from body.
   return {
-    stream: out2,
+    stream: finalClone,
     length: body.length,
     source: body.source
   }
@@ -266,11 +294,11 @@ async function * consumeBody (body) {
       const stream = body.stream
 
       if (util.isDisturbed(stream)) {
-        throw new TypeError('disturbed')
+        throw new TypeError('The body has already been consumed.')
       }
 
       if (stream.locked) {
-        throw new TypeError('locked')
+        throw new TypeError('The stream is locked.')
       }
 
       // Compat.
@@ -281,123 +309,124 @@ async function * consumeBody (body) {
   }
 }
 
+function throwIfAborted (state) {
+  if (state.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError')
+  }
+}
+
 function bodyMixinMethods (instance) {
   const methods = {
-    async blob () {
-      if (!(this instanceof instance)) {
-        throw new TypeError('Illegal invocation')
-      }
+    blob () {
+      // The blob() method steps are to return the result of
+      // running consume body with this and the following step
+      // given a byte sequence bytes: return a Blob whose
+      // contents are bytes and whose type attribute is this’s
+      // MIME type.
+      return specConsumeBody(this, (bytes) => {
+        let mimeType = bodyMimeType(this)
 
-      const chunks = []
-
-      for await (const chunk of consumeBody(this[kState].body)) {
-        if (!isUint8Array(chunk)) {
-          throw new TypeError('Expected Uint8Array chunk')
+        if (mimeType === 'failure') {
+          mimeType = ''
+        } else if (mimeType) {
+          mimeType = serializeAMimeType(mimeType)
         }
 
-        // Assemble one final large blob with Uint8Array's can exhaust memory.
-        // That's why we create create multiple blob's and using references
-        chunks.push(new Blob([chunk]))
-      }
-
-      return new Blob(chunks, { type: this.headers.get('Content-Type') || '' })
+        // Return a Blob whose contents are bytes and type attribute
+        // is mimeType.
+        return new Blob([bytes], { type: mimeType })
+      }, instance)
     },
 
-    async arrayBuffer () {
-      if (!(this instanceof instance)) {
-        throw new TypeError('Illegal invocation')
-      }
-
-      const contentLength = this.headers.get('content-length')
-      const encoded = this.headers.has('content-encoding')
-
-      // if we have content length and no encoding, then we can
-      // pre allocate the buffer and just read the data into it
-      if (!encoded && contentLength) {
-        const buffer = new Uint8Array(contentLength)
-        let offset = 0
-
-        for await (const chunk of consumeBody(this[kState].body)) {
-          if (!isUint8Array(chunk)) {
-            throw new TypeError('Expected Uint8Array chunk')
-          }
-
-          buffer.set(chunk, offset)
-          offset += chunk.length
-        }
-
-        return buffer.buffer
-      }
-
-      // if we don't have content length, then we have to allocate 2x the
-      // size of the body, once for consumed data, and once for the final buffer
-
-      // This could be optimized by using growable ArrayBuffer, but it's not
-      // implemented yet. https://github.com/tc39/proposal-resizablearraybuffer
-
-      const chunks = []
-      let size = 0
-
-      for await (const chunk of consumeBody(this[kState].body)) {
-        if (!isUint8Array(chunk)) {
-          throw new TypeError('Expected Uint8Array chunk')
-        }
-
-        chunks.push(chunk)
-        size += chunk.byteLength
-      }
-
-      const buffer = new Uint8Array(size)
-      let offset = 0
-
-      for (const chunk of chunks) {
-        buffer.set(chunk, offset)
-        offset += chunk.byteLength
-      }
-
-      return buffer.buffer
+    arrayBuffer () {
+      // The arrayBuffer() method steps are to return the result
+      // of running consume body with this and the following step
+      // given a byte sequence bytes: return a new ArrayBuffer
+      // whose contents are bytes.
+      return specConsumeBody(this, (bytes) => {
+        return new Uint8Array(bytes).buffer
+      }, instance)
     },
 
-    async text () {
-      if (!(this instanceof instance)) {
-        throw new TypeError('Illegal invocation')
-      }
-
-      let result = ''
-      const textDecoder = new TextDecoder()
-
-      for await (const chunk of consumeBody(this[kState].body)) {
-        if (!isUint8Array(chunk)) {
-          throw new TypeError('Expected Uint8Array chunk')
-        }
-
-        result += textDecoder.decode(chunk, { stream: true })
-      }
-
-      // flush
-      result += textDecoder.decode()
-
-      return result
+    text () {
+      // The text() method steps are to return the result of running
+      // consume body with this and UTF-8 decode.
+      return specConsumeBody(this, utf8DecodeBytes, instance)
     },
 
-    async json () {
-      if (!(this instanceof instance)) {
-        throw new TypeError('Illegal invocation')
-      }
-
-      return JSON.parse(await this.text())
+    json () {
+      // The json() method steps are to return the result of running
+      // consume body with this and parse JSON from bytes.
+      return specConsumeBody(this, parseJSONFromBytes, instance)
     },
 
     async formData () {
-      if (!(this instanceof instance)) {
-        throw new TypeError('Illegal invocation')
-      }
+      webidl.brandCheck(this, instance)
+
+      throwIfAborted(this[kState])
 
       const contentType = this.headers.get('Content-Type')
 
       // If mimeType’s essence is "multipart/form-data", then:
       if (/multipart\/form-data/.test(contentType)) {
-        throw new NotSupportedError('multipart/form-data not supported')
+        const headers = {}
+        for (const [key, value] of this.headers) headers[key.toLowerCase()] = value
+
+        const responseFormData = new FormData()
+
+        let busboy
+
+        try {
+          busboy = Busboy({
+            headers,
+            defParamCharset: 'utf8'
+          })
+        } catch (err) {
+          throw new DOMException(`${err}`, 'AbortError')
+        }
+
+        busboy.on('field', (name, value) => {
+          responseFormData.append(name, value)
+        })
+        busboy.on('file', (name, value, info) => {
+          const { filename, encoding, mimeType } = info
+          const chunks = []
+
+          if (encoding === 'base64' || encoding.toLowerCase() === 'base64') {
+            let base64chunk = ''
+
+            value.on('data', (chunk) => {
+              base64chunk += chunk.toString().replace(/[\r\n]/gm, '')
+
+              const end = base64chunk.length - base64chunk.length % 4
+              chunks.push(Buffer.from(base64chunk.slice(0, end), 'base64'))
+
+              base64chunk = base64chunk.slice(end)
+            })
+            value.on('end', () => {
+              chunks.push(Buffer.from(base64chunk, 'base64'))
+              responseFormData.append(name, new File(chunks, filename, { type: mimeType }))
+            })
+          } else {
+            value.on('data', (chunk) => {
+              chunks.push(chunk)
+            })
+            value.on('end', () => {
+              responseFormData.append(name, new File(chunks, filename, { type: mimeType }))
+            })
+          }
+        })
+
+        const busboyResolve = new Promise((resolve, reject) => {
+          busboy.on('finish', resolve)
+          busboy.on('error', (err) => reject(new TypeError(err)))
+        })
+
+        if (this.body !== null) for await (const chunk of consumeBody(this[kState].body)) busboy.write(chunk)
+        busboy.end()
+        await busboyResolve
+
+        return responseFormData
       } else if (/application\/x-www-form-urlencoded/.test(contentType)) {
         // Otherwise, if mimeType’s essence is "application/x-www-form-urlencoded", then:
 
@@ -429,10 +458,16 @@ function bodyMixinMethods (instance) {
         }
         return formData
       } else {
+        // Wait a tick before checking if the request has been aborted.
+        // Otherwise, a TypeError can be thrown when an AbortError should.
+        await Promise.resolve()
+
+        throwIfAborted(this[kState])
+
         // Otherwise, throw a TypeError.
-        webidl.errors.exception({
+        throw webidl.errors.exception({
           header: `${instance.name}.formData`,
-          value: 'Could not parse content as FormData.'
+          message: 'Could not parse content as FormData.'
         })
       }
     }
@@ -441,32 +476,115 @@ function bodyMixinMethods (instance) {
   return methods
 }
 
-const properties = {
-  body: {
-    enumerable: true,
-    get () {
-      if (!this || !this[kState]) {
-        throw new TypeError('Illegal invocation')
-      }
-
-      return this[kState].body ? this[kState].body.stream : null
-    }
-  },
-  bodyUsed: {
-    enumerable: true,
-    get () {
-      if (!this || !this[kState]) {
-        throw new TypeError('Illegal invocation')
-      }
-
-      return !!this[kState].body && util.isDisturbed(this[kState].body.stream)
-    }
-  }
-}
-
 function mixinBody (prototype) {
   Object.assign(prototype.prototype, bodyMixinMethods(prototype))
-  Object.defineProperties(prototype.prototype, properties)
+}
+
+/**
+ * @see https://fetch.spec.whatwg.org/#concept-body-consume-body
+ * @param {Response|Request} object
+ * @param {(value: unknown) => unknown} convertBytesToJSValue
+ * @param {Response|Request} instance
+ */
+async function specConsumeBody (object, convertBytesToJSValue, instance) {
+  webidl.brandCheck(object, instance)
+
+  throwIfAborted(object[kState])
+
+  // 1. If object is unusable, then return a promise rejected
+  //    with a TypeError.
+  if (bodyUnusable(object[kState].body)) {
+    throw new TypeError('Body is unusable')
+  }
+
+  // 2. Let promise be a new promise.
+  const promise = createDeferredPromise()
+
+  // 3. Let errorSteps given error be to reject promise with error.
+  const errorSteps = (error) => promise.reject(error)
+
+  // 4. Let successSteps given a byte sequence data be to resolve
+  //    promise with the result of running convertBytesToJSValue
+  //    with data. If that threw an exception, then run errorSteps
+  //    with that exception.
+  const successSteps = (data) => {
+    try {
+      promise.resolve(convertBytesToJSValue(data))
+    } catch (e) {
+      errorSteps(e)
+    }
+  }
+
+  // 5. If object’s body is null, then run successSteps with an
+  //    empty byte sequence.
+  if (object[kState].body == null) {
+    successSteps(new Uint8Array())
+    return promise.promise
+  }
+
+  // 6. Otherwise, fully read object’s body given successSteps,
+  //    errorSteps, and object’s relevant global object.
+  fullyReadBody(object[kState].body, successSteps, errorSteps)
+
+  // 7. Return promise.
+  return promise.promise
+}
+
+// https://fetch.spec.whatwg.org/#body-unusable
+function bodyUnusable (body) {
+  // An object including the Body interface mixin is
+  // said to be unusable if its body is non-null and
+  // its body’s stream is disturbed or locked.
+  return body != null && (body.stream.locked || util.isDisturbed(body.stream))
+}
+
+/**
+ * @see https://encoding.spec.whatwg.org/#utf-8-decode
+ * @param {Buffer} buffer
+ */
+function utf8DecodeBytes (buffer) {
+  if (buffer.length === 0) {
+    return ''
+  }
+
+  // 1. Let buffer be the result of peeking three bytes from
+  //    ioQueue, converted to a byte sequence.
+
+  // 2. If buffer is 0xEF 0xBB 0xBF, then read three
+  //    bytes from ioQueue. (Do nothing with those bytes.)
+  if (buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF) {
+    buffer = buffer.subarray(3)
+  }
+
+  // 3. Process a queue with an instance of UTF-8’s
+  //    decoder, ioQueue, output, and "replacement".
+  const output = new TextDecoder().decode(buffer)
+
+  // 4. Return output.
+  return output
+}
+
+/**
+ * @see https://infra.spec.whatwg.org/#parse-json-bytes-to-a-javascript-value
+ * @param {Uint8Array} bytes
+ */
+function parseJSONFromBytes (bytes) {
+  return JSON.parse(utf8DecodeBytes(bytes))
+}
+
+/**
+ * @see https://fetch.spec.whatwg.org/#concept-body-mime-type
+ * @param {import('./response').Response|import('./request').Request} object
+ */
+function bodyMimeType (object) {
+  const { headersList } = object[kState]
+  const contentType = headersList.get('content-type')
+
+  if (contentType === null) {
+    return 'failure'
+  }
+
+  return parseMIMEType(contentType)
 }
 
 module.exports = {
