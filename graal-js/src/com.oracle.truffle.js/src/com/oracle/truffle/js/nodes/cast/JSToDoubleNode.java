@@ -90,7 +90,10 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!longFitsInDouble(value)")
-    protected final double doLongNotFitsInDouble(@SuppressWarnings("unused") long value) {
+    protected final double doLongNotFitsInDouble(long value) {
+        if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
+            return value;
+        }
         throw Errors.createTypeErrorCannotConvertToNumber("a Long value", this);
     }
 

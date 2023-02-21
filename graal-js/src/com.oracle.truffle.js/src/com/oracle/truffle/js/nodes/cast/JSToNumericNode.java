@@ -214,9 +214,14 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
             return value;
         }
 
-        @Specialization(guards = "!longFitsInDouble(value)")
+        @Specialization(guards = {"!longFitsInDouble(value)", "!getLanguage().getJSContext().isOptionNashornCompatibilityMode()"})
         protected static BigInt doLongNotFitsInDouble(@SuppressWarnings("unused") long value) {
             return BigInt.valueOf(value);
+        }
+
+        @Specialization(guards = {"!longFitsInDouble(value)", "getLanguage().getJSContext().isOptionNashornCompatibilityMode()"})
+        protected static double doLongCoerceToDouble(@SuppressWarnings("unused") long value) {
+            return value;
         }
 
         @Fallback

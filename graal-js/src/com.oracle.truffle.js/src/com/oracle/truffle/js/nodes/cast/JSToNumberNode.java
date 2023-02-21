@@ -138,7 +138,10 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!longFitsInDouble(value)")
-    protected final Number doLongNotFitsInDouble(@SuppressWarnings("unused") long value) {
+    protected final Number doLongNotFitsInDouble(long value) {
+        if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
+            return (double) value;
+        }
         throw Errors.createTypeErrorCannotConvertToNumber("a Long value", this);
     }
 
