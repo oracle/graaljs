@@ -135,7 +135,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doDoubleString(double a, TruffleString b,
+    protected static boolean doDoubleString(double a, TruffleString b,
                     @Shared @Cached JSStringToNumberNode stringToDouble) {
         return doDouble(a, stringToDouble.execute(b));
     }
@@ -161,7 +161,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doBooleanString(boolean a, TruffleString b,
+    protected static boolean doBooleanString(boolean a, TruffleString b,
                     @Shared @Cached JSStringToNumberNode stringToDouble) {
         return doBooleanDouble(a, stringToDouble.execute(b));
     }
@@ -179,35 +179,35 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doStringDouble(TruffleString a, double b,
+    protected static boolean doStringDouble(TruffleString a, double b,
                     @Shared @Cached JSStringToNumberNode stringToDouble) {
         return doDouble(stringToDouble.execute(a), b);
     }
 
     @Specialization
-    protected boolean doStringBoolean(TruffleString a, boolean b,
+    protected static boolean doStringBoolean(TruffleString a, boolean b,
                     @Shared @Cached JSStringToNumberNode stringToDouble) {
         return doDoubleBoolean(stringToDouble.execute(a), b);
     }
 
     @Specialization
-    protected boolean doStringBigInt(TruffleString a, BigInt b) {
+    protected static boolean doStringBigInt(TruffleString a, BigInt b) {
         BigInt aBigInt = JSRuntime.stringToBigInt(a);
         return (aBigInt != null) ? aBigInt.compareTo(b) == 0 : false;
     }
 
     @Specialization
-    protected boolean doBigIntString(BigInt a, TruffleString b) {
+    protected static boolean doBigIntString(BigInt a, TruffleString b) {
         return doStringBigInt(b, a);
     }
 
     @Specialization
-    protected boolean doBooleanBigInt(boolean a, BigInt b) {
+    protected static boolean doBooleanBigInt(boolean a, BigInt b) {
         return doBigInt(a ? BigInt.ONE : BigInt.ZERO, b);
     }
 
     @Specialization
-    protected boolean doBigIntBoolean(BigInt a, boolean b) {
+    protected static boolean doBigIntBoolean(BigInt a, boolean b) {
         return doBooleanBigInt(b, a);
     }
 
@@ -259,7 +259,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "isPrimitiveNode.executeBoolean(b)"}, limit = "1")
-    protected boolean doJSObjectVsPrimitive(JSObject a, Object b,
+    protected static boolean doJSObjectVsPrimitive(JSObject a, Object b,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
                     @Shared("toPrimitive") @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("isPrimitive") @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
@@ -271,7 +271,7 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(b)", "isPrimitiveNode.executeBoolean(a)"}, limit = "1")
-    protected boolean doJSObjectVsPrimitive(Object a, JSObject b,
+    protected static boolean doJSObjectVsPrimitive(Object a, JSObject b,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("toPrimitive") @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("isPrimitive") @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
@@ -283,12 +283,12 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doBigIntAndInt(BigInt a, int b) {
-        return a.compareTo(BigInt.valueOf(b)) == 0;
+    protected static boolean doBigIntAndInt(BigInt a, int b) {
+        return a.compareValueTo(b) == 0;
     }
 
     @Specialization
-    protected boolean doBigIntAndNumber(BigInt a, double b) {
+    protected static boolean doBigIntAndNumber(BigInt a, double b) {
         if (Double.isNaN(b)) {
             return false;
         }
@@ -296,12 +296,12 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doIntAndBigInt(int a, BigInt b) {
-        return b.compareTo(BigInt.valueOf(a)) == 0;
+    protected static boolean doIntAndBigInt(int a, BigInt b) {
+        return b.compareValueTo(a) == 0;
     }
 
     @Specialization
-    protected boolean doNumberAndBigInt(double a, BigInt b) {
+    protected static boolean doNumberAndBigInt(double a, BigInt b) {
         return doBigIntAndNumber(b, a);
     }
 
