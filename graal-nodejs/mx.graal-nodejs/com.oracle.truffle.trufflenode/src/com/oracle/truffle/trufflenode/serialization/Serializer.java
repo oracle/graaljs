@@ -187,7 +187,7 @@ public class Serializer {
             writeTag(SerializationTag.NULL);
         } else if (value instanceof Integer) {
             writeInt((Integer) value);
-        } else if (JSRuntime.isNumber(value)) {
+        } else if (JSRuntime.isNumber(value) || value instanceof Long) {
             double doubleValue = ((Number) value).doubleValue();
             writeIntOrDouble(doubleValue);
         } else if (value instanceof TruffleString) {

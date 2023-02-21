@@ -481,7 +481,7 @@ public final class GraalJSAccess {
             return BOOLEAN_VALUE_FALSE;
         } else if (value instanceof TruffleString) {
             return STRING_VALUE;
-        } else if (JSRuntime.isNumber(value)) {
+        } else if (JSRuntime.isNumber(value) || value instanceof Long) {
             if (useSharedBuffer) {
                 sharedBuffer.putDouble(((Number) value).doubleValue());
             }
