@@ -138,32 +138,24 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         return null;
     }
 
-    public abstract static class JSNumberOperation extends JSBuiltinNode {
+    protected static double getDoubleValue(JSNumberObject obj) {
+        return JSRuntime.doubleValue(obj.getNumber());
+    }
 
-        public JSNumberOperation(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        protected static double getDoubleValue(JSNumberObject obj) {
-            return JSRuntime.doubleValue(obj.getNumber());
-        }
-
-        protected static double getDoubleValue(InteropLibrary interop, Object obj) {
-            assert JSGuards.isForeignObjectOrNumber(obj);
-            if (interop.fitsInDouble(obj)) {
-                try {
-                    return interop.asDouble(obj);
-                } catch (UnsupportedMessageException ex) {
-                    throw Errors.createTypeErrorUnboxException(obj, ex, interop);
-                }
+    protected static double getDoubleValue(InteropLibrary interop, Object obj) {
+        assert JSGuards.isForeignObjectOrNumber(obj);
+        if (interop.fitsInDouble(obj)) {
+            try {
+                return interop.asDouble(obj);
+            } catch (UnsupportedMessageException ex) {
+                throw Errors.createTypeErrorUnboxException(obj, ex, interop);
             }
-            throw Errors.createTypeErrorNotANumber(obj);
         }
-
+        throw Errors.createTypeErrorNotANumber(obj);
     }
 
     @ImportStatic({JSConfig.class})
-    public abstract static class JSNumberToStringNode extends JSNumberOperation {
+    public abstract static class JSNumberToStringNode extends JSBuiltinNode {
 
         public JSNumberToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -285,7 +277,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     @ImportStatic({JSConfig.class})
-    public abstract static class JSNumberToLocaleStringNode extends JSNumberOperation {
+    public abstract static class JSNumberToLocaleStringNode extends JSBuiltinNode {
 
         public JSNumberToLocaleStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -327,7 +319,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * Internationalization API, https://tc39.github.io/ecma402/#sup-number.prototype.tolocalestring
      */
     @ImportStatic({JSConfig.class})
-    public abstract static class JSNumberToLocaleStringIntlNode extends JSNumberOperation {
+    public abstract static class JSNumberToLocaleStringIntlNode extends JSBuiltinNode {
 
         @Child InitializeNumberFormatNode initNumberFormatNode;
 
@@ -374,7 +366,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     @ImportStatic({JSConfig.class})
-    public abstract static class JSNumberValueOfNode extends JSNumberOperation {
+    public abstract static class JSNumberValueOfNode extends JSBuiltinNode {
 
         public JSNumberValueOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -405,7 +397,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     @ImportStatic({JSConfig.class})
-    public abstract static class JSNumberToFixedNode extends JSNumberOperation {
+    public abstract static class JSNumberToFixedNode extends JSBuiltinNode {
 
         protected JSNumberToFixedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -477,7 +469,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     @ImportStatic({JSConfig.class})
-    public abstract static class JSNumberToExponentialNode extends JSNumberOperation {
+    public abstract static class JSNumberToExponentialNode extends JSBuiltinNode {
 
         public JSNumberToExponentialNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -578,7 +570,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     @ImportStatic({JSConfig.class})
-    public abstract static class JSNumberToPrecisionNode extends JSNumberOperation {
+    public abstract static class JSNumberToPrecisionNode extends JSBuiltinNode {
 
         public JSNumberToPrecisionNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
