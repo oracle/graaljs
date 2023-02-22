@@ -84,6 +84,7 @@ import static com.oracle.js.parser.TokenType.LPAREN;
 import static com.oracle.js.parser.TokenType.MUL;
 import static com.oracle.js.parser.TokenType.OF;
 import static com.oracle.js.parser.TokenType.PERIOD;
+import static com.oracle.js.parser.TokenType.PIPELINE;
 import static com.oracle.js.parser.TokenType.PRIVATE_IDENT;
 import static com.oracle.js.parser.TokenType.RBRACE;
 import static com.oracle.js.parser.TokenType.RBRACKET;
@@ -117,6 +118,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import com.oracle.js.parser.ir.PipelineNode;
 import org.graalvm.collections.Pair;
 
 import com.oracle.js.parser.ir.AccessNode;
@@ -361,6 +363,10 @@ public class Parser extends AbstractParser {
     private RecompilableScriptFunctionData reparsedFunction;
 
     private boolean isModule;
+
+    private int pipeDepth = 0;
+
+    private boolean topicReferenceUsed = false;
 
     /**
      * Used to pass (async) arrow function flags from head to body.
@@ -1116,7 +1122,7 @@ public class Parser extends AbstractParser {
         });
     }
 
-    private Expression newBinaryExpression(final long op, final Expression lhs, final Expression rhs) {
+    private Expression newBinaryExpression(final long op, final Expression lhs, final Expression rhs, int level) {
         final TokenType opType = Token.descType(op);
 
         // Build up node.
@@ -1125,6 +1131,8 @@ public class Parser extends AbstractParser {
                 throw error(String.format("nullish coalescing operator cannot immediately contain, or be contained within, an && or || operation"));
             }
             return new BinaryNode(op, new JoinPredecessorExpression(lhs), new JoinPredecessorExpression(rhs));
+        } else if (PipelineNode.isPipeline(opType)){
+            return new PipelineNode(op, lhs, rhs, level);
         }
         return new BinaryNode(op, lhs, rhs);
     }
@@ -3920,6 +3928,7 @@ public class Parser extends AbstractParser {
      * <pre>
      * PrimaryExpression :
      *      this
+     *      %
      *      IdentifierReference
      *      Literal
      *      ArrayLiteral
@@ -4007,6 +4016,15 @@ public class Parser extends AbstractParser {
                         TruffleString v8IntrinsicNameTS = lexer.stringIntern(v8IntrinsicName);
                         return createIdentNode(v8IntrinsicToken, ident.getFinish(), v8IntrinsicNameTS);
                     }
+                } else {
+                    next();
+
+                    if(pipeDepth <= 0){
+                        throw error(JSErrorType.SyntaxError, "The topic reference can not be used here!");
+                    }
+                    addIdentifierReference("%" + pipeDepth);
+                    topicReferenceUsed = true;
+                    return new IdentNode(primaryToken, finish, lexer.stringIntern("%" + pipeDepth));
                 }
 
             default:
@@ -6260,20 +6278,20 @@ public class Parser extends AbstractParser {
         } else {
             lhs = unaryExpression(yield, await, coverExpression);
         }
-        return expression(lhs, minPrecedence, in, yield, await);
+        return expression(lhs, minPrecedence, in, yield, await, false);
     }
 
     private JoinPredecessorExpression joinPredecessorExpression(boolean yield, boolean await) {
         return new JoinPredecessorExpression(expression(yield, await));
     }
 
-    private Expression expression(Expression exprLhs, int minPrecedence, boolean in, boolean yield, boolean await) {
+    private Expression expression(Expression exprLhs, int minPrecedence, boolean in, boolean yield, boolean await, boolean pipeBody) {
         // Get the precedence of the next operator.
         int precedence = type.getPrecedence();
         Expression lhs = exprLhs;
-
+        boolean pipeParsed = false;
         // While greater precedence.
-        while (type.isOperator(in) && precedence >= minPrecedence) {
+        while (type.isOperator(in) && precedence >= minPrecedence || !pipeBody && type.isOperator(in)) {
             // Capture the operator token.
             final long op = token;
 
@@ -6293,7 +6311,14 @@ public class Parser extends AbstractParser {
                 // Build up node.
                 lhs = new TernaryNode(op, lhs, new JoinPredecessorExpression(trueExpr), new JoinPredecessorExpression(falseExpr));
             } else {
+
                 final TokenType opType = type;
+
+                if (opType == PIPELINE) {
+                    pipeDepth++;
+                    pipeParsed = true;
+                }
+
                 // Skip operator.
                 next();
 
@@ -6311,11 +6336,23 @@ public class Parser extends AbstractParser {
                 int nextPrecedence = type.getPrecedence();
 
                 // Subtask greater precedence.
-                while (type.isOperator(in) && (nextPrecedence > precedence || (nextPrecedence == precedence && !type.isLeftAssociative()))) {
-                    rhs = expression(rhs, nextPrecedence, in, yield, await);
+                while (type.isOperator(in) && (nextPrecedence > precedence || (nextPrecedence == precedence && !type.isLeftAssociative()))){//|| PipelineNode.isPipeline(type)) {
+                    rhs = expression(rhs, nextPrecedence, in, yield, await, pipeParsed);
                     nextPrecedence = type.getPrecedence();
                 }
-                lhs = newBinaryExpression(op, lhs, rhs);
+
+                if(opType == PIPELINE){
+                    if(!topicReferenceUsed){
+                        throw error("Pipe body must contain the topic reference token(%) at least once");
+                    }
+                    pipeDepth--;
+                    pipeParsed = false;
+                    topicReferenceUsed = false;
+                }
+
+                lhs = newBinaryExpression(op, lhs, rhs, pipeDepth + 1);
+
+
             }
 
             precedence = type.getPrecedence();

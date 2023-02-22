@@ -48,7 +48,7 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 /**
  * BinaryNode nodes represent two operand operations.
  */
-public final class BinaryNode extends Expression implements Assignment<Expression> {
+public class BinaryNode extends Expression implements Assignment<Expression> {
     /** Left hand side argument. */
     private final Expression lhs;
 
