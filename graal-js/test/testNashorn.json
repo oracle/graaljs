@@ -187,6 +187,13 @@
     "status" : "FAIL",
     "comment" : "Java interop migration"
   }, {
+    "filePath" : "basic/JDK-8015357.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SHARED_ENGINE" : "SKIP"
+    },
+    "comment" : "Sorting a sparse array with a length of Integer.MAX_VALUE; very slow if no-prototype-elements assumption is invalidated"
+  }, {
     "filePath" : "basic/JDK-8015741.js",
     "status" : "SKIP",
     "comment" : "multi-threaded test"
