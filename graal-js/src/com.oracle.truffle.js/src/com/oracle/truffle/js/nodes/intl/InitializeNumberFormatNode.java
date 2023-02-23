@@ -116,7 +116,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            JSDynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
+            Object options = coerceOptionsToObjectNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
             String numberingSystem = getNumberingSystemOption.executeValue(options);
@@ -170,7 +170,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         return numberFormatObj;
     }
 
-    private void setNumberFormatUnitOptions(JSNumberFormat.InternalState state, JSDynamicObject options) {
+    private void setNumberFormatUnitOptions(JSNumberFormat.InternalState state, Object options) {
         String style = getStyleOption.executeValue(options);
         state.setStyle(style);
         boolean styleIsCurrency = IntlUtil.CURRENCY.equals(style);
