@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode.CreateObjectWithPrototypeNode;
@@ -65,7 +65,6 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
     private static final String DATE = "date";
     private static final String TIME = "time";
 
-    @Child JSToObjectNode toObjectNode;
     final JSContext context;
 
     public JSContext getContext() {
@@ -87,9 +86,19 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "!isUndefined(opts)")
     public JSDynamicObject fromOtherThenUndefined(Object opts, String required, String defaults,
-                    @Cached("createOrdinaryWithPrototype(context)") CreateObjectWithPrototypeNode createObjectNode) {
-        JSDynamicObject options = createObjectNode.execute(toDynamicObject(opts));
-        return setDefaultsIfNeeded(options, required, defaults);
+                    @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
+                    @Cached("createOrdinaryWithPrototype(context)") CreateObjectWithPrototypeNode createObjectNode,
+                    @Cached InlinedBranchProfile errorBranch) {
+        Object optionObject = toObjectNode.execute(opts);
+        if (JSDynamicObject.isJSDynamicObject(optionObject)) {
+            JSDynamicObject options = createObjectNode.execute((JSDynamicObject) optionObject);
+            return setDefaultsIfNeeded(options, required, defaults);
+        } else {
+            errorBranch.enter(this);
+            // Specification mandates the creation of an object with optionObject
+            // as the prototype, but we do not support foreign prototypes.
+            throw Errors.createTypeErrorInvalidPrototype(optionObject);
+        }
     }
 
     // from step 4 (Let needDefaults be true)
@@ -136,11 +145,4 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
         return options;
     }
 
-    private JSDynamicObject toDynamicObject(Object o) {
-        if (toObjectNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
-        }
-        return (JSDynamicObject) toObjectNode.execute(o);
-    }
 }
