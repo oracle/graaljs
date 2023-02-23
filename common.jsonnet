@@ -74,7 +74,7 @@ local common = (import "ci/common.jsonnet");
     },
   },
 
-  gateCmd:: ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.ignoreCompilerWarnings=true', '--strict-mode'],
+  gateCmd:: ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.SuppressWarnings=truffle', '--strict-mode'],
   gateCmdWithTags:: self.gateCmd + ['--tags', '${TAGS}'],
 
   build:: {
