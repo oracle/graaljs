@@ -30,11 +30,15 @@ local common = (import "ci/common.jsonnet");
     },
   },
 
-  linux_amd64:: common.linux_amd64 + self.common_deps + {
+  linux_common:: {
+    packages+: {
+      devtoolset: '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
+    },
+  },
+
+  linux_amd64:: common.linux_amd64 + self.linux_common + self.common_deps + {
     packages+: {
       'apache/ab': '==2.3',
-      devtoolset: '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-      git: '>=1.8.3',
       maven: '==3.3.9',
     },
   },
@@ -45,11 +49,7 @@ local common = (import "ci/common.jsonnet");
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
-  linux_aarch64:: common.linux_aarch64 + self.common_deps + {
-    packages+: {
-      devtoolset: '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-    }
-  },
+  linux_aarch64:: common.linux_aarch64 + self.linux_common + self.common_deps,
 
   darwin_amd64:: common.darwin_amd64 + self.common_deps + {
     environment+: {
@@ -68,13 +68,14 @@ local common = (import "ci/common.jsonnet");
 
   windows_amd64:: common.windows_amd64 + self.common_deps + {
     packages+: common.devkits["windows-" + self.jdk].packages,
-    devkit_version:: std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(self.packages))[0],
-    setup+: [
-      ['set-export', 'DEVKIT_VERSION', self.devkit_version],
-    ],
+    local devkit_version = std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(self.packages))[0],
+    environment+: {
+      DEVKIT_VERSION: devkit_version,
+    },
   },
 
-  local gateCmd = ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.ignoreCompilerWarnings=true', '--strict-mode', '--tags', '${TAGS}'],
+  gateCmd:: ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.ignoreCompilerWarnings=true', '--strict-mode'],
+  gateCmdWithTags:: self.gateCmd + ['--tags', '${TAGS}'],
 
   build:: {
     run+: [
@@ -90,15 +91,17 @@ local common = (import "ci/common.jsonnet");
 
   gateTags:: self.build + {
     run+: [
-      gateCmd,
+      $.gateCmdWithTags,
     ],
     timelimit: '30:00',
   },
 
   gateStyleFullBuild:: common.deps.pylint + common.deps.eclipse + common.deps.jdt + {
+    environment+: {
+      TAGS: 'style,fullbuild',
+    },
     run+: [
-      ['set-export', 'TAGS', 'style,fullbuild'],
-      gateCmd,
+      $.gateCmdWithTags,
     ],
     timelimit: '30:00',
   },
