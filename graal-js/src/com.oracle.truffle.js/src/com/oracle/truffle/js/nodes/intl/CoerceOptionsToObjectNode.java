@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class CoerceOptionsToObjectNode extends JavaScriptBaseNode {
     private final JSContext context;
@@ -60,18 +59,18 @@ public abstract class CoerceOptionsToObjectNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
-    public abstract JSDynamicObject execute(Object opts);
+    public abstract Object execute(Object opts);
 
     @SuppressWarnings("unused")
     @Specialization(guards = "isUndefined(opts)")
-    public JSDynamicObject fromUndefined(Object opts) {
+    public Object fromUndefined(Object opts) {
         return JSOrdinary.createWithNullPrototype(getContext());
     }
 
     @Specialization(guards = "!isUndefined(opts)")
-    public JSDynamicObject fromOtherThanUndefined(Object opts,
+    public Object fromOtherThanUndefined(Object opts,
                     @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
-        return (JSDynamicObject) toObjectNode.execute(opts);
+        return toObjectNode.execute(opts);
     }
 
 }

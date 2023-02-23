@@ -96,7 +96,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
 
     private JSDynamicObject initializeLocaleUsingJString(JSDynamicObject localeObject, String tagArg, Object optionsArg) {
         try {
-            JSDynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
+            Object options = coerceOptionsToObjectNode.execute(optionsArg);
             String tag = applyOptionsToTag(tagArg, options);
             String optCalendar = getCalendarOption.executeValue(options);
             if (optCalendar != null) {
@@ -140,7 +140,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         throw Errors.createTypeError("Tag should be a string or an object.");
     }
 
-    private String applyOptionsToTag(String tag, JSDynamicObject options) {
+    private String applyOptionsToTag(String tag, Object options) {
         String canonicalizedTag = IntlUtil.validateAndCanonicalizeLanguageTag(tag);
         String optLanguage = getLanguageOption.executeValue(options);
         if (optLanguage != null) {
