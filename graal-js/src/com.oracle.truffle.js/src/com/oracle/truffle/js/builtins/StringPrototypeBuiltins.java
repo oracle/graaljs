@@ -72,6 +72,7 @@ import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleString.CodeRange;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringIterator;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateHTMLNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateStringIteratorNodeGen;
@@ -3011,25 +3012,40 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected static Object doString(TruffleString thisStr,
+        protected static TruffleString doString(TruffleString thisStr,
                         @Shared @Cached TruffleString.IsValidNode isValidNode,
-                        @Shared @Cached TruffleString.SwitchEncodingNode switchEncodingNode) {
+                        @Shared @Cached TruffleString.CreateCodePointIteratorNode codePointIteratorNode,
+                        @Shared @Cached TruffleStringIterator.NextNode nextNode,
+                        @Shared @Cached TruffleStringBuilder.AppendCodePointNode appendCodePointNode,
+                        @Shared @Cached TruffleStringBuilder.ToStringNode toStringNode) {
             if (isValidNode.execute(thisStr, TruffleString.Encoding.UTF_16)) {
                 return thisStr;
             } else {
-                // Switching to UTF-32 and back to UTF-16 makes the string well-formed.
-                TruffleString result = switchEncodingNode.execute(switchEncodingNode.execute(thisStr, TruffleString.Encoding.UTF_32), TruffleString.Encoding.UTF_16);
+                TruffleStringIterator it = codePointIteratorNode.execute(thisStr, TruffleString.Encoding.UTF_16);
+                TruffleStringBuilder sb = Strings.builderCreate(Strings.length(thisStr));
+                while (it.hasNext()) {
+                    int cp = nextNode.execute(it);
+                    if (cp >= Character.MIN_SURROGATE && cp <= Character.MAX_SURROGATE) {
+                        appendCodePointNode.execute(sb, 0xfffd);
+                    } else {
+                        appendCodePointNode.execute(sb, cp);
+                    }
+                }
+                TruffleString result = toStringNode.execute(sb);
                 assert result.isValidUncached(TruffleString.Encoding.UTF_16) : result;
                 return result;
             }
         }
 
         @Specialization(guards = "!isString(thisObj)")
-        protected final Object doOther(Object thisObj,
+        protected final TruffleString doOther(Object thisObj,
                         @Shared @Cached TruffleString.IsValidNode isValidNode,
-                        @Shared @Cached TruffleString.SwitchEncodingNode switchEncodingNode) {
+                        @Shared @Cached TruffleString.CreateCodePointIteratorNode codePointIteratorNode,
+                        @Shared @Cached TruffleStringIterator.NextNode nextNode,
+                        @Shared @Cached TruffleStringBuilder.AppendCodePointNode appendCodePointNode,
+                        @Shared @Cached TruffleStringBuilder.ToStringNode toStringNode) {
             requireObjectCoercible(thisObj);
-            return doString(toString(thisObj), isValidNode, switchEncodingNode);
+            return doString(toString(thisObj), isValidNode, codePointIteratorNode, nextNode, appendCodePointNode, toStringNode);
         }
     }
 
