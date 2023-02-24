@@ -83,6 +83,7 @@ import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringCon
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringEndsWithNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringIncludesNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringIndexOfNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringIsWellFormedNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLastIndexOfNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLocaleCompareIntlNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLocaleCompareNodeGen;
@@ -106,6 +107,7 @@ import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToL
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLowerCaseNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToStringNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToUpperCaseNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToWellFormedNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringTrimLeftNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringTrimNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringTrimRightNodeGen;
@@ -235,7 +237,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         replaceAll(2),
 
         // ES2022
-        at(1);
+        at(1),
+
+        // ES2024
+        isWellFormed(0),
+        toWellFormed(0);
 
         private final int length;
 
@@ -265,6 +271,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSConfig.ECMAScript2021;
             } else if (at == this) {
                 return JSConfig.ECMAScript2022;
+            } else if (EnumSet.of(isWellFormed, toWellFormed).contains(this)) {
+                return JSConfig.ECMAScript2024;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -396,6 +404,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             case at:
                 return JSStringAtNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+
+            case isWellFormed:
+                return JSStringIsWellFormedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case toWellFormed:
+                return JSStringToWellFormedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -2969,6 +2982,55 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return Strings.builderToString(builderToStringNode, sb);
         }
 
+    }
+
+    public abstract static class JSStringIsWellFormedNode extends JSStringOperation {
+
+        public JSStringIsWellFormedNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static Object doString(TruffleString thisStr,
+                        @Shared @Cached TruffleString.IsValidNode isValidNode) {
+            return isValidNode.execute(thisStr, TruffleString.Encoding.UTF_16);
+        }
+
+        @Specialization(guards = "!isString(thisObj)")
+        protected final Object doOther(Object thisObj,
+                        @Shared @Cached TruffleString.IsValidNode isValidNode) {
+            requireObjectCoercible(thisObj);
+            return doString(toString(thisObj), isValidNode);
+        }
+    }
+
+    public abstract static class JSStringToWellFormedNode extends JSStringOperation {
+
+        public JSStringToWellFormedNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static Object doString(TruffleString thisStr,
+                        @Shared @Cached TruffleString.IsValidNode isValidNode,
+                        @Shared @Cached TruffleString.SwitchEncodingNode switchEncodingNode) {
+            if (isValidNode.execute(thisStr, TruffleString.Encoding.UTF_16)) {
+                return thisStr;
+            } else {
+                // Switching to UTF-32 and back to UTF-16 makes the string well-formed.
+                TruffleString result = switchEncodingNode.execute(switchEncodingNode.execute(thisStr, TruffleString.Encoding.UTF_32), TruffleString.Encoding.UTF_16);
+                assert result.isValidUncached(TruffleString.Encoding.UTF_16) : result;
+                return result;
+            }
+        }
+
+        @Specialization(guards = "!isString(thisObj)")
+        protected final Object doOther(Object thisObj,
+                        @Shared @Cached TruffleString.IsValidNode isValidNode,
+                        @Shared @Cached TruffleString.SwitchEncodingNode switchEncodingNode) {
+            requireObjectCoercible(thisObj);
+            return doString(toString(thisObj), isValidNode, switchEncodingNode);
+        }
     }
 
     /**
