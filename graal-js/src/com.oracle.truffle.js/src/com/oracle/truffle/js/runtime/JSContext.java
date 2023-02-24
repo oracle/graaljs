@@ -66,6 +66,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.nodes.Node;
@@ -1374,6 +1375,7 @@ public class JSContext {
         return contextOptions.getEcmaScriptVersion();
     }
 
+    @Idempotent
     public int getPropertyCacheLimit() {
         return contextOptions.getPropertyCacheLimit();
     }
@@ -1450,6 +1452,7 @@ public class JSContext {
         return contextOptions.isV8CompatibilityMode();
     }
 
+    @Idempotent
     public boolean isOptionNashornCompatibilityMode() {
         return contextOptions.isNashornCompatibilityMode();
     }
@@ -1683,6 +1686,7 @@ public class JSContext {
         return contextOptions;
     }
 
+    @Idempotent
     public final boolean isMultiContext() {
         return isMultiContext;
     }

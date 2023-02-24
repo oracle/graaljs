@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -79,6 +80,7 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value, Object thiz, boolean bindMemberFunctions);
 
+    @Idempotent
     protected final boolean isInteropCompletePromises() {
         return getLanguage().getJSContext().getContextOptions().isMLEMode();
     }

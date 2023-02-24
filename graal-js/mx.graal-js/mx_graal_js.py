@@ -436,7 +436,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
 
 def verify_ci(args):
     """Verify CI configuration"""
-    mx.verify_ci(args, mx.suite('regex'), _suite, 'common.json')
+    mx.verify_ci(args, mx.suite('regex'), _suite, ['common.json', 'ci/common.jsonnet'])
 
 mx.update_commands(_suite, {
     'deploy-binary-if-master' : [deploy_binary_if_master, ''],

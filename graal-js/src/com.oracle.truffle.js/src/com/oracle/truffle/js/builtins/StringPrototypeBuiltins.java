@@ -56,6 +56,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -940,7 +941,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return Strings.indexOf(stringIndexOfNode, s1, s2, fromIndex);
         }
 
-        protected boolean isES6OrNewer() {
+        @Idempotent
+        protected final boolean isES6OrNewer() {
             return getContext().getEcmaScriptVersion() >= 6;
         }
 

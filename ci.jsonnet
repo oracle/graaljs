@@ -91,7 +91,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     local edition = build.graalvm.edition;
     local os = build.os;
     local arch = build.arch;
-    local os_arch = os + (if arch == 'aarch64' then '_aarch64' else '') + (if os == 'windows' then '_' + jdk else '');
+    local os_arch = os + '_' + arch;
     local artifactName = artifact_name(jdk, edition, os, arch);
     self.jobtemplate + common[jdk] + common[os_arch] + {
     graalvm:: build.graalvm,

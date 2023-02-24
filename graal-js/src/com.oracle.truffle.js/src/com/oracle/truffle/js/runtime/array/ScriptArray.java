@@ -51,6 +51,7 @@ import java.util.stream.StreamSupport;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -429,6 +430,7 @@ public abstract class ScriptArray {
      * Returns true when the this array could have hole values in it. Doesn't tell whether it
      * actually HAS holes.
      */
+    @Idempotent
     public boolean isHolesType() {
         return false;
     }

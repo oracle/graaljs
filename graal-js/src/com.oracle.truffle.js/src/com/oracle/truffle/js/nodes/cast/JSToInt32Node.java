@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -315,6 +316,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
             return toInt32Node.executeInt(toPrimitiveNode.execute(object));
         }
 
+        @Idempotent
         public final boolean isBitwiseOr() {
             return bitwiseOr;
         }
