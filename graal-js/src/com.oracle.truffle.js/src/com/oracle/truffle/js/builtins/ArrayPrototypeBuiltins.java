@@ -2827,7 +2827,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             } else {
                 if (length >= Integer.MAX_VALUE) {
                     errorBranch.enter();
-                    throw Errors.createRangeErrorInvalidArrayLength();
+                    throw Errors.createRangeErrorInvalidArrayLength(this);
                 }
                 array = foreignArrayToObjectArray(thisObj, (int) length);
             }
@@ -2944,7 +2944,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             if (len >= Integer.MAX_VALUE) {
                 errorBranch.enter();
-                throw Errors.createRangeErrorInvalidArrayLength();
+                throw Errors.createRangeErrorInvalidArrayLength(this);
             }
 
             Object[] array = foreignArrayToObjectArray(thisObj, (int) len);

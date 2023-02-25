@@ -508,7 +508,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return list;
     }
 
-    protected static long toArrayLengthOrRangeError(Object obj) {
+    protected static long toArrayLengthOrRangeError(Object obj, Node originatingNode) {
         Number len = JSRuntime.toNumber(obj);
         Number len32 = JSRuntime.toUInt32(len);
         /*
@@ -516,10 +516,10 @@ public abstract class JSAbstractArray extends JSNonProxy {
          * called twice. This is legacy behaviour that was specified with this effect.
          */
         Number numberLen = JSRuntime.toNumber(obj);
-        return toArrayLengthOrRangeError(numberLen, len32);
+        return toArrayLengthOrRangeError(numberLen, len32, originatingNode);
     }
 
-    public static long toArrayLengthOrRangeError(Number len, Number len32) {
+    public static long toArrayLengthOrRangeError(Number len, Number len32, Node originatingNode) {
         double d32 = JSRuntime.doubleValue(len32);
         double d = JSRuntime.doubleValue(len);
 
@@ -529,7 +529,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         if (d == 0) {
             return 0; // also handles the -0.0
         }
-        throw Errors.createRangeErrorInvalidArrayLength();
+        throw Errors.createRangeErrorInvalidArrayLength(originatingNode);
     }
 
     @Override

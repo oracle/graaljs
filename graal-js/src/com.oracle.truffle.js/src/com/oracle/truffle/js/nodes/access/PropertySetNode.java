@@ -997,7 +997,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             JSDynamicObject store = receiverCheck.getStore(thisObj);
-            boolean ret = JSArray.setLength(store, value);
+            boolean ret = JSArray.setLength(store, value, this);
             if (!ret && isStrict) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotWritableProperty(JSArray.LENGTH, thisObj);
@@ -1012,7 +1012,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             assert JSArray.isJSFastArray(store);
             if (value < 0) {
                 errorBranch.enter();
-                throw Errors.createRangeErrorInvalidArrayLength();
+                throw Errors.createRangeErrorInvalidArrayLength(this);
             }
             arrayLengthWrite.executeVoid(store, value);
             return true;

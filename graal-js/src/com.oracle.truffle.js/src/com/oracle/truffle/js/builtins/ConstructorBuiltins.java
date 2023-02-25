@@ -899,7 +899,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     }
                 }
                 rangeErrorProfile.enter(node);
-                throw Errors.createRangeErrorInvalidArrayLength();
+                throw Errors.createRangeErrorInvalidArrayLength(this);
             } else {
                 return swapPrototype(JSArray.create(getContext(), getRealm(), ConstantObjectArray.createConstantObjectArray(), args, 1), newTarget);
             }

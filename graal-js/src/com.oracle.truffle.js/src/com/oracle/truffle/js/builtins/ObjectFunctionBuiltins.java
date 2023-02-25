@@ -444,7 +444,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     long size = members.getArraySize(keysObj);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
                         errorBranch.enter(node);
-                        throw Errors.createRangeErrorInvalidArrayLength();
+                        throw Errors.createRangeErrorInvalidArrayLength(this);
                     }
                     for (int i = 0; i < size; i++) {
                         String member = (String) members.readArrayElement(keysObj, i);
@@ -459,7 +459,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     long size = interop.getArraySize(thisObj);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
                         errorBranch.enter(node);
-                        throw Errors.createRangeErrorInvalidArrayLength();
+                        throw Errors.createRangeErrorInvalidArrayLength(this);
                     }
                     for (long i = 0; i < size; i++) {
                         PropertyDescriptor desc = JSInteropUtil.getArrayElementProperty(thisObj, i, interop, toJSType);
