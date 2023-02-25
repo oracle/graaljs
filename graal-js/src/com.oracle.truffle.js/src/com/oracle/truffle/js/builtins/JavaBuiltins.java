@@ -400,7 +400,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 try {
                     long size = interop.getArraySize(javaArray);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
-                        throw Errors.createRangeErrorInvalidArrayLength();
+                        throw Errors.createRangeErrorInvalidArrayLength(this);
                     }
                     JSDynamicObject jsArray = JSArray.createEmptyChecked(getContext(), realm, size);
                     for (int i = 0; i < size; i++) {

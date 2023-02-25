@@ -79,7 +79,7 @@ public abstract class ArrayCreateNode extends JavaScriptBaseNode {
     @SuppressWarnings("unused")
     @Specialization(guards = "!isValidArrayLength(length)")
     protected JSArrayObject doInvalidLength(long length) {
-        throw Errors.createRangeErrorInvalidArrayLength();
+        throw Errors.createRangeErrorInvalidArrayLength(this);
     }
 
     public abstract JSArrayObject execute(long length);

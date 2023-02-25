@@ -189,7 +189,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
             long size = arraySize + memberCount;
             if (arraySize < 0 || memberCount < 0 || size < 0 || size >= Integer.MAX_VALUE) {
                 errorBranch.enter(node);
-                throw Errors.createRangeErrorInvalidArrayLength();
+                throw Errors.createRangeErrorInvalidArrayLength(this);
             }
             if (size > 0) {
                 SimpleArrayList<Object> list = new SimpleArrayList<>((int) size);
