@@ -690,8 +690,12 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorInvalidArrayLength(Node originatingNode) {
+        return Errors.createRangeError("Invalid array length", originatingNode);
+    }
+
     public static JSException createRangeErrorInvalidArrayLength() {
-        return Errors.createRangeError("Invalid array length");
+        return createRangeErrorInvalidArrayLength(null);
     }
 
     @TruffleBoundary

@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -291,17 +292,17 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         @Override
         public boolean set(JSDynamicObject store, Object value) {
             assert isJSArray(store);
-            return JSArray.setLength(store, value);
+            return JSArray.setLength(store, value, null);
         }
     }
 
     @TruffleBoundary
-    public static boolean setLength(JSDynamicObject store, Object value) {
+    public static boolean setLength(JSDynamicObject store, Object value, Node originatingNode) {
         long arrLength = 0;
         if (value instanceof Integer && (int) value >= 0) {
             arrLength = (int) value;
         } else {
-            arrLength = toArrayLengthOrRangeError(value);
+            arrLength = toArrayLengthOrRangeError(value, originatingNode);
         }
 
         assert arrLength >= 0;
