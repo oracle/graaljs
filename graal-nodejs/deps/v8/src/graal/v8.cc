@@ -1852,7 +1852,8 @@ namespace v8 {
 
     Local<Value> UnboundScript::GetSourceMappingURL() {
         TRACE
-        return Local<Value>();
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalUnboundScript*> (this)->Isolate();
+        return reinterpret_cast<v8::Value*> (graal_isolate->GetUndefined());
     }
 
     bool Value::IsRegExp() const {
