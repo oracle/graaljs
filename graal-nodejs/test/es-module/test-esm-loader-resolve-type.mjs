@@ -1,4 +1,4 @@
-// Flags: --loader ./test/fixtures/es-module-loaders/hook-resolve-type.mjs
+// Flags: --ecmascript-version=staging --loader ./test/fixtures/es-module-loaders/hook-resolve-type.mjs
 import { allowGlobals } from '../common/index.mjs';
 import * as fixtures from '../common/fixtures.mjs';
 import { strict as assert } from 'assert';
