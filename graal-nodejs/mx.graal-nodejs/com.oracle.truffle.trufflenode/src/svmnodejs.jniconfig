@@ -13,6 +13,7 @@
       { "name": "arrayBufferViewBuffer" },
       { "name": "arrayBufferViewByteLength" },
       { "name": "arrayBufferViewByteOffset" },
+      { "name": "arrayBufferWasDetached" },
       { "name": "arrayLength" },
       { "name": "arrayNew" },
       { "name": "arrayNewFromElements" },

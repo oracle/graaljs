@@ -1430,6 +1430,10 @@ public final class GraalJSAccess {
         JSArrayBuffer.detachArrayBuffer((JSDynamicObject) arrayBuffer);
     }
 
+    public boolean arrayBufferWasDetached(Object arrayBuffer) {
+        return JSArrayBuffer.isDetachedBuffer(arrayBuffer);
+    }
+
     public static int arrayBufferViewByteLength(JSContext context, JSDynamicObject arrayBufferView) {
         if (JSDataView.isJSDataView(arrayBufferView)) {
             return JSDataView.typedArrayGetLength(arrayBufferView);

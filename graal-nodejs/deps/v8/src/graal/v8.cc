@@ -137,8 +137,7 @@ namespace v8 {
     }
 
     bool ArrayBuffer::WasDetached() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalArrayBuffer*> (this)->WasDetached();
     }
 
     Local<ArrayBuffer> ArrayBuffer::New(Isolate* isolate, size_t byte_length) {

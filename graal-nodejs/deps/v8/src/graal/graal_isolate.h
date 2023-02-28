@@ -172,6 +172,7 @@ enum GraalAccessMethod {
     array_buffer_view_byte_length,
     array_buffer_view_byte_offset,
     array_buffer_detach,
+    array_buffer_was_detached,
     typed_array_length,
     uint8_array_new,
     uint8_clamped_array_new,

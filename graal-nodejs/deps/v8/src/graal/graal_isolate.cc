@@ -671,6 +671,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_length, "arrayBufferViewByteLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_offset, "arrayBufferViewByteOffset", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_detach, "arrayBufferDetach", "(Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_was_detached, "arrayBufferWasDetached", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::typed_array_length, "typedArrayLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::uint8_array_new, "uint8ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::uint8_clamped_array_new, "uint8ClampedArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")

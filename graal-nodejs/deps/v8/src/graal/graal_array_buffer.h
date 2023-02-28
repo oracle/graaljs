@@ -55,6 +55,7 @@ public:
     bool IsArrayBuffer() const;
     inline bool IsDirect() const;
     void Detach();
+    bool WasDetached() const;
     std::shared_ptr<v8::BackingStore> GetBackingStore();
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, size_t byte_length);
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, std::shared_ptr<v8::BackingStore> backing_store);
