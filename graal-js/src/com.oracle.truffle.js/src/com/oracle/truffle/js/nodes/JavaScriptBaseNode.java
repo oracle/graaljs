@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -77,6 +78,7 @@ public abstract class JavaScriptBaseNode extends Node {
         return JSRealm.get(this);
     }
 
+    @Idempotent
     protected final JavaScriptLanguage getLanguage() {
         return JavaScriptLanguage.get(this);
     }
