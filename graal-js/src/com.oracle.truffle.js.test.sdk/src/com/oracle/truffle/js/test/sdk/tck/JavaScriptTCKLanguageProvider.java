@@ -175,7 +175,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         final TypeDescriptor nonNumeric = ANY.subtract(numericAndNull);
         // BINARY
         // +
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull, JavaScriptVerifier.cannotMixBigInt(null)));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull, JavaScriptVerifier.cannotMixBigInt(null, true)));
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY,
                         JavaScriptVerifier.numericVerifier(JavaScriptVerifier.cannotMixBigInt(null, true))));
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, ANY, nonNumeric,
@@ -636,7 +636,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     if (snippetRun.getException() == null) {
                         TypeDescriptor numericTypes = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN, TypeDescriptor.NULL);
                         for (Value actualParameter : snippetRun.getParameters()) {
-                            allNumeric &= numericTypes.isAssignable(TypeDescriptor.forValue(actualParameter)) || actualParameter.isInstant();
+                            allNumeric &= numericTypes.isAssignable(TypeDescriptor.forValue(actualParameter));
                         }
                         if (allNumeric) {
                             TypeDescriptor resultType = TypeDescriptor.forValue(snippetRun.getResult());
@@ -750,24 +750,42 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
             return new JavaScriptVerifier(next) {
                 @Override
                 public void accept(SnippetRun snippetRun) throws PolyglotException {
+                    boolean hasBigIntParameter = false;
                     boolean nonPrimitiveNumberParameter = false;
                     boolean primitiveNumberParameter = false;
                     boolean nonNumberParameter = false;
+                    boolean nullOrBooleanParameter = false;
+                    boolean nonNumberNullOrBooleanParameter = false;
                     for (Value actualParameter : snippetRun.getParameters()) {
-                        if (isBigInt(actualParameter)) {
-                            nonPrimitiveNumberParameter = true;
-                        } else if (actualParameter.fitsInDouble()) {
-                            primitiveNumberParameter = true;
-                        } else if (actualParameter.isInstant()) {
-                            // Instant/Date parameter is converted to Number (fitsInDouble).
-                            primitiveNumberParameter = true;
+                        if (actualParameter.isNumber()) {
+                            if (isBigInt(actualParameter)) {
+                                hasBigIntParameter = true;
+                            } else if (actualParameter.fitsInDouble()) {
+                                primitiveNumberParameter = true;
+                            } else if (!hintDefault && actualParameter.isInstant()) {
+                                // Instant/Date parameter is converted to Number (fitsInDouble).
+                                primitiveNumberParameter = true;
+                            } else {
+                                // A foreign Number (BigInteger) that does not fit in double.
+                                nonPrimitiveNumberParameter = true;
+                            }
                         } else {
                             nonNumberParameter = true;
+                            if (actualParameter.isBoolean() || actualParameter.isNull()) {
+                                nullOrBooleanParameter = true;
+                            } else {
+                                nonNumberNullOrBooleanParameter = true;
+                            }
                         }
                     }
-                    if (nonPrimitiveNumberParameter && (hintDefault
-                                    ? (primitiveNumberParameter)
-                                    : (primitiveNumberParameter || nonNumberParameter))) {
+
+                    boolean mixesBigInt = hasBigIntParameter && (hintDefault
+                                    ? (primitiveNumberParameter || nullOrBooleanParameter)
+                                    : (primitiveNumberParameter || nonNumberParameter));
+                    boolean foreignBigIntegerNotFitsInDouble = (hintDefault
+                                    ? (nonPrimitiveNumberParameter && !nonNumberNullOrBooleanParameter)
+                                    : (nonPrimitiveNumberParameter));
+                    if (mixesBigInt || foreignBigIntegerNotFitsInDouble) {
                         if (snippetRun.getException() == null) {
                             throw new AssertionError("TypeError expected but no error has been thrown.");
                         } // else exception expected => ignore
