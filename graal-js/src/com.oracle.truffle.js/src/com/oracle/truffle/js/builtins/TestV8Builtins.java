@@ -58,12 +58,14 @@ import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8AtomicsNumUnre
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8AtomicsNumWaitersForTestingNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ConstructDoubleNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreatePrivateSymbolNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8EnqueueJobNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ReferenceEqualNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SetAllowAtomicsWaitNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SetTimeoutNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SymbolIsPrivateNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToLengthNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNameNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNumberNodeGen;
@@ -140,7 +142,10 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
 
         atomicsNumWaitersForTesting(2),
         atomicsNumUnresolvedAsyncPromisesForTesting(2),
-        setAllowAtomicsWait(1);
+        setAllowAtomicsWait(1),
+
+        createPrivateSymbol(1),
+        symbolIsPrivate(1);
 
         private final int length;
 
@@ -206,6 +211,10 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case setAllowAtomicsWait:
                 return TestV8SetAllowAtomicsWaitNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case createPrivateSymbol:
+                return TestV8CreatePrivateSymbolNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case symbolIsPrivate:
+                return TestV8SymbolIsPrivateNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -522,6 +531,33 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         protected Object setAllowAtomicsWait(Object allow) {
             getRealm().getAgent().setCanBlock(toBooleanNode.executeBoolean(allow));
             return Undefined.instance;
+        }
+
+    }
+
+    public abstract static class TestV8CreatePrivateSymbol extends JSBuiltinNode {
+
+        public TestV8CreatePrivateSymbol(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object doCreate(Object description,
+                        @Cached JSToStringNode toStringNode) {
+            return Symbol.createPrivate(toStringNode.executeString(description));
+        }
+
+    }
+
+    public abstract static class TestV8SymbolIsPrivate extends JSBuiltinNode {
+
+        public TestV8SymbolIsPrivate(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected boolean isPrivate(Object symbol) {
+            return JSRuntime.isPrivateSymbol(symbol);
         }
 
     }
