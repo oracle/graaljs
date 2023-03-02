@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
  */
 public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
 
-    protected abstract Object execute(Object value);
+    protected abstract BigInt execute(Object value);
 
     public final BigInt executeBigInt(Object value) {
         BigInt result = executeBigIntIfNumberOrNull(value);
@@ -68,7 +68,7 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
     }
 
     public final BigInt executeBigIntIfNumberOrNull(Object value) {
-        return (BigInt) execute(value);
+        return execute(value);
     }
 
     @Specialization

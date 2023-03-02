@@ -55,6 +55,9 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 
+/**
+ * Implementation of the abstract operation ToBigInt(argument).
+ */
 @GenerateUncached
 public abstract class JSToBigIntNode extends JavaScriptBaseNode {
 
@@ -72,17 +75,20 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
     @Specialization
     protected BigInt doIt(Object value,
                     @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
-                    @Cached JSToBigIntInnerConversionNode innerConversionNode) {
-
-        return innerConversionNode.execute(this, toPrimitiveNode.execute(value));
+                    @Cached JSPrimitiveToBigIntNode primitiveToBigInt) {
+        return primitiveToBigInt.executeBigInt(this, toPrimitiveNode.execute(value));
     }
 
+    /**
+     * Implementation of the abstract operation ToBigInt(argument) where the argument has already
+     * been converted ToPrimitive.
+     */
     @GenerateInline
     @GenerateCached(false)
     @GenerateUncached
-    public abstract static class JSToBigIntInnerConversionNode extends JavaScriptBaseNode {
+    public abstract static class JSPrimitiveToBigIntNode extends JavaScriptBaseNode {
 
-        public abstract BigInt execute(Node node, Object value);
+        public abstract BigInt executeBigInt(Node node, Object value);
 
         @Specialization
         protected static BigInt doBoolean(boolean value) {
