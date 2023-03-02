@@ -652,12 +652,14 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
             };
         }
 
+        private static boolean treatForeignBigIntegerAsBigInt = false;
+
         private static boolean isBigInt(Value value) {
-            return value.isNumber() && value.fitsInBigInteger() && (!value.fitsInDouble() || isJSBigInt(value));
+            return value.isNumber() && value.fitsInBigInteger() && ((treatForeignBigIntegerAsBigInt && !value.fitsInDouble()) || isJSBigInt(value));
         }
 
         private static boolean isJSBigInt(Value value) {
-            return value.isNumber() && value.fitsInBigInteger() && value.getMetaObject() != null && value.getMetaObject().getMetaQualifiedName().equals("bigint");
+            return value.isNumber() && value.fitsInBigInteger() && (value.getMetaObject() != null && "bigint".equals(value.getMetaObject().getMetaQualifiedName()));
         }
 
         /**
@@ -665,7 +667,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
          * is a BigInt.
          *
          * @param paramIndex the parameter to be checked if it is of type BigInt
-         * @param next the next {@link ResultVerifier} to be called
+         * @param next the next {@link ResultVerifier} to be called, null for last one
          * @return the {@link ResultVerifier}
          */
         static ResultVerifier noBigInt(int paramIndex, ResultVerifier next) {
@@ -689,7 +691,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
          * is a BigInt of value zero.
          *
          * @param paramIndex the parameter to be checked if it is of type BigInt
-         * @param next the next {@link ResultVerifier} to be called
+         * @param next the next {@link ResultVerifier} to be called, null for last one
          * @return the {@link ResultVerifier}
          */
         static ResultVerifier bigIntNonZero(int paramIndex, ResultVerifier next) {
@@ -740,8 +742,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
          * is a non-primitive number (i.e. a BigInt) and the other parameter is a primitive number
          * or, unless hintDefault, non-numeric.
          *
-         * @param next the next {@link ResultVerifier} to be called in case none of the parameters
-         *            is a non-primitive number, null for last one
+         * @param next the next {@link ResultVerifier} to be called, null for last one
          * @param hintDefault ToPrimitive hint - true: "default", false: hint "number".
          * @return the {@link ResultVerifier}
          */
