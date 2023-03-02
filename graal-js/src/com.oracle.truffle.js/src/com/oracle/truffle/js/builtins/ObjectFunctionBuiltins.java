@@ -502,6 +502,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile,
                         @Cached @Shared("listSize") ListSizeNode listSize) {
             List<Object> ownPropertyKeys = jsclassProfile.getJSClass(thisObj).getOwnPropertyKeys(thisObj, !symbols, symbols);
+            if (getContext().isOptionV8CompatibilityMode()) {
+                ownPropertyKeys = JSRuntime.filterPrivateSymbols(ownPropertyKeys);
+            }
             return JSArray.createLazyArray(getContext(), getRealm(), ownPropertyKeys, listSize.execute(ownPropertyKeys));
         }
 

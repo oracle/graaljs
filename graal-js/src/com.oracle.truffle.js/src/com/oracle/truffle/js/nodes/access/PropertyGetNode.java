@@ -159,7 +159,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @NeverDefault
     private static PropertyGetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty, boolean isMethod) {
-        return new PropertyGetNode(key, context, isGlobal, getOwnProperty, isMethod);
+        return new PropertyGetNode(key, context, isGlobal, getOwnProperty || JSRuntime.isPrivateSymbol(key), isMethod);
     }
 
     @NeverDefault

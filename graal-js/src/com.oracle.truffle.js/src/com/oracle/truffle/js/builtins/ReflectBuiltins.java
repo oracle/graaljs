@@ -485,6 +485,9 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @Cached JSClassProfile jsclassProfile,
                         @Cached ListSizeNode listSize) {
             List<Object> list = JSObject.ownPropertyKeys((JSDynamicObject) target, jsclassProfile);
+            if (getContext().isOptionV8CompatibilityMode()) {
+                list = JSRuntime.filterPrivateSymbols(list);
+            }
             return JSArray.createLazyArray(getContext(), getRealm(), list, listSize.execute(list));
         }
 

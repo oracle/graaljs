@@ -127,7 +127,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     @NeverDefault
     public static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags, boolean declaration,
                     boolean superProperty) {
-        return new PropertySetNode(key, context, isGlobal, isStrict, setOwnProperty, attributeFlags, declaration, superProperty);
+        boolean privateSymbol = JSRuntime.isPrivateSymbol(key);
+        int flags = attributeFlags | (privateSymbol ? JSAttributes.NOT_ENUMERABLE : 0);
+        return new PropertySetNode(key, context, isGlobal, isStrict, setOwnProperty || privateSymbol, flags, declaration, superProperty);
     }
 
     @NeverDefault
