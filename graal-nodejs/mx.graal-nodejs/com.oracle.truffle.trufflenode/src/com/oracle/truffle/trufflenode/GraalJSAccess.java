@@ -1976,8 +1976,12 @@ public final class GraalJSAccess {
         template.markPrototypeReadOnly();
     }
 
-    public Object objectTemplateNew() {
-        return new ObjectTemplate();
+    public Object objectTemplateNew(Object constructor) {
+        ObjectTemplate template = new ObjectTemplate();
+        if (constructor != null) {
+            template.setParentFunctionTemplate((FunctionTemplate) constructor);
+        }
+        return template;
     }
 
     @CompilerDirectives.TruffleBoundary
