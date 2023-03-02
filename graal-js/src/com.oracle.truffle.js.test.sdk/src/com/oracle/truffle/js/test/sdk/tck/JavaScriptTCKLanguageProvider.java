@@ -162,6 +162,13 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.OBJECT,
                         TypeDescriptor.HASH,
                         TypeDescriptor.ITERABLE)));
+        // Date
+        vals.add(createValueConstructor(context, "new Date()", TypeDescriptor.intersection(
+                        TypeDescriptor.OBJECT,
+                        TypeDescriptor.DATE,
+                        TypeDescriptor.TIME,
+                        TypeDescriptor.TIME_ZONE)));
+
         return Collections.unmodifiableList(vals);
     }
 
