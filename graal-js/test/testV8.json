@@ -514,10 +514,6 @@
     "status" : "SKIP",
     "comment" : "stack size exceeded e.g. in shareengine config"
   }, {
-    "filePath" : "mjsunit/compiler/store-data-property-in-literal-private.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
     "filePath" : "mjsunit/compiler/string-add-try-catch.js",
     "status" : "PASS",
     "runInIsolation" : true,
@@ -685,7 +681,7 @@
   }, {
     "filePath" : "mjsunit/es6/regress/regress-9234.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
+    "comment" : "We allow private symbols to leak to proxy traps."
   }, {
     "filePath" : "mjsunit/es6/regress/regress-crbug-465671-null.js",
     "status" : "SKIP",
@@ -725,9 +721,6 @@
     "comment" : "test should fail (V8 should report Early Error as we do)"
   }, {
     "filePath" : "mjsunit/es8/async-destructuring.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es8/object-get-own-property-descriptors.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/eval-stack-trace.js",
@@ -846,11 +839,11 @@
   }, {
     "filePath" : "mjsunit/harmony/private-symbols.js",
     "status" : "FAIL",
-    "comment" : "Uses unsupported %CreatePrivateSymbol."
+    "comment" : "We allow private symbols to leak to proxy traps."
   }, {
     "filePath" : "mjsunit/harmony/private.js",
     "status" : "FAIL",
-    "comment" : "Uses unsupported %CreatePrivateSymbol."
+    "comment" : "Private symbols can be modified on frozen/sealed objects in v8."
   }, {
     "filePath" : "mjsunit/harmony/promise-any-overflow-1.js",
     "status" : "SKIP",
@@ -1897,9 +1890,6 @@
     "filePath" : "mjsunit/regress/regress-inline-getter-near-stack-limit.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-private-enumerable.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-put-prototype-transition.js",
     "status" : "SKIP",
