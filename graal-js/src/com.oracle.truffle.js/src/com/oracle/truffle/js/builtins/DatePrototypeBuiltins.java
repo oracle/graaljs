@@ -78,7 +78,7 @@ import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStrin
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTimeStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateValueOfNodeGen;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -898,13 +898,13 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         private final ConditionProfile isHintNumber = ConditionProfile.create();
         private final ConditionProfile isHintStringOrDefault = ConditionProfile.create();
-        @Child private IsJSObjectNode isObjectNode;
+        @Child private IsObjectNode isObjectNode;
         @Child private OrdinaryToPrimitiveNode ordinaryToPrimitiveHintNumber;
         @Child private OrdinaryToPrimitiveNode ordinaryToPrimitiveHintString;
 
         public JSDateToPrimitiveNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isObjectNode = IsJSObjectNode.create();
+            this.isObjectNode = IsObjectNode.create();
         }
 
         @Specialization
