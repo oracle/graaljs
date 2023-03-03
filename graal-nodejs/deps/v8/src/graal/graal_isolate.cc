@@ -118,24 +118,10 @@ extern "C" void uv_key_set(uv_key_t* key, void* value) WEAK_ATTRIBUTE;
 extern "C" void* uv_key_get(uv_key_t* key) WEAK_ATTRIBUTE;
 extern "C" uv_loop_t* uv_default_loop(void) WEAK_ATTRIBUTE;
 #ifdef __POSIX__
-extern "C" int uv__cloexec_ioctl(int fd, int set) WEAK_ATTRIBUTE;
-extern "C" int uv__cloexec_fcntl(int fd, int set) WEAK_ATTRIBUTE;
+extern "C" int uv__cloexec(int fd, int set) WEAK_ATTRIBUTE;
 #endif
 
 #undef WEAK_ATTRIBUTE
-
-#ifdef __POSIX__
-#if defined(_AIX) || \
-    defined(__APPLE__) || \
-    defined(__DragonFly__) || \
-    defined(__FreeBSD__) || \
-    defined(__FreeBSD_kernel__) || \
-    defined(__linux__)
-#define uv__cloexec uv__cloexec_ioctl
-#else
-#define uv__cloexec uv__cloexec_fcntl
-#endif
-#endif
 
 // Key for the current (per-thread) isolate
 static uv_key_t current_isolate_key;
