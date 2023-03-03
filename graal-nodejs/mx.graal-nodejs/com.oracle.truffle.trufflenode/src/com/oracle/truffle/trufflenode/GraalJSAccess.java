@@ -1991,15 +1991,15 @@ public final class GraalJSAccess {
         ObjectTemplate template = (ObjectTemplate) templateObj;
         FunctionTemplate functionHandler = template.getFunctionHandler();
         JSDynamicObject instance;
+        FunctionTemplate parentFunctionTemplate = null;
         if (functionHandler == null) {
-            FunctionTemplate parentFunctionTemplate = template.getParentFunctionTemplate();
+            parentFunctionTemplate = template.getParentFunctionTemplate();
             if (parentFunctionTemplate == null) {
                 instance = JSOrdinary.create(jsContext, jsRealm);
             } else {
                 JSDynamicObject function = (JSDynamicObject) functionTemplateGetFunction(realm, parentFunctionTemplate);
                 JSDynamicObject prototype = (JSDynamicObject) JSObject.get(function, JSObject.PROTOTYPE);
                 instance = JSOrdinary.createWithPrototype(prototype, jsContext, template.getInternalFieldCount() > 0 ? JSOrdinary.INTERNAL_FIELD_INSTANCE : JSOrdinary.INSTANCE);
-                JSObjectUtil.putHiddenProperty(instance, FunctionTemplate.CONSTRUCTOR, parentFunctionTemplate);
             }
         } else {
             instance = functionTemplateCreateCallback(jsContext, jsRealm, functionHandler);
@@ -2007,6 +2007,9 @@ public final class GraalJSAccess {
         objectTemplateInstantiate(jsRealm, templateObj, instance);
         if (template.hasPropertyHandler()) {
             instance = propertyHandlerInstantiate(jsContext, jsRealm, template, instance, false);
+        }
+        if (parentFunctionTemplate != null) {
+            JSObjectUtil.putHiddenProperty(instance, FunctionTemplate.CONSTRUCTOR, parentFunctionTemplate);
         }
         return instance;
     }
