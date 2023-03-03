@@ -11,7 +11,7 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 * Implemented the [ShadowRealm](https://github.com/tc39/proposal-shadowrealm) proposal. It is available behind the experimental option `--js.shadow-realm`.
 * Removed experimental option `v8-legacy-const`.
 * Removed non-standard `SharedArrayBuffer.isView`.
-* Updated Node.js to version 18.12.1.
+* Updated Node.js to version 18.14.1.
 * Implemented the [Symbols as WeakMap keys](https://github.com/tc39/proposal-symbols-as-weakmap-keys) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [ArrayBuffer.prototype.transfer and friends](https://github.com/tc39/proposal-arraybuffer-transfer) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 
