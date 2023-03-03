@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -133,7 +134,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         } else if (Strings.isTString(value)) {
             jsonQuote(builder, (TruffleString) value);
         } else if (JSRuntime.isNumber(value)) {
-            appendNumber(builder, (Number) value);
+            appendNumber(builder, value);
         } else if (JSRuntime.isBigInt(value)) {
             throw Errors.createTypeError("Do not know how to serialize a BigInt");
         } else if (JSDynamicObject.isJSDynamicObject(value) && !JSRuntime.isCallableIsJSObject((JSDynamicObject) value)) {
@@ -169,16 +170,26 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private void appendNumber(TruffleStringBuilder builder, Number n) {
-        double d = JSRuntime.doubleValue(n);
-        if (Double.isNaN(d) || Double.isInfinite(d)) {
-            append(builder, Null.NAME);
-        } else if (n instanceof Integer) {
-            append(builder, ((Integer) n).intValue());
-        } else if (n instanceof Long) {
-            append(builder, ((Long) n).longValue());
+    private void appendNumber(TruffleStringBuilder builder, Object number) {
+        assert number instanceof Number;
+        if (number instanceof Integer) {
+            append(builder, ((Integer) number).intValue());
+        } else if (number instanceof SafeInteger) {
+            append(builder, ((SafeInteger) number).longValue());
         } else {
-            append(builder, JSRuntime.doubleToString(d));
+            double d;
+            if (number instanceof Double) {
+                d = ((Double) number).doubleValue();
+            } else {
+                d = JSRuntime.doubleValue((Number) number);
+            }
+            TruffleString str;
+            if (Double.isNaN(d) || Double.isInfinite(d)) {
+                str = Null.NAME;
+            } else {
+                str = JSRuntime.doubleToString(d);
+            }
+            append(builder, str);
         }
     }
 
