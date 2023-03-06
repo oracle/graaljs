@@ -54,6 +54,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -107,6 +108,15 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
     @Specialization
     static BigInt doBigInt(BigInt bigInt) {
         return bigInt;
+    }
+
+    @Specialization
+    static Object doLong(long value) {
+        if (JSRuntime.longFitsInDouble(value)) {
+            return doDouble(value);
+        } else {
+            return BigInt.valueOf(value);
+        }
     }
 
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
