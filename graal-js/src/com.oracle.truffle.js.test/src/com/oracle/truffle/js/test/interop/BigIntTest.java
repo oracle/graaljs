@@ -631,6 +631,49 @@ public class BigIntTest {
         }
     }
 
+    @Test
+    public void testJSONStringify() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value toBigInt = context.eval(JavaScriptLanguage.ID, "(function(value) { return BigInt(value); })");
+
+            Value stringify1 = context.eval(JavaScriptLanguage.ID, "(function(value) { return JSON.stringify(value); })");
+            Value stringify2 = context.eval(JavaScriptLanguage.ID, "(function(value) { return JSON.stringify({key: value}); })");
+
+            List<BigInteger> bigIntegers = bigIntegersForArithmetic();
+
+            for (int i = 0; i < bigIntegers.size(); i++) {
+                BigInteger aAsBigInteger = bigIntegers.get(i);
+
+                for (Value aAsValue : hostReprOf(aAsBigInteger).map(context::asValue).toList()) {
+                    assertTrue(aAsValue.fitsInBigInteger());
+                    Value aAsJSBigInt = toBigInt.execute(aAsBigInteger);
+
+                    if (aAsValue.fitsInDouble() && !isBigInt(aAsValue)) {
+                        double aAsDouble = aAsBigInteger.doubleValue();
+                        String expectedString = JSRuntime.doubleToString(aAsDouble).toJavaStringUncached();
+                        Value result = stringify1.execute(aAsDouble);
+                        assertEquals(expectedString, result.asString());
+                        result = stringify1.execute(aAsValue);
+                        assertEquals(expectedString, result.asString());
+
+                        expectedString = "{\"key\":" + expectedString + "}";
+                        result = stringify2.execute(aAsDouble);
+                        assertEquals(expectedString, result.asString());
+                        result = stringify2.execute(aAsValue);
+                        assertEquals(expectedString, result.asString());
+                    } else {
+                        assert aAsValue.fitsInBigInteger();
+                        // TypeError: Do not know how to serialize a BigInt.
+                        JSTest.assertThrows(() -> stringify1.execute(aAsValue), JSErrorType.TypeError);
+                        JSTest.assertThrows(() -> stringify2.execute(aAsValue), JSErrorType.TypeError);
+                        JSTest.assertThrows(() -> stringify1.execute(aAsJSBigInt), JSErrorType.TypeError);
+                        JSTest.assertThrows(() -> stringify2.execute(aAsJSBigInt), JSErrorType.TypeError);
+                    }
+                }
+            }
+        }
+    }
+
     private static boolean isBigInt(Value value) {
         return (treatForeignBigIntegerAsBigInt && !value.fitsInDouble()) || isJSBigInt(value);
     }
