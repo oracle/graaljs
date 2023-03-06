@@ -89,9 +89,19 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
             return value ? BigInt.ONE : BigInt.ZERO;
         }
 
-        @Specialization
+        @Specialization(guards = "!value.isForeign()")
         protected static BigInt doBigInt(BigInt value) {
             return value;
+        }
+
+        @Specialization(guards = "value.isForeign()")
+        protected static BigInt doForeignBigInt(BigInt value) {
+            return value.clearForeign();
+        }
+
+        @Specialization
+        protected static BigInt doLong(long value) {
+            return BigInt.valueOf(value);
         }
 
         @Specialization(guards = "isNumber(value)")

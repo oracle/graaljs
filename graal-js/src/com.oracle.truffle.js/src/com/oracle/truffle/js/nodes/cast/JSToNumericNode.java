@@ -45,11 +45,12 @@ import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOp
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -60,6 +61,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNodeGen.JSToNumericWrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
@@ -127,9 +129,19 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization
-    protected Object doBigInt(BigInt value) {
+    @Idempotent
+    protected static boolean allowForeignBigInt() {
+        return false;
+    }
+
+    @Specialization(guards = "allowForeignBigInt() || !value.isForeign()")
+    protected static BigInt doBigInt(BigInt value) {
         return value;
+    }
+
+    @Specialization(guards = {"!allowForeignBigInt()", "value.isForeign()"})
+    protected final BigInt doForeignBigInt(@SuppressWarnings("unused") BigInt value) {
+        throw Errors.createTypeErrorCannotConvertForeignBigIntToNumeric(this);
     }
 
     @Specialization(guards = {"isToNumericOperand()"})
@@ -151,7 +163,7 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return toNumberNode.executeNumber(primValue);
     }
 
-    @Specialization(guards = {"!isToNumericOperand()"})
+    @Specialization(guards = {"!isToNumericOperand()", "!isBigInt(value)"})
     protected final Object doToNumericOther(Object value,
                     @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached PrimitiveToNumericOrNullNode numericOrNullNode,
@@ -198,15 +210,21 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
     /**
      * Returns true if the value is already a numeric value that should not be converted ToNumber.
      */
+    @ImportStatic(JSToNumericNode.class)
     @GenerateInline
     @GenerateCached(false)
     protected abstract static class PrimitiveToNumericOrNullNode extends JavaScriptBaseNode {
 
         public abstract Object execute(Node node, Object value);
 
-        @Specialization
+        @Specialization(guards = "allowForeignBigInt() || !value.isForeign()")
         protected static BigInt doBigInt(@SuppressWarnings("unused") BigInt value) {
             return value;
+        }
+
+        @Specialization(guards = {"!allowForeignBigInt()", "value.isForeign()"})
+        protected final BigInt doForeignBigInt(@SuppressWarnings("unused") BigInt value) {
+            throw Errors.createTypeErrorCannotConvertForeignBigIntToNumeric(this);
         }
 
         @Specialization(guards = "longFitsInDouble(value)")
@@ -215,7 +233,10 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"!longFitsInDouble(value)", "!getLanguage().getJSContext().isOptionNashornCompatibilityMode()"})
-        protected static BigInt doLongNotFitsInDouble(@SuppressWarnings("unused") long value) {
+        protected final BigInt doLongNotFitsInDouble(@SuppressWarnings("unused") long value) {
+            if (!allowForeignBigInt()) {
+                throw Errors.createTypeErrorCannotConvertForeignBigIntToNumeric(this);
+            }
             return BigInt.valueOf(value);
         }
 

@@ -81,11 +81,6 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
         return BigInt.valueOf(value.longValue());
     }
 
-    @Specialization
-    protected static BigInt doLong(long value) {
-        return BigInt.valueOf(value);
-    }
-
     protected static boolean doubleRepresentsSameValueAsLong(double value) {
         // (long) Math.pow(2, 63) == Long.MAX_VALUE
         // and (double) Long.MAX_VALUE == Math.pow(2, 63)

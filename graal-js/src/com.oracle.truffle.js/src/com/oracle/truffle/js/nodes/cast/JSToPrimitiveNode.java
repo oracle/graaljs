@@ -230,7 +230,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
                 } else if (interop.fitsInDouble(object)) {
                     return interop.asDouble(object);
                 } else if (interop.fitsInBigInteger(object)) {
-                    return BigInt.fromBigInteger(interop.asBigInteger(object));
+                    return BigInt.fromForeignBigInteger(interop.asBigInteger(object));
                 }
             }
         } catch (UnsupportedMessageException e) {

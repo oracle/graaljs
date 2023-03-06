@@ -62,6 +62,7 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     static final long serialVersionUID = 6019523258212492110L;
 
     private final BigInteger value;
+    private final boolean foreign;
 
     public static final BigInt ZERO = new BigInt(BigInteger.ZERO);
     public static final BigInt ONE = new BigInt(BigInteger.ONE);
@@ -73,11 +74,12 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
 
     private static final BigInteger TWO64 = BigInteger.ONE.shiftLeft(64);
 
-    public BigInt(String s, int r) {
-        this.value = new BigInteger(s, r);
+    public BigInt(BigInteger v) {
+        this(v, false);
     }
 
-    public BigInt(BigInteger v) {
+    private BigInt(BigInteger v, boolean foreign) {
+        this.foreign = foreign;
         this.value = v;
     }
 
@@ -90,6 +92,11 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         } else {
             return new BigInt(value);
         }
+    }
+
+    @TruffleBoundary
+    public static BigInt fromForeignBigInteger(BigInteger value) {
+        return new BigInt(value, true);
     }
 
     @TruffleBoundary
@@ -500,4 +507,18 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         return JSMetaType.JS_BIGINT;
     }
 
+    public boolean isForeign() {
+        return foreign;
+    }
+
+    public BigInt clearForeign() {
+        return setForeign(false);
+    }
+
+    private BigInt setForeign(boolean foreign) {
+        if (this.foreign == foreign) {
+            return this;
+        }
+        return new BigInt(value, foreign);
+    }
 }
