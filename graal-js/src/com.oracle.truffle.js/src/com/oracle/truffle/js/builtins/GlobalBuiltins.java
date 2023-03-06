@@ -1425,11 +1425,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     return loadFile(realm, fileGetPath(scriptObj, interop));
                 }
             }
-            Object unboxed = JSInteropUtil.toPrimitiveOrDefault(scriptObj, Null.instance, interop, this);
-            if (unboxed == Null.instance) {
+            if (interop.isNull(scriptObj)) {
                 throw cannotLoadScript(scriptObj);
             }
-            TruffleString stringPath = toString1(unboxed);
+            TruffleString stringPath = toString1(scriptObj);
             return loadFromPath(stringPath, realm, args);
         }
 
