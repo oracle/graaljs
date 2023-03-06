@@ -76,9 +76,9 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
- * Implementation of ECMA 9.9 "ToObject" as Truffle node.
+ * Implementation of the ECMAScript abstract operation ToObject(argument).
  *
- * thing a generic value to be converted to a JSDynamicObject or TruffleObject
+ * Converts the argument to a JSDynamicObject or TruffleObject.
  */
 @ImportStatic({CompilerDirectives.class, JSConfig.class})
 public abstract class JSToObjectNode extends JavaScriptBaseNode {
@@ -86,35 +86,28 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     protected final JSContext context;
     protected final boolean checkForNullOrUndefined;
     protected final boolean fromWith;
-    protected final boolean allowForeign;
 
-    protected JSToObjectNode(JSContext context, boolean checkForNullOrUndefined, boolean fromWith, boolean allowForeign) {
+    protected JSToObjectNode(JSContext context, boolean checkForNullOrUndefined, boolean fromWith) {
         this.context = context;
         this.checkForNullOrUndefined = checkForNullOrUndefined;
         this.fromWith = fromWith;
-        this.allowForeign = allowForeign;
     }
 
     public abstract Object execute(Object value);
 
     @NeverDefault
     public static JSToObjectNode createToObject(JSContext context) {
-        return createToObject(context, true, false, true);
+        return createToObject(context, true, false);
     }
 
     @NeverDefault
     public static JSToObjectNode createToObjectNoCheck(JSContext context) {
-        return createToObject(context, false, false, true);
+        return createToObject(context, false, false);
     }
 
     @NeverDefault
-    public static JSToObjectNode createToObjectNoCheckNoForeign(JSContext context) {
-        return createToObject(context, false, false, false);
-    }
-
-    @NeverDefault
-    protected static JSToObjectNode createToObject(JSContext context, boolean checkForNullOrUndefined, boolean fromWith, boolean allowForeign) {
-        return JSToObjectNodeGen.create(context, checkForNullOrUndefined, fromWith, allowForeign);
+    protected static JSToObjectNode createToObject(JSContext context, boolean checkForNullOrUndefined, boolean fromWith) {
+        return JSToObjectNodeGen.create(context, checkForNullOrUndefined, fromWith);
     }
 
     protected final JSContext getContext() {
@@ -128,11 +121,6 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     protected final boolean isFromWith() {
         return fromWith;
-    }
-
-    @Idempotent
-    protected final boolean isAllowForeign() {
-        return allowForeign;
     }
 
     @TruffleBoundary
@@ -217,7 +205,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @InliningCutoff
-    @Specialization(guards = {"isAllowForeign()", "isForeignObject(obj)"}, limit = "InteropLibraryLimit")
+    @Specialization(guards = {"isForeignObject(obj)"}, limit = "InteropLibraryLimit")
     protected Object doForeignObjectAllowed(Object obj,
                     @Cached("createToObject(context, checkForNullOrUndefined, fromWith, allowForeign)") JSToObjectNode toObjectNode,
                     @CachedLibrary("obj") InteropLibrary interop) {
@@ -231,11 +219,6 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
             throw createTypeError(obj);
         }
         return toObjectNode.execute(unboxed);
-    }
-
-    @Specialization(guards = {"!isAllowForeign()", "isForeignObject(obj)"})
-    protected Object doForeignObjectDisallowed(@SuppressWarnings("unused") Object obj) {
-        throw Errors.createTypeError("Foreign TruffleObject not supported", this);
     }
 
     @InliningCutoff
@@ -276,7 +259,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         }
 
         public static JSToObjectWrapperNode createToObjectFromWith(JSContext context, JavaScriptNode child, boolean checkForNullOrUndefined) {
-            return JSToObjectWrapperNodeGen.create(child, JSToObjectNodeGen.create(context, checkForNullOrUndefined, true, true));
+            return JSToObjectWrapperNodeGen.create(child, JSToObjectNodeGen.create(context, checkForNullOrUndefined, true));
         }
 
         @Specialization
@@ -286,7 +269,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            JSToObjectNode clonedToObject = JSToObjectNodeGen.create(toObjectNode.getContext(), toObjectNode.isCheckForNullOrUndefined(), toObjectNode.isFromWith(), toObjectNode.isAllowForeign());
+            JSToObjectNode clonedToObject = JSToObjectNodeGen.create(toObjectNode.getContext(), toObjectNode.isCheckForNullOrUndefined(), toObjectNode.isFromWith());
             return JSToObjectWrapperNodeGen.create(cloneUninitialized(getOperand(), materializedTags), clonedToObject);
         }
     }
