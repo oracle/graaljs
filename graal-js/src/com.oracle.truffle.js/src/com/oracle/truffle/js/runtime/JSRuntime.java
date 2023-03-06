@@ -63,6 +63,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.OrdinaryToPrimitiveNode;
@@ -1414,17 +1415,30 @@ public final class JSRuntime {
      * @return an Object
      */
     public static TruffleObject toObject(JSContext ctx, Object value) {
-        requireObjectCoercible(value, ctx);
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSObject.isJSObject(value))) {
             return (JSObject) value;
         }
+        requireObjectCoercible(value, ctx);
         Object unboxedValue = value;
-        if (isForeignObject(value)) {
-            InteropLibrary interop = InteropLibrary.getUncached(value);
-            assert !interop.isNull(value);
-            unboxedValue = JSInteropUtil.toPrimitiveOrDefault(value, null, interop, null);
-            if (unboxedValue == null) {
-                return (TruffleObject) value; // not a boxed primitive value
+        if (JSGuards.isForeignObjectOrNumber(unboxedValue)) {
+            try {
+                InteropLibrary interop = InteropLibrary.getUncached(value);
+                assert !interop.isNull(value);
+                if (interop.isBoolean(value)) {
+                    unboxedValue = interop.asBoolean(value);
+                } else if (interop.isString(value)) {
+                    unboxedValue = interop.asTruffleString(value);
+                } else if (interop.isNumber(value)) {
+                    if (interop.fitsInInt(value)) {
+                        unboxedValue = interop.asInt(value);
+                    } else if (interop.fitsInDouble(value)) {
+                        unboxedValue = interop.asDouble(value);
+                    }
+                } else {
+                    return (TruffleObject) value; // not a boxed primitive value
+                }
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(value, e, "ToObject", null);
             }
         }
         return toObjectFromPrimitive(ctx, unboxedValue, true);

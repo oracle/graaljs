@@ -43,18 +43,24 @@ package com.oracle.truffle.js.nodes.cast;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -65,7 +71,8 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * Implementation of ECMAScript 5.1, 10.4.3 Entering Function Code, for non-strict callees.
+ * Implementation of the implicit {@code this} argument conversion upon entering non-strict
+ * functions (OrdinaryCallBindThis).
  *
  * Converts the caller provided thisArg to the ThisBinding of the callee's execution context,
  * replacing null or undefined with the global object and performing ToObject on primitives.
@@ -126,23 +133,47 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
         return JSBigInt.create(context, getRealm(), value);
     }
 
-    @Specialization(guards = "isJavaNumber(value)")
-    protected JSObject doNumber(Object value) {
-        return JSNumber.create(context, getRealm(), (Number) value);
-    }
-
     @Specialization
     protected JSObject doSymbol(Symbol value) {
         return JSSymbol.create(context, getRealm(), value);
     }
 
-    @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
-    protected Object doForeignObject(Object object,
-                    @CachedLibrary("object") InteropLibrary interop) {
-        if (interop.isNull(object)) {
+    @InliningCutoff
+    @Specialization(guards = {"isForeignTruffleObject || isForeignNumber(value)"}, limit = "InteropLibraryLimit")
+    protected final Object doForeignObject(Object value,
+                    @CachedLibrary("value") InteropLibrary interop,
+                    @Bind("isForeignObject(value)") boolean isForeignTruffleObject) {
+        if (interop.isNull(value)) {
             return getRealm().getGlobalObject();
         }
-        return object;
+        try {
+            if (interop.isBoolean(value)) {
+                return doBoolean(interop.asBoolean(value));
+            } else if (interop.isString(value)) {
+                return doString(interop.asTruffleString(value));
+            } else if (interop.isNumber(value)) {
+                if (interop.fitsInInt(value)) {
+                    return doInt(interop.asInt(value));
+                } else if (interop.fitsInDouble(value)) {
+                    return doDouble(interop.asDouble(value));
+                } else {
+                    // Ambiguous numeric type; leave as foreign object.
+                    if (isForeignTruffleObject) {
+                        assert value instanceof TruffleObject;
+                        return value;
+                    } else {
+                        // Wrap Java primitive numbers in TruffleObject.
+                        Object result = getRealm().getEnv().asBoxedGuestValue(value);
+                        assert JSRuntime.isForeignObject(result);
+                        return result;
+                    }
+                }
+            } else {
+                return value;
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(value, e, "ToObject", this);
+        }
     }
 
     @Override

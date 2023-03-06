@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -52,6 +53,8 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -71,9 +74,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
  * Implementation of the ECMAScript abstract operation ToObject(argument).
@@ -124,7 +125,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private JSException createTypeError(Object value) {
+    private JSException createTypeErrorNotObjectCoercible(Object value) {
         if (isFromWith()) {
             return Errors.createTypeError("Cannot apply \"with\" to " + JSRuntime.safeToString(value), this);
         }
@@ -162,12 +163,6 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @InliningCutoff
-    @Specialization(guards = "isJavaNumber(value)")
-    protected JSDynamicObject doNumber(Object value) {
-        return JSNumber.create(getContext(), getRealm(), (Number) value);
-    }
-
-    @InliningCutoff
     @Specialization
     protected JSDynamicObject doSymbol(Symbol value) {
         return JSSymbol.create(getContext(), getRealm(), value);
@@ -201,44 +196,55 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isCheckForNullOrUndefined()", "isNullOrUndefined(object)"})
     protected JSDynamicObject doNullOrUndefined(Object object) {
-        throw createTypeError(object);
+        throw createTypeErrorNotObjectCoercible(object);
     }
 
     @InliningCutoff
-    @Specialization(guards = {"isForeignObject(obj)"}, limit = "InteropLibraryLimit")
-    protected Object doForeignObjectAllowed(Object obj,
-                    @Cached("createToObject(context, checkForNullOrUndefined, fromWith, allowForeign)") JSToObjectNode toObjectNode,
-                    @CachedLibrary("obj") InteropLibrary interop) {
-        if (isFromWith() && context.isOptionNashornCompatibilityMode() && getRealm().getEnv().isHostObject(obj)) {
-            throwWithError();
+    @Specialization(guards = {"isForeignTruffleObject || isForeignNumber(value)"}, limit = "InteropLibraryLimit")
+    protected final Object doForeignObject(Object value,
+                    @CachedLibrary("value") InteropLibrary interop,
+                    @Bind("isForeignObject(value)") boolean isForeignTruffleObject) {
+        if (interop.isNull(value)) {
+            throw createTypeErrorNotObjectCoercible(value);
         }
-        Object unboxed = JSInteropUtil.toPrimitiveOrDefault(obj, null, interop, this);
-        if (unboxed == null) {
-            return obj; // not a boxed primitive value
-        } else if (unboxed == Null.instance) {
-            throw createTypeError(obj);
+        try {
+            if (interop.isBoolean(value)) {
+                return doBoolean(interop.asBoolean(value));
+            } else if (interop.isString(value)) {
+                return doString(interop.asTruffleString(value));
+            } else if (interop.isNumber(value)) {
+                if (interop.fitsInInt(value)) {
+                    return doInt(interop.asInt(value));
+                } else if (interop.fitsInDouble(value)) {
+                    return doDouble(interop.asDouble(value));
+                } else {
+                    // Ambiguous numeric type; leave as foreign object.
+                    if (isForeignTruffleObject) {
+                        assert value instanceof TruffleObject;
+                        return value;
+                    } else {
+                        // Wrap Java primitive numbers in TruffleObject.
+                        Object result = getRealm().getEnv().asBoxedGuestValue(value);
+                        assert JSRuntime.isForeignObject(result);
+                        return result;
+                    }
+                }
+            } else {
+                if (isFromWith() && context.isOptionNashornCompatibilityMode() && getRealm().getEnv().isHostObject(value)) {
+                    throwWithError();
+                }
+                return value;
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(value, e, "ToObject", this);
         }
-        return toObjectNode.execute(unboxed);
-    }
-
-    @InliningCutoff
-    @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isJSObject(object)", "!isForeignObject(object)"})
-    protected Object doJavaGeneric(Object object) {
-        // assume these to be Java objects
-        assert !JSRuntime.isJSNative(object);
-        if (isFromWith()) {
-            // ... but make that an error within "with"
-            throwWithError();
-        }
-        return getRealm().getEnv().asBoxedGuestValue(object);
     }
 
     @TruffleBoundary
     private void throwWithError() {
-        String message = "Cannot apply \"with\" to non script object";
-        if (getContext().isOptionNashornCompatibilityMode()) {
-            message += ". Consider using \"with(Object.bindProperties({}, nonScriptObject))\".";
-        }
+        String message = getContext().isOptionNashornCompatibilityMode()
+                        ? "Cannot apply \"with\" to non script object. Consider using \"with(Object.bindProperties({}, nonScriptObject))\"."
+                        : "Cannot apply \"with\" to non script object";
         throw Errors.createTypeError(message, this);
     }
 
