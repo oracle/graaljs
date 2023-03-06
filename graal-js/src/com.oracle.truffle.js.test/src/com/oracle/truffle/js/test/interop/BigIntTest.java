@@ -55,6 +55,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.test.JSTest;
@@ -674,6 +675,38 @@ public class BigIntTest {
         }
     }
 
+    @Test
+    public void testCollectionsNormalizeKey() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value setAdd1stHas2nd = context.eval(JavaScriptLanguage.ID, "(function(a, b) { var s = new Set(); s.add(a); return s.has(b); })");
+            Value setAddBothSize = context.eval(JavaScriptLanguage.ID, "(function(a, b) { var s = new Set(); s.add(a); s.add(b); return s.size; })");
+
+            List<BigInteger> bigIntegers = bigIntegersForArithmetic();
+
+            for (int i = 0; i < bigIntegers.size(); i++) {
+                BigInteger aAsBigInteger = bigIntegers.get(i);
+
+                for (Value aAsValue : Stream.concat(hostReprOf(aAsBigInteger), jsReprOf(aAsBigInteger)).map(context::asValue).toList()) {
+                    boolean aIsBigInt = isJSBigInt(aAsValue) || !aAsValue.fitsInDouble();
+
+                    for (Value bAsValue : Stream.concat(hostReprOf(aAsBigInteger), jsReprOf(aAsBigInteger)).map(context::asValue).toList()) {
+                        assertTrue(aAsValue.fitsInBigInteger() && bAsValue.fitsInBigInteger());
+                        boolean bIsBigInt = isJSBigInt(bAsValue) || !bAsValue.fitsInDouble();
+
+                        String msg = aAsValue + " (" + (aIsBigInt ? "bigint" : "number") + "), " + bAsValue + " (" + (bIsBigInt ? "bigint" : "number") + ")";
+                        if (aIsBigInt == bIsBigInt) {
+                            assertTrue(msg, setAdd1stHas2nd.execute(aAsValue, bAsValue).asBoolean());
+                            assertEquals(msg, 1, setAddBothSize.execute(aAsValue, bAsValue).asInt());
+                        } else {
+                            assertFalse(msg, setAdd1stHas2nd.execute(aAsValue, bAsValue).asBoolean());
+                            assertEquals(msg, 2, setAddBothSize.execute(aAsValue, bAsValue).asInt());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private static boolean isBigInt(Value value) {
         return (treatForeignBigIntegerAsBigInt && !value.fitsInDouble()) || isJSBigInt(value);
     }
@@ -686,15 +719,20 @@ public class BigIntTest {
         return false;
     }
 
-    private static boolean fitsInLong(BigInteger bigInteger) {
-        return bigInteger.bitLength() < Long.SIZE;
-    }
-
     private static Stream<Object> hostReprOf(BigInteger bigInteger) {
-        if (fitsInLong(bigInteger)) {
+        if (BigInt.fromBigInteger(bigInteger).fitsInLong()) {
             return Stream.of(bigInteger, bigInteger.longValueExact());
         } else {
             return Stream.of(bigInteger);
+        }
+    }
+
+    private static Stream<Object> jsReprOf(BigInteger bigInteger) {
+        BigInt jsBigInt = BigInt.fromBigInteger(bigInteger);
+        if (jsBigInt.fitsInDouble()) {
+            return Stream.of(jsBigInt, jsBigInt.doubleValue());
+        } else {
+            return Stream.of(jsBigInt);
         }
     }
 }

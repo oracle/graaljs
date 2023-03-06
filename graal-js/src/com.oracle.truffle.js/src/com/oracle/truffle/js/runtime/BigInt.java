@@ -386,7 +386,7 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    boolean fitsInDouble() {
+    public boolean fitsInDouble() {
         if (value.bitLength() <= 53) { // 53 = size of double mantissa + 1
             return true;
         } else {
