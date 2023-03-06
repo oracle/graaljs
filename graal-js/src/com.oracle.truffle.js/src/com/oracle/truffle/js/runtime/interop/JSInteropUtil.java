@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.interop;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -130,8 +131,12 @@ public final class JSInteropUtil {
         }
     }
 
-    @InliningCutoff
     public static Object toPrimitiveOrDefault(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode) {
+        return toPrimitiveOrDefault(obj, defaultValue, interop, originatingNode, false);
+    }
+
+    @InliningCutoff
+    public static Object toPrimitiveOrDefault(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode, boolean taintForeignBigInt) {
         if (interop.isNull(obj)) {
             return Null.instance;
         }
@@ -148,7 +153,12 @@ public final class JSInteropUtil {
                 } else if (interop.fitsInDouble(obj)) {
                     return interop.asDouble(obj);
                 } else if (interop.fitsInBigInteger(obj)) {
-                    return BigInt.fromBigInteger(interop.asBigInteger(obj));
+                    BigInteger bigInteger = interop.asBigInteger(obj);
+                    if (taintForeignBigInt) {
+                        return BigInt.fromForeignBigInteger(bigInteger);
+                    } else {
+                        return BigInt.fromBigInteger(bigInteger);
+                    }
                 }
             }
         } catch (UnsupportedMessageException e) {

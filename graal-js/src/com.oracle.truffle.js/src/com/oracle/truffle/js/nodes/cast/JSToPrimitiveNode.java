@@ -223,27 +223,9 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
                     @Exclusive @Cached("createGetToPrimitive()") PropertyGetNode getToPrimitive,
                     @Exclusive @Cached IsPrimitiveNode isPrimitive,
                     @Exclusive @Cached("createCall()") JSFunctionCallNode callExoticToPrim) {
-        if (interop.isNull(object)) {
-            return Null.instance;
-        }
-        try {
-            if (interop.isBoolean(object)) {
-                return interop.asBoolean(object);
-            } else if (interop.isString(object)) {
-                return interop.asTruffleString(object);
-            } else if (interop.isNumber(object)) {
-                if (interop.fitsInInt(object)) {
-                    return interop.asInt(object);
-                } else if (interop.fitsInLong(object)) {
-                    return interop.asLong(object);
-                } else if (interop.fitsInDouble(object)) {
-                    return interop.asDouble(object);
-                } else if (interop.fitsInBigInteger(object)) {
-                    return BigInt.fromForeignBigInteger(interop.asBigInteger(object));
-                }
-            }
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorUnboxException(object, e, this);
+        Object primitive = JSInteropUtil.toPrimitiveOrDefault(object, null, interop, this, true);
+        if (primitive != null) {
+            return primitive;
         }
 
         // Try foreign object prototype [Symbol.toPrimitive] property first.
@@ -269,7 +251,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         // Try toString() and valueOf(), in hint order.
         Object result = ordinaryToPrimitive(object);
         assert IsPrimitiveNode.getUncached().executeBoolean(result) : result;
-        return JSInteropUtil.toPrimitiveOrDefault(result, result, resultInterop, this);
+        return JSInteropUtil.toPrimitiveOrDefault(result, result, resultInterop, this, true);
     }
 
     public static Object tryHostObjectToPrimitive(Object object, Hint hint, InteropLibrary interop) {
