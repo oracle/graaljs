@@ -211,7 +211,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         private final BranchProfile spaceIsStringBranch = BranchProfile.create();
         private final ConditionProfile spaceIsUndefinedProfile = ConditionProfile.create();
 
-        protected Object jsonStr(Object jsonData, Object keyStr, JSDynamicObject holder) {
+        protected Object jsonStr(Object jsonData, Object keyStr, JSObject holder) {
             if (jsonStringifyStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 jsonStringifyStringNode = insert(JSONStringifyStringNode.create(getContext()));
@@ -296,7 +296,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         private Object stringifyIntl(Object value, Object spaceParam, Object replacerFnObj, List<Object> replacerList) {
             final TruffleString gap = spaceIsUndefinedProfile.profile(spaceParam == Undefined.instance) ? Strings.EMPTY_STRING : getGap(spaceParam);
 
-            JSDynamicObject wrapper = JSOrdinary.create(getContext(), getRealm());
+            JSObject wrapper = JSOrdinary.create(getContext(), getRealm());
             if (createWrapperPropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 createWrapperPropertyNode = insert(CreateDataPropertyNode.create(getContext(), Strings.EMPTY_STRING));
