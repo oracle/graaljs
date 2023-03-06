@@ -2921,4 +2921,30 @@ public final class JSRuntime {
         }
     }
 
+    public static boolean isPrivateSymbol(Object key) {
+        return (key instanceof Symbol) && ((Symbol) key).isPrivate();
+    }
+
+    @TruffleBoundary
+    public static List<Object> filterPrivateSymbols(List<Object> list) {
+        boolean containsPrivateSymbol = false;
+        for (Object key : list) {
+            if (isPrivateSymbol(key)) {
+                containsPrivateSymbol = true;
+                break;
+            }
+        }
+        if (containsPrivateSymbol) {
+            List<Object> filtered = new ArrayList<>(list.size());
+            for (Object key : list) {
+                if (!isPrivateSymbol(key)) {
+                    filtered.add(key);
+                }
+            }
+            return filtered;
+        } else {
+            return list;
+        }
+    }
+
 }

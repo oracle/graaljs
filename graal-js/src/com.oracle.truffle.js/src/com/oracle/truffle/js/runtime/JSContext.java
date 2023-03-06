@@ -217,6 +217,7 @@ public class JSContext {
     private final Assumption globalObjectPristineAssumption;
 
     private final Map<TruffleString, Symbol> symbolRegistry = new ConcurrentHashMap<>();
+    private final Map<TruffleString, Symbol> privateSymbolRegistry = new ConcurrentHashMap<>();
 
     private final Object nodeFactory;
 
@@ -825,6 +826,10 @@ public class JSContext {
 
     public final Map<TruffleString, Symbol> getSymbolRegistry() {
         return symbolRegistry;
+    }
+
+    public final Map<TruffleString, Symbol> getPrivateSymbolRegistry() {
+        return privateSymbolRegistry;
     }
 
     /**

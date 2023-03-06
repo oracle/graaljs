@@ -118,7 +118,7 @@ public abstract class JSNonProxy extends JSClass {
     @Override
     public Object getHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         Object value = getOwnHelper(store, thisObj, key, encapsulatingNode);
-        if (value != null) {
+        if (value != null || JSRuntime.isPrivateSymbol(key)) {
             return value;
         } else {
             return getPropertyHelperGeneric(thisObj, store, key, encapsulatingNode);

@@ -1,6 +1,7 @@
 'use strict';
 
 const {
+  ArrayBufferPrototypeGetByteLength,
   ArrayFrom,
   ArrayIsArray,
   ArrayPrototypePush,
@@ -22,13 +23,24 @@ const {
   ReflectApply,
   ReflectConstruct,
   RegExpPrototypeExec,
+  RegExpPrototypeGetDotAll,
+  RegExpPrototypeGetGlobal,
+  RegExpPrototypeGetHasIndices,
+  RegExpPrototypeGetIgnoreCase,
+  RegExpPrototypeGetMultiline,
+  RegExpPrototypeGetSticky,
+  RegExpPrototypeGetUnicode,
+  RegExpPrototypeGetSource,
   SafeMap,
   SafeSet,
+  SafeWeakMap,
   StringPrototypeReplace,
   StringPrototypeToLowerCase,
   StringPrototypeToUpperCase,
   Symbol,
   SymbolFor,
+  SymbolReplace,
+  SymbolSplit,
 } = primordials;
 
 const {
@@ -42,10 +54,11 @@ const {
 } = require('internal/errors');
 const { signals } = internalBinding('constants').os;
 const {
-  getHiddenValue,
-  setHiddenValue,
-  arrow_message_private_symbol: kArrowMessagePrivateSymbolIndex,
-  decorated_private_symbol: kDecoratedPrivateSymbolIndex,
+  isArrayBufferDetached: _isArrayBufferDetached,
+  privateSymbols: {
+    arrow_message_private_symbol,
+    decorated_private_symbol,
+  },
   sleep: _sleep,
   toUSVString: _toUSVString,
 } = internalBinding('util');
@@ -140,15 +153,14 @@ function deprecate(fn, msg, code) {
 }
 
 function decorateErrorStack(err) {
-  if (!(isError(err) && err.stack) ||
-      getHiddenValue(err, kDecoratedPrivateSymbolIndex) === true)
+  if (!(isError(err) && err.stack) || err[decorated_private_symbol])
     return;
 
-  const arrow = getHiddenValue(err, kArrowMessagePrivateSymbolIndex);
+  const arrow = err[arrow_message_private_symbol];
 
   if (arrow) {
     err.stack = arrow + err.stack;
-    setHiddenValue(err, kDecoratedPrivateSymbolIndex, true);
+    err[decorated_private_symbol] = true;
   }
 }
 
@@ -221,8 +233,7 @@ function slowCases(enc) {
 
 function emitExperimentalWarning(feature) {
   if (experimentalWarnings.has(feature)) return;
-  const msg = `${feature} is an experimental feature. This feature could ` +
-       'change at any time';
+  const msg = `${feature} is an experimental feature and might change at any time`;
   experimentalWarnings.add(feature);
   process.emitWarning(msg, 'ExperimentalWarning');
 }
@@ -450,7 +461,7 @@ function once(callback) {
   return function(...args) {
     if (called) return;
     called = true;
-    ReflectApply(callback, this, args);
+    return ReflectApply(callback, this, args);
   };
 }
 
@@ -559,6 +570,43 @@ function SideEffectFreeRegExpPrototypeExec(regex, string) {
   return FunctionPrototypeCall(RegExpFromAnotherRealm.prototype.exec, regex, string);
 }
 
+const crossRelmRegexes = new SafeWeakMap();
+function getCrossRelmRegex(regex) {
+  const cached = crossRelmRegexes.get(regex);
+  if (cached) return cached;
+
+  let flagString = '';
+  if (RegExpPrototypeGetHasIndices(regex)) flagString += 'd';
+  if (RegExpPrototypeGetGlobal(regex)) flagString += 'g';
+  if (RegExpPrototypeGetIgnoreCase(regex)) flagString += 'i';
+  if (RegExpPrototypeGetMultiline(regex)) flagString += 'm';
+  if (RegExpPrototypeGetDotAll(regex)) flagString += 's';
+  if (RegExpPrototypeGetUnicode(regex)) flagString += 'u';
+  if (RegExpPrototypeGetSticky(regex)) flagString += 'y';
+
+  const { RegExp: RegExpFromAnotherRealm } = getInternalGlobal();
+  const crossRelmRegex = new RegExpFromAnotherRealm(RegExpPrototypeGetSource(regex), flagString);
+  crossRelmRegexes.set(regex, crossRelmRegex);
+  return crossRelmRegex;
+}
+
+function SideEffectFreeRegExpPrototypeSymbolReplace(regex, string, replacement) {
+  return getCrossRelmRegex(regex)[SymbolReplace](string, replacement);
+}
+
+function SideEffectFreeRegExpPrototypeSymbolSplit(regex, string, limit = undefined) {
+  return getCrossRelmRegex(regex)[SymbolSplit](string, limit);
+}
+
+
+function isArrayBufferDetached(value) {
+  if (ArrayBufferPrototypeGetByteLength(value) === 0) {
+    return _isArrayBufferDetached(value);
+  }
+
+  return false;
+}
+
 module.exports = {
   assertCrypto,
   cachedResult,
@@ -576,6 +624,7 @@ module.exports = {
   getInternalGlobal,
   getSystemErrorMap,
   getSystemErrorName,
+  isArrayBufferDetached,
   isError,
   isInsideNodeModules,
   join,
@@ -585,6 +634,8 @@ module.exports = {
   once,
   promisify,
   SideEffectFreeRegExpPrototypeExec,
+  SideEffectFreeRegExpPrototypeSymbolReplace,
+  SideEffectFreeRegExpPrototypeSymbolSplit,
   sleep,
   spliceOne,
   toUSVString,

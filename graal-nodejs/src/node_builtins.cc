@@ -3,6 +3,7 @@
 #include "env-inl.h"
 #include "node_external_reference.h"
 #include "node_internals.h"
+#include "simdutf.h"
 #include "util-inl.h"
 
 namespace node {
@@ -32,6 +33,22 @@ BuiltinLoader BuiltinLoader::instance_;
 
 BuiltinLoader::BuiltinLoader() : config_(GetConfig()), has_code_cache_(false) {
   LoadJavaScriptSource();
+#ifdef NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_LEXER_PATH
+  AddExternalizedBuiltin(
+      "internal/deps/cjs-module-lexer/lexer",
+      STRINGIFY(NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_LEXER_PATH));
+#endif  // NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_LEXER_PATH
+
+#ifdef NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_DIST_LEXER_PATH
+  AddExternalizedBuiltin(
+      "internal/deps/cjs-module-lexer/dist/lexer",
+      STRINGIFY(NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_DIST_LEXER_PATH));
+#endif  // NODE_SHARED_BUILTIN_CJS_MODULE_LEXER_DIST_LEXER_PATH
+
+#ifdef NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH
+  AddExternalizedBuiltin("internal/deps/undici/undici",
+                         STRINGIFY(NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH));
+#endif  // NODE_SHARED_BUILTIN_UNDICI_UNDICI_PATH
 }
 
 BuiltinLoader* BuiltinLoader::GetInstance() {
@@ -217,6 +234,31 @@ MaybeLocal<String> BuiltinLoader::LoadBuiltinSource(Isolate* isolate,
   return String::NewFromUtf8(
       isolate, contents.c_str(), v8::NewStringType::kNormal, contents.length());
 #endif  // NODE_BUILTIN_MODULES_PATH
+}
+
+void BuiltinLoader::AddExternalizedBuiltin(const char* id,
+                                           const char* filename) {
+  std::string source;
+  int r = ReadFileSync(&source, filename);
+  if (r != 0) {
+    fprintf(
+        stderr, "Cannot load externalized builtin: \"%s:%s\".\n", id, filename);
+    ABORT();
+  }
+
+  Add(id, source);
+}
+
+bool BuiltinLoader::Add(const char* id, std::string_view utf8source) {
+  size_t expected_u16_length =
+      simdutf::utf16_length_from_utf8(utf8source.data(), utf8source.length());
+  auto out = std::make_shared<std::vector<uint16_t>>(expected_u16_length);
+  size_t u16_length =
+      simdutf::convert_utf8_to_utf16(utf8source.data(),
+                                     utf8source.length(),
+                                     reinterpret_cast<char16_t*>(out->data()));
+  out->resize(u16_length);
+  return Add(id, UnionBytes(out));
 }
 
 // Returns Local<Function> of the compiled module if return_code_cache
@@ -641,7 +683,7 @@ void BuiltinLoader::RegisterExternalReferences(
 }  // namespace builtins
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(builtins,
-                                   node::builtins::BuiltinLoader::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(builtins,
+                                    node::builtins::BuiltinLoader::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(
     builtins, node::builtins::BuiltinLoader::RegisterExternalReferences)

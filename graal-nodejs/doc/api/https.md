@@ -24,7 +24,7 @@ let https;
 try {
   https = require('node:https');
 } catch (err) {
-  console.log('https support is disabled!');
+  console.error('https support is disabled!');
 }
 ```
 
@@ -42,7 +42,7 @@ let https;
 try {
   https = await import('node:https');
 } catch (err) {
-  console.log('https support is disabled!');
+  console.error('https support is disabled!');
 }
 ```
 
@@ -176,9 +176,14 @@ See [`server.maxHeadersCount`][] in the `node:http` module.
 
 <!-- YAML
 added: v14.11.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41263
+    description: The default request timeout changed
+                 from no timeout to 300s (5 minutes).
 -->
 
-* {number} **Default:** `0`
+* {number} **Default:** `300000`
 
 See [`server.requestTimeout`][] in the `node:http` module.
 
@@ -236,7 +241,7 @@ const fs = require('node:fs');
 
 const options = {
   key: fs.readFileSync('test/fixtures/keys/agent2-key.pem'),
-  cert: fs.readFileSync('test/fixtures/keys/agent2-cert.pem')
+  cert: fs.readFileSync('test/fixtures/keys/agent2-cert.pem'),
 };
 
 https.createServer(options, (req, res) => {
@@ -253,7 +258,7 @@ const fs = require('node:fs');
 
 const options = {
   pfx: fs.readFileSync('test/fixtures/test_cert.pfx'),
-  passphrase: 'sample'
+  passphrase: 'sample',
 };
 
 https.createServer(options, (req, res) => {
@@ -375,7 +380,7 @@ const options = {
   hostname: 'encrypted.google.com',
   port: 443,
   path: '/',
-  method: 'GET'
+  method: 'GET',
 };
 
 const req = https.request(options, (res) => {
@@ -402,7 +407,7 @@ const options = {
   path: '/',
   method: 'GET',
   key: fs.readFileSync('test/fixtures/keys/agent2-key.pem'),
-  cert: fs.readFileSync('test/fixtures/keys/agent2-cert.pem')
+  cert: fs.readFileSync('test/fixtures/keys/agent2-cert.pem'),
 };
 options.agent = new https.Agent(options);
 
@@ -421,7 +426,7 @@ const options = {
   method: 'GET',
   key: fs.readFileSync('test/fixtures/keys/agent2-key.pem'),
   cert: fs.readFileSync('test/fixtures/keys/agent2-cert.pem'),
-  agent: false
+  agent: false,
 };
 
 const req = https.request(options, (res) => {

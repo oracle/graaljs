@@ -27,6 +27,7 @@
 #include "node_buffer.h"
 #include "node_errors.h"
 #include "node_internals.h"
+#include "node_util.h"
 #include "string_bytes.h"
 #include "uv.h"
 
@@ -472,6 +473,68 @@ void SetConstructorFunction(Local<v8::Context> context,
   if (LIKELY(flag == SetConstructorFunctionFlag::SET_CLASS_NAME))
     tmpl->SetClassName(name);
   that->Set(context, name, tmpl->GetFunction(context).ToLocalChecked()).Check();
+}
+
+namespace {
+
+class NonOwningExternalOneByteResource
+    : public v8::String::ExternalOneByteStringResource {
+ public:
+  explicit NonOwningExternalOneByteResource(const UnionBytes& source)
+      : source_(source) {}
+  ~NonOwningExternalOneByteResource() override = default;
+
+  const char* data() const override {
+    return reinterpret_cast<const char*>(source_.one_bytes_data());
+  }
+  size_t length() const override { return source_.length(); }
+
+  NonOwningExternalOneByteResource(const NonOwningExternalOneByteResource&) =
+      delete;
+  NonOwningExternalOneByteResource& operator=(
+      const NonOwningExternalOneByteResource&) = delete;
+
+ private:
+  const UnionBytes source_;
+};
+
+class NonOwningExternalTwoByteResource
+    : public v8::String::ExternalStringResource {
+ public:
+  explicit NonOwningExternalTwoByteResource(const UnionBytes& source)
+      : source_(source) {}
+  ~NonOwningExternalTwoByteResource() override = default;
+
+  const uint16_t* data() const override { return source_.two_bytes_data(); }
+  size_t length() const override { return source_.length(); }
+
+  NonOwningExternalTwoByteResource(const NonOwningExternalTwoByteResource&) =
+      delete;
+  NonOwningExternalTwoByteResource& operator=(
+      const NonOwningExternalTwoByteResource&) = delete;
+
+ private:
+  const UnionBytes source_;
+};
+
+}  // anonymous namespace
+
+Local<String> UnionBytes::ToStringChecked(Isolate* isolate) const {
+  if (UNLIKELY(length() == 0)) {
+    // V8 requires non-null data pointers for empty external strings,
+    // but we don't guarantee that. Solve this by not creating an
+    // external string at all in that case.
+    return String::Empty(isolate);
+  }
+  if (is_one_byte()) {
+    NonOwningExternalOneByteResource* source =
+        new NonOwningExternalOneByteResource(*this);
+    return String::NewExternalOneByte(isolate, source).ToLocalChecked();
+  } else {
+    NonOwningExternalTwoByteResource* source =
+        new NonOwningExternalTwoByteResource(*this);
+    return String::NewExternalTwoByte(isolate, source).ToLocalChecked();
+  }
 }
 
 }  // namespace node

@@ -472,12 +472,12 @@ static void Initialize(Local<Object> target,
                        Local<Value> unused,
                        Local<Context> context,
                        void* priv) {
-  Environment* env = Environment::GetCurrent(context);
-  Isolate* isolate = env->isolate();
-
   SetMethod(context, target, "safeGetenv", SafeGetenv);
 
 #ifdef NODE_IMPLEMENTS_POSIX_CREDENTIALS
+  Environment* env = Environment::GetCurrent(context);
+  Isolate* isolate = env->isolate();
+
   READONLY_TRUE_PROPERTY(target, "implementsPosixCredentials");
   SetMethodNoSideEffect(context, target, "getuid", GetUid);
   SetMethodNoSideEffect(context, target, "geteuid", GetEUid);
@@ -499,6 +499,6 @@ static void Initialize(Local<Object> target,
 }  // namespace credentials
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(credentials, node::credentials::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(credentials,
-                               node::credentials::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(credentials, node::credentials::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(credentials,
+                                node::credentials::RegisterExternalReferences)

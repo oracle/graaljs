@@ -278,7 +278,7 @@ setImmediatePromise('foobar', { signal })
   .then(console.log)
   .catch((err) => {
     if (err.name === 'AbortError')
-      console.log('The immediate was aborted');
+      console.error('The immediate was aborted');
   });
 
 ac.abort();
@@ -296,7 +296,7 @@ setTimeoutPromise(1000, 'foobar', { signal })
   .then(console.log)
   .catch((err) => {
     if (err.name === 'AbortError')
-      console.log('The timeout was aborted');
+      console.error('The timeout was aborted');
   });
 
 ac.abort();
@@ -442,6 +442,8 @@ added: v15.9.0
 -->
 
 Returns an async iterator that generates values in an interval of `delay` ms.
+If `ref` is `true`, you need to call `next()` of async iterator explicitly
+or implicitly to keep the event loop alive.
 
 * `delay` {number} The number of milliseconds to wait between iterations.
   **Default:** `1`.

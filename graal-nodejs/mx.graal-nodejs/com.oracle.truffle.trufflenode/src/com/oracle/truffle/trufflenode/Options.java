@@ -228,6 +228,10 @@ public final class Options {
                     polyglotOptions.put("js.import-assertions", "true");
                     continue;
                 }
+                if ("harmony-shadow-realm".equals(normalizedKey)) {
+                    polyglotOptions.put("js.shadow-realm", "true");
+                    continue;
+                }
                 if ("disallow-code-generation-from-strings".equals(normalizedKey)) {
                     polyglotOptions.put("js.disable-eval", "true");
                     continue;

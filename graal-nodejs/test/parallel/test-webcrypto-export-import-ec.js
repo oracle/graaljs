@@ -327,25 +327,38 @@ async function testImportRaw({ name, publicUsages }, namedCurve) {
   await Promise.all(tests);
 })().then(common.mustCall());
 
+
+// https://github.com/nodejs/node/issues/45859
+(async function() {
+  const compressed = Buffer.from([48, 57, 48, 19, 6, 7, 42, 134, 72, 206, 61, 2, 1, 6, 8, 42, 134, 72, 206, 61, 3, 1, 7, 3, 34, 0, 2, 210, 16, 176, 166, 249, 217, 240, 18, 134, 128, 88, 180, 63, 164, 244, 113, 1, 133, 67, 187, 160, 12, 146, 80, 223, 146, 87, 194, 172, 174, 93, 209]);  // eslint-disable-line max-len
+  const uncompressed = Buffer.from([48, 89, 48, 19, 6, 7, 42, 134, 72, 206, 61, 2, 1, 6, 8, 42, 134, 72, 206, 61, 3, 1, 7, 3, 66, 0, 4, 210, 16, 176, 166, 249, 217, 240, 18, 134, 128, 88, 180, 63, 164, 244, 113, 1, 133, 67, 187, 160, 12, 146, 80, 223, 146, 87, 194, 172, 174, 93, 209, 206, 3, 117, 82, 212, 129, 69, 12, 227, 155, 77, 16, 149, 112, 27, 23, 91, 250, 179, 75, 142, 108, 9, 158, 24, 241, 193, 152, 53, 131, 97, 232]);  // eslint-disable-line max-len
+  for (const name of ['ECDH', 'ECDSA']) {
+    const options = { name, namedCurve: 'P-256' };
+    const key = await subtle.importKey('spki', compressed, options, true, []);
+    const spki = await subtle.exportKey('spki', key);
+    assert.deepStrictEqual(uncompressed, Buffer.from(spki));
+  }
+})().then(common.mustCall());
+
 {
   const rsaPublic = crypto.createPublicKey(
     fixtures.readKey('rsa_public_2048.pem'));
   const rsaPrivate = crypto.createPrivateKey(
     fixtures.readKey('rsa_private_2048.pem'));
 
-  for (const [name, [publicUsage, privateUsage]] of Object.entries({
-    'ECDSA': ['verify', 'sign'],
-    'ECDH': ['deriveBits', 'deriveBits'],
-  })) {
+  for (const [name, publicUsages, privateUsages] of [
+    ['ECDSA', ['verify'], ['sign']],
+    ['ECDH', [], ['deriveBits', 'deriveBits']],
+  ]) {
     assert.rejects(subtle.importKey(
       'spki',
       rsaPublic.export({ format: 'der', type: 'spki' }),
       { name, hash: 'SHA-256', namedCurve: 'P-256' },
-      true, [publicUsage]), { message: /Invalid key type/ });
+      true, publicUsages), { message: /Invalid key type/ });
     assert.rejects(subtle.importKey(
       'pkcs8',
       rsaPrivate.export({ format: 'der', type: 'pkcs8' }),
       { name, hash: 'SHA-256', namedCurve: 'P-256' },
-      true, [privateUsage]), { message: /Invalid key type/ });
+      true, privateUsages), { message: /Invalid key type/ });
   }
 }

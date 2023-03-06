@@ -60,6 +60,7 @@ void OOMErrorHandler(const char* location, bool is_heap_oom);
   V(ERR_CRYPTO_JOB_INIT_FAILED, Error)                                         \
   V(ERR_DLOPEN_DISABLED, Error)                                                \
   V(ERR_DLOPEN_FAILED, Error)                                                  \
+  V(ERR_ENCODING_INVALID_ENCODED_DATA, TypeError)                              \
   V(ERR_EXECUTION_ENVIRONMENT_NOT_AVAILABLE, Error)                            \
   V(ERR_INVALID_ADDRESS, Error)                                                \
   V(ERR_INVALID_ARG_VALUE, TypeError)                                          \
@@ -67,6 +68,7 @@ void OOMErrorHandler(const char* location, bool is_heap_oom);
   V(ERR_INVALID_ARG_TYPE, TypeError)                                           \
   V(ERR_INVALID_OBJECT_DEFINE_PROPERTY, TypeError)                             \
   V(ERR_INVALID_MODULE, Error)                                                 \
+  V(ERR_INVALID_STATE, Error)                                                  \
   V(ERR_INVALID_THIS, TypeError)                                               \
   V(ERR_INVALID_TRANSFER_OBJECT, TypeError)                                    \
   V(ERR_MEMORY_ALLOCATION_FAILED, Error)                                       \

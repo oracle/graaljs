@@ -284,7 +284,15 @@ v8::ScriptOrigin GraalFunction::GetScriptOrigin() const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_resource_name, graal_isolate, GraalAccessMethod::function_resource_name, Object, GetJavaObject());
     GraalValue* resource_name = (java_resource_name == nullptr) ? graal_isolate->GetUndefined() : GraalString::Allocate(graal_isolate, java_resource_name);
-    return v8::ScriptOrigin(reinterpret_cast<v8::Isolate*> (graal_isolate), reinterpret_cast<v8::Value*> (resource_name));
+    return v8::ScriptOrigin(
+        reinterpret_cast<v8::Isolate*> (graal_isolate),
+        reinterpret_cast<v8::Value*> (resource_name),
+        0, // resource_line_offset
+        0, // resource_column_offset
+        false, // resource_is_shared_cross_origin
+        -1, // script_id
+        reinterpret_cast<v8::Value*> (graal_isolate->GetUndefined()) // source_map_url
+    );
 }
 
 int GraalFunction::GetScriptLineNumber() const {

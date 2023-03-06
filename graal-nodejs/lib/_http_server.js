@@ -24,6 +24,7 @@
 const {
   ArrayIsArray,
   Error,
+  MathMin,
   ObjectKeys,
   ObjectSetPrototypeOf,
   RegExpPrototypeExec,
@@ -261,8 +262,8 @@ function onServerResponseClose() {
   // array. That is, in the example below, b still gets called even though
   // it's been removed by a:
   //
-  //   var EventEmitter = require('events');
-  //   var obj = new EventEmitter();
+  //   const EventEmitter = require('events');
+  //   const obj = new EventEmitter();
   //   obj.on('event', a);
   //   obj.on('event', b);
   //   function a() { obj.removeListener('event', b) }
@@ -351,7 +352,7 @@ function writeHead(statusCode, reason, obj) {
     // writeHead(statusCode[, headers])
     if (!this.statusMessage)
       this.statusMessage = STATUS_CODES[statusCode] || 'unknown';
-    obj = reason;
+    obj ??= reason;
   }
   this.statusCode = statusCode;
 
@@ -451,11 +452,11 @@ function storeHTTPOptions(options) {
     validateInteger(headersTimeout, 'headersTimeout', 0);
     this.headersTimeout = headersTimeout;
   } else {
-    this.headersTimeout = 60_000; // 60 seconds
+    this.headersTimeout = MathMin(60_000, this.requestTimeout); // Minimum between 60 seconds or requestTimeout
   }
 
-  if (this.requestTimeout > 0 && this.headersTimeout > 0 && this.headersTimeout >= this.requestTimeout) {
-    throw new codes.ERR_OUT_OF_RANGE('headersTimeout', '< requestTimeout', headersTimeout);
+  if (this.requestTimeout > 0 && this.headersTimeout > 0 && this.headersTimeout > this.requestTimeout) {
+    throw new codes.ERR_OUT_OF_RANGE('headersTimeout', '<= requestTimeout', headersTimeout);
   }
 
   const keepAliveTimeout = options.keepAliveTimeout;
@@ -473,6 +474,12 @@ function storeHTTPOptions(options) {
   } else {
     this.connectionsCheckingInterval = 30_000; // 30 seconds
   }
+
+  const joinDuplicateHeaders = options.joinDuplicateHeaders;
+  if (joinDuplicateHeaders !== undefined) {
+    validateBoolean(joinDuplicateHeaders, 'options.joinDuplicateHeaders');
+  }
+  this.joinDuplicateHeaders = joinDuplicateHeaders;
 }
 
 function setupConnectionsTracking(server) {
@@ -813,10 +820,7 @@ const requestHeaderFieldsTooLargeResponse = Buffer.from(
 function socketOnError(e) {
   // Ignore further errors
   this.removeListener('error', socketOnError);
-
-  if (this.listenerCount('error') === 0) {
-    this.on('error', noop);
-  }
+  this.on('error', noop);
 
   if (!this.server.emit('clientError', e, this)) {
     // Caution must be taken to avoid corrupting the remote peer.

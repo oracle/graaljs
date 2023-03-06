@@ -1,8 +1,8 @@
 'use strict';
 
 const {
-  ArrayPrototypeConcat,
   ArrayPrototypeSome,
+  ArrayPrototypePushApply,
   FunctionPrototypeBind,
   ObjectDefineProperty,
   ObjectKeys,
@@ -16,7 +16,7 @@ const { validatePort } = require('internal/validators');
 const kMinPort = 1024;
 const kMaxPort = 65535;
 const kInspectArgRegex = /--inspect(?:-brk|-port)?|--debug-port/;
-const kInspectMsgRegex = /Debugger listening on ws:\/\/\[?(.+?)\]?:(\d+)\/|Debugger attached|Waiting for the debugger to disconnect\.\.\./;
+const kInspectMsgRegex = /Debugger listening on ws:\/\/\[?(.+?)\]?:(\d+)\/|For help, see: https:\/\/nodejs\.org\/en\/docs\/inspector|Debugger attached|Waiting for the debugger to disconnect\.\.\./;
 
 const _isUsingInspector = new SafeWeakMap();
 function isUsingInspector(execArgv = process.execArgv) {
@@ -69,10 +69,9 @@ function installConsoleExtensions(commandLineApi) {
   const { makeRequireFunction } = require('internal/modules/cjs/helpers');
   const consoleAPIModule = new CJSModule('<inspector console>');
   const cwd = tryGetCwd();
-  consoleAPIModule.paths = ArrayPrototypeConcat(
-    CJSModule._nodeModulePaths(cwd),
-    CJSModule.globalPaths
-  );
+  consoleAPIModule.paths = [];
+  ArrayPrototypePushApply(consoleAPIModule.paths, CJSModule._nodeModulePaths(cwd));
+  ArrayPrototypePushApply(consoleAPIModule.paths, CJSModule.globalPaths);
   commandLineApi.require = makeRequireFunction(consoleAPIModule);
 }
 

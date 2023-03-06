@@ -36,6 +36,7 @@
 #include "node_options-inl.h"
 #include "node_perf.h"
 #include "node_process-inl.h"
+#include "node_realm-inl.h"
 #include "node_report.h"
 #include "node_revert.h"
 #include "node_snapshot_builder.h"
@@ -66,6 +67,10 @@
 
 #if HAVE_INSPECTOR
 #include "inspector/worker_inspector.h"  // ParentInspectorHandle
+#endif
+
+#ifdef NODE_ENABLE_VTUNE_PROFILING
+#include "../deps/v8/src/third_party/vtune/v8-vtune.h"
 #endif
 
 #include "large_pages/node_large_page.h"
@@ -128,13 +133,10 @@ namespace node {
 using builtins::BuiltinLoader;
 
 using v8::EscapableHandleScope;
-using v8::Function;
 using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
 using v8::Object;
-using v8::String;
-using v8::Undefined;
 using v8::V8;
 using v8::Value;
 
@@ -170,36 +172,6 @@ void SignalExit(int signo, siginfo_t* info, void* ucontext) {
   raise(signo);
 }
 #endif  // __POSIX__
-
-MaybeLocal<Value> ExecuteBootstrapper(Environment* env,
-                                      const char* id,
-                                      std::vector<Local<Value>>* arguments) {
-  EscapableHandleScope scope(env->isolate());
-  MaybeLocal<Function> maybe_fn =
-      BuiltinLoader::LookupAndCompile(env->context(), id, env);
-
-  Local<Function> fn;
-  if (!maybe_fn.ToLocal(&fn)) {
-    return MaybeLocal<Value>();
-  }
-
-  MaybeLocal<Value> result = fn->Call(env->context(),
-                                      Undefined(env->isolate()),
-                                      arguments->size(),
-                                      arguments->data());
-
-  // If there was an error during bootstrap, it must be unrecoverable
-  // (e.g. max call stack exceeded). Clear the stack so that the
-  // AsyncCallbackScope destructor doesn't fail on the id check.
-  // There are only two ways to have a stack size > 1: 1) the user manually
-  // called MakeCallback or 2) user awaited during bootstrap, which triggered
-  // _tickCallback().
-  if (result.IsEmpty()) {
-    env->async_hooks()->clear_async_id_stack();
-  }
-
-  return scope.EscapeMaybe(result);
-}
 
 #if HAVE_INSPECTOR
 int Environment::InitializeInspector(
@@ -295,129 +267,11 @@ void Environment::InitializeDiagnostics() {
 #endif
 }
 
-MaybeLocal<Value> Environment::BootstrapInternalLoaders() {
-  EscapableHandleScope scope(isolate_);
-
-  // Arguments must match the parameters specified in
-  // BuiltinLoader::LookupAndCompile().
-  std::vector<Local<Value>> loaders_args = {
-      process_object(),
-      NewFunctionTemplate(isolate_, binding::GetLinkedBinding)
-          ->GetFunction(context())
-          .ToLocalChecked(),
-      NewFunctionTemplate(isolate_, binding::GetInternalBinding)
-          ->GetFunction(context())
-          .ToLocalChecked(),
-      primordials()};
-
-  // Bootstrap internal loaders
-  Local<Value> loader_exports;
-  if (!ExecuteBootstrapper(this, "internal/bootstrap/loaders", &loaders_args)
-           .ToLocal(&loader_exports)) {
-    return MaybeLocal<Value>();
-  }
-  CHECK(loader_exports->IsObject());
-  Local<Object> loader_exports_obj = loader_exports.As<Object>();
-  Local<Value> internal_binding_loader =
-      loader_exports_obj->Get(context(), internal_binding_string())
-          .ToLocalChecked();
-  CHECK(internal_binding_loader->IsFunction());
-  set_internal_binding_loader(internal_binding_loader.As<Function>());
-  Local<Value> require =
-      loader_exports_obj->Get(context(), require_string()).ToLocalChecked();
-  CHECK(require->IsFunction());
-  set_builtin_module_require(require.As<Function>());
-
-  return scope.Escape(loader_exports);
-}
-
-MaybeLocal<Value> Environment::BootstrapNode() {
-  EscapableHandleScope scope(isolate_);
-
-  // Arguments must match the parameters specified in
-  // BuiltinLoader::LookupAndCompile().
-  // process, require, internalBinding, primordials
-  std::vector<Local<Value>> node_args = {process_object(),
-                                         builtin_module_require(),
-                                         internal_binding_loader(),
-                                         primordials()};
-
-  MaybeLocal<Value> result =
-      ExecuteBootstrapper(this, "internal/bootstrap/node", &node_args);
-
-  if (result.IsEmpty()) {
-    return MaybeLocal<Value>();
-  }
-
-  if (!no_browser_globals()) {
-    result =
-        ExecuteBootstrapper(this, "internal/bootstrap/browser", &node_args);
-
-    if (result.IsEmpty()) {
-      return MaybeLocal<Value>();
-    }
-  }
-
-  // TODO(joyeecheung): skip these in the snapshot building for workers.
-  auto thread_switch_id =
-      is_main_thread() ? "internal/bootstrap/switches/is_main_thread"
-                       : "internal/bootstrap/switches/is_not_main_thread";
-  result = ExecuteBootstrapper(this, thread_switch_id, &node_args);
-
-  if (result.IsEmpty()) {
-    return MaybeLocal<Value>();
-  }
-
-  auto process_state_switch_id =
-      owns_process_state()
-          ? "internal/bootstrap/switches/does_own_process_state"
-          : "internal/bootstrap/switches/does_not_own_process_state";
-  result = ExecuteBootstrapper(this, process_state_switch_id, &node_args);
-
-  if (result.IsEmpty()) {
-    return MaybeLocal<Value>();
-  }
-
-  Local<String> env_string = FIXED_ONE_BYTE_STRING(isolate_, "env");
-  Local<Object> env_var_proxy;
-  if (!CreateEnvVarProxy(context(), isolate_).ToLocal(&env_var_proxy) ||
-      process_object()->Set(context(), env_string, env_var_proxy).IsNothing()) {
-    return MaybeLocal<Value>();
-  }
-
-  return scope.EscapeMaybe(result);
-}
-
-MaybeLocal<Value> Environment::RunBootstrapping() {
-  EscapableHandleScope scope(isolate_);
-
-  CHECK(!has_run_bootstrapping_code());
-
-  if (BootstrapInternalLoaders().IsEmpty()) {
-    return MaybeLocal<Value>();
-  }
-
-  Local<Value> result;
-  if (!BootstrapNode().ToLocal(&result)) {
-    return MaybeLocal<Value>();
-  }
-
-  // Make sure that no request or handle is created during bootstrap -
-  // if necessary those should be done in pre-execution.
-  // Usually, doing so would trigger the checks present in the ReqWrap and
-  // HandleWrap classes, so this is only a consistency check.
-  CHECK(req_wrap_queue()->IsEmpty());
-  CHECK(handle_wrap_queue()->IsEmpty());
-
-  DoneBootstrapping();
-
-  return scope.Escape(result);
-}
-
 static
 MaybeLocal<Value> StartExecution(Environment* env, const char* main_script_id) {
   EscapableHandleScope scope(env->isolate());
   CHECK_NOT_NULL(main_script_id);
+  Realm* realm = env->principal_realm();
 
   // Arguments must match the parameters specified in
   // BuiltinLoader::LookupAndCompile().
@@ -427,7 +281,7 @@ MaybeLocal<Value> StartExecution(Environment* env, const char* main_script_id) {
                                          env->primordials()};
 
   return scope.EscapeMaybe(
-      ExecuteBootstrapper(env, main_script_id, &arguments));
+      realm->ExecuteBootstrapper(main_script_id, &arguments));
 }
 
 MaybeLocal<Value> StartExecution(Environment* env, StartExecutionCallback cb) {
@@ -497,7 +351,7 @@ MaybeLocal<Value> StartExecution(Environment* env, StartExecutionCallback cb) {
     return StartExecution(env, "internal/main/test_runner");
   }
 
-  if (env->options()->watch_mode && !first_argv.empty()) {
+  if (env->options()->watch_mode) {
     return StartExecution(env, "internal/main/watch_mode");
   }
 
@@ -595,7 +449,7 @@ void ResetSignalHandlers() {
 #endif  // __POSIX__
 }
 
-static std::atomic<uint64_t> init_process_flags = 0;
+static std::atomic<uint32_t> init_process_flags = 0;
 
 static void PlatformInit(ProcessInitializationFlags::Flags flags) {
   // init_process_flags is accessed in ResetStdio(),
@@ -619,11 +473,32 @@ static void PlatformInit(ProcessInitializationFlags::Flags flags) {
     for (auto& s : stdio) {
       const int fd = &s - stdio;
       if (fstat(fd, &s.stat) == 0) continue;
+
       // Anything but EBADF means something is seriously wrong.  We don't
       // have to special-case EINTR, fstat() is not interruptible.
       if (errno != EBADF) ABORT();
-      if (fd != open("/dev/null", O_RDWR)) ABORT();
-      if (fstat(fd, &s.stat) != 0) ABORT();
+
+      // If EBADF (file descriptor doesn't exist), open /dev/null and duplicate
+      // its file descriptor to the invalid file descriptor.  Make sure *that*
+      // file descriptor is valid.  POSIX doesn't guarantee the next file
+      // descriptor open(2) gives us is the lowest available number anymore in
+      // POSIX.1-2017, which is why dup2(2) is needed.
+      int null_fd;
+
+      do {
+        null_fd = open("/dev/null", O_RDWR);
+      } while (null_fd < 0 && errno == EINTR);
+
+      if (null_fd != fd) {
+        int err;
+
+        do {
+          err = dup2(null_fd, fd);
+        } while (err < 0 && errno == EINTR);
+        CHECK_EQ(err, 0);
+      }
+
+      if (fstat(fd, &s.stat) < 0) ABORT();
     }
   }
 
@@ -907,8 +782,8 @@ int InitializeNodeWithArgs(std::vector<std::string>* argv,
   // Initialize node_start_time to get relative uptime.
   per_process::node_start_time = uv_hrtime();
 
-  // Register built-in modules
-  binding::RegisterBuiltinModules();
+  // Register built-in bindings
+  binding::RegisterBuiltinBindings();
 
   // Make inherited handles noninheritable.
   if (!(flags & ProcessInitializationFlags::kEnableStdioInheritance) &&
@@ -1296,13 +1171,23 @@ int LoadSnapshotDataAndRun(const SnapshotData** snapshot_data_ptr,
       return exit_code;
     }
     std::unique_ptr<SnapshotData> read_data = std::make_unique<SnapshotData>();
-    SnapshotData::FromBlob(read_data.get(), fp);
+    if (!SnapshotData::FromBlob(read_data.get(), fp)) {
+      // If we fail to read the customized snapshot, simply exit with 1.
+      exit_code = 1;
+      return exit_code;
+    }
     *snapshot_data_ptr = read_data.release();
     fclose(fp);
   } else if (per_process::cli_options->node_snapshot) {
     // If --snapshot-blob is not specified, we are reading the embedded
     // snapshot, but we will skip it if --no-node-snapshot is specified.
-    *snapshot_data_ptr = SnapshotBuilder::GetEmbeddedSnapshotData();
+    const node::SnapshotData* read_data =
+        SnapshotBuilder::GetEmbeddedSnapshotData();
+    if (read_data != nullptr && read_data->Check()) {
+      // If we fail to read the embedded snapshot, treat it as if Node.js
+      // was built without one.
+      *snapshot_data_ptr = read_data;
+    }
   }
 
   if ((*snapshot_data_ptr) != nullptr) {
@@ -1446,5 +1331,5 @@ long GraalArgumentsPreprocessing(int argc, char *argv[]) {
 #if !HAVE_INSPECTOR
 void Initialize() {}
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(inspector, Initialize)
 #endif  // !HAVE_INSPECTOR

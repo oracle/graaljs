@@ -217,10 +217,9 @@ void PipeWrap::Open(const FunctionCallbackInfo<Value>& args) {
   if (!args[0]->Int32Value(env->context()).To(&fd)) return;
 
   int err = uv_pipe_open(&wrap->handle_, fd);
-  wrap->set_fd(fd);
+  if (err == 0) wrap->set_fd(fd);
 
-  if (err != 0)
-    env->ThrowUVException(err, "uv_pipe_open");
+  args.GetReturnValue().Set(err);
 }
 
 
@@ -255,6 +254,6 @@ void PipeWrap::Connect(const FunctionCallbackInfo<Value>& args) {
 
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(pipe_wrap, node::PipeWrap::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(pipe_wrap,
-                               node::PipeWrap::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(pipe_wrap, node::PipeWrap::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(pipe_wrap,
+                                node::PipeWrap::RegisterExternalReferences)

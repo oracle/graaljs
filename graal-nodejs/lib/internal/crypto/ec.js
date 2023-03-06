@@ -54,21 +54,18 @@ const {
 
 const generateKeyPair = promisify(_generateKeyPair);
 
-function verifyAcceptableEcKeyUse(name, type, usages) {
+function verifyAcceptableEcKeyUse(name, isPublic, usages) {
   let checkSet;
   switch (name) {
     case 'ECDH':
-      checkSet = ['deriveKey', 'deriveBits'];
+      checkSet = isPublic ? [] : ['deriveKey', 'deriveBits'];
       break;
     case 'ECDSA':
-      switch (type) {
-        case 'private':
-          checkSet = ['sign'];
-          break;
-        case 'public':
-          checkSet = ['verify'];
-          break;
-      }
+      checkSet = isPublic ? ['verify'] : ['sign'];
+      break;
+    default:
+      throw lazyDOMException(
+        'The algorithm is not supported', 'NotSupportedError');
   }
   if (hasAnyNotIn(usages, checkSet)) {
     throw lazyDOMException(
@@ -80,8 +77,12 @@ function verifyAcceptableEcKeyUse(name, type, usages) {
 function createECPublicKeyRaw(namedCurve, keyData) {
   const handle = new KeyObjectHandle();
   keyData = getArrayBufferOrView(keyData, 'keyData');
-  if (handle.initECRaw(kNamedCurveAliases[namedCurve], keyData))
-    return new PublicKeyObject(handle);
+
+  if (!handle.initECRaw(kNamedCurveAliases[namedCurve], keyData)) {
+    throw lazyDOMException('Invalid keyData', 'DataError');
+  }
+
+  return new PublicKeyObject(handle);
 }
 
 async function ecGenerateKey(algorithm, extractable, keyUsages) {
@@ -150,7 +151,7 @@ async function ecGenerateKey(algorithm, extractable, keyUsages) {
 }
 
 function ecExportKey(key, format) {
-  return jobPromise(new ECKeyExportJob(
+  return jobPromise(() => new ECKeyExportJob(
     kCryptoJobAsync,
     format,
     key[kKeyObject][kHandle]));
@@ -175,21 +176,31 @@ async function ecImportKey(
   const usagesSet = new SafeSet(keyUsages);
   switch (format) {
     case 'spki': {
-      verifyAcceptableEcKeyUse(name, 'public', usagesSet);
-      keyObject = createPublicKey({
-        key: keyData,
-        format: 'der',
-        type: 'spki'
-      });
+      verifyAcceptableEcKeyUse(name, true, usagesSet);
+      try {
+        keyObject = createPublicKey({
+          key: keyData,
+          format: 'der',
+          type: 'spki'
+        });
+      } catch (err) {
+        throw lazyDOMException(
+          'Invalid keyData', { name: 'DataError', cause: err });
+      }
       break;
     }
     case 'pkcs8': {
-      verifyAcceptableEcKeyUse(name, 'private', usagesSet);
-      keyObject = createPrivateKey({
-        key: keyData,
-        format: 'der',
-        type: 'pkcs8'
-      });
+      verifyAcceptableEcKeyUse(name, false, usagesSet);
+      try {
+        keyObject = createPrivateKey({
+          key: keyData,
+          format: 'der',
+          type: 'pkcs8'
+        });
+      } catch (err) {
+        throw lazyDOMException(
+          'Invalid keyData', { name: 'DataError', cause: err });
+      }
       break;
     }
     case 'jwk': {
@@ -200,11 +211,10 @@ async function ecImportKey(
       if (keyData.crv !== namedCurve)
         throw lazyDOMException('Named curve mismatch', 'DataError');
 
-      if (keyData.d !== undefined) {
-        verifyAcceptableEcKeyUse(name, 'private', usagesSet);
-      } else {
-        verifyAcceptableEcKeyUse(name, 'public', usagesSet);
-      }
+      verifyAcceptableEcKeyUse(
+        name,
+        keyData.d === undefined,
+        usagesSet);
 
       if (usagesSet.size > 0 && keyData.use !== undefined) {
         if (algorithm.name === 'ECDSA' && keyData.use !== 'sig')
@@ -244,10 +254,8 @@ async function ecImportKey(
       break;
     }
     case 'raw': {
-      verifyAcceptableEcKeyUse(name, 'public', usagesSet);
+      verifyAcceptableEcKeyUse(name, true, usagesSet);
       keyObject = createECPublicKeyRaw(namedCurve, keyData);
-      if (keyObject === undefined)
-        throw lazyDOMException('Unable to import EC key', 'OperationError');
       break;
     }
   }
@@ -285,7 +293,7 @@ function ecdsaSignVerify(key, data, { name, hash }, signature) {
     throw new ERR_MISSING_OPTION('algorithm.hash');
   const hashname = normalizeHashName(hash.name);
 
-  return jobPromise(new SignJob(
+  return jobPromise(() => new SignJob(
     kCryptoJobAsync,
     mode,
     key[kKeyObject][kHandle],

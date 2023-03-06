@@ -603,7 +603,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
                         @CachedLibrary("receiver") DynamicObjectLibrary dynamicObject) {
             Object key = evaluateKey(frame);
             Object value = valueNode.execute(frame);
-            dynamicObject.putWithFlags(receiver, key, value, attributes);
+            dynamicObject.putWithFlags(receiver, key, value, attributes | (JSRuntime.isPrivateSymbol(key) ? JSAttributes.NOT_ENUMERABLE : 0));
         }
 
         @SuppressWarnings("unused")

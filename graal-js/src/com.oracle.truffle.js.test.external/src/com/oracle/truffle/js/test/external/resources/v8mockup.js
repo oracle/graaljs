@@ -387,15 +387,11 @@ globalThis['%NormalizeElements'] = function(arr) {
 }
 
 globalThis['%SymbolIsPrivate'] = function(sym) {
-    return false;
+    return TestV8.symbolIsPrivate(sym);
 }
 
 globalThis['%CreatePrivateSymbol'] = function(sym) {
-    return Symbol(sym);
-}
-
-globalThis['%CreatePrivateOwnSymbol'] = function(sym) {
-    return Symbol(sym);
+    return TestV8.createPrivateSymbol(sym);
 }
 
 globalThis['%ArrayBufferDetach'] = function(arr) {
@@ -1094,7 +1090,7 @@ function version() {
 }
 
 globalThis['%CreatePrivateNameSymbol'] = function(name) {
-    return Symbol(name);
+    return TestV8.createPrivateSymbol(name);
 }
 
 globalThis['%ConstructInternalizedString'] = function(string) {

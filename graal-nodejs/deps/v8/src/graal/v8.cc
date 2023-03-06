@@ -136,6 +136,10 @@ namespace v8 {
         reinterpret_cast<GraalArrayBuffer*> (this)->Detach();
     }
 
+    bool ArrayBuffer::WasDetached() const {
+        return reinterpret_cast<const GraalArrayBuffer*> (this)->WasDetached();
+    }
+
     Local<ArrayBuffer> ArrayBuffer::New(Isolate* isolate, size_t byte_length) {
         return GraalArrayBuffer::New(isolate, byte_length);
     }
@@ -557,6 +561,10 @@ namespace v8 {
 
     void Isolate::SetPromiseRejectCallback(PromiseRejectCallback callback) {
         reinterpret_cast<GraalIsolate*> (this)->SetPromiseRejectCallback(callback);
+    }
+
+    void Isolate::SetHostCreateShadowRealmContextCallback(HostCreateShadowRealmContextCallback callback) {
+        TRACE
     }
 
     void Isolate::TerminateExecution() {
@@ -1841,6 +1849,12 @@ namespace v8 {
         return reinterpret_cast<const GraalUnboundScript*> (this)->GetId();
     }
 
+    Local<Value> UnboundScript::GetSourceMappingURL() {
+        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalUnboundScript*> (this)->Isolate();
+        return reinterpret_cast<v8::Value*> (graal_isolate->GetUndefined());
+    }
+
     bool Value::IsRegExp() const {
         return reinterpret_cast<const GraalValue*> (this)->IsRegExp();
     }
@@ -1935,7 +1949,7 @@ namespace v8 {
     }
 
     Local<Private> Private::ForApi(Isolate* isolate, Local<String> name) {
-        return reinterpret_cast<Private*> (*name);
+        return GraalSymbol::PrivateForApi(isolate, name);
     }
 
     void Isolate::ReportExternalAllocationLimitReached() {
@@ -2250,7 +2264,7 @@ namespace v8 {
     }
 
     Local<Private> Private::New(Isolate* isolate, Local<String> name) {
-        return reinterpret_cast<Private*> (*name);
+        return GraalSymbol::NewPrivate(isolate, name);
     }
 
     Local<Value> Promise::Result() {

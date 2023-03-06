@@ -2,8 +2,8 @@
 
 const {
   ArrayIsArray,
-  ArrayPrototypeConcat,
   ArrayPrototypeJoin,
+  ArrayPrototypePush,
   ArrayPrototypeShift,
   JSONParse,
   JSONStringify,
@@ -101,16 +101,16 @@ function emitTrailingSlashPatternDeprecation(match, pjsonUrl, base) {
 
 const doubleSlashRegEx = /[/\\][/\\]/;
 
-function emitInvalidSegmentDeprecation(target, request, match, pjsonUrl, base) {
+function emitInvalidSegmentDeprecation(target, request, match, pjsonUrl, internal, base, isTarget) {
   if (!pendingDeprecation) { return; }
   const pjsonPath = fileURLToPath(pjsonUrl);
-  const double = RegExpPrototypeExec(doubleSlashRegEx, target) !== null;
+  const double = RegExpPrototypeExec(doubleSlashRegEx, isTarget ? target : request) !== null;
   process.emitWarning(
     `Use of deprecated ${double ? 'double slash' :
       'leading or trailing slash matching'} resolving "${target}" for module ` +
       `request "${request}" ${request !== match ? `matched to "${match}" ` : ''
-      }in the "exports" field module resolution of the package at ${pjsonPath}${
-        base ? ` imported from ${fileURLToPath(base)}` : ''}.`,
+      }in the "${internal ? 'imports' : 'exports'}" field module resolution of the package at ${
+        pjsonPath}${base ? ` imported from ${fileURLToPath(base)}` : ''}.`,
     'DeprecationWarning',
     'DEP0166'
   );
@@ -320,6 +320,9 @@ function finalizeResolution(resolved, base, preserveSymlinks) {
     err.url = String(resolved);
     throw err;
   } else if (!stats.isFile()) {
+    if (process.env.WATCH_REPORT_DEPENDENCIES && process.send) {
+      process.send({ 'watch:require': [path || resolved.pathname] });
+    }
     throw new ERR_MODULE_NOT_FOUND(
       path || resolved.pathname, base && fileURLToPath(base), 'module');
   }
@@ -343,8 +346,8 @@ function finalizeResolution(resolved, base, preserveSymlinks) {
  * @param {URL} packageJSONUrl
  * @param {string | URL | undefined} base
  */
-function throwImportNotDefined(specifier, packageJSONUrl, base) {
-  throw new ERR_PACKAGE_IMPORT_NOT_DEFINED(
+function importNotDefined(specifier, packageJSONUrl, base) {
+  return new ERR_PACKAGE_IMPORT_NOT_DEFINED(
     specifier, packageJSONUrl && fileURLToPath(new URL('.', packageJSONUrl)),
     fileURLToPath(base));
 }
@@ -354,8 +357,8 @@ function throwImportNotDefined(specifier, packageJSONUrl, base) {
  * @param {URL} packageJSONUrl
  * @param {string | URL | undefined} base
  */
-function throwExportsNotFound(subpath, packageJSONUrl, base) {
-  throw new ERR_PACKAGE_PATH_NOT_EXPORTED(
+function exportsNotFound(subpath, packageJSONUrl, base) {
+  return new ERR_PACKAGE_PATH_NOT_EXPORTED(
     fileURLToPath(new URL('.', packageJSONUrl)), subpath,
     base && fileURLToPath(base));
 }
@@ -376,14 +379,14 @@ function throwInvalidSubpath(request, match, packageJSONUrl, internal, base) {
                                          base && fileURLToPath(base));
 }
 
-function throwInvalidPackageTarget(
+function invalidPackageTarget(
   subpath, target, packageJSONUrl, internal, base) {
   if (typeof target === 'object' && target !== null) {
     target = JSONStringify(target, null, '');
   } else {
     target = `${target}`;
   }
-  throw new ERR_INVALID_PACKAGE_TARGET(
+  return new ERR_INVALID_PACKAGE_TARGET(
     fileURLToPath(new URL('.', packageJSONUrl)), subpath, target,
     internal, base && fileURLToPath(base));
 }
@@ -393,6 +396,19 @@ const deprecatedInvalidSegmentRegEx = /(^|\\|\/)((\.|%2e)(\.|%2e)?|(n|%6e|%4e)(o
 const invalidPackageNameRegEx = /^\.|%|\\/;
 const patternRegEx = /\*/g;
 
+/**
+ *
+ * @param {string} target
+ * @param {*} subpath
+ * @param {*} match
+ * @param {*} packageJSONUrl
+ * @param {*} base
+ * @param {*} pattern
+ * @param {*} internal
+ * @param {*} isPathMap
+ * @param {*} conditions
+ * @returns {URL}
+ */
 function resolvePackageTargetString(
   target,
   subpath,
@@ -406,7 +422,7 @@ function resolvePackageTargetString(
 ) {
 
   if (subpath !== '' && !pattern && target[target.length - 1] !== '/')
-    throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
+    throw invalidPackageTarget(match, target, packageJSONUrl, internal, base);
 
   if (!StringPrototypeStartsWith(target, './')) {
     if (internal && !StringPrototypeStartsWith(target, '../') &&
@@ -426,7 +442,7 @@ function resolvePackageTargetString(
           exportTarget, packageJSONUrl, conditions);
       }
     }
-    throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
+    throw invalidPackageTarget(match, target, packageJSONUrl, internal, base);
   }
 
   if (RegExpPrototypeExec(invalidSegmentRegEx, StringPrototypeSlice(target, 2)) !== null) {
@@ -438,10 +454,10 @@ function resolvePackageTargetString(
         const resolvedTarget = pattern ?
           RegExpPrototypeSymbolReplace(patternRegEx, target, () => subpath) :
           target;
-        emitInvalidSegmentDeprecation(resolvedTarget, request, match, packageJSONUrl, base);
+        emitInvalidSegmentDeprecation(resolvedTarget, request, match, packageJSONUrl, internal, base, true);
       }
     } else {
-      throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
+      throw invalidPackageTarget(match, target, packageJSONUrl, internal, base);
     }
   }
 
@@ -450,7 +466,7 @@ function resolvePackageTargetString(
   const packagePath = new URL('.', packageJSONUrl).pathname;
 
   if (!StringPrototypeStartsWith(resolvedPath, packagePath))
-    throwInvalidPackageTarget(match, target, packageJSONUrl, internal, base);
+    throw invalidPackageTarget(match, target, packageJSONUrl, internal, base);
 
   if (subpath === '') return resolved;
 
@@ -461,7 +477,7 @@ function resolvePackageTargetString(
         const resolvedTarget = pattern ?
           RegExpPrototypeSymbolReplace(patternRegEx, target, () => subpath) :
           target;
-        emitInvalidSegmentDeprecation(resolvedTarget, request, match, packageJSONUrl, base);
+        emitInvalidSegmentDeprecation(resolvedTarget, request, match, packageJSONUrl, internal, base, false);
       }
     } else {
       throwInvalidSubpath(request, match, packageJSONUrl, internal, base);
@@ -487,6 +503,19 @@ function isArrayIndex(key) {
   return keyNum >= 0 && keyNum < 0xFFFF_FFFF;
 }
 
+/**
+ *
+ * @param {*} packageJSONUrl
+ * @param {string|[string]} target
+ * @param {*} subpath
+ * @param {*} packageSubpath
+ * @param {*} base
+ * @param {*} pattern
+ * @param {*} internal
+ * @param {*} isPathMap
+ * @param {*} conditions
+ * @returns {URL|null}
+ */
 function resolvePackageTarget(packageJSONUrl, target, subpath, packageSubpath,
                               base, pattern, internal, isPathMap, conditions) {
   if (typeof target === 'string') {
@@ -551,8 +580,8 @@ function resolvePackageTarget(packageJSONUrl, target, subpath, packageSubpath,
   } else if (target === null) {
     return null;
   }
-  throwInvalidPackageTarget(packageSubpath, target, packageJSONUrl, internal,
-                            base);
+  throw invalidPackageTarget(packageSubpath, target, packageJSONUrl, internal,
+                             base);
 }
 
 /**
@@ -609,7 +638,7 @@ function packageExportsResolve(
     );
 
     if (resolveResult == null) {
-      throwExportsNotFound(packageSubpath, packageJSONUrl, base);
+      throw exportsNotFound(packageSubpath, packageJSONUrl, base);
     }
 
     return resolveResult;
@@ -660,12 +689,12 @@ function packageExportsResolve(
       conditions);
 
     if (resolveResult == null) {
-      throwExportsNotFound(packageSubpath, packageJSONUrl, base);
+      throw exportsNotFound(packageSubpath, packageJSONUrl, base);
     }
     return resolveResult;
   }
 
-  throwExportsNotFound(packageSubpath, packageJSONUrl, base);
+  throw exportsNotFound(packageSubpath, packageJSONUrl, base);
 }
 
 function patternKeyCompare(a, b) {
@@ -745,7 +774,7 @@ function packageImportsResolve(name, base, conditions) {
       }
     }
   }
-  throwImportNotDefined(name, packageJSONUrl, base);
+  throw importNotDefined(name, packageJSONUrl, base);
 }
 
 /**
@@ -1023,11 +1052,11 @@ function throwIfUnsupportedURLScheme(parsed, experimentalNetworkImports) {
       )
     )
   ) {
-    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(parsed, ArrayPrototypeConcat(
-      'file',
-      'data',
-      experimentalNetworkImports ? ['https', 'http'] : [],
-    ));
+    const schemes = ['file', 'data'];
+    if (experimentalNetworkImports) {
+      ArrayPrototypePush(schemes, 'https', 'http');
+    }
+    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(parsed, schemes);
   }
 }
 
@@ -1083,7 +1112,7 @@ async function defaultResolve(specifier, context = {}) {
         )
       )
     ) {
-      return { url: parsed.href };
+      return { __proto__: null, url: parsed.href };
     }
   } catch {
     // Ignore exception

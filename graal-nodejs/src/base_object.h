@@ -31,6 +31,8 @@
 namespace node {
 
 class Environment;
+class IsolateData;
+class Realm;
 template <typename T, bool kIsWeak>
 class BaseObjectPtrImpl;
 
@@ -38,13 +40,18 @@ namespace worker {
 class TransferData;
 }
 
+extern uint16_t kNodeEmbedderId;
+
 class BaseObject : public MemoryRetainer {
  public:
-  enum InternalFields { kSlot, kInternalFieldCount };
+  enum InternalFields { kEmbedderType, kSlot, kInternalFieldCount };
 
-  // Associates this object with `object`. It uses the 0th internal field for
+  // Associates this object with `object`. It uses the 1st internal field for
   // that, and in particular aborts if there is no such field.
-  BaseObject(Environment* env, v8::Local<v8::Object> object);
+  // This is the designated constructor.
+  BaseObject(Realm* realm, v8::Local<v8::Object> object);
+  // Convenient constructor for constructing BaseObject in the principal realm.
+  inline BaseObject(Environment* env, v8::Local<v8::Object> object);
   ~BaseObject() override;
 
   BaseObject() = delete;
@@ -60,11 +67,15 @@ class BaseObject : public MemoryRetainer {
   inline v8::Global<v8::Object>& persistent();
 
   inline Environment* env() const;
+  inline Realm* realm() const;
 
   // Get a BaseObject* pointer, or subclass pointer, for the JS object that
   // was also passed to the `BaseObject()` constructor initially.
   // This may return `nullptr` if the C++ object has not been constructed yet,
   // e.g. when the JS object used `MakeLazilyInitializedJSTemplate`.
+  static inline void SetInternalFields(v8::Local<v8::Object> object,
+                                       void* slot);
+  static inline void TagNodeObject(v8::Local<v8::Object> object);
   static void LazilyInitializedJSTemplateConstructor(
       const v8::FunctionCallbackInfo<v8::Value>& args);
   static inline BaseObject* FromJSObject(v8::Local<v8::Value> object);
@@ -91,6 +102,8 @@ class BaseObject : public MemoryRetainer {
   // the `BaseObject*` pointer) and a constructor that initializes that field
   // to `nullptr`.
   static v8::Local<v8::FunctionTemplate> MakeLazilyInitializedJSTemplate(
+      IsolateData* isolate);
+  static v8::Local<v8::FunctionTemplate> MakeLazilyInitializedJSTemplate(
       Environment* env);
 
   // Setter/Getter pair for internal fields that can be passed to SetAccessor.
@@ -111,8 +124,10 @@ class BaseObject : public MemoryRetainer {
   // a BaseObjectPtr to this object.
   inline void Detach();
 
-  static v8::Local<v8::FunctionTemplate> GetConstructorTemplate(
+  static inline v8::Local<v8::FunctionTemplate> GetConstructorTemplate(
       Environment* env);
+  static v8::Local<v8::FunctionTemplate> GetConstructorTemplate(
+      IsolateData* isolate_data);
 
   // Interface for transferring BaseObject instances using the .postMessage()
   // method of MessagePorts (and, by extension, Workers).
@@ -210,7 +225,7 @@ class BaseObject : public MemoryRetainer {
   void decrease_refcount();
   void increase_refcount();
 
-  Environment* env_;
+  Realm* realm_;
   PointerData* pointer_data_ = nullptr;
 };
 

@@ -5,10 +5,6 @@ prefix parallel
 # sample-test                        : PASS,FLAKY
 
 [true] # This section applies to all platforms
-# https://github.com/nodejs/node/issues/41123
-test-repl-sigint-nested-eval: PASS, FLAKY
-# https://github.com/nodejs/node/issues/43084
-test-worker-http2-stream-terminate: PASS, FLAKY
 
 ### Graal.js-specific ###
 
@@ -75,6 +71,18 @@ test-worker-heap-snapshot: SKIP
 # https://example.com does not work in CI
 test-https-agent-unref-socket: SKIP
 
+# proxies with apply trap are not bound correctly
+test-runner-mocking: FAIL
+
+# missing support for ModifyCodeGenerationFromStringsCallback
+test-source-map-api: FAIL
+
+# private symbols leak into proxy traps
+test-vm-proxy-failure-CP: FAIL
+
+# missing support for script.sourceMapURL
+test-vm-source-map-url: FAIL
+
 # Worker resource limits are not supported
 test-worker-resource-limits: FAIL
 test-worker-nearheaplimit-deadlock: SKIP
@@ -124,7 +132,6 @@ test-vm-timeout-escape-promise-2: FAIL
 test-snapshot-api: FAIL
 test-snapshot-basic: FAIL
 test-snapshot-cjs-main: FAIL
-test-snapshot-console: FAIL
 test-snapshot-dns-lookup-localhost: FAIL
 test-snapshot-dns-lookup-localhost-promise: FAIL
 test-snapshot-dns-resolve-localhost: FAIL
@@ -132,9 +139,11 @@ test-snapshot-dns-resolve-localhost-promise: FAIL
 test-snapshot-error: FAIL
 test-snapshot-eval: FAIL
 test-snapshot-gzip: FAIL
+test-snapshot-incompatible: FAIL
 test-snapshot-typescript: FAIL
 test-snapshot-umd: FAIL
 test-snapshot-warning: FAIL
+test-snapshot-weak-reference: FAIL
 
 # Contains an unused invalid regular expression
 # (which works on V8 where the regexp syntax check is lazy).
@@ -163,6 +172,7 @@ test-trace-events-net: SKIP
 test-trace-events-none: SKIP
 test-trace-events-process-exit: SKIP
 test-trace-events-promises: SKIP
+test-trace-events-threadpool: SKIP
 test-trace-events-v8: SKIP
 test-trace-events-vm: SKIP
 test-trace-events-worker-metadata: SKIP

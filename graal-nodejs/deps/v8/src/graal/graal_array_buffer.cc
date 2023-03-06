@@ -116,6 +116,11 @@ void GraalArrayBuffer::Detach() {
     JNI_CALL_VOID(Isolate(), GraalAccessMethod::array_buffer_detach, GetJavaObject());
 }
 
+bool GraalArrayBuffer::WasDetached() const {
+    JNI_CALL(jboolean, detached, Isolate(), GraalAccessMethod::array_buffer_was_detached, Boolean, GetJavaObject());
+    return detached;
+}
+
 std::shared_ptr<v8::BackingStore> GraalArrayBuffer::GetBackingStore() {
     GraalIsolate* graal_isolate = Isolate();
     jobject java_array_buffer = GetJavaObject();

@@ -133,7 +133,7 @@ public final class JSObjectUtil {
     public static void defineDataProperty(JSContext context, JSDynamicObject thisObj, Object key, Object value, int flags) {
         assert JSRuntime.isPropertyKey(key) : key;
         checkForNoSuchPropertyOrMethod(context, key);
-        Properties.putWithFlagsUncached(thisObj, key, value, flags);
+        Properties.putWithFlagsUncached(thisObj, key, value, flags | (JSRuntime.isPrivateSymbol(key) ? JSAttributes.NOT_ENUMERABLE : 0));
     }
 
     @TruffleBoundary

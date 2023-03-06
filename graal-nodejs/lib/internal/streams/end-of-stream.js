@@ -19,22 +19,26 @@ const {
   validateAbortSignal,
   validateFunction,
   validateObject,
+  validateBoolean
 } = require('internal/validators');
 
-const { Promise } = primordials;
+const { Promise, PromisePrototypeThen } = primordials;
 
 const {
   isClosed,
   isReadable,
   isReadableNodeStream,
+  isReadableStream,
   isReadableFinished,
   isReadableErrored,
   isWritable,
   isWritableNodeStream,
+  isWritableStream,
   isWritableFinished,
   isWritableErrored,
   isNodeStream,
   willEmitClose: _willEmitClose,
+  kIsClosedPromise,
 } = require('internal/streams/utils');
 
 function isRequest(stream) {
@@ -57,13 +61,16 @@ function eos(stream, options, callback) {
 
   callback = once(callback);
 
-  const readable = options.readable ?? isReadableNodeStream(stream);
-  const writable = options.writable ?? isWritableNodeStream(stream);
+  if (isReadableStream(stream) || isWritableStream(stream)) {
+    return eosWeb(stream, options, callback);
+  }
 
   if (!isNodeStream(stream)) {
-    // TODO: Webstreams.
-    throw new ERR_INVALID_ARG_TYPE('stream', 'Stream', stream);
+    throw new ERR_INVALID_ARG_TYPE('stream', ['ReadableStream', 'WritableStream', 'Stream'], stream);
   }
+
+  const readable = options.readable ?? isReadableNodeStream(stream);
+  const writable = options.writable ?? isWritableNodeStream(stream);
 
   const wState = stream._writableState;
   const rState = stream._readableState;
@@ -150,6 +157,18 @@ function eos(stream, options, callback) {
     callback.call(stream);
   };
 
+  const onclosed = () => {
+    closed = true;
+
+    const errored = isWritableErrored(stream) || isReadableErrored(stream);
+
+    if (errored && typeof errored !== 'boolean') {
+      return callback.call(stream, errored);
+    }
+
+    callback.call(stream);
+  };
+
   const onrequest = () => {
     stream.req.on('finish', onfinish);
   };
@@ -185,22 +204,22 @@ function eos(stream, options, callback) {
     process.nextTick(onclose);
   } else if (wState?.errorEmitted || rState?.errorEmitted) {
     if (!willEmitClose) {
-      process.nextTick(onclose);
+      process.nextTick(onclosed);
     }
   } else if (
     !readable &&
     (!willEmitClose || isReadable(stream)) &&
     (writableFinished || isWritable(stream) === false)
   ) {
-    process.nextTick(onclose);
+    process.nextTick(onclosed);
   } else if (
     !writable &&
     (!willEmitClose || isWritable(stream)) &&
     (readableFinished || isReadable(stream) === false)
   ) {
-    process.nextTick(onclose);
+    process.nextTick(onclosed);
   } else if ((rState && stream.req && stream.aborted)) {
-    process.nextTick(onclose);
+    process.nextTick(onclosed);
   }
 
   const cleanup = () => {
@@ -242,9 +261,29 @@ function eos(stream, options, callback) {
   return cleanup;
 }
 
+function eosWeb(stream, opts, callback) {
+  PromisePrototypeThen(
+    stream[kIsClosedPromise].promise,
+    () => process.nextTick(() => callback.call(stream)),
+    (err) => process.nextTick(() => callback.call(stream, err)),
+  );
+  return nop;
+}
+
 function finished(stream, opts) {
+  let autoCleanup = false;
+  if (opts === null) {
+    opts = kEmptyObject;
+  }
+  if (opts?.cleanup) {
+    validateBoolean(opts.cleanup, 'cleanup');
+    autoCleanup = opts.cleanup;
+  }
   return new Promise((resolve, reject) => {
-    eos(stream, opts, (err) => {
+    const cleanup = eos(stream, opts, (err) => {
+      if (autoCleanup) {
+        cleanup();
+      }
       if (err) {
         reject(err);
       } else {

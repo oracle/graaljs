@@ -118,24 +118,10 @@ extern "C" void uv_key_set(uv_key_t* key, void* value) WEAK_ATTRIBUTE;
 extern "C" void* uv_key_get(uv_key_t* key) WEAK_ATTRIBUTE;
 extern "C" uv_loop_t* uv_default_loop(void) WEAK_ATTRIBUTE;
 #ifdef __POSIX__
-extern "C" int uv__cloexec_ioctl(int fd, int set) WEAK_ATTRIBUTE;
-extern "C" int uv__cloexec_fcntl(int fd, int set) WEAK_ATTRIBUTE;
+extern "C" int uv__cloexec(int fd, int set) WEAK_ATTRIBUTE;
 #endif
 
 #undef WEAK_ATTRIBUTE
-
-#ifdef __POSIX__
-#if defined(_AIX) || \
-    defined(__APPLE__) || \
-    defined(__DragonFly__) || \
-    defined(__FreeBSD__) || \
-    defined(__FreeBSD_kernel__) || \
-    defined(__linux__)
-#define uv__cloexec uv__cloexec_ioctl
-#else
-#define uv__cloexec uv__cloexec_fcntl
-#endif
-#endif
 
 // Key for the current (per-thread) isolate
 static uv_key_t current_isolate_key;
@@ -633,7 +619,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::object_new, "objectNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_set, "objectSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_set_index, "objectSetIndex", "(Ljava/lang/Object;ILjava/lang/Object;)Z")
-    ACCESS_METHOD(GraalAccessMethod::object_set_private, "objectSetPrivate", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::object_set_private, "objectSetPrivate", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_force_set, "objectForceSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)Z")
     ACCESS_METHOD(GraalAccessMethod::object_get, "objectGet", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_get_index, "objectGetIndex", "(Ljava/lang/Object;I)Ljava/lang/Object;")
@@ -643,6 +629,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::object_get_own_property_descriptor, "objectGetOwnPropertyDescriptor", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_has, "objectHas", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_has_own_property, "objectHasOwnProperty", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::object_has_private, "objectHasPrivate", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_has_real_named_property, "objectHasRealNamedProperty", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_delete, "objectDelete", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_delete_index, "objectDelete", "(Ljava/lang/Object;J)Z")
@@ -671,6 +658,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_length, "arrayBufferViewByteLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_offset, "arrayBufferViewByteOffset", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_detach, "arrayBufferDetach", "(Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_was_detached, "arrayBufferWasDetached", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::typed_array_length, "typedArrayLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::uint8_array_new, "uint8ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::uint8_clamped_array_new, "uint8ClampedArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
@@ -723,7 +711,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_measure_memory, "isolateMeasureMemory", "(Ljava/lang/Object;Z)V")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
-    ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "()Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_template_new_instance, "objectTemplateNewInstance", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_accessor, "objectTemplateSetAccessor", "(Ljava/lang/Object;Ljava/lang/Object;JJLjava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_handler, "objectTemplateSetHandler", "(Ljava/lang/Object;JJJJJJJLjava/lang/Object;ZZ)V")
@@ -834,6 +822,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::symbol_get_to_primitive, "symbolGetToPrimitive", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_get_to_string_tag, "symbolGetToStringTag", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_get_unscopables, "symbolGetUnscopables", "()Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::symbol_private_for_api, "symbolPrivateForApi", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::symbol_private_new, "symbolPrivateNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::promise_result, "promiseResult", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::promise_state, "promiseState", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::promise_resolver_new, "promiseResolverNew", "(Ljava/lang/Object;)Ljava/lang/Object;")

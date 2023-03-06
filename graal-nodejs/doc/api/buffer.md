@@ -1882,6 +1882,7 @@ changes:
 -->
 
 * `value` {string|Buffer|Uint8Array|integer} The value with which to fill `buf`.
+  Empty value (string, Uint8Array, Buffer) is coerced to `0`.
 * `offset` {integer} Number of bytes to skip before starting to fill `buf`.
   **Default:** `0`.
 * `end` {integer} Where to stop filling `buf` (not inclusive). **Default:**
@@ -1902,6 +1903,12 @@ const b = Buffer.allocUnsafe(50).fill('h');
 
 console.log(b.toString());
 // Prints: hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+
+// Fill a buffer with empty string
+const c = Buffer.allocUnsafe(5).fill('');
+
+console.log(c.fill(''));
+// Prints: <Buffer 00 00 00 00 00>
 ```
 
 ```cjs
@@ -1913,6 +1920,12 @@ const b = Buffer.allocUnsafe(50).fill('h');
 
 console.log(b.toString());
 // Prints: hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+
+// Fill a buffer with empty string
+const c = Buffer.allocUnsafe(5).fill('');
+
+console.log(c.fill(''));
+// Prints: <Buffer 00 00 00 00 00>
 ```
 
 `value` is coerced to a `uint32` value if it is not a string, `Buffer`, or
@@ -5009,6 +5022,56 @@ changes:
 
 See [`Buffer.from(string[, encoding])`][`Buffer.from(string)`].
 
+## Class: `File`
+
+<!-- YAML
+added: v18.13.0
+-->
+
+> Stability: 1 - Experimental
+
+* Extends: {Blob}
+
+A [`File`][] provides information about files.
+
+### `new buffer.File(sources, fileName[, options])`
+
+<!-- YAML
+added: v18.13.0
+-->
+
+* `sources` {string\[]|ArrayBuffer\[]|TypedArray\[]|DataView\[]|Blob\[]|File\[]}
+  An array of string, {ArrayBuffer}, {TypedArray}, {DataView}, {File}, or {Blob}
+  objects, or any mix of such objects, that will be stored within the `File`.
+* `fileName` {string} The name of the file.
+* `options` {Object}
+  * `endings` {string} One of either `'transparent'` or `'native'`. When set
+    to `'native'`, line endings in string source parts will be converted to
+    the platform native line-ending as specified by `require('node:os').EOL`.
+  * `type` {string} The File content-type.
+  * `lastModified` {number} The last modified date of the file.
+    **Default:** `Date.now()`.
+
+### `file.name`
+
+<!-- YAML
+added: v18.13.0
+-->
+
+* Type: {string}
+
+The name of the `File`.
+
+### `file.lastModified`
+
+<!-- YAML
+added: v18.13.0
+-->
+
+* Type: {number}
+
+The last modified date of the `File`.
+
 ## `node:buffer` module APIs
 
 While, the `Buffer` object is available as a global, there are additional
@@ -5062,6 +5125,20 @@ binary data and predate the introduction of typed arrays in JavaScript.
 For code running using Node.js APIs, converting between base64-encoded strings
 and binary data should be performed using `Buffer.from(str, 'base64')` and
 `buf.toString('base64')`.**
+
+### `buffer.isUtf8(input)`
+
+<!-- YAML
+added: v18.14.0
+-->
+
+* input {Buffer | ArrayBuffer | TypedArray} The input to validate.
+* Returns: {boolean}
+
+This function returns `true` if `input` contains only valid UTF-8-encoded data,
+including the case in which `input` is empty.
+
+Throws if the `input` is a detached array buffer.
 
 ### `buffer.INSPECT_MAX_BYTES`
 
@@ -5355,6 +5432,7 @@ introducing security vulnerabilities into an application.
 [`ERR_INVALID_ARG_VALUE`]: errors.md#err_invalid_arg_value
 [`ERR_INVALID_BUFFER_SIZE`]: errors.md#err_invalid_buffer_size
 [`ERR_OUT_OF_RANGE`]: errors.md#err_out_of_range
+[`File`]: https://developer.mozilla.org/en-US/docs/Web/API/File
 [`JSON.stringify()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
 [`SharedArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
 [`String.prototype.indexOf()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/indexOf

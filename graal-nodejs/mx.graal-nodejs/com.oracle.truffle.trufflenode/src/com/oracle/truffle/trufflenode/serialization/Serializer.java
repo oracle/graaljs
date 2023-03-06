@@ -88,6 +88,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandlerObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -256,15 +257,20 @@ public class Serializer {
             writeJSError((JSErrorObject) object);
         } else if (JSProxy.isJSProxy(object)) {
             JSProxyObject proxy = (JSProxyObject) object;
-            boolean callable = JSRuntime.isCallableProxy(proxy);
-            TruffleString objectStr;
-            if (callable) {
-                objectStr = JSRuntime.safeToString(JSProxy.getTargetNonProxy(proxy));
+            if (proxy.getProxyHandler() instanceof JSUncheckedProxyHandlerObject) {
+                // instance of an ObjectTemplate with a property handler
+                writeHostObject(proxy);
             } else {
-                objectStr = HASH_BRACKETS_OBJECT;
+                boolean callable = JSRuntime.isCallableProxy(proxy);
+                TruffleString objectStr;
+                if (callable) {
+                    objectStr = JSRuntime.safeToString(JSProxy.getTargetNonProxy(proxy));
+                } else {
+                    objectStr = HASH_BRACKETS_OBJECT;
+                }
+                TruffleString message = Strings.concat(objectStr, COULD_NOT_BE_CLONED);
+                NativeAccess.throwDataCloneError(delegate, message);
             }
-            TruffleString message = Strings.concat(objectStr, COULD_NOT_BE_CLONED);
-            NativeAccess.throwDataCloneError(delegate, message);
         } else if (JSFunction.isJSFunction(object)) {
             NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(object), COULD_NOT_BE_CLONED));
         } else if (JSDynamicObject.isJSDynamicObject(object)) {

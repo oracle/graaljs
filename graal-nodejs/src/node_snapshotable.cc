@@ -16,6 +16,7 @@
 #include "node_metadata.h"
 #include "node_process.h"
 #include "node_snapshot_builder.h"
+#include "node_util.h"
 #include "node_v8.h"
 #include "node_v8_platform-inl.h"
 
@@ -67,6 +68,70 @@ std::ostream& operator<<(std::ostream& output,
     output << i << ",";
   }
   output << "}";
+  return output;
+}
+
+std::ostream& operator<<(std::ostream& output,
+                         const std::vector<PropInfo>& vec) {
+  output << "{\n";
+  for (const auto& info : vec) {
+    output << "  " << info << ",\n";
+  }
+  output << "}";
+  return output;
+}
+
+std::ostream& operator<<(std::ostream& output, const PropInfo& info) {
+  output << "{ \"" << info.name << "\", " << std::to_string(info.id) << ", "
+         << std::to_string(info.index) << " }";
+  return output;
+}
+
+std::ostream& operator<<(std::ostream& output,
+                         const std::vector<std::string>& vec) {
+  output << "{\n";
+  for (const auto& info : vec) {
+    output << "  \"" << info << "\",\n";
+  }
+  output << "}";
+  return output;
+}
+
+std::ostream& operator<<(std::ostream& output, const RealmSerializeInfo& i) {
+  output << "{\n"
+         << "// -- persistent_values begins --\n"
+         << i.persistent_values << ",\n"
+         << "// -- persistent_values ends --\n"
+         << "// -- native_objects begins --\n"
+         << i.native_objects << ",\n"
+         << "// -- native_objects ends --\n"
+         << i.context << ",  // context\n"
+         << "}";
+  return output;
+}
+
+std::ostream& operator<<(std::ostream& output, const EnvSerializeInfo& i) {
+  output << "{\n"
+         << "// -- builtins begins --\n"
+         << i.builtins << ",\n"
+         << "// -- builtins ends --\n"
+         << "// -- async_hooks begins --\n"
+         << i.async_hooks << ",\n"
+         << "// -- async_hooks ends --\n"
+         << i.tick_info << ",  // tick_info\n"
+         << i.immediate_info << ",  // immediate_info\n"
+         << i.timeout_info << ",  // timeout_info\n"
+         << "// -- performance_state begins --\n"
+         << i.performance_state << ",\n"
+         << "// -- performance_state ends --\n"
+         << i.exiting << ",  // exiting\n"
+         << i.stream_base_state << ",  // stream_base_state\n"
+         << i.should_abort_on_uncaught_toggle
+         << ",  // should_abort_on_uncaught_toggle\n"
+         << "// -- principal_realm begins --\n"
+         << i.principal_realm << ",\n"
+         << "// -- principal_realm ends --\n"
+         << "}";
   return output;
 }
 
@@ -555,12 +620,12 @@ template <>
 size_t FileWriter::Write(const ImmediateInfo::SerializeInfo& data) {
   if (is_debug) {
     std::string str = ToStr(data);
-    Debug("Write<ImmeidateInfo::SerializeInfo>() %s\n", str.c_str());
+    Debug("Write<ImmediateInfo::SerializeInfo>() %s\n", str.c_str());
   }
 
   size_t written_total = Write<AliasedBufferIndex>(data.fields);
 
-  Debug("Write<ImmeidateInfo::SerializeInfo>() wrote %d bytes\n",
+  Debug("Write<ImmediateInfo::SerializeInfo>() wrote %d bytes\n",
         written_total);
   return written_total;
 }
@@ -637,21 +702,46 @@ size_t FileWriter::Write(const IsolateDataSerializeInfo& data) {
 }
 
 template <>
+RealmSerializeInfo FileReader::Read() {
+  per_process::Debug(DebugCategory::MKSNAPSHOT, "Read<RealmSerializeInfo>()\n");
+  RealmSerializeInfo result;
+  result.persistent_values = ReadVector<PropInfo>();
+  result.native_objects = ReadVector<PropInfo>();
+  result.context = Read<SnapshotIndex>();
+  return result;
+}
+
+template <>
+size_t FileWriter::Write(const RealmSerializeInfo& data) {
+  if (is_debug) {
+    std::string str = ToStr(data);
+    Debug("\nWrite<RealmSerializeInfo>() %s\n", str.c_str());
+  }
+
+  // Use += here to ensure order of evaluation.
+  size_t written_total = WriteVector<PropInfo>(data.persistent_values);
+  written_total += WriteVector<PropInfo>(data.native_objects);
+  written_total += Write<SnapshotIndex>(data.context);
+
+  Debug("Write<RealmSerializeInfo>() wrote %d bytes\n", written_total);
+  return written_total;
+}
+
+template <>
 EnvSerializeInfo FileReader::Read() {
   per_process::Debug(DebugCategory::MKSNAPSHOT, "Read<EnvSerializeInfo>()\n");
   EnvSerializeInfo result;
-  result.bindings = ReadVector<PropInfo>();
   result.builtins = ReadVector<std::string>();
   result.async_hooks = Read<AsyncHooks::SerializeInfo>();
   result.tick_info = Read<TickInfo::SerializeInfo>();
   result.immediate_info = Read<ImmediateInfo::SerializeInfo>();
+  result.timeout_info = Read<AliasedBufferIndex>();
   result.performance_state =
       Read<performance::PerformanceState::SerializeInfo>();
   result.exiting = Read<AliasedBufferIndex>();
   result.stream_base_state = Read<AliasedBufferIndex>();
   result.should_abort_on_uncaught_toggle = Read<AliasedBufferIndex>();
-  result.persistent_values = ReadVector<PropInfo>();
-  result.context = Read<SnapshotIndex>();
+  result.principal_realm = Read<RealmSerializeInfo>();
   return result;
 }
 
@@ -663,21 +753,71 @@ size_t FileWriter::Write(const EnvSerializeInfo& data) {
   }
 
   // Use += here to ensure order of evaluation.
-  size_t written_total = WriteVector<PropInfo>(data.bindings);
-  written_total += WriteVector<std::string>(data.builtins);
+  size_t written_total = WriteVector<std::string>(data.builtins);
   written_total += Write<AsyncHooks::SerializeInfo>(data.async_hooks);
   written_total += Write<TickInfo::SerializeInfo>(data.tick_info);
   written_total += Write<ImmediateInfo::SerializeInfo>(data.immediate_info);
+  written_total += Write<AliasedBufferIndex>(data.timeout_info);
   written_total += Write<performance::PerformanceState::SerializeInfo>(
       data.performance_state);
   written_total += Write<AliasedBufferIndex>(data.exiting);
   written_total += Write<AliasedBufferIndex>(data.stream_base_state);
   written_total +=
       Write<AliasedBufferIndex>(data.should_abort_on_uncaught_toggle);
-  written_total += WriteVector<PropInfo>(data.persistent_values);
-  written_total += Write<SnapshotIndex>(data.context);
+  written_total += Write<RealmSerializeInfo>(data.principal_realm);
 
   Debug("Write<EnvSerializeInfo>() wrote %d bytes\n", written_total);
+  return written_total;
+}
+
+// Layout of SnapshotMetadata
+// [  1 byte   ]  type of the snapshot
+// [ 4/8 bytes ]  length of the node version string
+// [    ...    ]  |length| bytes of node version
+// [ 4/8 bytes ]  length of the node arch string
+// [    ...    ]  |length| bytes of node arch
+// [ 4/8 bytes ]  length of the node platform string
+// [    ...    ]  |length| bytes of node platform
+// [  4 bytes  ]  v8 cache version tag
+template <>
+SnapshotMetadata FileReader::Read() {
+  per_process::Debug(DebugCategory::MKSNAPSHOT, "Read<SnapshotMetadata>()\n");
+
+  SnapshotMetadata result;
+  result.type = static_cast<SnapshotMetadata::Type>(Read<uint8_t>());
+  result.node_version = ReadString();
+  result.node_arch = ReadString();
+  result.node_platform = ReadString();
+  result.v8_cache_version_tag = Read<uint32_t>();
+
+  if (is_debug) {
+    std::string str = ToStr(result);
+    Debug("Read<SnapshotMetadata>() %s\n", str.c_str());
+  }
+  return result;
+}
+
+template <>
+size_t FileWriter::Write(const SnapshotMetadata& data) {
+  if (is_debug) {
+    std::string str = ToStr(data);
+    Debug("\nWrite<SnapshotMetadata>() %s\n", str.c_str());
+  }
+  size_t written_total = 0;
+  // We need the Node.js version, platform and arch to match because
+  // Node.js may perform synchronizations that are platform-specific and they
+  // can be changed in semver-patches.
+  Debug("Write snapshot type %" PRIu8 "\n", static_cast<uint8_t>(data.type));
+  written_total += Write<uint8_t>(static_cast<uint8_t>(data.type));
+  Debug("Write Node.js version %s\n", data.node_version.c_str());
+  written_total += WriteString(data.node_version);
+  Debug("Write Node.js arch %s\n", data.node_arch);
+  written_total += WriteString(data.node_arch);
+  Debug("Write Node.js platform %s\n", data.node_platform);
+  written_total += WriteString(data.node_platform);
+  Debug("Write V8 cached data version tag %" PRIx32 "\n",
+        data.v8_cache_version_tag);
+  written_total += Write<uint32_t>(data.v8_cache_version_tag);
   return written_total;
 }
 
@@ -697,13 +837,12 @@ void SnapshotData::ToBlob(FILE* out) const {
   w.Debug("SnapshotData::ToBlob()\n");
 
   size_t written_total = 0;
+
   // Metadata
   w.Debug("Write magic %" PRIx32 "\n", kMagic);
   written_total += w.Write<uint32_t>(kMagic);
-  w.Debug("Write version %s\n", NODE_VERSION);
-  written_total += w.WriteString(NODE_VERSION);
-  w.Debug("Write arch %s\n", NODE_ARCH);
-  written_total += w.WriteString(NODE_ARCH);
+  w.Debug("Write metadata\n");
+  written_total += w.Write<SnapshotMetadata>(metadata);
 
   written_total += w.Write<v8::StartupData>(v8_snapshot_blob_data);
   w.Debug("Write isolate_data_indices\n");
@@ -714,22 +853,22 @@ void SnapshotData::ToBlob(FILE* out) const {
   w.Debug("SnapshotData::ToBlob() Wrote %d bytes\n", written_total);
 }
 
-void SnapshotData::FromBlob(SnapshotData* out, FILE* in) {
+bool SnapshotData::FromBlob(SnapshotData* out, FILE* in) {
   FileReader r(in);
   r.Debug("SnapshotData::FromBlob()\n");
 
+  DCHECK_EQ(out->data_ownership, SnapshotData::DataOwnership::kOwned);
+
   // Metadata
   uint32_t magic = r.Read<uint32_t>();
-  r.Debug("Read magic %" PRIx64 "\n", magic);
+  r.Debug("Read magic %" PRIx32 "\n", magic);
   CHECK_EQ(magic, kMagic);
-  std::string version = r.ReadString();
-  r.Debug("Read version %s\n", version.c_str());
-  CHECK_EQ(version, NODE_VERSION);
-  std::string arch = r.ReadString();
-  r.Debug("Read arch %s\n", arch.c_str());
-  CHECK_EQ(arch, NODE_ARCH);
+  out->metadata = r.Read<SnapshotMetadata>();
+  r.Debug("Read metadata\n");
+  if (!out->Check()) {
+    return false;
+  }
 
-  DCHECK_EQ(out->data_ownership, SnapshotData::DataOwnership::kOwned);
   out->v8_snapshot_blob_data = r.Read<v8::StartupData>();
   r.Debug("Read isolate_data_info\n");
   out->isolate_data_info = r.Read<IsolateDataSerializeInfo>();
@@ -738,6 +877,54 @@ void SnapshotData::FromBlob(SnapshotData* out, FILE* in) {
   out->code_cache = r.ReadVector<builtins::CodeCacheInfo>();
 
   r.Debug("SnapshotData::FromBlob() read %d bytes\n", r.read_total);
+  return true;
+}
+
+bool SnapshotData::Check() const {
+  if (metadata.node_version != per_process::metadata.versions.node) {
+    fprintf(stderr,
+            "Failed to load the startup snapshot because it was built with"
+            "Node.js version %s and the current Node.js version is %s.\n",
+            metadata.node_version.c_str(),
+            NODE_VERSION);
+    return false;
+  }
+
+  if (metadata.node_arch != per_process::metadata.arch) {
+    fprintf(stderr,
+            "Failed to load the startup snapshot because it was built with"
+            "architecture %s and the architecture is %s.\n",
+            metadata.node_arch.c_str(),
+            NODE_ARCH);
+    return false;
+  }
+
+  if (metadata.node_platform != per_process::metadata.platform) {
+    fprintf(stderr,
+            "Failed to load the startup snapshot because it was built with"
+            "platform %s and the current platform is %s.\n",
+            metadata.node_platform.c_str(),
+            NODE_PLATFORM);
+    return false;
+  }
+
+  uint32_t current_cache_version = v8::ScriptCompiler::CachedDataVersionTag();
+  if (metadata.v8_cache_version_tag != current_cache_version &&
+      metadata.type == SnapshotMetadata::Type::kFullyCustomized) {
+    // For now we only do this check for the customized snapshots - we know
+    // that the flags we use in the default snapshot are limited and safe
+    // enough so we can relax the constraints for it.
+    fprintf(stderr,
+            "Failed to load the startup snapshot because it was built with "
+            "a different version of V8 or with different V8 configurations.\n"
+            "Expected tag %" PRIx32 ", read %" PRIx32 "\n",
+            current_cache_version,
+            metadata.v8_cache_version_tag);
+    return false;
+  }
+
+  // TODO(joyeecheung): check incompatible Node.js flags.
+  return true;
 }
 
 SnapshotData::~SnapshotData() {
@@ -794,7 +981,7 @@ static void WriteCodeCacheInitializer(std::ostream* ss, const std::string& id) {
   *ss << "    },\n";
 }
 
-void FormatBlob(std::ostream& ss, SnapshotData* data) {
+void FormatBlob(std::ostream& ss, const SnapshotData* data) {
   ss << R"(#include <cstddef>
 #include "env.h"
 #include "node_snapshot_builder.h"
@@ -820,10 +1007,14 @@ static const int v8_snapshot_blob_size = )"
     WriteStaticCodeCacheData(&ss, item);
   }
 
-  ss << R"(SnapshotData snapshot_data {
+  ss << R"(const SnapshotData snapshot_data {
   // -- data_ownership begins --
   SnapshotData::DataOwnership::kNotOwned,
   // -- data_ownership ends --
+  // -- metadata begins --
+)" << data->metadata
+     << R"(,
+  // -- metadata ends --
   // -- v8_snapshot_blob_data begins --
   { v8_snapshot_blob_data, v8_snapshot_blob_size },
   // -- v8_snapshot_blob_data ends --
@@ -848,7 +1039,6 @@ static const int v8_snapshot_blob_size = )"
 };
 
 const SnapshotData* SnapshotBuilder::GetEmbeddedSnapshotData() {
-  Mutex::ScopedLock lock(snapshot_data_mutex_);
   return &snapshot_data;
 }
 }  // namespace node
@@ -864,8 +1054,6 @@ static void ResetContextSettingsBeforeSnapshot(Local<Context> context) {
   // node::InitializeContextRuntime.
   context->AllowCodeGenerationFromStrings(true);
 }
-
-Mutex SnapshotBuilder::snapshot_data_mutex_;
 
 const std::vector<intptr_t>& SnapshotBuilder::CollectExternalReferences() {
   static auto registry = std::make_unique<ExternalReferenceRegistry>();
@@ -919,6 +1107,12 @@ int SnapshotBuilder::Generate(SnapshotData* out,
     main_instance->Dispose();
     per_process::v8_platform.Platform()->UnregisterIsolate(isolate);
   });
+
+  // It's only possible to be kDefault in node_mksnapshot.
+  SnapshotMetadata::Type snapshot_type =
+      per_process::cli_options->build_snapshot
+          ? SnapshotMetadata::Type::kFullyCustomized
+          : SnapshotMetadata::Type::kDefault;
 
   {
     HandleScope scope(isolate);
@@ -974,7 +1168,7 @@ int SnapshotBuilder::Generate(SnapshotData* out,
                             {});
 
       // Run scripts in lib/internal/bootstrap/
-      if (env->RunBootstrapping().IsEmpty()) {
+      if (env->principal_realm()->RunBootstrapping().IsEmpty()) {
         return BOOTSTRAP_ERROR;
       }
       // If --build-snapshot is true, lib/internal/main/mksnapshot.js would be
@@ -982,7 +1176,7 @@ int SnapshotBuilder::Generate(SnapshotData* out,
       // point (we currently only support this kind of entry point, but we
       // could also explore snapshotting other kinds of execution modes
       // in the future).
-      if (per_process::cli_options->build_snapshot) {
+      if (snapshot_type == SnapshotMetadata::Type::kFullyCustomized) {
 #if HAVE_INSPECTOR
         // TODO(joyeecheung): move this before RunBootstrapping().
         env->InitializeInspector({});
@@ -1000,7 +1194,7 @@ int SnapshotBuilder::Generate(SnapshotData* out,
       }
 
       if (per_process::enabled_debug_list.enabled(DebugCategory::MKSNAPSHOT)) {
-        env->PrintAllBaseObjects();
+        env->ForEachRealm([](Realm* realm) { realm->PrintInfoForSnapshot(); });
         printf("Environment = %p\n", env);
       }
 
@@ -1050,6 +1244,12 @@ int SnapshotBuilder::Generate(SnapshotData* out,
     return SNAPSHOT_ERROR;
   }
 
+  out->metadata = SnapshotMetadata{snapshot_type,
+                                   per_process::metadata.versions.node,
+                                   per_process::metadata.arch,
+                                   per_process::metadata.platform,
+                                   v8::ScriptCompiler::CachedDataVersionTag()};
+
   // We cannot resurrect the handles from the snapshot, so make sure that
   // no handles are left open in the environment after the blob is created
   // (which should trigger a GC and close all handles that can be closed).
@@ -1083,27 +1283,16 @@ SnapshotableObject::SnapshotableObject(Environment* env,
     : BaseObject(env, wrap), type_(type) {
 }
 
-const char* SnapshotableObject::GetTypeNameChars() const {
+std::string_view SnapshotableObject::GetTypeName() const {
   switch (type_) {
 #define V(PropertyName, NativeTypeName)                                        \
   case EmbedderObjectType::k_##PropertyName: {                                 \
-    return NativeTypeName::type_name.c_str();                                  \
+    return NativeTypeName::type_name.as_string_view();                         \
   }
     SERIALIZABLE_OBJECT_TYPES(V)
 #undef V
     default: { UNREACHABLE(); }
   }
-}
-
-bool IsSnapshotableType(FastStringKey key) {
-#define V(PropertyName, NativeTypeName)                                        \
-  if (key == NativeTypeName::type_name) {                                      \
-    return true;                                                               \
-  }
-  SERIALIZABLE_OBJECT_TYPES(V)
-#undef V
-
-  return false;
 }
 
 void DeserializeNodeInternalFields(Local<Object> holder,
@@ -1119,45 +1308,91 @@ void DeserializeNodeInternalFields(Local<Object> holder,
                      static_cast<int>(index),
                      (*holder),
                      static_cast<int>(payload.raw_size));
-  Environment* env_ptr = static_cast<Environment*>(env);
-  const InternalFieldInfo* info =
-      reinterpret_cast<const InternalFieldInfo*>(payload.data);
 
+  if (payload.raw_size == 0) {
+    holder->SetAlignedPointerInInternalField(index, nullptr);
+    return;
+  }
+
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
+
+  Environment* env_ptr = static_cast<Environment*>(env);
+  const InternalFieldInfoBase* info =
+      reinterpret_cast<const InternalFieldInfoBase*>(payload.data);
+  // TODO(joyeecheung): we can add a constant kNodeEmbedderId to the
+  // beginning of every InternalFieldInfoBase to ensure that we don't
+  // step on payloads that were not serialized by Node.js.
   switch (info->type) {
 #define V(PropertyName, NativeTypeName)                                        \
   case EmbedderObjectType::k_##PropertyName: {                                 \
     per_process::Debug(DebugCategory::MKSNAPSHOT,                              \
                        "Object %p is %s\n",                                    \
                        (*holder),                                              \
-                       NativeTypeName::type_name.c_str());                     \
+                       NativeTypeName::type_name.as_string_view());            \
     env_ptr->EnqueueDeserializeRequest(                                        \
-        NativeTypeName::Deserialize, holder, index, info->Copy());             \
+        NativeTypeName::Deserialize,                                           \
+        holder,                                                                \
+        index,                                                                 \
+        info->Copy<NativeTypeName::InternalFieldInfo>());                      \
     break;                                                                     \
   }
     SERIALIZABLE_OBJECT_TYPES(V)
 #undef V
-    default: { UNREACHABLE(); }
+    default: {
+      // This should only be reachable during development when trying to
+      // deserialize a snapshot blob built by a version of Node.js that
+      // has more recognizable EmbedderObjectTypes than the deserializing
+      // Node.js binary.
+      fprintf(stderr,
+              "Unknown embedder object type %" PRIu8 ", possibly caused by "
+              "mismatched Node.js versions\n",
+              static_cast<uint8_t>(info->type));
+      ABORT();
+    }
   }
 }
 
 StartupData SerializeNodeContextInternalFields(Local<Object> holder,
                                                int index,
                                                void* env) {
-  void* ptr = holder->GetAlignedPointerFromInternalField(BaseObject::kSlot);
-  if (ptr == nullptr) {
+  // We only do one serialization for the kEmbedderType slot, the result
+  // contains everything necessary for deserializing the entire object,
+  // including the fields whose index is bigger than kEmbedderType
+  // (most importantly, BaseObject::kSlot).
+  // For Node.js this design is enough for all the native binding that are
+  // serializable.
+  if (index != BaseObject::kEmbedderType) {
     return StartupData{nullptr, 0};
   }
+
+  void* type_ptr = holder->GetAlignedPointerFromInternalField(index);
+  if (type_ptr == nullptr) {
+    return StartupData{nullptr, 0};
+  }
+
+  uint16_t type = *(static_cast<uint16_t*>(type_ptr));
+  per_process::Debug(DebugCategory::MKSNAPSHOT, "type = 0x%x\n", type);
+  if (type != kNodeEmbedderId) {
+    return StartupData{nullptr, 0};
+  }
+
   per_process::Debug(DebugCategory::MKSNAPSHOT,
                      "Serialize internal field, index=%d, holder=%p\n",
                      static_cast<int>(index),
                      *holder);
-  DCHECK(static_cast<BaseObject*>(ptr)->is_snapshotable());
-  SnapshotableObject* obj = static_cast<SnapshotableObject*>(ptr);
+
+  void* native_ptr =
+      holder->GetAlignedPointerFromInternalField(BaseObject::kSlot);
+  per_process::Debug(DebugCategory::MKSNAPSHOT, "native = %p\n", native_ptr);
+  DCHECK(static_cast<BaseObject*>(native_ptr)->is_snapshotable());
+  SnapshotableObject* obj = static_cast<SnapshotableObject*>(native_ptr);
+
   per_process::Debug(DebugCategory::MKSNAPSHOT,
                      "Object %p is %s, ",
                      *holder,
-                     obj->GetTypeNameChars());
-  InternalFieldInfo* info = obj->Serialize(index);
+                     obj->GetTypeName());
+  InternalFieldInfoBase* info = obj->Serialize(index);
+
   per_process::Debug(DebugCategory::MKSNAPSHOT,
                      "payload size=%d\n",
                      static_cast<int>(info->length));
@@ -1165,30 +1400,37 @@ StartupData SerializeNodeContextInternalFields(Local<Object> holder,
                      static_cast<int>(info->length)};
 }
 
-void SerializeBindingData(Environment* env,
-                          SnapshotCreator* creator,
-                          EnvSerializeInfo* info) {
+void SerializeSnapshotableObjects(Realm* realm,
+                                  SnapshotCreator* creator,
+                                  RealmSerializeInfo* info) {
+  HandleScope scope(realm->isolate());
+  Local<Context> context = realm->context();
   uint32_t i = 0;
-  env->ForEachBindingData([&](FastStringKey key,
-                              BaseObjectPtr<BaseObject> binding) {
-    per_process::Debug(DebugCategory::MKSNAPSHOT,
-                       "Serialize binding %i, %p, type=%s\n",
-                       static_cast<int>(i),
-                       *(binding->object()),
-                       key.c_str());
+  realm->ForEachBaseObject([&](BaseObject* obj) {
+    // If there are any BaseObjects that are not snapshotable left
+    // during context serialization, V8 would crash due to unregistered
+    // global handles and print detailed information about them.
+    if (!obj->is_snapshotable()) {
+      return;
+    }
+    SnapshotableObject* ptr = static_cast<SnapshotableObject*>(obj);
 
-    if (IsSnapshotableType(key)) {
-      SnapshotIndex index = creator->AddData(env->context(), binding->object());
+    std::string type_name{ptr->GetTypeName()};
+    per_process::Debug(DebugCategory::MKSNAPSHOT,
+                       "Serialize snapshotable object %i (%p), "
+                       "object=%p, type=%s\n",
+                       static_cast<int>(i),
+                       ptr,
+                       *(ptr->object()),
+                       type_name);
+
+    if (ptr->PrepareForSerialization(context, creator)) {
+      SnapshotIndex index = creator->AddData(context, obj->object());
       per_process::Debug(DebugCategory::MKSNAPSHOT,
                          "Serialized with index=%d\n",
                          static_cast<int>(index));
-      info->bindings.push_back({key.c_str(), i, index});
-      SnapshotableObject* ptr = static_cast<SnapshotableObject*>(binding.get());
-      ptr->PrepareForSerialization(env->context(), creator);
-    } else {
-      UNREACHABLE();
+      info->native_objects.push_back({type_name, i, index});
     }
-
     i++;
   });
 }
@@ -1266,6 +1508,6 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 }  // namespace mksnapshot
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(mksnapshot, node::mksnapshot::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(mksnapshot,
-                               node::mksnapshot::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(mksnapshot, node::mksnapshot::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(mksnapshot,
+                                node::mksnapshot::RegisterExternalReferences)

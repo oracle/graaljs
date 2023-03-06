@@ -258,21 +258,6 @@ static void GetActiveRequests(const FunctionCallbackInfo<Value>& args) {
       Array::New(env->isolate(), request_v.data(), request_v.size()));
 }
 
-static void GetActiveRequestsInfo(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
-
-  std::vector<Local<Value>> requests_info;
-  for (ReqWrapBase* req_wrap : *env->req_wrap_queue()) {
-    AsyncWrap* w = req_wrap->GetAsyncWrap();
-    if (w->persistent().IsEmpty()) continue;
-    requests_info.emplace_back(OneByteString(env->isolate(),
-                               w->MemoryInfoName().c_str()));
-  }
-
-  args.GetReturnValue().Set(
-      Array::New(env->isolate(), requests_info.data(), requests_info.size()));
-}
-
 // Non-static, friend of HandleWrap. Could have been a HandleWrap method but
 // implemented here for consistency with GetActiveRequests().
 void GetActiveHandles(const FunctionCallbackInfo<Value>& args) {
@@ -288,18 +273,37 @@ void GetActiveHandles(const FunctionCallbackInfo<Value>& args) {
       Array::New(env->isolate(), handle_v.data(), handle_v.size()));
 }
 
-void GetActiveHandlesInfo(const FunctionCallbackInfo<Value>& args) {
+static void GetActiveResourcesInfo(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
+  std::vector<Local<Value>> resources_info;
 
-  std::vector<Local<Value>> handles_info;
-  for (HandleWrap* w : *env->handle_wrap_queue()) {
-    if (w->persistent().IsEmpty() || !HandleWrap::HasRef(w)) continue;
-    handles_info.emplace_back(OneByteString(env->isolate(),
-                              w->MemoryInfoName().c_str()));
+  // Active requests
+  for (ReqWrapBase* req_wrap : *env->req_wrap_queue()) {
+    AsyncWrap* w = req_wrap->GetAsyncWrap();
+    if (w->persistent().IsEmpty()) continue;
+    resources_info.emplace_back(
+        OneByteString(env->isolate(), w->MemoryInfoName()));
   }
 
+  // Active handles
+  for (HandleWrap* w : *env->handle_wrap_queue()) {
+    if (w->persistent().IsEmpty() || !HandleWrap::HasRef(w)) continue;
+    resources_info.emplace_back(
+        OneByteString(env->isolate(), w->MemoryInfoName()));
+  }
+
+  // Active timeouts
+  resources_info.insert(resources_info.end(),
+                        env->timeout_info()[0],
+                        OneByteString(env->isolate(), "Timeout"));
+
+  // Active immediates
+  resources_info.insert(resources_info.end(),
+                        env->immediate_info()->ref_count(),
+                        OneByteString(env->isolate(), "Immediate"));
+
   args.GetReturnValue().Set(
-      Array::New(env->isolate(), handles_info.data(), handles_info.size()));
+      Array::New(env->isolate(), resources_info.data(), resources_info.size()));
 }
 
 static void ResourceUsage(const FunctionCallbackInfo<Value>& args) {
@@ -528,24 +532,28 @@ void BindingData::SlowNumber(const v8::FunctionCallbackInfo<v8::Value>& args) {
   NumberImpl(FromJSObject<BindingData>(args.Holder()));
 }
 
-void BindingData::PrepareForSerialization(Local<Context> context,
+bool BindingData::PrepareForSerialization(Local<Context> context,
                                           v8::SnapshotCreator* creator) {
   // It's not worth keeping.
   // Release it, we will recreate it when the instance is dehydrated.
   array_buffer_.Reset();
+  // Return true because we need to maintain the reference to the binding from
+  // JS land.
+  return true;
 }
 
-InternalFieldInfo* BindingData::Serialize(int index) {
-  DCHECK_EQ(index, BaseObject::kSlot);
-  InternalFieldInfo* info = InternalFieldInfo::New(type());
+InternalFieldInfoBase* BindingData::Serialize(int index) {
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
+  InternalFieldInfo* info =
+      InternalFieldInfoBase::New<InternalFieldInfo>(type());
   return info;
 }
 
 void BindingData::Deserialize(Local<Context> context,
                               Local<Object> holder,
                               int index,
-                              InternalFieldInfo* info) {
-  DCHECK_EQ(index, BaseObject::kSlot);
+                              InternalFieldInfoBase* info) {
+  DCHECK_EQ(index, BaseObject::kEmbedderType);
   v8::HandleScope scope(context->GetIsolate());
   Environment* env = Environment::GetCurrent(context);
   // Recreate the buffer in the constructor.
@@ -578,10 +586,9 @@ static void Initialize(Local<Object> target,
   SetMethod(context, target, "resourceUsage", ResourceUsage);
 
   SetMethod(context, target, "_debugEnd", DebugEnd);
-  SetMethod(context, target, "_getActiveRequestsInfo", GetActiveRequestsInfo);
   SetMethod(context, target, "_getActiveRequests", GetActiveRequests);
   SetMethod(context, target, "_getActiveHandles", GetActiveHandles);
-  SetMethod(context, target, "_getActiveHandlesInfo", GetActiveHandlesInfo);
+  SetMethod(context, target, "getActiveResourcesInfo", GetActiveResourcesInfo);
   SetMethod(context, target, "_kill", Kill);
   SetMethod(context, target, "_rawDebug", RawDebug);
 
@@ -609,9 +616,8 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(ResourceUsage);
 
   registry->Register(GetActiveRequests);
-  registry->Register(GetActiveRequestsInfo);
   registry->Register(GetActiveHandles);
-  registry->Register(GetActiveHandlesInfo);
+  registry->Register(GetActiveResourcesInfo);
   registry->Register(Kill);
 
   registry->Register(Cwd);
@@ -624,6 +630,6 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 }  // namespace process
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(process_methods, node::process::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(process_methods,
-                               node::process::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(process_methods, node::process::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(process_methods,
+                                node::process::RegisterExternalReferences)

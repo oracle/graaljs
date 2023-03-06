@@ -88,6 +88,7 @@ const kCorked = Symbol('corked');
 const kUniqueHeaders = Symbol('kUniqueHeaders');
 const kBytesWritten = Symbol('kBytesWritten');
 const kEndCalled = Symbol('kEndCalled');
+const kErrored = Symbol('errored');
 
 const nop = () => {};
 
@@ -147,9 +148,25 @@ function OutgoingMessage() {
   this._keepAliveTimeout = 0;
 
   this._onPendingData = nop;
+
+  this[kErrored] = null;
 }
 ObjectSetPrototypeOf(OutgoingMessage.prototype, Stream.prototype);
 ObjectSetPrototypeOf(OutgoingMessage, Stream);
+
+ObjectDefineProperty(OutgoingMessage.prototype, 'errored', {
+  __proto__: null,
+  get() {
+    return this[kErrored];
+  },
+});
+
+ObjectDefineProperty(OutgoingMessage.prototype, 'closed', {
+  __proto__: null,
+  get() {
+    return this._closed;
+  },
+});
 
 ObjectDefineProperty(OutgoingMessage.prototype, 'writableFinished', {
   __proto__: null,
@@ -319,6 +336,8 @@ OutgoingMessage.prototype.destroy = function destroy(error) {
     return this;
   }
   this.destroyed = true;
+
+  this[kErrored] = error;
 
   if (this.socket) {
     this.socket.destroy(error);
@@ -609,9 +628,9 @@ function matchHeader(self, state, field, value) {
   }
 }
 
-const validateHeaderName = hideStackFrames((name) => {
+const validateHeaderName = hideStackFrames((name, label) => {
   if (typeof name !== 'string' || !name || !checkIsHttpToken(name)) {
-    throw new ERR_INVALID_HTTP_TOKEN('Header name', name);
+    throw new ERR_INVALID_HTTP_TOKEN(label || 'Header name', name);
   }
 });
 
@@ -914,9 +933,7 @@ OutgoingMessage.prototype.addTrailers = function addTrailers(headers) {
       field = key;
       value = headers[key];
     }
-    if (typeof field !== 'string' || !field || !checkIsHttpToken(field)) {
-      throw new ERR_INVALID_HTTP_TOKEN('Trailer name', field);
-    }
+    validateHeaderName(field, 'Trailer name');
 
     // Check if the field must be sent several times
     const isArrayValue = ArrayIsArray(value);

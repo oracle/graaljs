@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  ArrayBufferPrototype,
   ArrayBufferPrototypeSlice,
   ArrayPrototypePush,
   ArrayPrototypeShift,
@@ -20,7 +19,6 @@ const {
 
 const {
   codes: {
-    ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_OPERATION_FAILED,
   },
@@ -40,11 +38,18 @@ const {
 } = require('util');
 
 const {
+  constants: {
+    kPending,
+  },
   getPromiseDetails,
-  kPending,
 } = internalBinding('util');
 
 const assert = require('internal/assert');
+const { isArrayBufferDetached } = require('internal/util');
+
+const {
+  validateFunction,
+} = require('internal/validators');
 
 const kState = Symbol('kState');
 const kType = Symbol('kType');
@@ -76,8 +81,7 @@ function extractHighWaterMark(value, defaultHWM) {
 
 function extractSizeAlgorithm(size) {
   if (size === undefined) return () => 1;
-  if (typeof size !== 'function')
-    throw new ERR_INVALID_ARG_TYPE('strategy.size', 'Function', size);
+  validateFunction(size, 'strategy.size');
   return size;
 }
 
@@ -109,10 +113,6 @@ function ArrayBufferViewGetByteOffset(view) {
   return ReflectGet(view.constructor.prototype, 'byteOffset', view);
 }
 
-function ArrayBufferGetByteLength(view) {
-  return ReflectGet(ArrayBufferPrototype, 'byteLength', view);
-}
-
 function cloneAsUint8Array(view) {
   const buffer = ArrayBufferViewGetBuffer(view);
   const byteOffset = ArrayBufferViewGetByteOffset(view);
@@ -139,23 +139,10 @@ function transferArrayBuffer(buffer) {
   return res;
 }
 
-function isDetachedBuffer(buffer) {
-  if (ArrayBufferGetByteLength(buffer) === 0) {
-    // TODO(daeyeon): Consider using C++ builtin to improve performance.
-    try {
-      new Uint8Array(buffer);
-    } catch (error) {
-      assert(error.name === 'TypeError');
-      return true;
-    }
-  }
-  return false;
-}
-
 function isViewedArrayBufferDetached(view) {
   return (
     ArrayBufferViewGetByteLength(view) === 0 &&
-    isDetachedBuffer(ArrayBufferViewGetBuffer(view))
+    isArrayBufferDetached(ArrayBufferViewGetBuffer(view))
   );
 }
 
@@ -244,7 +231,6 @@ module.exports = {
   ArrayBufferViewGetBuffer,
   ArrayBufferViewGetByteLength,
   ArrayBufferViewGetByteOffset,
-  ArrayBufferGetByteLength,
   AsyncIterator,
   cloneAsUint8Array,
   copyArrayBuffer,
@@ -256,7 +242,6 @@ module.exports = {
   extractSizeAlgorithm,
   lazyTransfer,
   isBrandCheck,
-  isDetachedBuffer,
   isPromisePending,
   isViewedArrayBufferDetached,
   peekQueueValue,

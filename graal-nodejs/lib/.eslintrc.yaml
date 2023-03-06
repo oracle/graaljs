@@ -2,6 +2,13 @@ env:
   es6: true
 
 rules:
+  comma-dangle: [error, {
+    arrays: always-multiline,
+    exports: only-multiline,
+    functions: only-multiline,
+    imports: only-multiline,
+    objects: only-multiline,
+  }]
   prefer-object-spread: error
   no-buffer-constructor: error
   no-mixed-operators:
@@ -89,6 +96,10 @@ rules:
       message: Use `const { Request } = require('internal/deps/undici/undici');` instead of the global.
     - name: Response
       message: Use `const { Response } = require('internal/deps/undici/undici');` instead of the global.
+      # ShadowRealm is not available in primordials because it can be
+      # disabled with --no-harmony-shadow-realm CLI flag.
+    - name: ShadowRealm
+      message: Use `const { ShadowRealm } = globalThis;` instead of the global.
       # SharedArrayBuffer is not available in primordials because it can be
       # disabled with --no-harmony-sharedarraybuffer CLI flag.
     - name: SharedArrayBuffer
@@ -130,7 +141,7 @@ rules:
     - name: clearTimeout
       message: Use `const { clearTimeout } = require('timers');` instead of the global.
     - name: console
-      message: Use `const { console } = require('internal/console/global');` instead of the global.
+      message: Use `const console = require('internal/console/global');` instead of the global.
     - name: crypto
       message: Use `const { crypto } = require('internal/crypto/webcrypto');` instead of the global.
     - name: Crypto

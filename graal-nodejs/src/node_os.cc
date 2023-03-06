@@ -380,6 +380,10 @@ static void GetPriority(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(priority);
 }
 
+static void GetAvailableParallelism(const FunctionCallbackInfo<Value>& args) {
+  unsigned int parallelism = uv_available_parallelism();
+  args.GetReturnValue().Set(parallelism);
+}
 
 void Initialize(Local<Object> target,
                 Local<Value> unused,
@@ -397,6 +401,8 @@ void Initialize(Local<Object> target,
   SetMethod(context, target, "getUserInfo", GetUserInfo);
   SetMethod(context, target, "setPriority", SetPriority);
   SetMethod(context, target, "getPriority", GetPriority);
+  SetMethod(
+      context, target, "getAvailableParallelism", GetAvailableParallelism);
   SetMethod(context, target, "getOSInformation", GetOSInformation);
   target
       ->Set(context,
@@ -417,11 +423,12 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(GetUserInfo);
   registry->Register(SetPriority);
   registry->Register(GetPriority);
+  registry->Register(GetAvailableParallelism);
   registry->Register(GetOSInformation);
 }
 
 }  // namespace os
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(os, node::os::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(os, node::os::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(os, node::os::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(os, node::os::RegisterExternalReferences)

@@ -142,17 +142,31 @@ public final class Symbol implements TruffleObject {
      */
     private final boolean registered;
 
-    private Symbol(TruffleString description, boolean registered) {
+    /**
+     * Determines whether the symbol is private (can be true in V8 compatibility mode only).
+     */
+    private final boolean isPrivate;
+
+    private Symbol(TruffleString description, boolean registered, boolean isPrivate) {
         this.description = description;
         this.registered = registered;
+        this.isPrivate = isPrivate;
     }
 
     public static Symbol create(TruffleString description) {
-        return new Symbol(description, false);
+        return new Symbol(description, false, false);
     }
 
     public static Symbol createRegistered(TruffleString description) {
-        return new Symbol(Objects.requireNonNull(description), true);
+        return new Symbol(Objects.requireNonNull(description), true, false);
+    }
+
+    public static Symbol createPrivate(TruffleString description) {
+        return new Symbol(description, false, true);
+    }
+
+    public static Symbol createPrivateRegistered(TruffleString description) {
+        return new Symbol(Objects.requireNonNull(description), true, true);
     }
 
     public Object getDescription() {
@@ -165,6 +179,10 @@ public final class Symbol implements TruffleObject {
 
     public boolean isRegistered() {
         return registered;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
     }
 
     @Override

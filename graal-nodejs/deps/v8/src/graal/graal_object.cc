@@ -267,27 +267,22 @@ v8::Local<v8::Context> GraalObject::CreationContext() {
 v8::MaybeLocal<v8::Value> GraalObject::GetPrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key) {
     jobject java_key = reinterpret_cast<GraalHandleContent*> (*key)->GetJavaObject();
     JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_get_private, Object, GetJavaObject(), java_key);
-    if (java_object == NULL) {
-        return v8::Undefined(reinterpret_cast<v8::Isolate*> (Isolate()));
-    } else {
-        GraalValue* graal_value = GraalObject::FromJavaObject(Isolate(), java_object);
-        v8::Local<v8::Value> v8_value = reinterpret_cast<v8::Value*> (graal_value);
-        return v8_value;
-    }
+    GraalValue* graal_value = GraalObject::FromJavaObject(Isolate(), java_object);
+    v8::Local<v8::Value> v8_value = reinterpret_cast<v8::Value*> (graal_value);
+    return v8_value;
 }
 
 v8::Maybe<bool> GraalObject::SetPrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key, v8::Local<v8::Value> value) {
     jobject java_key = reinterpret_cast<GraalHandleContent*> (*key)->GetJavaObject();
     jobject java_value = reinterpret_cast<GraalValue*> (*value)->GetJavaObject();
-    jobject java_context = Isolate()->CurrentJavaContext();
-    JNI_CALL(bool, success, Isolate(), GraalAccessMethod::object_set_private, Boolean, java_context, GetJavaObject(), java_key, java_value);
+    JNI_CALL(bool, success, Isolate(), GraalAccessMethod::object_set_private, Boolean, GetJavaObject(), java_key, java_value);
     return v8::Just(success);
 }
 
 v8::Maybe<bool> GraalObject::HasPrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key) {
     jobject java_key = reinterpret_cast<GraalHandleContent*> (*key)->GetJavaObject();
-    JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_get_private, Object, GetJavaObject(), java_key);
-    return v8::Just(java_object != NULL);
+    JNI_CALL(bool, result, Isolate(), GraalAccessMethod::object_has_private, Boolean, GetJavaObject(), java_key);
+    return v8::Just(result);
 }
 
 v8::Maybe<bool> GraalObject::DeletePrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key) {

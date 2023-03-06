@@ -19,7 +19,6 @@ const {
 const { reconnectZeroFillToggle } = require('internal/buffer');
 const {
   defineOperation,
-  emitExperimentalWarning,
   exposeInterface,
 } = require('internal/util');
 
@@ -33,12 +32,26 @@ const {
   isBuildingSnapshot,
 } = require('v8').startupSnapshot;
 
-function prepareMainThreadExecution(expandArgv1 = false,
-                                    initialzeModules = true) {
-  refreshRuntimeOptions();
+function prepareMainThreadExecution(expandArgv1 = false, initializeModules = true) {
+  prepareExecution({
+    expandArgv1,
+    initializeModules,
+    isMainThread: true
+  });
+}
 
-  // TODO(joyeecheung): this is also necessary for workers when they deserialize
-  // this toggle from the snapshot.
+function prepareWorkerThreadExecution() {
+  prepareExecution({
+    expandArgv1: false,
+    initializeModules: false,  // Will need to initialize it after policy setup
+    isMainThread: false
+  });
+}
+
+function prepareExecution(options) {
+  const { expandArgv1, initializeModules, isMainThread } = options;
+
+  refreshRuntimeOptions();
   reconnectZeroFillToggle();
 
   // Patch the process object with legacy properties and normalizations
@@ -60,48 +73,57 @@ function prepareMainThreadExecution(expandArgv1 = false,
   }
 
   setupDebugEnv();
-
-  // Print stack trace on `SIGINT` if option `--trace-sigint` presents.
-  setupStacktracePrinterOnSigint();
-
   // Process initial diagnostic reporting configuration, if present.
   initializeReport();
-  initializeReportSignalHandlers();  // Main-thread-only.
-
-  initializeHeapSnapshotSignalHandlers();
-
-  // If the process is spawned with env NODE_CHANNEL_FD, it's probably
-  // spawned by our child_process module, then initialize IPC.
-  // This attaches some internal event listeners and creates:
-  // process.send(), process.channel, process.connected,
-  // process.disconnect().
-  setupChildProcessIpcChannel();
-
-  // Load policy from disk and parse it.
-  initializePolicy();
-
-  // If this is a worker in cluster mode, start up the communication
-  // channel. This needs to be done before any user code gets executed
-  // (including preload modules).
-  initializeClusterIPC();
-
   initializeSourceMapsHandlers();
   initializeDeprecations();
   initializeWASI();
-
   require('internal/dns/utils').initializeDns();
 
-  require('internal/v8/startup_snapshot').runDeserializeCallbacks();
+  if (isMainThread) {
+    assert(internalBinding('worker').isMainThread);
+    // Worker threads will get the manifest in the message handler.
+    const policy = readPolicyFromDisk();
+    if (policy) {
+      require('internal/process/policy')
+        .setup(policy.manifestSrc, policy.manifestURL);
+    }
 
-  if (!initialzeModules) {
-    return;
+    // Print stack trace on `SIGINT` if option `--trace-sigint` presents.
+    setupStacktracePrinterOnSigint();
+    initializeReportSignalHandlers();  // Main-thread-only.
+    initializeHeapSnapshotSignalHandlers();
+    // If the process is spawned with env NODE_CHANNEL_FD, it's probably
+    // spawned by our child_process module, then initialize IPC.
+    // This attaches some internal event listeners and creates:
+    // process.send(), process.channel, process.connected,
+    // process.disconnect().
+    setupChildProcessIpcChannel();
+    // If this is a worker in cluster mode, start up the communication
+    // channel. This needs to be done before any user code gets executed
+    // (including preload modules).
+    initializeClusterIPC();
+
+    // TODO(joyeecheung): do this for worker threads as well.
+    require('internal/v8/startup_snapshot').runDeserializeCallbacks();
+  } else {
+    assert(!internalBinding('worker').isMainThread);
+    // The setup should be called in LOAD_SCRIPT message handler.
+    assert(!initializeModules);
   }
 
+  if (initializeModules) {
+    setupUserModules();
+  }
+}
+
+function setupUserModules() {
   initializeCJSLoader();
   initializeESMLoader();
   const CJSLoader = require('internal/modules/cjs/loader');
   assert(!CJSLoader.hasLoadedAnyUserCJSModule);
   loadPreloadModules();
+  // Need to be done after --require setup.
   initializeFrozenIntrinsics();
 }
 
@@ -219,7 +241,6 @@ function setupFetch() {
   }
 
   async function fetch(input, init = undefined) {
-    emitExperimentalWarning('The Fetch API');
     return lazyUndici().fetch(input, init);
   }
 
@@ -483,7 +504,7 @@ function initializeClusterIPC() {
   }
 }
 
-function initializePolicy() {
+function readPolicyFromDisk() {
   const experimentalPolicy = getOptionValue('--experimental-policy');
   if (experimentalPolicy) {
     process.emitWarning('Policies are experimental.',
@@ -527,8 +548,9 @@ function initializePolicy() {
         throw new ERR_MANIFEST_ASSERT_INTEGRITY(manifestURL, realIntegrities);
       }
     }
-    require('internal/process/policy')
-      .setup(src, manifestURL.href);
+    return {
+      manifestSrc: src, manifestURL: manifestURL.href
+    };
   }
 }
 
@@ -579,9 +601,11 @@ function initializeESMLoader() {
 }
 
 function initializeSourceMapsHandlers() {
-  const { setSourceMapsEnabled } =
+  const { setSourceMapsEnabled, getSourceMapsEnabled } =
     require('internal/source_map/source_map_cache');
   process.setSourceMapsEnabled = setSourceMapsEnabled;
+  // Initialize the environment flag of source maps.
+  getSourceMapsEnabled();
 }
 
 function initializeFrozenIntrinsics() {
@@ -610,25 +634,8 @@ function markBootstrapComplete() {
 }
 
 module.exports = {
-  refreshRuntimeOptions,
-  patchProcessObject,
-  setupCoverageHooks,
-  setupWarningHandler,
-  setupFetch,
-  setupWebCrypto,
-  setupCustomEvent,
-  setupDebugEnv,
-  setupPerfHooks,
+  setupUserModules,
   prepareMainThreadExecution,
-  initializeDeprecations,
-  initializeESMLoader,
-  initializeFrozenIntrinsics,
-  initializeSourceMapsHandlers,
-  loadPreloadModules,
-  setupTraceCategoryState,
-  setupInspectorHooks,
-  initializeReport,
-  initializeCJSLoader,
-  initializeWASI,
+  prepareWorkerThreadExecution,
   markBootstrapComplete
 };

@@ -485,9 +485,9 @@ These CommonJS variables are not available in ES modules.
 `__filename` and `__dirname` use cases can be replicated via
 [`import.meta.url`][].
 
-#### No Native Module Loading
+#### No Addon Loading
 
-Native modules are not currently supported with ES module imports.
+[Addons][] are not currently supported with ES module imports.
 
 They can instead be loaded with [`module.createRequire()`][] or
 [`process.dlopen`][].
@@ -1016,7 +1016,7 @@ export function resolve(specifier, context, nextResolve) {
   if (specifier.startsWith('https://')) {
     return {
       shortCircuit: true,
-      url: specifier
+      url: specifier,
     };
   } else if (parentURL && parentURL.startsWith('https://')) {
     return {
@@ -1097,7 +1097,7 @@ export async function resolve(specifier, context, nextResolve) {
     // specifiers ending in the CoffeeScript file extensions.
     return {
       shortCircuit: true,
-      url: new URL(specifier, parentURL).href
+      url: new URL(specifier, parentURL).href,
     };
   }
 
@@ -1539,6 +1539,7 @@ success!
 <!-- Note: The cjs-module-lexer link should be kept in-sync with the deps version -->
 
 [6.1.7 Array Index]: https://tc39.es/ecma262/#integer-index
+[Addons]: addons.md
 [CommonJS]: modules.md
 [Conditional exports]: packages.md#conditional-exports
 [Core modules]: modules.md#core-modules

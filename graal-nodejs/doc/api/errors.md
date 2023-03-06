@@ -705,13 +705,6 @@ A special type of error that can be triggered whenever Node.js detects an
 exceptional logic violation that should never occur. These are raised typically
 by the `node:assert` module.
 
-<a id="ERR_ASSERT_SNAPSHOT_NOT_SUPPORTED"></a>
-
-### `ERR_ASSERT_SNAPSHOT_NOT_SUPPORTED`
-
-An attempt was made to use `assert.snapshot()` in an environment that
-does not support snapshots, such as the REPL, or when using `node --eval`.
-
 <a id="ERR_ASYNC_CALLBACK"></a>
 
 ### `ERR_ASYNC_CALLBACK`
@@ -1967,6 +1960,12 @@ An invalid HTTP token was supplied.
 
 An IP address is not valid.
 
+<a id="ERR_INVALID_MIME_SYNTAX"></a>
+
+### `ERR_INVALID_MIME_SYNTAX`
+
+The syntax of a MIME is not valid.
+
 <a id="ERR_INVALID_MODULE"></a>
 
 ### `ERR_INVALID_MODULE`
@@ -2559,6 +2558,13 @@ could not be determined.
 
 An attempt was made to operate on an already closed socket.
 
+<a id="ERR_SOCKET_CLOSED_BEFORE_CONNECTION"></a>
+
+### `ERR_SOCKET_CLOSED_BEFORE_CONNECTION`
+
+When calling [`net.Socket.write()`][] on a connecting socket and the socket was
+closed before the connection was established.
+
 <a id="ERR_SOCKET_DGRAM_IS_CONNECTED"></a>
 
 ### `ERR_SOCKET_DGRAM_IS_CONNECTED`
@@ -2676,6 +2682,25 @@ An unspecified or non-specific system error has occurred within the Node.js
 process. The error object will have an `err.info` object property with
 additional details.
 
+<a id="ERR_TAP_LEXER_ERROR"></a>
+
+### `ERR_TAP_LEXER_ERROR`
+
+An error representing a failing lexer state.
+
+<a id="ERR_TAP_PARSER_ERROR"></a>
+
+### `ERR_TAP_PARSER_ERROR`
+
+An error representing a failing parser state. Additional information about
+the token causing the error is available via the `cause` property.
+
+<a id="ERR_TAP_VALIDATION_ERROR"></a>
+
+### `ERR_TAP_VALIDATION_ERROR`
+
+This error represents a failed TAP validation.
+
 <a id="ERR_TEST_FAILURE"></a>
 
 ### `ERR_TEST_FAILURE`
@@ -2769,7 +2794,8 @@ Failed to set PSK identity hint. Hint may be too long.
 
 ### `ERR_TLS_RENEGOTIATION_DISABLED`
 
-An attempt was made to renegotiate TLS on a socket instance with TLS disabled.
+An attempt was made to renegotiate TLS on a socket instance with renegotiation
+disabled.
 
 <a id="ERR_TLS_REQUIRED_SERVER_NAME"></a>
 
@@ -3551,6 +3577,7 @@ The native call from `process.cpuUsage` could not be processed.
 [`http`]: http.md
 [`https`]: https.md
 [`libuv Error handling`]: https://docs.libuv.org/en/v1.x/errors.html
+[`net.Socket.write()`]: net.md#socketwritedata-encoding-callback
 [`net`]: net.md
 [`new URL(input)`]: url.md#new-urlinput-base
 [`new URLSearchParams(iterable)`]: url.md#new-urlsearchparamsiterable
