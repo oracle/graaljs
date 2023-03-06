@@ -43,9 +43,11 @@ package com.oracle.truffle.js.builtins;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDateNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDayNodeGen;
@@ -896,29 +898,28 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
     public abstract static class JSDateToPrimitiveNode extends JSBuiltinNode {
 
-        private final ConditionProfile isHintNumber = ConditionProfile.create();
-        private final ConditionProfile isHintStringOrDefault = ConditionProfile.create();
-        @Child private IsObjectNode isObjectNode;
         @Child private OrdinaryToPrimitiveNode ordinaryToPrimitiveHintNumber;
         @Child private OrdinaryToPrimitiveNode ordinaryToPrimitiveHintString;
 
         public JSDateToPrimitiveNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isObjectNode = IsObjectNode.create();
         }
 
         @Specialization
-        protected Object toPrimitive(Object obj, Object hint) {
+        protected final Object toPrimitive(Object obj, Object hint,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached InlinedConditionProfile isHintNumber,
+                        @Cached InlinedConditionProfile isHintStringOrDefault) {
             if (!isObjectNode.executeBoolean(obj)) {
                 throw Errors.createTypeErrorNotAnObject(obj);
             }
-            if (isHintNumber.profile(Strings.HINT_NUMBER.equals(hint))) {
+            if (isHintNumber.profile(this, Strings.HINT_NUMBER.equals(hint))) {
                 if (ordinaryToPrimitiveHintNumber == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     ordinaryToPrimitiveHintNumber = insert(OrdinaryToPrimitiveNode.createHintNumber());
                 }
                 return ordinaryToPrimitiveHintNumber.execute(obj);
-            } else if (isHintStringOrDefault.profile(Strings.HINT_STRING.equals(hint) || Strings.HINT_DEFAULT.equals(hint))) {
+            } else if (isHintStringOrDefault.profile(this, Strings.HINT_STRING.equals(hint) || Strings.HINT_DEFAULT.equals(hint))) {
                 if (ordinaryToPrimitiveHintString == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     ordinaryToPrimitiveHintString = insert(OrdinaryToPrimitiveNode.createHintString());
