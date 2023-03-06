@@ -135,8 +135,6 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             jsonQuote(builder, (TruffleString) value);
         } else if (JSRuntime.isNumber(value)) {
             appendNumber(builder, value);
-        } else if (JSRuntime.isBigInt(value)) {
-            throw Errors.createTypeError("Do not know how to serialize a BigInt");
         } else if (JSDynamicObject.isJSDynamicObject(value) && !JSRuntime.isCallableIsJSObject((JSDynamicObject) value)) {
             JSDynamicObject valueObj = (JSDynamicObject) value;
             if (JSRuntime.isArray(valueObj)) {
@@ -144,15 +142,26 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             } else {
                 jsonJO(builder, data, valueObj);
             }
+        } else if (value instanceof Long) {
+            if (JSRuntime.longFitsInDouble((Long) value)) {
+                appendNumber(builder, value);
+            } else {
+                throw Errors.createTypeError("Do not know how to serialize a BigInt");
+            }
+        } else if (JSRuntime.isBigInt(value)) {
+            throw Errors.createTypeError("Do not know how to serialize a BigInt");
         } else if (value instanceof TruffleObject) {
             assert JSGuards.isForeignObject(value);
             jsonForeignObject(builder, data, value);
-        } else if (JSRuntime.isJavaPrimitive(value)) {
-            // call toString on Java objects, GR-3722
-            jsonQuote(builder, Strings.fromJavaString(value.toString()));
         } else {
-            throw new RuntimeException("JSON.stringify: should never reach here, unknown type: " + value + " " + value.getClass());
+            throw unsupportedType(value);
         }
+    }
+
+    @TruffleBoundary
+    private static RuntimeException unsupportedType(Object value) {
+        assert false : "JSON.stringify: should never reach here, unknown type: " + value + " " + value.getClass();
+        return Errors.createTypeError("Do not know how to serialize a value of type " + (value == null ? "null" : value.getClass().getTypeName()));
     }
 
     private void jsonForeignObject(TruffleStringBuilder sb, JSONData data, Object obj) {
