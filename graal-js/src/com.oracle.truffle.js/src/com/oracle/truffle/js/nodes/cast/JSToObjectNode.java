@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.cast;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -66,7 +65,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
@@ -86,29 +84,27 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     protected final JSContext context;
     protected final boolean checkForNullOrUndefined;
-    protected final boolean fromWith;
 
-    protected JSToObjectNode(JSContext context, boolean checkForNullOrUndefined, boolean fromWith) {
+    protected JSToObjectNode(JSContext context, boolean checkForNullOrUndefined) {
         this.context = context;
         this.checkForNullOrUndefined = checkForNullOrUndefined;
-        this.fromWith = fromWith;
     }
 
     public abstract Object execute(Object value);
 
     @NeverDefault
     public static JSToObjectNode createToObject(JSContext context) {
-        return createToObject(context, true, false);
+        return createToObject(context, true);
     }
 
     @NeverDefault
     public static JSToObjectNode createToObjectNoCheck(JSContext context) {
-        return createToObject(context, false, false);
+        return createToObject(context, false);
     }
 
     @NeverDefault
-    protected static JSToObjectNode createToObject(JSContext context, boolean checkForNullOrUndefined, boolean fromWith) {
-        return JSToObjectNodeGen.create(context, checkForNullOrUndefined, fromWith);
+    protected static JSToObjectNode createToObject(JSContext context, boolean checkForNullOrUndefined) {
+        return JSToObjectNodeGen.create(context, checkForNullOrUndefined);
     }
 
     protected final JSContext getContext() {
@@ -118,18 +114,6 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     @Idempotent
     protected final boolean isCheckForNullOrUndefined() {
         return checkForNullOrUndefined;
-    }
-
-    protected final boolean isFromWith() {
-        return fromWith;
-    }
-
-    @TruffleBoundary
-    private JSException createTypeErrorNotObjectCoercible(Object value) {
-        if (isFromWith()) {
-            return Errors.createTypeError("Cannot apply \"with\" to " + JSRuntime.safeToString(value), this);
-        }
-        return Errors.createTypeErrorNotObjectCoercible(value, this, context);
     }
 
     @InliningCutoff
@@ -196,7 +180,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isCheckForNullOrUndefined()", "isNullOrUndefined(object)"})
     protected JSDynamicObject doNullOrUndefined(Object object) {
-        throw createTypeErrorNotObjectCoercible(object);
+        throw Errors.createTypeErrorNotObjectCoercible(object, this, context);
     }
 
     @InliningCutoff
@@ -205,7 +189,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
                     @CachedLibrary("value") InteropLibrary interop,
                     @Bind("isForeignObject(value)") boolean isForeignTruffleObject) {
         if (interop.isNull(value)) {
-            throw createTypeErrorNotObjectCoercible(value);
+            throw Errors.createTypeErrorNotObjectCoercible(value, this, context);
         }
         try {
             if (interop.isBoolean(value)) {
@@ -230,22 +214,11 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
                     }
                 }
             } else {
-                if (isFromWith() && context.isOptionNashornCompatibilityMode() && getRealm().getEnv().isHostObject(value)) {
-                    throwWithError();
-                }
                 return value;
             }
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(value, e, "ToObject", this);
         }
-    }
-
-    @TruffleBoundary
-    private void throwWithError() {
-        String message = getContext().isOptionNashornCompatibilityMode()
-                        ? "Cannot apply \"with\" to non script object. Consider using \"with(Object.bindProperties({}, nonScriptObject))\"."
-                        : "Cannot apply \"with\" to non script object";
-        throw Errors.createTypeError(message, this);
     }
 
     public abstract static class JSToObjectWrapperNode extends JSUnaryNode {
@@ -264,10 +237,6 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
             return JSToObjectWrapperNodeGen.create(child, JSToObjectNode.createToObject(context));
         }
 
-        public static JSToObjectWrapperNode createToObjectFromWith(JSContext context, JavaScriptNode child, boolean checkForNullOrUndefined) {
-            return JSToObjectWrapperNodeGen.create(child, JSToObjectNodeGen.create(context, checkForNullOrUndefined, true));
-        }
-
         @Specialization
         protected Object doDefault(Object value) {
             return toObjectNode.execute(value);
@@ -275,7 +244,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            JSToObjectNode clonedToObject = JSToObjectNodeGen.create(toObjectNode.getContext(), toObjectNode.isCheckForNullOrUndefined(), toObjectNode.isFromWith());
+            JSToObjectNode clonedToObject = JSToObjectNodeGen.create(toObjectNode.getContext(), toObjectNode.isCheckForNullOrUndefined());
             return JSToObjectWrapperNodeGen.create(cloneUninitialized(getOperand(), materializedTags), clonedToObject);
         }
     }

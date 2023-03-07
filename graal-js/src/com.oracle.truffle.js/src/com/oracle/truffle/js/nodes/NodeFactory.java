@@ -160,6 +160,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
+import com.oracle.truffle.js.nodes.cast.WithStatementToObjectNode;
 import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.control.AsyncFunctionBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorBodyNode;
@@ -1224,10 +1225,6 @@ public class NodeFactory {
         return JSToObjectNode.JSToObjectWrapperNode.createToObject(context, operand);
     }
 
-    public JavaScriptNode createToObjectFromWith(JSContext context, JavaScriptNode operand, boolean checkForNullOrUndefined) {
-        return JSToObjectNode.JSToObjectWrapperNode.createToObjectFromWith(context, operand, checkForNullOrUndefined);
-    }
-
     public JavaScriptNode createAccessArgumentsArrayDirectly(JavaScriptNode writeArguments, JavaScriptNode readArguments, int leadingArgCount) {
         return new AccessArgumentsArrayDirectlyNode(writeArguments, readArguments, leadingArgCount);
     }
@@ -1378,6 +1375,14 @@ public class NodeFactory {
     public GetActiveScriptOrModuleNode fixGetActiveScriptOrModule(GetActiveScriptOrModuleNode node, ScriptOrModule scriptOrModule) {
         node.setScriptOrModule(scriptOrModule);
         return node;
+    }
+
+    public JavaScriptNode createToObjectForWithStatement(JSContext context, JavaScriptNode operand) {
+        if (context.isOptionNashornCompatibilityMode()) {
+            return WithStatementToObjectNode.create(operand);
+        } else {
+            return createToObject(context, operand);
+        }
     }
 
     // #####
