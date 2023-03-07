@@ -322,22 +322,35 @@ public final class JSRuntime {
     public static Object toPrimitiveFromForeign(Object tObj, JSToPrimitiveNode.Hint hint) {
         assert isForeignObject(tObj);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
-        if (interop.isNull(tObj)) {
-            return Null.instance;
-        } else if (JSInteropUtil.isBoxedPrimitive(tObj, interop)) {
-            return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
-        } else if (JavaScriptLanguage.getCurrentEnv().isHostObject(tObj)) {
+        Object primitive = JSInteropUtil.toPrimitiveOrDefault(tObj, null, interop, null, true);
+        if (primitive != null) {
+            return primitive;
+        }
+
+        // Try foreign object prototype [Symbol.toPrimitive] property first.
+        // e.g.: Instant and ZonedDateTime use Date.prototype[@@toPrimitive].
+        Object exoticToPrim = JSObject.get(ForeignObjectPrototypeNode.getUncached().execute(tObj), Symbol.SYMBOL_TO_PRIMITIVE);
+        if (!JSRuntime.isNullOrUndefined(exoticToPrim)) {
+            Object result = JSRuntime.call(exoticToPrim, tObj, new Object[]{hint.getHintName()});
+            if (IsPrimitiveNode.getUncached().executeBoolean(result)) {
+                return result;
+            }
+            throw Errors.createTypeError("[Symbol.toPrimitive] method returned a non-primitive object", null);
+        }
+
+        if (JavaScriptLanguage.getCurrentEnv().isHostObject(tObj)) {
             Object maybeResult = JSToPrimitiveNode.tryHostObjectToPrimitive(tObj, hint, interop);
             if (maybeResult != null) {
                 return maybeResult;
             }
         }
-        return foreignOrdinaryToPrimitive(tObj, hint == JSToPrimitiveNode.Hint.Default ? JSToPrimitiveNode.Hint.Number : hint);
+
+        Object result = foreignOrdinaryToPrimitive(tObj, hint == JSToPrimitiveNode.Hint.Default ? JSToPrimitiveNode.Hint.Number : hint, interop);
+        return JSInteropUtil.toPrimitiveOrDefault(result, result, InteropLibrary.getUncached(result), null, true);
     }
 
     @TruffleBoundary
-    private static Object foreignOrdinaryToPrimitive(Object obj, JSToPrimitiveNode.Hint hint) {
-        InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
+    private static Object foreignOrdinaryToPrimitive(Object obj, JSToPrimitiveNode.Hint hint, InteropLibrary interop) {
         TruffleString[] methodNames;
         if (hint == JSToPrimitiveNode.Hint.String) {
             methodNames = new TruffleString[]{Strings.TO_STRING, Strings.VALUE_OF};
