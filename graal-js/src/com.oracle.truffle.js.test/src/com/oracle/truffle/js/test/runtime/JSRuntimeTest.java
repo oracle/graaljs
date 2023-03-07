@@ -134,7 +134,7 @@ public class JSRuntimeTest extends JSTest {
         assertFalse(JSRuntime.equal(0, Null.instance));
         assertFalse(JSRuntime.equal(true, Undefined.instance));
         assertFalse(JSRuntime.equal(Undefined.instance, 1));
-        assertTrue(JSRuntime.equal(Float.MAX_VALUE, Float.MAX_VALUE));
+        assertTrue(JSRuntime.equal(JSRuntime.importValue(Float.MAX_VALUE), JSRuntime.importValue(Float.MAX_VALUE)));
 
         JSDynamicObject obj = createOrdinaryObject();
         assertFalse(JSRuntime.equal(obj, Null.instance));
@@ -153,8 +153,8 @@ public class JSRuntimeTest extends JSTest {
 
     @Test
     public void testIdentical() {
-        assertTrue(JSRuntime.identical(new BigInteger("9876543210"), new BigInteger("9876543210")));
         TruffleLanguage.Env env = testHelper.getRealm().getEnv();
+        assertTrue(JSRuntime.identical(env.asGuestValue(new BigInteger("9876543210")), env.asGuestValue(new BigInteger("9876543210"))));
         assertTrue(JSRuntime.identical(env.asGuestValue(BigInteger.ONE), env.asGuestValue(BigInteger.ONE)));
     }
 
