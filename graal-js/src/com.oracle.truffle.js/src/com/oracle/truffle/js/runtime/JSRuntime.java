@@ -63,6 +63,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
@@ -1467,14 +1468,14 @@ public final class JSRuntime {
         } else if (a instanceof Boolean && b instanceof Boolean) {
             return a.equals(b);
         } else if (Strings.isTString(a) && Strings.isTString(b)) {
-            return a.toString().equals(b.toString());
-        } else if (isJavaNumber(a) && isJavaNumber(b)) {
+            return Strings.equals((TruffleString) a, (TruffleString) b);
+        } else if (isNumber(a) && isNumber(b)) {
             double da = doubleValue((Number) a);
             double db = doubleValue((Number) b);
             return da == db;
-        } else if (isJavaNumber(a) && Strings.isTString(b)) {
+        } else if (isNumber(a) && Strings.isTString(b)) {
             return equal(a, stringToNumber((TruffleString) b));
-        } else if (Strings.isTString(a) && isJavaNumber(b)) {
+        } else if (Strings.isTString(a) && isNumber(b)) {
             return equal(stringToNumber((TruffleString) a), b);
         } else if (isBigInt(a) && isBigInt(b)) {
             return a.equals(b);
@@ -1482,16 +1483,16 @@ public final class JSRuntime {
             return a.equals(stringToBigInt((TruffleString) b));
         } else if (Strings.isTString(a) && isBigInt(b)) {
             return b.equals(stringToBigInt((TruffleString) a));
-        } else if (isJavaNumber(a) && isBigInt(b)) {
+        } else if (isNumber(a) && isBigInt(b)) {
             return equalBigIntAndNumber((BigInt) b, (Number) a);
-        } else if (isBigInt(a) && isJavaNumber(b)) {
+        } else if (isBigInt(a) && isNumber(b)) {
             return equalBigIntAndNumber((BigInt) a, (Number) b);
         } else if (a instanceof Boolean) {
             return equal(booleanToNumber((Boolean) a), b);
         } else if (b instanceof Boolean) {
             return equal(a, booleanToNumber((Boolean) b));
         } else if (isObject(a)) {
-            assert b != Undefined.instance && b != Null.instance; // covered by (DynOb, DynOb)
+            assert !isNullOrUndefined(b);
             if (JSOverloadedOperatorsObject.hasOverloadedOperators(a)) {
                 if (isObject(b) && !JSOverloadedOperatorsObject.hasOverloadedOperators(b)) {
                     return equal(a, JSObject.toPrimitive((JSDynamicObject) b));
@@ -1508,8 +1509,7 @@ public final class JSRuntime {
                 return equal(JSObject.toPrimitive((JSDynamicObject) a), b);
             }
         } else if (isObject(b)) {
-            assert a != Undefined.instance && a != Null.instance; // covered by (DynOb, DynOb)
-            assert !isObject(a);
+            assert !isNullOrUndefined(a) && !isObject(a);
             if (JSOverloadedOperatorsObject.hasOverloadedOperators(b)) {
                 if (isNumber(a) || isBigInt(a) || Strings.isTString(a)) {
                     return equalOverloaded(a, b);
@@ -1523,7 +1523,7 @@ public final class JSRuntime {
                 return equal(a, JSObject.toPrimitive((JSDynamicObject) b));
             }
         }
-        if (isForeignObject(a) || isForeignObject(b)) {
+        if (JSGuards.isForeignObjectOrNumber(a) || JSGuards.isForeignObjectOrNumber(b)) {
             return equalInterop(a, b);
         }
         return false;
@@ -1539,7 +1539,7 @@ public final class JSRuntime {
     }
 
     private static boolean equalInterop(Object a, Object b) {
-        assert a != null && b != null && (isForeignObject(a) || isForeignObject(b));
+        assert a != null && b != null && (JSGuards.isForeignObjectOrNumber(a) || JSGuards.isForeignObjectOrNumber(b));
         boolean isAPrimitive = IsPrimitiveNode.getUncached().executeBoolean(a);
         boolean isBPrimitive = IsPrimitiveNode.getUncached().executeBoolean(b);
         if (!isAPrimitive && !isBPrimitive) {
@@ -1555,11 +1555,13 @@ public final class JSRuntime {
         }
         // If one of them is primitive, we attempt to convert the other one ToPrimitive.
         // Foreign primitive values always have to be converted to JS primitive values.
-        Object primLeft = !isAPrimitive || isForeignObject(a) ? toPrimitive(a) : a;
-        Object primRight = !isBPrimitive || isForeignObject(b) ? toPrimitive(b) : b;
+        Object primA = !isAPrimitive || JSGuards.isForeignObjectOrNumber(a) ? toPrimitive(a) : a;
+        Object primB = !isBPrimitive || JSGuards.isForeignObjectOrNumber(b) ? toPrimitive(b) : b;
         // Now that both are primitive values, we can compare them using normal JS semantics.
-        assert !isForeignObject(primLeft) && !isForeignObject(primRight);
-        return equal(primLeft, primRight);
+        assert !isForeignObject(primA) && !isForeignObject(primB);
+        primA = primA instanceof Long ? BigInt.valueOf((long) primA) : primA;
+        primB = primB instanceof Long ? BigInt.valueOf((long) primB) : primB;
+        return equal(primA, primB);
     }
 
     private static boolean equalBigIntAndNumber(BigInt a, Number b) {
