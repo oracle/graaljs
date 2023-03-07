@@ -1603,7 +1603,7 @@ public final class JSRuntime {
         if (isBigInt(a) && isBigInt(b)) {
             return a.equals(b);
         }
-        if (isJavaNumber(a) && isJavaNumber(b)) {
+        if (isNumber(a) && isNumber(b)) {
             if (a instanceof Integer && b instanceof Integer) {
                 return ((Integer) a).intValue() == ((Integer) b).intValue();
             } else {
@@ -1614,13 +1614,42 @@ public final class JSRuntime {
             return a.equals(b);
         }
         if (Strings.isTString(a) && Strings.isTString(b)) {
-            return a.toString().equals(b.toString());
+            return Strings.equals((TruffleString) a, (TruffleString) b);
         }
         if (isObject(a) || isObject(b)) {
             return false;
         }
+        boolean isAForeign = JSGuards.isForeignObjectOrNumber(a);
+        boolean isBForeign = JSGuards.isForeignObjectOrNumber(b);
+        if (!isAForeign && !isBForeign) {
+            return false;
+        }
         InteropLibrary aInterop = InteropLibrary.getUncached(a);
         InteropLibrary bInterop = InteropLibrary.getUncached(b);
+        if (aInterop.isNumber(a) && bInterop.isNumber(b)) {
+            try {
+                if (isAForeign != isBForeign) {
+                    if (a instanceof BigInt && bInterop.fitsInDouble(b)) {
+                        assert !(b instanceof BigInt) : b;
+                        return false;
+                    } else if (b instanceof BigInt && aInterop.fitsInDouble(a)) {
+                        assert !(a instanceof BigInt) : a;
+                        return false;
+                    }
+                } else {
+                    assert isAForeign && isBForeign && !(a instanceof BigInt || b instanceof BigInt);
+                }
+                if (aInterop.fitsInDouble(a) && bInterop.fitsInDouble(b)) {
+                    return doubleValue(aInterop.asDouble(a)) == doubleValue(bInterop.asDouble(b));
+                } else if (aInterop.fitsInLong(a) && bInterop.fitsInLong(b)) {
+                    return aInterop.asLong(a) == bInterop.asLong(b);
+                } else if (aInterop.fitsInBigInteger(a) && bInterop.fitsInBigInteger(b)) {
+                    return BigInt.fromBigInteger(aInterop.asBigInteger(a)).compareTo(BigInt.fromBigInteger(bInterop.asBigInteger(b))) == 0;
+                }
+            } catch (UnsupportedMessageException e) {
+                assert false : e;
+            }
+        }
         return aInterop.isIdentical(a, b, bInterop) || (aInterop.isNull(a) && bInterop.isNull(b));
     }
 
