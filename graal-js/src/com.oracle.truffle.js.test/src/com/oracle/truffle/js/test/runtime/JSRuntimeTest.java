@@ -481,31 +481,31 @@ public class JSRuntimeTest extends JSTest {
 
     @Test
     public void testToObject() {
-        JSContext ctx = testHelper.getJSContext();
+        testHelper.getJSContext(); // initialize JSContext
 
-        assertThrowsTypeError(() -> JSRuntime.toObject(ctx, Null.instance));
-        assertThrowsTypeError(() -> JSRuntime.toObject(ctx, Undefined.instance));
+        assertThrowsTypeError(() -> JSRuntime.toObject(Null.instance));
+        assertThrowsTypeError(() -> JSRuntime.toObject(Undefined.instance));
 
-        assertTrue(JSRuntime.toObject(ctx, true) instanceof JSBooleanObject);
-        assertTrue(JSRuntime.toObject(ctx, Strings.constant("String")) instanceof JSStringObject);
-        assertTrue(JSRuntime.toObject(ctx, Math.PI) instanceof JSNumberObject);
-        assertTrue(JSRuntime.toObject(ctx, Symbol.create(Strings.constant("sym"))) instanceof JSSymbolObject);
-        assertTrue(JSRuntime.toObject(ctx, BigInt.valueOf(1)) instanceof JSBigIntObject);
+        assertTrue(JSRuntime.toObject(true) instanceof JSBooleanObject);
+        assertTrue(JSRuntime.toObject(Strings.constant("String")) instanceof JSStringObject);
+        assertTrue(JSRuntime.toObject(Math.PI) instanceof JSNumberObject);
+        assertTrue(JSRuntime.toObject(Symbol.create(Strings.constant("sym"))) instanceof JSSymbolObject);
+        assertTrue(JSRuntime.toObject(BigInt.valueOf(1)) instanceof JSBigIntObject);
 
         Object object = createOrdinaryObject();
-        assertSame(object, JSRuntime.toObject(ctx, object));
+        assertSame(object, JSRuntime.toObject(object));
 
         object = new ForeignDynamicObject();
-        assertSame(object, JSRuntime.toObject(ctx, object));
+        assertSame(object, JSRuntime.toObject(object));
 
-        assertThrowsTypeError(() -> JSRuntime.toObject(ctx, new ForeignNull()));
+        assertThrowsTypeError(() -> JSRuntime.toObject(new ForeignNull()));
 
-        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew(false)) instanceof JSBooleanObject);
-        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew(42)) instanceof JSNumberObject);
-        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew((byte) 42)) instanceof JSNumberObject);
-        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew(Math.E)) instanceof JSNumberObject);
-        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew((float) Math.E)) instanceof JSNumberObject);
-        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew("abc")) instanceof JSStringObject);
+        assertTrue(JSRuntime.toObject(ForeignBoxedObject.createNew(false)) instanceof JSBooleanObject);
+        assertTrue(JSRuntime.toObject(ForeignBoxedObject.createNew(42)) instanceof JSNumberObject);
+        assertTrue(JSRuntime.toObject(ForeignBoxedObject.createNew((byte) 42)) instanceof JSNumberObject);
+        assertTrue(JSRuntime.toObject(ForeignBoxedObject.createNew(Math.E)) instanceof JSNumberObject);
+        assertTrue(JSRuntime.toObject(ForeignBoxedObject.createNew((float) Math.E)) instanceof JSNumberObject);
+        assertTrue(JSRuntime.toObject(ForeignBoxedObject.createNew("abc")) instanceof JSStringObject);
     }
 
     @Test

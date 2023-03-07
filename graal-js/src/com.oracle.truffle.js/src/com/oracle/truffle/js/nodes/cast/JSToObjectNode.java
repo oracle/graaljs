@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -78,6 +79,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
  *
  * Converts the argument to a JSDynamicObject or TruffleObject.
  */
+@GenerateUncached
 @ImportStatic({CompilerDirectives.class, JSConfig.class})
 public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
@@ -89,6 +91,11 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     @NeverDefault
     public static JSToObjectNode create() {
         return JSToObjectNodeGen.create();
+    }
+
+    @NeverDefault
+    public static JSToObjectNode getUncached() {
+        return JSToObjectNodeGen.getUncached();
     }
 
     protected final JSContext getContext() {

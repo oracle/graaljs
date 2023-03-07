@@ -63,8 +63,8 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.OrdinaryToPrimitiveNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -1414,57 +1414,8 @@ public final class JSRuntime {
      * @param value an Object to be converted to an Object
      * @return an Object
      */
-    public static TruffleObject toObject(JSContext ctx, Object value) {
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSObject.isJSObject(value))) {
-            return (JSObject) value;
-        }
-        requireObjectCoercible(value);
-        Object unboxedValue = value;
-        if (JSGuards.isForeignObjectOrNumber(unboxedValue)) {
-            try {
-                InteropLibrary interop = InteropLibrary.getUncached(value);
-                assert !interop.isNull(value);
-                if (interop.isBoolean(value)) {
-                    unboxedValue = interop.asBoolean(value);
-                } else if (interop.isString(value)) {
-                    unboxedValue = interop.asTruffleString(value);
-                } else if (interop.isNumber(value)) {
-                    if (interop.fitsInInt(value)) {
-                        unboxedValue = interop.asInt(value);
-                    } else if (interop.fitsInDouble(value)) {
-                        unboxedValue = interop.asDouble(value);
-                    }
-                } else {
-                    return (TruffleObject) value; // not a boxed primitive value
-                }
-            } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(value, e, "ToObject", null);
-            }
-        }
-        return toObjectFromPrimitive(ctx, unboxedValue, true);
-    }
-
-    @TruffleBoundary
-    public static TruffleObject toObjectFromPrimitive(JSContext ctx, Object value, boolean useJavaWrapper) {
-        JSRealm realm = JSRealm.get(null);
-        if (value instanceof Boolean) {
-            return JSBoolean.create(ctx, realm, (Boolean) value);
-        } else if (Strings.isTString(value)) {
-            return JSString.create(ctx, realm, (TruffleString) value);
-        } else if (value instanceof BigInt) {
-            return JSBigInt.create(ctx, realm, (BigInt) value);
-        } else if (isNumber(value)) {
-            return JSNumber.create(ctx, realm, (Number) value);
-        } else if (value instanceof Symbol) {
-            return JSSymbol.create(ctx, realm, (Symbol) value);
-        } else {
-            assert !isJSNative(value) && isJavaPrimitive(value) : value;
-            if (useJavaWrapper) {
-                return (TruffleObject) realm.getEnv().asBoxedGuestValue(value);
-            } else {
-                return null;
-            }
-        }
+    public static Object toObject(Object value) {
+        return JSToObjectNode.getUncached().execute(value);
     }
 
     /**

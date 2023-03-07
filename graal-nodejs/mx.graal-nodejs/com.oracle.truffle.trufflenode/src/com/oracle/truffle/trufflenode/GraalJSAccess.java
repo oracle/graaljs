@@ -653,8 +653,8 @@ public final class GraalJSAccess {
         return Strings.fromObject(obj);
     }
 
-    public Object valueToObject(Object context, Object value) {
-        return JSRuntime.toObject(((JSRealm) context).getContext(), value);
+    public Object valueToObject(@SuppressWarnings("unused") Object context, Object value) {
+        return JSRuntime.toObject(value);
     }
 
     public Object valueToInteger(Object value) {
@@ -893,11 +893,11 @@ public final class GraalJSAccess {
         if (object instanceof JSDynamicObject) {
             value = JSObject.get((JSDynamicObject) object, propertyKey);
         } else {
-            TruffleObject truffleObject;
+            Object truffleObject;
             if (object instanceof TruffleObject) {
-                truffleObject = (TruffleObject) object;
+                truffleObject = object;
             } else {
-                truffleObject = JSRuntime.toObject(mainJSContext, object);
+                truffleObject = JSRuntime.toObject(object);
             }
             value = JSInteropUtil.readMemberOrDefault(truffleObject, propertyKey, Undefined.instance);
         }
