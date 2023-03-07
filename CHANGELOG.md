@@ -15,6 +15,12 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 * Implemented the [Symbols as WeakMap keys](https://github.com/tc39/proposal-symbols-as-weakmap-keys) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [ArrayBuffer.prototype.transfer and friends](https://github.com/tc39/proposal-arraybuffer-transfer) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Change Array by copy](https://github.com/tc39/proposal-change-array-by-copy) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Added BigInteger interop support.
+  Note that foreign BigIntegers require an explicit type cast using the `BigInt` function to opt into JS BigInt semantics.
+  The default semantics for arithmetic operations is to treat all values that fit into double as JS Number values and throw if lossless conversion is not possible; mixing a JS BigInt with a non-JS number always throws.
+  JS BigInt values can now be converted to `java.math.BigInteger` host objects, although a [target type mapping](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping-java.lang.Class-java.lang.Class-java.util.function.Predicate-java.util.function.Function-) may still be necessary to ensure constitent type mapping if the target type is ambiguous or absent.
+* Change of behavior: Attempting to coerce a Long value that does not losslessly fit into a Double to a JS Number now throws a `TypeError`.
+  If lossy coercion is desired, please explicitly convert Long values to Double before passing them to JS.
 
 ## Version 22.3.0
 * Implemented the [WebAssembly multi-value](https://github.com/WebAssembly/multi-value) proposal.
