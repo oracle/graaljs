@@ -69,7 +69,7 @@ public abstract class SupportedLocalesOfNode extends JSBuiltinNode {
 
     @Specialization(guards = "!isUndefined(opts)")
     protected Object getSupportedLocalesWithOptions(Object locales, Object opts,
-                    @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
+                    @Cached JSToObjectNode toObjectNode,
                     @Cached("createMatcherGetter(getContext())") GetStringOptionNode getMatcherNode) {
 
         String matcher = getMatcherNode.executeValue(toObjectNode.execute(opts));

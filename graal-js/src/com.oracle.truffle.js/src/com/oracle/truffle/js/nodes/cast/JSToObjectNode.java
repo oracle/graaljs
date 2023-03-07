@@ -81,17 +81,14 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 @ImportStatic({CompilerDirectives.class, JSConfig.class})
 public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
-    protected final JSContext context;
-
-    protected JSToObjectNode(JSContext context) {
-        this.context = context;
+    protected JSToObjectNode() {
     }
 
     public abstract Object execute(Object value);
 
     @NeverDefault
-    public static JSToObjectNode createToObject(JSContext context) {
-        return JSToObjectNodeGen.create(context);
+    public static JSToObjectNode create() {
+        return JSToObjectNodeGen.create();
     }
 
     protected final JSContext getContext() {
@@ -155,7 +152,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isNullOrUndefined(object)"})
     protected JSDynamicObject doNullOrUndefined(Object object) {
-        throw Errors.createTypeErrorNotObjectCoercible(object, this, getContext());
+        throw Errors.createTypeErrorNotObjectCoercible(object, this);
     }
 
     @InliningCutoff
@@ -164,7 +161,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
                     @CachedLibrary("value") InteropLibrary interop,
                     @Bind("isForeignObject(value)") boolean isForeignTruffleObject) {
         if (interop.isNull(value)) {
-            throw Errors.createTypeErrorNotObjectCoercible(value, this, getContext());
+            throw Errors.createTypeErrorNotObjectCoercible(value, this);
         }
         try {
             if (interop.isBoolean(value)) {
@@ -197,30 +194,28 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     public abstract static class JSToObjectWrapperNode extends JSUnaryNode {
-        @Child private JSToObjectNode toObjectNode;
 
-        protected JSToObjectWrapperNode(JavaScriptNode operand, JSToObjectNode toObjectNode) {
+        protected JSToObjectWrapperNode(JavaScriptNode operand) {
             super(operand);
-            this.toObjectNode = toObjectNode;
         }
 
         /**
          * This factory method forces the creation of an JSObjectCastNode; in contrast to
          * {@code create} it does not check the child and try to omit unnecessary cast nodes.
          */
-        public static JSToObjectWrapperNode createToObject(JSContext context, JavaScriptNode child) {
-            return JSToObjectWrapperNodeGen.create(child, JSToObjectNode.createToObject(context));
+        public static JSToObjectWrapperNode createToObject(JavaScriptNode child) {
+            return JSToObjectWrapperNodeGen.create(child);
         }
 
         @Specialization
-        protected Object doDefault(Object value) {
+        protected Object doDefault(Object value,
+                        @Cached JSToObjectNode toObjectNode) {
             return toObjectNode.execute(value);
         }
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            JSToObjectNode clonedToObject = JSToObjectNodeGen.create(toObjectNode.getContext());
-            return JSToObjectWrapperNodeGen.create(cloneUninitialized(getOperand(), materializedTags), clonedToObject);
+            return JSToObjectWrapperNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
         }
     }
 }

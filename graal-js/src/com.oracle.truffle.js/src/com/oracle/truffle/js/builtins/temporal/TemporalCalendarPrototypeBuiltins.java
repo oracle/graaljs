@@ -267,7 +267,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSDynamicObject mergeFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object additionalFieldsParam,
-                        @Cached("createToObject(getContext())") JSToObjectNode toObject,
+                        @Cached JSToObjectNode toObject,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             assert calendar.getId().equals(ISO8601);
             JSDynamicObject fields = (JSDynamicObject) toObject.execute(fieldsParam);

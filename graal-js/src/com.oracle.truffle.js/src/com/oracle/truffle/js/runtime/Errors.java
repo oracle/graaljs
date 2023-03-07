@@ -293,12 +293,7 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode) {
         JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
-        return createTypeErrorNotObjectCoercible(value, originatingNode, language.getJSContext());
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+        if (language.getJSContext().isOptionNashornCompatibilityMode()) {
             return Errors.createTypeErrorNotAnObject(value, originatingNode);
         }
         return Errors.createTypeError("Cannot convert undefined or null to object: " + JSRuntime.safeToString(value), originatingNode);

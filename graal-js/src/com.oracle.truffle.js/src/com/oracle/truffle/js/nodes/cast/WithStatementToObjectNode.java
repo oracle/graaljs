@@ -68,7 +68,7 @@ public abstract class WithStatementToObjectNode extends JSUnaryNode {
 
     @Specialization
     protected Object doDefault(Object value,
-                    @Cached("createToObject(getLanguage().getJSContext())") JSToObjectNode toObjectNode) {
+                    @Cached JSToObjectNode toObjectNode) {
         assert getLanguage().getJSContext().isOptionNashornCompatibilityMode();
         Object result;
         try {

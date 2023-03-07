@@ -790,9 +790,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         private final ConditionProfile isStrictSymbol = ConditionProfile.create();
         private final ConditionProfile isForeignObject = ConditionProfile.create();
 
-        public GenericPropertySetNode(JSContext context) {
+        public GenericPropertySetNode() {
             super(null);
-            this.toObjectNode = JSToObjectNode.createToObject(context);
+            this.toObjectNode = JSToObjectNode.create();
         }
 
         @InliningCutoff
@@ -1166,7 +1166,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @Override
     protected SetCacheNode createGenericPropertyNode() {
-        return new GenericPropertySetNode(context);
+        return new GenericPropertySetNode();
     }
 
     @Override

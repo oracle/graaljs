@@ -1418,7 +1418,7 @@ public final class JSRuntime {
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSObject.isJSObject(value))) {
             return (JSObject) value;
         }
-        requireObjectCoercible(value, ctx);
+        requireObjectCoercible(value);
         Object unboxedValue = value;
         if (JSGuards.isForeignObjectOrNumber(unboxedValue)) {
             try {
@@ -1661,9 +1661,9 @@ public final class JSRuntime {
     /**
      * Implementation of the abstract operation RequireObjectCoercible.
      */
-    public static <T> T requireObjectCoercible(T argument, JSContext context) {
+    public static <T> T requireObjectCoercible(T argument) {
         if (argument == Undefined.instance || argument == Null.instance || (isForeignObject(argument) && InteropLibrary.getUncached(argument).isNull(argument))) {
-            throw Errors.createTypeErrorNotObjectCoercible(argument, null, context);
+            throw Errors.createTypeErrorNotObjectCoercible(argument, null);
         }
         return argument;
     }

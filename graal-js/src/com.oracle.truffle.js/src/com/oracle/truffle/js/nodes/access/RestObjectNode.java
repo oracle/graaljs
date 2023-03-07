@@ -88,7 +88,7 @@ public abstract class RestObjectNode extends JavaScriptNode {
 
     @Specialization(guards = {"!isJSDynamicObject(source)"})
     protected final Object doOther(JSDynamicObject restObj, Object source,
-                    @Cached("createToObject(context)") JSToObjectNode toObjectNode) {
+                    @Cached JSToObjectNode toObjectNode) {
         Object from = toObjectNode.execute(source);
         copyDataPropertiesNode.execute(restObj, from);
         return restObj;
@@ -129,7 +129,7 @@ abstract class RestObjectWithExcludedNode extends JavaScriptNode {
 
     @Specialization(guards = {"!isJSDynamicObject(source)"})
     protected final Object doOther(JSDynamicObject restObj, Object source, Object[] excludedItems,
-                    @Cached("createToObject(context)") JSToObjectNode toObjectNode) {
+                    @Cached JSToObjectNode toObjectNode) {
         Object from = toObjectNode.execute(source);
         copyDataPropertiesNode.execute(restObj, from, excludedItems);
         return restObj;

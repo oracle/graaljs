@@ -534,7 +534,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         public DebugIsHolesArrayNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.toObjectNode = JSToObjectNode.createToObject(getContext());
+            this.toObjectNode = JSToObjectNode.create();
             this.arrayType = ValueProfile.createClassProfile();
             this.isArray = ConditionProfile.create();
         }

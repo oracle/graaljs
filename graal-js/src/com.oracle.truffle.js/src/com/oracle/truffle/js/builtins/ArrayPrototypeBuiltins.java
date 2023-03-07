@@ -413,7 +413,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final Object toObject(Object target) {
             if (toObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
+                toObjectNode = insert(JSToObjectNode.create());
             }
             return toObjectNode.execute(target);
         }
@@ -2536,7 +2536,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final Object toObject(Object target) {
             if (toObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toObjectNode = insert(JSToObjectNode.createToObject(context));
+                toObjectNode = insert(JSToObjectNode.create());
             }
             return toObjectNode.execute(target);
         }
@@ -3373,7 +3373,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected JSDynamicObject doNotJSObject(Object thisObj,
-                        @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
+                        @Cached JSToObjectNode toObjectNode) {
             return createArrayIteratorNode.execute(toObjectNode.execute(thisObj));
         }
     }

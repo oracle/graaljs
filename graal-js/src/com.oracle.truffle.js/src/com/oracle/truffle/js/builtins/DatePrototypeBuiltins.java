@@ -861,7 +861,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         public JSDateToJSONNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            toObjectNode = JSToObjectNode.createToObject(context);
+            toObjectNode = JSToObjectNode.create();
             toPrimitiveNode = JSToPrimitiveNode.createHintNumber();
         }
 

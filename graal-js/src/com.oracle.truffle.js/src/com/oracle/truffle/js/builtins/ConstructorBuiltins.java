@@ -1921,7 +1921,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"}, limit = "InteropLibraryLimit")
         protected Object constructObjectJSObject(@SuppressWarnings("unused") JSDynamicObject newTarget, Object[] arguments,
                         @Bind("this") Node node,
-                        @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
+                        @Cached JSToObjectNode toObjectNode,
                         @CachedLibrary("firstArgument(arguments)") InteropLibrary interop,
                         @Cached InlinedConditionProfile isNull) {
             Object arg0 = arguments[0];

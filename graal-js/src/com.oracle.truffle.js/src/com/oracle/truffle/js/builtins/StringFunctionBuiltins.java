@@ -193,8 +193,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public StringRawNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.templateToObjectNode = JSToObjectNode.createToObject(context);
-            this.rawToObjectNode = JSToObjectNode.createToObject(context);
+            this.templateToObjectNode = JSToObjectNode.create();
+            this.rawToObjectNode = JSToObjectNode.create();
             this.getRawNode = PropertyGetNode.create(Strings.RAW, false, context);
             this.getRawLengthNode = JSGetLengthNode.create(context);
             this.segToStringNode = JSToStringNode.create();

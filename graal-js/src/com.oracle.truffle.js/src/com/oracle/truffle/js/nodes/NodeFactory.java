@@ -1221,8 +1221,8 @@ public class NodeFactory {
         return node.copy();
     }
 
-    public JavaScriptNode createToObject(JSContext context, JavaScriptNode operand) {
-        return JSToObjectNode.JSToObjectWrapperNode.createToObject(context, operand);
+    public JavaScriptNode createToObject(JavaScriptNode operand) {
+        return JSToObjectNode.JSToObjectWrapperNode.createToObject(operand);
     }
 
     public JavaScriptNode createAccessArgumentsArrayDirectly(JavaScriptNode writeArguments, JavaScriptNode readArguments, int leadingArgCount) {
@@ -1381,7 +1381,7 @@ public class NodeFactory {
         if (context.isOptionNashornCompatibilityMode()) {
             return WithStatementToObjectNode.create(operand);
         } else {
-            return createToObject(context, operand);
+            return createToObject(operand);
         }
     }
 

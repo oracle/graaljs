@@ -69,7 +69,7 @@ public abstract class CoerceOptionsToObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "!isUndefined(opts)")
     public Object fromOtherThanUndefined(Object opts,
-                    @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
+                    @Cached JSToObjectNode toObjectNode) {
         return toObjectNode.execute(opts);
     }
 

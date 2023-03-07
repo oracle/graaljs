@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -577,27 +577,27 @@ public class JSRuntimeTest extends JSTest {
 
     @Test
     public void testRequireObjectCoercible() {
-        JSContext context = testHelper.getJSContext();
+        testHelper.getJSContext(); // initialize JSContext
 
-        assertThrowsTypeError(() -> JSRuntime.requireObjectCoercible(Null.instance, context));
-        assertThrowsTypeError(() -> JSRuntime.requireObjectCoercible(Undefined.instance, context));
+        assertThrowsTypeError(() -> JSRuntime.requireObjectCoercible(Null.instance));
+        assertThrowsTypeError(() -> JSRuntime.requireObjectCoercible(Undefined.instance));
 
-        JSRuntime.requireObjectCoercible(true, context);
-        JSRuntime.requireObjectCoercible(42, context);
-        JSRuntime.requireObjectCoercible(Math.PI, context);
-        JSRuntime.requireObjectCoercible(SafeInteger.valueOf(9876543210L), context);
-        JSRuntime.requireObjectCoercible("foo", context);
-        JSRuntime.requireObjectCoercible(Strings.concat(Strings.constant("long left part"), Strings.constant("long right part")), context);
-        JSRuntime.requireObjectCoercible(Symbol.create(Strings.constant("private")), context);
-        JSRuntime.requireObjectCoercible(BigInt.valueOf(0), context);
-        JSRuntime.requireObjectCoercible(createOrdinaryObject(), context);
+        JSRuntime.requireObjectCoercible(true);
+        JSRuntime.requireObjectCoercible(42);
+        JSRuntime.requireObjectCoercible(Math.PI);
+        JSRuntime.requireObjectCoercible(SafeInteger.valueOf(9876543210L));
+        JSRuntime.requireObjectCoercible("foo");
+        JSRuntime.requireObjectCoercible(Strings.concat(Strings.constant("long left part"), Strings.constant("long right part")));
+        JSRuntime.requireObjectCoercible(Symbol.create(Strings.constant("private")));
+        JSRuntime.requireObjectCoercible(BigInt.valueOf(0));
+        JSRuntime.requireObjectCoercible(createOrdinaryObject());
 
-        assertThrowsTypeError(() -> JSRuntime.requireObjectCoercible(new ForeignNull(), context));
+        assertThrowsTypeError(() -> JSRuntime.requireObjectCoercible(new ForeignNull()));
 
-        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew(43), context);
-        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew(Math.E), context);
-        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew(false), context);
-        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew("bar"), context);
+        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew(43));
+        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew(Math.E));
+        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew(false));
+        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew("bar"));
     }
 
 }

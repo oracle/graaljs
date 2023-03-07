@@ -233,7 +233,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
 
     @Specialization(guards = {"!isJSDynamicObject(iteratedObject)", "!isForeignObject(iteratedObject)"})
     protected JSDynamicObject doNonObject(Object iteratedObject,
-                    @Cached("createToObject(context)") JSToObjectNode toObjectNode,
+                    @Cached JSToObjectNode toObjectNode,
                     @Cached("copyRecursive()") EnumerateNode enumerateNode) {
         return enumerateNode.execute(toObjectNode.execute(iteratedObject));
     }
