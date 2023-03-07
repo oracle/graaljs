@@ -145,9 +145,8 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
                 return !Strings.isEmpty(interop.asTruffleString(value));
             } else if (interop.isNumber(value)) {
                 if (interop.fitsInInt(value)) {
+                    // Works for any integer type, since value == 0 implies fitsInInt().
                     return doInt(interop.asInt(value));
-                } else if (interop.fitsInLong(value)) {
-                    return doLong(interop.asLong(value));
                 } else if (interop.fitsInDouble(value)) {
                     return doDouble(interop.asDouble(value));
                 } else {
