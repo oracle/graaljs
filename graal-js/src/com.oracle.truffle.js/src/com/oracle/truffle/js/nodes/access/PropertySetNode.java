@@ -792,7 +792,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         public GenericPropertySetNode(JSContext context) {
             super(null);
-            this.toObjectNode = JSToObjectNode.createToObjectNoCheck(context);
+            this.toObjectNode = JSToObjectNode.createToObject(context);
         }
 
         @InliningCutoff

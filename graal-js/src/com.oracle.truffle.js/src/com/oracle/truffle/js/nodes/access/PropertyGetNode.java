@@ -1418,7 +1418,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     // a primitive, or a Symbol
                     if (toObjectNode == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(root.getContext()));
+                        toObjectNode = insert(JSToObjectNode.createToObject(root.getContext()));
                     }
                     JSDynamicObject object = JSRuntime.expectJSObject(toObjectNode.execute(thisObj), notAJSObjectBranch);
                     return getPropertyFromJSObject(object, receiver, defaultValue, root);

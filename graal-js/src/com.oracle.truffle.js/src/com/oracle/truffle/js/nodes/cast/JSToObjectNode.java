@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -83,43 +82,26 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     protected final JSContext context;
-    protected final boolean checkForNullOrUndefined;
 
-    protected JSToObjectNode(JSContext context, boolean checkForNullOrUndefined) {
+    protected JSToObjectNode(JSContext context) {
         this.context = context;
-        this.checkForNullOrUndefined = checkForNullOrUndefined;
     }
 
     public abstract Object execute(Object value);
 
     @NeverDefault
     public static JSToObjectNode createToObject(JSContext context) {
-        return createToObject(context, true);
-    }
-
-    @NeverDefault
-    public static JSToObjectNode createToObjectNoCheck(JSContext context) {
-        return createToObject(context, false);
-    }
-
-    @NeverDefault
-    protected static JSToObjectNode createToObject(JSContext context, boolean checkForNullOrUndefined) {
-        return JSToObjectNodeGen.create(context, checkForNullOrUndefined);
+        return JSToObjectNodeGen.create(context);
     }
 
     protected final JSContext getContext() {
-        return context;
-    }
-
-    @Idempotent
-    protected final boolean isCheckForNullOrUndefined() {
-        return checkForNullOrUndefined;
+        return getLanguage().getJSContext();
     }
 
     @InliningCutoff
     @Specialization
     protected JSDynamicObject doBoolean(boolean value) {
-        return JSBoolean.create(context, getRealm(), value);
+        return JSBoolean.create(getContext(), getRealm(), value);
     }
 
     @InliningCutoff
@@ -158,29 +140,22 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return cachedClass.cast(object);
     }
 
-    final Class<?> getClassIfObject(Object object) {
-        if (isCheckForNullOrUndefined() && JSGuards.isJSObject(object)) {
-            return object.getClass();
-        } else if (!isCheckForNullOrUndefined() && JSGuards.isJSDynamicObject(object)) {
+    static Class<?> getClassIfObject(Object object) {
+        if (JSGuards.isJSObject(object)) {
             return object.getClass();
         } else {
             return null;
         }
     }
 
-    @Specialization(guards = {"!isCheckForNullOrUndefined()", "isJSDynamicObject(object)"}, replaces = "doJSObjectCached")
-    protected Object doJSObjectNoCheck(Object object) {
-        return object;
-    }
-
-    @Specialization(guards = {"isCheckForNullOrUndefined()", "isJSObject(object)"}, replaces = "doJSObjectCached")
+    @Specialization(guards = {"isJSObject(object)"}, replaces = "doJSObjectCached")
     protected Object doJSObjectCheck(Object object) {
         return object;
     }
 
-    @Specialization(guards = {"isCheckForNullOrUndefined()", "isNullOrUndefined(object)"})
+    @Specialization(guards = {"isNullOrUndefined(object)"})
     protected JSDynamicObject doNullOrUndefined(Object object) {
-        throw Errors.createTypeErrorNotObjectCoercible(object, this, context);
+        throw Errors.createTypeErrorNotObjectCoercible(object, this, getContext());
     }
 
     @InliningCutoff
@@ -189,7 +164,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
                     @CachedLibrary("value") InteropLibrary interop,
                     @Bind("isForeignObject(value)") boolean isForeignTruffleObject) {
         if (interop.isNull(value)) {
-            throw Errors.createTypeErrorNotObjectCoercible(value, this, context);
+            throw Errors.createTypeErrorNotObjectCoercible(value, this, getContext());
         }
         try {
             if (interop.isBoolean(value)) {
@@ -244,7 +219,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            JSToObjectNode clonedToObject = JSToObjectNodeGen.create(toObjectNode.getContext(), toObjectNode.isCheckForNullOrUndefined());
+            JSToObjectNode clonedToObject = JSToObjectNodeGen.create(toObjectNode.getContext());
             return JSToObjectWrapperNodeGen.create(cloneUninitialized(getOperand(), materializedTags), clonedToObject);
         }
     }
