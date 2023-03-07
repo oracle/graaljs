@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * @see JSToBooleanUnaryNode
@@ -120,8 +121,8 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
         return Strings.length(value) != 0;
     }
 
-    @Specialization(guards = "isJSObject(value)")
-    protected static boolean doObject(@SuppressWarnings("unused") Object value) {
+    @Specialization
+    protected static boolean doJSObject(@SuppressWarnings("unused") JSObject value) {
         return true;
     }
 

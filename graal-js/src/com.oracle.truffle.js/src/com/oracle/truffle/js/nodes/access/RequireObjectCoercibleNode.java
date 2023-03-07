@@ -60,7 +60,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Implementation of the abstract operation RequireObjectCoercible(argument) (ES6 7.2.1).
@@ -120,8 +120,8 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
                     @Cached(value = "getClassIfJSObject(object)") @SuppressWarnings("unused") Class<?> cachedClass) {
     }
 
-    @Specialization(guards = {"isJSObject(object)"}, replaces = "doCachedJSClass")
-    protected static void doJSObject(@SuppressWarnings("unused") Object object) {
+    @Specialization(replaces = "doCachedJSClass")
+    protected static void doJSObject(@SuppressWarnings("unused") JSObject object) {
     }
 
     @Specialization(guards = {"isForeignObject(object)"}, limit = "InteropLibraryLimit")
@@ -132,7 +132,7 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isNullOrUndefined(object)")
-    protected void doNullOrUndefined(JSDynamicObject object) {
+    protected final void doNullOrUndefined(Object object) {
         throw Errors.createTypeErrorNotObjectCoercible(object, this);
     }
 

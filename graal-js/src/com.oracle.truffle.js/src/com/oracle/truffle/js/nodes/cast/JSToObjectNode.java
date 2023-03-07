@@ -73,6 +73,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Implementation of the ECMAScript abstract operation ToObject(argument).
@@ -152,8 +153,8 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = {"isJSObject(object)"}, replaces = "doJSObjectCached")
-    protected Object doJSObjectCheck(Object object) {
+    @Specialization(replaces = "doJSObjectCached")
+    protected Object doJSObject(JSObject object) {
         return object;
     }
 
