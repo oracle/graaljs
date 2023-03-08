@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -183,13 +183,12 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
 
     @TruffleBoundary
     private static SourceSection getSourceLocationImpl(JSDynamicObject receiver) {
-        if (JSFunction.isJSFunction(receiver)) {
-            JSDynamicObject func = receiver;
-            CallTarget ct = JSFunction.getCallTarget(func);
-            if (JSFunction.isBoundFunction(func)) {
-                func = JSFunction.getBoundTargetFunction(func);
-                ct = JSFunction.getCallTarget(func);
-            }
+        Object function = receiver;
+        while (JSFunction.isBoundFunction(function)) {
+            function = JSFunction.getBoundTargetFunction((JSFunctionObject) function);
+        }
+        if (JSFunction.isJSFunction(function)) {
+            CallTarget ct = JSFunction.getCallTarget((JSFunctionObject) function);
 
             if (ct instanceof RootCallTarget) {
                 return ((RootCallTarget) ct).getRootNode().getSourceSection();
@@ -250,7 +249,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     }
 
     public static JSFunctionObject createBound(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
-                    JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+                    Object boundTargetFunction, Object boundThis, Object[] boundArguments) {
         return new Bound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
     }
 
@@ -319,19 +318,19 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
      */
     public static final class Bound extends BoundOrWrapped {
 
-        private final JSFunctionObject boundTargetFunction;
+        private final Object boundTargetFunction;
         private final Object boundThis;
         private final Object[] boundArguments;
 
         protected Bound(Shape shape, JSFunctionData functionData, JSRealm realm, Object classPrototype,
-                        JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+                        Object boundTargetFunction, Object boundThis, Object[] boundArguments) {
             super(shape, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, classPrototype);
             this.boundTargetFunction = boundTargetFunction;
             this.boundThis = boundThis;
             this.boundArguments = boundArguments;
         }
 
-        public JSFunctionObject getBoundTargetFunction() {
+        public Object getBoundTargetFunction() {
             return boundTargetFunction;
         }
 
@@ -345,7 +344,8 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
 
         @Override
         protected void initializeName() {
-            setBoundName(getFunctionName(getBoundTargetFunction()), Strings.BOUND_SPC);
+            // This method should not be called if the wrapped target function is not a JS function.
+            setBoundName(getFunctionName((JSFunctionObject) getBoundTargetFunction()), Strings.BOUND_SPC);
         }
     }
 

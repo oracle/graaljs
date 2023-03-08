@@ -71,9 +71,6 @@ test-worker-heap-snapshot: SKIP
 # https://example.com does not work in CI
 test-https-agent-unref-socket: SKIP
 
-# proxies with apply trap are not bound correctly
-test-runner-mocking: FAIL
-
 # missing support for ModifyCodeGenerationFromStringsCallback
 test-source-map-api: FAIL
 
