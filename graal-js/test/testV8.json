@@ -660,16 +660,10 @@
     "filePath" : "mjsunit/es6/proxies-accesschecks.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/proxies-bind.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/proxies-cross-realm-exception.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/proxies-for.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/proxies-function.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/proxies-prototype-handler-stackoverflow.js",
