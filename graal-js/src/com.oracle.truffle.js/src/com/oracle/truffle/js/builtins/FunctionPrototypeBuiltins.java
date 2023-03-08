@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -72,22 +74,27 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
  * Contains builtins for {@linkplain JSFunction Function}.prototype.
@@ -293,11 +300,11 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        protected JSDynamicObject bindFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args,
-                        @Cached GetPrototypeNode getPrototypeNode,
-                        @Cached("create(getContext())") @Shared("copyFunctionNameAndLength") CopyFunctionNameAndLengthNode copyNameAndLengthNode,
+        protected JSDynamicObject bindJSFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args,
+                        @Cached @Shared GetPrototypeNode getPrototypeNode,
+                        @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
                         @Cached @Shared("isConstructorProf") InlinedConditionProfile isConstructorProfile,
-                        @Cached @Shared("isAsyncProf") InlinedConditionProfile isAsyncProfile,
+                        @Cached InlinedConditionProfile isAsyncProfile,
                         @Cached @Shared("setProtoProf") InlinedConditionProfile setProtoProfile) {
             JSDynamicObject proto = getPrototypeNode.execute(thisFnObj);
 
@@ -309,30 +316,39 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return boundFunction;
         }
 
-        @TruffleBoundary
-        @Specialization(guards = {"isJSProxy(thisObj)"})
-        protected JSDynamicObject bindProxy(JSDynamicObject thisObj, Object thisArg, Object[] args,
-                        @Cached("create(getContext())") @Shared("copyFunctionNameAndLength") CopyFunctionNameAndLengthNode copyNameAndLengthNode,
+        @Specialization(guards = {"!isJSFunction(thisObj)", "isCallableNode.executeBoolean(thisObj)"})
+        protected JSDynamicObject bindOther(Object thisObj, Object thisArg, Object[] args,
+                        @Bind("this") Node node,
+                        @SuppressWarnings("unused") @Cached @Shared IsCallableNode isCallableNode,
+                        @Cached @Shared GetPrototypeNode getPrototypeNode,
+                        @Cached ForeignObjectPrototypeNode foreignPrototypeNode,
+                        @Cached IsConstructorNode isConstructorNode,
+                        @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
+                        @Cached InlinedConditionProfile isProxyProfile,
                         @Cached @Shared("isConstructorProf") InlinedConditionProfile isConstructorProfile,
-                        @Cached @Shared("isAsyncProf") InlinedConditionProfile isAsyncProfile,
                         @Cached @Shared("setProtoProf") InlinedConditionProfile setProtoProfile) {
-            final JSDynamicObject proto = JSObject.getPrototype(thisObj);
-
-            final Object target = JSProxy.getTarget(thisObj);
-            Object innerFunction = target;
-            for (;;) {
-                if (JSFunction.isJSFunction(innerFunction)) {
-                    break;
-                } else if (JSProxy.isJSProxy(innerFunction)) {
-                    innerFunction = JSProxy.getTarget((JSDynamicObject) innerFunction);
+            JSRealm realm = JSRuntime.getFunctionRealm(thisObj, JSRealm.get(this));
+            JSDynamicObject proto;
+            if (isProxyProfile.profile(node, JSProxy.isJSProxy(thisObj))) {
+                proto = getPrototypeNode.execute(thisObj);
+            } else {
+                assert JSRuntime.isCallableForeign(thisObj);
+                if (getContext().getContextOptions().hasForeignObjectPrototype()) {
+                    proto = foreignPrototypeNode.execute(thisObj);
                 } else {
-                    throw Errors.createTypeErrorNotAFunction(thisObj);
+                    proto = Null.instance;
                 }
             }
-            assert JSFunction.isJSFunction(innerFunction);
 
-            JSFunctionObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (JSFunctionObject) innerFunction, thisArg, args, proto,
-                            isConstructorProfile, isAsyncProfile, setProtoProfile, this);
+            JSContext context = getContext();
+            boolean constructor = isConstructorProfile.profile(node, isConstructorNode.executeBoolean(thisObj));
+            JSFunctionData boundFunctionData = context.getBoundFunctionData(constructor, false);
+            JSFunctionObject boundFunction = JSFunction.createBound(context, realm, boundFunctionData, thisObj, thisArg, args);
+
+            boolean needSetProto = proto != realm.getFunctionPrototype();
+            if (setProtoProfile.profile(node, needSetProto)) {
+                JSObject.setPrototype(boundFunction, proto);
+            }
 
             copyNameAndLengthNode.execute(boundFunction, thisObj, Strings.BOUND_SPC, args.length);
 
@@ -340,8 +356,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSFunction(thisObj)", "!isJSProxy(thisObj)"})
-        protected JSDynamicObject bindError(Object thisObj, Object thisArg, Object[] arg) {
+        @Specialization(guards = {"!isCallableNode.executeBoolean(thisObj)"})
+        protected JSDynamicObject bindError(Object thisObj, Object thisArg, Object[] arg,
+                        @SuppressWarnings("unused") @Cached @Shared IsCallableNode isCallableNode) {
             throw Errors.createTypeErrorNotAFunction(thisObj);
         }
     }

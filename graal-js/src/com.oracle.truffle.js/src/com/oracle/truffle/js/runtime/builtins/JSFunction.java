@@ -57,6 +57,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -292,7 +293,7 @@ public final class JSFunction extends JSNonProxy {
         return factory.createWithPrototype(functionData, enclosingFrame, classPrototype, realm, prototype);
     }
 
-    public static JSFunctionObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+    public static JSFunctionObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, Object boundTargetFunction, Object boundThis, Object[] boundArguments) {
         JSFunctionFactory factory = context.getBoundFunctionFactory(functionData);
         return factory.createBound(functionData, CLASS_PROTOTYPE_PLACEHOLDER, realm, boundTargetFunction, boundThis, boundArguments);
     }
@@ -431,8 +432,8 @@ public final class JSFunction extends JSNonProxy {
         return getClassPrototypeField(thisObj) != CLASS_PROTOTYPE_PLACEHOLDER;
     }
 
-    public static boolean isBoundFunction(JSDynamicObject function) {
-        return isJSFunction(function) && getFunctionData(function).isBound();
+    public static boolean isBoundFunction(Object function) {
+        return isJSFunction(function) && getFunctionData((JSFunctionObject) function).isBound();
     }
 
     public static boolean isAsyncFunction(JSDynamicObject function) {
@@ -444,7 +445,7 @@ public final class JSFunction extends JSNonProxy {
         return ((JSFunctionObject.Bound) function).getBoundThis();
     }
 
-    public static JSFunctionObject getBoundTargetFunction(JSDynamicObject function) {
+    public static Object getBoundTargetFunction(JSDynamicObject function) {
         assert isBoundFunction(function);
         return ((JSFunctionObject.Bound) function).getBoundTargetFunction();
     }
@@ -525,6 +526,7 @@ public final class JSFunction extends JSNonProxy {
 
         @Child protected IndirectCallNode callNode;
         protected final BranchProfile initProfile = BranchProfile.create();
+        protected final ConditionProfile jsFunctionProfile = ConditionProfile.create();
 
         BoundRootNode(JSContext context) {
             super(context.getLanguage(), SOURCE_SECTION, null);
@@ -535,13 +537,17 @@ public final class JSFunction extends JSNonProxy {
         public Object execute(VirtualFrame frame) {
             Object[] originalArguments = frame.getArguments();
             JSDynamicObject boundFunction = castBoundFunction(JSArguments.getFunctionObject(originalArguments));
-            JSDynamicObject boundTargetFunction = getBoundTargetFunction(boundFunction);
+            Object boundTargetFunction = getBoundTargetFunction(boundFunction);
             Object[] boundArguments = getBoundArguments(boundFunction);
             Object boundThis = getBoundThis(boundFunction);
             Object[] argumentValues = JSArguments.extractUserArguments(originalArguments);
             Object[] arguments = prependBoundArguments(boundArguments, argumentValues);
-            Object[] newArguments = JSArguments.create(boundThis, boundTargetFunction, arguments);
-            return callNode.call(JSFunction.getFunctionData(boundTargetFunction).getCallTarget(initProfile), newArguments);
+            if (jsFunctionProfile.profile(JSFunction.isJSFunction(boundTargetFunction))) {
+                Object[] newArguments = JSArguments.create(boundThis, boundTargetFunction, arguments);
+                return callNode.call(JSFunction.getFunctionData((JSFunctionObject) boundTargetFunction).getCallTarget(initProfile), newArguments);
+            } else {
+                return JSRuntime.call(boundTargetFunction, boundThis, arguments);
+            }
         }
 
         protected static Object[] prependBoundArguments(Object[] boundArguments, Object[] argumentValues) {
@@ -569,13 +575,17 @@ public final class JSFunction extends JSNonProxy {
         public Object execute(VirtualFrame frame) {
             Object[] originalArguments = frame.getArguments();
             JSDynamicObject boundFunction = castBoundFunction(JSArguments.getFunctionObject(originalArguments));
-            JSDynamicObject boundTargetFunction = getBoundTargetFunction(boundFunction);
+            Object boundTargetFunction = getBoundTargetFunction(boundFunction);
             Object[] boundArguments = getBoundArguments(boundFunction);
             Object[] argumentValues = JSArguments.extractUserArguments(originalArguments);
             Object[] arguments = prependBoundArguments(boundArguments, argumentValues);
             Object originalThis = JSArguments.getThisObject(originalArguments);
-            Object[] newArguments = JSArguments.create(originalThis, boundTargetFunction, arguments);
-            return callNode.call(JSFunction.getFunctionData(boundTargetFunction).getConstructTarget(initProfile), newArguments);
+            if (jsFunctionProfile.profile(JSFunction.isJSFunction(boundTargetFunction))) {
+                Object[] newArguments = JSArguments.create(originalThis, boundTargetFunction, arguments);
+                return callNode.call(JSFunction.getFunctionData((JSFunctionObject) boundTargetFunction).getConstructTarget(initProfile), newArguments);
+            } else {
+                return JSRuntime.construct(boundTargetFunction, arguments);
+            }
         }
     }
 
@@ -588,17 +598,21 @@ public final class JSFunction extends JSNonProxy {
         public Object execute(VirtualFrame frame) {
             Object[] originalArguments = frame.getArguments();
             JSDynamicObject boundFunction = castBoundFunction(JSArguments.getFunctionObject(originalArguments));
-            JSDynamicObject boundTargetFunction = getBoundTargetFunction(boundFunction);
+            Object boundTargetFunction = getBoundTargetFunction(boundFunction);
             Object[] boundArguments = getBoundArguments(boundFunction);
             Object[] argumentValues = JSArguments.extractUserArguments(originalArguments, 1);
             Object[] arguments = prependBoundArguments(boundArguments, argumentValues);
             Object originalThis = JSArguments.getThisObject(originalArguments);
-            Object newTarget = JSArguments.getNewTarget(originalArguments);
-            if (newTarget == boundFunction) {
-                newTarget = boundTargetFunction;
+            if (jsFunctionProfile.profile(JSFunction.isJSFunction(boundTargetFunction))) {
+                Object newTarget = JSArguments.getNewTarget(originalArguments);
+                if (newTarget == boundFunction) {
+                    newTarget = boundTargetFunction;
+                }
+                Object[] newArguments = JSArguments.createWithNewTarget(originalThis, boundTargetFunction, newTarget, arguments);
+                return callNode.call(JSFunction.getFunctionData((JSFunctionObject) boundTargetFunction).getConstructNewTarget(initProfile), newArguments);
+            } else {
+                return JSRuntime.construct(boundTargetFunction, arguments);
             }
-            Object[] newArguments = JSArguments.createWithNewTarget(originalThis, boundTargetFunction, newTarget, arguments);
-            return callNode.call(JSFunction.getFunctionData(boundTargetFunction).getConstructNewTarget(initProfile), newArguments);
         }
     }
 

@@ -241,7 +241,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         @Specialization(guards = {"isJSFunction(check)", "isBoundFunction(check)"})
         protected boolean doIsBound(Object obj, JSDynamicObject check,
                         @Cached("create(context)") InstanceofNode instanceofNode) {
-            JSDynamicObject boundTargetFunction = JSFunction.getBoundTargetFunction(check);
+            Object boundTargetFunction = JSFunction.getBoundTargetFunction(check);
             return instanceofNode.executeBoolean(obj, boundTargetFunction);
         }
 
