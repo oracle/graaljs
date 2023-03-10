@@ -45,12 +45,15 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
+import com.oracle.truffle.js.runtime.JSErrorType;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -152,7 +155,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
                 contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
                 dependentLanguages = "regex", //
                 fileTypeDetectors = JSFileTypeDetector.class, //
-                website = "https://www.graalvm.org/javascript/")
+                website = "https://www.graalvm.org/javascript/", sandbox = SandboxPolicy.UNTRUSTED)
 public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     public static final String TEXT_MIME_TYPE = "text/javascript";
     public static final String APPLICATION_MIME_TYPE = "application/javascript";
@@ -177,9 +180,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
-        ArrayList<OptionDescriptor> options = new ArrayList<>();
-        JSContextOptions.describeOptions(options);
-        OPTION_DESCRIPTORS = OptionDescriptors.create(options);
+        OPTION_DESCRIPTORS = JSContextOptions.optionDescriptorsWithDefaultValues();
         ensureErrorClassesInitialized();
     }
 
@@ -329,6 +330,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @Override
     protected JSRealm createContext(Env env) {
+        validateSandbox(env);
         CompilerAsserts.neverPartOfCompilation();
         JSContext context = languageContext;
         if (context == null) {
@@ -347,7 +349,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         CompilerAsserts.neverPartOfCompilation();
         JSContext curContext = languageContext;
         if (curContext != null) {
-            assert curContext.getContextOptions().equals(JSContextOptions.fromOptionValues(env.getOptions()));
+            assert curContext.getContextOptions().equals(JSContextOptions.fromOptionValues(env.getSandboxPolicy(), env.getOptions()));
             return curContext;
         }
         JSContext newContext = newJSContext(env);
@@ -367,6 +369,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     @Override
     protected boolean patchContext(JSRealm realm, Env newEnv) {
         CompilerAsserts.neverPartOfCompilation();
+        validateSandbox(newEnv);
         assert realm.getContext().getLanguage() == this;
 
         if (optionsAllowPreInitializedContext(realm.getEnv(), newEnv) && realm.patchContext(newEnv)) {
@@ -374,6 +377,24 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         } else {
             languageContext = null;
             return false;
+        }
+    }
+
+    private static void validateSandbox(Env env) {
+        SandboxPolicy policy = env.getSandboxPolicy();
+        if (policy.isStricterOrEqual(SandboxPolicy.UNTRUSTED)) {
+            OptionValues optionValues = env.getOptions();
+            if (optionValues.hasBeenSet(JSContextOptions.TIMER_RESOLUTION)) {
+                long timerResolution = optionValues.get(JSContextOptions.TIMER_RESOLUTION);
+                long minValue = TimeUnit.SECONDS.toNanos(1);
+                if (timerResolution != 0 && timerResolution < minValue) {
+                    throw JSException.create(JSErrorType.RuntimeError,
+                                    String.format("The validation for the given sandbox policy %s failed. " +
+                                                    "The js.timer-resolution option is set to %d, but must be set to at least %d. " +
+                                                    "In order to resolve this use the default value by removing Builder.option(\"js.timer-resolution\", \"%d\") or increase its value to at least %d " +
+                                                    "or switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).", policy, timerResolution, minValue, timerResolution, minValue));
+                }
+            }
         }
     }
 
@@ -453,7 +474,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             return true;
         }
         if (firstOptions.equals(newOptions)) {
-            assert JSContextOptions.fromOptionValues(firstOptions).equals(JSContextOptions.fromOptionValues(newOptions));
+            assert JSContextOptions.fromOptionValues(SandboxPolicy.TRUSTED, firstOptions).equals(JSContextOptions.fromOptionValues(SandboxPolicy.TRUSTED, newOptions));
             return true;
         }
         return false;

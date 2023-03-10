@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,17 +43,23 @@ package com.oracle.truffle.js.runtime;
 import java.nio.charset.Charset;
 import java.time.DateTimeException;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
+import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
@@ -65,6 +71,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
+import org.graalvm.polyglot.SandboxPolicy;
 
 public final class JSContextOptions {
 
@@ -128,7 +135,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SHEBANG = new OptionKey<>(false);
 
     public static final String STRICT_NAME = JS_OPTION_PREFIX + "strict";
-    @Option(name = STRICT_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Enforce strict mode.") //
+    @Option(name = STRICT_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Enforce strict mode.") //
     public static final OptionKey<Boolean> STRICT = new OptionKey<>(false);
 
     public static final String CONST_AS_VAR_NAME = JS_OPTION_PREFIX + "const-as-var";
@@ -227,7 +234,8 @@ public final class JSContextOptions {
     @CompilationFinal private boolean zoneRulesBasedTimeZones;
 
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
-    @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, usageSyntax = "<nanoseconds>", help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
+    @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, usageSyntax = "<nanoseconds>", //
+                    help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
     public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
     private final CyclicAssumption timerResolutionCyclicAssumption = new CyclicAssumption("The " + TIMER_RESOLUTION_NAME + " option is stable.");
     @CompilationFinal private Assumption timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
@@ -628,14 +636,14 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SCOPE_OPTIMIZATION = new OptionKey<>(true);
     @CompilationFinal private boolean scopeOptimization;
 
-    JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
+    JSContextOptions(SandboxPolicy sandboxPolicy, JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
-        setOptionValues(optionValues);
+        setOptionValues(sandboxPolicy, optionValues);
     }
 
-    public static JSContextOptions fromOptionValues(OptionValues optionValues) {
-        return new JSContextOptions(new JSParserOptions(), optionValues);
+    public static JSContextOptions fromOptionValues(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
+        return new JSContextOptions(sandboxPolicy, new JSParserOptions(), optionValues);
     }
 
     public JSParserOptions getParserOptions() {
@@ -647,14 +655,14 @@ public final class JSContextOptions {
         this.parserOptions = parserOptions;
     }
 
-    public void setOptionValues(OptionValues newOptions) {
+    public void setOptionValues(SandboxPolicy sandboxPolicy, OptionValues newOptions) {
         CompilerAsserts.neverPartOfCompilation();
         optionValues = newOptions;
-        cacheOptions();
+        cacheOptions(sandboxPolicy);
         parserOptions = parserOptions.putOptions(newOptions);
     }
 
-    private void cacheOptions() {
+    private void cacheOptions(SandboxPolicy sandboxPolicy) {
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE);
         this.ecmascriptVersion = readIntegerOption(ECMASCRIPT_VERSION);
         if (nashornCompatibilityMode && !ECMASCRIPT_VERSION.hasBeenSet(optionValues)) {
@@ -682,10 +690,12 @@ public final class JSContextOptions {
         this.parseOnly = readBooleanOption(PARSE_ONLY);
         this.debug = readBooleanOption(DEBUG_BUILTIN);
         this.zoneRulesBasedTimeZones = readBooleanOption(ZONE_RULES_BASED_TIME_ZONES);
-        this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, msg -> {
-            timerResolutionCyclicAssumption.invalidate(msg);
-            timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
-        });
+        this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution,
+                        () -> sandboxPolicy.isStricterOrEqual(SandboxPolicy.UNTRUSTED) ? TimeUnit.SECONDS.toNanos(1) : TIMER_RESOLUTION.getDefaultValue(),
+                        msg -> {
+                            timerResolutionCyclicAssumption.invalidate(msg);
+                            timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
+                        });
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK);
         this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION);
         this.disableEval = readBooleanOption(DISABLE_EVAL);
@@ -758,8 +768,9 @@ public final class JSContextOptions {
         return key.getValue(optionValues);
     }
 
-    private long patchLongOption(OptionKey<Long> key, String name, long oldValue, Consumer<String> invalidate) {
-        long newValue = readLongOption(key);
+    private long patchLongOption(OptionKey<Long> key, String name, long oldValue, Supplier<Long> defaultValueProvider,
+                    Consumer<String> invalidate) {
+        long newValue = optionValues.hasBeenSet(key) ? readLongOption(key) : defaultValueProvider.get();
         if (oldValue != newValue) {
             invalidate.accept(String.format("Option %s was changed from %d to %d.", name, oldValue, newValue));
         }
@@ -770,16 +781,39 @@ public final class JSContextOptions {
         return key.getValue(optionValues);
     }
 
-    public static String helpWithDefault(String helpMessage, OptionKey<? extends Object> key) {
+    public static TruffleOptionDescriptors optionDescriptorsWithDefaultValues() {
+        JSContextOptionsOptionDescriptors originalOptionDescriptors = new JSContextOptionsOptionDescriptors();
+        ArrayList<OptionDescriptor> options = new ArrayList<>();
+        JSContextOptions.describeOptions(originalOptionDescriptors, options);
+        OptionDescriptors optionDescriptorsWithDefaults = OptionDescriptors.create(options);
+        return new TruffleOptionDescriptors() {
+            @Override
+            public SandboxPolicy getSandboxPolicy(String key) {
+                return originalOptionDescriptors.getSandboxPolicy(key);
+            }
+
+            @Override
+            public OptionDescriptor get(String optionName) {
+                return optionDescriptorsWithDefaults.get(optionName);
+            }
+
+            @Override
+            public Iterator<OptionDescriptor> iterator() {
+                return optionDescriptorsWithDefaults.iterator();
+            }
+        };
+    }
+
+    private static String helpWithDefault(String helpMessage, OptionKey<? extends Object> key) {
         return helpMessage + " (default:" + key.getDefaultValue() + ")";
     }
 
-    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, OptionStability stability, String help, String usageSyntax) {
+    private static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, OptionStability stability, String help, String usageSyntax) {
         return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).stability(stability).usageSyntax(usageSyntax).build();
     }
 
-    public static void describeOptions(List<OptionDescriptor> options) {
-        for (OptionDescriptor desc : new JSContextOptionsOptionDescriptors()) {
+    private static void describeOptions(JSContextOptionsOptionDescriptors descriptors, List<OptionDescriptor> options) {
+        for (OptionDescriptor desc : descriptors) {
             options.add(newOptionDescriptor(desc.getKey(), desc.getName(), desc.getCategory(), desc.getStability(), desc.getHelp(), desc.getUsageSyntax()));
         }
     }

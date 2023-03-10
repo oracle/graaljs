@@ -534,7 +534,7 @@ public class JSContext {
 
         if (env != null) { // env could still be null
             setAllocationReporter(env);
-            this.contextOptions.setOptionValues(env.getOptions());
+            this.contextOptions.setOptionValues(env.getSandboxPolicy(), env.getOptions());
         }
 
         this.language = lang;

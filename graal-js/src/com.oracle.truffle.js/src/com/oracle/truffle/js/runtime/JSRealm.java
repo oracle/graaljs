@@ -2542,7 +2542,7 @@ public class JSRealm {
 
         truffleLanguageEnv = newEnv;
         getContext().setAllocationReporter(newEnv);
-        getContext().getContextOptions().setOptionValues(newEnv.getOptions());
+        getContext().getContextOptions().setOptionValues(newEnv.getSandboxPolicy(), newEnv.getOptions());
 
         setOutputStreamsFromEnv(newEnv);
 
