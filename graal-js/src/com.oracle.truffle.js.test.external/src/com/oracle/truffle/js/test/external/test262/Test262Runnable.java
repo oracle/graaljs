@@ -78,9 +78,10 @@ public class Test262Runnable extends TestRunnable {
     private static final String INCLUDES_PREFIX = "includes: ";
     private static final String FEATURES_PREFIX = "features: ";
     private static final String ONLY_STRICT_FLAG = "onlyStrict";
+    private static final String ASYNC_FLAG = "async";
     private static final String MODULE_FLAG = "module";
     private static final String CAN_BLOCK_IS_FALSE_FLAG = "CanBlockIsFalse";
-    private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?(?:\\w+))*)\\]");
+    private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?[a-zA-Z-]+)*)\\]");
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
     private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
     private static final Pattern SPLIT_PATTERN = Pattern.compile(",\\s*");
@@ -285,7 +286,7 @@ public class Test262Runnable extends TestRunnable {
         Set<String> flags = getFlags(scriptCodeList);
         Set<String> features = getFeatures(scriptCodeList);
         boolean runStrict = flags.contains(ONLY_STRICT_FLAG);
-        boolean asyncTest = isAsyncTest(scriptCodeList);
+        boolean asyncTest = flags.contains(ASYNC_FLAG);
         boolean module = flags.contains(MODULE_FLAG);
 
         Map<String, String> extraOptions = new HashMap<>(4);
@@ -550,7 +551,4 @@ public class Test262Runnable extends TestRunnable {
         return getStrings(scriptCode, FEATURES_PREFIX, FEATURES_PATTERN, SPLIT_PATTERN).collect(Collectors.toSet());
     }
 
-    private static boolean isAsyncTest(List<String> scriptCodeList) {
-        return scriptCodeList.stream().anyMatch(s -> s.contains("$DONE"));
-    }
 }
