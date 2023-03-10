@@ -386,12 +386,13 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             OptionValues optionValues = env.getOptions();
             if (optionValues.hasBeenSet(JSContextOptions.TIMER_RESOLUTION)) {
                 long timerResolution = optionValues.get(JSContextOptions.TIMER_RESOLUTION);
-                if (timerResolution != 0 && timerResolution < TimeUnit.SECONDS.toNanos(1)) {
+                long minValue = TimeUnit.SECONDS.toNanos(1);
+                if (timerResolution != 0 && timerResolution < minValue) {
                     throw JSException.create(JSErrorType.RuntimeError,
                                     String.format("The validation for the given sandbox policy %s failed. " +
-                                                    "The js.timer-resolution option is set to %d, but must be set to second granularity. " +
-                                                    "In order to resolve this use the default value by removing Builder.option(\"js.timer-resolution\", \"%dB\") or increase its value to at least second granularity " +
-                                                    "or switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).", policy, timerResolution, timerResolution));
+                                                    "The js.timer-resolution option is set to %d, but must be set to at least %d. " +
+                                                    "In order to resolve this use the default value by removing Builder.option(\"js.timer-resolution\", \"%d\") or increase its value to at least %d " +
+                                                    "or switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).", policy, timerResolution, minValue, timerResolution, minValue));
                 }
             }
         }
