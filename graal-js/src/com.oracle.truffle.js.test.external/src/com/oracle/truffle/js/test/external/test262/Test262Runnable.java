@@ -81,7 +81,7 @@ public class Test262Runnable extends TestRunnable {
     private static final String ASYNC_FLAG = "async";
     private static final String MODULE_FLAG = "module";
     private static final String CAN_BLOCK_IS_FALSE_FLAG = "CanBlockIsFalse";
-    private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?(?:\\w+))*)\\]");
+    private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?[a-zA-Z-]+)*)\\]");
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
     private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
     private static final Pattern SPLIT_PATTERN = Pattern.compile(",\\s*");
