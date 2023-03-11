@@ -1435,8 +1435,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             boolean legacyFeaturesEnabled;
             if (isCall) {
                 // we are in the "call" case, i.e. NewTarget is undefined (before)
-                if (callIsRegExpProfile.profile(node, hasMatchSymbol && flags == Undefined.instance && JSDynamicObject.isJSDynamicObject(pattern))) {
-                    JSDynamicObject patternObj = (JSDynamicObject) pattern;
+                if (callIsRegExpProfile.profile(node, hasMatchSymbol && flags == Undefined.instance && pattern instanceof JSObject)) {
+                    JSObject patternObj = (JSObject) pattern;
                     Object patternConstructor = getConstructor(patternObj);
                     if (constructorEquivalentProfile.profile(node, patternConstructor == getRealm().getRegExpConstructor())) {
                         return patternObj;
@@ -1465,17 +1465,16 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (isJSRegExp) {
                 regexpObject.enter(node);
                 Object compiledRegex = JSRegExp.getCompiledRegex((JSDynamicObject) patternObj);
-                if (flags == Undefined.instance) {
-                    return getCreateRegExpNode().createRegExp(compiledRegex);
-                } else {
+                if (flags != Undefined.instance) {
+                    regexpObjectNewFlagsBranch.enter(node);
                     if (getContext().getEcmaScriptVersion() < 6) {
                         throw Errors.createTypeError("Cannot supply flags when constructing one RegExp from another");
                     }
                     Object flagsStr = flagsToString(flags);
-                    regexpObjectNewFlagsBranch.enter(node);
-                    Object newCompiledRegex = getCompileRegexNode().compile(readPattern.execute(node, compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN), flagsStr);
-                    return getCreateRegExpNode().createRegExp(newCompiledRegex);
+                    TruffleString patternStr = readPattern.execute(node, compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN);
+                    compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
                 }
+                return getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
             } else if (hasMatchSymbol) {
                 regexpMatcherObject.enter(node);
                 JSDynamicObject patternJSObj = (JSDynamicObject) patternObj;
@@ -1538,7 +1537,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private Object getConstructor(JSDynamicObject obj) {
             if (getConstructorNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getConstructorNode = insert(PropertyGetNode.create(JSObject.CONSTRUCTOR, false, getContext()));
+                getConstructorNode = insert(PropertyGetNode.create(JSObject.CONSTRUCTOR, getContext()));
             }
             return getConstructorNode.getValue(obj);
         }
@@ -1546,7 +1545,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private Object getSource(JSDynamicObject obj) {
             if (getSourceNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getSourceNode = insert(PropertyGetNode.create(JSRegExp.SOURCE, false, getContext()));
+                getSourceNode = insert(PropertyGetNode.create(JSRegExp.SOURCE, getContext()));
             }
             return getSourceNode.getValue(obj);
         }
@@ -1554,7 +1553,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private Object getFlags(JSDynamicObject obj) {
             if (getFlagsNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getFlagsNode = insert(PropertyGetNode.create(JSRegExp.FLAGS, false, getContext()));
+                getFlagsNode = insert(PropertyGetNode.create(JSRegExp.FLAGS, getContext()));
             }
             return getFlagsNode.getValue(obj);
         }
