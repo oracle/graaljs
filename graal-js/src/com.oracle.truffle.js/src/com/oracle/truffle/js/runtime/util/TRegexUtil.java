@@ -286,8 +286,9 @@ public final class TRegexUtil {
         public abstract TruffleString execute(Node node, Object obj);
 
         @Specialization
-        static TruffleString coerceJavaString(String obj) {
-            return Strings.fromJavaString(obj);
+        static TruffleString coerceJavaString(String obj,
+                        @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {
+            return Strings.fromJavaString(fromJavaStringNode, obj);
         }
 
         @Specialization
