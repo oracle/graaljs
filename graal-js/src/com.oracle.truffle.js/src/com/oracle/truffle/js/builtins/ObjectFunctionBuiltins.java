@@ -436,6 +436,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                         @Cached ImportValueNode toJSType,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString,
                         @Cached InlinedBranchProfile errorBranch) {
             JSDynamicObject result = JSOrdinary.create(getContext(), getRealm());
             try {
@@ -451,7 +452,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         PropertyDescriptor desc = JSInteropUtil.getExistingMemberProperty(thisObj, member, interop, toJSType);
                         if (desc != null) {
                             JSDynamicObject propDesc = fromPropertyDescriptorNode.execute(desc, getContext());
-                            Properties.putWithFlags(putPropDescNode, result, Strings.fromJavaString(member), propDesc, JSAttributes.configurableEnumerableWritable());
+                            Properties.putWithFlags(putPropDescNode, result, Strings.fromJavaString(fromJavaString, member), propDesc, JSAttributes.configurableEnumerableWritable());
                         }
                     }
                 }
@@ -989,7 +990,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @CachedLibrary("from") InteropLibrary fromInterop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop,
-                        @Cached ImportValueNode toJSType) {
+                        @Cached ImportValueNode toJSType,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString) {
             if (fromInterop.isNull(from)) {
                 return;
             }
@@ -1000,7 +1002,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     Object key = keysInterop.readArrayElement(members, i);
                     String stringKey = Strings.interopAsString(stringInterop, key);
                     Object value = toJSType.executeWithTarget(fromInterop.readMember(from, stringKey));
-                    write.executeWithTargetAndIndexAndValue(to, Strings.fromJavaString(stringKey), value);
+                    write.executeWithTargetAndIndexAndValue(to, Strings.fromJavaString(fromJavaString, stringKey), value);
                 }
             } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
                 throw Errors.createTypeErrorInteropException(from, e, "CopyDataProperties", this);
