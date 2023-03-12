@@ -617,13 +617,6 @@ public final class Strings {
         return node.execute(str, TruffleString.Encoding.UTF_16);
     }
 
-    public static TruffleString fromCharSequence(CharSequence str) {
-        if (str == null) {
-            return null;
-        }
-        return fromJavaString(str.toString());
-    }
-
     public static TruffleString fromLong(long longValue) {
         return fromLong(TruffleString.FromLongNode.getUncached(), longValue);
     }

@@ -445,7 +445,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             if (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) {
                 result = Strings.concatAll(Strings.FUNCTION_SPC, JSFunction.getName(fnObj), Strings.FUNCTION_NATIVE_CODE_BODY);
             } else {
-                result = Strings.fromCharSequence(ssect.getCharacters());
+                result = Strings.fromJavaString(ssect.getCharacters().toString());
             }
             return result;
         }

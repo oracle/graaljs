@@ -705,9 +705,9 @@ public final class JSFunction extends JSNonProxy {
             source = Strings.concatAll(Strings.FUNCTION_SPC, JSFunction.getName(obj), Strings.FUNCTION_BODY_DOTS);
         } else {
             if (ssect.getCharacters().length() > 200) {
-                source = Strings.concat(Strings.fromCharSequence(ssect.getCharacters().subSequence(0, 195)), Strings.FUNCTION_BODY_OMITTED);
+                source = Strings.concat(Strings.fromJavaString(ssect.getCharacters().subSequence(0, 195).toString()), Strings.FUNCTION_BODY_OMITTED);
             } else {
-                source = Strings.fromCharSequence(ssect.getCharacters());
+                source = Strings.fromJavaString(ssect.getCharacters().toString());
             }
         }
         return source;
