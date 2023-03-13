@@ -159,6 +159,11 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         return value.doubleValue();
     }
 
+    @TruffleBoundary
+    public static double doubleValueOf(BigInteger value) {
+        return value.doubleValue();
+    }
+
     public BigInteger bigIntegerValue() {
         return value;
     }

@@ -44,7 +44,6 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -76,6 +75,8 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  *
  * Converts the caller provided thisArg to the ThisBinding of the callee's execution context,
  * replacing null or undefined with the global object and performing ToObject on primitives.
+ *
+ * @see JSToObjectNode
  */
 @ImportStatic({CompilerDirectives.class, JSConfig.class})
 public abstract class JSPrepareThisNode extends JSUnaryNode {
@@ -139,10 +140,9 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
     }
 
     @InliningCutoff
-    @Specialization(guards = {"isForeignTruffleObject || isForeignNumber(value)"}, limit = "InteropLibraryLimit")
+    @Specialization(guards = {"isForeignObjectOrNumber(value)"}, limit = "InteropLibraryLimit")
     protected final Object doForeignObject(Object value,
-                    @CachedLibrary("value") InteropLibrary interop,
-                    @Bind("isForeignObject(value)") boolean isForeignTruffleObject) {
+                    @CachedLibrary("value") InteropLibrary interop) {
         if (interop.isNull(value)) {
             return getRealm().getGlobalObject();
         }
@@ -156,17 +156,19 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
                     return doInt(interop.asInt(value));
                 } else if (interop.fitsInDouble(value)) {
                     return doDouble(interop.asDouble(value));
+                } else if (interop.fitsInLong(value)) {
+                    return doDouble(interop.asLong(value));
+                } else if (interop.fitsInBigInteger(value)) {
+                    /*
+                     * The only way to get the value out of a JS Number object again is through
+                     * Number.prototype methods which expect the value to already be a Number, so we
+                     * might as well lossily convert Long and BigInteger to Double eagerly.
+                     */
+                    return doDouble(BigInt.doubleValueOf(interop.asBigInteger(value)));
                 } else {
-                    // Ambiguous numeric type; leave as foreign object.
-                    if (isForeignTruffleObject) {
-                        assert value instanceof TruffleObject;
-                        return value;
-                    } else {
-                        // Wrap Java primitive numbers in TruffleObject.
-                        Object result = getRealm().getEnv().asBoxedGuestValue(value);
-                        assert JSRuntime.isForeignObject(result);
-                        return result;
-                    }
+                    // Java primitive numbers always fit in either Double or BigInteger
+                    assert value instanceof TruffleObject && JSRuntime.isForeignObject(value) : value;
+                    return value;
                 }
             } else {
                 return value;
