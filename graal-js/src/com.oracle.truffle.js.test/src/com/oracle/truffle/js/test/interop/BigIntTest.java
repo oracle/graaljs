@@ -381,15 +381,17 @@ public class BigIntTest {
 
             for (int i = 0; i < bigIntegers.size(); i++) {
                 BigInteger aAsBigInteger = bigIntegers.get(i);
+                Value aAsJSBigInt = toBigInt.execute(aAsBigInteger);
 
                 for (Value aAsValue : hostReprOf(aAsBigInteger).map(context::asValue).toList()) {
                     assertTrue(aAsValue.fitsInBigInteger());
-                    Value aAsJSBigInt = toBigInt.execute(aAsBigInteger);
+                    boolean aIsBigInt = isBigInt(aAsValue);
 
-                    if (aAsValue.fitsInDouble()) {
+                    if (!aIsBigInt) {
                         Value result = plus.execute(aAsValue);
                         assertEquals(plus.execute(aAsBigInteger.doubleValue()).asDouble(), result.asDouble(), 0);
-                        assertTrue(result.toString(), result.fitsInBigInteger() || Double.isInfinite(result.asDouble()));
+                        assertTrue(result.toString(), result.fitsInBigInteger() ||
+                                        !Double.isFinite(result.asDouble()) || JSRuntime.isNegativeZero(result.asDouble()));
                     } else {
                         assert aAsValue.fitsInBigInteger();
                         // TypeError: Cannot convert a BigInt value to a number.
@@ -412,15 +414,17 @@ public class BigIntTest {
 
             for (int i = 0; i < bigIntegers.size(); i++) {
                 BigInteger aAsBigInteger = bigIntegers.get(i);
+                Value aAsJSBigInt = toBigInt.execute(aAsBigInteger);
 
                 for (Value aAsValue : hostReprOf(aAsBigInteger).map(context::asValue).toList()) {
                     assertTrue(aAsValue.fitsInBigInteger());
-                    Value aAsJSBigInt = toBigInt.execute(aAsBigInteger);
+                    boolean aIsBigInt = isBigInt(aAsValue);
 
-                    if (aAsValue.fitsInDouble()) {
+                    if (!aIsBigInt) {
                         Value result = minus.execute(aAsValue);
                         assertEquals(minus.execute(aAsBigInteger.doubleValue()).asDouble(), result.asDouble(), 0);
-                        assertTrue(result.toString(), result.fitsInBigInteger() || Double.isInfinite(result.asDouble()));
+                        assertTrue(result.toString(), result.fitsInBigInteger() ||
+                                        !Double.isFinite(result.asDouble()) || JSRuntime.isNegativeZero(result.asDouble()));
                     } else {
                         Value result = minus.execute(aAsJSBigInt);
                         assertTrue(result.fitsInBigInteger());
@@ -470,14 +474,14 @@ public class BigIntTest {
                             for (Value bAsValue : (j == i ? Stream.of(aAsValue) : hostReprOf(bAsBigInteger).map(context::asValue)).toList()) {
                                 assertTrue(aAsValue.fitsInBigInteger() && bAsValue.fitsInBigInteger());
                                 boolean bIsBigInt = isBigInt(bAsValue);
-                                boolean bothDouble = aAsValue.fitsInDouble() && bAsValue.fitsInDouble();
                                 boolean bothBigInt = aIsBigInt && bIsBigInt;
 
-                                if (bothDouble && !aIsBigInt && !bIsBigInt) {
+                                if (!aIsBigInt && !bIsBigInt) {
                                     Value result = binaryOp.execute(aAsValue, bAsValue);
                                     assertEquals(binaryOp.execute(aAsBigInteger.doubleValue(), bAsBigInteger.doubleValue()).asDouble(), result.asDouble(), 0);
                                     if (binaryOp != div && binaryOp != mod) {
-                                        assertTrue(result.toString(), result.fitsInBigInteger() || Double.isInfinite(result.asDouble()));
+                                        assertTrue(result.toString(), result.fitsInBigInteger() ||
+                                                        !Double.isFinite(result.asDouble()) || JSRuntime.isNegativeZero(result.asDouble()));
                                     }
                                     // TypeError: Cannot mix BigInt and other types
                                     JSTest.assertThrows(() -> binaryOp.execute(aAsJSBigInt, bAsValue), JSErrorType.TypeError);
@@ -561,10 +565,9 @@ public class BigIntTest {
                             for (Value bAsValue : Stream.concat(hostReprOf(bAsBigInteger).map(context::asValue), Stream.of(bAsJSBigInt)).toList()) {
                                 assertTrue(aAsValue.fitsInBigInteger() && bAsValue.fitsInBigInteger());
                                 boolean bIsBigInt = isBigInt(bAsValue);
-                                boolean bothDouble = aAsValue.fitsInDouble() && bAsValue.fitsInDouble();
                                 boolean bothBigInt = aIsBigInt && bIsBigInt;
 
-                                if (bothDouble && !aIsBigInt && !bIsBigInt) {
+                                if (!aIsBigInt && !bIsBigInt) {
                                     Value result = binaryOp.execute(aAsValue, bAsValue);
                                     assertEquals(binaryOp.execute(aAsBigInteger.doubleValue(), bAsBigInteger.doubleValue()).asDouble(), result.asDouble(), 0);
 
