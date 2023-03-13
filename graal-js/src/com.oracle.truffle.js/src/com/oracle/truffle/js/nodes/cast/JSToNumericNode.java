@@ -128,17 +128,12 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Idempotent
-    protected static boolean allowForeignBigInt() {
-        return false;
-    }
-
-    @Specialization(guards = "allowForeignBigInt() || !value.isForeign()")
+    @Specialization(guards = "!value.isForeign()")
     protected static BigInt doBigInt(BigInt value) {
         return value;
     }
 
-    @Specialization(guards = {"!allowForeignBigInt()", "value.isForeign()"})
+    @Specialization(guards = "value.isForeign()")
     protected static double doForeignBigInt(BigInt value) {
         return value.doubleValue();
     }
@@ -216,24 +211,19 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
 
         public abstract Object execute(Node node, Object value);
 
-        @Specialization(guards = "allowForeignBigInt() || !value.isForeign()")
+        @Specialization(guards = "!value.isForeign()")
         protected static BigInt doBigInt(BigInt value) {
             return value;
         }
 
-        @Specialization(guards = {"!allowForeignBigInt()", "value.isForeign()"})
+        @Specialization(guards = "value.isForeign()")
         protected static double doForeignBigInt(BigInt value) {
             return value.doubleValue();
         }
 
-        @Specialization(guards = "!allowForeignBigInt()")
+        @Specialization
         protected static double doLong(long value) {
             return value;
-        }
-
-        @Specialization(guards = "allowForeignBigInt()")
-        protected static BigInt doLongAsBigInt(long value) {
-            return BigInt.valueOf(value);
         }
 
         @Fallback
