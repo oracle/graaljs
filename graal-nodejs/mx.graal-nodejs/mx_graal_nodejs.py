@@ -72,6 +72,8 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                     _setEnvVar('NODE_OPTIONS', '--polyglot')
                     _setEnvVar('NODE_POLYGLOT_OPTIONS', '--js.webassembly --experimental-options')
                     node(commonArgs + ['-e', 'console.log(WebAssembly)'])
+                    # check that fetch API is available when WebAssembly is available
+                    node(commonArgs + ['-e', 'FormData'])
                     _setEnvVar('NODE_OPTIONS', '')
                     _setEnvVar('NODE_POLYGLOT_OPTIONS', '')
 
