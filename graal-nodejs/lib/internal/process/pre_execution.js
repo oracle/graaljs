@@ -259,12 +259,14 @@ function setupFetch() {
     };
   }
 
+  if (typeof WebAssembly !== 'undefined') {
   ObjectDefineProperties(globalThis, {
     FormData: lazyInterface('FormData'),
     Headers: lazyInterface('Headers'),
     Request: lazyInterface('Request'),
     Response: lazyInterface('Response'),
   });
+  }
 
   // The WebAssembly Web API: https://webassembly.github.io/spec/web-api
   const { wasmStreamingCallback } = require('internal/wasm_web_api');
