@@ -156,11 +156,6 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotConvertForeignBigIntToNumeric(Node originatingNode) {
-        return createTypeError("Foreign BigInteger and Long values require explicit conversion to BigInt.", originatingNode);
-    }
-
-    @TruffleBoundary
     public static JSException createTypeErrorNotAFunction(Object functionObj) {
         return createTypeErrorNotAFunction(functionObj, null);
     }

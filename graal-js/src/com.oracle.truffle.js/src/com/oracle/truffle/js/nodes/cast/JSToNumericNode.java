@@ -61,7 +61,6 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNodeGen.JSToNumericWrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
@@ -140,8 +139,8 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!allowForeignBigInt()", "value.isForeign()"})
-    protected final BigInt doForeignBigInt(@SuppressWarnings("unused") BigInt value) {
-        throw Errors.createTypeErrorCannotConvertForeignBigIntToNumeric(this);
+    protected static double doForeignBigInt(BigInt value) {
+        return value.doubleValue();
     }
 
     @Specialization(guards = {"isToNumericOperand()"})
@@ -218,31 +217,23 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         public abstract Object execute(Node node, Object value);
 
         @Specialization(guards = "allowForeignBigInt() || !value.isForeign()")
-        protected static BigInt doBigInt(@SuppressWarnings("unused") BigInt value) {
+        protected static BigInt doBigInt(BigInt value) {
             return value;
         }
 
         @Specialization(guards = {"!allowForeignBigInt()", "value.isForeign()"})
-        protected final BigInt doForeignBigInt(@SuppressWarnings("unused") BigInt value) {
-            throw Errors.createTypeErrorCannotConvertForeignBigIntToNumeric(this);
+        protected static double doForeignBigInt(BigInt value) {
+            return value.doubleValue();
         }
 
-        @Specialization(guards = "longFitsInDouble(value)")
-        protected static double doLongFitsInDouble(long value) {
+        @Specialization(guards = "!allowForeignBigInt()")
+        protected static double doLong(long value) {
             return value;
         }
 
-        @Specialization(guards = {"!longFitsInDouble(value)", "!getLanguage().getJSContext().isOptionNashornCompatibilityMode()"})
-        protected final BigInt doLongNotFitsInDouble(@SuppressWarnings("unused") long value) {
-            if (!allowForeignBigInt()) {
-                throw Errors.createTypeErrorCannotConvertForeignBigIntToNumeric(this);
-            }
+        @Specialization(guards = "allowForeignBigInt()")
+        protected static BigInt doLongAsBigInt(long value) {
             return BigInt.valueOf(value);
-        }
-
-        @Specialization(guards = {"!longFitsInDouble(value)", "getLanguage().getJSContext().isOptionNashornCompatibilityMode()"})
-        protected static double doLongCoerceToDouble(@SuppressWarnings("unused") long value) {
-            return value;
         }
 
         @Fallback

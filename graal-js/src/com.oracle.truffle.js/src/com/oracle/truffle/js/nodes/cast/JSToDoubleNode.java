@@ -54,8 +54,9 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * This implements ECMA 9.3 ToNumber, but always converting the result to a double value.
+ * Implements the abstract operation ToNumber but always converting the result to a double value.
  *
+ * @see JSToNumberNode
  */
 @GenerateUncached
 public abstract class JSToDoubleNode extends JavaScriptBaseNode {
@@ -84,17 +85,9 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization(guards = "longFitsInDouble(value)")
-    protected static double doLongFitsInDouble(long value) {
+    @Specialization
+    protected static double doLong(long value) {
         return value;
-    }
-
-    @Specialization(guards = "!longFitsInDouble(value)")
-    protected final double doLongNotFitsInDouble(long value) {
-        if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
-            return value;
-        }
-        throw Errors.createTypeErrorCannotConvertToNumber("a Long value", this);
     }
 
     @Specialization

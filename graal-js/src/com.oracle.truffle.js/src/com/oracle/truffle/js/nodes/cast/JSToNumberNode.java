@@ -127,22 +127,19 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
-    @Specialization
+    @Specialization(guards = "!value.isForeign()")
     protected final Number doBigInt(@SuppressWarnings("unused") BigInt value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
     }
 
-    @Specialization(guards = "longFitsInDouble(value)")
-    protected static double doLongFitsInDouble(long value) {
-        return value;
+    @Specialization(guards = "value.isForeign()")
+    protected static Number doForeignBigInt(BigInt value) {
+        return value.doubleValue();
     }
 
-    @Specialization(guards = "!longFitsInDouble(value)")
-    protected final Number doLongNotFitsInDouble(long value) {
-        if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
-            return (double) value;
-        }
-        throw Errors.createTypeErrorCannotConvertToNumber("a Long value", this);
+    @Specialization
+    protected static double doLong(long value) {
+        return value;
     }
 
     @Specialization(guards = "isJSObject(value) || isForeignObject(value)", replaces = "doJSObject")
