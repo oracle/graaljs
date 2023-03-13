@@ -153,4 +153,10 @@ describe('Spawn', function () {
             assert.strictEqual(result.stdout.toString(), '');
             assert.strictEqual(result.status, 42);
     });
+    it('should not throw when FormData are accessed', function() {
+            var result = spawnSync(process.execPath, ['-e', 'typeof FormData']);
+            assert.strictEqual(result.stderr.toString(), '');
+            assert.strictEqual(result.stdout.toString(), '');
+            assert.strictEqual(result.status, 0);
+    });
 });
