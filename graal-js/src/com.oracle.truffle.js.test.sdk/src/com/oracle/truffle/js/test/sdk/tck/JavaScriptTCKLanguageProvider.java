@@ -746,8 +746,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
 
         /**
          * Creates a {@link ResultVerifier} which expects a TypeError whenever one of the parameters
-         * is a non-primitive number (i.e. a BigInt) and the other parameter is a primitive number
-         * or, unless hintDefault, non-numeric.
+         * is a BigInt and the other parameter is a Number or, unless hintDefault, non-numeric.
          *
          * @param next the next {@link ResultVerifier} to be called, null for last one
          * @param hintDefault ToPrimitive hint - true: "default", false: hint "number".
@@ -762,7 +761,6 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     boolean primitiveNumberParameter = false;
                     boolean nonNumberParameter = false;
                     boolean nullOrBooleanParameter = false;
-                    boolean nonNumberNullOrBooleanParameter = false;
                     for (Value actualParameter : snippetRun.getParameters()) {
                         if (actualParameter.isNumber()) {
                             if (isBigInt(actualParameter)) {
@@ -780,19 +778,14 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                             nonNumberParameter = true;
                             if (actualParameter.isBoolean() || actualParameter.isNull()) {
                                 nullOrBooleanParameter = true;
-                            } else {
-                                nonNumberNullOrBooleanParameter = true;
                             }
                         }
                     }
 
                     boolean mixesBigInt = hasBigIntParameter && (hintDefault
-                                    ? (primitiveNumberParameter || nullOrBooleanParameter)
-                                    : (primitiveNumberParameter || nonNumberParameter));
-                    boolean foreignBigIntegerNotFitsInDouble = (hintDefault
-                                    ? (nonPrimitiveNumberParameter && !nonNumberNullOrBooleanParameter)
-                                    : (nonPrimitiveNumberParameter));
-                    if (mixesBigInt || foreignBigIntegerNotFitsInDouble) {
+                                    ? (primitiveNumberParameter || nonPrimitiveNumberParameter || nullOrBooleanParameter)
+                                    : (primitiveNumberParameter || nonPrimitiveNumberParameter || nonNumberParameter));
+                    if (mixesBigInt) {
                         if (snippetRun.getException() == null) {
                             throw new AssertionError("TypeError expected but no error has been thrown.");
                         } // else exception expected => ignore
