@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.polyglot.ForeignBigInteger;
 
 public class BigIntTest {
 
@@ -384,7 +385,7 @@ public class BigIntTest {
                 double aAsDouble = aAsBigInteger.doubleValue();
                 Value aAsJSBigInt = toBigInt.execute(aAsBigInteger);
 
-                for (Value aAsValue : hostReprOf(aAsBigInteger).map(context::asValue).toList()) {
+                for (Value aAsValue : foreignReprOf(aAsBigInteger).map(context::asValue).toList()) {
                     assertTrue(aAsValue.fitsInBigInteger());
                     boolean aIsBigInt = isBigInt(aAsValue);
                     if (!aIsBigInt) {
@@ -419,7 +420,7 @@ public class BigIntTest {
                 BigInteger aAsBigInteger = bigIntegers.get(i);
                 Value aAsJSBigInt = toBigInt.execute(aAsBigInteger);
 
-                for (Value aAsValue : hostReprOf(aAsBigInteger).map(context::asValue).toList()) {
+                for (Value aAsValue : foreignReprOf(aAsBigInteger).map(context::asValue).toList()) {
                     assertTrue(aAsValue.fitsInBigInteger());
                     boolean aIsBigInt = isBigInt(aAsValue);
 
@@ -467,14 +468,14 @@ public class BigIntTest {
                     BigInteger aAsBigInteger = bigIntegers.get(i);
                     Value aAsJSBigInt = toBigInt.execute(aAsBigInteger);
 
-                    for (Value aAsValue : hostReprOf(aAsBigInteger).map(context::asValue).toList()) {
+                    for (Value aAsValue : foreignReprOf(aAsBigInteger).map(context::asValue).toList()) {
                         boolean aIsBigInt = isBigInt(aAsValue);
 
                         for (int j = i; j < bigIntegers.size(); j++) {
                             BigInteger bAsBigInteger = j == i ? aAsBigInteger : bigIntegers.get(j);
                             Value bAsJSBigInt = toBigInt.execute(bAsBigInteger);
 
-                            for (Value bAsValue : (j == i ? Stream.of(aAsValue) : hostReprOf(bAsBigInteger).map(context::asValue)).toList()) {
+                            for (Value bAsValue : (j == i ? Stream.of(aAsValue) : foreignReprOf(bAsBigInteger).map(context::asValue)).toList()) {
                                 assertTrue(aAsValue.fitsInBigInteger() && bAsValue.fitsInBigInteger());
                                 boolean bIsBigInt = isBigInt(bAsValue);
                                 boolean bothBigInt = aIsBigInt && bIsBigInt;
@@ -558,14 +559,14 @@ public class BigIntTest {
                     BigInteger aAsBigInteger = bigIntegers.get(i);
                     Value aAsJSBigInt = toBigInt.execute(aAsBigInteger);
 
-                    for (Value aAsValue : hostReprOf(aAsBigInteger).map(context::asValue).toList()) {
+                    for (Value aAsValue : foreignReprOf(aAsBigInteger).map(context::asValue).toList()) {
                         boolean aIsBigInt = isBigInt(aAsValue);
 
                         for (int j = 0; j < rhsBigIntegers.size(); j++) {
                             BigInteger bAsBigInteger = rhsBigIntegers.get(j);
                             Value bAsJSBigInt = toBigInt.execute(bAsBigInteger);
 
-                            for (Value bAsValue : Stream.concat(hostReprOf(bAsBigInteger).map(context::asValue), Stream.of(bAsJSBigInt)).toList()) {
+                            for (Value bAsValue : Stream.concat(foreignReprOf(bAsBigInteger).map(context::asValue), Stream.of(bAsJSBigInt)).toList()) {
                                 assertTrue(aAsValue.fitsInBigInteger() && bAsValue.fitsInBigInteger());
                                 boolean bIsBigInt = isBigInt(bAsValue);
                                 boolean bothBigInt = aIsBigInt && bIsBigInt;
@@ -651,7 +652,7 @@ public class BigIntTest {
             for (int i = 0; i < bigIntegers.size(); i++) {
                 BigInteger aAsBigInteger = bigIntegers.get(i);
 
-                for (Value aAsValue : hostReprOf(aAsBigInteger).map(context::asValue).toList()) {
+                for (Value aAsValue : foreignReprOf(aAsBigInteger).map(context::asValue).toList()) {
                     assertTrue(aAsValue.fitsInBigInteger());
                     Value aAsJSBigInt = toBigInt.execute(aAsBigInteger);
 
@@ -692,10 +693,10 @@ public class BigIntTest {
             for (int i = 0; i < bigIntegers.size(); i++) {
                 BigInteger aAsBigInteger = bigIntegers.get(i);
 
-                for (Value aAsValue : Stream.concat(hostReprOf(aAsBigInteger), jsReprOf(aAsBigInteger)).map(context::asValue).toList()) {
+                for (Value aAsValue : Stream.concat(foreignReprOf(aAsBigInteger), jsReprOf(aAsBigInteger)).map(context::asValue).toList()) {
                     boolean aIsBigInt = isJSBigInt(aAsValue) || !aAsValue.fitsInDouble();
 
-                    for (Value bAsValue : Stream.concat(hostReprOf(aAsBigInteger), jsReprOf(aAsBigInteger)).map(context::asValue).toList()) {
+                    for (Value bAsValue : Stream.concat(foreignReprOf(aAsBigInteger), jsReprOf(aAsBigInteger)).map(context::asValue).toList()) {
                         assertTrue(aAsValue.fitsInBigInteger() && bAsValue.fitsInBigInteger());
                         boolean bIsBigInt = isJSBigInt(bAsValue) || !bAsValue.fitsInDouble();
 
@@ -725,11 +726,11 @@ public class BigIntTest {
         return false;
     }
 
-    private static Stream<Object> hostReprOf(BigInteger bigInteger) {
+    private static Stream<Object> foreignReprOf(BigInteger bigInteger) {
         if (BigInt.fromBigInteger(bigInteger).fitsInLong()) {
-            return Stream.of(bigInteger, bigInteger.longValueExact());
+            return Stream.of(bigInteger, new ForeignBigInteger(bigInteger), bigInteger.longValueExact());
         } else {
-            return Stream.of(bigInteger);
+            return Stream.of(bigInteger, new ForeignBigInteger(bigInteger));
         }
     }
 
