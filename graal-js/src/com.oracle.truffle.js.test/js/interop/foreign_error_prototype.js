@@ -101,3 +101,21 @@ try {
         assertSame(undefined, e.cause);
     }
 }
+
+function throwJavaErrorFromJava(message) {
+    java.util.Objects.requireNonNull(null, message);
+}
+
+try {
+    throwJavaErrorFromJava(message);
+    fail('should have thrown');
+} catch (e) {
+    assertJavaError(e);
+    assertSame(message, e.message);
+    assertTrue(e.stack.includes('foreign_error_prototype'));
+    assertTrue(e.stack.includes('throwJavaErrorFromJava'));
+    assertTrue(e.stack.includes('java.util.Objects.requireNonNull'));
+    assertSame('Error: ' + message, Error.prototype.toString.call(e));
+
+    assertSame(undefined, e.cause);
+}
