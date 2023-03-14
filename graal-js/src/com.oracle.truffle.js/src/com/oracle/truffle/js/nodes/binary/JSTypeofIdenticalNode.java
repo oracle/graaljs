@@ -341,20 +341,23 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             return false;
         } else {
             if (type == Type.Boolean) {
-                return interop.isBoolean(value);
+                return interop.isBoolean(value) && !interop.hasMembers(value);
             } else if (type == Type.String) {
-                return interop.isString(value);
+                return interop.isString(value) && !interop.hasMembers(value);
             } else if (type == Type.Number) {
-                return interop.isNumber(value);
+                return interop.isNumber(value) && !interop.hasMembers(value);
             } else if (type == Type.Function) {
-                return interop.isExecutable(value) || interop.isInstantiable(value) || isHostSymbolInNashornCompatMode(value);
+                return isFunction(value, interop);
             } else if (type == Type.Object) {
-                return !interop.isExecutable(value) && !interop.isInstantiable(value) && !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value) &&
-                                !isHostSymbolInNashornCompatMode(value);
+                return (interop.hasMembers(value) || !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value)) && !isFunction(value, interop);
             } else {
                 return false;
             }
         }
+    }
+
+    private boolean isFunction(Object value, InteropLibrary interop) {
+        return interop.isExecutable(value) || interop.isInstantiable(value) || isHostSymbolInNashornCompatMode(value);
     }
 
     private boolean isHostSymbolInNashornCompatMode(Object value) {
