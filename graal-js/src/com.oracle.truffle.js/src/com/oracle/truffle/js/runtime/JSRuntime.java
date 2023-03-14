@@ -324,7 +324,7 @@ public final class JSRuntime {
     public static Object toPrimitiveFromForeign(Object tObj, JSToPrimitiveNode.Hint hint) {
         assert isForeignObject(tObj);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
-        Object primitive = JSInteropUtil.toPrimitiveOrDefault(tObj, null, interop, null, true);
+        Object primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(tObj, null, interop, null);
         if (primitive != null) {
             return primitive;
         }
@@ -335,20 +335,27 @@ public final class JSRuntime {
         if (!JSRuntime.isNullOrUndefined(exoticToPrim)) {
             Object result = JSRuntime.call(exoticToPrim, tObj, new Object[]{hint.getHintName()});
             if (IsPrimitiveNode.getUncached().executeBoolean(result)) {
-                return result;
+                primitive = result;
+            } else {
+                throw Errors.createTypeError("[Symbol.toPrimitive] method returned a non-primitive object", null);
             }
-            throw Errors.createTypeError("[Symbol.toPrimitive] method returned a non-primitive object", null);
+        } else {
+            if (JavaScriptLanguage.getCurrentEnv().isHostObject(tObj)) {
+                Object maybeResult = JSToPrimitiveNode.tryHostObjectToPrimitive(tObj, hint, interop);
+                if (maybeResult != null) {
+                    return maybeResult;
+                }
+            }
+
+            primitive = foreignOrdinaryToPrimitive(tObj, hint == JSToPrimitiveNode.Hint.Default ? JSToPrimitiveNode.Hint.Number : hint, interop);
         }
 
-        if (JavaScriptLanguage.getCurrentEnv().isHostObject(tObj)) {
-            Object maybeResult = JSToPrimitiveNode.tryHostObjectToPrimitive(tObj, hint, interop);
-            if (maybeResult != null) {
-                return maybeResult;
-            }
+        primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(primitive, null, InteropLibrary.getUncached(primitive), null);
+        if (primitive != null) {
+            return primitive;
+        } else {
+            throw Errors.createTypeErrorCannotConvertToPrimitiveValue();
         }
-
-        Object result = foreignOrdinaryToPrimitive(tObj, hint == JSToPrimitiveNode.Hint.Default ? JSToPrimitiveNode.Hint.Number : hint, interop);
-        return JSInteropUtil.toPrimitiveOrDefault(result, result, InteropLibrary.getUncached(result), null, true);
     }
 
     @TruffleBoundary

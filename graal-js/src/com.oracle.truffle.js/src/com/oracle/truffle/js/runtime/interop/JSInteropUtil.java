@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.interop;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -131,12 +130,11 @@ public final class JSInteropUtil {
         }
     }
 
-    public static Object toPrimitiveOrDefault(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode) {
-        return toPrimitiveOrDefault(obj, defaultValue, interop, originatingNode, false);
-    }
-
+    /**
+     * Converts foreign objects to JS primitive values, coercing all numbers to double precision.
+     */
     @InliningCutoff
-    public static Object toPrimitiveOrDefault(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode, boolean taintForeignBigInt) {
+    public static Object toPrimitiveOrDefaultLossy(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode) {
         if (interop.isNull(obj)) {
             return Null.instance;
         }
@@ -148,17 +146,41 @@ public final class JSInteropUtil {
             } else if (interop.isNumber(obj)) {
                 if (interop.fitsInInt(obj)) {
                     return interop.asInt(obj);
-                } else if (interop.fitsInLong(obj)) {
-                    return interop.asLong(obj);
                 } else if (interop.fitsInDouble(obj)) {
                     return interop.asDouble(obj);
+                } else if (interop.fitsInLong(obj)) {
+                    return (double) interop.asLong(obj);
                 } else if (interop.fitsInBigInteger(obj)) {
-                    BigInteger bigInteger = interop.asBigInteger(obj);
-                    if (taintForeignBigInt) {
-                        return BigInt.fromForeignBigInteger(bigInteger);
-                    } else {
-                        return BigInt.fromBigInteger(bigInteger);
-                    }
+                    return BigInt.doubleValueOf(interop.asBigInteger(obj));
+                }
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorUnboxException(obj, e, originatingNode);
+        }
+        return defaultValue;
+    }
+
+    /**
+     * Converts a foreign object to a JS primitive value. Attempts to keep the precise numeric value
+     * when converting foreign numbers, relevant for comparisons and ToString/ToBigInt conversion.
+     * Returned BigInt values are marked as foreign so that they are handled correctly by subsequent
+     * ToNumeric, ToNumber (i.e., coerced to double), or ToBigInt.
+     */
+    @InliningCutoff
+    public static Object toPrimitiveOrDefaultLossless(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode) {
+        if (interop.isNull(obj)) {
+            return Null.instance;
+        }
+        try {
+            if (interop.isBoolean(obj)) {
+                return interop.asBoolean(obj);
+            } else if (interop.isString(obj)) {
+                return interop.asTruffleString(obj);
+            } else if (interop.isNumber(obj)) {
+                if (interop.fitsInBigInteger(obj)) {
+                    return BigInt.fromForeignBigInteger(interop.asBigInteger(obj));
+                } else if (interop.fitsInDouble(obj)) {
+                    return interop.asDouble(obj);
                 }
             }
         } catch (UnsupportedMessageException e) {

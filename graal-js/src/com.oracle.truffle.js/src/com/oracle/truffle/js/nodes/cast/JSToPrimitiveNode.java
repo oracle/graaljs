@@ -60,6 +60,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -222,8 +223,9 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
                     @Exclusive @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
                     @Exclusive @Cached("createGetToPrimitive()") PropertyGetNode getToPrimitive,
                     @Exclusive @Cached IsPrimitiveNode isPrimitive,
-                    @Exclusive @Cached("createCall()") JSFunctionCallNode callExoticToPrim) {
-        Object primitive = JSInteropUtil.toPrimitiveOrDefault(object, null, interop, this, true);
+                    @Exclusive @Cached("createCall()") JSFunctionCallNode callExoticToPrim,
+                    @Exclusive @Cached InlinedBranchProfile errorBranch) {
+        Object primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(object, null, interop, this);
         if (primitive != null) {
             return primitive;
         }
@@ -234,24 +236,34 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         if (exoticToPrimProfile.profile(node, !JSRuntime.isNullOrUndefined(exoticToPrim))) {
             Object result = callExoticToPrim.executeCall(JSArguments.createOneArg(object, exoticToPrim, hint.getHintName()));
             if (isPrimitive.executeBoolean(result)) {
-                return result;
+                primitive = result;
+            } else {
+                errorBranch.enter(node);
+                throw Errors.createTypeError("[Symbol.toPrimitive] method returned a non-primitive object", this);
             }
-            throw Errors.createTypeError("[Symbol.toPrimitive] method returned a non-primitive object", this);
+        } else {
+            JSRealm realm = getRealm();
+            TruffleLanguage.Env env = realm.getEnv();
+            if (env.isHostObject(object)) {
+                Object maybeResult = tryHostObjectToPrimitive(object, hint, interop);
+                if (maybeResult != null) {
+                    return maybeResult;
+                }
+            }
+
+            // Try toString() and valueOf(), in hint order.
+            primitive = ordinaryToPrimitive(object);
         }
 
-        JSRealm realm = getRealm();
-        TruffleLanguage.Env env = realm.getEnv();
-        if (env.isHostObject(object)) {
-            Object maybeResult = tryHostObjectToPrimitive(object, hint, interop);
-            if (maybeResult != null) {
-                return maybeResult;
-            }
+        assert IsPrimitiveNode.getUncached().executeBoolean(primitive) : primitive;
+        primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(primitive, null, resultInterop, this);
+        if (primitive != null) {
+            return primitive;
+        } else {
+            // Throw for non-primitive-coercible and unsupported primitive types.
+            errorBranch.enter(node);
+            throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
         }
-
-        // Try toString() and valueOf(), in hint order.
-        Object result = ordinaryToPrimitive(object);
-        assert IsPrimitiveNode.getUncached().executeBoolean(result) : result;
-        return JSInteropUtil.toPrimitiveOrDefault(result, result, resultInterop, this, true);
     }
 
     public static Object tryHostObjectToPrimitive(Object object, Hint hint, InteropLibrary interop) {
