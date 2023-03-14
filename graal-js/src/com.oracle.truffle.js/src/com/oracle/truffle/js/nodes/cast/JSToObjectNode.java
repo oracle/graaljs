@@ -55,6 +55,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -64,6 +65,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
@@ -169,36 +171,47 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         if (interop.isNull(value)) {
             throw Errors.createTypeErrorNotObjectCoercible(value, this);
         }
+        return doForeignObjectNonNull(value, interop, this);
+    }
+
+    static Object doForeignObjectNonNull(Object value, InteropLibrary interop, JavaScriptBaseNode node) {
+        assert !interop.isNull(value);
         try {
             if (interop.isBoolean(value)) {
-                return doBoolean(interop.asBoolean(value));
+                return JSBoolean.create(JavaScriptLanguage.get(node).getJSContext(), JSRealm.get(node), interop.asBoolean(value));
             } else if (interop.isString(value)) {
-                return doString(interop.asTruffleString(value));
+                return JSString.create(JavaScriptLanguage.get(node).getJSContext(), JSRealm.get(node), interop.asTruffleString(value));
             } else if (interop.isNumber(value)) {
-                if (interop.fitsInInt(value)) {
-                    return doInt(interop.asInt(value));
-                } else if (interop.fitsInDouble(value)) {
-                    return doDouble(interop.asDouble(value));
-                } else if (interop.fitsInLong(value)) {
-                    return doDouble(interop.asLong(value));
-                } else if (interop.fitsInBigInteger(value)) {
-                    /*
-                     * The only way to get the value out of a JS Number object again is through
-                     * Number.prototype methods which expect the value to already be a Number, so we
-                     * might as well lossily convert Long and BigInteger to Double eagerly.
-                     */
-                    return doDouble(BigInt.doubleValueOf(interop.asBigInteger(value)));
-                } else {
-                    // Java primitive numbers always fit in either Double or BigInteger
-                    assert value instanceof TruffleObject && JSRuntime.isForeignObject(value) : value;
-                    return value;
-                }
+                return doForeignNumber(value, interop, node);
             } else {
                 return value;
             }
         } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(value, e, "ToObject", this);
+            throw Errors.createTypeErrorInteropException(value, e, "ToObject", node);
         }
+    }
+
+    private static Object doForeignNumber(Object value, InteropLibrary interop, JavaScriptBaseNode node) throws UnsupportedMessageException {
+        Number number;
+        if (interop.fitsInInt(value)) {
+            number = interop.asInt(value);
+        } else if (interop.fitsInDouble(value)) {
+            number = interop.asDouble(value);
+        } else if (interop.fitsInLong(value)) {
+            number = interop.asLong(value);
+        } else if (interop.fitsInBigInteger(value)) {
+            /*
+             * The only way to get the value out of a JS Number object again is through
+             * Number.prototype methods which expect the value to already be a Number, so we might
+             * as well lossily convert Long and BigInteger to Double eagerly.
+             */
+            number = BigInt.doubleValueOf(interop.asBigInteger(value));
+        } else {
+            // Java primitive numbers always fit in either Double or BigInteger
+            assert value instanceof TruffleObject && JSRuntime.isForeignObject(value) : value;
+            return value;
+        }
+        return JSNumber.create(JavaScriptLanguage.get(node).getJSContext(), JSRealm.get(node), number);
     }
 
     public abstract static class JSToObjectWrapperNode extends JSUnaryNode {
