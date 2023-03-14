@@ -81,6 +81,11 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
         return JSToBooleanNodeGen.create();
     }
 
+    @NeverDefault
+    public static JSToBooleanNode getUncached() {
+        return JSToBooleanNodeGen.getUncached();
+    }
+
     @Specialization
     protected static boolean doBoolean(boolean value) {
         return value;

@@ -64,6 +64,7 @@ import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.OrdinaryToPrimitiveNode;
@@ -394,28 +395,7 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static boolean toBoolean(Object value) {
-        if (value == Boolean.TRUE) {
-            return true;
-        } else if (value == Boolean.FALSE || value == Undefined.instance || value == Null.instance) {
-            return false;
-        } else if (isNumber(value)) {
-            return toBoolean((Number) value);
-        } else if (Strings.isTString(value)) {
-            return Strings.length((TruffleString) value) != 0;
-        } else if (value instanceof BigInt) {
-            return ((BigInt) value).compareTo(BigInt.ZERO) != 0;
-        } else if (isForeignObject(value)) {
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
-            if (interop.isNull(value)) {
-                return false;
-            } else if (JSInteropUtil.isBoxedPrimitive(value, interop)) {
-                return toBoolean(JSInteropUtil.toPrimitiveOrDefault(value, Null.instance, interop, null));
-            } else {
-                return true;
-            }
-        } else {
-            return true;
-        }
+        return JSToBooleanNode.getUncached().executeBoolean(value);
     }
 
     public static boolean toBoolean(Number number) {
