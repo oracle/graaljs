@@ -40,25 +40,25 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
-import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
-import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
  * This implements behavior for Collections of ES6. Instead of adhering to the SameValueNull
@@ -106,8 +106,8 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    static BigInt doBigInt(BigInt bigInt) {
-        return bigInt;
+    static BigInt doBigInt(BigInt value) {
+        return value;
     }
 
     @Specialization
@@ -119,14 +119,37 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
-    static Object doForeignObject(Object object,
-                    @Bind("this") Node node,
-                    @CachedLibrary("object") InteropLibrary interop,
-                    @Cached InlinedConditionProfile primitiveProfile,
-                    @Cached JSCollectionsNormalizeNode nestedNormalizeNode) {
-        Object primitive = JSInteropUtil.toPrimitiveOrDefault(object, null, interop, node);
-        return primitiveProfile.profile(node, primitive == null) ? object : nestedNormalizeNode.execute(primitive);
+    @InliningCutoff
+    @Specialization(guards = "isForeignObject(value)", limit = "InteropLibraryLimit")
+    final Object doForeignObject(Object value,
+                    @CachedLibrary("value") InteropLibrary interop) {
+        if (interop.isNull(value)) {
+            return Null.instance;
+        }
+        try {
+            if (interop.isBoolean(value)) {
+                return doBoolean(interop.asBoolean(value));
+            } else if (interop.isString(value)) {
+                return doString(interop.asTruffleString(value));
+            } else if (interop.isNumber(value)) {
+                if (interop.fitsInInt(value)) {
+                    return doInt(interop.asInt(value));
+                } else if (interop.fitsInDouble(value)) {
+                    return doDouble(interop.asDouble(value));
+                } else if (interop.fitsInLong(value)) {
+                    return doLong(interop.asLong(value));
+                } else if (interop.fitsInBigInteger(value)) {
+                    return doBigInt(BigInt.fromBigInteger(interop.asBigInteger(value)));
+                } else {
+                    assert value instanceof TruffleObject;
+                    return value;
+                }
+            } else {
+                return value;
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorUnboxException(value, e, this);
+        }
     }
 
 }
