@@ -551,7 +551,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toPropertyDescriptorNode = insert(ToPropertyDescriptorNode.create(getContext()));
             }
-            return (PropertyDescriptor) toPropertyDescriptorNode.execute(target);
+            return toPropertyDescriptorNode.execute(target);
         }
 
         @TruffleBoundary

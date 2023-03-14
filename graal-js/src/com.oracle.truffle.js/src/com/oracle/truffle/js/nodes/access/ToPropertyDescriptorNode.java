@@ -47,14 +47,12 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -81,7 +79,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     @Child private HasPropertyCacheNode hasSetNode;
     @Child private HasPropertyCacheNode hasGetNode;
 
-    public abstract Object execute(Object operand);
+    public abstract PropertyDescriptor execute(Object operand);
 
     @NeverDefault
     public static ToPropertyDescriptorNode create(JSContext context) {
@@ -124,7 +122,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
      * nodes.
      */
     @Specialization(guards = {"!wasExecuted(obj)", "isObjectNode.executeBoolean(obj)"}, limit = "1")
-    protected Object nonSpecialized(Object obj,
+    protected PropertyDescriptor nonSpecialized(Object obj,
                     @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         wasExecuted = true;
@@ -132,7 +130,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"wasExecuted(obj)", "isObjectNode.executeBoolean(obj)"}, limit = "1")
-    protected Object doDefault(Object obj,
+    protected PropertyDescriptor doDefault(Object obj,
                     @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode,
                     @Cached InlinedBranchProfile hasGetBranch,
                     @Cached InlinedBranchProfile hasSetBranch,
@@ -246,10 +244,8 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isObjectNode.executeBoolean(obj)", limit = "1")
-    protected Object doNonObject(Object obj,
-                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode,
-                    @Cached TruffleString.ConcatNode concatNode) {
-        final String message = Strings.toJavaString(Strings.concat(concatNode, Strings.PROPERTY_DESCRIPTION_MUST_BE_AN_OBJECT, JSRuntime.safeToString(obj)));
-        throw Errors.createTypeError(message);
+    protected PropertyDescriptor doNonObject(Object obj,
+                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+        throw Errors.createTypeErrorPropertyDescriptorNotAnObject(obj, this);
     }
 }

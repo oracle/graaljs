@@ -397,9 +397,6 @@ public final class Strings {
     public static final TruffleString ESCAPE_BACKSLASH = constant("\\\\");
     public static final TruffleString ESCAPE_QUOTE = constant("\\\"");
 
-    public static final TruffleString PROPERTY_DESCRIPTION_MUST_BE_AN_OBJECT = constant("Property description must be an object: ");
-    public static final TruffleString METHOD_ERROR_PROTOTYPE_TO_STRING_CALLED_ON_INCOMPATIBLE_RECEIVER = constant("Method Error.prototype.toString called on incompatible receiver ");
-
     /* WASM */
     public static final TruffleString I_64 = constant("i64");
     public static final TruffleString I_32 = constant("i32");
