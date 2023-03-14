@@ -26,6 +26,6 @@ try {
     assertTrue(e instanceof Error);
     assertSame(message, e.message);
     assertTrue(e.stack.includes('foreign_error_prototype'));
-    // assertTrue(e.stack.includes('throwJavaError'));
+    assertTrue(e.stack.includes('throwJavaError'));
     assertSame('Error: ' + message, Error.prototype.toString.call(e));
 }
