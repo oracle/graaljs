@@ -134,7 +134,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         if (value == Null.instance) {
             append(builder, Null.NAME);
         } else if (value instanceof Boolean) {
-            append(builder, (boolean) value ? JSBoolean.TRUE_NAME : JSBoolean.FALSE_NAME);
+            appendBoolean(builder, (boolean) value);
         } else if (Strings.isTString(value)) {
             jsonQuote(builder, (TruffleString) value);
         } else if (JSRuntime.isNumber(value)) {
@@ -147,15 +147,9 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             } else {
                 serializeJSONObject(builder, data, valueObj);
             }
-        } else if (value instanceof Long) {
-            if (JSRuntime.longFitsInDouble((Long) value)) {
-                appendNumber(builder, value);
-            } else {
-                throw Errors.createTypeError("Do not know how to serialize a BigInt");
-            }
         } else if (JSRuntime.isBigInt(value)) {
             throw Errors.createTypeError("Do not know how to serialize a BigInt");
-        } else if (value instanceof TruffleObject) {
+        } else if (value instanceof TruffleObject || value instanceof Long) {
             serializeForeignObject(builder, data, value);
         } else {
             throw unsupportedType(value);
@@ -169,19 +163,37 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     private void serializeForeignObject(TruffleStringBuilder sb, JSONData data, Object obj) {
-        assert JSGuards.isForeignObject(obj);
+        assert JSGuards.isForeignObjectOrNumber(obj);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
         if (interop.isNull(obj)) {
             append(sb, Null.NAME);
-        } else if (JSInteropUtil.isBoxedPrimitive(obj, interop)) {
-            Object unboxed = JSInteropUtil.toPrimitiveOrDefault(obj, Null.instance, interop, this);
-            assert !JSGuards.isForeignObject(unboxed);
-            serializeJSONPropertyValue(sb, data, unboxed);
-        } else if (interop.hasArrayElements(obj)) {
-            serializeJSONArray(sb, data, obj);
-        } else {
-            serializeJSONObject(sb, data, obj);
+            return;
         }
+        try {
+            if (interop.isBoolean(obj)) {
+                appendBoolean(sb, interop.asBoolean(obj));
+            } else if (interop.isString(obj)) {
+                jsonQuote(sb, interop.asTruffleString(obj));
+            } else if (interop.isNumber(obj)) {
+                if (interop.fitsInInt(obj)) {
+                    appendNumber(sb, interop.asInt(obj));
+                } else if (interop.fitsInDouble(obj)) {
+                    appendNumber(sb, interop.asDouble(obj));
+                } else {
+                    throw Errors.createTypeError("Do not know how to serialize a BigInt");
+                }
+            } else if (interop.hasArrayElements(obj)) {
+                serializeJSONArray(sb, data, obj);
+            } else {
+                serializeJSONObject(sb, data, obj);
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorUnboxException(obj, e, this);
+        }
+    }
+
+    private void appendBoolean(TruffleStringBuilder builder, boolean value) {
+        append(builder, value ? JSBoolean.TRUE_NAME : JSBoolean.FALSE_NAME);
     }
 
     private void appendNumber(TruffleStringBuilder builder, Object number) {
