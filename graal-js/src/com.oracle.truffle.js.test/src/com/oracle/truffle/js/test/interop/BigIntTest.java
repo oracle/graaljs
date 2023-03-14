@@ -370,33 +370,37 @@ public class BigIntTest {
     private static boolean treatForeignBigIntegerAsBigInt = false;
 
     @Test
-    public void testBigIntegerUnaryPlus() {
+    public void testBigIntegerUnaryPlusAndNumber() {
         try (Context context = JSTest.newContextBuilder().build()) {
             Value toBigInt = context.eval(JavaScriptLanguage.ID, "(function(value) { return BigInt(value); })");
 
             Value plus = context.eval(JavaScriptLanguage.ID, "(function(value) { return +(value); })");
+            Value toNumber = context.eval(JavaScriptLanguage.ID, "Number");
 
             List<BigInteger> bigIntegers = bigIntegersForArithmetic();
 
             for (int i = 0; i < bigIntegers.size(); i++) {
                 BigInteger aAsBigInteger = bigIntegers.get(i);
+                double aAsDouble = aAsBigInteger.doubleValue();
                 Value aAsJSBigInt = toBigInt.execute(aAsBigInteger);
 
                 for (Value aAsValue : hostReprOf(aAsBigInteger).map(context::asValue).toList()) {
                     assertTrue(aAsValue.fitsInBigInteger());
                     boolean aIsBigInt = isBigInt(aAsValue);
-
                     if (!aIsBigInt) {
                         Value result = plus.execute(aAsValue);
-                        assertEquals(plus.execute(aAsBigInteger.doubleValue()).asDouble(), result.asDouble(), 0);
+                        assertEquals(aAsDouble, result.asDouble(), 0);
                         assertTrue(result.toString(), result.fitsInBigInteger() ||
                                         !Double.isFinite(result.asDouble()) || JSRuntime.isNegativeZero(result.asDouble()));
                     } else {
-                        assert aAsValue.fitsInBigInteger();
                         // TypeError: Cannot convert a BigInt value to a number.
                         JSTest.assertThrows(() -> plus.execute(aAsValue), JSErrorType.TypeError);
                         JSTest.assertThrows(() -> plus.execute(aAsJSBigInt), JSErrorType.TypeError);
                     }
+
+                    Value result = toNumber.execute(aAsValue);
+                    assertTrue(result.fitsInDouble());
+                    assertEquals(aAsDouble, result.asDouble(), 0);
                 }
             }
         }
