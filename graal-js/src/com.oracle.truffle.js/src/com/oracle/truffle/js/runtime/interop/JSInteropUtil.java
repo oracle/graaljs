@@ -290,7 +290,7 @@ public final class JSInteropUtil {
                         Object stackTraceElement = interopST.readArrayElement(stackTrace, i);
                         InteropLibrary interopSTE = InteropLibrary.getUncached(stackTraceElement);
 
-                        String name = null;
+                        String name = "";
                         SourceSection sourceLocation = null;
                         if (interopSTE.hasExecutableName(stackTraceElement)) {
                             name = interopStr.asString(interopSTE.getExecutableName(stackTraceElement));
@@ -299,13 +299,26 @@ public final class JSInteropUtil {
                             sourceLocation = interopSTE.getSourceLocation(stackTraceElement);
                         }
 
-                        if (name == null && sourceLocation == null) {
+                        String className = "";
+                        if (interopSTE.hasDeclaringMetaObject(stackTraceElement)) {
+                            Object metaObject = interopSTE.getDeclaringMetaObject(stackTraceElement);
+                            className = interopStr.asString(InteropLibrary.getUncached(metaObject).getMetaQualifiedName(metaObject));
+                        }
+
+                        if (name.isEmpty() && sourceLocation == null) {
                             continue;
                         }
 
                         sb.append('\n');
                         sb.append("    at ");
-                        sb.append(Objects.requireNonNullElse(name, JSError.ANONYMOUS_FUNCTION_NAME));
+                        if (!className.isEmpty()) {
+                            sb.append(className).append('.');
+                        }
+                        if (!name.isEmpty()) {
+                            sb.append(name);
+                        } else {
+                            sb.append(JSError.ANONYMOUS_FUNCTION_NAME);
+                        }
                         if (sourceLocation != null) {
                             sb.append(" (").append(formatSourceLocation(sourceLocation)).append(")");
                         }
