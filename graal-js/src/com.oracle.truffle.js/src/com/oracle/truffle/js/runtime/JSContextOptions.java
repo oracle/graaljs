@@ -306,10 +306,10 @@ public final class JSContextOptions {
                     new OptionType<>("commonjs-require-globals", new Function<String, Map<String, String>>() {
                         @Override
                         public Map<String, String> apply(String value) {
-                            Map<String, String> map = new HashMap<>();
-                            if ("".equals(value)) {
-                                return map;
+                            if (value.isEmpty()) {
+                                return Collections.emptyMap();
                             }
+                            Map<String, String> map = new HashMap<>();
                             String[] options = value.split(",");
                             for (String s : options) {
                                 String[] builtin = s.split(":", 2);
