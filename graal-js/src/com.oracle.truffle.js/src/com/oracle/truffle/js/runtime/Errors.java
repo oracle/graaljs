@@ -837,7 +837,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorUnboxException(Object receiver, InteropException cause, Node originatingNode) {
-        return createTypeErrorInteropException(receiver, cause, "UNBOX", originatingNode);
+        return createTypeErrorInteropException(receiver, cause, "ToPrimitive", originatingNode);
     }
 
     @TruffleBoundary
