@@ -313,12 +313,15 @@ public final class JSContextOptions {
                             String[] options = value.split(",");
                             for (String s : options) {
                                 String[] builtin = s.split(":", 2);
-                                if (builtin.length != 2) {
-                                    throw new IllegalArgumentException("Unexpected builtin arguments: " + s);
+                                if (builtin.length == 2) {
+                                    String key = builtin[0];
+                                    String val = builtin[1];
+                                    if (!key.isEmpty() && !val.isEmpty()) {
+                                        map.put(key, val);
+                                        continue;
+                                    }
                                 }
-                                String key = builtin[0];
-                                String val = builtin[1];
-                                map.put(key, val);
+                                throw new IllegalArgumentException("Unexpected builtin arguments: " + s);
                             }
                             return map;
                         }
