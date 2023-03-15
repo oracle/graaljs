@@ -386,7 +386,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             OptionValues optionValues = env.getOptions();
             if (optionValues.hasBeenSet(JSContextOptions.TIMER_RESOLUTION)) {
                 long timerResolution = optionValues.get(JSContextOptions.TIMER_RESOLUTION);
-                long minValue = TimeUnit.SECONDS.toNanos(1);
+                long minValue = TimeUnit.MILLISECONDS.toNanos(100);
                 if (timerResolution != 0 && timerResolution < minValue) {
                     throw JSException.create(JSErrorType.RuntimeError,
                                     String.format("The validation for the given sandbox policy %s failed. " +
