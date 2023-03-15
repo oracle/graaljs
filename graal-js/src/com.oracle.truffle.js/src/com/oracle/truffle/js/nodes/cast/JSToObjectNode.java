@@ -66,7 +66,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -177,15 +176,17 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     static Object doForeignObjectNonNull(Object value, InteropLibrary interop, JavaScriptBaseNode node) {
         assert !interop.isNull(value);
         try {
-            if (interop.isBoolean(value)) {
-                return JSBoolean.create(JavaScriptLanguage.get(node).getJSContext(), JSRealm.get(node), interop.asBoolean(value));
-            } else if (interop.isString(value)) {
-                return JSString.create(JavaScriptLanguage.get(node).getJSContext(), JSRealm.get(node), interop.asTruffleString(value));
-            } else if (interop.isNumber(value)) {
-                return doForeignNumber(value, interop, node);
-            } else {
-                return value;
+            if (!interop.hasMembers(value)) {
+                if (interop.isBoolean(value)) {
+                    return JSBoolean.create(JavaScriptLanguage.get(node).getJSContext(), JSRealm.get(node), interop.asBoolean(value));
+                } else if (interop.isString(value)) {
+                    return JSString.create(JavaScriptLanguage.get(node).getJSContext(), JSRealm.get(node), interop.asTruffleString(value));
+                } else if (interop.isNumber(value)) {
+                    return doForeignNumber(value, interop, node);
+                }
             }
+            assert value instanceof TruffleObject : value;
+            return value;
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(value, e, "ToObject", node);
         }
@@ -208,7 +209,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
             number = BigInt.doubleValueOf(interop.asBigInteger(value));
         } else {
             // Java primitive numbers always fit in either Double or BigInteger
-            assert value instanceof TruffleObject && JSRuntime.isForeignObject(value) : value;
+            assert value instanceof TruffleObject && !(value instanceof Number) : value;
             return value;
         }
         return JSNumber.create(JavaScriptLanguage.get(node).getJSContext(), JSRealm.get(node), number);
