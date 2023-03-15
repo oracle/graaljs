@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -473,6 +473,19 @@ public class CommonJSRequireTest {
         try (Context cx = testContext(options)) {
             Value js = cx.eval(ID, "require('path').foo + require('fs').foo;");
             Assert.assertEquals(84, js.asInt());
+        }
+    }
+
+    @Test
+    public void testCustomNodeBuiltinNodePrefix() {
+        Path root = getTestRootFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
+        options.put(COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, "util:./module");
+        try (Context cx = testContext(options)) {
+            Value js = cx.eval(ID, "require('node:util').foo");
+            Assert.assertEquals(42, js.asInt());
         }
     }
 
