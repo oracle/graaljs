@@ -15,12 +15,21 @@ const BigInteger = java.math.BigInteger;
 
 let zero = BigInteger.ZERO;
 let small= BigInteger.valueOf(42);
+let long = new BigInteger("9223372036854775807"); // Long.MAX_VALUE
 let big  = new BigInteger("100000000000000000000"); // 10n ** 20n
 let huge = BigInteger.valueOf(2).pow(1000);
-let bigIntegers = [zero, small, big, huge];
+let bigIntegers = [zero, small, long, big, huge];
 
 function nonStrictThis() {
     return this;
+}
+
+function int64(b) {
+    return b.longValue();
+}
+
+function uint64(b) {
+    return b.mod(BigInteger.ONE.shiftLeft(64));
 }
 
 for (let b of bigIntegers) {
@@ -51,4 +60,14 @@ for (let b of bigIntegers) {
 
     // Avoid double coercion in ToString.
     assertSame(b.toString(), String(b));
+
+    // ToBigInt does not accept Number but should accept any foreign number that fitsInBigInteger()
+    let i64a = new BigInt64Array(1);
+    let u64a = new BigUint64Array(1);
+    i64a[0] = b;
+    u64a[0] = b;
+    assertSame(i64a[0], BigInt.asIntN(64, b));
+    assertSame(u64a[0], BigInt.asUintN(64, b));
+    assertTrue(i64a[0] == int64(b));
+    assertTrue(u64a[0] == uint64(b));
 }
