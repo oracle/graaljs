@@ -146,8 +146,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createErrorCanNotConvertToBigInt(JSErrorType type, Object x) {
-        return JSException.create(type, String.format("Cannot convert %s to a BigInt.", JSRuntime.safeToString(x)));
+    public static JSException createErrorCannotConvertToBigInt(JSErrorType type, Object value, Node originatingNode) {
+        return JSException.create(type, String.format("Cannot convert %s to a BigInt.", JSRuntime.safeToString(value)), originatingNode);
     }
 
     @TruffleBoundary

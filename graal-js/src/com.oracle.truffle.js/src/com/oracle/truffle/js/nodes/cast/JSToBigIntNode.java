@@ -124,26 +124,26 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = "isNumber(value)")
-        protected static BigInt doDouble(Object value) {
-            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
+        protected static BigInt doDouble(Node node, Object value) {
+            throw Errors.createErrorCannotConvertToBigInt(JSErrorType.TypeError, value, node);
         }
 
         @Specialization
-        protected static BigInt doSymbol(Symbol value) {
-            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
+        protected static BigInt doSymbol(Node node, Symbol value) {
+            throw Errors.createErrorCannotConvertToBigInt(JSErrorType.TypeError, value, node);
         }
 
         @Specialization(guards = "isNullOrUndefined(value)")
-        protected static BigInt doNullOrUndefined(Object value) {
-            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
+        protected static BigInt doNullOrUndefined(Node node, Object value) {
+            throw Errors.createErrorCannotConvertToBigInt(JSErrorType.TypeError, value, node);
         }
 
         @Specialization
-        protected static BigInt doString(TruffleString value) {
+        protected static BigInt doString(Node node, TruffleString value) {
             try {
                 return Strings.parseBigInt(value);
             } catch (NumberFormatException e) {
-                throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.SyntaxError, value);
+                throw Errors.createErrorCannotConvertToBigInt(JSErrorType.SyntaxError, value, node);
             }
         }
     }
