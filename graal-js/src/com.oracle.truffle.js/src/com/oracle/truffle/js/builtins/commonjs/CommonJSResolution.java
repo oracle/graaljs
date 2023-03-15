@@ -84,11 +84,14 @@ public final class CommonJSResolution {
     public static final String JSON_EXT = ".json";
     public static final String NODE_EXT = ".node";
 
+    private static final String NODE_PREFIX = "node:";
+
     private CommonJSResolution() {
     }
 
     public static String getCoreModuleReplacement(JSContext context, String moduleIdentifier) {
-        return context.getContextOptions().getCommonJSRequireBuiltins().get(moduleIdentifier);
+        String identifier = moduleIdentifier.startsWith(NODE_PREFIX) ? moduleIdentifier.substring(NODE_PREFIX.length()) : moduleIdentifier;
+        return context.getContextOptions().getCommonJSRequireBuiltins().get(identifier);
     }
 
     static String getCurrentFileNameFromStack() {
