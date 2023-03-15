@@ -71,6 +71,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -144,12 +145,14 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     protected static double getDoubleValue(InteropLibrary interop, Object obj) {
         assert JSGuards.isForeignObjectOrNumber(obj);
-        if (interop.fitsInDouble(obj)) {
-            try {
+        try {
+            if (interop.fitsInDouble(obj)) {
                 return interop.asDouble(obj);
-            } catch (UnsupportedMessageException ex) {
-                throw Errors.createTypeErrorUnboxException(obj, ex, interop);
+            } else if (interop.fitsInBigInteger(obj)) {
+                return BigInt.doubleValueOf(interop.asBigInteger(obj));
             }
+        } catch (UnsupportedMessageException ex) {
+            throw Errors.createTypeErrorUnboxException(obj, ex, interop);
         }
         throw Errors.createTypeErrorNotANumber(obj);
     }
