@@ -64,6 +64,7 @@ import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
@@ -486,19 +487,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static BigInt toBigInt(Object value) {
-        Object primitive = toPrimitive(value, JSToPrimitiveNode.Hint.Number);
-        if (Strings.isTString(primitive)) {
-            try {
-                return Strings.parseBigInt((TruffleString) primitive);
-            } catch (NumberFormatException e) {
-                throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.SyntaxError, primitive);
-            }
-        } else if (primitive instanceof BigInt) {
-            return (BigInt) primitive;
-        } else if (primitive instanceof Boolean) {
-            return (Boolean) primitive ? BigInt.ONE : BigInt.ZERO;
-        }
-        throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, primitive);
+        return JSToBigIntNode.getUncached().execute(value);
     }
 
     public static boolean isBigInt(Object value) {

@@ -72,6 +72,11 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
         return JSToBigIntNodeGen.create();
     }
 
+    @NeverDefault
+    public static JSToBigIntNode getUncached() {
+        return JSToBigIntNodeGen.getUncached();
+    }
+
     @Specialization
     protected BigInt doIt(Object value,
                     @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
