@@ -56,7 +56,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.Symbol;
 
 /**
  * Implementation of the abstract operation ToBigInt(argument).
@@ -100,7 +99,7 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
     @GenerateInline
     @GenerateCached(false)
     @GenerateUncached
-    public abstract static class JSPrimitiveToBigIntNode extends JavaScriptBaseNode {
+    protected abstract static class JSPrimitiveToBigIntNode extends JavaScriptBaseNode {
 
         public abstract BigInt executeBigInt(Node node, Object value);
 
@@ -115,27 +114,17 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = "value.isForeign()")
-        protected static BigInt doForeignBigInt(BigInt value) {
-            return value.clearForeign();
-        }
-
-        @Specialization
-        protected static BigInt doLong(long value) {
-            return BigInt.valueOf(value);
-        }
-
-        @Specialization(guards = "isNumber(value)")
-        protected static BigInt doDouble(Node node, Object value) {
+        protected static BigInt doForeignBigInt(Node node, BigInt value) {
             throw Errors.createErrorCannotConvertToBigInt(JSErrorType.TypeError, value, node);
         }
 
-        @Specialization
-        protected static BigInt doSymbol(Node node, Symbol value) {
+        @Specialization(guards = "isNumber(value) || isNumberLong(value)")
+        protected static BigInt doNumber(Node node, Object value) {
             throw Errors.createErrorCannotConvertToBigInt(JSErrorType.TypeError, value, node);
         }
 
-        @Specialization(guards = "isNullOrUndefined(value)")
-        protected static BigInt doNullOrUndefined(Node node, Object value) {
+        @Specialization(guards = "isSymbol(value) || isNullOrUndefined(value)")
+        protected static BigInt doSymbolNullOrUndefined(Node node, Object value) {
             throw Errors.createErrorCannotConvertToBigInt(JSErrorType.TypeError, value, node);
         }
 

@@ -61,13 +61,14 @@ for (let b of bigIntegers) {
     // Avoid double coercion in ToString.
     assertSame(b.toString(), String(b));
 
-    // ToBigInt does not accept Number but should accept any foreign number that fitsInBigInteger()
+    // ToBigInt does not accept Number, require explicit conversion for now.
     let i64a = new BigInt64Array(1);
     let u64a = new BigUint64Array(1);
-    i64a[0] = b;
-    u64a[0] = b;
-    assertSame(i64a[0], BigInt.asIntN(64, b));
-    assertSame(u64a[0], BigInt.asUintN(64, b));
+    let cast = BigInt(b);
+    i64a[0] = cast;
+    u64a[0] = cast;
+    assertSame(i64a[0], BigInt.asIntN(64, cast));
+    assertSame(u64a[0], BigInt.asUintN(64, cast));
     assertTrue(i64a[0] == int64(b));
     assertTrue(u64a[0] == uint64(b));
 }
