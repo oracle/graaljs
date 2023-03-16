@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -290,6 +290,23 @@ public class JavaScriptHostInteropTest {
 
             result = context.eval(ID, "api['consumeArray(java.lang.Object[])'](array);");
             assertEquals("Object[]", result.asString());
+        }
+    }
+
+    @Test
+    public void hostExceptionToString() {
+        // No host access to Throwable.toString().
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.EXPLICIT).build()) {
+            Value toString = context.eval(ID, "String");
+
+            String message = "someMessage";
+            var exceptionWithoutMessage = new RuntimeException();
+            var exceptionWithMessage = new RuntimeException(message);
+
+            assertFalse(context.asValue(exceptionWithMessage).hasMember("toString"));
+            assertFalse(context.asValue(exceptionWithMessage).hasMember("toString"));
+            assertEquals(exceptionWithoutMessage.getClass().getName(), toString.execute(exceptionWithoutMessage).asString());
+            assertEquals(exceptionWithMessage.getClass().getName() + ": " + message, toString.execute(exceptionWithMessage).asString());
         }
     }
 

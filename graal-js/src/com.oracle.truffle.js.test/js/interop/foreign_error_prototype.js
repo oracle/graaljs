@@ -38,7 +38,7 @@ try {
     assertSame(message, e.message);
     assertTrue(e.stack.includes('foreign_error_prototype'));
     assertTrue(e.stack.includes('throwJavaError'));
-    assertSame('Error: ' + message, Error.prototype.toString.call(e));
+    assertSame('java.lang.RuntimeException: ' + message, Error.prototype.toString.call(e));
 
     assertSame(undefined, e.cause);
 }
@@ -55,7 +55,7 @@ try {
         assertSame(otherMessage, e.message);
         assertTrue(e.stack.includes('foreign_error_prototype'));
         assertTrue(e.stack.includes('throwJavaErrorWithCause'));
-        assertSame('Error: ' + otherMessage, Error.prototype.toString.call(e));
+        assertSame('java.lang.RuntimeException: ' + otherMessage, Error.prototype.toString.call(e));
 
         assertSame(cause, e.cause);
 
@@ -64,7 +64,7 @@ try {
         assertSame(message, e.message);
         assertTrue(e.stack.includes('foreign_error_prototype'));
         assertTrue(e.stack.includes('throwJavaError'));
-        assertSame('Error: ' + message, Error.prototype.toString.call(e));
+        assertSame('java.lang.RuntimeException: ' + message, Error.prototype.toString.call(e));
 
         assertSame(undefined, e.cause);
     }
@@ -96,7 +96,7 @@ try {
         assertSame(message, e.message);
         assertTrue(e.stack.includes('foreign_error_prototype'));
         assertTrue(e.stack.includes('throwJavaError'));
-        assertSame('Error: ' + message, Error.prototype.toString.call(e));
+        assertSame('java.lang.RuntimeException: ' + message, Error.prototype.toString.call(e));
 
         assertSame(undefined, e.cause);
     }
@@ -115,7 +115,10 @@ try {
     assertTrue(e.stack.includes('foreign_error_prototype'));
     assertTrue(e.stack.includes('throwJavaErrorFromJava'));
     assertTrue(e.stack.includes('java.util.Objects.requireNonNull'));
-    assertSame('Error: ' + message, Error.prototype.toString.call(e));
+    assertSame('java.lang.NullPointerException: ' + message, Error.prototype.toString.call(e));
 
     assertSame(undefined, e.cause);
 }
+
+assertSame('java.lang.RuntimeException', String(new java.lang.RuntimeException()));
+assertSame('java.lang.RuntimeException: ' + message, String(new java.lang.RuntimeException(message)));
