@@ -296,10 +296,10 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     private boolean doForeignNumber(Object a, Object b, InteropLibrary aInterop, InteropLibrary bInterop, boolean isAForeign, boolean isBForeign) {
         try {
             if (isAForeign != isBForeign) {
-                if (a instanceof BigInt && bInterop.fitsInDouble(b)) {
+                if (a instanceof BigInt) {
                     assert !(b instanceof BigInt) : b;
                     return false;
-                } else if (b instanceof BigInt && aInterop.fitsInDouble(a)) {
+                } else if (b instanceof BigInt) {
                     assert !(a instanceof BigInt) : a;
                     return false;
                 }

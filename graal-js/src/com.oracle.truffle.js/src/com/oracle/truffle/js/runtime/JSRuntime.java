@@ -1645,10 +1645,10 @@ public final class JSRuntime {
         if (aInterop.isNumber(a) && bInterop.isNumber(b)) {
             try {
                 if (isAForeign != isBForeign) {
-                    if (a instanceof BigInt && bInterop.fitsInDouble(b)) {
+                    if (a instanceof BigInt) {
                         assert !(b instanceof BigInt) : b;
                         return false;
-                    } else if (b instanceof BigInt && aInterop.fitsInDouble(a)) {
+                    } else if (b instanceof BigInt) {
                         assert !(a instanceof BigInt) : a;
                         return false;
                     }
