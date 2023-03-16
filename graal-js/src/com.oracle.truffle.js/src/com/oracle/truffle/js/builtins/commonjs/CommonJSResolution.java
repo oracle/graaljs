@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,11 +84,14 @@ public final class CommonJSResolution {
     public static final String JSON_EXT = ".json";
     public static final String NODE_EXT = ".node";
 
+    private static final String NODE_PREFIX = "node:";
+
     private CommonJSResolution() {
     }
 
-    public static boolean hasCoreModuleReplacement(JSContext context, String moduleIdentifier) {
-        return context.getContextOptions().getCommonJSRequireBuiltins().containsKey(moduleIdentifier);
+    public static String getCoreModuleReplacement(JSContext context, String moduleIdentifier) {
+        String identifier = moduleIdentifier.startsWith(NODE_PREFIX) ? moduleIdentifier.substring(NODE_PREFIX.length()) : moduleIdentifier;
+        return context.getContextOptions().getCommonJSRequireBuiltins().get(identifier);
     }
 
     static String getCurrentFileNameFromStack() {

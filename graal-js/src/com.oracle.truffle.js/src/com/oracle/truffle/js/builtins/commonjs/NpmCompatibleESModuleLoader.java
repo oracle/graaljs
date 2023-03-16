@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,7 @@ import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.JS_EXT;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.MJS_EXT;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.NODE_MODULES;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.hasCoreModuleReplacement;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.getCoreModuleReplacement;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.joinPaths;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadJsonObject;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
@@ -125,8 +125,9 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
         String specifier = moduleRequest.getSpecifier().toJavaStringUncached();
         log("IMPORT resolve ", specifier);
-        if (hasCoreModuleReplacement(realm.getContext(), specifier)) {
-            return loadCoreModuleReplacement(referencingModule, moduleRequest);
+        String moduleReplacementName = getCoreModuleReplacement(realm.getContext(), specifier);
+        if (moduleReplacementName != null) {
+            return loadCoreModuleReplacement(referencingModule, moduleRequest, moduleReplacementName);
         }
         try {
             TruffleLanguage.Env env = realm.getEnv();
@@ -156,7 +157,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         }
     }
 
-    private JSModuleRecord loadCoreModuleReplacement(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
+    private JSModuleRecord loadCoreModuleReplacement(ScriptOrModule referencingModule, ModuleRequest moduleRequest, String moduleReplacementName) {
         String specifier = moduleRequest.getSpecifier().toJavaStringUncached();
         log("IMPORT resolve built-in ", specifier);
         JSModuleRecord existingModule = moduleMap.get(specifier);
@@ -164,9 +165,8 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             log("IMPORT resolve built-in from cache ", specifier);
             return existingModule;
         }
-        String moduleReplacementName = realm.getContext().getContextOptions().getCommonJSRequireBuiltins().get(specifier);
         Source src;
-        if (moduleReplacementName != null && moduleReplacementName.endsWith(MJS_EXT)) {
+        if (moduleReplacementName.endsWith(MJS_EXT)) {
             URI maybeUri = asURI(moduleReplacementName);
             if (maybeUri != null) {
                 // Load from URI
@@ -193,7 +193,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             }
         } else {
             // Else, try loading as commonjs built-in module replacement
-            return tryLoadingAsCommonjsModule(moduleRequest.getSpecifier().toJavaStringUncached());
+            return tryLoadingAsCommonjsModule(specifier);
         }
         JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, src);
         JSModuleRecord record = new JSModuleRecord(parsedModule, this);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,7 @@ import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.JSON_EX
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.JS_EXT;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.MJS_EXT;
 import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.NODE_EXT;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.hasCoreModuleReplacement;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.getCoreModuleReplacement;
 
 import java.util.Map;
 import java.util.Objects;
@@ -170,14 +170,11 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     @TruffleBoundary
     private Object requireImpl(String moduleIdentifier, TruffleFile entryPath, JSRealm realm) {
         log("required module '", moduleIdentifier, "' from path ", entryPath);
-        if (hasCoreModuleReplacement(getContext(), moduleIdentifier)) {
-            String moduleReplacementName = getContext().getContextOptions().getCommonJSRequireBuiltins().get(moduleIdentifier);
-            if (moduleReplacementName != null && !moduleReplacementName.isEmpty()) {
-                log("using module replacement for module '", moduleIdentifier, "' with ", moduleReplacementName);
-                return requireImpl(moduleReplacementName, getRequireCwd(getContext(), realm.getEnv()), realm);
-            }
-            // no core module replacement alias was found: continue and search in the FS.
-        }
+        String moduleReplacementName = getCoreModuleReplacement(getContext(), moduleIdentifier);
+        if (moduleReplacementName != null) {
+            log("using module replacement for module '", moduleIdentifier, "' with ", moduleReplacementName);
+            return requireImpl(moduleReplacementName, getRequireCwd(getContext(), realm.getEnv()), realm);
+        } // no core module replacement alias was found: continue and search in the FS.
         TruffleFile maybeModule;
         try {
             maybeModule = CommonJSResolution.resolve(realm, moduleIdentifier, entryPath);
