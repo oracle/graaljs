@@ -106,7 +106,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                     @Cached ListSizeNode listSize,
                     @Cached ListGetNode listGet,
                     @Cached JSClassProfile classProfile,
-                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared TruffleString.EqualNode equalsNode) {
         List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(source, classProfile);
         int size = listSize.execute(ownPropertyKeys);
         for (int i = 0; i < size; i++) {
@@ -145,7 +145,9 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop,
                     @Cached ImportValueNode importValue,
                     @Cached JSToStringNode toString,
-                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared TruffleString.EqualNode equalsNode,
+                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         if (objInterop.isNull(from)) {
             return target;
         }
@@ -172,9 +174,9 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                 for (long i = 0; i < length; i++) {
                     Object key = arrayInterop.readArrayElement(members, i);
                     assert InteropLibrary.getUncached().isString(key);
-                    TruffleString stringKey = Strings.interopAsTruffleString(stringInterop, key);
+                    TruffleString stringKey = Strings.interopAsTruffleString(key, stringInterop, switchEncodingNode);
                     if (!isExcluded(withExcluded, excludedItems, stringKey, equalsNode)) {
-                        Object value = objInterop.readMember(from, Strings.toJavaString(stringKey));
+                        Object value = objInterop.readMember(from, Strings.toJavaString(toJavaStringNode, stringKey));
                         JSRuntime.createDataPropertyOrThrow(target, stringKey, importValue.executeWithTarget(value));
                     }
                 }

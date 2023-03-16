@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -361,6 +362,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class JSFunctionToStringNode extends JSBuiltinNode {
 
         public JSFunctionToStringNode(JSContext context, JSBuiltin builtin) {
@@ -395,20 +397,21 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @SuppressWarnings("unused")
         @Specialization(guards = {"isES2019OrLater()", "!isJSFunction(fnObj)", "isCallable.executeBoolean(fnObj)"}, limit = "1")
         protected TruffleString toStringCallable(Object fnObj,
-                        @Cached @Shared("isCallable") IsCallableNode isCallable,
-                        @CachedLibrary("fnObj") InteropLibrary interop) {
-            if (interop.hasExecutableName(fnObj)) {
-                try {
-                    Object name = interop.getExecutableName(fnObj);
-                    return getNameIntl(InteropLibrary.getUncached().asTruffleString(name));
-                } catch (UnsupportedMessageException e) {
+                        @Cached @Shared IsCallableNode isCallable,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interopStr,
+                        @Cached TruffleString.SwitchEncodingNode switchEncoding) {
+            try {
+                Object name = null;
+                if (interop.hasExecutableName(fnObj)) {
+                    name = interop.getExecutableName(fnObj);
+                } else if (interop.isMetaObject(fnObj)) {
+                    name = interop.getMetaSimpleName(fnObj);
                 }
-            } else if (interop.isMetaObject(fnObj)) {
-                try {
-                    Object name = interop.getMetaSimpleName(fnObj);
-                    return getNameIntl(InteropLibrary.getUncached().asTruffleString(name));
-                } catch (UnsupportedMessageException e) {
+                if (name != null) {
+                    return getNameIntl(Strings.interopAsTruffleString(name, interopStr, switchEncoding));
                 }
+            } catch (UnsupportedMessageException e) {
             }
             return Strings.FUNCTION_NATIVE_CODE;
         }
@@ -416,7 +419,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @SuppressWarnings("unused")
         @Specialization(guards = {"isES2019OrLater()", "!isCallable.executeBoolean(fnObj)"}, limit = "1")
         protected TruffleString toStringNotCallable(Object fnObj,
-                        @Cached @Shared("isCallable") IsCallableNode isCallable) {
+                        @Cached @Shared IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(fnObj);
         }
 

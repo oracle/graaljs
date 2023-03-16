@@ -49,7 +49,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -364,11 +363,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return new WebAssemblyHostFunction(context, fn, typeInfo);
     }
 
-    private static TruffleString asTString(Object string) throws UnsupportedMessageException {
+    private static TruffleString asTString(Object string) {
         if (string instanceof String) {
             return Strings.fromJavaString((String) string);
         }
-        return InteropLibrary.getUncached(string).asTruffleString(string);
+        return Strings.interopAsTruffleString(string);
     }
 
 }

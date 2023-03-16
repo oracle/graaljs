@@ -301,11 +301,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization(guards = "isJavaInteropClass(type, typeInterop)")
-        protected TruffleString typeNameJavaInteropClass(Object type,
+        protected Object typeNameJavaInteropClass(Object type,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary typeInterop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop) {
+                        @Cached ImportValueNode importValue) {
             try {
-                return stringInterop.asTruffleString(typeInterop.getMetaQualifiedName(type));
+                return importValue.executeWithTarget(typeInterop.getMetaQualifiedName(type));
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(type, e, "Java.typeName", this);
             }

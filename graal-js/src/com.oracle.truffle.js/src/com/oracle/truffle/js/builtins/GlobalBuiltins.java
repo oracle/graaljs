@@ -1243,21 +1243,20 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected Object indirectEvalString(TruffleString source) {
+        protected Object indirectEvalString(TruffleString source,
+                        @Cached @Shared TruffleString.ToJavaStringNode toJavaString) {
             JSRealm realm = getRealm();
-            return parseIndirectEval(realm, Strings.toJavaString(source)).runEval(callNode, realm);
+            return parseIndirectEval(realm, Strings.toJavaString(toJavaString, source)).runEval(callNode, realm);
         }
 
         @InliningCutoff
         @Specialization(guards = "isForeignObject(source)", limit = "3")
         protected Object indirectEvalForeignObject(Object source,
-                        @CachedLibrary("source") InteropLibrary interop) {
+                        @CachedLibrary("source") InteropLibrary interop,
+                        @Cached TruffleString.SwitchEncodingNode switchEncoding,
+                        @Cached @Shared TruffleString.ToJavaStringNode toJavaString) {
             if (interop.isString(source)) {
-                try {
-                    return indirectEvalString(interop.asTruffleString(source));
-                } catch (UnsupportedMessageException ex) {
-                    throw Errors.createTypeErrorInteropException(source, ex, "asString", this);
-                }
+                return indirectEvalString(Strings.interopAsTruffleString(source, interop, switchEncoding), toJavaString);
             } else {
                 return source;
             }
@@ -1311,7 +1310,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return source;
         }
 
-        @Specialization(guards = "isJSDynamicObject(object)")
+        @Specialization
         public JSDynamicObject indirectEvalJSType(JSDynamicObject object) {
             return object;
         }
@@ -1715,7 +1714,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     Object hashKey = membersInterop.readArrayElement(members, i);
                     InteropLibrary keyInterop = InteropLibrary.getUncached(hashKey);
                     if (keyInterop.isString(hashKey)) {
-                        TruffleString stringKey = keyInterop.asTruffleString(hashKey);
+                        TruffleString stringKey = Strings.interopAsTruffleString(hashKey, keyInterop);
                         Object value = DynamicObjectLibrary.getUncached().getOrDefault(globalObject, stringKey, Undefined.instance);
                         if ((value == Undefined.instance || value instanceof ScriptEngineGlobalScopeBindingsPropertyProxy &&
                                         ((ScriptEngineGlobalScopeBindingsPropertyProxy) value).get(globalObject) == Undefined.instance) &&

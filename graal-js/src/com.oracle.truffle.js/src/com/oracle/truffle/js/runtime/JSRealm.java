@@ -81,7 +81,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
@@ -2924,11 +2923,7 @@ public class JSRealm {
             Object custom = JSInteropUtil.call(customEsmPathMappingCallback, args);
             InteropLibrary interopLibrary = InteropLibrary.getUncached();
             if (interopLibrary.isString(custom)) {
-                try {
-                    return interopLibrary.asTruffleString(custom);
-                } catch (UnsupportedMessageException e) {
-                    throw Errors.shouldNotReachHere(e);
-                }
+                return Strings.interopAsTruffleString(custom);
             } else {
                 throw Errors.createError("Cannot load ES module: " + specifier);
             }

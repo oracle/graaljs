@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -161,7 +162,8 @@ public abstract class EnumerateNode extends JavaScriptNode {
                     @Bind("this") Node node,
                     @CachedLibrary("iteratedObject") InteropLibrary interop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
-                    @Cached InlinedBranchProfile notIterable) {
+                    @Cached InlinedBranchProfile notIterable,
+                    @Cached TruffleString.SwitchEncodingNode switchEncoding) {
         try {
             if (!interop.isNull(iteratedObject)) {
                 if (values) {
@@ -176,8 +178,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
                 }
 
                 if (interop.isString(iteratedObject)) {
-                    TruffleString string = interop.asTruffleString(iteratedObject);
-                    return enumerateString(string);
+                    return enumerateString(Strings.interopAsTruffleString(iteratedObject, interop, switchEncoding));
                 }
 
                 if (interop.hasHashEntries(iteratedObject)) {

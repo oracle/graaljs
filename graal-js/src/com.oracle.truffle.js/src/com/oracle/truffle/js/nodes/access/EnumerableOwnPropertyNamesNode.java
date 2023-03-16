@@ -174,7 +174,9 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary asString,
                     @Cached ImportValueNode importValue,
-                    @Cached @Exclusive InlinedBranchProfile errorBranch) {
+                    @Cached @Exclusive InlinedBranchProfile errorBranch,
+                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         try {
             long arraySize = 0;
             if (interop.hasArrayElements(obj)) {
@@ -211,10 +213,10 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
                 for (int i = 0; i < memberCount; i++) {
                     Object objectKey = members.readArrayElement(keysObj, i);
                     assert InteropLibrary.getUncached().isString(objectKey);
-                    TruffleString key = Strings.interopAsTruffleString(asString, objectKey);
+                    TruffleString key = Strings.interopAsTruffleString(objectKey, asString, switchEncodingNode);
                     Object element;
                     if (values) {
-                        String javaStringKey = Strings.toJavaString(key);
+                        String javaStringKey = Strings.toJavaString(toJavaStringNode, key);
                         Object value = importValue.executeWithTarget(interop.readMember(obj, javaStringKey));
                         if (keys) {
                             element = createKeyValuePair(key, value);

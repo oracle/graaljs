@@ -46,9 +46,9 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -1114,7 +1114,7 @@ public final class JSRuntime {
             } else if (interop.hasArrayElements(value)) {
                 return foreignArrayToString(value, allowSideEffects, format, depth);
             } else if (interop.isString(value)) {
-                return format.quoteString() ? Strings.fromJavaString(quote(interop.asString(value))) : interop.asTruffleString(value);
+                return format.quoteString() ? Strings.fromJavaString(quote(interop.asString(value))) : Strings.interopAsTruffleString(value);
             } else if (interop.isBoolean(value)) {
                 return booleanToString(interop.asBoolean(value));
             } else if (interop.isNumber(value)) {
@@ -1130,11 +1130,11 @@ public final class JSRuntime {
             } else if ((JavaScriptLanguage.getCurrentEnv()).isHostObject(value)) {
                 return hostObjectToString(value, interop);
             } else if (interop.isMetaObject(value)) {
-                return InteropLibrary.getUncached().asTruffleString(interop.getMetaQualifiedName(value));
+                return Strings.interopAsTruffleString(interop.getMetaQualifiedName(value));
             } else if (interop.hasMembers(value) && !(interop.isExecutable(value) || interop.isInstantiable(value))) {
                 return foreignObjectToString(value, allowSideEffects, format, depth);
             } else {
-                return InteropLibrary.getUncached().asTruffleString(interop.toDisplayString(value, allowSideEffects));
+                return Strings.interopAsTruffleString(interop.toDisplayString(value, allowSideEffects));
             }
         } catch (InteropException e) {
             return Strings.UC_OBJECT;
@@ -1143,10 +1143,10 @@ public final class JSRuntime {
 
     private static TruffleString hostObjectToString(Object value, InteropLibrary interop) throws UnsupportedMessageException {
         if (interop.isMetaObject(value)) {
-            return Strings.concatAll(Strings.JAVA_CLASS_BRACKET, InteropLibrary.getUncached().asTruffleString(interop.getMetaQualifiedName(value)), Strings.BRACKET_CLOSE);
+            return Strings.concatAll(Strings.JAVA_CLASS_BRACKET, Strings.interopAsTruffleString(interop.getMetaQualifiedName(value)), Strings.BRACKET_CLOSE);
         } else {
             Object metaObject = interop.getMetaObject(value);
-            return Strings.concatAll(Strings.JAVA_OBJECT_BRACKET, InteropLibrary.getUncached().asTruffleString(InteropLibrary.getUncached().getMetaQualifiedName(metaObject)), Strings.BRACKET_CLOSE);
+            return Strings.concatAll(Strings.JAVA_OBJECT_BRACKET, Strings.interopAsTruffleString(InteropLibrary.getUncached().getMetaQualifiedName(metaObject)), Strings.BRACKET_CLOSE);
         }
     }
 

@@ -40,20 +40,22 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
@@ -67,6 +69,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
  *
  * @see JSRuntime#importValue(Object)
  */
+@ImportStatic(JSConfig.class)
 @GenerateUncached
 public abstract class ImportValueNode extends JavaScriptBaseNode {
     public abstract Object executeWithTarget(Object target);
@@ -93,7 +96,7 @@ public abstract class ImportValueNode extends JavaScriptBaseNode {
 
     @Specialization
     static TruffleString fromTruffleString(TruffleString value,
-                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode) {
+                    @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode) {
         return switchEncodingNode.execute(value, TruffleString.Encoding.UTF_16);
     }
 
@@ -173,13 +176,11 @@ public abstract class ImportValueNode extends JavaScriptBaseNode {
     }
 
     @Fallback
-    static TruffleString fallbackCase(Object value) {
-        if (InteropLibrary.getUncached().isString(value)) {
-            try {
-                return InteropLibrary.getUncached().asTruffleString(value).switchEncodingUncached(TruffleString.Encoding.UTF_16);
-            } catch (UnsupportedMessageException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
+    static TruffleString fallbackCase(Object value,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                    @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode) {
+        if (interop.isString(value)) {
+            return Strings.interopAsTruffleString(value, interop, switchEncodingNode);
         }
         throw Errors.createTypeErrorUnsupportedInteropType(value);
     }

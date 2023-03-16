@@ -260,7 +260,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             List<Pair<Integer, TruffleString>> pairs = new ArrayList<>(keys.size());
             for (Object key : keys) {
                 int groupIndex = InteropReadIntMemberNode.getUncached().execute(null, namedCaptureGroups, InteropLibrary.getUncached().asString(key));
-                TruffleString groupName = InteropLibrary.getUncached().asTruffleString(key);
+                TruffleString groupName = Strings.interopAsTruffleString(key);
                 pairs.add(new Pair<>(groupIndex, groupName));
             }
             Collections.sort(pairs, NAMED_GROUPS_COMPARATOR);
