@@ -426,6 +426,17 @@ public final class JSRuntime {
         return Boolean.TRUE;
     }
 
+    private static Object toPrimitiveHintNumber(Object value) {
+        if (isObject(value)) {
+            return JSObject.toPrimitive((JSObject) value, JSToPrimitiveNode.Hint.Number);
+        } else if (isForeignObject(value)) {
+            return toPrimitiveFromForeign(value, JSToPrimitiveNode.Hint.Number);
+        } else {
+            assert IsPrimitiveNode.getUncached().executeBoolean(value) : value;
+            return value;
+        }
+    }
+
     /**
      * Implementation of ECMA 9.3 "ToNumber".
      *
@@ -434,22 +445,21 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Number toNumber(Object value) {
-        Object primitive;
-        if (isObject(value)) {
-            primitive = JSObject.toPrimitive((JSDynamicObject) value, JSToPrimitiveNode.Hint.Number);
-        } else if (isForeignObject(value)) {
-            primitive = toPrimitiveFromForeign(value, JSToPrimitiveNode.Hint.Number);
-        } else {
-            primitive = value;
-        }
+        Object primitive = toPrimitiveHintNumber(value);
         return toNumberFromPrimitive(primitive);
     }
 
     @TruffleBoundary
     public static Object toNumeric(Object value) {
-        Object primitive = isObject(value) ? JSObject.toPrimitive((JSDynamicObject) value, JSToPrimitiveNode.Hint.Number) : value;
-        if (primitive instanceof BigInt) {
-            return primitive;
+        Object primitive = toPrimitiveHintNumber(value);
+        if (primitive instanceof BigInt bigInt) {
+            if (!bigInt.isForeign()) {
+                return primitive;
+            } else {
+                return bigInt.doubleValue();
+            }
+        } else if (primitive instanceof Long longValue) {
+            return longValue.doubleValue();
         } else {
             return toNumberFromPrimitive(primitive);
         }
@@ -469,12 +479,19 @@ public final class JSRuntime {
             return stringToNumber((TruffleString) value);
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
-        } else if (value instanceof BigInt) {
-            throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value");
-        } else if (value instanceof Number) {
-            assert isJavaPrimitive(value) : value.getClass().getName();
-            return (Number) value;
+        } else if (value instanceof BigInt bigInt) {
+            if (bigInt.isForeign()) {
+                return bigInt.doubleValue();
+            } else {
+                throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value");
+            }
+        } else if (value instanceof Long longValue) {
+            return longValue.doubleValue();
         }
+        throw toNumberTypeError(value);
+    }
+
+    private static JSException toNumberTypeError(Object value) {
         assert false : "should never reach here, type " + value.getClass().getName() + " not handled.";
         throw Errors.createTypeErrorCannotConvertToNumber(Strings.toJavaString(safeToString(value)));
     }
