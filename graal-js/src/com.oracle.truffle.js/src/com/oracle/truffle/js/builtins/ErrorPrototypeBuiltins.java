@@ -54,6 +54,7 @@ import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototy
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeToStringNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeCauseNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeMessageNodeGen;
+import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeNameNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeStackNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -157,11 +158,11 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             if (Strings.length(strMessage) == 0) {
                 return strName;
             }
-            return toStringIntl(strName, strMessage);
+            return concatNameAndMessage(strName, strMessage);
         }
 
         @TruffleBoundary
-        private static Object toStringIntl(TruffleString strName, TruffleString strMessage) {
+        private static Object concatNameAndMessage(TruffleString strName, TruffleString strMessage) {
             return Strings.concatAll(strName, Strings.COLON_SPACE, strMessage);
         }
 
@@ -207,6 +208,7 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
         public enum ForeignError implements BuiltinEnum<ForeignError> {
             cause(0),
             message(0),
+            name(0),
             stack(0);
 
             private final int length;
@@ -233,6 +235,8 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
                     return ForeignErrorPrototypeCauseNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
                 case message:
                     return ForeignErrorPrototypeMessageNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case name:
+                    return ForeignErrorPrototypeNameNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
                 case stack:
                     return ForeignErrorPrototypeStackNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             }
@@ -262,6 +266,31 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
                 }
             }
             return Strings.EMPTY_STRING;
+        }
+
+    }
+
+    @ImportStatic(JSConfig.class)
+    public abstract static class ForeignErrorPrototypeNameNode extends JSBuiltinNode {
+
+        public ForeignErrorPrototypeNameNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "InteropLibraryLimit")
+        protected Object getName(Object error,
+                        @CachedLibrary("error") InteropLibrary interop,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interopMeta,
+                        @Cached ImportValueNode importNode) {
+            try {
+                if (interop.isException(error) && interop.hasMetaObject(error)) {
+                    return importNode.executeWithTarget(interopMeta.getMetaQualifiedName(interop.getMetaObject(error)));
+                }
+            } catch (UnsupportedMessageException e) {
+                // Interop contract violation
+                assert false : e;
+            }
+            return Strings.UC_ERROR;
         }
 
     }
