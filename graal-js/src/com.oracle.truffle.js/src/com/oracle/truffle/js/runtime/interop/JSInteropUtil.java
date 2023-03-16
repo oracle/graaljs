@@ -177,7 +177,11 @@ public final class JSInteropUtil {
             } else if (interop.isString(obj)) {
                 return interop.asTruffleString(obj);
             } else if (interop.isNumber(obj)) {
-                if (interop.fitsInBigInteger(obj)) {
+                if (interop.fitsInInt(obj)) {
+                    return interop.asInt(obj);
+                } else if (interop.fitsInLong(obj)) {
+                    return interop.asLong(obj);
+                } else if (interop.fitsInBigInteger(obj)) {
                     return BigInt.fromForeignBigInteger(interop.asBigInteger(obj));
                 } else if (interop.fitsInDouble(obj)) {
                     return interop.asDouble(obj);
