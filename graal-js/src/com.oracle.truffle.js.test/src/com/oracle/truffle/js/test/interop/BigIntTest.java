@@ -276,7 +276,7 @@ public class BigIntTest {
                 assertTrue(message, looselyEqual.execute(bigInteger, bigInteger).asBoolean());
 
                 boolean isJSBigInt = isJSBigInt(jsValue);
-                boolean sameNumType = isJSBigInt == !bigIntegerAsValue.fitsInDouble();
+                boolean sameNumType = !isJSBigInt;
                 /*
                  * '===' does not convert the value; a comparison between a numeric value and a host
                  * object always returns false.
@@ -322,9 +322,8 @@ public class BigIntTest {
                     assertTrue(message, strictlyEqual.execute(bigInteger, bigInteger.longValue()).asBoolean());
                     assertTrue(message, strictlyEqual.execute(bigInteger.longValue(), bigInteger).asBoolean());
 
-                    boolean fitsOnlyInBigInt = bigIntegerAsValue.fitsInLong() && !bigIntegerAsValue.fitsInDouble();
-                    assertEquals(message, fitsOnlyInBigInt, strictlyEqual.execute(bigIntegerAsJSBigInt, bigInteger.longValue()).asBoolean());
-                    assertEquals(message, fitsOnlyInBigInt, strictlyEqual.execute(bigInteger.longValue(), bigIntegerAsJSBigInt).asBoolean());
+                    assertFalse(message, strictlyEqual.execute(bigIntegerAsJSBigInt, bigInteger.longValue()).asBoolean());
+                    assertFalse(message, strictlyEqual.execute(bigInteger.longValue(), bigIntegerAsJSBigInt).asBoolean());
                 }
                 if (bigIntegerAsValue.fitsInDouble()) {
                     assertTrue(message, looselyEqual.execute(bigInteger, bigInteger.doubleValue()).asBoolean());
