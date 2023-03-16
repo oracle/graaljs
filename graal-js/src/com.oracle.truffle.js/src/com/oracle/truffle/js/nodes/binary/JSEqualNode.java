@@ -340,18 +340,18 @@ public abstract class JSEqualNode extends JSCompareNode {
                     @Cached LongToBigIntNode longToBigIntA,
                     @Cached LongToBigIntNode longToBigIntB) {
         assert a != null && b != null;
-        boolean isAPrimitive = isPrimitiveNode.executeBoolean(a);
-        boolean isBPrimitive = isPrimitiveNode.executeBoolean(b);
-        if (!isAPrimitive && !isBPrimitive) {
-            // If both are of type Object, don't attempt ToPrimitive conversion.
-            return aInterop.isIdentical(a, b, bInterop);
-        }
         // If at least one is nullish => both need to be nullish to be equal
         if (isNullish(a, aInterop)) {
             return isNullish(b, bInterop);
         } else if (isNullish(b, bInterop)) {
             assert !isNullish(a, bInterop);
             return false;
+        }
+        boolean isAPrimitive = isPrimitiveNode.executeBoolean(a);
+        boolean isBPrimitive = isPrimitiveNode.executeBoolean(b);
+        if (!isAPrimitive && !isBPrimitive) {
+            // If both are of type Object, don't attempt ToPrimitive conversion.
+            return aInterop.isIdentical(a, b, bInterop);
         }
         // If one of them is primitive, we attempt to convert the other one ToPrimitive.
         // Foreign primitive values always have to be converted to JS primitive values.
