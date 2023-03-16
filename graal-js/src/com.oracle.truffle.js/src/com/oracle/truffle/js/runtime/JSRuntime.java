@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -456,9 +455,9 @@ public final class JSRuntime {
         }
     }
 
-    @TruffleBoundary
-    public static Number toNumberFromPrimitive(Object value) {
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, isNumber(value))) {
+    private static Number toNumberFromPrimitive(Object value) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (isNumber(value)) {
             return (Number) value;
         } else if (value == Undefined.instance) {
             return Double.NaN;
@@ -894,7 +893,7 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static TruffleString toString(Object value) {
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, Strings.isTString(value))) {
+        if (value instanceof TruffleString) {
             return (TruffleString) value;
         } else if (value == Undefined.instance) {
             return Undefined.NAME;
@@ -1292,7 +1291,7 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static JSException toStringTypeError(Object value) {
+    private static JSException toStringTypeError(Object value) {
         String what = (value == null ? "null" : (JSDynamicObject.isJSDynamicObject(value) ? Strings.toJavaString(JSObject.defaultToString((JSDynamicObject) value)) : value.getClass().getName()));
         throw Errors.createTypeErrorCannotConvertToString(what);
     }
