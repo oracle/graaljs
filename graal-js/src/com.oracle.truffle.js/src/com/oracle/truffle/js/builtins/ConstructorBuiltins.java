@@ -160,7 +160,6 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
-import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -2003,15 +2002,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected final BigInt toBigInt(Object value,
-                        @Cached JSNumberToBigIntNode numberToBigIntNode,
-                        @Cached JSToBigIntNode.JSPrimitiveToBigIntNode toBigIntNode,
+                        @Cached JSToBigIntNode.CoercePrimitiveToBigIntNode toBigIntNode,
                         @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
             Object primitive = toPrimitiveNode.execute(value);
-            BigInt bigInt = numberToBigIntNode.executeBigIntIfNumberOrNull(primitive);
-            if (bigInt == null) {
-                bigInt = toBigIntNode.executeBigInt(this, primitive);
-            }
-            return bigInt;
+            return toBigIntNode.executeBigInt(this, primitive);
         }
     }
 

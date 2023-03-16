@@ -54,6 +54,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 
@@ -145,6 +146,68 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
             } catch (NumberFormatException e) {
                 throw Errors.createErrorCannotConvertToBigInt(JSErrorType.SyntaxError, value, node);
             }
+        }
+    }
+
+    /**
+     * Implementation of the ToBigInt conversion performed by the BigInt(argument) where the
+     * argument has already been converted ToPrimitive, i.e.:
+     *
+     * If prim is a Number, return NumberToBigInt(prim), otherwise ToBigInt(prim).
+     *
+     * @see JSNumberToBigIntNode
+     */
+    @GenerateInline
+    @GenerateCached(false)
+    public abstract static class CoercePrimitiveToBigIntNode extends JavaScriptBaseNode {
+
+        public abstract BigInt executeBigInt(Node node, Object value);
+
+        @Specialization
+        protected static BigInt doBoolean(boolean value) {
+            return value ? BigInt.ONE : BigInt.ZERO;
+        }
+
+        @Specialization(guards = "!value.isForeign()")
+        protected static BigInt doBigInt(BigInt value) {
+            return value;
+        }
+
+        @Specialization(guards = "value.isForeign()")
+        protected static BigInt doForeignBigInt(BigInt value) {
+            return value.clearForeign();
+        }
+
+        @Specialization
+        protected static BigInt doInteger(int value) {
+            return BigInt.valueOf(value);
+        }
+
+        @Specialization
+        protected static BigInt doSafeInteger(SafeInteger value) {
+            return BigInt.valueOf(value.longValue());
+        }
+
+        @Specialization
+        protected static BigInt doLong(long value) {
+            return BigInt.valueOf(value);
+        }
+
+        @SuppressWarnings("truffle-inlining")
+        @Specialization
+        protected static BigInt doDouble(double value,
+                        @Cached JSNumberToBigIntNode numberToBigInt) {
+            return numberToBigInt.executeBigInt(value);
+        }
+
+        @Specialization(guards = "isSymbol(value) || isNullOrUndefined(value)")
+        protected static BigInt doSymbolNullOrUndefined(Node node, Object value) {
+            throw Errors.createErrorCannotConvertToBigInt(JSErrorType.TypeError, value, node);
+        }
+
+        @Specialization
+        protected static BigInt doString(Node node, TruffleString value) {
+            return JSPrimitiveToBigIntNode.doString(node, value);
         }
     }
 }
