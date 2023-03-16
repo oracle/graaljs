@@ -1129,8 +1129,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             throw Errors.createTypeErrorNotAnObject(target, this);
         }
 
-        @Specialization(guards = {"isJSObject(target)", "isJSDynamicObject(source)"})
-        protected JSDynamicObject bindPropertiesDynamicObject(JSDynamicObject target, JSDynamicObject source) {
+        @Specialization
+        protected JSDynamicObject bindPropertiesFromJSDynamicObject(JSObject target, JSDynamicObject source) {
             JSDynamicObject sourceObject = toJSObject(source);
             boolean extensible = JSObject.isExtensible(target, targetProfile);
             JSClass sourceClass = sourceProfile.getJSClass(sourceObject);
@@ -1153,33 +1153,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return target;
         }
 
-        @Specialization(guards = "isJSObject(target)")
-        protected JSDynamicObject bindProperties(JSDynamicObject target, Symbol source) {
-            return bindPropertiesDynamicObject(target, toJSObject(source));
-        }
-
-        @Specialization(guards = "isJSObject(target)")
-        protected JSDynamicObject bindProperties(JSDynamicObject target, TruffleString source) {
-            return bindPropertiesDynamicObject(target, toJSObject(source));
-        }
-
-        @Specialization(guards = "isJSObject(target)")
-        protected JSDynamicObject bindProperties(JSDynamicObject target, SafeInteger source) {
-            return bindPropertiesDynamicObject(target, toJSObject(source));
-        }
-
-        @Specialization(guards = "isJSObject(target)")
-        protected JSDynamicObject bindProperties(JSDynamicObject target, BigInt source) {
-            return bindPropertiesDynamicObject(target, toJSObject(source));
-        }
-
-        @Specialization(guards = {"isJSObject(target)", "!isTruffleObject(source)"})
-        protected JSDynamicObject bindProperties(JSDynamicObject target, Object source) {
-            return bindPropertiesDynamicObject(target, toJSObject(source));
-        }
-
-        @Specialization(guards = {"isJSObject(target)", "isForeignObject(source)"}, limit = "InteropLibraryLimit")
-        protected JSDynamicObject bindProperties(JSDynamicObject target, Object source,
+        @Specialization(guards = {"isForeignObject(source)"}, limit = "InteropLibraryLimit")
+        protected JSDynamicObject bindPropertiesFromForeign(JSObject target, Object source,
                         @CachedLibrary("source") InteropLibrary interop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members) {
             if (interop.hasMembers(source)) {
@@ -1237,6 +1212,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throw Errors.createTypeErrorNotAnObject(target, this);
             }
             return target;
+        }
+
+        @Specialization(guards = {"!isJSDynamicObject(source)", "!isForeignObject(source)"})
+        protected JSDynamicObject bindPropertiesFromOther(JSObject target, Object source) {
+            return bindPropertiesFromJSDynamicObject(target, toJSObject(source));
         }
 
         private UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(JSDynamicObject obj) {
