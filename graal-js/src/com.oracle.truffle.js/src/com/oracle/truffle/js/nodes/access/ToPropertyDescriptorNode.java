@@ -45,8 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -105,19 +103,18 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
                     @Cached InlinedBranchProfile hasValueBranch,
                     @Cached InlinedBranchProfile hasWritableBranch,
                     @Cached InlinedBranchProfile errorBranch,
-                    @Cached InlinedBranchProfile toBooleanBranch,
                     @Cached IsCallableNode isCallable) {
         PropertyDescriptor desc = PropertyDescriptor.createEmpty();
 
         // 3.
         if (hasEnumerableNode.hasProperty(obj)) {
             hasEnumerableBranch.enter(this);
-            desc.setEnumerable(getBooleanValue(obj, this, getEnumerableNode(), toBooleanNode, toBooleanBranch));
+            desc.setEnumerable(toBooleanNode.executeBoolean(this, getEnumerableNode().getValue(obj)));
         }
         // 4.
         if (hasConfigurableNode.hasProperty(obj)) {
             hasConfigurableBranch.enter(this);
-            desc.setConfigurable(getBooleanValue(obj, this, getConfigurableNode(), toBooleanNode, toBooleanBranch));
+            desc.setConfigurable(toBooleanNode.executeBoolean(this, getConfigurableNode().getValue(obj)));
         }
         // 5.
         boolean hasValue = hasValueNode.hasProperty(obj);
@@ -129,7 +126,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         boolean hasWritable = hasWritableNode.hasProperty(obj);
         if (hasWritable) {
             hasWritableBranch.enter(this);
-            desc.setWritable(getBooleanValue(obj, this, getWritableNode(), toBooleanNode, toBooleanBranch));
+            desc.setWritable(toBooleanNode.executeBoolean(this, getWritableNode().getValue(obj)));
         }
         // 7.
         boolean hasGet = hasGetNode.hasProperty(obj);
@@ -207,21 +204,6 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
             getEnumerableNode = insert(PropertyGetNode.create(JSAttributes.ENUMERABLE, context));
         }
         return getEnumerableNode;
-    }
-
-    private static boolean getBooleanValue(Object target, Node node, PropertyGetNode getNode, JSToBooleanNode toBooleanNode, InlinedBranchProfile toBooleanBranch) {
-        Object value;
-        if (toBooleanBranch.wasEntered(node)) {
-            value = getNode.getValue(target);
-        } else {
-            try {
-                return getNode.getValueBoolean(target);
-            } catch (UnexpectedResultException e) {
-                toBooleanBranch.enter(node);
-                value = e.getResult();
-            }
-        }
-        return toBooleanNode.executeBoolean(node, value);
     }
 
     @Specialization(guards = "!isObjectNode.executeBoolean(obj)", limit = "1")
