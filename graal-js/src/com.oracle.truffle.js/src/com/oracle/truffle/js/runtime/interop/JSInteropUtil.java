@@ -142,7 +142,7 @@ public final class JSInteropUtil {
             if (interop.isBoolean(obj)) {
                 return interop.asBoolean(obj);
             } else if (interop.isString(obj)) {
-                return interop.asTruffleString(obj);
+                return Strings.interopAsTruffleString(obj, interop);
             } else if (interop.isNumber(obj)) {
                 if (interop.fitsInInt(obj)) {
                     return interop.asInt(obj);
@@ -167,7 +167,7 @@ public final class JSInteropUtil {
      * ToNumeric, ToNumber (i.e., coerced to double), or ToBigInt.
      */
     @InliningCutoff
-    public static Object toPrimitiveOrDefaultLossless(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode) {
+    public static Object toPrimitiveOrDefaultLossless(Object obj, Object defaultValue, InteropLibrary interop, TruffleString.SwitchEncodingNode switchEncoding, Node originatingNode) {
         if (interop.isNull(obj)) {
             return Null.instance;
         }
@@ -175,7 +175,7 @@ public final class JSInteropUtil {
             if (interop.isBoolean(obj)) {
                 return interop.asBoolean(obj);
             } else if (interop.isString(obj)) {
-                return interop.asTruffleString(obj);
+                return Strings.interopAsTruffleString(obj, interop, switchEncoding);
             } else if (interop.isNumber(obj)) {
                 if (interop.fitsInInt(obj)) {
                     return interop.asInt(obj);

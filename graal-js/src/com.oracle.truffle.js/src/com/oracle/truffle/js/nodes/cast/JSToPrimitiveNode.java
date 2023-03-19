@@ -224,8 +224,9 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
                     @Exclusive @Cached("createGetToPrimitive()") PropertyGetNode getToPrimitive,
                     @Exclusive @Cached IsPrimitiveNode isPrimitive,
                     @Exclusive @Cached("createCall()") JSFunctionCallNode callExoticToPrim,
-                    @Exclusive @Cached InlinedBranchProfile errorBranch) {
-        Object primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(object, null, interop, this);
+                    @Exclusive @Cached InlinedBranchProfile errorBranch,
+                    @Cached TruffleString.SwitchEncodingNode switchEncoding) {
+        Object primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(object, null, interop, switchEncoding, this);
         if (primitive != null) {
             return primitive;
         }
@@ -256,7 +257,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         }
 
         assert IsPrimitiveNode.getUncached().executeBoolean(primitive) : primitive;
-        primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(primitive, null, resultInterop, this);
+        primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(primitive, null, resultInterop, switchEncoding, this);
         if (primitive != null) {
             return primitive;
         } else {

@@ -324,7 +324,7 @@ public final class JSRuntime {
     public static Object toPrimitiveFromForeign(Object tObj, JSToPrimitiveNode.Hint hint) {
         assert isForeignObject(tObj);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
-        Object primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(tObj, null, interop, null);
+        Object primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(tObj, null, interop, TruffleString.SwitchEncodingNode.getUncached(), null);
         if (primitive != null) {
             return primitive;
         }
@@ -350,7 +350,7 @@ public final class JSRuntime {
             primitive = foreignOrdinaryToPrimitive(tObj, hint == JSToPrimitiveNode.Hint.Default ? JSToPrimitiveNode.Hint.Number : hint, interop);
         }
 
-        primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(primitive, null, InteropLibrary.getUncached(primitive), null);
+        primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(primitive, null, InteropLibrary.getUncached(primitive), TruffleString.SwitchEncodingNode.getUncached(), null);
         if (primitive != null) {
             return primitive;
         } else {
