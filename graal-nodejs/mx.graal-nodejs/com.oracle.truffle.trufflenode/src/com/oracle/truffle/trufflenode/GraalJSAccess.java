@@ -528,16 +528,16 @@ public final class GraalJSAccess {
     }
 
     public int valueTypeForeignNumber(TruffleObject value, InteropLibrary interop, boolean useSharedBuffer) {
+        assert interop.isNumber(value);
         try {
-            return valueType(interop.asDouble(value), useSharedBuffer);
-        } catch (UnsupportedMessageException e) {
-            if (interop.fitsInLong(value)) {
-                try {
-                    return valueType(interop.asLong(value), useSharedBuffer);
-                } catch (UnsupportedMessageException ignore) {
-                    // fall through to error case
-                }
+            if (interop.fitsInDouble(value)) {
+                return valueType(interop.asDouble(value), useSharedBuffer);
+            } else if (interop.fitsInLong(value)) {
+                return valueType((double) interop.asLong(value), useSharedBuffer);
+            } else if (interop.fitsInBigInteger(value)) {
+                return valueType(BigInt.doubleValueOf(interop.asBigInteger(value)), useSharedBuffer);
             }
+        } catch (UnsupportedMessageException e) {
         }
         valueTypeError(value);
         return UNKNOWN_TYPE;
