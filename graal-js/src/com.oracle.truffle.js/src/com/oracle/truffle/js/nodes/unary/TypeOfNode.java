@@ -180,14 +180,12 @@ public abstract class TypeOfNode extends JSUnaryNode {
     @Specialization(guards = "isForeignObject(operand)", limit = "InteropLibraryLimit")
     protected TruffleString doTruffleObject(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
-        if (!interop.hasMembers(operand)) {
-            if (interop.isBoolean(operand)) {
-                return JSBoolean.TYPE_NAME;
-            } else if (interop.isString(operand)) {
-                return JSString.TYPE_NAME;
-            } else if (interop.isNumber(operand)) {
-                return JSNumber.TYPE_NAME;
-            }
+        if (interop.isBoolean(operand)) {
+            return JSBoolean.TYPE_NAME;
+        } else if (interop.isString(operand)) {
+            return JSString.TYPE_NAME;
+        } else if (interop.isNumber(operand)) {
+            return JSNumber.TYPE_NAME;
         }
         if (interop.isExecutable(operand) || interop.isInstantiable(operand) || isHostSymbolInNashornCompatMode(operand)) {
             return JSFunction.TYPE_NAME;

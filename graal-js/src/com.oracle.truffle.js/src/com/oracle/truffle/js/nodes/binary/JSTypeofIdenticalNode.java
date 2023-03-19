@@ -341,15 +341,15 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             return false;
         } else {
             if (type == Type.Boolean) {
-                return interop.isBoolean(value) && !interop.hasMembers(value);
+                return interop.isBoolean(value);
             } else if (type == Type.String) {
-                return interop.isString(value) && !interop.hasMembers(value);
+                return interop.isString(value);
             } else if (type == Type.Number) {
-                return interop.isNumber(value) && !interop.hasMembers(value);
+                return interop.isNumber(value);
             } else if (type == Type.Function) {
                 return isFunction(value, interop);
             } else if (type == Type.Object) {
-                return (interop.hasMembers(value) || !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value)) && !isFunction(value, interop);
+                return (!interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value)) && !isFunction(value, interop);
             } else {
                 return false;
             }
