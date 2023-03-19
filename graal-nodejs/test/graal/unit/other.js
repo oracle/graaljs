@@ -60,6 +60,13 @@ describe('Other', function () {
             util.inspect(Point);
             assert.match(util.inspect(point), /getX/);
         });
+        it('util.inspect should work for java.math.BigInteger', function() {
+            const BigInteger = Java.type('java.math.BigInteger');
+            const Long = Java.type('java.lang.Long');
+            assert.strictEqual(String(2n ** 64n - 2n), util.inspect(BigInteger.valueOf(Long.MAX_VALUE).shiftLeft(1)));
+            assert.strictEqual(String(2n ** 63n - 1n), util.inspect(BigInteger.valueOf(Long.MAX_VALUE)));
+            assert.strictEqual(String(2n ** 63n - 1n), util.inspect(Long.MAX_VALUE));
+        });
     }
     it('should not regress in ExecuteNativeFunctionNode', function () {
         // inspired by a wrong rewrite of ExecuteNativeFunctionNode
