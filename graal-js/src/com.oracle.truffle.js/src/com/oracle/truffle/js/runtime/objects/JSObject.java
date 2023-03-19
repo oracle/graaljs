@@ -157,8 +157,9 @@ public abstract class JSObject extends JSDynamicObject {
                     @CachedLibrary("this") @SuppressWarnings("unused") InteropLibrary self,
                     @Cached(value = "create(language(self).getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Cached(value = "language(self).bindMemberFunctions()", allowUncached = true, neverDefault = false) boolean bindMemberFunctions,
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString,
                     @Cached @Exclusive ExportValueNode exportNode) throws UnknownIdentifierException {
-        TruffleString tStringKey = Strings.fromJavaString(key);
+        TruffleString tStringKey = Strings.fromJavaString(fromJavaString, key);
         JSDynamicObject target = this;
         Object result;
         if (readNode == null) {
@@ -182,7 +183,8 @@ public abstract class JSObject extends JSDynamicObject {
     public final void writeMember(String key, Object value,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Cached ImportValueNode castValueNode,
-                    @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode)
+                    @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode,
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString)
                     throws UnknownIdentifierException, UnsupportedMessageException {
         JSDynamicObject target = this;
         if (testIntegrityLevel(true)) {
@@ -191,7 +193,7 @@ public abstract class JSObject extends JSDynamicObject {
         if (!keyInfo.execute(target, key, KeyInfoNode.WRITABLE)) {
             throw UnknownIdentifierException.create(key);
         }
-        TruffleString tStringKey = Strings.fromJavaString(key);
+        TruffleString tStringKey = Strings.fromJavaString(fromJavaString, key);
         Object importedValue = castValueNode.executeWithTarget(value);
         if (writeNode == null) {
             JSObject.set(target, tStringKey, importedValue, true, null);
@@ -213,11 +215,12 @@ public abstract class JSObject extends JSDynamicObject {
     }
 
     @ExportMessage
-    public final void removeMember(String key) throws UnsupportedMessageException {
+    public final void removeMember(String key,
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString) throws UnsupportedMessageException {
         if (testIntegrityLevel(false)) {
             throw UnsupportedMessageException.create();
         }
-        JSObject.delete(this, Strings.fromJavaString(key), true);
+        JSObject.delete(this, Strings.fromJavaString(fromJavaString, key), true);
     }
 
     @ExportMessage
@@ -230,12 +233,13 @@ public abstract class JSObject extends JSDynamicObject {
     public final Object invokeMember(String id, Object[] args,
                     @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropInvokeNode callNode,
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString,
                     @Cached @Exclusive ExportValueNode exportNode) throws UnsupportedMessageException, UnknownIdentifierException {
         JavaScriptLanguage language = JavaScriptLanguage.get(self);
         JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);
         try {
-            Object result = callNode.execute(this, Strings.fromJavaString(id), args);
+            Object result = callNode.execute(this, Strings.fromJavaString(fromJavaString, id), args);
             return exportNode.execute(result);
         } finally {
             language.interopBoundaryExit(realm);

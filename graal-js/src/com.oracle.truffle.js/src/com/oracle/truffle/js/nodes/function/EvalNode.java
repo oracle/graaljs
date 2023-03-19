@@ -52,7 +52,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -66,7 +65,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -252,13 +250,10 @@ public abstract class EvalNode extends JavaScriptNode {
         @InliningCutoff
         @Specialization(guards = {"isForeignObject(sourceCode)"}, limit = "3")
         protected Object directEvalForeignObject(VirtualFrame frame, Object sourceCode,
-                        @CachedLibrary("sourceCode") InteropLibrary interop) {
+                        @CachedLibrary("sourceCode") InteropLibrary interop,
+                        @Cached TruffleString.SwitchEncodingNode switchEncoding) {
             if (interop.isString(sourceCode)) {
-                try {
-                    return directEvalImpl(frame, interop.asTruffleString(sourceCode));
-                } catch (UnsupportedMessageException ex) {
-                    throw Errors.createTypeErrorInteropException(sourceCode, ex, "asString", this);
-                }
+                return directEvalImpl(frame, Strings.interopAsTruffleString(sourceCode, interop, switchEncoding));
             } else {
                 return sourceCode;
             }

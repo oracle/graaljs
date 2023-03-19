@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.util;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -278,6 +279,7 @@ public final class TRegexUtil {
         }
     }
 
+    @SuppressWarnings("truffle-inlining")
     @GenerateInline
     @GenerateUncached
     @ImportStatic(JSGuards.class)
@@ -286,23 +288,22 @@ public final class TRegexUtil {
         public abstract TruffleString execute(Node node, Object obj);
 
         @Specialization
-        static TruffleString coerceJavaString(String obj) {
-            return Strings.fromJavaString(obj);
+        static TruffleString coerceJavaString(String obj,
+                        @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {
+            return Strings.fromJavaString(fromJavaStringNode, obj);
         }
 
         @Specialization
-        static TruffleString coerceDirect(TruffleString obj) {
-            return obj;
+        static TruffleString coerceDirect(TruffleString obj,
+                        @Cached @Shared TruffleString.SwitchEncodingNode switchEncoding) {
+            return switchEncoding.execute(obj, TruffleString.Encoding.UTF_16);
         }
 
         @Specialization(guards = {"!isTruffleString(obj)", "objs.isString(obj)"}, limit = "3")
         static TruffleString coerce(Object obj,
-                        @CachedLibrary("obj") InteropLibrary objs) {
-            try {
-                return objs.asTruffleString(obj);
-            } catch (UnsupportedMessageException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
+                        @CachedLibrary("obj") InteropLibrary objs,
+                        @Cached @Shared TruffleString.SwitchEncodingNode switchEncoding) {
+            return Strings.interopAsTruffleString(obj, objs, switchEncoding);
         }
     }
 

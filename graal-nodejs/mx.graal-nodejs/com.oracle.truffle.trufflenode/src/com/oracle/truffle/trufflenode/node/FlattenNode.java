@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -114,16 +113,13 @@ abstract class FlattenNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isForeignObject(value)", limit = "3")
     protected static Object doForeignObject(TruffleObject value,
-                    @CachedLibrary("value") InteropLibrary interop) {
+                    @CachedLibrary("value") InteropLibrary interop,
+                    @Cached TruffleString.SwitchEncodingNode switchEncoding) {
         if (interop.isString(value)) {
             // jobject reference in the native wrapper (GraalString)
             // must be jstring (to allow the usage of various String-specific
             // JNI functions) => return the unboxed string
-            try {
-                return interop.asTruffleString(value);
-            } catch (UnsupportedMessageException e) {
-                // fall through
-            }
+            return Strings.interopAsTruffleString(value, interop, switchEncoding);
         }
         return value;
     }

@@ -960,10 +960,7 @@ public final class GraalJSAccess {
         } else if (JSRuntime.isForeignObject(value)) {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
             if (interop.isString(value)) {
-                try {
-                    return interop.asTruffleString(value);
-                } catch (UnsupportedMessageException e) {
-                }
+                return Strings.interopAsTruffleString(value, interop);
             }
             return value;
         } else {
@@ -1051,21 +1048,13 @@ public final class GraalJSAccess {
                 try {
                     Object metaObject = interop.getMetaObject(object);
                     Object interopName = InteropLibrary.getUncached(metaObject).getMetaSimpleName(metaObject);
-                    name = InteropLibrary.getUncached(interopName).asTruffleString(interopName);
+                    name = Strings.interopAsTruffleString(interopName);
                 } catch (UnsupportedMessageException ex) {
                     throw Errors.shouldNotReachHere(ex);
                 }
             }
         }
         return name;
-    }
-
-    private static Object foreignStringToString(Object foreignString) throws UnsupportedMessageException {
-        if (foreignString instanceof TruffleString) {
-            return foreignString;
-        } else {
-            return InteropLibrary.getFactory().getUncached(foreignString).asTruffleString(foreignString);
-        }
     }
 
     private static JSRealm getCurrentRealm() {
@@ -1098,7 +1087,7 @@ public final class GraalJSAccess {
                     long size = membersLibrary.getArraySize(members);
                     for (long i = 0; i < size; i++) {
                         Object key = membersLibrary.readArrayElement(members, i);
-                        names.add(foreignStringToString(key));
+                        names.add(Strings.interopAsTruffleString(key));
                     }
                 }
                 namesArray = names.toArray();
@@ -1178,7 +1167,7 @@ public final class GraalJSAccess {
                     long size = membersLibrary.getArraySize(members);
                     for (long i = 0; i < size; i++) {
                         Object key = membersLibrary.readArrayElement(members, i);
-                        TruffleString stringKey = (TruffleString) foreignStringToString(key);
+                        TruffleString stringKey = Strings.interopAsTruffleString(key);
                         if (!writableOnly || library.isMemberWritable(object, stringKey.toJavaStringUncached())) {
                             keys.add(stringKey);
                         }

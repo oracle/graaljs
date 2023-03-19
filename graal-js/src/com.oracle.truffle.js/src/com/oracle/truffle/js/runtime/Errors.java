@@ -320,6 +320,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorPropertyDescriptorNotAnObject(Object value, Node originatingNode) {
+        return Errors.createTypeError("Property description must be an object: " + JSRuntime.safeToString(value), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorInvalidPrototype(Object value) {
         return Errors.createTypeError("Object prototype may only be an Object or null: " + JSRuntime.safeToString(value));
     }

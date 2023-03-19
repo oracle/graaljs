@@ -436,6 +436,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                         @Cached ImportValueNode toJSType,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString,
                         @Cached InlinedBranchProfile errorBranch) {
             JSDynamicObject result = JSOrdinary.create(getContext(), getRealm());
             try {
@@ -451,7 +452,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         PropertyDescriptor desc = JSInteropUtil.getExistingMemberProperty(thisObj, member, interop, toJSType);
                         if (desc != null) {
                             JSDynamicObject propDesc = fromPropertyDescriptorNode.execute(desc, getContext());
-                            Properties.putWithFlags(putPropDescNode, result, Strings.fromJavaString(member), propDesc, JSAttributes.configurableEnumerableWritable());
+                            Properties.putWithFlags(putPropDescNode, result, Strings.fromJavaString(fromJavaString, member), propDesc, JSAttributes.configurableEnumerableWritable());
                         }
                     }
                 }
@@ -550,7 +551,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toPropertyDescriptorNode = insert(ToPropertyDescriptorNode.create(getContext()));
             }
-            return (PropertyDescriptor) toPropertyDescriptorNode.execute(target);
+            return toPropertyDescriptorNode.execute(target);
         }
 
         @TruffleBoundary
@@ -989,7 +990,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @CachedLibrary("from") InteropLibrary fromInterop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop,
-                        @Cached ImportValueNode toJSType) {
+                        @Cached ImportValueNode toJSType,
+                        @Cached TruffleString.FromJavaStringNode fromJavaString) {
             if (fromInterop.isNull(from)) {
                 return;
             }
@@ -1000,7 +1002,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     Object key = keysInterop.readArrayElement(members, i);
                     String stringKey = Strings.interopAsString(stringInterop, key);
                     Object value = toJSType.executeWithTarget(fromInterop.readMember(from, stringKey));
-                    write.executeWithTargetAndIndexAndValue(to, Strings.fromJavaString(stringKey), value);
+                    write.executeWithTargetAndIndexAndValue(to, Strings.fromJavaString(fromJavaString, stringKey), value);
                 }
             } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
                 throw Errors.createTypeErrorInteropException(from, e, "CopyDataProperties", this);
@@ -1127,8 +1129,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             throw Errors.createTypeErrorNotAnObject(target, this);
         }
 
-        @Specialization(guards = {"isJSObject(target)", "isJSDynamicObject(source)"})
-        protected JSDynamicObject bindPropertiesDynamicObject(JSDynamicObject target, JSDynamicObject source) {
+        @Specialization
+        protected JSDynamicObject bindPropertiesFromJSDynamicObject(JSObject target, JSDynamicObject source) {
             JSDynamicObject sourceObject = toJSObject(source);
             boolean extensible = JSObject.isExtensible(target, targetProfile);
             JSClass sourceClass = sourceProfile.getJSClass(sourceObject);
@@ -1151,33 +1153,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return target;
         }
 
-        @Specialization(guards = "isJSObject(target)")
-        protected JSDynamicObject bindProperties(JSDynamicObject target, Symbol source) {
-            return bindPropertiesDynamicObject(target, toJSObject(source));
-        }
-
-        @Specialization(guards = "isJSObject(target)")
-        protected JSDynamicObject bindProperties(JSDynamicObject target, TruffleString source) {
-            return bindPropertiesDynamicObject(target, toJSObject(source));
-        }
-
-        @Specialization(guards = "isJSObject(target)")
-        protected JSDynamicObject bindProperties(JSDynamicObject target, SafeInteger source) {
-            return bindPropertiesDynamicObject(target, toJSObject(source));
-        }
-
-        @Specialization(guards = "isJSObject(target)")
-        protected JSDynamicObject bindProperties(JSDynamicObject target, BigInt source) {
-            return bindPropertiesDynamicObject(target, toJSObject(source));
-        }
-
-        @Specialization(guards = {"isJSObject(target)", "!isTruffleObject(source)"})
-        protected JSDynamicObject bindProperties(JSDynamicObject target, Object source) {
-            return bindPropertiesDynamicObject(target, toJSObject(source));
-        }
-
-        @Specialization(guards = {"isJSObject(target)", "isForeignObject(source)"}, limit = "InteropLibraryLimit")
-        protected JSDynamicObject bindProperties(JSDynamicObject target, Object source,
+        @Specialization(guards = {"isForeignObject(source)"}, limit = "InteropLibraryLimit")
+        protected JSDynamicObject bindPropertiesFromForeign(JSObject target, Object source,
                         @CachedLibrary("source") InteropLibrary interop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members) {
             if (interop.hasMembers(source)) {
@@ -1235,6 +1212,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throw Errors.createTypeErrorNotAnObject(target, this);
             }
             return target;
+        }
+
+        @Specialization(guards = {"!isJSDynamicObject(source)", "!isForeignObject(source)"})
+        protected JSDynamicObject bindPropertiesFromOther(JSObject target, Object source) {
+            return bindPropertiesFromJSDynamicObject(target, toJSObject(source));
         }
 
         private UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(JSDynamicObject obj) {

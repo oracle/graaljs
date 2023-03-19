@@ -62,7 +62,6 @@ import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -1890,13 +1889,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @InliningCutoff
         @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
         protected TruffleString toStringForeignObject(Object thisObj,
-                        @CachedLibrary("thisObj") InteropLibrary interop) {
+                        @CachedLibrary("thisObj") InteropLibrary interop,
+                        @Cached TruffleString.SwitchEncodingNode switchEncoding) {
             if (interop.isString(thisObj)) {
-                try {
-                    return interop.asTruffleString(thisObj);
-                } catch (UnsupportedMessageException ex) {
-                    throw Errors.createTypeErrorUnboxException(thisObj, ex, this);
-                }
+                return Strings.interopAsTruffleString(thisObj, interop, switchEncoding);
             }
             return toStringOther(thisObj);
         }

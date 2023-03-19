@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -335,8 +335,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             boolean isFirst = true;
             for (long i = 0; i < size; i++) {
                 Object key = keysInterop.readArrayElement(keysObj, i);
-                assert InteropLibrary.getUncached().isString(key);
-                TruffleString stringKey = key instanceof TruffleString ? (TruffleString) key : InteropLibrary.getUncached().asTruffleString(key);
+                TruffleString stringKey = Strings.interopAsTruffleString(key);
                 if (!objInterop.isMemberReadable(obj, Strings.toJavaString(stringKey))) {
                     continue;
                 }

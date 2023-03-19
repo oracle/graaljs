@@ -282,7 +282,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @Cached("create(getContext())") ToPropertyDescriptorNode toPropertyDescriptorNode) {
             ensureJSObject(target);
             Object key = toPropertyKeyNode.execute(propertyKey);
-            PropertyDescriptor descriptor = (PropertyDescriptor) toPropertyDescriptorNode.execute(attributes);
+            PropertyDescriptor descriptor = toPropertyDescriptorNode.execute(attributes);
             return JSObject.defineOwnProperty((JSDynamicObject) target, key, descriptor);
         }
     }

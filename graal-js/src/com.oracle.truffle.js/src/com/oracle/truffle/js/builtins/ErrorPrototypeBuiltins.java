@@ -132,22 +132,19 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization(guards = "!isObjectNode.executeBoolean(thisObj)", limit = "1")
-        protected Object toStringNonObject(Object thisObj,
-                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
-                        @Cached @Shared JSToStringNode toStringNode,
-                        @Cached TruffleString.ConcatNode concatNode) {
-            TruffleString name = toStringNode.executeString(thisObj);
-            String message = Strings.toJavaString(Strings.concat(concatNode, Strings.METHOD_ERROR_PROTOTYPE_TO_STRING_CALLED_ON_INCOMPATIBLE_RECEIVER, name));
-            throw Errors.createTypeError(message, this);
+        protected final Object toStringNonObject(Object thisObj,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
         }
 
         @Specialization(guards = "isObjectNode.executeBoolean(errorObj)", limit = "1")
-        protected Object toStringObject(Object errorObj,
+        protected static Object toStringObject(Object errorObj,
                         @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
                         @Cached("create(NAME, false, getContext())") PropertyGetNode getNameNode,
                         @Cached("create(MESSAGE, false, getContext())") PropertyGetNode getMessageNode,
-                        @Cached @Shared JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode) {
             Object objName = getNameNode.getValue(errorObj);
             TruffleString strName = (objName == Undefined.instance) ? Strings.UC_ERROR : toStringNode.executeString(objName);
             Object objMessage = getMessageNode.getValue(errorObj);

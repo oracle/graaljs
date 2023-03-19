@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -53,6 +54,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -93,7 +95,8 @@ public abstract class ToJSValueNode extends JavaScriptBaseNode {
     final Object convert(Object value,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary isFuncLib,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary funcTypeLib,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary asTStringLib) {
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary asTStringLib,
+                    @Cached TruffleString.SwitchEncodingNode switchEncoding) {
         JSRealm realm = getRealm();
         final Object refNull = realm.getWasmRefNull();
         if (value == refNull) {
@@ -104,7 +107,7 @@ public abstract class ToJSValueNode extends JavaScriptBaseNode {
                 Object isFunc = isFuncLib.execute(isFuncFn, value);
                 if (isFunc instanceof Boolean && (boolean) isFunc) {
                     Object funcTypeFn = realm.getWASMFuncType();
-                    TruffleString funcType = asTStringLib.asTruffleString(funcTypeLib.execute(funcTypeFn, value));
+                    TruffleString funcType = Strings.interopAsTruffleString(funcTypeLib.execute(funcTypeFn, value), asTStringLib, switchEncoding);
                     return JSWebAssemblyInstance.exportFunction(realm.getContext(), realm, value, funcType);
                 } else {
                     return value;

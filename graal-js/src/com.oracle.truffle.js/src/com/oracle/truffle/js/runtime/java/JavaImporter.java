@@ -118,7 +118,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
                     }
                 } else {
                     try {
-                        if (name.equals(InteropLibrary.getUncached().asTruffleString(InteropLibrary.getUncached().getMetaSimpleName(anImport)))) {
+                        if (Strings.equals(name, Strings.interopAsTruffleString(InteropLibrary.getUncached().getMetaSimpleName(anImport)))) {
                             return anImport;
                         }
                     } catch (UnsupportedMessageException e) {

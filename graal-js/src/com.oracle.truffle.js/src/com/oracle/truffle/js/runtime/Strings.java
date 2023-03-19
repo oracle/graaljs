@@ -397,9 +397,6 @@ public final class Strings {
     public static final TruffleString ESCAPE_BACKSLASH = constant("\\\\");
     public static final TruffleString ESCAPE_QUOTE = constant("\\\"");
 
-    public static final TruffleString PROPERTY_DESCRIPTION_MUST_BE_AN_OBJECT = constant("Property description must be an object: ");
-    public static final TruffleString METHOD_ERROR_PROTOTYPE_TO_STRING_CALLED_ON_INCOMPATIBLE_RECEIVER = constant("Method Error.prototype.toString called on incompatible receiver ");
-
     /* WASM */
     public static final TruffleString I_64 = constant("i64");
     public static final TruffleString I_32 = constant("i32");
@@ -615,13 +612,6 @@ public final class Strings {
             return null;
         }
         return node.execute(str, TruffleString.Encoding.UTF_16);
-    }
-
-    public static TruffleString fromCharSequence(CharSequence str) {
-        if (str == null) {
-            return null;
-        }
-        return fromJavaString(str.toString());
     }
 
     public static TruffleString fromLong(long longValue) {
@@ -1007,16 +997,31 @@ public final class Strings {
         return interopAsString(InteropLibrary.getUncached(), key);
     }
 
-    public static TruffleString interopAsTruffleString(Object key) throws UnsupportedMessageException {
-        return interopAsTruffleString(InteropLibrary.getUncached(), key);
-    }
-
     public static String interopAsString(InteropLibrary stringInterop, Object key) throws UnsupportedMessageException {
         return key instanceof String ? (String) key : stringInterop.asString(key);
     }
 
-    public static TruffleString interopAsTruffleString(InteropLibrary stringInterop, Object key) throws UnsupportedMessageException {
-        return key instanceof TruffleString ? (TruffleString) key : stringInterop.asTruffleString(key);
+    public static TruffleString interopAsTruffleString(Object key) {
+        return interopAsTruffleString(key, InteropLibrary.getUncached(), TruffleString.SwitchEncodingNode.getUncached());
+    }
+
+    public static TruffleString interopAsTruffleString(Object key, InteropLibrary stringInterop) {
+        return interopAsTruffleString(key, stringInterop, TruffleString.SwitchEncodingNode.getUncached());
+    }
+
+    public static TruffleString interopAsTruffleString(Object key, InteropLibrary stringInterop, TruffleString.SwitchEncodingNode switchEncodingNode) {
+        assert stringInterop.isString(key) : key;
+        TruffleString truffleString;
+        if (key instanceof TruffleString) {
+            truffleString = (TruffleString) key;
+        } else {
+            try {
+                truffleString = stringInterop.asTruffleString(key);
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(key, e, "asTruffleString", stringInterop);
+            }
+        }
+        return switchEncodingNode.execute(truffleString, TruffleString.Encoding.UTF_16);
     }
 
     public static BigInt parseBigInt(TruffleString s) {

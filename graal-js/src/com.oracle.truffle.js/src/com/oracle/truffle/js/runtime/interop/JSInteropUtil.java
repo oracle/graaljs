@@ -166,8 +166,7 @@ public final class JSInteropUtil {
             List<Object> keys = new ArrayList<>((int) size);
             for (int i = 0; i < size; i++) {
                 Object key = keysInterop.readArrayElement(keysObj, i);
-                assert InteropLibrary.getUncached().isString(key);
-                keys.add(InteropLibrary.getUncached().asTruffleString(key));
+                keys.add(Strings.interopAsTruffleString(key));
             }
             return keys;
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {

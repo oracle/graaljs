@@ -43,16 +43,16 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -300,11 +300,11 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        protected JSDynamicObject bindJSFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args,
+        protected final JSDynamicObject bindJSFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args,
                         @Cached @Shared GetPrototypeNode getPrototypeNode,
                         @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
                         @Cached @Shared("isConstructorProf") InlinedConditionProfile isConstructorProfile,
-                        @Cached InlinedConditionProfile isAsyncProfile,
+                        @Cached @Exclusive InlinedConditionProfile isAsyncProfile,
                         @Cached @Shared("setProtoProf") InlinedConditionProfile setProtoProfile) {
             JSDynamicObject proto = getPrototypeNode.execute(thisFnObj);
 
@@ -316,20 +316,19 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return boundFunction;
         }
 
-        @Specialization(guards = {"!isJSFunction(thisObj)", "isCallableNode.executeBoolean(thisObj)"})
-        protected JSDynamicObject bindOther(Object thisObj, Object thisArg, Object[] args,
-                        @Bind("this") Node node,
+        @Specialization(guards = {"!isJSFunction(thisObj)", "isCallableNode.executeBoolean(thisObj)"}, limit = "1")
+        protected final JSDynamicObject bindOther(Object thisObj, Object thisArg, Object[] args,
                         @SuppressWarnings("unused") @Cached @Shared IsCallableNode isCallableNode,
                         @Cached @Shared GetPrototypeNode getPrototypeNode,
                         @Cached ForeignObjectPrototypeNode foreignPrototypeNode,
                         @Cached IsConstructorNode isConstructorNode,
                         @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
-                        @Cached InlinedConditionProfile isProxyProfile,
+                        @Cached @Exclusive InlinedConditionProfile isProxyProfile,
                         @Cached @Shared("isConstructorProf") InlinedConditionProfile isConstructorProfile,
                         @Cached @Shared("setProtoProf") InlinedConditionProfile setProtoProfile) {
             JSRealm realm = JSRuntime.getFunctionRealm(thisObj, JSRealm.get(this));
             JSDynamicObject proto;
-            if (isProxyProfile.profile(node, JSProxy.isJSProxy(thisObj))) {
+            if (isProxyProfile.profile(this, JSProxy.isJSProxy(thisObj))) {
                 proto = getPrototypeNode.execute(thisObj);
             } else {
                 assert JSRuntime.isCallableForeign(thisObj);
@@ -341,12 +340,12 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             JSContext context = getContext();
-            boolean constructor = isConstructorProfile.profile(node, isConstructorNode.executeBoolean(thisObj));
+            boolean constructor = isConstructorProfile.profile(this, isConstructorNode.executeBoolean(thisObj));
             JSFunctionData boundFunctionData = context.getBoundFunctionData(constructor, false);
             JSFunctionObject boundFunction = JSFunction.createBound(context, realm, boundFunctionData, thisObj, thisArg, args);
 
             boolean needSetProto = proto != realm.getFunctionPrototype();
-            if (setProtoProfile.profile(node, needSetProto)) {
+            if (setProtoProfile.profile(this, needSetProto)) {
                 JSObject.setPrototype(boundFunction, proto);
             }
 
@@ -356,13 +355,14 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isCallableNode.executeBoolean(thisObj)"})
-        protected JSDynamicObject bindError(Object thisObj, Object thisArg, Object[] arg,
+        @Specialization(guards = {"!isCallableNode.executeBoolean(thisObj)"}, limit = "1")
+        protected static JSDynamicObject bindError(Object thisObj, Object thisArg, Object[] arg,
                         @SuppressWarnings("unused") @Cached @Shared IsCallableNode isCallableNode) {
             throw Errors.createTypeErrorNotAFunction(thisObj);
         }
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class JSFunctionToStringNode extends JSBuiltinNode {
 
         public JSFunctionToStringNode(JSContext context, JSBuiltin builtin) {
@@ -397,20 +397,21 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @SuppressWarnings("unused")
         @Specialization(guards = {"isES2019OrLater()", "!isJSFunction(fnObj)", "isCallable.executeBoolean(fnObj)"}, limit = "1")
         protected TruffleString toStringCallable(Object fnObj,
-                        @Cached @Shared("isCallable") IsCallableNode isCallable,
-                        @CachedLibrary("fnObj") InteropLibrary interop) {
-            if (interop.hasExecutableName(fnObj)) {
-                try {
-                    Object name = interop.getExecutableName(fnObj);
-                    return getNameIntl(InteropLibrary.getUncached().asTruffleString(name));
-                } catch (UnsupportedMessageException e) {
+                        @Cached @Shared IsCallableNode isCallable,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interopStr,
+                        @Cached TruffleString.SwitchEncodingNode switchEncoding) {
+            try {
+                Object name = null;
+                if (interop.hasExecutableName(fnObj)) {
+                    name = interop.getExecutableName(fnObj);
+                } else if (interop.isMetaObject(fnObj)) {
+                    name = interop.getMetaSimpleName(fnObj);
                 }
-            } else if (interop.isMetaObject(fnObj)) {
-                try {
-                    Object name = interop.getMetaSimpleName(fnObj);
-                    return getNameIntl(InteropLibrary.getUncached().asTruffleString(name));
-                } catch (UnsupportedMessageException e) {
+                if (name != null) {
+                    return getNameIntl(Strings.interopAsTruffleString(name, interopStr, switchEncoding));
                 }
+            } catch (UnsupportedMessageException e) {
             }
             return Strings.FUNCTION_NATIVE_CODE;
         }
@@ -418,7 +419,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @SuppressWarnings("unused")
         @Specialization(guards = {"isES2019OrLater()", "!isCallable.executeBoolean(fnObj)"}, limit = "1")
         protected TruffleString toStringNotCallable(Object fnObj,
-                        @Cached @Shared("isCallable") IsCallableNode isCallable) {
+                        @Cached @Shared IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(fnObj);
         }
 
@@ -445,7 +446,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             if (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) {
                 result = Strings.concatAll(Strings.FUNCTION_SPC, JSFunction.getName(fnObj), Strings.FUNCTION_NATIVE_CODE_BODY);
             } else {
-                result = Strings.fromCharSequence(ssect.getCharacters());
+                result = Strings.fromJavaString(ssect.getCharacters().toString());
             }
             return result;
         }
