@@ -187,7 +187,7 @@ public class Serializer {
             writeTag(SerializationTag.NULL);
         } else if (value instanceof Integer) {
             writeInt((Integer) value);
-        } else if (JSRuntime.isNumber(value) || value instanceof Long) {
+        } else if (JSRuntime.isNumber(value)) {
             double doubleValue = ((Number) value).doubleValue();
             writeIntOrDouble(doubleValue);
         } else if (value instanceof TruffleString) {
@@ -198,11 +198,13 @@ public class Serializer {
         } else if (value instanceof Symbol) {
             NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(value), COULD_NOT_BE_CLONED));
         } else if (env.isHostObject(value) && access.getCurrentMessagePortData() != null) {
-            JavaMessagePortData messagePort = access.getCurrentMessagePortData();
-            writeTag(SerializationTag.SHARED_JAVA_OBJECT);
-            writeVarInt(messagePort.getMessagePortDataPointer());
-            assignId(value);
-            messagePort.enqueueJavaRef(env.asHostObject(value));
+            writeSharedJavaObject(value);
+        } else if (value instanceof Long) {
+            if (access.getCurrentMessagePortData() != null) {
+                writeSharedJavaObject(env.asBoxedGuestValue(value));
+            } else {
+                writeIntOrDouble(((Long) value).doubleValue());
+            }
         } else {
             writeObject(value);
         }
@@ -596,6 +598,14 @@ public class Serializer {
         if (tag != null) {
             writeTag(tag);
         }
+    }
+
+    private void writeSharedJavaObject(Object value) {
+        JavaMessagePortData messagePort = access.getCurrentMessagePortData();
+        writeTag(SerializationTag.SHARED_JAVA_OBJECT);
+        writeVarInt(messagePort.getMessagePortDataPointer());
+        assignId(value);
+        messagePort.enqueueJavaRef(env.asHostObject(value));
     }
 
     private void writeHostObject(Object object) {
