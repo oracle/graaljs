@@ -33,13 +33,13 @@ function uint64(b) {
 }
 
 for (let b of bigIntegers) {
-    // typeof value is 'object' for java.math.BigInteger
-    assertSame('object', typeof b);
-    assertTrue(typeof b == 'object');
-    assertSame('object', typeof Object(b));
-    assertTrue(typeof Object(b) == 'object');
-    assertSame('object', typeof nonStrictThis.call(b));
-    assertTrue(typeof nonStrictThis.call(b) == 'object');
+    // typeof value is 'number' for java.math.BigInteger
+    assertSame('number', typeof b);
+    assertTrue(typeof b == 'number');
+    assertSame('number', typeof Object(b));
+    assertTrue(typeof Object(b) == 'number');
+    assertSame('number', typeof nonStrictThis.call(b));
+    assertTrue(typeof nonStrictThis.call(b) == 'number');
 
     assertTrue(b == b.multiply(BigInteger.ONE));
     // ToObject should keep foreign members
