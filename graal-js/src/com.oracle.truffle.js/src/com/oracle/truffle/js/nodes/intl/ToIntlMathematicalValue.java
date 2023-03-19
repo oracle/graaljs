@@ -91,6 +91,12 @@ public abstract class ToIntlMathematicalValue extends JavaScriptBaseNode {
 
     @TruffleBoundary
     @Specialization
+    protected Number doLong(long value) {
+        return new BigDecimal(value);
+    }
+
+    @TruffleBoundary
+    @Specialization
     protected Number doString(TruffleString value) {
         return parseStringNumericLiteral(Strings.toJavaString(value));
     }

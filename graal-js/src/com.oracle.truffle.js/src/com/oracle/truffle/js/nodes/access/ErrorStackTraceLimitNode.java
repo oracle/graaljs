@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -54,13 +55,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
     @Child private DynamicObjectLibrary getStackTraceLimit;
-    @Child private IsNumberNode isNumber;
-    @Child private JSToIntegerAsLongNode toInteger;
 
     protected ErrorStackTraceLimitNode() {
         this.getStackTraceLimit = JSObjectUtil.createDispatched(JSError.STACK_TRACE_LIMIT_PROPERTY_NAME);
-        this.isNumber = IsNumberNode.create();
-        this.toInteger = JSToIntegerAsLongNode.create();
     }
 
     public static ErrorStackTraceLimitNode create() {
@@ -68,11 +65,13 @@ public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    public int doInt() {
+    protected final int doInt(
+                    @Cached IsNumberNode isNumber,
+                    @Cached JSToIntegerAsLongNode toInteger) {
         JSDynamicObject errorConstructor = getRealm().getErrorConstructor(JSErrorType.Error);
         if (JSProperty.isData(getStackTraceLimit.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
             Object value = getStackTraceLimit.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
-            if (isNumber.execute(value)) {
+            if (isNumber.execute(this, value)) {
                 long limit = toInteger.executeLong(value);
                 return (int) Math.max(0, Math.min(limit, Integer.MAX_VALUE));
             }

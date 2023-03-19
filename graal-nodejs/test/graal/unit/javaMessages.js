@@ -253,6 +253,33 @@ describe('Java interop messages', function() {
             });
         }
     });
+    it('can send Long and BigInteger messages', function(done) {
+        if (isMainThread) {
+            const worker = new Worker(`
+                            const {
+                                parentPort
+                            } = require('worker_threads');
+
+                            parentPort.postMessage(java.lang.Long.MAX_VALUE);
+                            parentPort.postMessage(java.math.BigInteger.valueOf(java.lang.Long.MAX_VALUE).shiftLeft(1));
+                `, {
+                eval: true
+            });
+            let received = 0;
+            worker.on('message', function(value) {
+                switch (received++) {
+                    case 0:
+                        assert.equal(java.lang.Long.MAX_VALUE, value);
+                        assert.equal(2n ** 63n - 1n, value);
+                        break;
+                    case 1:
+                        assert.equal(2n ** 64n - 2n, value);
+                        worker.terminate().then(()=>{done()});
+                        break;
+                }
+            });
+        }
+    });
     it('Java Refs encoding order is respected', function(done) {
         if (isMainThread) {
             var A = Java.type('java.util.concurrent.atomic.AtomicInteger');

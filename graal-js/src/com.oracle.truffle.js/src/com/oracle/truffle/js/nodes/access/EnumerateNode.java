@@ -57,7 +57,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -123,15 +122,14 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return EnumerateNodeGen.create(context, values, requireIterable, cloneUninitialized(targetNode, materializedTags));
     }
 
-    @Specialization(guards = {"isJSDynamicObject(iteratedObject)", "!isJSAdapter(iteratedObject)"})
-    protected JSDynamicObject doEnumerateObject(JSDynamicObject iteratedObject,
-                    @Cached InlinedConditionProfile isObject) {
-        if (isObject.profile(this, JSRuntime.isObject(iteratedObject))) {
-            return newForInIterator(iteratedObject);
-        } else {
-            // null or undefined
-            return newEmptyIterator();
-        }
+    @Specialization(guards = {"!isJSAdapter(iteratedObject)"})
+    protected JSDynamicObject doEnumerateObject(JSObject iteratedObject) {
+        return newForInIterator(iteratedObject);
+    }
+
+    @Specialization(guards = {"isNullOrUndefined(iteratedObject)"})
+    protected JSDynamicObject doEnumerateNullOrUndefined(@SuppressWarnings("unused") Object iteratedObject) {
+        return newEmptyIterator();
     }
 
     @Specialization(guards = "isJSAdapter(iteratedObject)")
@@ -233,9 +231,9 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return iteratorObj;
     }
 
-    @Specialization(guards = {"!isJSObject(iteratedObject)", "!isForeignObject(iteratedObject)"})
+    @Specialization(guards = {"!isJSDynamicObject(iteratedObject)", "!isForeignObject(iteratedObject)"})
     protected JSDynamicObject doNonObject(Object iteratedObject,
-                    @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode,
+                    @Cached JSToObjectNode toObjectNode,
                     @Cached("copyRecursive()") EnumerateNode enumerateNode) {
         return enumerateNode.execute(toObjectNode.execute(iteratedObject));
     }

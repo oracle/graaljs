@@ -286,8 +286,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
             valueTypeNodes[index] = insert(ValueTypeNodeGen.create(context, index >= IMPLICIT_ARG_COUNT));
         }
         int type = valueTypeNodes[index].executeInt(argument);
-        GraalJSAccess graalAccess = GraalJSAccess.get(this);
-        assert type == graalAccess.valueType(argument, false);
+        assert type == GraalJSAccess.get(this).valueType(argument, false);
         return type;
     }
 

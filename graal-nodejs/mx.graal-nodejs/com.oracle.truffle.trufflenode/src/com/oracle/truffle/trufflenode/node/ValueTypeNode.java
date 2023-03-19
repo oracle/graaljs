@@ -193,7 +193,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return NUMBER_VALUE;
     }
 
-    @Specialization(guards = "isNumber(value)", replaces = {"doInt", "doDouble"})
+    @Specialization(guards = "isNumber(value) || isNumberLong(value)", replaces = {"doInt", "doDouble"})
     protected final int doNumber(Object value) {
         if (useSharedBuffer) {
             GraalJSAccess.get(this).getSharedBuffer().putDouble(JSRuntime.doubleValue((Number) value));

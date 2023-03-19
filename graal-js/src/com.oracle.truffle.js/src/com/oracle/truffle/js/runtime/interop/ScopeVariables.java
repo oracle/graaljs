@@ -773,7 +773,7 @@ public final class ScopeVariables implements TruffleObject {
             if (thisObject == Undefined.instance || thisObject == Null.instance) {
                 thisObject = realm.getGlobalObject();
             } else {
-                thisObject = JSRuntime.toObject(realm.getContext(), thisObject);
+                thisObject = JSRuntime.toObject(thisObject);
             }
         }
         return thisObject;

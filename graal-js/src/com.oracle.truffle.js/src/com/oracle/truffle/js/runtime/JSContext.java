@@ -1754,7 +1754,7 @@ public class JSContext {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                Object obj = JSRuntime.requireObjectCoercible(JSArguments.getThisObject(arguments), JSContext.this);
+                Object obj = JSRuntime.requireObjectCoercible(JSArguments.getThisObject(arguments));
                 if (JSArguments.getUserArgumentCount(arguments) < 1) {
                     return Undefined.instance;
                 }
@@ -1777,7 +1777,7 @@ public class JSContext {
 
     private JSFunctionData protoGetterFunction() {
         CallTarget callTarget = new JavaScriptRootNode(getLanguage(), null, null) {
-            @Child private JSToObjectNode toObjectNode = JSToObjectNode.createToObject(JSContext.this);
+            @Child private JSToObjectNode toObjectNode = JSToObjectNode.create();
             @Child private GetPrototypeNode getPrototypeNode = GetPrototypeNode.create();
 
             @Override

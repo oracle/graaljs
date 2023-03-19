@@ -146,8 +146,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createErrorCanNotConvertToBigInt(JSErrorType type, Object x) {
-        return JSException.create(type, String.format("Cannot convert %s to a BigInt.", JSRuntime.safeToString(x)));
+    public static JSException createErrorCannotConvertToBigInt(JSErrorType type, Object value, Node originatingNode) {
+        return JSException.create(type, String.format("Cannot convert %s to a BigInt.", JSRuntime.safeToString(value)), originatingNode);
     }
 
     @TruffleBoundary
@@ -288,12 +288,7 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode) {
         JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
-        return createTypeErrorNotObjectCoercible(value, originatingNode, language.getJSContext());
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+        if (language.getJSContext().isOptionNashornCompatibilityMode()) {
             return Errors.createTypeErrorNotAnObject(value, originatingNode);
         }
         return Errors.createTypeError("Cannot convert undefined or null to object: " + JSRuntime.safeToString(value), originatingNode);
@@ -842,7 +837,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorUnboxException(Object receiver, InteropException cause, Node originatingNode) {
-        return createTypeErrorInteropException(receiver, cause, "UNBOX", originatingNode);
+        return createTypeErrorInteropException(receiver, cause, "ToPrimitive", originatingNode);
     }
 
     @TruffleBoundary

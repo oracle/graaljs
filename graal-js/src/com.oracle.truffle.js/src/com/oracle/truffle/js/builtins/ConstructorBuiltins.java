@@ -160,7 +160,6 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
-import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -525,7 +524,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 : CallNumberNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
             case BigInt:
                 return construct ? ConstructBigIntNodeGen.create(context, builtin, args().createArgumentNodes(context))
-                                : CallBigIntNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                                : CallBigIntNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case Function:
                 if (newTarget) {
                     return ConstructFunctionNodeGen.create(context, builtin, false, false, true, args().newTarget().varArgs().createArgumentNodes(context));
@@ -1921,7 +1920,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"}, limit = "InteropLibraryLimit")
         protected Object constructObjectJSObject(@SuppressWarnings("unused") JSDynamicObject newTarget, Object[] arguments,
                         @Bind("this") Node node,
-                        @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
+                        @Cached JSToObjectNode toObjectNode,
                         @CachedLibrary("firstArgument(arguments)") InteropLibrary interop,
                         @Cached InlinedConditionProfile isNull) {
             Object arg0 = arguments[0];
@@ -1992,39 +1991,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     public abstract static class CallBigIntNode extends JSBuiltinNode {
 
-        @Child JSToPrimitiveNode toPrimitiveNode;
-
         public CallBigIntNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        private Object toPrimitive(Object target) {
-            if (toPrimitiveNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toPrimitiveNode = insert(JSToPrimitiveNode.createHintNumber());
-            }
-            return toPrimitiveNode.execute(target);
+        @Specialization
+        protected static BigInt doBigInt(BigInt value) {
+            return value;
         }
 
-        @Specialization(guards = {"args.length == 0"})
-        protected void callBigIntZero(@SuppressWarnings("unused") Object[] args) {
-            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, Undefined.instance);
-        }
-
-        @Specialization(guards = {"args.length > 0"})
-        protected Object callBigInt(Object[] args,
-                        @Cached JSNumberToBigIntNode numberToBigIntNode,
-                        @Cached JSToBigIntNode toBigIntNode) {
-            Object value = args[0];
-            Object primitiveObj = toPrimitive(value);
-            if (JSRuntime.isNumber(primitiveObj)) {
-                return numberToBigIntNode.executeBigInt(primitiveObj);
-            } else {
-                return toBigIntNode.executeBigInteger(primitiveObj);
-            }
+        @Specialization
+        protected final BigInt toBigInt(Object value,
+                        @Cached JSToBigIntNode.CoercePrimitiveToBigIntNode toBigIntNode,
+                        @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
+            Object primitive = toPrimitiveNode.execute(value);
+            return toBigIntNode.executeBigInt(this, primitive);
         }
     }
 
+    /**
+     * @see CallBigIntNode
+     */
     public abstract static class ConstructBigIntNode extends JSBuiltinNode {
 
         public ConstructBigIntNode(JSContext context, JSBuiltin builtin) {

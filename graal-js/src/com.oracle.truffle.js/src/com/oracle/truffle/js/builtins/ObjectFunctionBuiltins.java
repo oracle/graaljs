@@ -619,7 +619,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"isJSObject(prototype)", "isJSNull(properties)"})
         protected JSDynamicObject createObjectNull(@SuppressWarnings("unused") JSDynamicObject prototype, Object properties) {
-            throw Errors.createTypeErrorNotObjectCoercible(properties, null, getContext());
+            throw Errors.createTypeErrorNotObjectCoercible(properties, this);
         }
 
         private JSDynamicObject objectDefineProperties(JSDynamicObject ret, Object properties, Node node, InlinedBranchProfile definePropertiesBranch) {
@@ -937,7 +937,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object assign(Object target, Object[] sources,
-                        @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
+                        @Cached JSToObjectNode toObjectNode,
                         @Cached("create(getContext(), STRICT)") WriteElementNode write,
                         @Cached("create(getContext())") AssignPropertiesNode assignProperties) {
             Object to = toObjectNode.execute(target);

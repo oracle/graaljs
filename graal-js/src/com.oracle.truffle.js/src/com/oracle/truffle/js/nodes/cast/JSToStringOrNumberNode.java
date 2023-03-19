@@ -52,7 +52,8 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * This node is intended to be used only by comparison operators.
+ * Converts a primitive value returned by {@link JSToPrimitiveNode} to either a string or a numeric
+ * value. This node is intended to be used only by comparison operators.
  */
 public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
 
@@ -63,17 +64,17 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected int doInteger(int value) {
+    protected static int doInteger(int value) {
         return value;
     }
 
     @Specialization
-    protected SafeInteger doSafeInteger(SafeInteger value) {
+    protected static SafeInteger doSafeInteger(SafeInteger value) {
         return value;
     }
 
     @Specialization
-    protected int doBoolean(boolean value) {
+    protected static int doBoolean(boolean value) {
         return doBooleanStatic(value);
     }
 
@@ -82,23 +83,23 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected double doDouble(double value) {
+    protected static double doDouble(double value) {
         return value;
     }
 
     @Specialization
-    protected TruffleString doString(TruffleString value) {
+    protected static TruffleString doString(TruffleString value) {
         return value;
     }
 
     @Specialization
-    protected double doJSObject(JSObject value,
+    protected static double doJSObject(JSObject value,
                     @Cached JSToDoubleNode toDoubleNode) {
         return toDoubleNode.executeDouble(value);
     }
 
     @Specialization(guards = "isJSNull(value)")
-    protected int doNull(@SuppressWarnings("unused") Object value) {
+    protected static int doNull(@SuppressWarnings("unused") Object value) {
         return 0;
     }
 
@@ -108,12 +109,20 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isUndefined(value)")
-    protected double doUndefined(@SuppressWarnings("unused") Object value) {
+    protected static double doUndefined(@SuppressWarnings("unused") Object value) {
         return Double.NaN;
     }
 
     @Specialization
     protected static BigInt doBigInt(BigInt value) {
         return value;
+    }
+
+    /**
+     * Treat long values as BigInt for comparison purposes.
+     */
+    @Specialization
+    protected static BigInt doLong(long value) {
+        return BigInt.valueOf(value);
     }
 }

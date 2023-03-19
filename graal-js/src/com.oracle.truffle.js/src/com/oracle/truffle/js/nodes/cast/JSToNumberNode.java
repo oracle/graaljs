@@ -127,9 +127,19 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
-    @Specialization
+    @Specialization(guards = "!value.isForeign()")
     protected final Number doBigInt(@SuppressWarnings("unused") BigInt value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
+    }
+
+    @Specialization(guards = "value.isForeign()")
+    protected static Number doForeignBigInt(BigInt value) {
+        return value.doubleValue();
+    }
+
+    @Specialization
+    protected static double doLong(long value) {
+        return value;
     }
 
     @Specialization(guards = "isJSObject(value) || isForeignObject(value)", replaces = "doJSObject")
@@ -137,11 +147,6 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
                     @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
         return toNumberNode.executeNumber(toPrimitiveNode.execute(value));
-    }
-
-    @Specialization(guards = "isJavaNumber(value)")
-    protected static double doJavaObject(Object value) {
-        return JSRuntime.doubleValue((Number) value);
     }
 
     public abstract static class JSToNumberUnaryNode extends JSUnaryNode {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,42 +40,30 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.BigInt;
 
 /**
- * Implementation of ToUInt16.
- *
+ * Converts long values to BigInt for comparison purposes.
  */
-public abstract class JSToUInt16Node extends JavaScriptBaseNode {
+@GenerateInline
+@GenerateCached(false)
+public abstract class LongToBigIntNode extends JavaScriptBaseNode {
 
-    public abstract int executeInt(Object value);
-
-    public final char executeChar(Object value) {
-        return (char) executeInt(value);
-    }
+    public abstract Object execute(Node node, Object operand);
 
     @Specialization
-    protected int doInt(int value) {
-        return JSRuntime.toUInt16(value);
+    protected static BigInt doLong(long value) {
+        return BigInt.valueOf(value);
     }
 
-    @Specialization
-    protected int doDouble(double value,
-                    @Cached InlinedBranchProfile needPositiveInfinityBranch) {
-        if (JSRuntime.isPositiveInfinity(value)) {
-            needPositiveInfinityBranch.enter(this);
-            return 0;
-        }
-        return JSRuntime.toUInt16((long) value);
-    }
-
-    @Specialization
-    protected int doGeneric(Object value,
-                    @Cached JSToNumberNode toNumberNode) {
-        return JSRuntime.toUInt16(toNumberNode.executeNumber(value));
+    @Fallback
+    protected static Object doOther(Object value) {
+        return value;
     }
 }

@@ -187,7 +187,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected final Object toObject(Object target) {
             if (toObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
+                toObjectNode = insert(JSToObjectNode.create());
             }
             return toObjectNode.execute(target);
         }
@@ -260,7 +260,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected Object valueOfForeign(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             if (interop.isNull(thisObj)) {
-                throw Errors.createTypeErrorNotObjectCoercible(thisObj, null, getContext());
+                throw Errors.createTypeErrorNotObjectCoercible(thisObj, this);
             }
             return thisObj;
         }
@@ -489,7 +489,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isNullOrUndefined(thisObj)")
         protected boolean hasOwnPropertyNullOrUndefined(JSDynamicObject thisObj, Object propName) {
             getToPropertyKeyNode().execute(propName); // may have side effect
-            throw Errors.createTypeErrorNotObjectCoercible(thisObj, null, getContext());
+            throw Errors.createTypeErrorNotObjectCoercible(thisObj, this);
         }
 
         @Specialization

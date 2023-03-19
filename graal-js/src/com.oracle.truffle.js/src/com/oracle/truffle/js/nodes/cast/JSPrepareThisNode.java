@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -65,10 +66,13 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * Implementation of ECMAScript 5.1, 10.4.3 Entering Function Code, for non-strict callees.
+ * Implementation of the implicit {@code this} argument conversion upon entering non-strict
+ * functions (OrdinaryCallBindThis).
  *
  * Converts the caller provided thisArg to the ThisBinding of the callee's execution context,
  * replacing null or undefined with the global object and performing ToObject on primitives.
+ *
+ * @see JSToObjectNode
  */
 @ImportStatic({CompilerDirectives.class, JSConfig.class})
 public abstract class JSPrepareThisNode extends JSUnaryNode {
@@ -126,23 +130,19 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
         return JSBigInt.create(context, getRealm(), value);
     }
 
-    @Specialization(guards = "isJavaNumber(value)")
-    protected JSObject doNumber(Object value) {
-        return JSNumber.create(context, getRealm(), (Number) value);
-    }
-
     @Specialization
     protected JSObject doSymbol(Symbol value) {
         return JSSymbol.create(context, getRealm(), value);
     }
 
-    @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
-    protected Object doForeignObject(Object object,
-                    @CachedLibrary("object") InteropLibrary interop) {
-        if (interop.isNull(object)) {
+    @InliningCutoff
+    @Specialization(guards = {"isForeignObjectOrNumber(value)"}, limit = "InteropLibraryLimit")
+    protected final Object doForeignObject(Object value,
+                    @CachedLibrary("value") InteropLibrary interop) {
+        if (interop.isNull(value)) {
             return getRealm().getGlobalObject();
         }
-        return object;
+        return JSToObjectNode.doForeignObjectNonNull(value, interop, this);
     }
 
     @Override

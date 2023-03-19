@@ -103,6 +103,9 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
 
     @Specialization
     protected BigInt doBigInt(BigInt a, BigInt b) {
+        if (a.signum() == 0) {
+            return BigInt.ZERO;
+        }
         if (b.compareTo(BigInt.MAX_INT) < 0) {
             if (b.compareTo(BigInt.MIN_INT) > 0) {
                 try {

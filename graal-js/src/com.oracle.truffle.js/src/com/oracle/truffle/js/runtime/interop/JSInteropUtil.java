@@ -58,6 +58,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
@@ -129,8 +130,11 @@ public final class JSInteropUtil {
         }
     }
 
+    /**
+     * Converts foreign objects to JS primitive values, coercing all numbers to double precision.
+     */
     @InliningCutoff
-    public static Object toPrimitiveOrDefault(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode) {
+    public static Object toPrimitiveOrDefaultLossy(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode) {
         if (interop.isNull(obj)) {
             return Null.instance;
         }
@@ -138,12 +142,47 @@ public final class JSInteropUtil {
             if (interop.isBoolean(obj)) {
                 return interop.asBoolean(obj);
             } else if (interop.isString(obj)) {
-                return interop.asTruffleString(obj);
+                return Strings.interopAsTruffleString(obj, interop);
+            } else if (interop.isNumber(obj)) {
+                if (interop.fitsInInt(obj)) {
+                    return interop.asInt(obj);
+                } else if (interop.fitsInDouble(obj)) {
+                    return interop.asDouble(obj);
+                } else if (interop.fitsInLong(obj)) {
+                    return (double) interop.asLong(obj);
+                } else if (interop.fitsInBigInteger(obj)) {
+                    return BigInt.doubleValueOf(interop.asBigInteger(obj));
+                }
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorUnboxException(obj, e, originatingNode);
+        }
+        return defaultValue;
+    }
+
+    /**
+     * Converts a foreign object to a JS primitive value. Attempts to keep the precise numeric value
+     * when converting foreign numbers, relevant for comparisons and ToString/ToBigInt conversion.
+     * Returned BigInt values are marked as foreign so that they are handled correctly by subsequent
+     * ToNumeric, ToNumber (i.e., coerced to double), or ToBigInt.
+     */
+    @InliningCutoff
+    public static Object toPrimitiveOrDefaultLossless(Object obj, Object defaultValue, InteropLibrary interop, TruffleString.SwitchEncodingNode switchEncoding, Node originatingNode) {
+        if (interop.isNull(obj)) {
+            return Null.instance;
+        }
+        try {
+            if (interop.isBoolean(obj)) {
+                return interop.asBoolean(obj);
+            } else if (interop.isString(obj)) {
+                return Strings.interopAsTruffleString(obj, interop, switchEncoding);
             } else if (interop.isNumber(obj)) {
                 if (interop.fitsInInt(obj)) {
                     return interop.asInt(obj);
                 } else if (interop.fitsInLong(obj)) {
                     return interop.asLong(obj);
+                } else if (interop.fitsInBigInteger(obj)) {
+                    return BigInt.fromForeignBigInteger(interop.asBigInteger(obj));
                 } else if (interop.fitsInDouble(obj)) {
                     return interop.asDouble(obj);
                 }

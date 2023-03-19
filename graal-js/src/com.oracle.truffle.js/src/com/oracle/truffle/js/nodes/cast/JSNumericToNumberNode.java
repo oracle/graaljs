@@ -43,23 +43,35 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.SafeInteger;
 
 /**
- * Numeric to Number values conversion. i.e. BigInt internal value is converted to a double value
- * using this node. Currently utilized in Number constructor, as a legal mean to get Numbers back
- * from BigInts.
+ * Lossy Numeric to Number value conversion. Currently utilized in the Number constructor, as a
+ * legal means to get a Number from a BigInt, i.e. a BigInt value is converted to a double value.
+ *
+ * @see JSToNumericNode
  */
 public abstract class JSNumericToNumberNode extends JavaScriptBaseNode {
 
     public abstract Number executeNumeric(Object value);
 
     @Specialization
-    protected static Number doBigInt(BigInt value) {
+    protected static Double doBigInt(BigInt value) {
         return value.doubleValue();
     }
 
-    @Specialization(guards = "!isBigInt(value)")
-    protected static Number doOther(Number value) {
+    @Specialization
+    protected static Integer doInt(Integer value) {
+        return value;
+    }
+
+    @Specialization
+    protected static SafeInteger doSafeInteger(SafeInteger value) {
+        return value;
+    }
+
+    @Specialization
+    protected static Double doDouble(Double value) {
         return value;
     }
 }

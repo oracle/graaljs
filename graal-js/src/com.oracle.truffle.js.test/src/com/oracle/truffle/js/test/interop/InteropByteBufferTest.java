@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,7 @@
 package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
-import static com.oracle.truffle.js.test.interop.JavaScriptHostInteropTest.assertThrows;
+import static com.oracle.truffle.js.test.JSTest.assertThrows;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -55,6 +55,7 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.test.JSTest;
 
 public class InteropByteBufferTest {
@@ -276,7 +277,7 @@ public class InteropByteBufferTest {
             buffer.position(0);
             assertEquals(jsBuffer.getArraySize(), 3);
             assertEquals(jsBuffer.getArrayElement(0).asByte(), buffer.get());
-            assertThrows(() -> jsBuffer.setArrayElement(0, 42), e -> assertTrue(e.getMessage(), e.getMessage().startsWith("TypeError")));
+            assertThrows(() -> jsBuffer.setArrayElement(0, 42), JSErrorType.TypeError);
         }
     }
 

@@ -632,7 +632,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         private Object toObject(Object array) {
             if (toObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
+                toObjectNode = insert(JSToObjectNode.create());
             }
             return toObjectNode.execute(array);
         }

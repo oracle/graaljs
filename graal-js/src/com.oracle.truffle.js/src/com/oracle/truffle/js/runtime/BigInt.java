@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     static final long serialVersionUID = 6019523258212492110L;
 
     private final BigInteger value;
+    private final boolean foreign;
 
     public static final BigInt ZERO = new BigInt(BigInteger.ZERO);
     public static final BigInt ONE = new BigInt(BigInteger.ONE);
@@ -73,11 +74,12 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
 
     private static final BigInteger TWO64 = BigInteger.ONE.shiftLeft(64);
 
-    public BigInt(String s, int r) {
-        this.value = new BigInteger(s, r);
+    public BigInt(BigInteger v) {
+        this(v, false);
     }
 
-    public BigInt(BigInteger v) {
+    private BigInt(BigInteger v, boolean foreign) {
+        this.foreign = foreign;
         this.value = v;
     }
 
@@ -90,6 +92,11 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         } else {
             return new BigInt(value);
         }
+    }
+
+    @TruffleBoundary
+    public static BigInt fromForeignBigInteger(BigInteger value) {
+        return new BigInt(value, true);
     }
 
     @TruffleBoundary
@@ -149,6 +156,11 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
 
     @TruffleBoundary
     public double doubleValue() {
+        return value.doubleValue();
+    }
+
+    @TruffleBoundary
+    public static double doubleValueOf(BigInteger value) {
         return value.doubleValue();
     }
 
@@ -341,9 +353,16 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         return value.toString(10);
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean isNumber() {
-        return fitsInLong() || fitsInDouble();
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean fitsInBigInteger() {
+        return true;
     }
 
     @ExportMessage
@@ -372,7 +391,7 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    boolean fitsInDouble() {
+    public boolean fitsInDouble() {
         if (value.bitLength() <= 53) { // 53 = size of double mantissa + 1
             return true;
         } else {
@@ -396,6 +415,11 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
             }
             return new BigDecimal(floatValue).toBigIntegerExact().equals(value);
         }
+    }
+
+    @ExportMessage
+    BigInteger asBigInteger() {
+        return value;
     }
 
     @ExportMessage
@@ -488,4 +512,18 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         return JSMetaType.JS_BIGINT;
     }
 
+    public boolean isForeign() {
+        return foreign;
+    }
+
+    public BigInt clearForeign() {
+        return setForeign(false);
+    }
+
+    private BigInt setForeign(boolean foreign) {
+        if (this.foreign == foreign) {
+            return this;
+        }
+        return new BigInt(value, foreign);
+    }
 }

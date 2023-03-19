@@ -46,6 +46,7 @@ import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -59,6 +60,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -66,6 +68,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -187,12 +190,12 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     @SuppressWarnings("truffle-static-method")
     @Specialization
-    protected Object doJSObject(JSObject object,
+    protected final Object doJSObject(JSObject object,
                     @Bind("this") Node node,
-                    @Cached("createGetToPrimitive()") PropertyGetNode getToPrimitive,
-                    @Cached IsPrimitiveNode isPrimitive,
-                    @Cached InlinedConditionProfile exoticToPrimProfile,
-                    @Cached("createCall()") JSFunctionCallNode callExoticToPrim) {
+                    @Exclusive @Cached("createGetToPrimitive()") PropertyGetNode getToPrimitive,
+                    @Exclusive @Cached IsPrimitiveNode isPrimitive,
+                    @Exclusive @Cached InlinedConditionProfile exoticToPrimProfile,
+                    @Exclusive @Cached("createCall()") JSFunctionCallNode callExoticToPrim) {
         Object exoticToPrim = getToPrimitive.getValue(object);
         if (exoticToPrimProfile.profile(node, !JSRuntime.isNullOrUndefined(exoticToPrim))) {
             Object result = callExoticToPrim.executeCall(JSArguments.createOneArg(object, exoticToPrim, hint.getHintName()));
@@ -209,43 +212,59 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return hint == Hint.String;
     }
 
+    @SuppressWarnings("truffle-static-method")
     @InliningCutoff
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
-    protected Object doForeignObject(Object object,
+    protected final Object doForeignObject(Object object,
+                    @Bind("this") Node node,
                     @CachedLibrary("object") InteropLibrary interop,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary resultInterop) {
-        if (interop.isNull(object)) {
-            return Null.instance;
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary resultInterop,
+                    @Exclusive @Cached InlinedConditionProfile exoticToPrimProfile,
+                    @Exclusive @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
+                    @Exclusive @Cached("createGetToPrimitive()") PropertyGetNode getToPrimitive,
+                    @Exclusive @Cached IsPrimitiveNode isPrimitive,
+                    @Exclusive @Cached("createCall()") JSFunctionCallNode callExoticToPrim,
+                    @Exclusive @Cached InlinedBranchProfile errorBranch,
+                    @Cached TruffleString.SwitchEncodingNode switchEncoding) {
+        Object primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(object, null, interop, switchEncoding, this);
+        if (primitive != null) {
+            return primitive;
         }
-        try {
-            if (interop.isBoolean(object)) {
-                return interop.asBoolean(object);
-            } else if (interop.isString(object)) {
-                return interop.asTruffleString(object);
-            } else if (interop.isNumber(object)) {
-                if (interop.fitsInInt(object)) {
-                    return interop.asInt(object);
-                } else if (interop.fitsInLong(object)) {
-                    return interop.asLong(object);
-                } else if (interop.fitsInDouble(object)) {
-                    return interop.asDouble(object);
+
+        // Try foreign object prototype [Symbol.toPrimitive] property first.
+        // e.g.: Instant and ZonedDateTime use Date.prototype[@@toPrimitive].
+        Object exoticToPrim = getToPrimitive.getValue(foreignObjectPrototypeNode.execute(object));
+        if (exoticToPrimProfile.profile(node, !JSRuntime.isNullOrUndefined(exoticToPrim))) {
+            Object result = callExoticToPrim.executeCall(JSArguments.createOneArg(object, exoticToPrim, hint.getHintName()));
+            if (isPrimitive.executeBoolean(result)) {
+                primitive = result;
+            } else {
+                errorBranch.enter(node);
+                throw Errors.createTypeError("[Symbol.toPrimitive] method returned a non-primitive object", this);
+            }
+        } else {
+            JSRealm realm = getRealm();
+            TruffleLanguage.Env env = realm.getEnv();
+            if (env.isHostObject(object)) {
+                Object maybeResult = tryHostObjectToPrimitive(object, hint, interop);
+                if (maybeResult != null) {
+                    return maybeResult;
                 }
             }
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorUnboxException(object, e, this);
+
+            // Try toString() and valueOf(), in hint order.
+            primitive = ordinaryToPrimitive(object);
         }
-        JSRealm realm = getRealm();
-        TruffleLanguage.Env env = realm.getEnv();
-        if (env.isHostObject(object)) {
-            Object maybeResult = tryHostObjectToPrimitive(object, hint, interop);
-            if (maybeResult != null) {
-                return maybeResult;
-            }
-            // else, try OrdinaryToPrimitive (toString(), valueOf())
+
+        assert IsPrimitiveNode.getUncached().executeBoolean(primitive) : primitive;
+        primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(primitive, null, resultInterop, switchEncoding, this);
+        if (primitive != null) {
+            return primitive;
+        } else {
+            // Throw for non-primitive-coercible and unsupported primitive types.
+            errorBranch.enter(node);
+            throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
         }
-        Object result = ordinaryToPrimitive(object);
-        assert IsPrimitiveNode.getUncached().executeBoolean(result) : result;
-        return JSInteropUtil.toPrimitiveOrDefault(result, result, resultInterop, this);
     }
 
     public static Object tryHostObjectToPrimitive(Object object, Hint hint, InteropLibrary interop) {

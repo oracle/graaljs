@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -69,7 +70,6 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -94,23 +94,23 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
     }
 
-    public abstract Object execute(Object data, Object keyStr, JSDynamicObject holder);
+    public abstract Object execute(Object data, Object keyStr, JSObject holder);
 
     public static JSONStringifyStringNode create(JSContext context) {
         return JSONStringifyStringNodeGen.create(context);
     }
 
     @Specialization
-    public Object jsonStrMain(Object jsonData, TruffleString keyStr, JSDynamicObject holder) {
+    public Object jsonStrMain(Object jsonData, TruffleString keyStr, JSObject holder) {
         try {
             assert jsonData instanceof JSONData;
             JSONData data = (JSONData) jsonData;
-            Object value = jsonStrPrepare(data, keyStr, holder);
+            Object value = getPreparedJSONPropertyValue(data, keyStr, holder);
             if (!isStringifyable(value)) {
                 return Undefined.instance;
             }
             TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder();
-            jsonStrExecute(sb, data, value);
+            serializeJSONPropertyValue(sb, data, value);
             return builderToString(sb);
         } catch (StackOverflowError ex) {
             throwStackError();
@@ -123,90 +123,137 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return value != Undefined.instance;
     }
 
+    /**
+     * The last part of SerializeJSONProperty, serializing the value.
+     *
+     * @see #prepareJSONPropertyValue
+     */
     @TruffleBoundary
-    private void jsonStrExecute(TruffleStringBuilder builder, JSONData data, Object value) {
+    private void serializeJSONPropertyValue(TruffleStringBuilder builder, JSONData data, Object value) {
         assert isStringifyable(value);
         if (value == Null.instance) {
             append(builder, Null.NAME);
         } else if (value instanceof Boolean) {
-            append(builder, (boolean) value ? JSBoolean.TRUE_NAME : JSBoolean.FALSE_NAME);
+            appendBoolean(builder, (boolean) value);
         } else if (Strings.isTString(value)) {
             jsonQuote(builder, (TruffleString) value);
         } else if (JSRuntime.isNumber(value)) {
-            appendNumber(builder, (Number) value);
+            appendNumber(builder, value);
+        } else if (JSObject.isJSObject(value)) {
+            JSObject valueObj = (JSObject) value;
+            assert !JSRuntime.isCallableIsJSObject(valueObj);
+            if (JSRuntime.isArray(valueObj)) {
+                serializeJSONArray(builder, data, valueObj);
+            } else {
+                serializeJSONObject(builder, data, valueObj);
+            }
         } else if (JSRuntime.isBigInt(value)) {
             throw Errors.createTypeError("Do not know how to serialize a BigInt");
-        } else if (JSDynamicObject.isJSDynamicObject(value) && !JSRuntime.isCallableIsJSObject((JSDynamicObject) value)) {
-            JSDynamicObject valueObj = (JSDynamicObject) value;
-            if (JSRuntime.isArray(valueObj)) {
-                jsonJA(builder, data, valueObj);
-            } else {
-                jsonJO(builder, data, valueObj);
-            }
-        } else if (value instanceof TruffleObject) {
-            assert JSGuards.isForeignObject(value);
-            jsonForeignObject(builder, data, value);
-        } else if (JSRuntime.isJavaPrimitive(value)) {
-            // call toString on Java objects, GR-3722
-            jsonQuote(builder, Strings.fromJavaString(value.toString()));
+        } else if (value instanceof TruffleObject || value instanceof Long) {
+            serializeForeignObject(builder, data, value);
         } else {
-            throw new RuntimeException("JSON.stringify: should never reach here, unknown type: " + value + " " + value.getClass());
+            throw unsupportedType(value);
         }
     }
 
-    private void jsonForeignObject(TruffleStringBuilder sb, JSONData data, Object obj) {
+    @TruffleBoundary
+    private static RuntimeException unsupportedType(Object value) {
+        assert false : "JSON.stringify: should never reach here, unknown type: " + value + " " + value.getClass();
+        return Errors.createTypeError("Do not know how to serialize a value of type " + (value == null ? "null" : value.getClass().getTypeName()));
+    }
+
+    private void serializeForeignObject(TruffleStringBuilder sb, JSONData data, Object obj) {
+        assert JSGuards.isForeignObjectOrNumber(obj);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
         if (interop.isNull(obj)) {
             append(sb, Null.NAME);
-        } else if (JSInteropUtil.isBoxedPrimitive(obj, interop)) {
-            Object unboxed = JSInteropUtil.toPrimitiveOrDefault(obj, Null.instance, interop, this);
-            assert !JSGuards.isForeignObject(unboxed);
-            jsonStrExecute(sb, data, unboxed);
-        } else if (interop.hasArrayElements(obj)) {
-            jsonJA(sb, data, obj);
-        } else {
-            jsonJO(sb, data, obj);
+            return;
+        }
+        try {
+            if (interop.isBoolean(obj)) {
+                appendBoolean(sb, interop.asBoolean(obj));
+            } else if (interop.isString(obj)) {
+                jsonQuote(sb, interop.asTruffleString(obj));
+            } else if (interop.isNumber(obj)) {
+                if (interop.fitsInInt(obj)) {
+                    appendNumber(sb, interop.asInt(obj));
+                } else if (interop.fitsInDouble(obj)) {
+                    appendNumber(sb, interop.asDouble(obj));
+                } else {
+                    throw Errors.createTypeError("Do not know how to serialize a BigInt");
+                }
+            } else if (interop.hasArrayElements(obj)) {
+                serializeJSONArray(sb, data, obj);
+            } else {
+                serializeJSONObject(sb, data, obj);
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorUnboxException(obj, e, this);
         }
     }
 
-    private void appendNumber(TruffleStringBuilder builder, Number n) {
-        double d = JSRuntime.doubleValue(n);
-        if (Double.isNaN(d) || Double.isInfinite(d)) {
-            append(builder, Null.NAME);
-        } else if (n instanceof Integer) {
-            append(builder, ((Integer) n).intValue());
-        } else if (n instanceof Long) {
-            append(builder, ((Long) n).longValue());
+    private void appendBoolean(TruffleStringBuilder builder, boolean value) {
+        append(builder, value ? JSBoolean.TRUE_NAME : JSBoolean.FALSE_NAME);
+    }
+
+    private void appendNumber(TruffleStringBuilder builder, Object number) {
+        assert number instanceof Number;
+        if (number instanceof Integer) {
+            append(builder, ((Integer) number).intValue());
+        } else if (number instanceof SafeInteger) {
+            append(builder, ((SafeInteger) number).longValue());
         } else {
-            append(builder, JSRuntime.doubleToString(d));
+            double d;
+            if (number instanceof Double) {
+                d = ((Double) number).doubleValue();
+            } else {
+                d = JSRuntime.doubleValue((Number) number);
+            }
+            TruffleString str;
+            if (Double.isNaN(d) || Double.isInfinite(d)) {
+                str = Null.NAME;
+            } else {
+                str = JSRuntime.doubleToString(d);
+            }
+            append(builder, str);
         }
     }
 
+    /**
+     * The first parts of SerializeJSONProperty, getting the property value from the object and
+     * preparing it for serialization.
+     */
     @TruffleBoundary
-    private Object jsonStrPrepare(JSONData data, TruffleString keyStr, Object holder) {
+    private Object getPreparedJSONPropertyValue(JSONData data, TruffleString keyStr, Object holder) {
         Object value;
-        if (JSDynamicObject.isJSDynamicObject(holder)) {
-            value = JSObject.get((JSDynamicObject) holder, keyStr);
+        if (JSObject.isJSObject(holder)) {
+            value = JSObject.get((JSObject) holder, keyStr);
         } else {
             value = truffleRead(holder, keyStr);
         }
-        return jsonStrPreparePart2(data, keyStr, holder, value);
+        return prepareJSONPropertyValue(data, keyStr, holder, value);
     }
 
     @TruffleBoundary
-    private Object jsonStrPrepareArray(JSONData data, int key, JSDynamicObject holder) {
+    private Object getPreparedJSONPropertyValueFromJSArray(JSONData data, int key, JSObject holder) {
         Object value = JSObject.get(holder, key);
-        return jsonStrPreparePart2(data, Strings.fromInt(key), holder, value);
+        return prepareJSONPropertyValue(data, Strings.fromInt(key), holder, value);
     }
 
     @TruffleBoundary
-    private Object jsonStrPrepareForeign(JSONData data, int key, Object holder) {
+    private Object getPreparedJSONPropertyValueFromForeignArray(JSONData data, int key, Object holder) {
         assert JSGuards.isForeignObject(holder);
         Object value = truffleRead(holder, key);
-        return jsonStrPreparePart2(data, Strings.fromInt(key), holder, value);
+        return prepareJSONPropertyValue(data, Strings.fromInt(key), holder, value);
     }
 
-    private Object jsonStrPreparePart2(JSONData data, Object key, Object holder, Object valueArg) {
+    /**
+     * The second part of SerializeJSONProperty, preparing the property value for serialization (by
+     * calling toJSON(), the replacer function, and/or unboxing).
+     *
+     * @see #serializeJSONPropertyValue
+     */
+    private Object prepareJSONPropertyValue(JSONData data, Object key, Object holder, Object valueArg) {
         Object value = valueArg;
         boolean tryToJSON = false;
         if (JSRuntime.isObject(value) || JSRuntime.isBigInt(value)) {
@@ -216,14 +263,14 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             tryToJSON = interop.hasMembers(value) && !interop.isNull(value) && !JSInteropUtil.isBoxedPrimitive(value, interop);
         }
         if (tryToJSON) {
-            value = jsonStrPrepareObject(key, value);
+            value = tryToJSONMethod(key, value);
         }
 
         if (data.getReplacerFnObj() != null) {
             value = JSRuntime.call(data.getReplacerFnObj(), holder, new Object[]{key, value});
         }
-        if (JSDynamicObject.isJSDynamicObject(value)) {
-            return jsonStrPrepareJSObject((JSDynamicObject) value);
+        if (JSObject.isJSObject(value)) {
+            return prepareJSObject((JSObject) value);
         } else if (value instanceof Symbol) {
             return Undefined.instance;
         } else if (JSRuntime.isCallableForeign(value)) {
@@ -232,7 +279,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return value;
     }
 
-    private static Object jsonStrPrepareJSObject(JSDynamicObject valueObj) {
+    private static Object prepareJSObject(JSObject valueObj) {
         JSClass builtinClass = JSObject.getJSClass(valueObj);
         if (builtinClass == JSNumber.INSTANCE) {
             return JSRuntime.toNumber(valueObj);
@@ -248,20 +295,20 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return valueObj;
     }
 
-    private Object jsonStrPrepareObject(Object key, Object value) {
+    private Object tryToJSONMethod(Object key, Object value) {
         assert JSRuntime.isPropertyKey(key);
         if (getToJSONProperty == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getToJSONProperty = insert(PropertyGetNode.create(Strings.TO_JSON, false, context));
+            getToJSONProperty = insert(PropertyGetNode.create(Strings.TO_JSON, context));
         }
         Object toJSON = getToJSONProperty.getValue(value);
         if (JSRuntime.isCallable(toJSON)) {
-            return jsonStrPrepareObjectFunction(key, value, toJSON);
+            return callToJSONMethod(key, value, toJSON);
         }
         return value;
     }
 
-    private Object jsonStrPrepareObjectFunction(Object key, Object value, Object toJSON) {
+    private Object callToJSONMethod(Object key, Object value, Object toJSON) {
         if (callToJSONFunction == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callToJSONFunction = insert(JSFunctionCallNode.createCall());
@@ -270,7 +317,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private TruffleStringBuilder jsonJO(TruffleStringBuilder sb, JSONData data, Object value) {
+    private TruffleStringBuilder serializeJSONObject(TruffleStringBuilder sb, JSONData data, Object value) {
+        assert !JSRuntime.isNullish(value) : value;
         checkCycle(data, value);
         data.pushStack(value);
         checkStackDepth(data);
@@ -281,8 +329,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         concatStart(sb, '{');
         int lengthBefore = StringBuilderProfile.length(sb);
         if (data.getPropertyList() == null) {
-            if (JSDynamicObject.isJSDynamicObject(value)) {
-                serializeJSONObjectProperties(sb, data, value, indent, JSObject.enumerableOwnNames((JSDynamicObject) value));
+            if (JSObject.isJSObject(value)) {
+                serializeJSONObjectProperties(sb, data, value, indent, JSObject.enumerableOwnNames((JSObject) value));
             } else {
                 serializeForeignObjectProperties(sb, data, value, indent);
             }
@@ -300,7 +348,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         boolean isFirst = true;
         for (Object key : keys) {
             TruffleString name = (TruffleString) key;
-            Object strPPrepared = jsonStrPrepare(data, name, value);
+            Object strPPrepared = getPreparedJSONPropertyValue(data, name, value);
             if (isStringifyable(strPPrepared)) {
                 if (isFirst) {
                     concatFirstStep(sb, data);
@@ -310,7 +358,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                 }
                 jsonQuote(sb, name);
                 appendColon(sb, data);
-                jsonStrExecute(sb, data, strPPrepared);
+                serializeJSONPropertyValue(sb, data, strPPrepared);
             }
         }
         return sb;
@@ -340,7 +388,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                     continue;
                 }
                 Object memberValue = truffleRead(obj, stringKey);
-                Object strPPrepared = jsonStrPreparePart2(data, stringKey, obj, memberValue);
+                Object strPPrepared = prepareJSONPropertyValue(data, stringKey, obj, memberValue);
                 if (isStringifyable(strPPrepared)) {
                     if (isFirst) {
                         concatFirstStep(sb, data);
@@ -350,7 +398,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                     }
                     jsonQuote(sb, stringKey);
                     appendColon(sb, data);
-                    jsonStrExecute(sb, data, strPPrepared);
+                    serializeJSONPropertyValue(sb, data, strPPrepared);
                 }
             }
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
@@ -359,9 +407,9 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private TruffleStringBuilder jsonJA(TruffleStringBuilder sb, JSONData data, Object value) {
+    private TruffleStringBuilder serializeJSONArray(TruffleStringBuilder sb, JSONData data, Object value) {
+        assert JSRuntime.isArray(value) : value;
         checkCycle(data, value);
-        assert JSRuntime.isArray(value) || InteropLibrary.getUncached().hasArrayElements(value);
         data.pushStack(value);
         checkStackDepth(data);
         int stepback = data.getIndent();
@@ -370,8 +418,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         Object lenObject;
         boolean isForeign = false;
         boolean isArray = false;
-        if (JSDynamicObject.isJSDynamicObject(value)) { // Array or Proxy
-            lenObject = JSObject.get((JSDynamicObject) value, JSArray.LENGTH);
+        if (JSObject.isJSObject(value)) { // Array or Proxy
+            lenObject = JSObject.get((JSObject) value, JSArray.LENGTH);
             if (JSArray.isJSArray(value)) {
                 isArray = true;
             }
@@ -394,14 +442,14 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             }
             Object strPPrepared;
             if (isArray) {
-                strPPrepared = jsonStrPrepareArray(data, index, (JSDynamicObject) value);
+                strPPrepared = getPreparedJSONPropertyValueFromJSArray(data, index, (JSObject) value);
             } else if (isForeign) {
-                strPPrepared = jsonStrPrepareForeign(data, index, value);
+                strPPrepared = getPreparedJSONPropertyValueFromForeignArray(data, index, value);
             } else {
-                strPPrepared = jsonStrPrepare(data, Strings.fromInt(index), value);
+                strPPrepared = getPreparedJSONPropertyValue(data, Strings.fromInt(index), value);
             }
             if (isStringifyable(strPPrepared)) {
-                jsonStrExecute(sb, data, strPPrepared);
+                serializeJSONPropertyValue(sb, data, strPPrepared);
             } else {
                 append(sb, Null.NAME);
             }

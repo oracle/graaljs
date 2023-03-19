@@ -3668,7 +3668,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         Environment withParentEnv = (function.hasClosures() || function.hasEval()) ? new BlockEnvironment(environment, factory, context) : environment;
         try (EnvironmentCloseable withParent = new EnvironmentCloseable(withParentEnv)) {
             JavaScriptNode withExpression = transform(withNode.getExpression());
-            JavaScriptNode toObject = factory.createToObjectFromWith(context, withExpression, true);
+            JavaScriptNode toObject = factory.createToObjectForWithStatement(context, withExpression);
             InternalSlotId withVarName = makeUniqueTempVarNameForStatement(Strings.WITH, withNode.getLineNumber());
             environment.declareInternalSlot(withVarName);
             JavaScriptNode writeWith = environment.findInternalSlot(withVarName).createWriteNode(toObject);

@@ -347,14 +347,17 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             } else if (type == Type.Number) {
                 return interop.isNumber(value);
             } else if (type == Type.Function) {
-                return interop.isExecutable(value) || interop.isInstantiable(value) || isHostSymbolInNashornCompatMode(value);
+                return isFunction(value, interop);
             } else if (type == Type.Object) {
-                return !interop.isExecutable(value) && !interop.isInstantiable(value) && !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value) &&
-                                !isHostSymbolInNashornCompatMode(value);
+                return (!interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value)) && !isFunction(value, interop);
             } else {
                 return false;
             }
         }
+    }
+
+    private boolean isFunction(Object value, InteropLibrary interop) {
+        return interop.isExecutable(value) || interop.isInstantiable(value) || isHostSymbolInNashornCompatMode(value);
     }
 
     private boolean isHostSymbolInNashornCompatMode(Object value) {

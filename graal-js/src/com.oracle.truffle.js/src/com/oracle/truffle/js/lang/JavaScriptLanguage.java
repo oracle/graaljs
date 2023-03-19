@@ -65,6 +65,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -565,11 +566,13 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         return promiseJobsQueueEmptyAssumption;
     }
 
+    @Idempotent
     @NeverDefault
     public JSContext getJSContext() {
         return Objects.requireNonNull(languageContext);
     }
 
+    @Idempotent
     public static JavaScriptLanguage get(Node node) {
         return REFERENCE.get(node);
     }

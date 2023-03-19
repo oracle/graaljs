@@ -54,8 +54,9 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * This implements ECMA 9.3 ToNumber, but always converting the result to a double value.
+ * Implements the abstract operation ToNumber but always converting the result to a double value.
  *
+ * @see JSToNumberNode
  */
 @GenerateUncached
 public abstract class JSToDoubleNode extends JavaScriptBaseNode {
@@ -81,6 +82,11 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static double doDouble(double value) {
+        return value;
+    }
+
+    @Specialization
+    protected static double doLong(long value) {
         return value;
     }
 
@@ -117,15 +123,10 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
-    @Specialization(guards = "isJSObject(object) || isForeignObject(object)", replaces = "doJSObject")
+    @Specialization(guards = "isJSObject(object) || isForeignObjectOrNumber(object)", replaces = "doJSObject")
     protected double doForeignObject(Object object,
                     @Shared @Cached JSToDoubleNode recursiveToDouble,
                     @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
         return recursiveToDouble.executeDouble(toPrimitiveNode.execute(object));
-    }
-
-    @Specialization(guards = "isJavaNumber(value)")
-    protected static double doJavaNumber(Object value) {
-        return JSRuntime.doubleValue((Number) value);
     }
 }

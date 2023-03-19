@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,47 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.intl;
+package com.oracle.truffle.js.nodes.cast;
 
-import java.util.List;
+import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
-import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.util.IntlUtil;
 
-public abstract class SupportedLocalesOfNode extends JSBuiltinNode {
+/**
+ * Modified version of {@link JSToObjectNode} that throws if the legacy {@code with} statement is
+ * used with a host object. For Nashorn compatibility.
+ */
+public abstract class WithStatementToObjectNode extends JSUnaryNode {
 
-    @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
-
-    public SupportedLocalesOfNode(JSContext context, JSBuiltin builtin) {
-        super(context, builtin);
-        this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
+    protected WithStatementToObjectNode(JavaScriptNode operand) {
+        super(operand);
     }
 
-    @Specialization(guards = "isUndefined(opts)")
-    protected Object getSupportedLocales(Object locales, @SuppressWarnings("unused") Object opts) {
-        List<Object> supportedLocals = IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), IntlUtil.BEST_FIT);
-        return JSRuntime.createArrayFromList(getContext(), getRealm(), supportedLocals);
+    public static JavaScriptNode create(JavaScriptNode child) {
+        return WithStatementToObjectNodeGen.create(child);
     }
 
-    @Specialization(guards = "!isUndefined(opts)")
-    protected Object getSupportedLocalesWithOptions(Object locales, Object opts,
-                    @Cached JSToObjectNode toObjectNode,
-                    @Cached("createMatcherGetter(getContext())") GetStringOptionNode getMatcherNode) {
-
-        String matcher = getMatcherNode.executeValue(toObjectNode.execute(opts));
-        List<Object> supportedLocales = IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), matcher);
-        return JSRuntime.createArrayFromList(getContext(), getRealm(), supportedLocales);
+    @Specialization
+    protected Object doDefault(Object value,
+                    @Cached JSToObjectNode toObjectNode) {
+        assert getLanguage().getJSContext().isOptionNashornCompatibilityMode();
+        Object result;
+        try {
+            result = toObjectNode.execute(value);
+        } catch (JSException ex) {
+            throw createTypeErrorNotObjectCoercible(value);
+        }
+        if (getRealm().getEnv().isHostObject(value)) {
+            throw Errors.createTypeError("Cannot apply \"with\" to non script object. Consider using \"with(Object.bindProperties({}, nonScriptObject))\".", this);
+        }
+        return result;
     }
 
-    @NeverDefault
-    protected static GetStringOptionNode createMatcherGetter(JSContext context) {
-        return GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+    @TruffleBoundary
+    private JSException createTypeErrorNotObjectCoercible(Object value) {
+        return Errors.createTypeError("Cannot apply \"with\" to " + JSRuntime.safeToString(value), this);
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return WithStatementToObjectNode.create(cloneUninitialized(getOperand(), materializedTags));
     }
 }

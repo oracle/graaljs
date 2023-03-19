@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * @see JSToBooleanUnaryNode
@@ -78,6 +79,11 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
     @NeverDefault
     public static JSToBooleanNode create() {
         return JSToBooleanNodeGen.create();
+    }
+
+    @NeverDefault
+    public static JSToBooleanNode getUncached() {
+        return JSToBooleanNodeGen.getUncached();
     }
 
     @Specialization
@@ -120,8 +126,8 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
         return Strings.length(value) != 0;
     }
 
-    @Specialization(guards = "isJSObject(value)")
-    protected static boolean doObject(@SuppressWarnings("unused") Object value) {
+    @Specialization
+    protected static boolean doJSObject(@SuppressWarnings("unused") JSObject value) {
         return true;
     }
 
@@ -144,9 +150,8 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
                 return !Strings.isEmpty(interop.asTruffleString(value));
             } else if (interop.isNumber(value)) {
                 if (interop.fitsInInt(value)) {
+                    // Works for any integer type, since value == 0 implies fitsInInt().
                     return doInt(interop.asInt(value));
-                } else if (interop.fitsInLong(value)) {
-                    return doLong(interop.asLong(value));
                 } else if (interop.fitsInDouble(value)) {
                     return doDouble(interop.asDouble(value));
                 } else {

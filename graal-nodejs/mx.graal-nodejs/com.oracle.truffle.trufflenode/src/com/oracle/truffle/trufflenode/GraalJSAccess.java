@@ -481,7 +481,7 @@ public final class GraalJSAccess {
             return BOOLEAN_VALUE_FALSE;
         } else if (value instanceof TruffleString) {
             return STRING_VALUE;
-        } else if (JSRuntime.isNumber(value)) {
+        } else if (JSRuntime.isNumber(value) || value instanceof Long) {
             if (useSharedBuffer) {
                 sharedBuffer.putDouble(((Number) value).doubleValue());
             }
@@ -528,16 +528,16 @@ public final class GraalJSAccess {
     }
 
     public int valueTypeForeignNumber(TruffleObject value, InteropLibrary interop, boolean useSharedBuffer) {
+        assert interop.isNumber(value);
         try {
-            return valueType(interop.asDouble(value), useSharedBuffer);
-        } catch (UnsupportedMessageException e) {
-            if (interop.fitsInLong(value)) {
-                try {
-                    return valueType(interop.asLong(value), useSharedBuffer);
-                } catch (UnsupportedMessageException ignore) {
-                    // fall through to error case
-                }
+            if (interop.fitsInDouble(value)) {
+                return valueType(interop.asDouble(value), useSharedBuffer);
+            } else if (interop.fitsInLong(value)) {
+                return valueType((double) interop.asLong(value), useSharedBuffer);
+            } else if (interop.fitsInBigInteger(value)) {
+                return valueType(BigInt.doubleValueOf(interop.asBigInteger(value)), useSharedBuffer);
             }
+        } catch (UnsupportedMessageException e) {
         }
         valueTypeError(value);
         return UNKNOWN_TYPE;
@@ -653,8 +653,8 @@ public final class GraalJSAccess {
         return Strings.fromObject(obj);
     }
 
-    public Object valueToObject(Object context, Object value) {
-        return JSRuntime.toObject(((JSRealm) context).getContext(), value);
+    public Object valueToObject(@SuppressWarnings("unused") Object context, Object value) {
+        return JSRuntime.toObject(value);
     }
 
     public Object valueToInteger(Object value) {
@@ -893,11 +893,11 @@ public final class GraalJSAccess {
         if (object instanceof JSDynamicObject) {
             value = JSObject.get((JSDynamicObject) object, propertyKey);
         } else {
-            TruffleObject truffleObject;
+            Object truffleObject;
             if (object instanceof TruffleObject) {
-                truffleObject = (TruffleObject) object;
+                truffleObject = object;
             } else {
-                truffleObject = JSRuntime.toObject(mainJSContext, object);
+                truffleObject = JSRuntime.toObject(object);
             }
             value = JSInteropUtil.readMemberOrDefault(truffleObject, propertyKey, Undefined.instance);
         }

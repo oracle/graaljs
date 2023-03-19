@@ -42,19 +42,20 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -79,7 +80,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * @see JSEqualNode
  */
 @NodeInfo(shortName = "===")
-@ImportStatic({JSRuntime.class, JSConfig.class, JSGuards.class})
+@ImportStatic({JSRuntime.class, JSConfig.class})
 public abstract class JSIdenticalNode extends JSCompareNode {
     protected static final int MAX_CLASSES = 3;
 
@@ -150,7 +151,7 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doDouble(double a, double b) {
+    protected final boolean doDouble(double a, double b) {
         if (type == STRICT_EQUALITY_COMPARISON) {
             return a == b;
         } else if (type == SAME_VALUE) {
@@ -268,46 +269,54 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return false;
     }
 
-    @Idempotent
-    protected static boolean isJavaNumberType(Class<?> clazz) {
-        return Number.class.isAssignableFrom(clazz);
-    }
-
-    /**
-     * lhs and rhs are of different types. This specialization is used only for type classes that
-     * are wider than a single type (to be more specific, only numbers, currently).
-     */
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"a.getClass() == cachedClassA", "b.getClass() == cachedClassB",
-                    "isJavaNumberType(cachedClassA) != isJavaNumberType(cachedClassB)"}, limit = "MAX_CLASSES")
-    protected static boolean doNumberNotNumberCached(Object a, Object b, //
-                    @Cached("a.getClass()") Class<?> cachedClassA, //
-                    @Cached("b.getClass()") Class<?> cachedClassB) {
-        return false;
-    }
-
-    @Specialization(guards = {"isJavaNumber(a) != isJavaNumber(b)"}, replaces = "doNumberNotNumberCached")
-    protected static boolean doNumberNotNumber(Object a, Object b) {
-        assert (a != null) && (b != null);
-        return false;
-    }
-
     @Specialization(guards = {"isString(a) != isString(b)"})
     protected static boolean doStringNotString(Object a, Object b) {
         assert (a != null) && (b != null);
         return false;
     }
 
-    @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"})
-    protected boolean doNumber(Number a, Number b) {
-        return doDouble(JSRuntime.doubleValue(a), JSRuntime.doubleValue(b));
+    @Specialization
+    protected static boolean doLong(long a, long b) {
+        return a == b;
     }
 
-    @Specialization(guards = {"isForeignObject(a)", "isForeignObject(b)"}, limit = "InteropLibraryLimit")
-    protected static boolean doForeignObject(Object a, Object b,
+    @InliningCutoff
+    @Specialization(guards = {"isAForeign || isBForeign"}, limit = "InteropLibraryLimit")
+    protected final boolean doForeignObject(Object a, Object b,
+                    @Bind("isForeignObjectOrNumber(a)") boolean isAForeign,
+                    @Bind("isForeignObjectOrNumber(b)") boolean isBForeign,
                     @CachedLibrary("a") InteropLibrary aInterop,
                     @CachedLibrary("b") InteropLibrary bInterop) {
+        if (aInterop.isNumber(a) && bInterop.isNumber(b)) {
+            return doForeignNumber(a, b, aInterop, bInterop, isAForeign, isBForeign);
+        }
         return aInterop.isIdentical(a, b, bInterop) || (aInterop.isNull(a) && bInterop.isNull(b));
+    }
+
+    private boolean doForeignNumber(Object a, Object b, InteropLibrary aInterop, InteropLibrary bInterop, boolean isAForeign, boolean isBForeign) {
+        try {
+            if (isAForeign != isBForeign) {
+                if (a instanceof BigInt) {
+                    assert !(b instanceof BigInt) : b;
+                    return false;
+                } else if (b instanceof BigInt) {
+                    assert !(a instanceof BigInt) : a;
+                    return false;
+                }
+            } else {
+                assert isAForeign && isBForeign && !(a instanceof BigInt || b instanceof BigInt);
+            }
+            if (aInterop.fitsInDouble(a) && bInterop.fitsInDouble(b)) {
+                return doDouble(aInterop.asDouble(a), bInterop.asDouble(b));
+            } else if (aInterop.fitsInLong(a) && bInterop.fitsInLong(b)) {
+                return aInterop.asLong(a) == bInterop.asLong(b);
+            } else if (aInterop.fitsInBigInteger(a) && bInterop.fitsInBigInteger(b)) {
+                return BigInt.fromBigInteger(aInterop.asBigInteger(a)).compareTo(BigInt.fromBigInteger(bInterop.asBigInteger(b))) == 0;
+            }
+        } catch (UnsupportedMessageException e) {
+            assert false : e;
+        }
+        return false;
     }
 
     @Fallback

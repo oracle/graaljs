@@ -42,8 +42,8 @@ package com.oracle.truffle.js.nodes.unary;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -171,33 +171,42 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return JSSymbol.TYPE_NAME;
     }
 
+    @Specialization
+    protected static TruffleString doLong(long operand) {
+        return JSNumber.TYPE_NAME;
+    }
+
     @InliningCutoff
     @Specialization(guards = "isForeignObject(operand)", limit = "InteropLibraryLimit")
     protected TruffleString doTruffleObject(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
-        if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
-            TruffleLanguage.Env env = getRealm().getEnv();
-            if (env.isHostSymbol(operand)) {
-                return JSFunction.TYPE_NAME;
-            }
-        }
         if (interop.isBoolean(operand)) {
             return JSBoolean.TYPE_NAME;
         } else if (interop.isString(operand)) {
             return JSString.TYPE_NAME;
         } else if (interop.isNumber(operand)) {
             return JSNumber.TYPE_NAME;
-        } else if (interop.isExecutable(operand) || interop.isInstantiable(operand)) {
+        }
+        if (interop.isExecutable(operand) || interop.isInstantiable(operand) || isHostSymbolInNashornCompatMode(operand)) {
             return JSFunction.TYPE_NAME;
         } else {
             return JSOrdinary.TYPE_NAME;
         }
     }
 
+    private boolean isHostSymbolInNashornCompatMode(Object value) {
+        if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
+            TruffleLanguage.Env env = getRealm().getEnv();
+            if (env.isHostSymbol(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Fallback
     protected TruffleString doJavaObject(Object operand) {
-        assert operand != null;
-        return operand instanceof Number ? JSNumber.TYPE_NAME : JSOrdinary.TYPE_NAME;
+        return JSOrdinary.TYPE_NAME;
     }
 
     @Override

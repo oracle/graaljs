@@ -15,6 +15,12 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 * Implemented the [Symbols as WeakMap keys](https://github.com/tc39/proposal-symbols-as-weakmap-keys) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [ArrayBuffer.prototype.transfer and friends](https://github.com/tc39/proposal-arraybuffer-transfer) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Change Array by copy](https://github.com/tc39/proposal-change-array-by-copy) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Added BigInteger interop support.
+  Note that foreign BigIntegers require an explicit type cast using the `BigInt` function to opt into JS BigInt semantics.
+  The default semantics is to treat all foreign numbers like JS Number values, regardless of the original value or type.
+  Arithmetic operators perform an implicit lossy conversion to double; mixing a JS BigInt with any non-JS number always throws.
+  Comparison operators attempt to do a precise value comparison where possible.
+  JS BigInt values can now be converted to `java.math.BigInteger` host objects, although a [target type mapping](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping-java.lang.Class-java.lang.Class-java.util.function.Predicate-java.util.function.Function-) may still be necessary to ensure consistent type mapping if the target type is ambiguous or absent.
 
 ## Version 22.3.0
 * Implemented the [WebAssembly multi-value](https://github.com/WebAssembly/multi-value) proposal.

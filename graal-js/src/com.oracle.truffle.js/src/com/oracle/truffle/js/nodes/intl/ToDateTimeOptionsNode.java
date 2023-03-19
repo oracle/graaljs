@@ -86,7 +86,7 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "!isUndefined(opts)")
     public JSDynamicObject fromOtherThenUndefined(Object opts, String required, String defaults,
-                    @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
+                    @Cached JSToObjectNode toObjectNode,
                     @Cached("createOrdinaryWithPrototype(context)") CreateObjectWithPrototypeNode createObjectNode,
                     @Cached InlinedBranchProfile errorBranch) {
         Object optionObject = toObjectNode.execute(opts);

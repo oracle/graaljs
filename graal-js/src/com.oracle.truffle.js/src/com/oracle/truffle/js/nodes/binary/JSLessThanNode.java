@@ -79,72 +79,77 @@ public abstract class JSLessThanNode extends JSCompareNode {
     public abstract boolean executeBoolean(Object a, Object b);
 
     @Specialization
-    protected boolean doInt(int a, int b) {
+    protected static boolean doInt(int a, int b) {
         return a < b;
     }
 
     @Specialization
-    protected boolean doSafeInteger(int a, SafeInteger b) {
+    protected static boolean doSafeInteger(int a, SafeInteger b) {
         return a < b.longValue();
     }
 
     @Specialization
-    protected boolean doSafeInteger(SafeInteger a, int b) {
+    protected static boolean doSafeInteger(SafeInteger a, int b) {
         return a.longValue() < b;
     }
 
     @Specialization
-    protected boolean doSafeInteger(SafeInteger a, SafeInteger b) {
+    protected static boolean doSafeInteger(SafeInteger a, SafeInteger b) {
         return a.longValue() < b.longValue();
     }
 
     @Specialization
-    protected boolean doDouble(double a, double b) {
+    protected static boolean doLong(long a, long b) {
         return a < b;
     }
 
     @Specialization
-    protected boolean doString(TruffleString a, TruffleString b,
+    protected static boolean doDouble(double a, double b) {
+        return a < b;
+    }
+
+    @Specialization
+    protected static boolean doString(TruffleString a, TruffleString b,
                     @Cached TruffleString.CompareCharsUTF16Node compareNode) {
         return Strings.compareTo(compareNode, a, b) < 0;
     }
 
     @Specialization
-    protected boolean doStringDouble(TruffleString a, double b,
+    protected static boolean doStringDouble(TruffleString a, double b,
                     @Shared @Cached JSStringToNumberNode stringToDouble) {
         return doDouble(stringToDouble.execute(a), b);
     }
 
     @Specialization
-    protected boolean doDoubleString(double a, TruffleString b,
+    protected static boolean doDoubleString(double a, TruffleString b,
                     @Shared @Cached JSStringToNumberNode stringToDouble) {
         return doDouble(a, stringToDouble.execute(b));
     }
 
     @Specialization
-    protected boolean doStringBigInt(TruffleString a, BigInt b) {
+    protected static boolean doStringBigInt(TruffleString a, BigInt b) {
         BigInt aBigInt = JSRuntime.stringToBigInt(a);
         return (aBigInt == null) ? false : doBigInt(aBigInt, b);
     }
 
     @Specialization
-    protected boolean doBigIntString(BigInt a, TruffleString b) {
+    protected static boolean doBigIntString(BigInt a, TruffleString b) {
         BigInt bBigInt = JSRuntime.stringToBigInt(b);
         return (bBigInt == null) ? false : doBigInt(a, bBigInt);
     }
 
     @Specialization
-    protected boolean doBigInt(BigInt a, BigInt b) {
+    protected static boolean doBigInt(BigInt a, BigInt b) {
         return a.compareTo(b) < 0;
     }
 
     @Specialization
-    protected boolean doBigIntAndInt(BigInt a, int b) {
-        return a.compareTo(BigInt.valueOf(b)) < 0;
+    protected static boolean doBigIntAndInt(BigInt a, int b) {
+        return a.compareValueTo(b) < 0;
     }
 
     @Specialization
-    protected boolean doBigIntAndNumber(BigInt a, double b) {
+    protected static boolean doBigIntAndNumber(BigInt a, double b) {
         if (Double.isNaN(b)) {
             return false;
         }
@@ -152,21 +157,16 @@ public abstract class JSLessThanNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doIntAndBigInt(int a, BigInt b) {
-        return b.compareTo(BigInt.valueOf(a)) > 0;
+    protected static boolean doIntAndBigInt(int a, BigInt b) {
+        return b.compareValueTo(a) > 0;
     }
 
     @Specialization
-    protected boolean doNumberAndBigInt(double a, BigInt b) {
+    protected static boolean doNumberAndBigInt(double a, BigInt b) {
         if (Double.isNaN(a)) {
             return false;
         }
         return b.compareValueTo(a) > 0;
-    }
-
-    @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"})
-    protected boolean doJavaNumber(Object a, Object b) {
-        return doDouble(JSRuntime.doubleValue((Number) a), JSRuntime.doubleValue((Number) b));
     }
 
     @InliningCutoff
@@ -182,9 +182,10 @@ public abstract class JSLessThanNode extends JSCompareNode {
         return Strings.ANGLE_BRACKET_OPEN;
     }
 
-    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString",
-                    "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})
-    protected boolean doGeneric(Object a, Object b,
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {
+                    "doString", "doStringDouble", "doDoubleString", "doStringBigInt", "doBigIntString",
+                    "doBigInt", "doBigIntAndInt", "doIntAndBigInt", "doBigIntAndNumber", "doNumberAndBigInt"})
+    protected static boolean doGeneric(Object a, Object b,
                     @Cached JSToStringOrNumberNode toStringOrNumber1,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive1,
                     @Cached JSToStringOrNumberNode toStringOrNumber2,

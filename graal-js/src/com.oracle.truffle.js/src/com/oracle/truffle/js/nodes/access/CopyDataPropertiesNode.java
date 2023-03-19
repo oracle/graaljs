@@ -99,8 +99,8 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
         return target;
     }
 
-    @Specialization(guards = {"isJSObject(source)"})
-    protected static JSDynamicObject copyDataProperties(JSDynamicObject target, JSDynamicObject source, Object[] excludedItems, boolean withExcluded,
+    @Specialization
+    protected static JSDynamicObject copyDataProperties(JSDynamicObject target, JSObject source, Object[] excludedItems, boolean withExcluded,
                     @Cached("create(context)") ReadElementNode getNode,
                     @Cached("create(false)") JSGetOwnPropertyNode getOwnProperty,
                     @Cached ListSizeNode listSize,

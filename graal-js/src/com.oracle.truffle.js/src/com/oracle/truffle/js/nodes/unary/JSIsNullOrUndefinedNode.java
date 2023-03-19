@@ -156,7 +156,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     @Specialization(guards = {"!isJSDynamicObject(operand)"}, limit = "InteropLibraryLimit")
     protected boolean doJSValueOrForeign(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
-        assert JSRuntime.isJSPrimitive(operand) || JSRuntime.isForeignObject(operand);
+        assert JSRuntime.isJSPrimitive(operand) || JSGuards.isForeignObjectOrNumber(operand) : operand;
         return interop.isNull(operand);
     }
 

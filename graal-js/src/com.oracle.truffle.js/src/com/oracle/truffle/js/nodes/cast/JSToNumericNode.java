@@ -45,11 +45,16 @@ import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOp
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -123,15 +128,14 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization
-    protected Object doBigInt(BigInt value) {
+    @Specialization(guards = "!value.isForeign()")
+    protected static BigInt doBigInt(BigInt value) {
         return value;
     }
 
-    @Specialization(guards = "isJSBigInt(value)")
-    protected Object doJSBigInt(Object value,
-                    @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
-        return toPrimitiveNode.execute(value);
+    @Specialization(guards = "value.isForeign()")
+    protected static double doForeignBigInt(BigInt value) {
+        return value.doubleValue();
     }
 
     @Specialization(guards = {"isToNumericOperand()"})
@@ -140,24 +144,28 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return arg;
     }
 
-    @Specialization(guards = {"isToNumericOperand()", "!isJSBigInt(value)", "!hasOverloadedOperators(value)"})
-    protected Object doToNumericOperandOther(Object value,
+    @Specialization(guards = {"isToNumericOperand()", "!hasOverloadedOperators(value)"})
+    protected final Object doToNumericOperandOther(Object value,
                     @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached PrimitiveToNumericOrNullNode numericOrNullNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
         Object primValue = toPrimitiveNode.execute(value);
-        if (JSRuntime.isBigInt(primValue)) {
-            return primValue;
+        Object alreadyNumeric = numericOrNullNode.execute(this, primValue);
+        if (alreadyNumeric != null) {
+            return alreadyNumeric;
         }
         return toNumberNode.executeNumber(primValue);
     }
 
-    @Specialization(guards = {"!isToNumericOperand()", "!isJSBigInt(value)"})
-    protected Object doToNumericOther(Object value,
+    @Specialization(guards = {"!isToNumericOperand()", "!isBigInt(value)"})
+    protected final Object doToNumericOther(Object value,
                     @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached PrimitiveToNumericOrNullNode numericOrNullNode,
                     @Shared @Cached JSToNumberNode toNumberNode) {
         Object primValue = toPrimitiveNode.execute(value);
-        if (JSRuntime.isBigInt(primValue)) {
-            return primValue;
+        Object alreadyNumeric = numericOrNullNode.execute(this, primValue);
+        if (alreadyNumeric != null) {
+            return alreadyNumeric;
         }
         return toNumberNode.executeNumber(primValue);
     }
@@ -190,6 +198,37 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         @Override
         public String expressionToString() {
             return getOperand().expressionToString();
+        }
+    }
+
+    /**
+     * Returns true if the value is already a numeric value that should not be converted ToNumber.
+     */
+    @ImportStatic(JSToNumericNode.class)
+    @GenerateInline
+    @GenerateCached(false)
+    protected abstract static class PrimitiveToNumericOrNullNode extends JavaScriptBaseNode {
+
+        public abstract Object execute(Node node, Object value);
+
+        @Specialization(guards = "!value.isForeign()")
+        protected static BigInt doBigInt(BigInt value) {
+            return value;
+        }
+
+        @Specialization(guards = "value.isForeign()")
+        protected static double doForeignBigInt(BigInt value) {
+            return value.doubleValue();
+        }
+
+        @Specialization
+        protected static double doLong(long value) {
+            return value;
+        }
+
+        @Fallback
+        protected static Object doOther(@SuppressWarnings("unused") Object value) {
+            return null;
         }
     }
 }

@@ -49,7 +49,6 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
@@ -104,7 +103,7 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
             method = methodOpt;
         } else {
             if (getIteratorMethodNode == null) {
-                method = getIteratorMethodUncached(items, node);
+                method = getIteratorMethodUncached(items);
             } else {
                 method = getIteratorMethodNode.executeWithTarget(items);
             }
@@ -114,9 +113,9 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
     }
 
     @InliningCutoff
-    private static Object getIteratorMethodUncached(Object items, Node node) {
+    private static Object getIteratorMethodUncached(Object items) {
         Object method;
-        Object obj = JSRuntime.toObject(JavaScriptLanguage.get(node).getJSContext(), items);
+        Object obj = JSRuntime.toObject(items);
         if (JSRuntime.isForeignObject(obj)) {
             obj = ForeignObjectPrototypeNode.getUncached().execute(obj);
         }

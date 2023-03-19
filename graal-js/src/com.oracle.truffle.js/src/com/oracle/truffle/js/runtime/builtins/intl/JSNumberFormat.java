@@ -89,6 +89,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -482,19 +483,19 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static TruffleString format(JSDynamicObject numberFormatObj, Object n) {
+    public static TruffleString format(JSNumberFormatObject numberFormatObj, Object n) {
         InternalState state = getInternalState(numberFormatObj);
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
         return Strings.fromJavaString(formattedValue(state, x).toString());
     }
 
     @TruffleBoundary
-    public static TruffleString formatMV(JSDynamicObject numberFormatObj, Number mv) {
+    public static TruffleString formatMV(JSNumberFormatObject numberFormatObj, Number mv) {
         InternalState state = getInternalState(numberFormatObj);
         return Strings.fromJavaString(formattedValue(state, mv).toString());
     }
 
-    private static FormattedNumberRange formatRangeImpl(JSDynamicObject numberFormatObj, Number x, Number y) {
+    private static FormattedNumberRange formatRangeImpl(JSNumberFormatObject numberFormatObj, Number x, Number y) {
         if (JSRuntime.isNaN(x) || JSRuntime.isNaN(y)) {
             throw Errors.createRangeError("invalid range");
         }
@@ -506,12 +507,12 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static TruffleString formatRange(JSDynamicObject numberFormatObj, Number x, Number y) {
+    public static TruffleString formatRange(JSNumberFormatObject numberFormatObj, Number x, Number y) {
         return Strings.fromJavaString(formatRangeImpl(numberFormatObj, x, y).toString());
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatRangeToParts(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj, Number x, Number y) {
+    public static JSArrayObject formatRangeToParts(JSContext context, JSRealm realm, JSNumberFormatObject numberFormatObj, Number x, Number y) {
         FormattedNumberRange formattedRange = formatRangeImpl(numberFormatObj, x, y);
         String formattedString = formattedRange.toString();
 

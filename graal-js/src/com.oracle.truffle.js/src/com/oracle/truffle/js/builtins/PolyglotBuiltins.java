@@ -630,7 +630,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object truffleObject(TruffleObject obj,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-            Object unboxed = JSInteropUtil.toPrimitiveOrDefault(obj, obj, interop, this);
+            Object unboxed = JSInteropUtil.toPrimitiveOrDefaultLossy(obj, obj, interop, this);
             if (unboxed == obj) {
                 throw Errors.createTypeErrorNotATruffleObject("unbox");
             }
@@ -938,7 +938,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected final Object toJSValue(TruffleObject obj,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-            return JSInteropUtil.toPrimitiveOrDefault(obj, obj, interop, this);
+            return JSInteropUtil.toPrimitiveOrDefaultLossy(obj, obj, interop, this);
         }
 
         @Specialization(guards = "!isTruffleObject(obj)")

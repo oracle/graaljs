@@ -43,17 +43,19 @@ package com.oracle.truffle.js.nodes.cast;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -63,90 +65,48 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * Implementation of ECMA 9.9 "ToObject" as Truffle node.
+ * Implementation of the ECMAScript abstract operation ToObject(argument).
  *
- * thing a generic value to be converted to a JSDynamicObject or TruffleObject
+ * Converts the argument to a JSDynamicObject or TruffleObject.
  */
+@GenerateUncached
 @ImportStatic({CompilerDirectives.class, JSConfig.class})
 public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
-    protected final JSContext context;
-    protected final boolean checkForNullOrUndefined;
-    protected final boolean fromWith;
-    protected final boolean allowForeign;
-
-    protected JSToObjectNode(JSContext context, boolean checkForNullOrUndefined, boolean fromWith, boolean allowForeign) {
-        this.context = context;
-        this.checkForNullOrUndefined = checkForNullOrUndefined;
-        this.fromWith = fromWith;
-        this.allowForeign = allowForeign;
+    protected JSToObjectNode() {
     }
 
     public abstract Object execute(Object value);
 
     @NeverDefault
-    public static JSToObjectNode createToObject(JSContext context) {
-        return createToObject(context, true, false, true);
+    public static JSToObjectNode create() {
+        return JSToObjectNodeGen.create();
     }
 
     @NeverDefault
-    public static JSToObjectNode createToObjectNoCheck(JSContext context) {
-        return createToObject(context, false, false, true);
-    }
-
-    @NeverDefault
-    public static JSToObjectNode createToObjectNoCheckNoForeign(JSContext context) {
-        return createToObject(context, false, false, false);
-    }
-
-    @NeverDefault
-    protected static JSToObjectNode createToObject(JSContext context, boolean checkForNullOrUndefined, boolean fromWith, boolean allowForeign) {
-        return JSToObjectNodeGen.create(context, checkForNullOrUndefined, fromWith, allowForeign);
+    public static JSToObjectNode getUncached() {
+        return JSToObjectNodeGen.getUncached();
     }
 
     protected final JSContext getContext() {
-        return context;
-    }
-
-    @Idempotent
-    protected final boolean isCheckForNullOrUndefined() {
-        return checkForNullOrUndefined;
-    }
-
-    protected final boolean isFromWith() {
-        return fromWith;
-    }
-
-    @Idempotent
-    protected final boolean isAllowForeign() {
-        return allowForeign;
-    }
-
-    @TruffleBoundary
-    private JSException createTypeError(Object value) {
-        if (isFromWith()) {
-            return Errors.createTypeError("Cannot apply \"with\" to " + JSRuntime.safeToString(value), this);
-        }
-        return Errors.createTypeErrorNotObjectCoercible(value, this, context);
+        return getLanguage().getJSContext();
     }
 
     @InliningCutoff
     @Specialization
     protected JSDynamicObject doBoolean(boolean value) {
-        return JSBoolean.create(context, getRealm(), value);
+        return JSBoolean.create(getContext(), getRealm(), value);
     }
 
     @InliningCutoff
@@ -174,12 +134,6 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @InliningCutoff
-    @Specialization(guards = "isJavaNumber(value)")
-    protected JSDynamicObject doNumber(Object value) {
-        return JSNumber.create(getContext(), getRealm(), (Number) value);
-    }
-
-    @InliningCutoff
     @Specialization
     protected JSDynamicObject doSymbol(Symbol value) {
         return JSSymbol.create(getContext(), getRealm(), value);
@@ -191,103 +145,99 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return cachedClass.cast(object);
     }
 
-    final Class<?> getClassIfObject(Object object) {
-        if (isCheckForNullOrUndefined() && JSGuards.isJSObject(object)) {
-            return object.getClass();
-        } else if (!isCheckForNullOrUndefined() && JSGuards.isJSDynamicObject(object)) {
+    static Class<?> getClassIfObject(Object object) {
+        if (JSGuards.isJSObject(object)) {
             return object.getClass();
         } else {
             return null;
         }
     }
 
-    @Specialization(guards = {"!isCheckForNullOrUndefined()", "isJSDynamicObject(object)"}, replaces = "doJSObjectCached")
-    protected Object doJSObjectNoCheck(Object object) {
+    @Specialization(replaces = "doJSObjectCached")
+    protected Object doJSObject(JSObject object) {
         return object;
     }
 
-    @Specialization(guards = {"isCheckForNullOrUndefined()", "isJSObject(object)"}, replaces = "doJSObjectCached")
-    protected Object doJSObjectCheck(Object object) {
-        return object;
-    }
-
-    @Specialization(guards = {"isCheckForNullOrUndefined()", "isNullOrUndefined(object)"})
+    @Specialization(guards = {"isNullOrUndefined(object)"})
     protected JSDynamicObject doNullOrUndefined(Object object) {
-        throw createTypeError(object);
+        throw Errors.createTypeErrorNotObjectCoercible(object, this);
     }
 
     @InliningCutoff
-    @Specialization(guards = {"isAllowForeign()", "isForeignObject(obj)"}, limit = "InteropLibraryLimit")
-    protected Object doForeignObjectAllowed(Object obj,
-                    @Cached("createToObject(context, checkForNullOrUndefined, fromWith, allowForeign)") JSToObjectNode toObjectNode,
-                    @CachedLibrary("obj") InteropLibrary interop) {
-        if (isFromWith() && context.isOptionNashornCompatibilityMode() && getRealm().getEnv().isHostObject(obj)) {
-            throwWithError();
+    @Specialization(guards = {"isForeignObjectOrNumber(value)"}, limit = "InteropLibraryLimit")
+    protected final Object doForeignObject(Object value,
+                    @CachedLibrary("value") InteropLibrary interop) {
+        if (interop.isNull(value)) {
+            throw Errors.createTypeErrorNotObjectCoercible(value, this);
         }
-        Object unboxed = JSInteropUtil.toPrimitiveOrDefault(obj, null, interop, this);
-        if (unboxed == null) {
-            return obj; // not a boxed primitive value
-        } else if (unboxed == Null.instance) {
-            throw createTypeError(obj);
-        }
-        return toObjectNode.execute(unboxed);
+        return doForeignObjectNonNull(value, interop, this);
     }
 
-    @Specialization(guards = {"!isAllowForeign()", "isForeignObject(obj)"})
-    protected Object doForeignObjectDisallowed(@SuppressWarnings("unused") Object obj) {
-        throw Errors.createTypeError("Foreign TruffleObject not supported", this);
+    static Object doForeignObjectNonNull(Object value, InteropLibrary interop, JavaScriptBaseNode node) {
+        assert !interop.isNull(value);
+        try {
+            if (!interop.hasMembers(value)) {
+                if (interop.isBoolean(value)) {
+                    return JSBoolean.create(JavaScriptLanguage.get(node).getJSContext(), JSRealm.get(node), interop.asBoolean(value));
+                } else if (interop.isString(value)) {
+                    return JSString.create(JavaScriptLanguage.get(node).getJSContext(), JSRealm.get(node), interop.asTruffleString(value));
+                } else if (interop.isNumber(value)) {
+                    return doForeignNumber(value, interop, node);
+                }
+            }
+            assert value instanceof TruffleObject : value;
+            return value;
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(value, e, "ToObject", node);
+        }
     }
 
-    @InliningCutoff
-    @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isJSObject(object)", "!isForeignObject(object)"})
-    protected Object doJavaGeneric(Object object) {
-        // assume these to be Java objects
-        assert !JSRuntime.isJSNative(object);
-        if (isFromWith()) {
-            // ... but make that an error within "with"
-            throwWithError();
+    private static Object doForeignNumber(Object value, InteropLibrary interop, JavaScriptBaseNode node) throws UnsupportedMessageException {
+        Number number;
+        if (interop.fitsInInt(value)) {
+            number = interop.asInt(value);
+        } else if (interop.fitsInDouble(value)) {
+            number = interop.asDouble(value);
+        } else if (interop.fitsInLong(value)) {
+            number = interop.asLong(value);
+        } else if (interop.fitsInBigInteger(value)) {
+            /*
+             * The only way to get the value out of a JS Number object again is through
+             * Number.prototype methods which expect the value to already be a Number, so we might
+             * as well lossily convert Long and BigInteger to Double eagerly.
+             */
+            number = BigInt.doubleValueOf(interop.asBigInteger(value));
+        } else {
+            // Java primitive numbers always fit in either Double or BigInteger
+            assert value instanceof TruffleObject && !(value instanceof Number) : value;
+            return value;
         }
-        return getRealm().getEnv().asBoxedGuestValue(object);
-    }
-
-    @TruffleBoundary
-    private void throwWithError() {
-        String message = "Cannot apply \"with\" to non script object";
-        if (getContext().isOptionNashornCompatibilityMode()) {
-            message += ". Consider using \"with(Object.bindProperties({}, nonScriptObject))\".";
-        }
-        throw Errors.createTypeError(message, this);
+        return JSNumber.create(JavaScriptLanguage.get(node).getJSContext(), JSRealm.get(node), number);
     }
 
     public abstract static class JSToObjectWrapperNode extends JSUnaryNode {
-        @Child private JSToObjectNode toObjectNode;
 
-        protected JSToObjectWrapperNode(JavaScriptNode operand, JSToObjectNode toObjectNode) {
+        protected JSToObjectWrapperNode(JavaScriptNode operand) {
             super(operand);
-            this.toObjectNode = toObjectNode;
         }
 
         /**
          * This factory method forces the creation of an JSObjectCastNode; in contrast to
          * {@code create} it does not check the child and try to omit unnecessary cast nodes.
          */
-        public static JSToObjectWrapperNode createToObject(JSContext context, JavaScriptNode child) {
-            return JSToObjectWrapperNodeGen.create(child, JSToObjectNode.createToObject(context));
-        }
-
-        public static JSToObjectWrapperNode createToObjectFromWith(JSContext context, JavaScriptNode child, boolean checkForNullOrUndefined) {
-            return JSToObjectWrapperNodeGen.create(child, JSToObjectNodeGen.create(context, checkForNullOrUndefined, true, true));
+        public static JSToObjectWrapperNode createToObject(JavaScriptNode child) {
+            return JSToObjectWrapperNodeGen.create(child);
         }
 
         @Specialization
-        protected Object doDefault(Object value) {
+        protected Object doDefault(Object value,
+                        @Cached JSToObjectNode toObjectNode) {
             return toObjectNode.execute(value);
         }
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            JSToObjectNode clonedToObject = JSToObjectNodeGen.create(toObjectNode.getContext(), toObjectNode.isCheckForNullOrUndefined(), toObjectNode.isFromWith(), toObjectNode.isAllowForeign());
-            return JSToObjectWrapperNodeGen.create(cloneUninitialized(getOperand(), materializedTags), clonedToObject);
+            return JSToObjectWrapperNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
         }
     }
 }

@@ -107,7 +107,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
 
     @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isUndefined(object)", "!isJSLocale(object)"})
     protected String[] doOtherType(Object object,
-                    @Cached("createToObject(context)") JSToObjectNode toObjectNode,
+                    @Cached JSToObjectNode toObjectNode,
                     @Cached("create(context)") JSGetLengthNode getLengthNode,
                     @Cached JSHasPropertyNode hasPropertyNode,
                     @Cached @Shared("typeOfNode") TypeOfNode typeOfNode,
