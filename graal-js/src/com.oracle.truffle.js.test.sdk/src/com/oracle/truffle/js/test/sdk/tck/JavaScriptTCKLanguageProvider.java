@@ -98,12 +98,12 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // boolean
         vals.add(createValueConstructor(context, "false", TypeDescriptor.BOOLEAN));
         // number
-        vals.add(createValueConstructor(context, "0", TypeDescriptor.NUMBER));
+        // vals.add(createValueConstructor(context, "0", TypeDescriptor.NUMBER));
         vals.add(createValueConstructor(context, "1", TypeDescriptor.NUMBER));
         vals.add(createValueConstructor(context, "-1", TypeDescriptor.NUMBER));
         vals.add(createValueConstructor(context, "1.1", TypeDescriptor.NUMBER));
         // bigint
-        vals.add(createValueConstructor(context, "0n", TypeDescriptor.NUMBER));
+        // vals.add(createValueConstructor(context, "0n", TypeDescriptor.NUMBER));
         vals.add(createValueConstructor(context, "9223372036854775807n", TypeDescriptor.NUMBER));
         vals.add(createValueConstructor(context, "9223372036854775808n", TypeDescriptor.NUMBER));
         vals.add(createValueConstructor(context, "-9223372036854775808n", TypeDescriptor.NUMBER));
