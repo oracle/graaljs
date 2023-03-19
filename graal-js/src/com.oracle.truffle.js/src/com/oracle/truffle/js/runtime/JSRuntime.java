@@ -220,7 +220,7 @@ public final class JSRuntime {
             return Undefined.TYPE_NAME;
         } else if (Strings.isTString(value)) {
             return JSString.TYPE_NAME;
-        } else if (isNumber(value)) {
+        } else if (isNumber(value) || value instanceof Long) {
             return JSNumber.TYPE_NAME;
         } else if (isBigInt(value)) {
             return JSBigInt.TYPE_NAME;

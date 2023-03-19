@@ -254,7 +254,9 @@ public class JSRuntimeTest extends JSTest {
                         JSBigInt.create(ctx, realm, BigInt.ZERO),
                         new ForeignNull(),
                         new ForeignTestMap(),
-                        env.asGuestValue(new Object[]{3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 9})};
+                        env.asGuestValue(new Object[]{3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 9}),
+                        env.asGuestValue(BigInteger.valueOf(Long.MAX_VALUE).shiftLeft(1)),
+                        Long.MAX_VALUE};
     }
 
     @Test
