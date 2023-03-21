@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public final class JSFunctionData {
@@ -329,7 +328,7 @@ public final class JSFunctionData {
         if (UPDATER_ROOT_TARGET.compareAndSet(this, null, rootNode)) {
             return rootNode;
         } else {
-            throw Errors.shouldNotReachHere("RootNode created more than once");
+            return UPDATER_ROOT_TARGET.get(this);
         }
     }
 
@@ -358,21 +357,24 @@ public final class JSFunctionData {
         return lazyInit != null;
     }
 
+    /**
+     * Called by a lazy initialization closure to release itself after initializing the RootNode to
+     * not hold on to no longer needed memory; overwrites it with the RootNode.
+     */
+    public void releaseLazyInit() {
+        assert hasLazyInit() && !isBuiltin();
+        this.lazyInit = (CallTargetInitializer) Objects.requireNonNull(rootNode);
+    }
+
     private CallTarget ensureInitialized(Target target) {
         CompilerAsserts.neverPartOfCompilation();
         Initializer init = lazyInit;
         RootNode root = rootNode;
         if (root == null) {
-            // synchronizing on context so we do not need one lock per function
-            synchronized (context) {
-                root = rootNode;
-                if (root == null) {
-                    init.initializeRoot(this);
-                    root = rootNode;
-                }
-            }
+            // any necessary synchronization needs to be performed by the initializer itself
+            init.initializeRoot(this);
+            root = Objects.requireNonNull(rootNode);
         }
-        assert root != null;
         AtomicReferenceFieldUpdater<JSFunctionData, CallTarget> updater = target.getUpdater();
         CallTarget result = updater.get(this);
         if (result != null) {
@@ -392,18 +394,16 @@ public final class JSFunctionData {
     public void materialize() {
         CompilerAsserts.neverPartOfCompilation();
         assert !isBuiltin();
-        if (rootNode == null) {
+        RootNode root = rootNode;
+        if (root == null) {
             // lazy translation
             Initializer init = lazyInit;
-            // synchronizing on context so we do not need one lock per function
-            synchronized (context) {
-                if (rootNode == null) {
-                    init.initializeRoot(this);
-                }
-            }
+            // any necessary synchronization needs to be performed by the initializer itself
+            init.initializeRoot(this);
+            root = Objects.requireNonNull(rootNode);
         }
         // ensure call target is initialized and visible to instrumentation
-        rootNode.getCallTarget();
+        root.getCallTarget();
     }
 
     public enum Target {

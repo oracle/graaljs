@@ -386,9 +386,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             LexicalContext savedLC = lc.copy();
             Environment parentEnv = environment;
-            functionData.setLazyInit(fd -> {
-                GraalJSTranslator translator = newTranslator(parentEnv, savedLC);
-                translator.translateFunctionOnDemand(functionNode, fd, isStrict, isGlobal, needsParentFrame, functionName, hasSyntheticArguments);
+            functionData.setLazyInit(new JSFunctionData.Initializer() {
+                @Override
+                public void initializeRoot(JSFunctionData fd) {
+                    synchronized (this) {
+                        if (fd.getRootNode() == null) {
+                            GraalJSTranslator translator = newTranslator(parentEnv, savedLC);
+                            translator.translateFunctionOnDemand(functionNode, fd, isStrict, isGlobal, needsParentFrame, functionName, hasSyntheticArguments);
+                            fd.releaseLazyInit();
+                        }
+                    }
+                }
             });
             functionRoot = null;
         } else {

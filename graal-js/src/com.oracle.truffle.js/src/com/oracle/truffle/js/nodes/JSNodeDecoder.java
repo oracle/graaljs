@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -318,11 +318,16 @@ public class JSNodeDecoder {
                     functionData.setLazyInit(new JSFunctionData.Initializer() {
                         @Override
                         public void initializeRoot(JSFunctionData fd) {
-                            if (VERBOSE) {
-                                System.out.println("Decoding: " + fd.getName());
+                            synchronized (this) {
+                                if (fd.getRootNode() == null) {
+                                    if (VERBOSE) {
+                                        System.out.println("Decoding: " + fd.getName());
+                                    }
+                                    NodeDecoder.DecoderState extracted = new NodeDecoder.DecoderState(new BinaryDecoder(buffer), arguments);
+                                    decodeNode(extracted, nodeFactory, context, source);
+                                    fd.releaseLazyInit();
+                                }
                             }
-                            NodeDecoder.DecoderState extracted = new NodeDecoder.DecoderState(new BinaryDecoder(buffer), arguments);
-                            decodeNode(extracted, nodeFactory, context, source);
                         }
                     });
                     break;
