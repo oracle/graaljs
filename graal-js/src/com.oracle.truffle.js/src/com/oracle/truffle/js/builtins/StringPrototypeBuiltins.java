@@ -153,6 +153,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InlinedProfileBag;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.LazyValue;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -2414,19 +2415,17 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringLocaleCompareNode extends JSStringOperation {
 
+        private static final LazyValue<Collator> lazyCollator = new LazyValue<>(JSStringLocaleCompareNode::getCollator);
+
         public JSStringLocaleCompareNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        private static Collator collator;
-
         @TruffleBoundary
         private static Collator getCollator() {
-            if (collator == null) {
-                collator = Collator.getInstance(Locale.ROOT);
-                collator.setStrength(Collator.TERTIARY);
-                collator.setDecomposition(Collator.FULL_DECOMPOSITION);
-            }
+            Collator collator = Collator.getInstance(Locale.ROOT);
+            collator.setStrength(Collator.TERTIARY);
+            collator.setDecomposition(Collator.FULL_DECOMPOSITION);
             return collator;
         }
 
@@ -2441,7 +2440,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @TruffleBoundary
         private static int doLocaleCompare(TruffleString thisStr, TruffleString thatStr) {
-            return getCollator().compare(Strings.toJavaString(thisStr), Strings.toJavaString(thatStr));
+            return lazyCollator.get().compare(Strings.toJavaString(thisStr), Strings.toJavaString(thatStr));
         }
     }
 
