@@ -1,5 +1,7 @@
 [![https://graalvm.slack.com](https://img.shields.io/badge/slack-join%20channel-active)](https://www.graalvm.org/slack-invitation/)
 
+# GraalVM JavaScript
+
 A high performance implementation of the JavaScript programming language.
 Built on the GraalVM by Oracle Labs.
 
@@ -82,10 +84,17 @@ A reference manual for GraalVM JavaScript is available on the [GraalVM website](
 See [graalvm.org/community](https://www.graalvm.org/community/) on how to stay connected with the development community.
 The channel _graaljs_ on [graalvm.slack.com](https://www.graalvm.org/slack-invitation) is a good way to get in touch with us.
 
-## Licence
+## Contributing
 
-GraalVM JavaScript is available under the following license:
+This project welcomes contributions from the community. Before submitting a pull request, please [review our contribution guide](./CONTRIBUTING.md)
 
-* [The Universal Permissive License (UPL), Version 1.0](https://opensource.org/licenses/UPL)
+## Security
 
+Please consult the [security guide](./SECURITY.md) for our responsible security vulnerability disclosure process
 
+## License
+
+Copyright (c) 2019, 2023 Oracle and/or its affiliates.
+
+Released under the Universal Permissive License v1.0 as shown at
+<https://oss.oracle.com/licenses/upl/>.
