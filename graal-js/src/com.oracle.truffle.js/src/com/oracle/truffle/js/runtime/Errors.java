@@ -778,6 +778,14 @@ public final class Errors {
         return createTypeError("only JavaScript objects are supported by this operation");
     }
 
+    public static JSException createTypeErrorPrivateSymbolInProxy() {
+        return createTypeErrorPrivateSymbolInProxy(null);
+    }
+
+    public static JSException createTypeErrorPrivateSymbolInProxy(Node originatingNode) {
+        return createTypeError("Cannot pass private property name to proxy trap", originatingNode);
+    }
+
     @TruffleBoundary
     public static JSException createTypeErrorTrapReturnedFalsish(Object trap, Object propertyKey) {
         return createTypeError("'" + trap + "' on proxy: trap returned falsish for property '" + propertyKey + "'");

@@ -96,6 +96,9 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
                     @Cached InlinedBranchProfile errorBranch) {
         assert JSProxy.isJSProxy(proxy);
         Object propertyKey = toPropertyKeyNode.execute(key);
+        if (JSRuntime.isPrivateSymbol(propertyKey)) {
+            return false;
+        }
         JSDynamicObject handler = JSProxy.getHandler(proxy);
         if (handler == Null.instance) {
             errorBranch.enter(this);
