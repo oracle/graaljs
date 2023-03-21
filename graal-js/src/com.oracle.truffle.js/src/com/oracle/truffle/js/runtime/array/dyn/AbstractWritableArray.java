@@ -250,11 +250,10 @@ public abstract class AbstractWritableArray extends DynamicArray {
             } else {
                 minCapacity = internalIndex + 1L;
             }
-            long newCapacity = minCapacity << 1;
-            if (newCapacity > SimpleArrayList.MAX_ARRAY_SIZE) {
+            long newCapacity = Math.max(minCapacity, (long) capacity + (capacity >>> 1));
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, newCapacity > SimpleArrayList.MAX_ARRAY_SIZE)) {
                 if (SimpleArrayList.MAX_ARRAY_SIZE < minCapacity) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new OutOfMemoryError();
+                    outOfMemoryError();
                 }
                 newCapacity = SimpleArrayList.MAX_ARRAY_SIZE;
             }
@@ -270,6 +269,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
             resizeArray(object, (int) newCapacity, capacity, offset);
             return offset;
         }
+    }
+
+    private static void outOfMemoryError() throws OutOfMemoryError {
+        CompilerDirectives.transferToInterpreter();
+        throw new OutOfMemoryError();
     }
 
     private int ensureCapacityContiguous(JSDynamicObject object, int internalIndex, Node node, SetSupportedProfileAccess profile) {
