@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandlerObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -104,6 +105,14 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         assert JSProxy.isJSProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
+        if (JSRuntime.isPrivateSymbol(propertyKey)) {
+            errorBranch.enter(this);
+            if (isStrict) {
+                throw Errors.createTypeErrorPrivateSymbolInProxy(this);
+            } else {
+                return false;
+            }
+        }
         JSDynamicObject handler = JSProxy.getHandler(proxy);
         if (handler == Null.instance) {
             errorBranch.enter(this);

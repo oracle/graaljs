@@ -677,10 +677,6 @@
     "filePath" : "mjsunit/es6/regress/regress-576662.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/regress/regress-9234.js",
-    "status" : "FAIL",
-    "comment" : "We allow private symbols to leak to proxy traps."
-  }, {
     "filePath" : "mjsunit/es6/regress/regress-crbug-465671-null.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
@@ -834,10 +830,6 @@
     "filePath" : "mjsunit/harmony/private-reference-logical-assignment-short-circuit.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "mjsunit/harmony/private-symbols.js",
-    "status" : "FAIL",
-    "comment" : "We allow private symbols to leak to proxy traps."
   }, {
     "filePath" : "mjsunit/harmony/private.js",
     "status" : "FAIL",

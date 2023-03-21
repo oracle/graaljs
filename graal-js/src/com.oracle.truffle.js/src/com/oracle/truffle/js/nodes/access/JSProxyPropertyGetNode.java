@@ -99,6 +99,9 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         assert JSProxy.isJSProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKeyNode.execute(key);
+        if (JSRuntime.isPrivateSymbol(propertyKey)) {
+            return Undefined.instance;
+        }
         JSDynamicObject handler = JSProxy.getHandler(proxy);
         if (handler == Null.instance) {
             errorBranch.enter(this);

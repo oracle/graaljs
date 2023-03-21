@@ -74,9 +74,6 @@ test-https-agent-unref-socket: SKIP
 # missing support for ModifyCodeGenerationFromStringsCallback
 test-source-map-api: FAIL
 
-# private symbols leak into proxy traps
-test-vm-proxy-failure-CP: FAIL
-
 # missing support for script.sourceMapURL
 test-vm-source-map-url: FAIL
 

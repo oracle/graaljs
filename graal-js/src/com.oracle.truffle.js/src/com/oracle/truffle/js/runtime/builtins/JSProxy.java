@@ -189,6 +189,9 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @TruffleBoundary
     private static Object proxyGetHelper(JSDynamicObject proxy, Object key, Object receiver, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
+        if (JSRuntime.isPrivateSymbol(key)) {
+            return null;
+        }
         JSDynamicObject handler = getHandlerChecked(proxy, GET);
         Object target = getTarget(proxy);
         Object trap = getTrapFromObject(handler, GET);
@@ -251,6 +254,13 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @TruffleBoundary
     private static boolean proxySet(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
+        if (JSRuntime.isPrivateSymbol(key)) {
+            if (isStrict) {
+                throw Errors.createTypeErrorPrivateSymbolInProxy();
+            } else {
+                return false;
+            }
+        }
         JSDynamicObject handler = getHandlerChecked(thisObj, SET);
         Object target = getTarget(thisObj);
         Object trap = getTrapFromObject(handler, SET);
@@ -327,6 +337,9 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @Override
     public boolean hasProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
+        if (JSRuntime.isPrivateSymbol(key)) {
+            return false;
+        }
         JSDynamicObject handler = getHandlerChecked(thisObj, HAS);
         Object target = getTarget(thisObj);
         Object trap = getTrapFromObject(handler, HAS);
@@ -362,6 +375,9 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @Override
     public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
         assert JSRuntime.isPropertyKey(key);
+        if (JSRuntime.isPrivateSymbol(key)) {
+            return true;
+        }
         JSDynamicObject handler = getHandlerChecked(thisObj, DELETE_PROPERTY);
         Object target = getTarget(thisObj);
 
@@ -405,6 +421,13 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @Override
     public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key);
+        if (JSRuntime.isPrivateSymbol(key)) {
+            if (doThrow) {
+                throw Errors.createTypeErrorPrivateSymbolInProxy();
+            } else {
+                return false;
+            }
+        }
         JSDynamicObject handler = getHandlerChecked(thisObj, DEFINE_PROPERTY);
         Object target = getTarget(thisObj);
         Object definePropertyFn = getTrapFromObject(handler, DEFINE_PROPERTY);
@@ -768,6 +791,9 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @Override
     public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
+        if (JSRuntime.isPrivateSymbol(key)) {
+            return null;
+        }
         JSDynamicObject handler = getHandlerChecked(thisObj, GET_OWN_PROPERTY_DESCRIPTOR);
         Object target = getTarget(thisObj);
         Object getOwnPropertyFn = getTrapFromObject(handler, GET_OWN_PROPERTY_DESCRIPTOR);

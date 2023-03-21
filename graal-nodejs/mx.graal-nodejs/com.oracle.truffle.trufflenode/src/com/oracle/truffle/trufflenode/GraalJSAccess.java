@@ -202,6 +202,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
+import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
@@ -856,32 +857,33 @@ public final class GraalJSAccess {
 
     public boolean objectSetPrivate(Object object, Object key, Object value) {
         assert JSRuntime.isPrivateSymbol(key);
-        if (JSDynamicObject.isJSDynamicObject(object)) {
-            return JSObject.set((JSDynamicObject) object, key, value);
+        if (JSObject.isJSObject(object)) {
+            Properties.putWithFlagsUncached((JSObject) object, key, value, JSAttributes.getDefaultNotEnumerable());
+            return true;
         }
         return false;
     }
 
     public Object objectGetPrivate(Object object, Object key) {
         assert JSRuntime.isPrivateSymbol(key);
-        if (JSDynamicObject.isJSDynamicObject(object)) {
-            return JSObject.get((JSDynamicObject) object, key);
+        if (JSObject.isJSObject(object)) {
+            return Properties.getOrDefaultUncached((JSObject) object, key, Undefined.instance);
         }
         return Undefined.instance;
     }
 
     public boolean objectHasPrivate(Object object, Object key) {
         assert JSRuntime.isPrivateSymbol(key);
-        if (JSDynamicObject.isJSDynamicObject(object)) {
-            return JSObject.hasOwnProperty((JSDynamicObject) object, key);
+        if (JSObject.isJSObject(object)) {
+            return Properties.containsKeyUncached((JSObject) object, key);
         }
         return false;
     }
 
     public boolean objectDeletePrivate(Object object, Object key) {
         assert JSRuntime.isPrivateSymbol(key);
-        if (JSDynamicObject.isJSDynamicObject(object)) {
-            JSObject.delete((JSDynamicObject) object, key);
+        if (JSObject.isJSObject(object)) {
+            Properties.removeKeyUncached((JSObject) object, key);
         }
         return true;
     }
