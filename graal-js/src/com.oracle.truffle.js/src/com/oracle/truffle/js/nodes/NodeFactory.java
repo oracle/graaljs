@@ -829,8 +829,8 @@ public class NodeFactory {
         FunctionRootNode functionRoot = FunctionRootNode.create(body, frameDescriptor, functionData, sourceSection, internalFunctionName);
         functionData.setRootNode(functionRoot);
 
-        // Release any lazy initialization closure by overwriting it with the RootNode.
-        functionData.setLazyInit(functionRoot);
+        // Lazy initialization is performed under a lock, so the root node should only be set once.
+        assert functionData.getRootNode() == functionRoot : "RootNode created more than once";
 
         if (!JSConfig.LazyFunctionData) {
             functionRoot.initializeCallTargets(functionData);

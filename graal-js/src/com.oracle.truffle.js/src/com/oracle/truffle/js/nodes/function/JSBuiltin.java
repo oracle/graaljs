@@ -253,6 +253,8 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         JSBuiltinNode functionRoot = JSBuiltinNode.createBuiltin(context, builtin, false, false);
         FrameDescriptor frameDescriptor = null;
         FunctionRootNode callRoot = FunctionRootNode.create(functionRoot, frameDescriptor, functionData, getSourceSection(), builtin.getFullName());
+        // Note: there's no lock being held here; first thread to set the root node wins.
+        // Built-in nodes are relatively cheap to create, so creating throwaway nodes is fine.
         functionData.setRootNode(callRoot);
     }
 
