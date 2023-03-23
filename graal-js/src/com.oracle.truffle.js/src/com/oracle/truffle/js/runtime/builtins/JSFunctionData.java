@@ -363,6 +363,7 @@ public final class JSFunctionData {
      */
     public void releaseLazyInit() {
         assert hasLazyInit() && !isBuiltin();
+        assert Thread.holdsLock(lazyInit);
         this.lazyInit = (CallTargetInitializer) Objects.requireNonNull(rootNode);
     }
 
