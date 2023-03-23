@@ -349,7 +349,7 @@ public final class JSFunctionData {
     }
 
     public void setLazyInit(Initializer lazyInit) {
-        assert this.lazyInit == null || (this.rootNode != null && lazyInit instanceof CallTargetInitializer);
+        assert this.lazyInit == null;
         this.lazyInit = lazyInit;
     }
 
