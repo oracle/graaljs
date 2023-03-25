@@ -649,7 +649,7 @@ public class Parser extends AbstractParser {
                 addFunctionDeclarations(function);
             } finally {
                 functionDeclarations = null;
-                function.finishBodyScope(lexer::stringIntern);
+                function.finishBodyScope(lexer);
                 restoreBlock(body);
                 lc.pop(function);
             }
@@ -1197,7 +1197,7 @@ public class Parser extends AbstractParser {
             addFunctionDeclarations(script);
         } finally {
             functionDeclarations = null;
-            script.finishBodyScope(lexer::stringIntern);
+            script.finishBodyScope(lexer);
             restoreBlock(body);
             lc.pop(script);
         }
@@ -2166,7 +2166,7 @@ public class Parser extends AbstractParser {
         try {
             initializer = assignmentExpression(true, false, false);
         } finally {
-            function.finishBodyScope(lexer::stringIntern);
+            function.finishBodyScope(lexer);
             restoreBlock(body);
             lc.propagateFunctionFlags();
             lc.pop(function);
@@ -5757,7 +5757,7 @@ public class Parser extends AbstractParser {
                 expect(RBRACE);
             }
         } finally {
-            functionNode.finishBodyScope(lexer::stringIntern);
+            functionNode.finishBodyScope(lexer);
             restoreBlock(body);
             lc.propagateFunctionFlags();
         }
