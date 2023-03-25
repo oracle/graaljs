@@ -554,11 +554,14 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     name='Graal.nodejs',
     short_name='njs',
     dir_name='nodejs',
-    license_files=['LICENSE_GRAALNODEJS.txt'],
-    third_party_license_files=['THIRD_PARTY_LICENSE_GRAALNODEJS.txt'],
+    license_files=['graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES/LICENSE_GRAALNODEJS.txt'],
+    third_party_license_files=['graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_GRAALNODEJS.txt'],
     dependencies=['Graal.js'],
     truffle_jars=['graal-nodejs:TRUFFLENODE'],
-    support_distributions=['graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
+    support_distributions=[
+        'graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT',
+        'graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES',
+    ],
     provided_executables=[
         'bin/<exe:node>',
         'bin/<cmd:npm>',

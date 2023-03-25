@@ -549,6 +549,14 @@ suite = {
         "./": [
           "file:README.md",
         ],
+      },
+    },
+
+    "GRAALJS_GRAALVM_LICENSES" : {
+      "fileListPurpose": 'native-image-resources',
+      "native" : True,
+      "description" : "Graal.js license files for the GraalVM",
+      "layout" : {
         "LICENSE_GRAALJS.txt" : "file:LICENSE_GRAALJS",
         "THIRD_PARTY_LICENSE_GRAALJS.txt": "file:THIRD_PARTY_LICENSE_GRAALJS.txt",
       },

@@ -136,8 +136,6 @@ suite = {
           },
           "dependency:trufflenodeNative/headers/include",
         ],
-        "LICENSE_GRAALNODEJS.txt" : "file:LICENSE_GRAAL_NODEJS",
-        "THIRD_PARTY_LICENSE_GRAALNODEJS.txt" : "file:LICENSE",
         "NODE_README.md" : "file:README.md",
         "native-image.properties": "file:mx.graal-nodejs/graal-nodejs-native-image.properties",
         "bin/" : [
@@ -146,6 +144,16 @@ suite = {
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npx>",
         ],
         "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
+      },
+    },
+    "TRUFFLENODE_GRAALVM_LICENSES" : {
+      "fileListPurpose": 'native-image-resources',
+      "native" : True,
+      "platformDependent" : False,
+      "description" : "Graal.nodejs license files for the GraalVM",
+      "layout" : {
+        "LICENSE_GRAALNODEJS.txt" : "file:LICENSE_GRAAL_NODEJS",
+        "THIRD_PARTY_LICENSE_GRAALNODEJS.txt" : "file:LICENSE",
       },
     },
     "TRUFFLENODE_TEST" : {

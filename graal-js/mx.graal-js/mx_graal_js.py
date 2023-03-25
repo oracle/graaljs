@@ -387,8 +387,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     standalone_dependencies={
         'GraalVM license files': ('', ['GRAALVM-README.md']),
     },
-    license_files=['LICENSE_GRAALJS.txt'],
-    third_party_license_files=['THIRD_PARTY_LICENSE_GRAALJS.txt'],
+    license_files=['graal-js:GRAALJS_GRAALVM_LICENSES/LICENSE_GRAALJS.txt'],
+    third_party_license_files=['graal-js:GRAALJS_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_GRAALJS.txt'],
     dependencies=[
         'Graal.js Scripting API',
         'Truffle',
@@ -400,6 +400,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ],
     support_distributions=[
         'graal-js:GRAALJS_GRAALVM_SUPPORT',
+        'graal-js:GRAALJS_GRAALVM_LICENSES',
     ],
     library_configs=[
         mx_sdk.LanguageLibraryConfig(
