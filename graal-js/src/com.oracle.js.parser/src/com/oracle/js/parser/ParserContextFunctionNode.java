@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import com.oracle.js.parser.ir.Block;
 import com.oracle.js.parser.ir.Expression;
@@ -555,9 +554,9 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         }
     }
 
-    public void finishBodyScope(Function<TruffleString, TruffleString> stringIntern) {
+    public void finishBodyScope(StringPool strings) {
         if (needsArguments()) {
-            putFunctionSymbolIfAbsent(Parser.ARGUMENTS_NAME, stringIntern.apply(Parser.ARGUMENTS_NAME_TS), Symbol.IS_ARGUMENTS);
+            putFunctionSymbolIfAbsent(Parser.ARGUMENTS_NAME, strings.stringIntern(Parser.ARGUMENTS_NAME_TS), Symbol.IS_ARGUMENTS);
         }
         if (hoistableBlockFunctionDeclarations != null) {
             declareHoistedBlockFunctionDeclarations();
@@ -571,13 +570,13 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         if (!isArrow()) {
             boolean needsThisForEval = hasEval() || hasArrowEval();
             if (usesThis() || usesSuper() || needsThisForEval || getFlag(FunctionNode.HAS_DIRECT_SUPER) != 0) {
-                putFunctionSymbolIfAbsent(TokenType.THIS.getName(), stringIntern.apply(TokenType.THIS.getNameTS()), Symbol.IS_THIS);
+                putFunctionSymbolIfAbsent(TokenType.THIS.getName(), strings.stringIntern(TokenType.THIS.getNameTS()), Symbol.IS_THIS);
             }
             if (usesSuper() || (isMethod() && needsThisForEval)) {
-                putFunctionSymbolIfAbsent(TokenType.SUPER.getName(), stringIntern.apply(TokenType.SUPER.getNameTS()), Symbol.IS_SUPER);
+                putFunctionSymbolIfAbsent(TokenType.SUPER.getName(), strings.stringIntern(TokenType.SUPER.getNameTS()), Symbol.IS_SUPER);
             }
             if (usesNewTarget() || needsThisForEval) {
-                putFunctionSymbolIfAbsent(Parser.NEW_TARGET_NAME, stringIntern.apply(Parser.NEW_TARGET_NAME_TS), Symbol.IS_NEW_TARGET);
+                putFunctionSymbolIfAbsent(Parser.NEW_TARGET_NAME, strings.stringIntern(Parser.NEW_TARGET_NAME_TS), Symbol.IS_NEW_TARGET);
             }
         }
         if (hasParameterExpressions()) {
