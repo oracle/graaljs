@@ -89,6 +89,8 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandlerObject;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -257,6 +259,8 @@ public class Serializer {
             writeJSDataView((JSDataViewObject) object);
         } else if (JSError.isJSError(object)) {
             writeJSError((JSErrorObject) object);
+        } else if (JSWebAssemblyModule.isJSWebAssemblyModule(object)) {
+            writeJSWebAssemblyModule((JSWebAssemblyModuleObject) object);
         } else if (JSProxy.isJSProxy(object)) {
             JSProxyObject proxy = (JSProxyObject) object;
             if (proxy.getProxyHandler() instanceof JSUncheckedProxyHandlerObject) {
@@ -399,6 +403,12 @@ public class Serializer {
     private void writeJSSharedArrayBuffer(JSArrayBufferObject sharedArrayBuffer) {
         int id = NativeAccess.getSharedArrayBufferId(delegate, sharedArrayBuffer);
         writeTag(SerializationTag.SHARED_ARRAY_BUFFER);
+        writeVarInt(id);
+    }
+
+    private void writeJSWebAssemblyModule(JSWebAssemblyModuleObject wasmModule) {
+        int id = NativeAccess.getWasmModuleTransferId(delegate, wasmModule);
+        writeTag(SerializationTag.WASM_MODULE_TRANSFER);
         writeVarInt(id);
     }
 
