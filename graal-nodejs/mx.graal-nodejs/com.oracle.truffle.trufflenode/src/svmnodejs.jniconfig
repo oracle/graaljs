@@ -311,7 +311,9 @@
       { "name": "valueType" },
       { "name": "valueTypeOf" },
       { "name": "valueUint32Value" },
-      { "name": "valueUnknown" }
+      { "name": "valueUnknown" },
+      { "name": "wasmModuleObjectFromCompiledModule" },
+      { "name": "wasmModuleObjectGetCompiledModule" }
     ]
   },
   {

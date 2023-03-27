@@ -398,6 +398,8 @@ enum GraalAccessMethod {
     backing_store_register_callback,
     fixed_array_length,
     fixed_array_get,
+    wasm_module_object_get_compiled_module,
+    wasm_module_object_from_compiled_module,
 
     count // Should be the last item of GraalAccessMethod
 };

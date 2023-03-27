@@ -241,6 +241,8 @@ import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
@@ -4132,6 +4134,14 @@ public final class GraalJSAccess {
 
     public void backingStoreRegisterCallback(Object backingStore, long data, int byteLength, long deleterData, long callback) {
         weakCallbacks.add(new DeleterCallback(backingStore, data, byteLength, deleterData, callback, weakCallbackQueue));
+    }
+
+    public Object wasmModuleObjectGetCompiledModule(Object wasmModule) {
+        return ((JSWebAssemblyModuleObject) wasmModule).getWASMModule();
+    }
+
+    public Object wasmModuleObjectFromCompiledModule(Object compiledModule) {
+        return JSWebAssemblyModule.create(mainJSContext, mainJSRealm, compiledModule);
     }
 
     private static class WeakCallback extends WeakReference<Object> {
