@@ -74,6 +74,16 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                     node(commonArgs + ['-e', 'console.log(WebAssembly)'])
                     # check that fetch API is available when WebAssembly is available
                     node(commonArgs + ['-e', 'FormData'])
+                    # run selected Node.js tests related to WebAssembly
+                    wasm_tests = [
+                        'test-fetch.mjs',
+                        'test-fetch-disabled.mjs',
+                        'test-wasm-simple.js',
+                        'test-whatwg-webstreams-transfer.js',
+                        'test-worker-message-port-wasm-module.js'
+                    ]
+                    for test in wasm_tests:
+                        node(commonArgs + [join(_suite.dir, 'test', 'parallel', test)])
                     _setEnvVar('NODE_OPTIONS', '')
                     _setEnvVar('NODE_POLYGLOT_OPTIONS', '')
 

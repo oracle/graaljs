@@ -73,6 +73,7 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -189,6 +190,8 @@ public class Deserializer {
                 return readHostObject();
             case ERROR:
                 return readJSError(realm);
+            case WASM_MODULE_TRANSFER:
+                return readWasmModuleTransfer();
             case SHARED_JAVA_OBJECT:
                 return readSharedJavaObject(realm);
             default:
@@ -544,6 +547,13 @@ public class Deserializer {
         assert JSSharedArrayBuffer.isJSSharedArrayBuffer(sharedArrayBuffer);
         assignId(sharedArrayBuffer);
         return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, realm, (JSDynamicObject) sharedArrayBuffer) : sharedArrayBuffer;
+    }
+
+    public Object readWasmModuleTransfer() {
+        int id = readVarInt();
+        Object wasmModule = NativeAccess.getWasmModuleFromId(delegate, id);
+        assert JSWebAssemblyModule.isJSWebAssemblyModule(wasmModule);
+        return assignId(wasmModule);
     }
 
     public Object readSharedJavaObject(JSRealm realm) {

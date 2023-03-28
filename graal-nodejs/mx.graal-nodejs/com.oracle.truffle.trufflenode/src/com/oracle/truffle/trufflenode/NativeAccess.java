@@ -160,7 +160,11 @@ public final class NativeAccess {
 
     public static native int getSharedArrayBufferId(long delegate, Object sharedArrayBuffer);
 
+    public static native int getWasmModuleTransferId(long delegate, Object wasmModule);
+
     public static native Object getSharedArrayBufferFromId(long delegate, int id);
+
+    public static native Object getWasmModuleFromId(long delegate, int id);
 
     public static native Object syntheticModuleEvaluationSteps(long callback, Object context, Object module);
 

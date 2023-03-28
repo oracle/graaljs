@@ -311,7 +311,9 @@
       { "name": "valueType" },
       { "name": "valueTypeOf" },
       { "name": "valueUint32Value" },
-      { "name": "valueUnknown" }
+      { "name": "valueUnknown" },
+      { "name": "wasmModuleObjectFromCompiledModule" },
+      { "name": "wasmModuleObjectGetCompiledModule" }
     ]
   },
   {
@@ -352,7 +354,9 @@
       { "name": "throwDataCloneError" },
       { "name": "getSharedArrayBufferFromId" },
       { "name": "getSharedArrayBufferId" },
-      { "name": "syntheticModuleEvaluationSteps" }
+      { "name": "syntheticModuleEvaluationSteps" },
+      { "name": "getWasmModuleTransferId" },
+      { "name": "getWasmModuleFromId" }
     ]
   },
   {

@@ -150,7 +150,11 @@ void GraalThrowDataCloneError(JNIEnv* env, jclass nativeAccess, jlong delegate, 
 
 jint GraalGetSharedArrayBufferId(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject sharedArrayBuffer);
 
+jint GraalGetWasmModuleTransferId(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject wasmModule);
+
 jobject GraalGetSharedArrayBufferFromId(JNIEnv* env, jclass nativeAccess, jlong delegate, jint id);
+
+jobject GraalGetWasmModuleFromId(JNIEnv* env, jclass nativeAccess, jlong delegate, jint id);
 
 jobject GraalExecutePrepareStackTraceCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_error, jobject java_stack_trace);
 

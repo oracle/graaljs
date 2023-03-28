@@ -130,6 +130,32 @@ namespace v8 {
 
         class Isolate : public v8::Isolate {
         };
+
+        namespace wasm {
+
+            class NativeModule {
+            public:
+                NativeModule(WasmModuleObject* wasm_module) {
+                    GraalHandleContent* graal_module = reinterpret_cast<GraalHandleContent*> (wasm_module);
+                    GraalIsolate* graal_isolate = graal_module->Isolate();
+                    jobject java_module = graal_module->GetJavaObject();
+                    JNI_CALL(jobject, java_compiled_module, graal_isolate, GraalAccessMethod::wasm_module_object_get_compiled_module, Object, java_module);
+                    JNIEnv* env = graal_isolate->GetJNIEnv();
+                    java_module_ = env->NewGlobalRef(java_compiled_module);
+                }
+                ~NativeModule() {
+                    GraalIsolate* graal_isolate = CurrentIsolate();
+                    JNIEnv* env = graal_isolate->GetJNIEnv();
+                    env->DeleteGlobalRef(java_module_);
+                }
+                jobject GetJavaModule() {
+                    return java_module_;
+                }
+            private:
+                jobject java_module_;
+            };
+
+        }
     }
 
     void ArrayBuffer::Detach() {
@@ -3578,17 +3604,20 @@ namespace v8 {
     }
 
     CompiledWasmModule WasmModuleObject::GetCompiledModule() {
-        TRACE
-        return CompiledWasmModule(nullptr, nullptr, 0);
+        internal::wasm::NativeModule* native_module = new internal::wasm::NativeModule(this);
+        return CompiledWasmModule(std::shared_ptr<internal::wasm::NativeModule>(native_module), "", 0);
     }
 
-    CompiledWasmModule::CompiledWasmModule(std::shared_ptr<internal::wasm::NativeModule>, const char* source_url, size_t url_length) {
-        TRACE
+    CompiledWasmModule::CompiledWasmModule(std::shared_ptr<internal::wasm::NativeModule> native_module, const char* source_url, size_t url_length) : native_module_(native_module), source_url_(source_url) {
     }
 
-    MaybeLocal<WasmModuleObject> WasmModuleObject::FromCompiledModule(Isolate* isolate, const CompiledWasmModule&) {
-        TRACE
-        return MaybeLocal<WasmModuleObject>();
+    MaybeLocal<WasmModuleObject> WasmModuleObject::FromCompiledModule(Isolate* isolate, const CompiledWasmModule& compiled_module) {
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+        jobject java_compiled_module = compiled_module.native_module_->GetJavaModule();
+        JNI_CALL(jobject, java_module, graal_isolate, GraalAccessMethod::wasm_module_object_from_compiled_module, Object, java_compiled_module);
+        GraalValue* graal_module = GraalValue::FromJavaObject(graal_isolate, java_module);
+        Local<WasmModuleObject> v8_module = reinterpret_cast<WasmModuleObject*> (graal_module);
+        return v8_module;
     }
 
     static std::unique_ptr<const char[]> GetEnv(const char* key) {
