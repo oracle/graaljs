@@ -89,6 +89,8 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandlerObject;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -261,6 +263,8 @@ public class Serializer {
             writeJSError((JSErrorObject) object);
         } else if (JSWebAssemblyModule.isJSWebAssemblyModule(object)) {
             writeJSWebAssemblyModule((JSWebAssemblyModuleObject) object);
+        } else if (JSWebAssemblyMemory.isJSWebAssemblyMemory(object)) {
+            writeJSWebAssemblyMemory((JSWebAssemblyMemoryObject) object);
         } else if (JSProxy.isJSProxy(object)) {
             JSProxyObject proxy = (JSProxyObject) object;
             if (proxy.getProxyHandler() instanceof JSUncheckedProxyHandlerObject) {
@@ -410,6 +414,11 @@ public class Serializer {
         int id = NativeAccess.getWasmModuleTransferId(delegate, wasmModule);
         writeTag(SerializationTag.WASM_MODULE_TRANSFER);
         writeVarInt(id);
+    }
+
+    private void writeJSWebAssemblyMemory(JSWebAssemblyMemoryObject wasmMemory) {
+        // non-shared WebAssembly.Memory cannot be cloned
+        NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(wasmMemory), COULD_NOT_BE_CLONED));
     }
 
     private void writeJSObject(JSDynamicObject object) {
