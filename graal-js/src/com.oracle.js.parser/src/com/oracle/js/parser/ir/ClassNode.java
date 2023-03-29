@@ -87,6 +87,7 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.hasClassElementDecorators = hasClassElementDecorators;
         this.classDecorators = classDecorators;
         assert staticElementCount == elementCount(classElements, true);
+        assert scope.isClosed() : scope;
     }
 
     private ClassNode(final ClassNode classNode, final IdentNode ident, final Expression classHeritage, final ClassElement constructor, final List<ClassElement> classElements,
