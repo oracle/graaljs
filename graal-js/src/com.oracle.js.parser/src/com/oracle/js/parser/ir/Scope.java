@@ -736,6 +736,8 @@ public final class Scope {
             return "Global";
         } else if (isModuleScope()) {
             return "Module";
+        } else if (isEvalScope()) {
+            return "Eval";
         } else if (isFunctionBodyScope()) {
             return "Var";
         } else if (isFunctionParameterScope()) {
@@ -748,8 +750,6 @@ public final class Scope {
             return "Class";
         } else if (isClassBodyScope()) {
             return "Private";
-        } else if (isEvalScope()) {
-            return "Eval";
         }
         return "";
     }
