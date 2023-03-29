@@ -579,9 +579,9 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
                 putFunctionSymbolIfAbsent(Parser.NEW_TARGET_NAME, strings.stringIntern(Parser.NEW_TARGET_NAME_TS), Symbol.IS_NEW_TARGET);
             }
         }
+        // Close the scopes already to make sure we don't add any more symbols.
+        bodyScope.close();
         if (hasParameterExpressions()) {
-            // Lock the scopes to make sure we don't add any more symbols. Not strictly necessary.
-            bodyScope.close();
             getParameterScope().close();
         }
     }
