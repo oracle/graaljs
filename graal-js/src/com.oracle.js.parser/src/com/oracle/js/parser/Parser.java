@@ -738,14 +738,8 @@ public class Parser extends AbstractParser {
         }
     }
 
-    /**
-     * Set up a new block.
-     *
-     * @return New block.
-     */
-    private ParserContextBlockNode newBlock() {
-        Scope scope = Scope.createBlock(lc.getCurrentScope());
-        return newBlock(scope);
+    private Scope newBlockScope() {
+        return Scope.createBlock(lc.getCurrentScope());
     }
 
     /**
@@ -833,7 +827,7 @@ public class Parser extends AbstractParser {
      */
     private Block getBlock(boolean yield, boolean await, boolean needsBraces) {
         final long blockToken = token;
-        final ParserContextBlockNode newBlock = newBlock();
+        final ParserContextBlockNode newBlock = newBlock(newBlockScope());
         try {
             // Block opening brace.
             if (needsBraces) {
@@ -895,7 +889,7 @@ public class Parser extends AbstractParser {
             return getBlock(yield, await, true);
         }
         // Set up new block. Captures first token.
-        final ParserContextBlockNode newBlock = newBlock();
+        final ParserContextBlockNode newBlock = newBlock(newBlockScope());
         newBlock.setFlag(Block.IS_SYNTHETIC);
         try {
             statement(yield, await, false, 0, true, labelledStatement, mayBeFunctionDeclaration, mayBeLabeledFunctionDeclaration);
@@ -2928,7 +2922,7 @@ public class Parser extends AbstractParser {
         // When ES6 for-let is enabled we create a container block to capture the LET.
         ParserContextBlockNode outer;
         if (useBlockScope()) {
-            outer = newBlock();
+            outer = newBlock(newBlockScope());
             outer.setFlag(Block.IS_SYNTHETIC);
         } else {
             outer = null;
@@ -3608,7 +3602,7 @@ public class Parser extends AbstractParser {
         // Block around the switch statement with a variable capturing the switch expression value.
         final ParserContextBlockNode outerBlock;
         if (useBlockScope()) {
-            outerBlock = newBlock();
+            outerBlock = newBlock(newBlockScope());
             outerBlock.setFlag(Block.IS_SYNTHETIC);
         } else {
             outerBlock = null;
@@ -3813,7 +3807,7 @@ public class Parser extends AbstractParser {
 
         // Container block needed to act as target for labeled break statements
         final int startLine = line;
-        final ParserContextBlockNode outer = newBlock();
+        final ParserContextBlockNode outer = newBlock(newBlockScope());
         // Create try.
 
         try {
