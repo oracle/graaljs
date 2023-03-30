@@ -370,8 +370,7 @@ public class Parser extends AbstractParser {
      */
     private ParserContextFunctionNode coverArrowFunction;
 
-    public static final boolean PROFILE_PARSING = Options.getBooleanProperty("parser.profiling", false);
-    public static final boolean PROFILE_PARSING_PRINT = Options.getBooleanProperty("parser.profiling.print", true);
+    private static final boolean PROFILE_PARSING = Options.getBooleanProperty("parser.profiling", false);
 
     /**
      * Constructor
@@ -520,24 +519,23 @@ public class Parser extends AbstractParser {
      */
     public FunctionNode parse(final TruffleString scriptName, final int startPos, final int len, final int reparseFlags, Scope parentScope, List<String> argumentNames) {
         long startTime = PROFILE_PARSING ? System.nanoTime() : 0L;
+        FunctionNode program;
         try {
             prepareLexer(startPos, len);
 
             scanFirstToken();
 
-            return program(scriptName, reparseFlags, parentScope, argumentNames);
+            program = program(scriptName, reparseFlags, parentScope, argumentNames);
         } catch (final Exception e) {
             handleParseException(e);
 
-            return null;
-        } finally {
-            if (PROFILE_PARSING) {
-                long duration = (System.nanoTime() - startTime);
-                if (PROFILE_PARSING_PRINT) {
-                    System.out.println("Parsing: " + duration / 1_000_000);
-                }
-            }
+            program = null;
         }
+        if (PROFILE_PARSING) {
+            long duration = (System.nanoTime() - startTime);
+            System.out.println("Parsing: " + duration / 1_000_000);
+        }
+        return program;
     }
 
     /**
