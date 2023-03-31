@@ -523,7 +523,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
 GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams const& params) : function_template_data(), function_template_callbacks(), jvm_(jvm), jni_env_(env), jni_methods_(), jni_fields_(),
     message_listener_(nullptr), function_template_count_(0), promise_hook_(nullptr), promise_reject_callback_(nullptr), import_meta_initializer(nullptr), import_module_dynamically(nullptr),
-    fatal_error_handler_(nullptr), prepare_stack_trace_callback_(nullptr) {
+    fatal_error_handler_(nullptr), prepare_stack_trace_callback_(nullptr), wasm_streaming_callback_(nullptr) {
 
 #ifdef __POSIX__
     lock_ = PTHREAD_MUTEX_INITIALIZER;
@@ -1359,6 +1359,14 @@ v8::MaybeLocal<v8::Value> GraalIsolate::NotifyPrepareStackTraceCallback(v8::Loca
     } else {
         return v8::MaybeLocal<v8::Value>();
     }
+}
+
+void GraalIsolate::SetWasmStreamingCallback(v8::WasmStreamingCallback callback) {
+    wasm_streaming_callback_ = callback;
+}
+
+v8::WasmStreamingCallback GraalIsolate::GetWasmStreamingCallback() {
+    return wasm_streaming_callback_;
 }
 
 void GraalIsolate::EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data) {

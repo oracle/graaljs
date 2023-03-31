@@ -71,6 +71,7 @@
 #include "graal_symbol.h"
 #include "graal_unbound_script.h"
 #include "graal_value.h"
+#include "graal_wasm_streaming.h"
 #include "uv.h"
 #include "v8.h"
 #include "v8-fast-api-calls.h"
@@ -3871,20 +3872,26 @@ namespace v8 {
     }
 
     void Isolate::SetWasmStreamingCallback(WasmStreamingCallback callback) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->SetWasmStreamingCallback(callback);
+    }
+
+    WasmStreaming::WasmStreaming(std::unique_ptr<WasmStreamingImpl> impl) : impl_(std::move(impl)) {
+    }
+
+    WasmStreaming::~WasmStreaming() {
     }
 
     void WasmStreaming::Finish(bool can_use_compiled_module) {
-        TRACE
+        impl_->Finish(can_use_compiled_module);
     }
 
     void WasmStreaming::OnBytesReceived(const uint8_t* bytes, size_t size) {
-        TRACE
+        impl_->OnBytesReceived(bytes, size);
     }
 
     std::shared_ptr<WasmStreaming> WasmStreaming::Unpack(Isolate* isolate, Local<Value> value) {
-        TRACE
-        return nullptr;
+        void* wasm_streaming = value.As<External>()->Value();
+        return std::shared_ptr<WasmStreaming>(reinterpret_cast<WasmStreaming*> (wasm_streaming));
     }
 
     void WasmStreaming::SetUrl(const char* url, size_t length) {
@@ -3892,7 +3899,7 @@ namespace v8 {
     }
 
     void WasmStreaming::Abort(MaybeLocal<Value> exception) {
-        TRACE
+        impl_->Abort(exception);
     }
 
     bool Context::IsCodeGenerationFromStringsAllowed() const {

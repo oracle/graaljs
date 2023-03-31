@@ -356,7 +356,8 @@
       { "name": "getSharedArrayBufferId" },
       { "name": "syntheticModuleEvaluationSteps" },
       { "name": "getWasmModuleTransferId" },
-      { "name": "getWasmModuleFromId" }
+      { "name": "getWasmModuleFromId" },
+      { "name": "notifyWasmStreamingCallback" }
     ]
   },
   {

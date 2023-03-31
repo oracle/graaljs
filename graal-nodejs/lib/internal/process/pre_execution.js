@@ -271,6 +271,7 @@ function setupFetch() {
   // The WebAssembly Web API: https://webassembly.github.io/spec/web-api
   const { wasmStreamingCallback } = require('internal/wasm_web_api');
   internalBinding('wasm_web_api').setImplementation(wasmStreamingCallback);
+  require('internal/graal/wasm');
 }
 
 // TODO(aduh95): move this to internal/bootstrap/browser when the CLI flag is

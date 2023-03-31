@@ -301,6 +301,7 @@ public final class GraalJSAccess {
     public static final TruffleString NODE_INTERNAL_PER_CONTEXT = Strings.constant("node:internal/per_context");
     public static final TruffleString NODE_INTERNAL_BOOTSTRAP = Strings.constant("node:internal/bootstrap");
     public static final TruffleString NODE_INTERNAL_GRAAL_DEBUG = Strings.constant("node:internal/graal/debug");
+    public static final TruffleString NODE_INTERNAL_GRAAL_WASM = Strings.constant("node:internal/graal/wasm");
     public static final TruffleString NODE_INTERNAL_WORKER_IO = Strings.constant("node:internal/worker/io");
     public static final TruffleString NODE_INTERNAL_MAIN_WORKER_THREAD = Strings.constant("node:internal/main/worker_thread");
     public static final TruffleString NODE_INSPECTOR = Strings.constant("node:inspector");
@@ -2320,6 +2321,8 @@ public final class GraalJSAccess {
         } else if (NODE_INSPECTOR.equals(moduleName)) {
             TruffleObject inspector = GraalJSAccess.get().lookupInstrument("inspect", TruffleObject.class);
             extraArgument = (inspector == null) ? Null.instance : inspector;
+        } else if (NODE_INTERNAL_GRAAL_WASM.equals(moduleName)) {
+            extraArgument = createWasmStreamingCallback(realm);
         }
         return extraArgument;
     }
@@ -4142,6 +4145,27 @@ public final class GraalJSAccess {
 
     public Object wasmModuleObjectFromCompiledModule(Object compiledModule) {
         return JSWebAssemblyModule.create(mainJSContext, mainJSRealm, compiledModule);
+    }
+
+    private static Object createWasmStreamingCallback(JSRealm realm) {
+        JavaScriptRootNode rootNode = new JavaScriptRootNode() {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object[] args = frame.getArguments();
+                Object response = JSArguments.getUserArgument(args, 0);
+                Object resolve = JSArguments.getUserArgument(args, 1);
+                Object reject = JSArguments.getUserArgument(args, 2);
+                GraalJSAccess.notifyWasmStreamingCallback(response, resolve, reject);
+                return Undefined.instance;
+            }
+        };
+        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 3, Strings.EMPTY_STRING);
+        return JSFunction.create(realm, functionData);
+    }
+
+    @TruffleBoundary
+    private static void notifyWasmStreamingCallback(Object response, Object resolve, Object reject) {
+        NativeAccess.notifyWasmStreamingCallback(response, resolve, reject);
     }
 
     private static class WeakCallback extends WeakReference<Object> {

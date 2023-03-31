@@ -458,6 +458,8 @@ public:
     v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions);
     void SetPrepareStackTraceCallback(v8::PrepareStackTraceCallback callback);
     v8::MaybeLocal<v8::Value> NotifyPrepareStackTraceCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> error, v8::Local<v8::Array> sites);
+    void SetWasmStreamingCallback(v8::WasmStreamingCallback callback);
+    v8::WasmStreamingCallback GetWasmStreamingCallback();
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
     void RunMicrotasks();
     void Enter();
@@ -852,6 +854,7 @@ private:
     v8::HostImportModuleDynamicallyCallback import_module_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
+    v8::WasmStreamingCallback wasm_streaming_callback_;
     v8::internal::MicrotaskQueue microtask_queue_;
 
     GraalObjectPool<GraalObject>* object_pool_;
