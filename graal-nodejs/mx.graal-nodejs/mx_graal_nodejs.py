@@ -79,6 +79,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                         'test-fetch.mjs',
                         'test-fetch-disabled.mjs',
                         'test-wasm-simple.js',
+                        'test-wasm-web-api.js',
                         'test-whatwg-webstreams-transfer.js',
                         'test-worker-message-port-wasm-module.js'
                     ]
