@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,7 +80,7 @@ import java.util.Map;
  * Responsible for converting source content into a stream of tokens.
  */
 @SuppressWarnings("fallthrough")
-public class Lexer extends Scanner {
+public class Lexer extends Scanner implements StringPool {
     private static final boolean XML_LITERALS = Options.getBooleanProperty("lexer.xmlliterals");
 
     private static final String MSG_EDIT_STRING_MISSING_BRACE = "edit.string.missing.brace";
@@ -2131,6 +2131,7 @@ public class Lexer extends Scanner {
         return stringIntern(sb.toString());
     }
 
+    @Override
     public TruffleString stringIntern(TruffleString candidate) {
         TruffleString interned = internedStrings.putIfAbsent(candidate.toJavaStringUncached(), candidate);
         return interned == null ? candidate : interned;
