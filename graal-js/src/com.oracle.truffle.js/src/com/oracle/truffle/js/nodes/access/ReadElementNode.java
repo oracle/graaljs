@@ -1369,6 +1369,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     private abstract static class ToPropertyKeyCachedReadElementTypeCacheNode extends ReadElementTypeCacheNode {
         @Child private JSToPropertyKeyNode indexToPropertyKeyNode;
+        @Child private CachedGetPropertyNode getPropertyCachedNode;
         protected final JSClassProfile jsclassProfile = JSClassProfile.create();
 
         ToPropertyKeyCachedReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
@@ -1381,6 +1382,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 indexToPropertyKeyNode = insert(JSToPropertyKeyNode.create());
             }
             return indexToPropertyKeyNode.execute(index);
+        }
+
+        public Object readFromWrapper(JSDynamicObject wrapper, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
+            if (getPropertyCachedNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getPropertyCachedNode = insert(CachedGetPropertyNode.create(root.context));
+            }
+            return getPropertyCachedNode.execute(wrapper, index, receiver, defaultValue);
         }
 
         @Override
@@ -1423,7 +1432,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return Strings.substring(root.context, substringByteIndexNode, string, intIndex, 1);
                 }
             }
-            return JSObject.getOrDefault(JSString.create(root.context, getRealm(), string), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
+            return readFromWrapper(JSString.create(root.context, getRealm(), string), toPropertyKey(index), receiver, defaultValue, root);
         }
 
         @Override
@@ -1462,14 +1471,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            Number charSequence = (Number) CompilerDirectives.castExact(target, numberClass);
-            return JSObject.getOrDefault(JSNumber.create(root.context, getRealm(), charSequence), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
+            Number number = (Number) CompilerDirectives.castExact(target, numberClass);
+            return readFromWrapper(JSNumber.create(root.context, getRealm(), number), toPropertyKey(index), receiver, defaultValue, root);
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
-            Number charSequence = (Number) CompilerDirectives.castExact(target, numberClass);
-            return JSObject.getOrDefault(JSNumber.create(root.context, getRealm(), charSequence), index, receiver, defaultValue, jsclassProfile, root);
+            Number number = (Number) CompilerDirectives.castExact(target, numberClass);
+            return JSObject.getOrDefault(JSNumber.create(root.context, getRealm(), number), index, receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
@@ -1486,7 +1495,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             Boolean bool = (Boolean) target;
-            return JSObject.getOrDefault(JSBoolean.create(root.context, getRealm(), bool), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
+            return readFromWrapper(JSBoolean.create(root.context, getRealm(), bool), toPropertyKey(index), receiver, defaultValue, root);
         }
 
         @Override
@@ -1510,7 +1519,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             Symbol symbol = (Symbol) target;
-            return JSObject.getOrDefault(JSSymbol.create(root.context, getRealm(), symbol), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
+            return readFromWrapper(JSSymbol.create(root.context, getRealm(), symbol), toPropertyKey(index), receiver, defaultValue, root);
         }
 
         @Override
@@ -1534,7 +1543,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             BigInt bigInt = (BigInt) target;
-            return JSObject.getOrDefault(JSBigInt.create(root.context, getRealm(), bigInt), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
+            return readFromWrapper(JSBigInt.create(root.context, getRealm(), bigInt), toPropertyKey(index), receiver, defaultValue, root);
         }
 
         @Override
