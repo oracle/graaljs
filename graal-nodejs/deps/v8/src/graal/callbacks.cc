@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@
 #include "graal_set.h"
 #include "graal_string.h"
 #include "graal_symbol.h"
+#include "graal_wasm_streaming.h"
 #include "jni.h"
 #include <array>
 #include <stdlib.h>
@@ -124,6 +125,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("getWasmModuleFromId", "(JI)Ljava/lang/Object;", &GraalGetWasmModuleFromId),
     CALLBACK("syntheticModuleEvaluationSteps", "(JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalSyntheticModuleEvaluationSteps),
     CALLBACK("executeInterruptCallback", "(JJ)V", &GraalExecuteInterruptCallback),
+    CALLBACK("notifyWasmStreamingCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyWasmStreamingCallback),
  };
 
 static const int CALLBACK_COUNT = sizeof(callbacks) / sizeof(*callbacks);
@@ -889,4 +891,25 @@ void GraalExecuteInterruptCallback(JNIEnv* env, jclass nativeAccess, jlong callb
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     ((v8::InterruptCallback) callback)(isolate, (void*) data);
+}
+
+void GraalNotifyWasmStreamingCallback(JNIEnv* env, jclass nativeAccess, jobject response, jobject resolve, jobject reject) {
+    GraalIsolate* isolate = CurrentIsolateChecked();
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (isolate);
+    v8::WasmStreamingCallback callback = isolate->GetWasmStreamingCallback();
+    
+    std::array<GraalValue*, 2> values;
+    v8::HandleScope scope(v8_isolate);
+    int i = 1;
+    values[i++] = GraalValue::FromJavaObject(isolate, response);
+    GraalValue* graal_this = isolate->GetUndefined();
+    GraalValue* graal_new_target = isolate->GetUndefined();
+    v8::WasmStreaming::WasmStreamingImpl* wasm_streaming_impl = new v8::WasmStreaming::WasmStreamingImpl(isolate, resolve, reject);
+    v8::WasmStreaming* wasm_streaming = new v8::WasmStreaming(std::unique_ptr<v8::WasmStreaming::WasmStreamingImpl>(wasm_streaming_impl));
+    v8::Local<v8::External> v8_external = GraalExternal::New(v8_isolate, wasm_streaming);
+    GraalValue* graal_data = reinterpret_cast<GraalValue*> (*v8_external);
+    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_new_target, graal_data, values.data(), 1, false, true);
+
+    GraalFunctionCallbackInfo info(callbackArgs);
+    callback(info);
 }

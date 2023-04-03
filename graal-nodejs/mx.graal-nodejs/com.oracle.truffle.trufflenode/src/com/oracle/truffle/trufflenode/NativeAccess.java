@@ -170,4 +170,6 @@ public final class NativeAccess {
 
     public static native void executeInterruptCallback(long callback, long data);
 
+    public static native void notifyWasmStreamingCallback(Object response, Object resolve, Object reject);
+
 }
