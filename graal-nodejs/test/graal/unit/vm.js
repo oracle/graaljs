@@ -96,4 +96,36 @@ describe('vm', function () {
             'abc'
         );
     });
+    it('should have correct globalThis', function () {
+        var sandbox = {};
+        var fooValue = 42;
+        Object.defineProperty(sandbox, 'foo', {value: fooValue});
+        Object.defineProperty(sandbox, 'setTimeout', {value: setTimeout});
+        var context = vm.createContext(sandbox);
+        assert.strictEqual(vm.runInContext('foo', context), fooValue);
+        assert.strictEqual(vm.runInContext('globalThis.foo', context), fooValue);
+        var desc = vm.runInContext('Reflect.getOwnPropertyDescriptor(globalThis, "setTimeout")', context);
+        assert.ok(desc);
+        assert.strictEqual(desc.value, setTimeout);
+        assert.strictEqual(desc.writable, false);
+        assert.strictEqual(desc.enumerable, false);
+        assert.strictEqual(desc.configurable, false);
+    });
+    it('should allow overriding globalThis', function () {
+        var sandbox = {};
+        var fooValue = 42;
+        var globalThisOverride = {foo: 43};
+        Object.defineProperty(sandbox, 'foo', {value: fooValue});
+        Object.defineProperty(sandbox, 'globalThis', {value: globalThisOverride, configurable: true, writable: true});
+        var context = vm.createContext(sandbox);
+        assert.strictEqual(vm.runInContext('foo', context), fooValue);
+        assert.strictEqual(vm.runInContext('globalThis', context), globalThisOverride);
+        assert.strictEqual(vm.runInContext('globalThis.foo', context), globalThisOverride.foo);
+        assert.strictEqual(sandbox.globalThis, globalThisOverride);
+    });
+    it('should not have "global" property', function () {
+        var context = vm.createContext();
+        assert.strictEqual(vm.runInContext('typeof global', context), 'undefined');
+        assert.strictEqual(vm.runInContext('typeof globalThis.global', context), 'undefined');
+    });
 });
