@@ -392,6 +392,8 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.CONSOLE_NAME, "false");
             // Node.js does not have global arguments property
             contextBuilder.option(JSContextOptions.GLOBAL_ARGUMENTS_NAME, "false");
+            // Node.js context does not have a predefined global 'global' property.
+            contextBuilder.option(JSContextOptions.GLOBAL_PROPERTY_NAME, "false");
             contextBuilder.useSystemExit(true);
 
             exposeGC = options.isGCExposed();
@@ -2836,7 +2838,10 @@ public final class GraalJSAccess {
         if (templateObj != null) {
             ObjectTemplate template = (ObjectTemplate) templateObj;
             if (template.hasPropertyHandler()) {
-                global = propertyHandlerInstantiate(context, realm, template, global, true);
+                var globalProxy = propertyHandlerInstantiate(context, realm, template, global, true);
+                assert JSObject.hasOwnProperty(global, Strings.GLOBAL_THIS) && !JSObject.hasOwnProperty(global, Strings.GLOBAL);
+                JSObject.set(global, Strings.GLOBAL_THIS, globalProxy);
+                global = globalProxy;
                 realm.setGlobalObject(global);
             } else {
                 JSObject prototype = JSOrdinary.create(context, realm);
