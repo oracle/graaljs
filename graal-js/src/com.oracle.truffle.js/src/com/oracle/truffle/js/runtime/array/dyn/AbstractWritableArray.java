@@ -56,6 +56,7 @@ import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -250,11 +251,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
             } else {
                 minCapacity = internalIndex + 1L;
             }
-            long newCapacity = minCapacity << 1;
-            if (newCapacity > SimpleArrayList.MAX_ARRAY_SIZE) {
+            long newCapacity = Math.max(minCapacity, (long) capacity + (capacity >>> 1));
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, newCapacity > SimpleArrayList.MAX_ARRAY_SIZE)) {
                 if (SimpleArrayList.MAX_ARRAY_SIZE < minCapacity) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new OutOfMemoryError();
+                    profile.enterArrayTooLargeBranch(node);
+                    throw outOfMemoryError();
                 }
                 newCapacity = SimpleArrayList.MAX_ARRAY_SIZE;
             }
@@ -270,6 +271,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
             resizeArray(object, (int) newCapacity, capacity, offset);
             return offset;
         }
+    }
+
+    @TruffleBoundary
+    private static OutOfMemoryError outOfMemoryError() {
+        return new OutOfMemoryError();
     }
 
     private int ensureCapacityContiguous(JSDynamicObject object, int internalIndex, Node node, SetSupportedProfileAccess profile) {
@@ -857,8 +863,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
         private final InlinedConditionProfile updateHolesStateIsHole;
         private final InlinedConditionProfile fillHolesLeft;
         private final InlinedConditionProfile fillHolesRight;
+        private final InlinedBranchProfile arrayTooLargeBranch;
 
-        public static final int REQUIRED_BITS = 10 * 2;
+        public static final int REQUIRED_BITS = 10 * 2 + 1;
         private static final SetSupportedProfileAccess UNCACHED = new SetSupportedProfileAccess(new Builder());
 
         @NeverDefault
@@ -885,6 +892,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             this.updateHolesStateIsHole = b.conditionProfile();
             this.fillHolesLeft = b.conditionProfile();
             this.fillHolesRight = b.conditionProfile();
+            this.arrayTooLargeBranch = b.branchProfile();
         }
 
         public final boolean ensureCapacityGrow(Node node, boolean condition) {
@@ -925,6 +933,10 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
         public final boolean fillHolesRight(Node node, boolean condition) {
             return fillHolesRight.profile(node, condition);
+        }
+
+        public final void enterArrayTooLargeBranch(Node node) {
+            arrayTooLargeBranch.enter(node);
         }
     }
 }
