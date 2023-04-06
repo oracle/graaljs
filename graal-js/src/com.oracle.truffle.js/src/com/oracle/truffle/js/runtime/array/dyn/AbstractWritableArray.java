@@ -205,8 +205,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     @SuppressWarnings("unused")
-    protected void incrementHolesCount(JSDynamicObject object, int offset) {
-        throw Errors.shouldNotReachHere();
+    protected final void incrementHolesCount(JSDynamicObject object, int offset) {
+        assert isHolesType();
+        arraySetHoleCount(object, arrayGetHoleCount(object) + offset);
     }
 
     protected abstract void setHoleValue(JSDynamicObject object, int index);
@@ -357,6 +358,27 @@ public abstract class AbstractWritableArray extends DynamicArray {
         for (int i = start; i < end; i++) {
             setHoleValue(object, i);
         }
+    }
+
+    protected final boolean checkFillHoles(JSDynamicObject object, int internalIndex, int grown) {
+        int start;
+        int end;
+        if (grown > 1) {
+            start = internalIndex - grown + 1;
+            end = internalIndex;
+        } else if (grown < -1) {
+            start = internalIndex + 1;
+            end = internalIndex - grown;
+        } else {
+            return true;
+        }
+
+        for (int i = start; i < end; i++) {
+            if (!isHolePrepared(object, i)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public abstract AbstractWritableArray toDouble(JSDynamicObject object, long index, double value);
@@ -531,7 +553,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             if (profile.contiguousShrinkUsed(node, newUsedLength < oldUsed)) {
                 if (isHolesType()) {
                     incrementHolesCount(object, -countHolesPrepared(object, arrayOffset + newUsedLength, arrayOffset + oldUsed));
-                    assert arrayGetHoleCount(object) == countHoles(object);
+                    assert assertHoleCount(object);
                 }
 
                 // use old arrayOffset
@@ -625,7 +647,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 }
             }
         }
-        assert arrayGetHoleCount(object) == countHoles(object);
+        assert assertHoleCount(object);
         return this;
     }
 
@@ -820,6 +842,14 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return holeCount;
     }
 
+    protected final boolean assertHoleCount(JSDynamicObject object) {
+        assert isHolesType();
+        int holeCount = arrayGetHoleCount(object);
+        int countedHoles = countHoles(object);
+        assert holeCount == countedHoles : String.format("holeCount, %d, differs from the actual count, %d", holeCount, countedHoles);
+        return true;
+    }
+
     /**
      * Move {@code len} elements from {@code src} to {@code dst}.
      */
@@ -849,6 +879,20 @@ public abstract class AbstractWritableArray extends DynamicArray {
             }
         }
         return removeRangeImpl(object, 0, from);
+    }
+
+    protected static boolean unusedElementsAreHoles(Object[] array, int usedStart, int usedLength) {
+        for (int i = 0; i < usedStart; i++) {
+            if (array[i] != null) {
+                return false;
+            }
+        }
+        for (int i = usedStart + usedLength; i < array.length; i++) {
+            if (array[i] != null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static class SetSupportedProfileAccess implements InlinedProfileBag {
