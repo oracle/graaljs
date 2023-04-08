@@ -37,7 +37,7 @@ local ci = import '../ci.jsonnet';
       ['${GRAALVM_HOME}/bin/node', '-e', 'console.log(\'Hello, World!\')'],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
     ],
-    timelimit: '30:00',
+    timelimit: '45:00',
   },
 
   local gateVmSmokeTest = build + {
@@ -46,7 +46,7 @@ local ci = import '../ci.jsonnet';
       ['${GRAALVM_HOME}/bin/node', '-e', 'console.log(\'Hello, World!\')'],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
     ],
-    timelimit: '30:00',
+    timelimit: '45:00',
   },
 
   local gateCoverage = {
@@ -91,21 +91,18 @@ local ci = import '../ci.jsonnet';
     run+: [
       ['mx', 'makeinnodeenv', 'build-addons'],
     ],
-    timelimit: '30:00',
   },
 
   local buildNodeAPI = build + {
     run+: [
       ['mx', 'makeinnodeenv', 'build-node-api-tests'],
     ],
-    timelimit: '30:00',
   },
 
   local buildJSNativeAPI = build + {
     run+: [
       ['mx', 'makeinnodeenv', 'build-js-native-api-tests'],
     ],
-    timelimit: '30:00',
   },
 
   local parallelHttp2 = 'parallel/test-http2-.*',
@@ -149,8 +146,8 @@ local ci = import '../ci.jsonnet';
     // post-merges
     graalNodeJs + common.jdk17 + common.postMerge + common.linux_amd64    + vm_env + build            + testNode(parallelHttp2,   part='-r0,1', max_heap='8G')                               + {name: 'nodejs-postmerge-parallel-http2-jdk17-linux-amd64'},
 
-    graalNodeJs + common.jdk17 + common.postMerge + common.darwin_amd64                               + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-postmerge-jdk17-darwin-amd64', timelimit: '55:00'},
-    graalNodeJs + common.jdk17 + common.postMerge + common.darwin_amd64                               + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-postmerge-substratevm-ce-jdk17-darwin-amd64', timelimit: '55:00'},
+    graalNodeJs + common.jdk17 + common.postMerge + common.darwin_amd64                               + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-postmerge-jdk17-darwin-amd64', timelimit: '1:00:00'},
+    graalNodeJs + common.jdk17 + common.postMerge + common.darwin_amd64                               + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-postmerge-substratevm-ce-jdk17-darwin-amd64', timelimit: '1:00:00'},
 
     // weekly
     graalNodeJs + common.jdk17 + common.weekly    + common.linux_amd64                                + gateCoverage                                                                         + {name: 'weekly-nodejs-coverage-jdk17-linux-amd64'},

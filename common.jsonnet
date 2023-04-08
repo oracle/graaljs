@@ -93,7 +93,7 @@ local common = (import "ci/common.jsonnet");
     run+: [
       $.gateCmdWithTags,
     ],
-    timelimit: '30:00',
+    timelimit: '45:00',
   },
 
   gateStyleFullBuild:: common.deps.pylint + common.deps.eclipse + common.deps.jdt + {
@@ -103,6 +103,6 @@ local common = (import "ci/common.jsonnet");
     run+: [
       $.gateCmdWithTags,
     ],
-    timelimit: '30:00',
+    timelimit: '45:00',
   },
 }

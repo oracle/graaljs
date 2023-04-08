@@ -51,7 +51,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       + self.cd_run
       + self.graalvmtests_run
       + (if std.length(self.cd_run) > 0 then [['mx', 'sversions']] else []),
-    timelimit: "00:30:00",
+    timelimit: error "timelimit not set for '" + (if std.objectHasAll(self, 'name') then self.name else '') + "'",
   },
 
   defs:: {
@@ -114,7 +114,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
         ],
       },
     ],
-    timelimit: "00:30:00"
+    timelimit: "40:00"
   },
 
   local use_js_graalvm_artifact(build) =
