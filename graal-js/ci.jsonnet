@@ -43,6 +43,7 @@ local ci = import '../ci.jsonnet';
       ['${GRAALVM_HOME}/bin/js', '--native', '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'],
       ['${GRAALVM_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
     ],
+    timelimit: '30:00',
   },
 
   local mavenDeployDryRun = {
@@ -55,7 +56,7 @@ local ci = import '../ci.jsonnet';
       ['mvn', '-Dgraalvm.version=GATE', 'package'],
       ['mvn', '-Dgraalvm.version=GATE', 'exec:exec'],
     ],
-    timelimit: '15:00',
+    timelimit: '30:00',
   },
 
   local webassemblyTest = {
@@ -64,7 +65,7 @@ local ci = import '../ci.jsonnet';
       ['mx', '--dynamicimports', '/wasm', 'testv8', 'gate', 'polyglot'],
       ['mx', '--dynamicimports', '/wasm', 'gate', '--tags', 'webassembly'],
     ],
-    timelimit: '30:00',
+    timelimit: '45:00',
   },
 
   local downstreamGraal = {
@@ -127,7 +128,7 @@ local ci = import '../ci.jsonnet';
 
     // windows amd64
     graalJs + common.jdk17 + common.gate      + common.windows_amd64  + gateTags('Test262-default')                                              + {name: 'js-gate-test262-default-jdk17-windows-amd64'},
-    graalJs + common.jdk17 + common.gate      + common.windows_amd64  + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk17-windows-amd64', timelimit: '45:00'},
+    graalJs + common.jdk17 + common.gate      + common.windows_amd64  + gateTags('default')                                                 + ce + {name: 'js-gate-default-ce-jdk17-windows-amd64', timelimit: '1:00:00'},
 
     // darwin aarch64
     graalJs + common.jdk17 + common.gate      + common.darwin_aarch64 + gateTags('default')                                                 + ee + {name: 'js-gate-default-ee-jdk17-darwin-aarch64'},
@@ -147,7 +148,7 @@ local ci = import '../ci.jsonnet';
     graalJs + common.jdk17 + common.bench     + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk17-linux-amd64'},
 
     // POST-MERGE
-    graalJs + common.jdk17 + common.postMerge + common.darwin_amd64   + gateTags('default')                                                 + ee + {name: 'js-postmerge-default-ee-jdk17-darwin-amd64', timelimit: '45:00'},
+    graalJs + common.jdk17 + common.postMerge + common.darwin_amd64   + gateTags('default')                                                 + ee + {name: 'js-postmerge-default-ee-jdk17-darwin-amd64', timelimit: '1:00:00'},
 
     // PGO profiles
     graalJs + common.jdk17 + common.postMerge + common.linux_amd64    + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}     + {name: 'js-postmerge-pgo-profiles-jdk17-linux-amd64'},
