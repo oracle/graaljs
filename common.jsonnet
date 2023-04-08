@@ -9,6 +9,10 @@ local common = (import "ci/common.jsonnet");
     jdk:: 'jdk20',
   },
 
+  jdk21:: common.jdks["oraclejdk21"] + {
+    jdk:: 'jdk21',
+  },
+
   deploy::      {targets+: ['deploy']},
   gate::        {targets+: ['gate']},
   postMerge::   {targets+: ['post-merge']},
@@ -42,8 +46,6 @@ local common = (import "ci/common.jsonnet");
       maven: '==3.3.9',
     },
   },
-
-  linux:: self.linux_amd64,
 
   x52:: self.linux_amd64 + {
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
