@@ -43,18 +43,12 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.Objects;
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -68,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.GeneratorState;
@@ -76,7 +71,6 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class GeneratorBodyNode extends JavaScriptNode {
-    @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of generator functions in JavaScript.")
     private static final class GeneratorRootNode extends JavaScriptRealmBoundaryRootNode {
         @Child private CreateIterResultObjectNode createIterResultObject;
         @Child private PropertyGetNode getGeneratorState;
@@ -86,19 +80,17 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         @Child private JSReadFrameSlotNode readYieldResult;
         private final BranchProfile errorBranch = BranchProfile.create();
         private final ConditionProfile returnOrExceptionProfile = ConditionProfile.create();
-        private final String functionName;
+        private final TruffleString functionName;
 
         GeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection,
-                        String functionName) {
+                        TruffleString functionName) {
             super(context.getLanguage(), functionSourceSection, null);
             this.createIterResultObject = CreateIterResultObjectNode.create(context);
             this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.functionBody = new FunctionBodyNode(functionBody);
-            Objects.requireNonNull(writeYieldValueNode);
-            Objects.requireNonNull(readYieldResultNode);
-            this.writeYieldValue = writeYieldValueNode;
-            this.readYieldResult = readYieldResultNode;
+            this.writeYieldValue = Objects.requireNonNull(writeYieldValueNode);
+            this.readYieldResult = Objects.requireNonNull(readYieldResultNode);
             this.functionName = functionName;
         }
 
@@ -174,7 +166,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         @Override
         public String getName() {
             if (functionName != null && !functionName.isEmpty()) {
-                return functionName;
+                return Strings.toJavaString(functionName);
             }
             return ":generator";
         }
@@ -184,57 +176,26 @@ public final class GeneratorBodyNode extends JavaScriptNode {
     @Child private PropertySetNode setGeneratorState;
     @Child private PropertySetNode setGeneratorContext;
     @Child private PropertySetNode setGeneratorTarget;
-    @CompilationFinal private volatile RootCallTarget generatorCallTarget;
+    private final GeneratorRootNode generatorRootNode;
     private final JSContext context;
 
-    @Child private JavaScriptNode functionBody;
-    @Child private JSWriteFrameSlotNode writeYieldValueNode;
-    @Child private JSReadFrameSlotNode readYieldResultNode;
-
-    private GeneratorBodyNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode) {
+    private GeneratorBodyNode(JSContext context, GeneratorRootNode generatorRootNode) {
         this.context = context;
         this.createGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, false);
         this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
         this.setGeneratorContext = PropertySetNode.createSetHidden(JSFunction.GENERATOR_CONTEXT_ID, context);
         this.setGeneratorTarget = PropertySetNode.createSetHidden(JSFunction.GENERATOR_TARGET_ID, context);
-
-        // these children are adopted here only temporarily; they will be transferred later
-        this.functionBody = functionBody;
-        this.writeYieldValueNode = writeYieldValueNode;
-        this.readYieldResultNode = readYieldResultNode;
+        this.generatorRootNode = generatorRootNode;
     }
 
-    public static GeneratorBodyNode create(JSContext context, JavaScriptNode expression, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult) {
-        return new GeneratorBodyNode(context, expression, writeYieldValue, readYieldResult);
-    }
-
-    private void initializeGeneratorCallTarget() {
-        CompilerAsserts.neverPartOfCompilation();
-        atomic(() -> {
-            if (generatorCallTarget == null) {
-                RootNode rootNode = getRootNode();
-                GeneratorRootNode generatorRootNode = new GeneratorRootNode(context, functionBody, writeYieldValueNode, readYieldResultNode, rootNode.getSourceSection(), rootNode.getName());
-                this.generatorCallTarget = generatorRootNode.getCallTarget();
-                // these children have been transferred to the generator root node and are now
-                // disowned
-                this.functionBody = null;
-                this.writeYieldValueNode = null;
-                this.readYieldResultNode = null;
-            }
-        });
-    }
-
-    private void ensureGeneratorCallTargetInitialized() {
-        if (generatorCallTarget == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            initializeGeneratorCallTarget();
-        }
+    public static GeneratorBodyNode create(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult,
+                    SourceSection functionSourceSection, TruffleString functionName) {
+        var resumptionRootNode = new GeneratorRootNode(context, body, writeYieldValue, readYieldResult, functionSourceSection, functionName);
+        return new GeneratorBodyNode(context, resumptionRootNode);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        ensureGeneratorCallTargetInitialized();
-
         // 14.4.11 Runtime Semantics: GeneratorBody : EvaluateBody
         // Let G be OrdinaryCreateFromConstructor(functionObject, "%GeneratorPrototype%",
         // <<[[GeneratorState]], [[GeneratorContext]]>>).
@@ -248,20 +209,11 @@ public final class GeneratorBodyNode extends JavaScriptNode {
     private void generatorStart(VirtualFrame frame, JSDynamicObject generatorObject) {
         setGeneratorState.setValue(generatorObject, GeneratorState.SuspendedStart);
         setGeneratorContext.setValue(generatorObject, frame.materialize());
-        setGeneratorTarget.setValue(generatorObject, generatorCallTarget);
+        setGeneratorTarget.setValue(generatorObject, generatorRootNode.getCallTarget());
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return atomic(() -> {
-            if (generatorCallTarget == null) {
-                return create(context, cloneUninitialized(functionBody, materializedTags), cloneUninitialized(writeYieldValueNode, materializedTags),
-                                cloneUninitialized(readYieldResultNode, materializedTags));
-            } else {
-                GeneratorRootNode generatorRoot = (GeneratorRootNode) generatorCallTarget.getRootNode();
-                return create(context, cloneUninitialized(generatorRoot.functionBody, materializedTags), cloneUninitialized(generatorRoot.writeYieldValue, materializedTags),
-                                cloneUninitialized(generatorRoot.readYieldResult, materializedTags));
-            }
-        });
+        return new GeneratorBodyNode(context, generatorRootNode);
     }
 }

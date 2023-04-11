@@ -1023,17 +1023,19 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createAsyncFunctionBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext,
-                    JSWriteFrameSlotNode writeAsyncResult) {
-        return AsyncFunctionBodyNode.create(context, body, writeAsyncContext, readAsyncContext, writeAsyncResult);
+                    JSWriteFrameSlotNode writeAsyncResult, SourceSection functionSourceSection, TruffleString functionName) {
+        return AsyncFunctionBodyNode.create(context, body, writeAsyncContext, readAsyncContext, writeAsyncResult, functionSourceSection, functionName);
     }
 
-    public JavaScriptNode createGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult) {
-        return GeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult);
+    public JavaScriptNode createGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult,
+                    SourceSection functionSourceSection, TruffleString functionName) {
+        return GeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult, functionSourceSection, functionName);
     }
 
     public JavaScriptNode createAsyncGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult,
-                    JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext) {
-        return AsyncGeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult, writeAsyncContext, readAsyncContext);
+                    JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext,
+                    SourceSection functionSourceSection, TruffleString functionName) {
+        return AsyncGeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult, writeAsyncContext, readAsyncContext, functionSourceSection, functionName);
     }
 
     public JavaScriptNode createGeneratorWrapper(JavaScriptNode child, JSFrameSlot stateSlot) {
@@ -1253,8 +1255,9 @@ public class NodeFactory {
         return ModuleYieldNode.create();
     }
 
-    public JavaScriptNode createTopLevelAsyncModuleBody(JSContext context, JavaScriptNode moduleBody, JSWriteFrameSlotNode asyncResult, JSWriteFrameSlotNode writeAsyncContextNode) {
-        return TopLevelAwaitModuleBodyNode.create(context, moduleBody, asyncResult, writeAsyncContextNode);
+    public JavaScriptNode createTopLevelAsyncModuleBody(JSContext context, JavaScriptNode moduleBody, JSWriteFrameSlotNode writeAsyncResult, JSWriteFrameSlotNode writeAsyncContext,
+                    SourceSection functionSourceSection) {
+        return TopLevelAwaitModuleBodyNode.create(context, moduleBody, writeAsyncResult, writeAsyncContext, functionSourceSection);
     }
 
     public JavaScriptNode createImportMeta(JavaScriptNode moduleNode) {
