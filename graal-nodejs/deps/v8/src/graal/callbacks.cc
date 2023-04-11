@@ -626,7 +626,10 @@ void GraalWeakCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong d
         v8::WeakCallbackInfo<void>::Callback second_callback = nullptr;
         v8::Isolate* isolate = v8::Isolate::GetCurrent();
         v8::WeakCallbackInfo<void> callback_info = v8::WeakCallbackInfo<void>(isolate, (void*) data, internalFields, &second_callback);
-        v8_callback(callback_info);
+        {
+            v8::HandleScope scope(isolate);
+            v8_callback(callback_info);
+        }
         if (second_callback) {
             v8::HandleScope scope(isolate);
             second_callback(callback_info);
@@ -637,7 +640,10 @@ void GraalWeakCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong d
         v8::WeakCallbackInfo<void>::Callback second_callback = nullptr;
         v8::Isolate* isolate = v8::Isolate::GetCurrent();
         v8::WeakCallbackInfo<void> callback_info = v8::WeakCallbackInfo<void>(isolate, internalFields[v8::kInternalFieldsInWeakCallback], internalFields, &second_callback);
-        v8_callback(callback_info);
+        {
+            v8::HandleScope scope(isolate);
+            v8_callback(callback_info);
+        }
         if (second_callback) {
             v8::HandleScope scope(isolate);
             second_callback(callback_info);
