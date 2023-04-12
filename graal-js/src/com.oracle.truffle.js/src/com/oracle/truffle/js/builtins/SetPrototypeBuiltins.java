@@ -770,7 +770,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSMap(thisObj)"})
+        @Specialization(guards = {"!isJSSet(thisObj)"})
         protected static int notSet(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeErrorSetExpected();
         }
