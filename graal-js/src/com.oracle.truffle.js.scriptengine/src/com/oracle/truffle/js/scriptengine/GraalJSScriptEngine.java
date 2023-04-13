@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -352,10 +352,15 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         builder.allowHostAccess(HostAccess.ALL);
     }
 
-    static Context createDefaultContext(Context.Builder builder) {
+    static Context createDefaultContext(Context.Builder builder, ScriptContext ctxt) {
         DelegatingInputStream in = new DelegatingInputStream();
         DelegatingOutputStream out = new DelegatingOutputStream();
         DelegatingOutputStream err = new DelegatingOutputStream();
+        if (ctxt != null) {
+            in.setReader(ctxt.getReader());
+            out.setWriter(ctxt.getWriter());
+            err.setWriter(ctxt.getErrorWriter());
+        }
         builder.in(in).out(out).err(err);
         Context ctx = builder.build();
         ctx.getPolyglotBindings().putMember(OUT_SYMBOL, out);
@@ -547,7 +552,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                     engineB.remove(optionSetter.getOptionKey());
                 }
             }
-            ctx = createDefaultContext(builder);
+            ctx = createDefaultContext(builder, context);
             engineB.put(POLYGLOT_CONTEXT, ctx);
         }
         return (Context) ctx;
