@@ -3,7 +3,7 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
-See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) for release dates.
+See [release calendar](https://www.graalvm.org/release-notes/release-calendar/) for release dates.
 
 ## Version 23.0.0
 * Implemented the [WebAssembly reference types](https://github.com/WebAssembly/reference-types) proposal.
