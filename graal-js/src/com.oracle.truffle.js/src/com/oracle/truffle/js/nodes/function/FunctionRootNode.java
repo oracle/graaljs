@@ -87,7 +87,8 @@ public final class FunctionRootNode extends AbstractFunctionRootNode implements 
                     SourceSection sourceSection, ScriptOrModule activeScriptOrModule, TruffleString internalFunctionName) {
         FunctionRootNode rootNode = new FunctionRootNode(body, frameDescriptor, functionData, sourceSection, activeScriptOrModule, internalFunctionName);
         if (functionData.getContext().getContextOptions().isTestCloneUninitialized()) {
-            assert JSNodeUtil.hasExactlyOneRootBodyTag(body) : "Function does not have exactly one RootBodyTag";
+            // async/generator functions have the root body tag in the resumption root node.
+            assert JSNodeUtil.hasExactlyOneRootBodyTag(body) || rootNode.getFunctionData().isAsync() || rootNode.getFunctionData().isGenerator() : "Function does not have exactly one RootBodyTag";
             return (FunctionRootNode) rootNode.cloneUninitialized();
         } else {
             return rootNode;
