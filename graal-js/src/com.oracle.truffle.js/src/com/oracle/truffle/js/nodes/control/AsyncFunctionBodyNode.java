@@ -51,6 +51,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -284,4 +285,12 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
                         resumptionRootNode);
     }
 
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (!materializedTags.isEmpty()) {
+            // ensure resumption call target is visible to instrumentation.
+            resumptionRootNode.getCallTarget();
+        }
+        return this;
+    }
 }

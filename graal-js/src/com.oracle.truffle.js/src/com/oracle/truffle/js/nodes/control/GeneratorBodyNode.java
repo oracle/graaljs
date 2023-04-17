@@ -44,6 +44,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -216,5 +217,14 @@ public final class GeneratorBodyNode extends JavaScriptNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new GeneratorBodyNode(context, generatorRootNode);
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (!materializedTags.isEmpty()) {
+            // ensure resumption call target is visible to instrumentation.
+            generatorRootNode.getCallTarget();
+        }
+        return this;
     }
 }
