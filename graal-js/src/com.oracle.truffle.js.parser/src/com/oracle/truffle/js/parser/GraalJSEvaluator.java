@@ -181,7 +181,7 @@ public final class GraalJSEvaluator implements JSParser {
         code.append(") {");
         code.append(wrappedBody);
         code.append("})");
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).cached(false).build();
         return parseEval(context, null, source, false, null, activeScriptOrModule);
     }
 

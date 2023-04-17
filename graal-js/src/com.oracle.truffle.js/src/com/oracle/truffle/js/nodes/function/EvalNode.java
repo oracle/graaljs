@@ -272,7 +272,7 @@ public abstract class EvalNode extends JavaScriptNode {
         @TruffleBoundary
         private Source sourceFromString(TruffleString sourceCode) {
             String evalSourceName = formatEvalOrigin(this, context, Evaluator.EVAL_SOURCE_NAME);
-            return Source.newBuilder(JavaScriptLanguage.ID, Strings.toJavaString(sourceCode), evalSourceName).build();
+            return Source.newBuilder(JavaScriptLanguage.ID, Strings.toJavaString(sourceCode), evalSourceName).cached(false).build();
         }
 
         protected DirectEvalNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
