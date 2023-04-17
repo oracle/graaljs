@@ -136,7 +136,7 @@ public class ImportCallNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object referencingScriptOrModule = activeScriptOrModule;
+        ScriptOrModule referencingScriptOrModule = activeScriptOrModule;
         Object specifier = argRefNode.execute(frame);
         if (context.getContextOptions().isImportAssertions() && optionsRefNode != null) {
             return executeAssertions(frame, referencingScriptOrModule, specifier);
@@ -145,7 +145,7 @@ public class ImportCallNode extends JavaScriptNode {
         }
     }
 
-    private Object executeWithoutAssertions(Object referencingScriptOrModule, Object specifier) {
+    private Object executeWithoutAssertions(ScriptOrModule referencingScriptOrModule, Object specifier) {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         TruffleString specifierString;
         try {
@@ -157,7 +157,7 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     @SuppressWarnings("unchecked")
-    private Object executeAssertions(VirtualFrame frame, Object referencingScriptOrModule, Object specifier) {
+    private Object executeAssertions(VirtualFrame frame, ScriptOrModule referencingScriptOrModule, Object specifier) {
         assert optionsRefNode != null;
         if (enumerableOwnPropertyNamesNode == null || getAssertionsNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -219,17 +219,17 @@ public class ImportCallNode extends JavaScriptNode {
         return ModuleRequest.create(specifierString, assertions);
     }
 
-    public final JSDynamicObject hostImportModuleDynamically(Object referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
+    public final JSDynamicObject hostImportModuleDynamically(ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
         JSRealm realm = getRealm();
         if (context.hasImportModuleDynamicallyCallbackBeenSet()) {
-            JSDynamicObject promise = context.hostImportModuleDynamically(realm, (ScriptOrModule) referencingScriptOrModule, moduleRequest);
+            JSDynamicObject promise = context.hostImportModuleDynamically(realm, referencingScriptOrModule, moduleRequest);
             if (promise == null) {
                 return rejectPromise(promiseCapability, createTypeErrorCannotImport(moduleRequest.getSpecifier()));
             }
             assert JSPromise.isJSPromise(promise);
             return promise;
         } else {
-            context.promiseEnqueueJob(realm, createImportModuleDynamicallyJob((ScriptOrModule) referencingScriptOrModule, moduleRequest, promiseCapability));
+            context.promiseEnqueueJob(realm, createImportModuleDynamicallyJob(referencingScriptOrModule, moduleRequest, promiseCapability));
             return promiseCapability.getPromise();
         }
     }
