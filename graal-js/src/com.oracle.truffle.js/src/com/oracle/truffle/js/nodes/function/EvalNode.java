@@ -153,11 +153,23 @@ public abstract class EvalNode extends JavaScriptNode {
 
     @TruffleBoundary
     public static Node findCallNode(JSRealm realm) {
-        JavaScriptBaseNode callNode = realm.getCallNode();
-        if (callNode != null) {
-            return callNode;
+        JavaScriptBaseNode caller = realm.getCallNode();
+        if (isValidCallNode(caller)) {
+            return caller;
         }
-        return Truffle.getRuntime().iterateFrames(frameInstance -> frameInstance.getCallNode());
+        return Truffle.getRuntime().iterateFrames(frameInstance -> {
+            Node callNode = frameInstance.getCallNode();
+            // Skip built-in function frames to find the true caller.
+            if (isValidCallNode(callNode)) {
+                return callNode;
+            } else {
+                return null;
+            }
+        });
+    }
+
+    private static boolean isValidCallNode(Node callNode) {
+        return callNode != null && callNode.getRootNode() instanceof AbstractFunctionRootNode functionRoot && functionRoot.getActiveScriptOrModule() != null;
     }
 
     @TruffleBoundary
