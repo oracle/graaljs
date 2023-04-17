@@ -97,7 +97,7 @@ public class ImportCallNode extends JavaScriptNode {
     private static final TruffleString ASSERTIONS = Strings.constant("assert");
 
     @Child private JavaScriptNode argRefNode;
-    @Child private JavaScriptNode activeScriptOrModuleNode;
+    private final ScriptOrModule activeScriptOrModule;
     @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private JSToStringNode toStringNode;
     @Child private PromiseReactionJobNode promiseReactionJobNode;
@@ -111,22 +111,22 @@ public class ImportCallNode extends JavaScriptNode {
 
     private final JSContext context;
 
-    protected ImportCallNode(JSContext context, JavaScriptNode argRefNode, JavaScriptNode activeScriptOrModuleNode, JavaScriptNode optionsRefNode) {
+    protected ImportCallNode(JSContext context, JavaScriptNode argRefNode, ScriptOrModule activeScriptOrModule, JavaScriptNode optionsRefNode) {
         this.context = context;
         this.argRefNode = argRefNode;
-        this.activeScriptOrModuleNode = activeScriptOrModuleNode;
+        this.activeScriptOrModule = activeScriptOrModule;
         this.optionsRefNode = optionsRefNode;
         this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
         this.toStringNode = JSToStringNode.create();
         this.promiseReactionJobNode = PromiseReactionJobNode.create(context);
     }
 
-    public static ImportCallNode create(JSContext context, JavaScriptNode argRefNode, JavaScriptNode activeScriptOrModuleNode) {
-        return new ImportCallNode(context, argRefNode, activeScriptOrModuleNode, null);
+    public static ImportCallNode create(JSContext context, JavaScriptNode argRefNode, ScriptOrModule activeScriptOrModule) {
+        return new ImportCallNode(context, argRefNode, activeScriptOrModule, null);
     }
 
-    public static ImportCallNode createWithOptions(JSContext context, JavaScriptNode specifierRefNode, JavaScriptNode activeScriptOrModuleNode, JavaScriptNode optionsRefNode) {
-        return new ImportCallNode(context, specifierRefNode, activeScriptOrModuleNode, optionsRefNode);
+    public static ImportCallNode createWithOptions(JSContext context, JavaScriptNode specifierRefNode, ScriptOrModule activeScriptOrModule, JavaScriptNode optionsRefNode) {
+        return new ImportCallNode(context, specifierRefNode, activeScriptOrModule, optionsRefNode);
     }
 
     @NeverDefault
@@ -136,7 +136,7 @@ public class ImportCallNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object referencingScriptOrModule = getActiveScriptOrModule(frame);
+        Object referencingScriptOrModule = activeScriptOrModule;
         Object specifier = argRefNode.execute(frame);
         if (context.getContextOptions().isImportAssertions() && optionsRefNode != null) {
             return executeAssertions(frame, referencingScriptOrModule, specifier);
@@ -217,10 +217,6 @@ public class ImportCallNode extends JavaScriptNode {
     @TruffleBoundary
     private static ModuleRequest createModuleRequestWithAssertions(TruffleString specifierString, Map.Entry<TruffleString, TruffleString>[] assertions) {
         return ModuleRequest.create(specifierString, assertions);
-    }
-
-    private Object getActiveScriptOrModule(VirtualFrame frame) {
-        return activeScriptOrModuleNode.execute(frame);
     }
 
     public final JSDynamicObject hostImportModuleDynamically(Object referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
@@ -430,9 +426,9 @@ public class ImportCallNode extends JavaScriptNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         if (optionsRefNode == null) {
-            return ImportCallNode.create(context, cloneUninitialized(argRefNode, materializedTags), cloneUninitialized(activeScriptOrModuleNode, materializedTags));
+            return ImportCallNode.create(context, cloneUninitialized(argRefNode, materializedTags), activeScriptOrModule);
         } else {
-            return ImportCallNode.createWithOptions(context, cloneUninitialized(argRefNode, materializedTags), cloneUninitialized(activeScriptOrModuleNode, materializedTags),
+            return ImportCallNode.createWithOptions(context, cloneUninitialized(argRefNode, materializedTags), activeScriptOrModule,
                             cloneUninitialized(optionsRefNode, materializedTags));
         }
     }

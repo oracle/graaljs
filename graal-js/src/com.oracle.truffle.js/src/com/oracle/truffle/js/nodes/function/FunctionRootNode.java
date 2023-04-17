@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,24 +56,25 @@ import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData.Target;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
 @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of all functions in JavaScript.")
-public final class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements FrameDescriptorProvider, JSFunctionData.CallTargetInitializer {
+public final class FunctionRootNode extends AbstractFunctionRootNode implements FrameDescriptorProvider, JSFunctionData.CallTargetInitializer {
 
     @Child private JavaScriptNode body;
 
     private final JSFunctionData functionData;
-    private TruffleString internalFunctionName;
+    private final TruffleString internalFunctionName;
 
     private static final ThreadLocal<JSFunctionData> OMIT_FROM_STACK_TRACE = new ThreadLocal<>();
 
-    protected FunctionRootNode(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, TruffleString internalFunctionName) {
-        super(functionData.getContext().getLanguage(), sourceSection, frameDescriptor);
+    protected FunctionRootNode(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData,
+                    SourceSection sourceSection, ScriptOrModule activeScriptOrModule, TruffleString internalFunctionName) {
+        super(functionData.getContext().getLanguage(), sourceSection, frameDescriptor, activeScriptOrModule);
         this.body = body;
         if (!this.body.hasSourceSection()) {
             this.body.setSourceSection(sourceSection);
@@ -82,8 +83,9 @@ public final class FunctionRootNode extends JavaScriptRealmBoundaryRootNode impl
         this.internalFunctionName = internalFunctionName;
     }
 
-    public static FunctionRootNode create(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, TruffleString internalFunctionName) {
-        FunctionRootNode rootNode = new FunctionRootNode(body, frameDescriptor, functionData, sourceSection, internalFunctionName);
+    public static FunctionRootNode create(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData,
+                    SourceSection sourceSection, ScriptOrModule activeScriptOrModule, TruffleString internalFunctionName) {
+        FunctionRootNode rootNode = new FunctionRootNode(body, frameDescriptor, functionData, sourceSection, activeScriptOrModule, internalFunctionName);
         if (functionData.getContext().getContextOptions().isTestCloneUninitialized()) {
             assert JSNodeUtil.hasExactlyOneRootBodyTag(body) : "Function does not have exactly one RootBodyTag";
             return (FunctionRootNode) rootNode.cloneUninitialized();
@@ -108,7 +110,8 @@ public final class FunctionRootNode extends JavaScriptRealmBoundaryRootNode impl
 
     @Override
     protected JavaScriptRootNode cloneUninitialized() {
-        return new FunctionRootNode((AbstractBodyNode) JavaScriptNode.cloneUninitialized(body, null), getFrameDescriptor(), functionData, getSourceSection(), internalFunctionName);
+        return new FunctionRootNode((AbstractBodyNode) JavaScriptNode.cloneUninitialized(body, null), getFrameDescriptor(), functionData,
+                        getSourceSection(), getActiveScriptOrModule(), internalFunctionName);
     }
 
     public boolean isInlineImmediately() {

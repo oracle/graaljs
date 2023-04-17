@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
@@ -68,7 +69,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
@@ -76,11 +76,12 @@ import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
-    private static final class AsyncGeneratorRootNode extends JavaScriptRealmBoundaryRootNode implements AsyncRootNode {
+    private static final class AsyncGeneratorRootNode extends AbstractFunctionRootNode implements AsyncRootNode {
 
         @Child private PropertySetNode setGeneratorState;
         @Child private JavaScriptNode functionBody;
@@ -95,8 +96,8 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         private final TruffleString functionName;
 
         AsyncGeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, JSReadFrameSlotNode readAsyncContext,
-                        SourceSection functionSourceSection, TruffleString functionName) {
-            super(context.getLanguage(), functionSourceSection, null);
+                        SourceSection functionSourceSection, TruffleString functionName, ScriptOrModule activeScriptOrModule) {
+            super(context.getLanguage(), functionSourceSection, null, activeScriptOrModule);
             this.readAsyncContext = readAsyncContext;
             this.functionName = functionName;
             this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
@@ -269,8 +270,8 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode,
                     JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext,
-                    SourceSection functionSourceSection, TruffleString functionName) {
-        var resumptionRootNode = new AsyncGeneratorRootNode(context, body, writeYieldValueNode, readYieldResultNode, readAsyncContext, functionSourceSection, functionName);
+                    SourceSection functionSourceSection, TruffleString functionName, ScriptOrModule activeScriptOrModule) {
+        var resumptionRootNode = new AsyncGeneratorRootNode(context, body, writeYieldValueNode, readYieldResultNode, readAsyncContext, functionSourceSection, functionName, activeScriptOrModule);
         return new AsyncGeneratorBodyNode(context, writeAsyncContext, resumptionRootNode);
     }
 

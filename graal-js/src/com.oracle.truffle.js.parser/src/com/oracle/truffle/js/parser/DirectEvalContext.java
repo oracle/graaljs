@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.parser;
 import com.oracle.js.parser.ir.ClassNode;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.js.parser.env.Environment;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
 /**
  * Saved parser environment and lexical context information for direct eval.
@@ -51,10 +52,12 @@ public final class DirectEvalContext {
     final Scope scope;
     final Environment env;
     final ClassNode enclosingClass;
+    final ScriptOrModule activeScriptOrModule;
 
-    DirectEvalContext(Scope scope, Environment env, ClassNode enclosingClass) {
+    DirectEvalContext(Scope scope, Environment env, ClassNode enclosingClass, ScriptOrModule activeScriptOrModule) {
         this.scope = scope;
         this.env = env;
         this.enclosingClass = enclosingClass;
+        this.activeScriptOrModule = activeScriptOrModule;
     }
 }

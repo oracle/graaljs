@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.function.Consumer;
 
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -55,13 +54,11 @@ import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
-import com.oracle.truffle.js.nodes.arguments.GetActiveScriptOrModuleNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
 public final class FunctionEnvironment extends Environment {
     private static final TruffleString RETURN_SLOT_IDENTIFIER = Strings.constant("<return>");
@@ -113,8 +110,6 @@ public final class FunctionEnvironment extends Environment {
     private boolean isDynamicallyScoped;
     private boolean needsNewTarget;
     private final boolean inDirectEval;
-
-    private GetActiveScriptOrModuleNode activeScriptOrModuleRef;
 
     public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context, Scope scope,
                     boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction,
@@ -585,35 +580,11 @@ public final class FunctionEnvironment extends Environment {
         return getParentFunction() == null;
     }
 
-    public JavaScriptNode getActiveScriptOrModule() {
-        assert isScriptOrModule();
-        if (activeScriptOrModuleRef == null) {
-            assert !inDirectEval(); // must have already been initialized in direct eval caller
-            activeScriptOrModuleRef = factory.createGetActiveScriptOrModule();
-        }
-        return activeScriptOrModuleRef;
-    }
-
-    public Consumer<ScriptOrModule> getScriptOrModuleResolver() {
-        assert isScriptOrModule();
-        return scriptOrModule -> {
-            if (context.getContextOptions().isLazyTranslation()) {
-                // Might be needed by lazily translated function.
-                getActiveScriptOrModule();
-            }
-            if (activeScriptOrModuleRef != null) {
-                factory.fixGetActiveScriptOrModule(activeScriptOrModuleRef, scriptOrModule);
-            }
-        };
-    }
-
     public void prepareForDirectEval() {
         FunctionEnvironment func = this;
         for (; func.getParentFunction() != null; func = func.getParentFunction()) {
             func.setNeedsParentFrame(true);
         }
-        // Make sure active script is available to the eval code (for import()).
-        func.getActiveScriptOrModule();
     }
 
     @Override

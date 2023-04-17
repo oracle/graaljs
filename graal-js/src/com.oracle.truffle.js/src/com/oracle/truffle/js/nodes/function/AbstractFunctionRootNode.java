@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,45 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.arguments;
+package com.oracle.truffle.js.nodes.function;
 
-import java.util.Objects;
-import java.util.Set;
-
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
-public final class GetActiveScriptOrModuleNode extends JavaScriptNode {
+public abstract class AbstractFunctionRootNode extends JavaScriptRealmBoundaryRootNode {
 
-    @CompilationFinal private ScriptOrModule scriptOrModule;
+    protected final ScriptOrModule activeScriptOrModule;
 
-    private GetActiveScriptOrModuleNode() {
+    protected AbstractFunctionRootNode(JavaScriptLanguage lang,
+                    SourceSection sourceSection, FrameDescriptor frameDescriptor, ScriptOrModule activeScriptOrModule) {
+        super(lang, sourceSection, frameDescriptor);
+        this.activeScriptOrModule = activeScriptOrModule;
     }
 
-    public static GetActiveScriptOrModuleNode create() {
-        return new GetActiveScriptOrModuleNode();
+    public final ScriptOrModule getActiveScriptOrModule() {
+        return activeScriptOrModule;
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return Objects.requireNonNull(scriptOrModule);
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return this;
-    }
-
-    @Override
-    public boolean isAdoptable() {
-        return false;
-    }
-
-    public void setScriptOrModule(ScriptOrModule scriptOrModule) {
-        assert this.scriptOrModule == null;
-        this.scriptOrModule = scriptOrModule;
-    }
 }

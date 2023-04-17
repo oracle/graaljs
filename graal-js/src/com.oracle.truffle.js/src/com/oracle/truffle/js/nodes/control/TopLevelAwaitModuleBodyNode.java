@@ -51,20 +51,21 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
-    public static final class TopLevelAwaitModuleRootNode extends JavaScriptRootNode {
+    public static final class TopLevelAwaitModuleRootNode extends AbstractFunctionRootNode {
 
         private final JSContext context;
 
@@ -74,8 +75,8 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         @Child private JSWriteFrameSlotNode writeAsyncResult;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
-        TopLevelAwaitModuleRootNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, SourceSection functionSourceSection) {
-            super(context.getLanguage(), functionSourceSection, null);
+        TopLevelAwaitModuleRootNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, SourceSection functionSourceSection, ScriptOrModule activeScriptOrModule) {
+            super(context.getLanguage(), functionSourceSection, null, activeScriptOrModule);
             this.context = context;
             this.functionBody = body;
             this.callResolveNode = JSFunctionCallNode.createCall();
@@ -83,7 +84,7 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public Object executeInRealm(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
             VirtualFrame asyncFrame = JSArguments.getResumeExecutionContext(arguments);
             PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
@@ -154,8 +155,8 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode moduleBody, JSWriteFrameSlotNode writeAsyncResult, JSWriteFrameSlotNode writeAsyncContext,
-                    SourceSection functionSourceSection) {
-        var resumptionRootNode = new TopLevelAwaitModuleRootNode(context, moduleBody, writeAsyncResult, functionSourceSection);
+                    SourceSection functionSourceSection, ScriptOrModule activeScriptOrModule) {
+        var resumptionRootNode = new TopLevelAwaitModuleRootNode(context, moduleBody, writeAsyncResult, functionSourceSection, activeScriptOrModule);
         return new TopLevelAwaitModuleBodyNode(context, writeAsyncContext, resumptionRootNode);
     }
 
