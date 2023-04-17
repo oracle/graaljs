@@ -1269,7 +1269,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             Node caller = EvalNode.findCallNode(realm);
             String sourceName = EvalNode.formatEvalOrigin(caller, getContext(), Evaluator.EVAL_SOURCE_NAME);
             ScriptOrModule activeScriptOrModule = EvalNode.findActiveScriptOrModule(caller);
-            Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, sourceName).build();
+            Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, sourceName).cached(false).build();
             return getContext().getEvaluator().parseEval(getContext(), this, source, activeScriptOrModule);
         }
 
