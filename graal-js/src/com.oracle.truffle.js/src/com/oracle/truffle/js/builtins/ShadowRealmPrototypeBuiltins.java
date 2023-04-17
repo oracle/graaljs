@@ -298,7 +298,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
             CompilerAsserts.neverPartOfCompilation();
             assert !getContext().getContextOptions().isDisableEval();
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, Evaluator.EVAL_SOURCE_NAME).build();
-            return getContext().getEvaluator().parseEval(getContext(), this, source);
+            return getContext().getEvaluator().parseEval(getContext(), this, source, null);
         }
 
         @TruffleBoundary

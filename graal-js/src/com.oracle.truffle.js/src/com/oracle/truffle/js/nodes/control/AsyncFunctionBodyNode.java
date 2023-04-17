@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -68,17 +69,17 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class AsyncFunctionBodyNode extends JavaScriptNode {
 
-    public static final class AsyncFunctionRootNode extends JavaScriptRealmBoundaryRootNode implements AsyncRootNode {
+    public static final class AsyncFunctionRootNode extends AbstractFunctionRootNode implements AsyncRootNode {
 
         private final JSContext context;
         private final TruffleString functionName;
@@ -90,8 +91,8 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
         AsyncFunctionRootNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, JSReadFrameSlotNode readAsyncContext,
-                        SourceSection functionSourceSection, TruffleString functionName) {
-            super(context.getLanguage(), functionSourceSection, null);
+                        SourceSection functionSourceSection, TruffleString functionName, ScriptOrModule activeScriptOrModule) {
+            super(context.getLanguage(), functionSourceSection, null, activeScriptOrModule);
             this.context = context;
             this.functionBody = new FunctionBodyNode(body);
             this.readAsyncContext = readAsyncContext;
@@ -225,8 +226,8 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext, JSWriteFrameSlotNode writeAsyncResult,
-                    SourceSection functionSourceSection, TruffleString functionName) {
-        AsyncFunctionRootNode resumptionRootNode = new AsyncFunctionRootNode(context, body, writeAsyncResult, readAsyncContext, functionSourceSection, functionName);
+                    SourceSection functionSourceSection, TruffleString functionName, ScriptOrModule activeScriptOrModule) {
+        AsyncFunctionRootNode resumptionRootNode = new AsyncFunctionRootNode(context, body, writeAsyncResult, readAsyncContext, functionSourceSection, functionName, activeScriptOrModule);
         return new AsyncFunctionBodyNode(context, writeAsyncContext, resumptionRootNode);
     }
 

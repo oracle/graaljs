@@ -55,23 +55,24 @@ import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.GeneratorState;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class GeneratorBodyNode extends JavaScriptNode {
-    private static final class GeneratorRootNode extends JavaScriptRealmBoundaryRootNode {
+    private static final class GeneratorRootNode extends AbstractFunctionRootNode {
         @Child private CreateIterResultObjectNode createIterResultObject;
         @Child private PropertyGetNode getGeneratorState;
         @Child private PropertySetNode setGeneratorState;
@@ -83,8 +84,8 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         private final TruffleString functionName;
 
         GeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection,
-                        TruffleString functionName) {
-            super(context.getLanguage(), functionSourceSection, null);
+                        TruffleString functionName, ScriptOrModule activeScriptOrModule) {
+            super(context.getLanguage(), functionSourceSection, null, activeScriptOrModule);
             this.createIterResultObject = CreateIterResultObjectNode.create(context);
             this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
@@ -189,8 +190,8 @@ public final class GeneratorBodyNode extends JavaScriptNode {
     }
 
     public static GeneratorBodyNode create(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult,
-                    SourceSection functionSourceSection, TruffleString functionName) {
-        var resumptionRootNode = new GeneratorRootNode(context, body, writeYieldValue, readYieldResult, functionSourceSection, functionName);
+                    SourceSection functionSourceSection, TruffleString functionName, ScriptOrModule activeScriptOrModule) {
+        var resumptionRootNode = new GeneratorRootNode(context, body, writeYieldValue, readYieldResult, functionSourceSection, functionName, activeScriptOrModule);
         return new GeneratorBodyNode(context, resumptionRootNode);
     }
 

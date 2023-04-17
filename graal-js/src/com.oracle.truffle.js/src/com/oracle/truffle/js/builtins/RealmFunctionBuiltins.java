@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -225,7 +225,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             JSRealm currentV8Realm = topLevelRealm.getCurrentV8Realm();
             topLevelRealm.setCurrentV8Realm(selectedRealm);
             try {
-                ScriptNode script = getContext().getEvaluator().parseEval(getContext(), this, source);
+                ScriptNode script = getContext().getEvaluator().parseEval(getContext(), this, source, null);
                 return script.runEval(IndirectCallNode.getUncached(), selectedRealm);
             } finally {
                 topLevelRealm.setCurrentV8Realm(currentV8Realm);
