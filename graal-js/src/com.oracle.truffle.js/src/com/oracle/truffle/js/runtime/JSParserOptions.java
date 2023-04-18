@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,24 +39,6 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.js.runtime;
-
-import static com.oracle.truffle.js.runtime.JSContextOptions.ANNEX_B;
-import static com.oracle.truffle.js.runtime.JSContextOptions.BIGINT;
-import static com.oracle.truffle.js.runtime.JSContextOptions.CLASS_FIELDS;
-import static com.oracle.truffle.js.runtime.JSContextOptions.CONST_AS_VAR;
-import static com.oracle.truffle.js.runtime.JSContextOptions.ECMASCRIPT_VERSION;
-import static com.oracle.truffle.js.runtime.JSContextOptions.FUNCTION_STATEMENT_ERROR;
-import static com.oracle.truffle.js.runtime.JSContextOptions.IMPORT_ASSERTIONS;
-import static com.oracle.truffle.js.runtime.JSContextOptions.NASHORN_COMPATIBILITY_MODE;
-import static com.oracle.truffle.js.runtime.JSContextOptions.PRIVATE_FIELDS_IN;
-import static com.oracle.truffle.js.runtime.JSContextOptions.SCRIPTING;
-import static com.oracle.truffle.js.runtime.JSContextOptions.SHEBANG;
-import static com.oracle.truffle.js.runtime.JSContextOptions.STRICT;
-import static com.oracle.truffle.js.runtime.JSContextOptions.SYNTAX_EXTENSIONS;
-import static com.oracle.truffle.js.runtime.JSContextOptions.TOP_LEVEL_AWAIT;
-import static com.oracle.truffle.js.runtime.JSContextOptions.V8_INTRINSICS;
-
-import org.graalvm.options.OptionValues;
 
 @SuppressWarnings("hiding")
 public final class JSParserOptions {
@@ -190,28 +172,23 @@ public final class JSParserOptions {
         return v8Intrinsics;
     }
 
-    public JSParserOptions putOptions(OptionValues optionValues) {
+    public JSParserOptions fromOptions(JSContextOptions contextOpts) {
         JSParserOptions opts = this;
-        int ecmaScriptVersion = ECMASCRIPT_VERSION.getValue(optionValues);
-        opts = opts.putEcmaScriptVersion(ecmaScriptVersion);
-        opts = opts.putSyntaxExtensions(SYNTAX_EXTENSIONS.hasBeenSet(optionValues) ? SYNTAX_EXTENSIONS.getValue(optionValues) : NASHORN_COMPATIBILITY_MODE.getValue(optionValues));
-        opts = opts.putScripting(SCRIPTING.getValue(optionValues));
-        opts = opts.putShebang(SHEBANG.hasBeenSet(optionValues) ? SHEBANG.getValue(optionValues) : ecmaScriptVersion >= JSConfig.ECMAScript2020);
-        opts = opts.putStrict(STRICT.getValue(optionValues));
-        opts = opts.putConstAsVar(CONST_AS_VAR.getValue(optionValues));
-        opts = opts.putFunctionStatementError(FUNCTION_STATEMENT_ERROR.getValue(optionValues));
-        opts = opts.putAnnexB(ANNEX_B.getValue(optionValues));
-        opts = opts.putAllowBigInt(BIGINT.getValue(optionValues));
-        opts = opts.putClassFields(CLASS_FIELDS.hasBeenSet(optionValues) ? CLASS_FIELDS.getValue(optionValues) : ecmaScriptVersion >= JSContextOptions.CLASS_FIELDS_ES_VERSION);
-        opts = opts.putImportAssertions(IMPORT_ASSERTIONS.getValue(optionValues));
-        opts = opts.putPrivateFieldsIn(PRIVATE_FIELDS_IN.hasBeenSet(optionValues) ? PRIVATE_FIELDS_IN.getValue(optionValues) : ecmaScriptVersion >= JSConfig.ECMAScript2022);
-        opts = opts.putTopLevelAwait(TOP_LEVEL_AWAIT.hasBeenSet(optionValues) ? TOP_LEVEL_AWAIT.getValue(optionValues) : ecmaScriptVersion >= JSConfig.ECMAScript2022);
-        opts = opts.putV8Intrinsics(V8_INTRINSICS.getValue(optionValues));
+        opts = opts.putEcmaScriptVersion(contextOpts.getEcmaScriptVersion());
+        opts = opts.putSyntaxExtensions(contextOpts.isSyntaxExtensions());
+        opts = opts.putScripting(contextOpts.isScripting());
+        opts = opts.putShebang(contextOpts.isShebang());
+        opts = opts.putStrict(contextOpts.isStrict());
+        opts = opts.putConstAsVar(contextOpts.isConstAsVar());
+        opts = opts.putFunctionStatementError(contextOpts.isFunctionStatementError());
+        opts = opts.putAnnexB(contextOpts.isAnnexB());
+        opts = opts.putAllowBigInt(contextOpts.isBigInt());
+        opts = opts.putClassFields(contextOpts.isClassFields());
+        opts = opts.putImportAssertions(contextOpts.isImportAssertions());
+        opts = opts.putPrivateFieldsIn(contextOpts.isPrivateFieldsIn());
+        opts = opts.putTopLevelAwait(contextOpts.isTopLevelAwait());
+        opts = opts.putV8Intrinsics(contextOpts.isV8Intrinsics());
         return opts;
-    }
-
-    public static JSParserOptions fromOptions(OptionValues optionValues) {
-        return new JSParserOptions().putOptions(optionValues);
     }
 
     public JSParserOptions putStrict(boolean strict) {
