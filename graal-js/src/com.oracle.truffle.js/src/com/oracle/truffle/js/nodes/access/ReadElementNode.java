@@ -40,21 +40,17 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.lang.invoke.MethodHandles;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.locks.Lock;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.InlineSupport.StateField;
-import com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -68,11 +64,11 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListGetNodeGen;
@@ -81,16 +77,23 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.ArrayReadElementCacheDispatchNodeGen;
+import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.BigIntReadElementTypeCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.BooleanReadElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.ConstantArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.ConstantObjectArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.EmptyArrayReadElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.ForeignObjectReadElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.HolesDoubleArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.HolesIntArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.HolesJSObjectArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.HolesObjectArrayReadElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.JavaObjectReadElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.LazyArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.LazyRegexResultArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.LazyRegexResultIndicesArrayReadElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.NumberReadElementTypeCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.ReadElementTypeCacheDispatchNodeGen;
+import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.SymbolReadElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.TypedBigIntArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.TypedFloatArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.TypedIntArrayReadElementCacheNodeGen;
@@ -137,14 +140,13 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.InlinedProfileBuilder;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 public class ReadElementNode extends JSTargetableNode implements ReadNode {
     @Child private JavaScriptNode targetNode;
     @Child private JavaScriptNode indexNode;
-    @Child private ReadElementTypeCacheNode typeCacheNode;
+    @Child private ReadElementTypeCacheDispatchNode typeCacheNode;
     protected final JSContext context;
 
     @CompilationFinal private byte indexState;
@@ -359,271 +361,200 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return executeTypeDispatch(target, index, target, defaultValue);
     }
 
-    @ExplodeLoop
+    private ReadElementTypeCacheDispatchNode initTypeCacheDispatchNode() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        return typeCacheNode = insert(ReadElementTypeCacheDispatchNodeGen.create());
+    }
+
     protected final Object executeTypeDispatch(Object target, Object index, Object receiver, Object defaultValue) {
-        for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
-            boolean guard = c.guard(target);
-            if (guard) {
-                return c.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, this);
-            }
+        ReadElementTypeCacheDispatchNode dispatch = typeCacheNode;
+        if (dispatch == null) {
+            dispatch = initTypeCacheDispatchNode();
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        ReadElementTypeCacheNode specialization = specialize(target);
-        return specialization.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, this);
+        return dispatch.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, this);
     }
 
-    @ExplodeLoop
     protected final Object executeTypeDispatch(Object target, int index, Object receiver, Object defaultValue) {
-        for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
-            boolean guard = c.guard(target);
-            if (guard) {
-                return c.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, this);
-            }
+        ReadElementTypeCacheDispatchNode dispatch = typeCacheNode;
+        if (dispatch == null) {
+            dispatch = initTypeCacheDispatchNode();
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        ReadElementTypeCacheNode specialization = specialize(target);
-        return specialization.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, this);
+        return dispatch.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, this);
     }
 
-    @ExplodeLoop
     protected final Object executeTypeDispatch(Object target, long index, Object receiver, Object defaultValue) {
-        for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
-            boolean guard = c.guard(target);
-            if (guard) {
-                return c.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, this);
-            }
+        ReadElementTypeCacheDispatchNode dispatch = typeCacheNode;
+        if (dispatch == null) {
+            dispatch = initTypeCacheDispatchNode();
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        ReadElementTypeCacheNode specialization = specialize(target);
-        return specialization.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, this);
+        return dispatch.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, this);
     }
 
-    @ExplodeLoop
     protected final int executeTypeDispatchInt(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
-        for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
-            boolean guard = c.guard(target);
-            if (guard) {
-                return c.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, this);
-            }
+        ReadElementTypeCacheDispatchNode dispatch = typeCacheNode;
+        if (dispatch == null) {
+            dispatch = initTypeCacheDispatchNode();
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        ReadElementTypeCacheNode specialization = specialize(target);
-        return specialization.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, this);
+        return dispatch.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, this);
     }
 
-    @ExplodeLoop
     protected final int executeTypeDispatchInt(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
-        for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
-            boolean guard = c.guard(target);
-            if (guard) {
-                return c.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, this);
-            }
+        ReadElementTypeCacheDispatchNode dispatch = typeCacheNode;
+        if (dispatch == null) {
+            dispatch = initTypeCacheDispatchNode();
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        ReadElementTypeCacheNode specialization = specialize(target);
-        return specialization.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, this);
+        return dispatch.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, this);
     }
 
-    @ExplodeLoop
     protected final double executeTypeDispatchDouble(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
-        for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
-            boolean guard = c.guard(target);
-            if (guard) {
-                return c.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, this);
-            }
+        ReadElementTypeCacheDispatchNode dispatch = typeCacheNode;
+        if (dispatch == null) {
+            dispatch = initTypeCacheDispatchNode();
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        ReadElementTypeCacheNode specialization = specialize(target);
-        return specialization.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, this);
+        return dispatch.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, this);
     }
 
-    @ExplodeLoop
     protected final double executeTypeDispatchDouble(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
-        for (ReadElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
-            boolean guard = c.guard(target);
-            if (guard) {
-                return c.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, this);
-            }
+        ReadElementTypeCacheDispatchNode dispatch = typeCacheNode;
+        if (dispatch == null) {
+            dispatch = initTypeCacheDispatchNode();
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        ReadElementTypeCacheNode specialization = specialize(target);
-        return specialization.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, this);
-    }
-
-    private ReadElementTypeCacheNode specialize(Object target) {
-        CompilerAsserts.neverPartOfCompilation();
-        Lock lock = getLock();
-        lock.lock();
-        try {
-            ReadElementTypeCacheNode currentHead = typeCacheNode;
-            for (ReadElementTypeCacheNode c = currentHead; c != null; c = c.typeCacheNext) {
-                if (c.guard(target)) {
-                    return c;
-                }
-            }
-
-            ReadElementTypeCacheNode newCacheNode = makeTypeCacheNode(target, currentHead);
-            insert(newCacheNode);
-            typeCacheNode = newCacheNode;
-            if (currentHead != null && currentHead.typeCacheNext != null && currentHead.typeCacheNext.typeCacheNext != null) {
-                reportPolymorphicSpecialize();
-            }
-            if (!newCacheNode.guard(target)) {
-                throw Errors.shouldNotReachHere();
-            }
-            return newCacheNode;
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    private static ReadElementTypeCacheNode makeTypeCacheNode(Object target, ReadElementTypeCacheNode next) {
-        if (JSDynamicObject.isJSDynamicObject(target)) {
-            return new JSObjectReadElementTypeCacheNode(next);
-        } else if (Strings.isTString(target)) {
-            return new StringReadElementTypeCacheNode(next);
-        } else if (target instanceof Boolean) {
-            return new BooleanReadElementTypeCacheNode(next);
-        } else if (target instanceof Number) {
-            return new NumberReadElementTypeCacheNode(target.getClass(), next);
-        } else if (target instanceof Symbol) {
-            return new SymbolReadElementTypeCacheNode(next);
-        } else if (target instanceof BigInt) {
-            return new BigIntReadElementTypeCacheNode(next);
-        } else if (target instanceof TruffleObject) {
-            assert JSRuntime.isForeignObject(target);
-            return new ForeignObjectReadElementTypeCacheNode(target.getClass(), next);
-        } else {
-            assert JSRuntime.isJavaPrimitive(target) : target;
-            return new JavaObjectReadElementTypeCacheNode(target.getClass(), next);
-        }
+        return dispatch.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, this);
     }
 
     abstract static class ReadElementTypeCacheNode extends JavaScriptBaseNode {
-        @Child private ReadElementTypeCacheNode typeCacheNext;
 
-        protected ReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
-            this.typeCacheNext = next;
+        protected ReadElementTypeCacheNode() {
         }
 
+        protected abstract Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root);
+
+        protected abstract Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root);
+
+        protected abstract int executeWithTargetAndIndexUncheckedInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException;
+
+        protected abstract int executeWithTargetAndIndexUncheckedInt(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException;
+
+        protected abstract double executeWithTargetAndIndexUncheckedDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException;
+
+        protected abstract double executeWithTargetAndIndexUncheckedDouble(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException;
+    }
+
+    abstract static class GuardedReadElementTypeCacheNode extends JavaScriptBaseNode {
         public abstract boolean guard(Object target);
 
         protected abstract Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root);
 
-        protected abstract Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root);
-
         protected abstract Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root);
+    }
 
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root));
+    @ImportStatic(ReadElementNode.class)
+    abstract static class ReadElementTypeCacheDispatchNode extends ReadElementTypeCacheNode {
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", rewriteOn = UnexpectedResultException.class)
+        protected static int doJSObjectLongIndexAsInt(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
+                        @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) throws UnexpectedResultException {
+            return objectHandler.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, root);
         }
 
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
-            return executeWithTargetAndIndexUncheckedInt(target, (Object) index, receiver, defaultValue, root);
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", rewriteOn = UnexpectedResultException.class, replaces = {"doJSObjectLongIndexAsInt"})
+        protected static int doJSObjectAsInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
+                        @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) throws UnexpectedResultException {
+            return objectHandler.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, root);
         }
 
-        protected double executeWithTargetAndIndexUncheckedDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
-            return JSTypesGen.expectDouble(executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root));
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", rewriteOn = UnexpectedResultException.class)
+        protected static double doJSObjectLongIndexAsDouble(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
+                        @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) throws UnexpectedResultException {
+            return objectHandler.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, root);
         }
 
-        protected double executeWithTargetAndIndexUncheckedDouble(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
-            return executeWithTargetAndIndexUncheckedDouble(target, (Object) index, receiver, defaultValue, root);
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", rewriteOn = UnexpectedResultException.class, replaces = {"doJSObjectLongIndexAsDouble"})
+        protected static double doJSObjectAsDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
+                        @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) throws UnexpectedResultException {
+            return objectHandler.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, root);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1")
+        protected static Object doJSObjectLongIndex(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
+                        @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) {
+            return objectHandler.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", replaces = {"doJSObjectLongIndex"})
+        protected static Object doJSObject(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
+                        @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) {
+            return objectHandler.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root);
+        }
+
+        @Specialization
+        protected static Object doStringLongIndex(TruffleString target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared StringReadElementTypeCacheNode stringHandler) {
+            return stringHandler.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root);
+        }
+
+        @Specialization(replaces = {"doStringLongIndex"})
+        protected static Object doString(TruffleString target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared StringReadElementTypeCacheNode stringHandler) {
+            return stringHandler.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root);
+        }
+
+        @Specialization(guards = "otherHandler.guard(target)", limit = "BOUNDED_BY_TYPES")
+        protected static Object doOther(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached("makeTypeCacheNode(target)") GuardedReadElementTypeCacheNode otherHandler) {
+            return otherHandler.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root);
+        }
+
+        protected static GuardedReadElementTypeCacheNode makeTypeCacheNode(Object target) {
+            if (JSDynamicObject.isJSDynamicObject(target)) {
+                // Handled by other specializations.
+                throw CompilerDirectives.shouldNotReachHere("JSDynamicObject");
+            } else if (Strings.isTString(target)) {
+                // Handled by other specializations.
+                throw CompilerDirectives.shouldNotReachHere("TruffleString");
+            } else if (target instanceof Boolean) {
+                return BooleanReadElementTypeCacheNodeGen.create();
+            } else if (target instanceof Number) {
+                return NumberReadElementTypeCacheNodeGen.create(target.getClass());
+            } else if (target instanceof Symbol) {
+                return SymbolReadElementTypeCacheNodeGen.create();
+            } else if (target instanceof BigInt) {
+                return BigIntReadElementTypeCacheNodeGen.create();
+            } else if (target instanceof TruffleObject) {
+                assert JSRuntime.isForeignObject(target);
+                return ForeignObjectReadElementTypeCacheNodeGen.create();
+            } else {
+                assert JSRuntime.isJavaPrimitive(target) : target;
+                return JavaObjectReadElementTypeCacheNodeGen.create(target.getClass());
+            }
         }
     }
 
-    protected abstract static class ReadElementArrayDispatchNode extends ReadElementTypeCacheNode {
-        @Child private ArrayReadElementCacheDispatchNode arrayReadElementNode = ArrayReadElementCacheDispatchNodeGen.create();
-
-        protected ReadElementArrayDispatchNode(ReadElementTypeCacheNode next) {
-            super(next);
-        }
-
-        protected final int executeArrayGetInt(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root)
-                        throws UnexpectedResultException {
-            return arrayReadElementNode.executeArrayGetInt(target, array, index, receiver, defaultValue, root);
-        }
-
-        protected final double executeArrayGetDouble(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root)
-                        throws UnexpectedResultException {
-            return arrayReadElementNode.executeArrayGetDouble(target, array, index, receiver, defaultValue, root);
-        }
-
-        protected final Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root) {
-            return arrayReadElementNode.executeArrayGet(target, array, index, receiver, defaultValue, root);
-        }
-
-        protected static ReadElementArrayDispatchNode create() {
-            return new ReadElementArrayDispatchNode(null) {
-                @Override
-                public boolean guard(Object target) {
-                    return true;
-                }
-
-                @Override
-                protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-                    throw Errors.shouldNotReachHere();
-                }
-
-                @Override
-                protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
-                    throw Errors.shouldNotReachHere();
-                }
-
-                @Override
-                protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
-                    throw Errors.shouldNotReachHere();
-                }
-            };
-        }
-    }
-
-    static class JSObjectReadElementTypeCacheNode extends ReadElementTypeCacheNode {
+    abstract static class JSObjectReadElementTypeCacheNode extends ReadElementTypeCacheNode {
         @Child private IsArrayNode isArrayNode;
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private JSObjectReadElementNonArrayTypeCacheNode nonArrayCaseNode;
-        @Child private IsJSDynamicObjectNode isObjectNode;
         @Child private ArrayReadElementCacheDispatchNode arrayReadElementNode;
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
 
-        @CompilationFinal @UnsafeAccessedField private int state;
-
-        private static final StateField STATE_FIELD = StateField.create(MethodHandles.lookup(), "state");
-
-        private static final InlinedConditionProfile arrayIf;
-        private static final InlinedConditionProfile arrayIndexIf;
-
-        static {
-            var b = new InlinedProfileBuilder(STATE_FIELD);
-            arrayIf = b.conditionProfile();
-            arrayIndexIf = b.conditionProfile();
-        }
-
-        JSObjectReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
-            super(next);
+        JSObjectReadElementTypeCacheNode() {
             this.isArrayNode = IsArrayNode.createIsAnyArray();
-            this.isObjectNode = IsJSDynamicObjectNode.create();
         }
 
-        private boolean isArray(JSDynamicObject targetObject) {
+        private boolean isArray(JSDynamicObject targetObject, InlinedConditionProfile arrayIf) {
             return arrayIf.profile(this, isArrayNode.execute(targetObject));
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            JSDynamicObject targetObject = (JSDynamicObject) target;
-            if (isArray(targetObject)) {
-                ScriptArray array = JSObject.getArray(targetObject);
-                Object objIndex = toArrayIndex(index);
-
-                if (arrayIndexIf.profile(this, objIndex instanceof Long)) {
-                    long longIndex = (Long) objIndex;
-                    return executeArrayGet(targetObject, array, longIndex, receiver, defaultValue, root.context);
-                } else {
-                    return getProperty(targetObject, objIndex, receiver, defaultValue);
-                }
-            } else {
-                return readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root);
-            }
         }
 
         private Object toArrayIndex(Object index) {
@@ -638,25 +569,48 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return getNonArrayNode().execute(targetObject, index, receiver, defaultValue, root);
         }
 
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
+        @Specialization(rewriteOn = UnexpectedResultException.class)
+        protected int doLongIndexAsInt(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared InlinedConditionProfile arrayIf,
+                        @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
             JSDynamicObject targetObject = (JSDynamicObject) target;
-            if (isArray(targetObject)) {
+            if (isArray(targetObject, arrayIf)) {
                 ScriptArray array = JSObject.getArray(targetObject);
+
                 if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    return executeArrayGet(targetObject, array, index, receiver, defaultValue, root.context);
+                    return executeArrayGetInt(targetObject, array, index, receiver, defaultValue, root.context);
                 } else {
-                    return getProperty(targetObject, Strings.fromInt(index), receiver, defaultValue);
+                    return JSTypesGen.expectInteger(getProperty(targetObject, Strings.fromLong(index), receiver, defaultValue));
                 }
             } else {
-                return readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root);
+                return JSTypesGen.expectInteger(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
             }
         }
 
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
+        @Specialization(rewriteOn = UnexpectedResultException.class)
+        protected double doLongIndexAsDouble(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared InlinedConditionProfile arrayIf,
+                        @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
             JSDynamicObject targetObject = (JSDynamicObject) target;
-            if (isArray(targetObject)) {
+            if (isArray(targetObject, arrayIf)) {
+                ScriptArray array = JSObject.getArray(targetObject);
+
+                if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
+                    return executeArrayGetDouble(targetObject, array, index, receiver, defaultValue, root.context);
+                } else {
+                    return JSTypesGen.expectDouble(getProperty(targetObject, Strings.fromLong(index), receiver, defaultValue));
+                }
+            } else {
+                return JSTypesGen.expectDouble(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
+            }
+        }
+
+        @Specialization
+        protected Object doLongIndexAsObject(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared InlinedConditionProfile arrayIf,
+                        @Cached @Shared InlinedConditionProfile arrayIndexIf) {
+            JSDynamicObject targetObject = (JSDynamicObject) target;
+            if (isArray(targetObject, arrayIf)) {
                 ScriptArray array = JSObject.getArray(targetObject);
                 if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
                     return executeArrayGet(targetObject, array, index, receiver, defaultValue, root.context);
@@ -668,10 +622,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        @Override
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
+        @Specialization(rewriteOn = UnexpectedResultException.class)
+        protected int doObjectIndexAsInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared InlinedConditionProfile arrayIf,
+                        @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
             JSDynamicObject targetObject = (JSDynamicObject) target;
-            if (isArray(targetObject)) {
+            if (isArray(targetObject, arrayIf)) {
                 ScriptArray array = JSObject.getArray(targetObject);
                 Object objIndex = toArrayIndex(index);
 
@@ -686,26 +642,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        @Override
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
+        @Specialization(rewriteOn = UnexpectedResultException.class)
+        protected double doObjectIndexAsDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared InlinedConditionProfile arrayIf,
+                        @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
             JSDynamicObject targetObject = (JSDynamicObject) target;
-            if (isArray(targetObject)) {
-                ScriptArray array = JSObject.getArray(targetObject);
-
-                if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    return executeArrayGetInt(targetObject, array, index, receiver, defaultValue, root.context);
-                } else {
-                    return JSTypesGen.expectInteger(getProperty(targetObject, Strings.fromInt(index), receiver, defaultValue));
-                }
-            } else {
-                return JSTypesGen.expectInteger(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
-            }
-        }
-
-        @Override
-        protected double executeWithTargetAndIndexUncheckedDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
-            JSDynamicObject targetObject = (JSDynamicObject) target;
-            if (isArray(targetObject)) {
+            if (isArray(targetObject, arrayIf)) {
                 ScriptArray array = JSObject.getArray(targetObject);
                 Object objIndex = toArrayIndex(index);
 
@@ -720,25 +662,24 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        @Override
-        protected double executeWithTargetAndIndexUncheckedDouble(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
+        @Specialization(replaces = {"doLongIndexAsObject"})
+        protected Object doObjectIndexAsObject(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared InlinedConditionProfile arrayIf,
+                        @Cached @Shared InlinedConditionProfile arrayIndexIf) {
             JSDynamicObject targetObject = (JSDynamicObject) target;
-            if (isArray(targetObject)) {
+            if (isArray(targetObject, arrayIf)) {
                 ScriptArray array = JSObject.getArray(targetObject);
+                Object objIndex = toArrayIndex(index);
 
-                if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    return executeArrayGetDouble(targetObject, array, index, receiver, defaultValue, root.context);
+                if (arrayIndexIf.profile(this, objIndex instanceof Long)) {
+                    long longIndex = (Long) objIndex;
+                    return executeArrayGet(targetObject, array, longIndex, receiver, defaultValue, root.context);
                 } else {
-                    return JSTypesGen.expectDouble(getProperty(targetObject, Strings.fromInt(index), receiver, defaultValue));
+                    return getProperty(targetObject, objIndex, receiver, defaultValue);
                 }
             } else {
-                return JSTypesGen.expectDouble(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
+                return readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root);
             }
-        }
-
-        @Override
-        public boolean guard(Object target) {
-            return isObjectNode.executeBoolean(target);
         }
 
         private Object getProperty(JSDynamicObject targetObject, Object objIndex, Object receiver, Object defaultValue) {
@@ -801,22 +742,24 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class JavaObjectReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+    abstract static class JavaObjectReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
         protected final Class<?> targetClass;
 
-        JavaObjectReadElementTypeCacheNode(Class<?> targetClass, ReadElementTypeCacheNode next) {
-            super(next);
+        JavaObjectReadElementTypeCacheNode(Class<?> targetClass) {
             this.targetClass = targetClass;
         }
 
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            toPropertyKey(index);
+        @SuppressWarnings("unused")
+        @Specialization
+        protected Object doPrimitive(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
             return Undefined.instance;
         }
 
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
+        @SuppressWarnings("unused")
+        @Specialization
+        protected Object doPrimitive(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
+            indexToPropertyKeyNode.execute(index);
             return Undefined.instance;
         }
 
@@ -887,9 +830,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     @ImportStatic(ReadElementNode.class)
-    abstract static class ArrayReadElementCacheDispatchNode extends JavaScriptBaseNode {
+    public abstract static class ArrayReadElementCacheDispatchNode extends JavaScriptBaseNode {
 
         protected ArrayReadElementCacheDispatchNode() {
+        }
+
+        public static ArrayReadElementCacheDispatchNode create() {
+            return ArrayReadElementCacheDispatchNodeGen.create();
         }
 
         protected abstract Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context);
@@ -1393,21 +1340,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private abstract static class ToPropertyKeyCachedReadElementTypeCacheNode extends ReadElementTypeCacheNode {
-        @Child private JSToPropertyKeyNode indexToPropertyKeyNode;
+    private abstract static class ToPropertyKeyCachedReadElementTypeCacheNode extends GuardedReadElementTypeCacheNode {
         @Child private CachedGetPropertyNode getPropertyCachedNode;
         protected final JSClassProfile jsclassProfile = JSClassProfile.create();
 
-        ToPropertyKeyCachedReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
-            super(next);
-        }
-
-        protected final Object toPropertyKey(Object index) {
-            if (indexToPropertyKeyNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                indexToPropertyKeyNode = insert(JSToPropertyKeyNode.create());
-            }
-            return indexToPropertyKeyNode.execute(index);
+        ToPropertyKeyCachedReadElementTypeCacheNode() {
+            super();
         }
 
         public Object readFromWrapper(JSDynamicObject wrapper, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
@@ -1417,62 +1355,21 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
             return getPropertyCachedNode.execute(wrapper, index, receiver, defaultValue);
         }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
-            return executeWithTargetAndIndexUnchecked(target, (long) index, receiver, defaultValue, root);
-        }
     }
 
-    private static class StringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+    abstract static class StringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
 
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private TruffleString.SubstringByteIndexNode substringByteIndexNode;
 
-        @CompilationFinal @UnsafeAccessedField private int state;
-
-        private static final StateField STATE_FIELD = StateField.create(MethodHandles.lookup(), "state");
-
-        private static final InlinedConditionProfile arrayIndexIf;
-        private static final InlinedConditionProfile stringIndexInBounds;
-
-        static {
-            var b = new InlinedProfileBuilder(STATE_FIELD);
-            arrayIndexIf = b.conditionProfile();
-            stringIndexInBounds = b.conditionProfile();
-        }
-
-        StringReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
-            super(next);
+        StringReadElementTypeCacheNode() {
             this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
             this.substringByteIndexNode = TruffleString.SubstringByteIndexNode.create();
         }
 
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            TruffleString string = (TruffleString) target;
-            Object convertedIndex = toArrayIndexNode.execute(index);
-            if (arrayIndexIf.profile(this, convertedIndex instanceof Long)) {
-                int intIndex = ((Long) convertedIndex).intValue();
-                if (stringIndexInBounds.profile(this, intIndex >= 0 && intIndex < Strings.length(string))) {
-                    return Strings.substring(root.context, substringByteIndexNode, string, intIndex, 1);
-                }
-            }
-            return readFromWrapper(JSString.create(root.context, getRealm(), string), toPropertyKey(index), receiver, defaultValue, root);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
-            TruffleString string = (TruffleString) target;
-            if (stringIndexInBounds.profile(this, index >= 0 && index < Strings.length(string))) {
-                return Strings.substring(root.context, substringByteIndexNode, string, index, 1);
-            } else {
-                return JSObject.getOrDefault(JSString.create(root.context, getRealm(), string), index, receiver, defaultValue, jsclassProfile, root);
-            }
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
+        @Specialization
+        protected Object doStringLongIndex(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared InlinedConditionProfile stringIndexInBounds) {
             TruffleString string = (TruffleString) target;
             if (stringIndexInBounds.profile(this, index >= 0 && index < Strings.length(string))) {
                 return Strings.substring(root.context, substringByteIndexNode, string, (int) index, 1);
@@ -1481,30 +1378,46 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
+        @Specialization
+        protected Object doString(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Exclusive InlinedConditionProfile arrayIndexIf,
+                        @Cached @Shared InlinedConditionProfile stringIndexInBounds,
+                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
+            TruffleString string = (TruffleString) target;
+            Object convertedIndex = toArrayIndexNode.execute(index);
+            if (arrayIndexIf.profile(this, convertedIndex instanceof Long)) {
+                int intIndex = ((Long) convertedIndex).intValue();
+                if (stringIndexInBounds.profile(this, intIndex >= 0 && intIndex < Strings.length(string))) {
+                    return Strings.substring(root.context, substringByteIndexNode, string, intIndex, 1);
+                }
+            }
+            return readFromWrapper(JSString.create(root.context, getRealm(), string), indexToPropertyKeyNode.execute(index), receiver, defaultValue, root);
+        }
+
         @Override
         public boolean guard(Object target) {
             return target instanceof TruffleString;
         }
     }
 
-    private static class NumberReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+    abstract static class NumberReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
         private final Class<?> numberClass;
 
-        NumberReadElementTypeCacheNode(Class<?> stringClass, ReadElementTypeCacheNode next) {
-            super(next);
+        NumberReadElementTypeCacheNode(Class<?> stringClass) {
             this.numberClass = stringClass;
         }
 
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            Number number = (Number) CompilerDirectives.castExact(target, numberClass);
-            return readFromWrapper(JSNumber.create(root.context, getRealm(), number), toPropertyKey(index), receiver, defaultValue, root);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
+        @Specialization
+        protected Object doNumber(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
             Number number = (Number) CompilerDirectives.castExact(target, numberClass);
             return JSObject.getOrDefault(JSNumber.create(root.context, getRealm(), number), index, receiver, defaultValue, jsclassProfile, root);
+        }
+
+        @Specialization
+        protected Object doNumber(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
+            Number number = (Number) CompilerDirectives.castExact(target, numberClass);
+            return readFromWrapper(JSNumber.create(root.context, getRealm(), number), indexToPropertyKeyNode.execute(index), receiver, defaultValue, root);
         }
 
         @Override
@@ -1513,21 +1426,21 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class BooleanReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
-        BooleanReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
-            super(next);
+    abstract static class BooleanReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+        BooleanReadElementTypeCacheNode() {
         }
 
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            Boolean bool = (Boolean) target;
-            return readFromWrapper(JSBoolean.create(root.context, getRealm(), bool), toPropertyKey(index), receiver, defaultValue, root);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
+        @Specialization
+        protected Object doBoolean(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
             Boolean bool = (Boolean) target;
             return JSObject.getOrDefault(JSBoolean.create(root.context, getRealm(), bool), index, receiver, defaultValue, jsclassProfile, root);
+        }
+
+        @Specialization
+        protected Object doBoolean(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
+            Boolean bool = (Boolean) target;
+            return readFromWrapper(JSBoolean.create(root.context, getRealm(), bool), indexToPropertyKeyNode.execute(index), receiver, defaultValue, root);
         }
 
         @Override
@@ -1536,22 +1449,22 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class SymbolReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+    abstract static class SymbolReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
 
-        SymbolReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
-            super(next);
+        SymbolReadElementTypeCacheNode() {
         }
 
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            Symbol symbol = (Symbol) target;
-            return readFromWrapper(JSSymbol.create(root.context, getRealm(), symbol), toPropertyKey(index), receiver, defaultValue, root);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
+        @Specialization
+        protected Object doSymbol(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
             Symbol symbol = (Symbol) target;
             return JSObject.getOrDefault(JSSymbol.create(root.context, getRealm(), symbol), index, receiver, defaultValue, jsclassProfile, root);
+        }
+
+        @Specialization
+        protected Object doSymbol(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
+            Symbol symbol = (Symbol) target;
+            return readFromWrapper(JSSymbol.create(root.context, getRealm(), symbol), indexToPropertyKeyNode.execute(index), receiver, defaultValue, root);
         }
 
         @Override
@@ -1560,22 +1473,23 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class BigIntReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+    abstract static class BigIntReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
 
-        BigIntReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
-            super(next);
+        BigIntReadElementTypeCacheNode() {
+            super();
         }
 
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            BigInt bigInt = (BigInt) target;
-            return readFromWrapper(JSBigInt.create(root.context, getRealm(), bigInt), toPropertyKey(index), receiver, defaultValue, root);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
+        @Specialization
+        protected Object doBigInt(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
             BigInt bigInt = (BigInt) target;
             return JSObject.getOrDefault(JSBigInt.create(root.context, getRealm(), bigInt), index, receiver, defaultValue, jsclassProfile, root);
+        }
+
+        @Specialization
+        protected Object doBigInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
+            BigInt bigInt = (BigInt) target;
+            return readFromWrapper(JSBigInt.create(root.context, getRealm(), bigInt), indexToPropertyKeyNode.execute(index), receiver, defaultValue, root);
         }
 
         @Override
@@ -1584,8 +1498,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    static class ForeignObjectReadElementTypeCacheNode extends ReadElementTypeCacheNode {
-        private final Class<?> targetClass;
+    abstract static class ForeignObjectReadElementTypeCacheNode extends GuardedReadElementTypeCacheNode {
 
         @Child private InteropLibrary interop;
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
@@ -1595,29 +1508,32 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private ReadElementNode readFromPrototypeNode;
         @Child private ToArrayIndexNode toArrayIndexNode;
 
-        private final BranchProfile errorBranch = BranchProfile.create();
         @CompilationFinal private boolean optimistic = true;
 
-        ForeignObjectReadElementTypeCacheNode(Class<?> targetClass, ReadElementTypeCacheNode next) {
-            super(next);
-            assert !JSDynamicObject.class.isAssignableFrom(targetClass) : targetClass;
-            this.targetClass = targetClass;
+        ForeignObjectReadElementTypeCacheNode() {
+            super();
             this.importValueNode = ImportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            Object truffleObject = CompilerDirectives.castExact(target, targetClass);
+        @Specialization
+        protected Object doForeignObject(Object target, Object index, @SuppressWarnings("unused") Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached InlinedExactClassProfile classProfile,
+                        @Cached InlinedBranchProfile errorBranch) {
+            Object truffleObject = classProfile.profile(this, target);
             if (interop.isNull(truffleObject)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorCannotGetProperty(root.getContext(), JSRuntime.safeToString(index), target, false, this);
             }
-            Object foreignResult = getImpl(truffleObject, index, root);
+            Object foreignResult = getImpl(truffleObject, index, defaultValue, root, errorBranch);
+            if (foreignResult == defaultValue) {
+                return foreignResult;
+            }
             return importValueNode.executeWithTarget(foreignResult);
         }
 
-        private Object getImpl(Object truffleObject, Object key, ReadElementNode root) {
+        private Object getImpl(Object truffleObject, Object key, Object defaultValue, ReadElementNode root,
+                        @Cached InlinedBranchProfile errorBranch) {
             Object propertyKey;
             boolean hasArrayElements = interop.hasArrayElements(truffleObject);
             if (hasArrayElements) {
@@ -1630,7 +1546,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                         assert JSRuntime.isPropertyKey(propertyKey);
                     }
                 } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
-                    return Undefined.instance;
+                    return defaultValue;
                 }
             } else {
                 propertyKey = toPropertyKey(key);
@@ -1641,7 +1557,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 } catch (UnknownKeyException e) {
                     // fall through: still need to try members
                 } catch (UnsupportedMessageException e) {
-                    return Undefined.instance;
+                    return defaultValue;
                 }
             }
             if (propertyKey instanceof Symbol) {
@@ -1649,7 +1565,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
             TruffleString exportedKeyStr = (TruffleString) propertyKey;
             if (hasArrayElements && Strings.equals(JSAbstractArray.LENGTH, exportedKeyStr)) {
-                return getSize(truffleObject);
+                return getSize(truffleObject, errorBranch);
             }
             if (root.context.isOptionNashornCompatibilityMode()) {
                 Object result = tryGetters(truffleObject, exportedKeyStr, root.context);
@@ -1671,7 +1587,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     try {
                         return interop.readMember(truffleObject, stringKey);
                     } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                        return Undefined.instance;
+                        return defaultValue;
                     }
                 } else {
                     return maybeReadFromPrototype(truffleObject, exportedKeyStr, root.context);
@@ -1714,11 +1630,11 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        private Object getSize(Object truffleObject) {
+        private Object getSize(Object truffleObject, InlinedBranchProfile errorBranch) {
             try {
                 return JSRuntime.longToIntOrDouble(interop.getArraySize(truffleObject));
             } catch (UnsupportedMessageException e) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorInteropException(truffleObject, e, "getArraySize", this);
             }
         }
@@ -1740,18 +1656,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
-            return executeWithTargetAndIndexUnchecked(target, (Object) index, receiver, defaultValue, root);
-        }
-
-        @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
             return executeWithTargetAndIndexUnchecked(target, (Object) index, receiver, defaultValue, root);
         }
 
         @Override
         public boolean guard(Object target) {
-            return CompilerDirectives.isExact(target, targetClass);
+            return JSRuntime.isForeignObject(target);
         }
 
         private Object toArrayIndex(Object maybeIndex) {
