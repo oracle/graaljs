@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.test.nashorn;
 
+import static com.oracle.truffle.js.runtime.JSContextOptions.ECMASCRIPT_VERSION_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -47,12 +50,11 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 
 public class JSONWriterTest {
     private static String testIntl(String sourceText) {
-        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().option(NASHORN_COMPATIBILITY_MODE_NAME, "true").option(ECMASCRIPT_VERSION_NAME, "6").build()) {
             Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "json-writer-test").buildLiteral());
             Assert.assertTrue(result.isString());
             return result.asString();

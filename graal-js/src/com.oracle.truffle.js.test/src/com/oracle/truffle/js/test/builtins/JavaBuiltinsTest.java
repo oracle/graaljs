@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -190,7 +190,7 @@ public class JavaBuiltinsTest extends JSTest {
         String result = test("var t = Java.isJavaMethod(Java.type('java.lang.System').nanoTime); ''+t;", null, true, null, true);
         assertEquals("true", result);
 
-        result = test("var t = Java.isJavaMethod( x => x+1 ); ''+t;", null, true, null, true);
+        result = test("var t = Java.isJavaMethod(function(x) { return x+1; }); ''+t;", null, true, null, true);
         assertEquals("false", result);
     }
 
@@ -200,7 +200,7 @@ public class JavaBuiltinsTest extends JSTest {
         String result = test("var t = Java.isJavaFunction(Java.type('java.lang.System').nanoTime); ''+t;", null, true, null, true);
         assertEquals("true", result);
 
-        result = test("var t = Java.isJavaFunction( x => x+1 ); ''+t;", null, true, null, true);
+        result = test("var t = Java.isJavaFunction(function(x) { return x+1; }); ''+t;", null, true, null, true);
         assertEquals("false", result);
     }
 
@@ -210,7 +210,7 @@ public class JavaBuiltinsTest extends JSTest {
         String result = test("var t = Java.isScriptFunction(Java.type('java.lang.System').nanoTime); ''+t;", null, true, null, true);
         assertEquals("false", result);
 
-        result = test("var t = Java.isScriptFunction( x => x+1 ); ''+t;", null, true, null, true);
+        result = test("var t = Java.isScriptFunction(function(x) { return x+1; }); ''+t;", null, true, null, true);
         assertEquals("true", result);
     }
 
@@ -227,14 +227,14 @@ public class JavaBuiltinsTest extends JSTest {
     // only in nashorn-compat mode
     @Test
     public void testSynchronize() {
-        String result = test("var t = Java.synchronized(x=>x+1); ''+t;", null, true, null, true);
+        String result = test("var t = Java.synchronized(function(x) { return x+1; }); ''+t;", null, true, null, true);
         assertEquals("function synchronizedWrapper() { [native code] }", result);
 
-        result = test("var t = Java.synchronized(x=>x+1, {}); t(1); ''+t;", null, true, null, true);
+        result = test("var t = Java.synchronized(function(x) { return x+1; }, {}); t(1); ''+t;", null, true, null, true);
         assertEquals("function bound() { [native code] }", result);
 
         test("var t = Java.synchronized(false, {}); ''+t;", "is not a function", true, null, true);
-        test("var t = Java.synchronized(x=>x+1, 1); f(1); ''+t;", "Locking not supported on", true, null, true);
+        test("var t = Java.synchronized(function(x) { return x+1; }, 1); f(1); ''+t;", "Locking not supported on", true, null, true);
     }
 
     // only in nashorn-compat mode
