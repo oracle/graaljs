@@ -771,27 +771,27 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     protected static ArrayReadElementCacheNode makeArrayCacheNode(@SuppressWarnings("unused") JSDynamicObject target, ScriptArray array) {
         if (array instanceof ConstantEmptyArray) {
-            return EmptyArrayReadElementCacheNodeGen.create(array);
+            return EmptyArrayReadElementCacheNodeGen.create();
         } else if (array instanceof ConstantObjectArray && array.isHolesType()) {
-            return ConstantObjectArrayReadElementCacheNodeGen.create(array);
+            return ConstantObjectArrayReadElementCacheNodeGen.create();
         } else if (array instanceof LazyRegexResultArray) {
-            return LazyRegexResultArrayReadElementCacheNodeGen.create(array);
+            return LazyRegexResultArrayReadElementCacheNodeGen.create();
         } else if (array instanceof LazyRegexResultIndicesArray) {
-            return LazyRegexResultIndicesArrayReadElementCacheNodeGen.create(array);
+            return LazyRegexResultIndicesArrayReadElementCacheNodeGen.create();
         } else if (array instanceof LazyArray) {
-            return LazyArrayReadElementCacheNodeGen.create(array);
+            return LazyArrayReadElementCacheNodeGen.create();
         } else if (array instanceof AbstractConstantArray) {
-            return ConstantArrayReadElementCacheNodeGen.create(array);
+            return ConstantArrayReadElementCacheNodeGen.create();
         } else if (array instanceof HolesIntArray) {
-            return HolesIntArrayReadElementCacheNodeGen.create(array);
+            return HolesIntArrayReadElementCacheNodeGen.create();
         } else if (array instanceof HolesDoubleArray) {
-            return HolesDoubleArrayReadElementCacheNodeGen.create(array);
+            return HolesDoubleArrayReadElementCacheNodeGen.create();
         } else if (array instanceof HolesJSObjectArray) {
-            return HolesJSObjectArrayReadElementCacheNodeGen.create(array);
+            return HolesJSObjectArrayReadElementCacheNodeGen.create();
         } else if (array instanceof HolesObjectArray) {
-            return HolesObjectArrayReadElementCacheNodeGen.create(array);
+            return HolesObjectArrayReadElementCacheNodeGen.create();
         } else if (array instanceof AbstractWritableArray) {
-            return WritableArrayReadElementCacheNodeGen.create(array);
+            return WritableArrayReadElementCacheNodeGen.create();
         } else if (array instanceof TypedArray) {
             if (array instanceof TypedArray.AbstractUint32Array) {
                 return Uint32ArrayReadElementCacheNodeGen.create((TypedArray) array);
@@ -805,7 +805,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 throw Errors.shouldNotReachHere();
             }
         } else {
-            return new ExactArrayReadElementCacheNode(array);
+            return new ExactArrayReadElementCacheNode();
         }
     }
 
@@ -825,8 +825,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                         throws UnexpectedResultException {
             return JSTypesGen.expectDouble(executeArrayGet(target, array, index, receiver, defaultValue, context));
         }
-
-        protected abstract boolean guard(Object target, ScriptArray array);
     }
 
     @ImportStatic(ReadElementNode.class)
@@ -878,26 +876,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     abstract static class ArrayClassGuardCachedArrayReadElementCacheNode extends ArrayReadElementCacheNode {
-        private final ScriptArray arrayType;
         private final JSClassProfile outOfBoundsClassProfile = JSClassProfile.create();
-
-        ArrayClassGuardCachedArrayReadElementCacheNode(ScriptArray arrayType) {
-            super();
-            this.arrayType = arrayType;
-        }
-
-        @Override
-        protected final boolean guard(Object target, ScriptArray array) {
-            return arrayType.isInstance(array);
-        }
-
-        protected final ScriptArray cast(ScriptArray array) {
-            return arrayType.cast(array);
-        }
-
-        protected final ScriptArray getArrayType() {
-            return arrayType;
-        }
 
         protected Object readOutOfBounds(JSDynamicObject target, long index, Object receiver, Object defaultValue, JSContext context, InlinedConditionProfile needGetProperty) {
             if (needGetProperty.profile(this, needsSlowGet(target, context))) {
@@ -916,10 +895,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     private static class ExactArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
         private final JSClassProfile classProfile = JSClassProfile.create();
 
-        ExactArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-        }
-
         @Override
         protected Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             return JSObject.getOrDefault(target, index, receiver, defaultValue, classProfile, this);
@@ -927,10 +902,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     abstract static class ConstantArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-
-        ConstantArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-        }
 
         @Specialization
         protected Object doConstantArray(JSDynamicObject target, AbstractConstantArray constantArray, long index, Object receiver, Object defaultValue, JSContext context,
@@ -945,9 +916,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     abstract static class EmptyArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-        EmptyArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-        }
 
         @Specialization
         protected Object doEmptyArray(JSDynamicObject target, @SuppressWarnings("unused") ConstantEmptyArray emptyArray, long index, Object receiver, Object defaultValue, JSContext context,
@@ -957,10 +925,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     abstract static class ConstantObjectArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-
-        ConstantObjectArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-        }
 
         @Specialization
         protected Object doConstantObjectArray(JSDynamicObject target, ConstantObjectArray constantObjectArray, long index, Object receiver, Object defaultValue, JSContext context,
@@ -990,10 +954,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
         @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getEndNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
 
-        LazyRegexResultArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-        }
-
         @Specialization
         protected Object doLazyRegexResultArray(JSDynamicObject target, LazyRegexResultArray lazyRegexResultArray, long index, Object receiver, Object defaultValue, JSContext context,
                         @Cached InlinedConditionProfile inBounds,
@@ -1013,10 +973,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
         @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getEndNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
 
-        LazyRegexResultIndicesArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-        }
-
         @Specialization
         protected Object doLazyRegexResultIndicesArray(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context,
                         @Cached InlinedConditionProfile inBounds,
@@ -1033,12 +989,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     abstract static class LazyArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-        @Child private ListGetNode listGetNode;
-
-        LazyArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-            this.listGetNode = ListGetNodeGen.create();
-        }
+        @Child private ListGetNode listGetNode = ListGetNodeGen.create();
 
         @Specialization
         protected Object doLazyArray(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context,
@@ -1056,16 +1007,11 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     abstract static class WritableArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
 
-        WritableArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-        }
-
         @Specialization(rewriteOn = UnexpectedResultException.class)
-        protected int doWritableArrayInt(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context,
+        protected int doWritableArrayInt(JSDynamicObject target, AbstractWritableArray writableArray, long index, Object receiver, Object defaultValue, JSContext context,
                         @Cached @Shared InlinedConditionProfile inBounds,
                         @Cached @Shared InlinedConditionProfile needGetProperty)
                         throws UnexpectedResultException {
-            AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
             if (inBounds.profile(this, writableArray.isInBoundsFast(target, index))) {
                 return writableArray.getInBoundsFastInt(target, (int) index);
             } else {
@@ -1074,11 +1020,10 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Specialization(rewriteOn = UnexpectedResultException.class)
-        protected double doWritableArrayDouble(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context,
+        protected double doWritableArrayDouble(JSDynamicObject target, AbstractWritableArray writableArray, long index, Object receiver, Object defaultValue, JSContext context,
                         @Cached @Shared InlinedConditionProfile inBounds,
                         @Cached @Shared InlinedConditionProfile needGetProperty)
                         throws UnexpectedResultException {
-            AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
             if (inBounds.profile(this, writableArray.isInBoundsFast(target, index))) {
                 return writableArray.getInBoundsFastDouble(target, (int) index);
             } else {
@@ -1087,10 +1032,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Specialization
-        protected Object doWritableArray(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context,
+        protected Object doWritableArray(JSDynamicObject target, AbstractWritableArray writableArray, long index, Object receiver, Object defaultValue, JSContext context,
                         @Cached @Shared InlinedConditionProfile inBounds,
                         @Cached @Shared InlinedConditionProfile needGetProperty) {
-            AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
             if (inBounds.profile(this, writableArray.isInBoundsFast(target, index))) {
                 return writableArray.getInBoundsFast(target, (int) index);
             } else {
@@ -1100,10 +1044,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     abstract static class HolesIntArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-
-        HolesIntArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-        }
 
         @Specialization
         protected Object doHolesIntArray(JSDynamicObject target, HolesIntArray holesIntArray, long index, Object receiver, Object defaultValue, JSContext context,
@@ -1122,10 +1062,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     abstract static class HolesDoubleArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
 
-        HolesDoubleArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-        }
-
         @Specialization
         protected Object doHolesDoubleArray(JSDynamicObject target, HolesDoubleArray holesDoubleArray, long index, Object receiver, Object defaultValue, JSContext context,
                         @Cached InlinedConditionProfile inBounds,
@@ -1143,10 +1079,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     abstract static class HolesJSObjectArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
 
-        HolesJSObjectArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-        }
-
         @Specialization
         protected Object doHolesJSObjectArray(JSDynamicObject target, HolesJSObjectArray holesArray, long index, Object receiver, Object defaultValue, JSContext context,
                         @Cached InlinedConditionProfile inBounds,
@@ -1163,10 +1095,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     abstract static class HolesObjectArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
-
-        HolesObjectArrayReadElementCacheNode(ScriptArray arrayType) {
-            super(arrayType);
-        }
 
         @Specialization
         protected Object doHolesObjectArray(JSDynamicObject target, HolesObjectArray holesArray, long index, Object receiver, Object defaultValue, JSContext context,
@@ -1187,7 +1115,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child protected InteropLibrary interop;
 
         AbstractTypedArrayReadElementCacheNode(TypedArray arrayType) {
-            super(arrayType);
             this.interop = arrayType.isInterop() ? InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit) : InteropLibrary.getUncached();
         }
 
