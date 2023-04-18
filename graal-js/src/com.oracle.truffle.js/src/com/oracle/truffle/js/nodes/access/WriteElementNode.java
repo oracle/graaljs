@@ -50,10 +50,14 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.dsl.InlineSupport.StateField;
 import com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField;
 import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -76,6 +80,22 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.ArrayWriteElementCacheDispatchNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.ConstantArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.DoubleArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.HolesDoubleArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.HolesIntArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.HolesJSObjectArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.HolesObjectArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.IntArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.JSObjectArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.LazyRegexResultArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.LazyRegexResultIndicesArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.ObjectArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.TypedBigIntArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.TypedFloatArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.TypedIntArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.WritableArrayWriteElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
@@ -93,11 +113,12 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray.CreateWritableProfileAccess;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.array.TypedArray.AbstractUint32Array;
+import com.oracle.truffle.js.runtime.array.TypedArray.AbstractUint8ClampedArray;
 import com.oracle.truffle.js.runtime.array.TypedArray.TypedBigIntArray;
 import com.oracle.truffle.js.runtime.array.TypedArray.TypedFloatArray;
 import com.oracle.truffle.js.runtime.array.TypedArray.TypedIntArray;
@@ -113,7 +134,6 @@ import com.oracle.truffle.js.runtime.array.dyn.AbstractJSObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray.SetSupportedProfileAccess;
-import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyArray;
 import com.oracle.truffle.js.runtime.array.dyn.ContiguousIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
@@ -151,6 +171,9 @@ public class WriteElementNode extends JSTargetableNode {
     @CompilationFinal private byte indexState;
     private static final byte INDEX_INT = 1;
     private static final byte INDEX_OBJECT = 2;
+
+    /** Exact cache limit unknown, but effectively bounded by the number of types. */
+    static final int BOUNDED_BY_TYPES = Integer.MAX_VALUE;
 
     @NeverDefault
     public static WriteElementNode create(JSContext context, boolean isStrict) {
@@ -668,72 +691,11 @@ public class WriteElementNode extends JSTargetableNode {
 
         @ExplodeLoop
         private boolean executeSetArray(JSDynamicObject targetObject, ScriptArray array, long index, Object value, WriteElementNode root) {
-            for (ArrayWriteElementCacheNode c = arrayWriteElementNode; c != null; c = c.arrayCacheNext) {
-                boolean guard = c.guard(targetObject, array);
-                if (guard) {
-                    return c.executeSetArray(targetObject, array, index, value, root);
-                }
+            if (arrayWriteElementNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                arrayWriteElementNode = insert(ArrayWriteElementCacheDispatchNodeGen.create());
             }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            ArrayWriteElementCacheNode specialization = specialize(targetObject, array);
-            return specialization.executeSetArray(targetObject, array, index, value, root);
-        }
-
-        private ArrayWriteElementCacheNode specialize(JSDynamicObject target, ScriptArray array) {
-            CompilerAsserts.neverPartOfCompilation();
-            Lock lock = getLock();
-            lock.lock();
-            try {
-                ArrayWriteElementCacheNode currentHead = arrayWriteElementNode;
-                for (ArrayWriteElementCacheNode c = currentHead; c != null; c = c.arrayCacheNext) {
-                    if (c.guard(target, array)) {
-                        return c;
-                    }
-                }
-
-                currentHead = purgeStaleCacheEntries(currentHead, target);
-
-                ArrayWriteElementCacheNode newCacheNode = makeArrayCacheNode(target, array, currentHead);
-                insert(newCacheNode);
-                arrayWriteElementNode = newCacheNode;
-                if (currentHead != null && currentHead.arrayCacheNext != null && currentHead.arrayCacheNext.arrayCacheNext != null) {
-                    reportPolymorphicSpecialize();
-                }
-                if (!newCacheNode.guard(target, array)) {
-                    throw Errors.shouldNotReachHere();
-                }
-                return newCacheNode;
-            } finally {
-                lock.unlock();
-            }
-        }
-
-        private static ArrayWriteElementCacheNode purgeStaleCacheEntries(ArrayWriteElementCacheNode head, JSDynamicObject target) {
-            if (JSConfig.TrackArrayAllocationSites && head != null && JSArray.isJSArray(target)) {
-                ArrayAllocationSite allocationSite = JSAbstractArray.arrayGetAllocationSite(target);
-                if (allocationSite != null && allocationSite.getInitialArrayType() != null) {
-                    for (ArrayWriteElementCacheNode c = head, prev = null; c != null; prev = c, c = c.arrayCacheNext) {
-                        if (c instanceof ConstantArrayWriteElementCacheNode) {
-                            ConstantArrayWriteElementCacheNode existingNode = (ConstantArrayWriteElementCacheNode) c;
-                            ScriptArray initialArrayType = allocationSite.getInitialArrayType();
-                            if (!(initialArrayType instanceof ConstantEmptyArray) && existingNode.getArrayType() instanceof ConstantEmptyArray) {
-                                // allocation site has been patched to not create an empty array;
-                                // purge existing empty array specialization in cache
-                                if (JSConfig.TraceArrayTransitions) {
-                                    System.out.println("purging " + existingNode + ": " + existingNode.getArrayType() + " => " + JSAbstractArray.arrayGetArrayType(target));
-                                }
-                                if (prev == null) {
-                                    return existingNode.arrayCacheNext;
-                                } else {
-                                    prev.arrayCacheNext = existingNode.arrayCacheNext;
-                                    return head;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            return head;
+            return arrayWriteElementNode.executeSetArray(targetObject, array, index, value, root);
         }
     }
 
@@ -763,139 +725,81 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    static ArrayWriteElementCacheNode makeArrayCacheNode(JSDynamicObject target, ScriptArray array, ArrayWriteElementCacheNode next) {
+    static ArrayWriteElementCacheNode makeArrayCacheNode(JSDynamicObject target, ScriptArray array) {
         if (JSSlowArray.isJSSlowArray(target) || JSSlowArgumentsArray.isJSSlowArgumentsObject(target)) {
-            return new ExactArrayWriteElementCacheNode(array, next);
+            return new ExactArrayWriteElementCacheNode();
         }
 
         if (array.isLengthNotWritable() || !array.isExtensible()) {
             // TODO handle this case in the specializations below
-            return new ExactArrayWriteElementCacheNode(array, next);
+            return new ExactArrayWriteElementCacheNode();
         }
         if (array instanceof LazyRegexResultArray) {
-            return new LazyRegexResultArrayWriteElementCacheNode(array, next);
+            return LazyRegexResultArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof LazyRegexResultIndicesArray) {
-            return new LazyRegexResultIndicesArrayWriteElementCacheNode(array, next);
+            return LazyRegexResultIndicesArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof AbstractConstantArray) {
-            return new ConstantArrayWriteElementCacheNode(array, next);
+            return ConstantArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof HolesIntArray) {
-            return new HolesIntArrayWriteElementCacheNode(array, next);
+            return HolesIntArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof HolesDoubleArray) {
-            return new HolesDoubleArrayWriteElementCacheNode(array, next);
+            return HolesDoubleArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof HolesJSObjectArray) {
-            return new HolesJSObjectArrayWriteElementCacheNode(array, next);
+            return HolesJSObjectArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof HolesObjectArray) {
-            return new HolesObjectArrayWriteElementCacheNode(array, next);
+            return HolesObjectArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof AbstractIntArray) {
-            return new IntArrayWriteElementCacheNode(array, next);
+            return IntArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof AbstractDoubleArray) {
-            return new DoubleArrayWriteElementCacheNode(array, next);
+            return DoubleArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof AbstractObjectArray) {
-            return new ObjectArrayWriteElementCacheNode(array, next);
+            return ObjectArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof AbstractJSObjectArray) {
-            return new JSObjectArrayWriteElementCacheNode(array, next);
+            return JSObjectArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof AbstractWritableArray) {
-            return new WritableArrayWriteElementCacheNode(array, next);
+            return WritableArrayWriteElementCacheNodeGen.create();
         } else if (array instanceof TypedArray) {
-            if (array instanceof TypedArray.AbstractUint32Array) {
-                return new Uint32ArrayWriteElementCacheNode((TypedArray) array, next);
-            } else if (array instanceof TypedArray.AbstractUint8ClampedArray) {
-                return new Uint8ClampedArrayWriteElementCacheNode((TypedArray) array, next);
-            } else if (array instanceof TypedIntArray) {
-                return new TypedIntArrayWriteElementCacheNode((TypedArray) array, next);
+            if (array instanceof TypedIntArray) {
+                return TypedIntArrayWriteElementCacheNodeGen.create((TypedArray) array);
             } else if (array instanceof TypedFloatArray) {
-                return new TypedFloatArrayWriteElementCacheNode((TypedArray) array, next);
+                return TypedFloatArrayWriteElementCacheNodeGen.create((TypedArray) array);
             } else if (array instanceof TypedBigIntArray) {
-                return new TypedBigIntArrayWriteElementCacheNode((TypedArray) array, next);
+                return TypedBigIntArrayWriteElementCacheNodeGen.create((TypedArray) array);
             } else {
                 throw Errors.shouldNotReachHere();
             }
         } else {
-            return new ExactArrayWriteElementCacheNode(array, next);
+            return new ExactArrayWriteElementCacheNode();
         }
     }
 
     abstract static class ArrayWriteElementCacheNode extends JavaScriptBaseNode {
-        @Child ArrayWriteElementCacheNode arrayCacheNext;
 
-        ArrayWriteElementCacheNode(ArrayWriteElementCacheNode next) {
-            this.arrayCacheNext = next;
+        ArrayWriteElementCacheNode() {
         }
 
         protected abstract boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root);
-
-        protected abstract boolean guard(Object target, ScriptArray array);
     }
 
-    private abstract static class ArrayClassGuardCachedArrayWriteElementCacheNode extends ArrayWriteElementCacheNode {
+    @ImportStatic(WriteElementNode.class)
+    abstract static class ArrayWriteElementCacheDispatchNode extends ArrayWriteElementCacheNode {
 
-        private final ScriptArray arrayType;
-
-        @CompilationFinal @UnsafeAccessedField private int state0;
-
-        private static final StateField STATE0_FIELD = StateField.create(MethodHandles.lookup(), "state0");
-
-        protected static final InlinedBranchProfile intValueBranch;
-        protected static final InlinedBranchProfile doubleValueBranch;
-        protected static final InlinedBranchProfile objectValueBranch;
-        protected static final InlinedBranchProfile jsObjectValueBranch;
-
-        protected static final InlinedConditionProfile inBoundsFastIf;
-        protected static final InlinedConditionProfile inBoundsIf;
-        protected static final InlinedConditionProfile supportedIf;
-        protected static final InlinedConditionProfile supportedZeroIf;
-        protected static final InlinedConditionProfile supportedNonZeroIf;
-        protected static final InlinedConditionProfile supportedContiguousIf;
-        protected static final InlinedConditionProfile supportedHolesIf;
-        protected static final InlinedConditionProfile supportedContainsHolesIf;
-        protected static final InlinedConditionProfile supportedNotContainsHolesIf;
-        protected static final InlinedConditionProfile inBoundsFastHoleIf;
-        protected static final InlinedConditionProfile hasExplicitHolesIf;
-        protected static final InlinedConditionProfile containsHolesIf;
-        protected static final InlinedConditionProfile toIntIf;
-
-        static {
-            var b = new InlinedProfileBuilder(STATE0_FIELD);
-            intValueBranch = b.branchProfile();
-            doubleValueBranch = b.branchProfile();
-            objectValueBranch = b.branchProfile();
-            jsObjectValueBranch = b.branchProfile();
-
-            inBoundsFastIf = b.conditionProfile();
-            inBoundsIf = b.conditionProfile();
-            supportedIf = b.conditionProfile();
-            supportedZeroIf = b.conditionProfile();
-            supportedNonZeroIf = b.conditionProfile();
-            supportedContiguousIf = b.conditionProfile();
-            supportedHolesIf = b.conditionProfile();
-            supportedContainsHolesIf = b.conditionProfile();
-            supportedNotContainsHolesIf = b.conditionProfile();
-            inBoundsFastHoleIf = b.conditionProfile();
-            hasExplicitHolesIf = b.conditionProfile();
-            containsHolesIf = b.conditionProfile();
-            toIntIf = b.conditionProfile();
+        ArrayWriteElementCacheDispatchNode() {
         }
 
-        ArrayClassGuardCachedArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayCacheNext);
-            this.arrayType = arrayType;
+        @Specialization(guards = "arrayType == cachedArrayType", limit = "BOUNDED_BY_TYPES")
+        protected static boolean doDispatch(JSDynamicObject target, @SuppressWarnings("unused") ScriptArray arrayType, long index, Object value, WriteElementNode root,
+                        @Cached("arrayType") ScriptArray cachedArrayType,
+                        @Cached("makeHandler(target, cachedArrayType)") ArrayWriteElementCacheNode handler) {
+            return handler.executeSetArray(target, cachedArrayType, index, value, root);
         }
 
-        @Override
-        protected final boolean guard(Object target, ScriptArray array) {
-            return arrayType.isInstance(array);
-        }
-
-        protected final ScriptArray cast(ScriptArray array) {
-            return arrayType.cast(array);
-        }
-
-        protected final ScriptArray getArrayType() {
-            return arrayType;
+        protected static ArrayWriteElementCacheNode makeHandler(JSDynamicObject target, ScriptArray arrayType) {
+            return makeArrayCacheNode(target, arrayType);
         }
     }
 
-    private abstract static class RecursiveCachedArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
+    private abstract static class RecursiveCachedArrayWriteElementCacheNode extends ArrayWriteElementCacheNode {
 
         @CompilationFinal @UnsafeAccessedField private int state1;
 
@@ -914,8 +818,8 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Child private ArrayWriteElementCacheNode recursiveWrite;
 
-        RecursiveCachedArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        RecursiveCachedArrayWriteElementCacheNode() {
+            super();
         }
 
         protected final boolean setArrayAndWrite(ScriptArray newArray, JSDynamicObject target, long index, Object value, WriteElementNode root) {
@@ -947,48 +851,19 @@ public class WriteElementNode extends JSTargetableNode {
             return false;
         }
 
-        @ExplodeLoop
         private boolean executeRecursive(JSDynamicObject targetObject, ScriptArray array, long index, Object value, WriteElementNode root) {
-            for (ArrayWriteElementCacheNode c = recursiveWrite; c != null; c = c.arrayCacheNext) {
-                boolean guard = c.guard(targetObject, array);
-                if (guard) {
-                    return c.executeSetArray(targetObject, array, index, value, root);
-                }
+            if (recursiveWrite == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                recursiveWrite = insert(ArrayWriteElementCacheDispatchNodeGen.create());
             }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            ArrayWriteElementCacheNode specialization = specialize(targetObject, array);
-            return specialization.executeSetArray(targetObject, array, index, value, root);
-        }
-
-        private ArrayWriteElementCacheNode specialize(JSDynamicObject target, ScriptArray array) {
-            CompilerAsserts.neverPartOfCompilation();
-            Lock lock = getLock();
-            lock.lock();
-            try {
-                ArrayWriteElementCacheNode currentHead = recursiveWrite;
-                for (ArrayWriteElementCacheNode c = currentHead; c != null; c = c.arrayCacheNext) {
-                    if (c.guard(target, array)) {
-                        return c;
-                    }
-                }
-
-                ArrayWriteElementCacheNode newCacheNode = makeArrayCacheNode(target, array, currentHead);
-                insert(newCacheNode);
-                recursiveWrite = newCacheNode;
-                if (!newCacheNode.guard(target, array)) {
-                    throw Errors.shouldNotReachHere();
-                }
-                return newCacheNode;
-            } finally {
-                lock.unlock();
-            }
+            return recursiveWrite.executeSetArray(targetObject, array, index, value, root);
         }
     }
 
-    private static class ExactArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
+    private static class ExactArrayWriteElementCacheNode extends ArrayWriteElementCacheNode {
 
-        ExactArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        ExactArrayWriteElementCacheNode() {
+            super();
         }
 
         @Override
@@ -997,7 +872,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class LazyRegexResultArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+    abstract static class LazyRegexResultArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
         @Child private DynamicObjectLibrary lazyRegexResultNode = JSObjectUtil.createDispatched(JSAbstractArray.LAZY_REGEX_RESULT_ID);
         @Child private DynamicObjectLibrary lazyRegexResultOriginalInputNode = JSObjectUtil.createDispatched(JSAbstractArray.LAZY_REGEX_ORIGINAL_INPUT_ID);
@@ -1005,13 +880,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
         @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getEndNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
 
-        LazyRegexResultArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        LazyRegexResultArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) cast(array);
+        @Specialization
+        protected boolean doLazyRegexResultArray(JSDynamicObject target, LazyRegexResultArray lazyRegexResultArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsIf) {
             ScriptArray newArray = lazyRegexResultArray.createWritable(root.context, target, index, value,
                             lazyRegexResultNode, lazyRegexResultOriginalInputNode, null, substringNode, getStartNode, getEndNode);
             if (inBoundsIf.profile(this, index >= 0 && index < 0x7fff_ffff)) {
@@ -1023,18 +898,18 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class LazyRegexResultIndicesArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+    abstract static class LazyRegexResultIndicesArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
         @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
         @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode getEndNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
 
-        LazyRegexResultIndicesArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        LazyRegexResultIndicesArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            LazyRegexResultIndicesArray lazyRegexResultIndicesArray = (LazyRegexResultIndicesArray) cast(array);
+        @Specialization
+        protected boolean doLazyRegexREsultIndicesArray(JSDynamicObject target, LazyRegexResultIndicesArray lazyRegexResultIndicesArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsIf) {
             ScriptArray newArray = lazyRegexResultIndicesArray.createWritable(root.context, target, index, value,
                             null, getStartNode, getEndNode);
             if (inBoundsIf.profile(this, index >= 0 && index < 0x7fff_ffff)) {
@@ -1046,15 +921,19 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class ConstantArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+    abstract static class ConstantArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        ConstantArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        ConstantArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            AbstractConstantArray constantArray = (AbstractConstantArray) cast(array);
+        @Specialization
+        protected boolean doConstantArray(JSDynamicObject target, AbstractConstantArray constantArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedBranchProfile intValueBranch,
+                        @Cached InlinedBranchProfile doubleValueBranch,
+                        @Cached InlinedBranchProfile jsObjectValueBranch,
+                        @Cached InlinedBranchProfile objectValueBranch,
+                        @Cached InlinedConditionProfile inBoundsIf) {
             if (inBoundsIf.profile(this, index >= 0 && index < 0x7fff_ffff)) {
                 ScriptArray newArray;
                 if (value instanceof Integer) {
@@ -1072,21 +951,21 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return setArrayAndWrite(newArray, target, index, value, root);
             } else {
-                arraySetArrayType(target, SparseArray.makeSparseArray(target, array).setElement(target, index, value, root.isStrict));
+                arraySetArrayType(target, SparseArray.makeSparseArray(target, constantArray).setElement(target, index, value, root.isStrict));
                 return true;
             }
         }
     }
 
-    private static class WritableArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
+    abstract static class WritableArrayWriteElementCacheNode extends ArrayWriteElementCacheNode {
 
-        WritableArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        WritableArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
+        @Specialization
+        protected final boolean doWritableArray(JSDynamicObject target, AbstractWritableArray writableArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsIf) {
             if (inBoundsIf.profile(this, writableArray.isInBoundsFast(target, index))) {
                 arraySetArrayType(target, writableArray.setElement(target, index, value, root.isStrict));
                 return true;
@@ -1096,18 +975,32 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class IntArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+    abstract static class IntArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        IntArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        IntArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            AbstractIntArray intArray = (AbstractIntArray) cast(array);
+        @Specialization
+        protected boolean doIntArray(JSDynamicObject target, AbstractIntArray intArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedBranchProfile intValueBranch,
+                        @Cached InlinedBranchProfile doubleValueBranch,
+                        @Cached InlinedBranchProfile objectValueBranch,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile supportedNonZeroIf,
+                        @Cached InlinedConditionProfile supportedZeroIf,
+                        @Cached InlinedConditionProfile supportedContiguousIf,
+                        @Cached InlinedConditionProfile supportedHolesIf) {
             if (value instanceof Integer) {
                 intValueBranch.enter(this);
-                return executeWithIntValueInner(target, intArray, index, (int) value, root);
+                return doIntArrayWithIntValue(target, intArray, index, (int) value, root,
+                                inBoundsFastIf,
+                                inBoundsIf,
+                                supportedNonZeroIf,
+                                supportedZeroIf,
+                                supportedContiguousIf,
+                                supportedHolesIf);
             } else if (value instanceof Double) {
                 doubleValueBranch.enter(this);
                 double doubleValue = (double) value;
@@ -1118,7 +1011,13 @@ public class WriteElementNode extends JSTargetableNode {
             }
         }
 
-        private boolean executeWithIntValueInner(JSDynamicObject target, AbstractIntArray intArray, long index, int intValue, WriteElementNode root) {
+        private boolean doIntArrayWithIntValue(JSDynamicObject target, AbstractIntArray intArray, long index, int intValue, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile supportedNonZeroIf,
+                        @Cached InlinedConditionProfile supportedZeroIf,
+                        @Cached InlinedConditionProfile supportedContiguousIf,
+                        @Cached InlinedConditionProfile supportedHolesIf) {
             assert !(intArray instanceof HolesIntArray);
             if (nonHolesArrayNeedsSlowSet(target, intArray, index, root)) {
                 return false;
@@ -1154,15 +1053,22 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class DoubleArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+    abstract static class DoubleArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        DoubleArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        DoubleArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            AbstractDoubleArray doubleArray = (AbstractDoubleArray) cast(array);
+        @Specialization
+        protected boolean doDoubleArray(JSDynamicObject target, AbstractDoubleArray doubleArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedBranchProfile intValueBranch,
+                        @Cached InlinedBranchProfile doubleValueBranch,
+                        @Cached InlinedBranchProfile objectValueBranch,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile supportedIf,
+                        @Cached InlinedConditionProfile supportedContiguousIf,
+                        @Cached InlinedConditionProfile supportedHolesIf) {
             double doubleValue;
             if (value instanceof Double) {
                 doubleValueBranch.enter(this);
@@ -1174,10 +1080,20 @@ public class WriteElementNode extends JSTargetableNode {
                 objectValueBranch.enter(this);
                 return setArrayAndWrite(doubleArray.toObject(target, index, value), target, index, value, root);
             }
-            return executeWithDoubleValueInner(target, doubleArray, index, doubleValue, root);
+            return executeWithDoubleValueInner(target, doubleArray, index, doubleValue, root,
+                            inBoundsFastIf,
+                            inBoundsIf,
+                            supportedIf,
+                            supportedContiguousIf,
+                            supportedHolesIf);
         }
 
-        private boolean executeWithDoubleValueInner(JSDynamicObject target, AbstractDoubleArray doubleArray, long index, double doubleValue, WriteElementNode root) {
+        private boolean executeWithDoubleValueInner(JSDynamicObject target, AbstractDoubleArray doubleArray, long index, double doubleValue, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile supportedIf,
+                        @Cached InlinedConditionProfile supportedContiguousIf,
+                        @Cached InlinedConditionProfile supportedHolesIf) {
             assert !(doubleArray instanceof HolesDoubleArray);
             if (nonHolesArrayNeedsSlowSet(target, doubleArray, index, root)) {
                 return false;
@@ -1207,15 +1123,19 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class ObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+    abstract static class ObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        ObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        ObjectArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            AbstractObjectArray objectArray = (AbstractObjectArray) cast(array);
+        @Specialization
+        protected boolean doObjectArray(JSDynamicObject target, AbstractObjectArray objectArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile supportedIf,
+                        @Cached InlinedConditionProfile supportedContiguousIf,
+                        @Cached InlinedConditionProfile supportedHolesIf) {
             assert !(objectArray instanceof HolesObjectArray);
             if (nonHolesArrayNeedsSlowSet(target, objectArray, index, root)) {
                 return false;
@@ -1245,26 +1165,42 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class JSObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+    abstract static class JSObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        JSObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        JSObjectArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            AbstractJSObjectArray jsobjectArray = (AbstractJSObjectArray) cast(array);
+        @Specialization
+        protected boolean doJSObjectArray(JSDynamicObject target, AbstractJSObjectArray jsobjectArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedBranchProfile jsObjectValueBranch,
+                        @Cached InlinedBranchProfile objectValueBranch,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile supportedIf,
+                        @Cached InlinedConditionProfile supportedContiguousIf,
+                        @Cached InlinedConditionProfile supportedHolesIf) {
             if (JSDynamicObject.isJSDynamicObject(value)) {
                 jsObjectValueBranch.enter(this);
                 JSDynamicObject jsobjectValue = (JSDynamicObject) value;
-                return executeWithJSObjectValueInner(target, jsobjectArray, index, jsobjectValue, root);
+                return executeWithJSObjectValueInner(target, jsobjectArray, index, jsobjectValue, root,
+                                inBoundsFastIf,
+                                inBoundsIf,
+                                supportedIf,
+                                supportedContiguousIf,
+                                supportedHolesIf);
             } else {
                 objectValueBranch.enter(this);
                 return setArrayAndWrite(jsobjectArray.toObject(target, index, value), target, index, value, root);
             }
         }
 
-        private boolean executeWithJSObjectValueInner(JSDynamicObject target, AbstractJSObjectArray jsobjectArray, long index, JSDynamicObject jsobjectValue, WriteElementNode root) {
+        private boolean executeWithJSObjectValueInner(JSDynamicObject target, AbstractJSObjectArray jsobjectArray, long index, JSDynamicObject jsobjectValue, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile supportedIf,
+                        @Cached InlinedConditionProfile supportedContiguousIf,
+                        @Cached InlinedConditionProfile supportedHolesIf) {
             assert !(jsobjectArray instanceof HolesJSObjectArray);
             int iIndex = (int) index;
             if (nonHolesArrayNeedsSlowSet(target, jsobjectArray, index, root)) {
@@ -1294,19 +1230,35 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class HolesIntArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+    abstract static class HolesIntArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        HolesIntArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        HolesIntArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            HolesIntArray holesIntArray = (HolesIntArray) cast(array);
+        @Specialization
+        protected boolean doHolesIntArray(JSDynamicObject target, HolesIntArray holesIntArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedBranchProfile intValueBranch,
+                        @Cached InlinedBranchProfile doubleValueBranch,
+                        @Cached InlinedBranchProfile objectValueBranch,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile containsHolesIf,
+                        @Cached InlinedConditionProfile inBoundsFastHoleIf,
+                        @Cached InlinedConditionProfile supportedContainsHolesIf,
+                        @Cached InlinedConditionProfile supportedNotContainsHolesIf,
+                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
             if (value instanceof Integer) {
                 intValueBranch.enter(this);
                 int intValue = (int) value;
-                return executeWithIntValueInner(target, holesIntArray, index, intValue, root);
+                return executeWithIntValueInner(target, holesIntArray, index, intValue, root,
+                                inBoundsFastIf,
+                                inBoundsIf,
+                                containsHolesIf,
+                                inBoundsFastHoleIf,
+                                supportedContainsHolesIf,
+                                supportedNotContainsHolesIf,
+                                hasExplicitHolesIf);
             } else if (value instanceof Double) {
                 doubleValueBranch.enter(this);
                 double doubleValue = (double) value;
@@ -1317,12 +1269,19 @@ public class WriteElementNode extends JSTargetableNode {
             }
         }
 
-        private boolean executeWithIntValueInner(JSDynamicObject target, HolesIntArray holesIntArray, long index, int intValue, WriteElementNode root) {
+        private boolean executeWithIntValueInner(JSDynamicObject target, HolesIntArray holesIntArray, long index, int intValue, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile containsHolesIf,
+                        @Cached InlinedConditionProfile inBoundsFastHoleIf,
+                        @Cached InlinedConditionProfile supportedContainsHolesIf,
+                        @Cached InlinedConditionProfile supportedNotContainsHolesIf,
+                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
             if (holesArrayNeedsSlowSet(target, holesIntArray, index, root)) {
                 return false;
             }
             int iIndex = (int) index;
-            boolean containsHoles = containsHolesIf.profile(this, containsHoles(target, holesIntArray, index));
+            boolean containsHoles = containsHolesIf.profile(this, containsHoles(target, holesIntArray, index, hasExplicitHolesIf));
             if (containsHoles && inBoundsFastIf.profile(this, holesIntArray.isInBoundsFast(target, index) && !HolesIntArray.isHoleValue(intValue))) {
                 if (inBoundsFastHoleIf.profile(this, holesIntArray.isHoleFast(target, iIndex))) {
                     holesIntArray.setInBoundsFastHole(target, iIndex, intValue);
@@ -1348,20 +1307,29 @@ public class WriteElementNode extends JSTargetableNode {
             }
         }
 
-        private boolean containsHoles(JSDynamicObject target, HolesIntArray holesIntArray, long index) {
+        private boolean containsHoles(JSDynamicObject target, HolesIntArray holesIntArray, long index, InlinedConditionProfile hasExplicitHolesIf) {
             return hasExplicitHolesIf.profile(this, JSArray.arrayGetHoleCount(target) > 0) || !holesIntArray.isInBoundsFast(target, index);
         }
     }
 
-    private static class HolesDoubleArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+    abstract static class HolesDoubleArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        HolesDoubleArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        HolesDoubleArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            HolesDoubleArray holesDoubleArray = (HolesDoubleArray) cast(array);
+        @Specialization
+        protected boolean doHolesDoubleArray(JSDynamicObject target, HolesDoubleArray holesDoubleArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedBranchProfile intValueBranch,
+                        @Cached InlinedBranchProfile doubleValueBranch,
+                        @Cached InlinedBranchProfile objectValueBranch,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile containsHolesIf,
+                        @Cached InlinedConditionProfile inBoundsFastHoleIf,
+                        @Cached InlinedConditionProfile supportedContainsHolesIf,
+                        @Cached InlinedConditionProfile supportedNotContainsHolesIf,
+                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
             double doubleValue;
             if (value instanceof Double) {
                 doubleValueBranch.enter(this);
@@ -1374,15 +1342,29 @@ public class WriteElementNode extends JSTargetableNode {
                 return setArrayAndWrite(holesDoubleArray.toObject(target, index, value), target, index, value, root);
             }
 
-            return executeWithDoubleValueInner(target, holesDoubleArray, index, doubleValue, root);
+            return executeWithDoubleValueInner(target, holesDoubleArray, index, doubleValue, root,
+                            inBoundsFastIf,
+                            inBoundsIf,
+                            containsHolesIf,
+                            inBoundsFastHoleIf,
+                            supportedContainsHolesIf,
+                            supportedNotContainsHolesIf,
+                            hasExplicitHolesIf);
         }
 
-        private boolean executeWithDoubleValueInner(JSDynamicObject target, HolesDoubleArray holesDoubleArray, long index, double doubleValue, WriteElementNode root) {
+        private boolean executeWithDoubleValueInner(JSDynamicObject target, HolesDoubleArray holesDoubleArray, long index, double doubleValue, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile containsHolesIf,
+                        @Cached InlinedConditionProfile inBoundsFastHoleIf,
+                        @Cached InlinedConditionProfile supportedContainsHolesIf,
+                        @Cached InlinedConditionProfile supportedNotContainsHolesIf,
+                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
             if (holesArrayNeedsSlowSet(target, holesDoubleArray, index, root)) {
                 return false;
             }
             int iIndex = (int) index;
-            boolean containsHoles = containsHolesIf.profile(this, containsHoles(target, holesDoubleArray, index));
+            boolean containsHoles = containsHolesIf.profile(this, containsHoles(target, holesDoubleArray, index, hasExplicitHolesIf));
             if (containsHoles && inBoundsFastIf.profile(this, holesDoubleArray.isInBoundsFast(target, index) && !HolesDoubleArray.isHoleValue(doubleValue))) {
                 if (inBoundsFastHoleIf.profile(this, holesDoubleArray.isHoleFast(target, iIndex))) {
                     holesDoubleArray.setInBoundsFastHole(target, iIndex, doubleValue);
@@ -1408,35 +1390,56 @@ public class WriteElementNode extends JSTargetableNode {
             }
         }
 
-        private boolean containsHoles(JSDynamicObject target, HolesDoubleArray holesDoubleArray, long index) {
+        private boolean containsHoles(JSDynamicObject target, HolesDoubleArray holesDoubleArray, long index, InlinedConditionProfile hasExplicitHolesIf) {
             return hasExplicitHolesIf.profile(this, JSArray.arrayGetHoleCount(target) > 0) || !holesDoubleArray.isInBoundsFast(target, index);
         }
     }
 
-    private static class HolesJSObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+    abstract static class HolesJSObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        HolesJSObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
-            assert arrayType.getClass() == HolesJSObjectArray.class;
+        HolesJSObjectArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            HolesJSObjectArray holesArray = (HolesJSObjectArray) cast(array);
+        @Specialization
+        protected boolean doJSObjectArray(JSDynamicObject target, HolesJSObjectArray holesArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedBranchProfile jsObjectValueBranch,
+                        @Cached InlinedBranchProfile objectValueBranch,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile containsHolesIf,
+                        @Cached InlinedConditionProfile inBoundsFastHoleIf,
+                        @Cached InlinedConditionProfile supportedContainsHolesIf,
+                        @Cached InlinedConditionProfile supportedNotContainsHolesIf,
+                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
             if (JSDynamicObject.isJSDynamicObject(value)) {
                 jsObjectValueBranch.enter(this);
-                return executeWithJSObjectValueInner(target, holesArray, index, (JSDynamicObject) value, root);
+                return executeWithJSObjectValueInner(target, holesArray, index, (JSDynamicObject) value, root,
+                                inBoundsFastIf,
+                                inBoundsIf,
+                                containsHolesIf,
+                                inBoundsFastHoleIf,
+                                supportedContainsHolesIf,
+                                supportedNotContainsHolesIf,
+                                hasExplicitHolesIf);
             } else {
                 objectValueBranch.enter(this);
                 return setArrayAndWrite(holesArray.toObject(target, index, value), target, index, value, root);
             }
         }
 
-        private boolean executeWithJSObjectValueInner(JSDynamicObject target, HolesJSObjectArray jsobjectArray, long index, JSDynamicObject value, WriteElementNode root) {
+        private boolean executeWithJSObjectValueInner(JSDynamicObject target, HolesJSObjectArray jsobjectArray, long index, JSDynamicObject value, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile containsHolesIf,
+                        @Cached InlinedConditionProfile inBoundsFastHoleIf,
+                        @Cached InlinedConditionProfile supportedContainsHolesIf,
+                        @Cached InlinedConditionProfile supportedNotContainsHolesIf,
+                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
             if (holesArrayNeedsSlowSet(target, jsobjectArray, index, root)) {
                 return false;
             }
-            boolean containsHoles = containsHolesIf.profile(this, containsHoles(target, jsobjectArray, index));
+            boolean containsHoles = containsHolesIf.profile(this, containsHoles(target, jsobjectArray, index, hasExplicitHolesIf));
             if (containsHoles && inBoundsFastIf.profile(this, jsobjectArray.isInBoundsFast(target, index))) {
                 assert !HolesJSObjectArray.isHoleValue(value);
                 if (inBoundsFastHoleIf.profile(this, jsobjectArray.isHoleFast(target, (int) index))) {
@@ -1465,21 +1468,23 @@ public class WriteElementNode extends JSTargetableNode {
             }
         }
 
-        private boolean containsHoles(JSDynamicObject target, HolesJSObjectArray holesJSObjectArray, long index) {
+        private boolean containsHoles(JSDynamicObject target, HolesJSObjectArray holesJSObjectArray, long index, InlinedConditionProfile hasExplicitHolesIf) {
             return hasExplicitHolesIf.profile(this, JSArray.arrayGetHoleCount(target) > 0) || !holesJSObjectArray.isInBoundsFast(target, index);
         }
     }
 
-    private static class HolesObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
+    abstract static class HolesObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
 
-        HolesObjectArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
-            assert arrayType.getClass() == HolesObjectArray.class;
+        HolesObjectArrayWriteElementCacheNode() {
+            super();
         }
 
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            HolesObjectArray objectArray = (HolesObjectArray) array;
+        @Specialization
+        protected boolean doHolesObjectArray(JSDynamicObject target, HolesObjectArray objectArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsFastIf,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached InlinedConditionProfile inBoundsFastHoleIf,
+                        @Cached InlinedConditionProfile supportedIf) {
             if (holesArrayNeedsSlowSet(target, objectArray, index, root)) {
                 return false;
             }
@@ -1506,27 +1511,26 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private abstract static class AbstractTypedArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
+    private abstract static class AbstractTypedArrayWriteElementCacheNode extends ArrayWriteElementCacheNode {
 
         @Child protected InteropLibrary interop;
 
-        AbstractTypedArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        AbstractTypedArrayWriteElementCacheNode(TypedArray arrayType) {
+            super();
             this.interop = arrayType.isInterop() ? InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit) : InteropLibrary.getUncached();
         }
 
     }
 
-    private abstract static class AbstractTypedIntArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
+    abstract static class TypedIntArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
 
-        AbstractTypedIntArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        TypedIntArrayWriteElementCacheNode(TypedArray arrayType) {
+            super(arrayType);
         }
 
-        @Override
-        protected final boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            TypedIntArray typedArray = (TypedIntArray) cast(array);
-            int iValue = toInt(value); // could throw
+        @Specialization
+        protected final boolean doTypedIntArrayIntValue(JSDynamicObject target, TypedIntArray typedArray, long index, int iValue, WriteElementNode root,
+                        @Cached @Shared InlinedConditionProfile inBoundsIf) {
             if (!JSArrayBufferView.hasDetachedBuffer(target, root.context) && inBoundsIf.profile(this, typedArray.hasElement(target, index))) {
                 typedArray.setInt(target, (int) index, iValue, interop);
             } else {
@@ -1535,35 +1539,48 @@ public class WriteElementNode extends JSTargetableNode {
             return true;
         }
 
-        protected abstract int toInt(Object value);
-    }
-
-    private static class TypedIntArrayWriteElementCacheNode extends AbstractTypedIntArrayWriteElementCacheNode {
-        @Child private JSToInt32Node toIntNode;
-
-        TypedIntArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
-            this.toIntNode = JSToInt32Node.create();
+        protected static boolean isSpecial(TypedIntArray typedArray) {
+            return typedArray instanceof AbstractUint32Array || typedArray instanceof AbstractUint8ClampedArray;
         }
 
-        @Override
-        protected int toInt(Object value) {
-            return toIntNode.executeInt(value);
+        @Specialization(guards = "!isSpecial(typedArray)", replaces = "doTypedIntArrayIntValue")
+        protected final boolean doTypedIntArray(JSDynamicObject target, TypedIntArray typedArray, long index, Object value, WriteElementNode root,
+                        @Cached JSToInt32Node toIntNode,
+                        @Cached @Shared InlinedConditionProfile inBoundsIf) {
+            int iValue = toIntNode.executeInt(value); // could throw
+            return doTypedIntArrayIntValue(target, typedArray, index, iValue, root, inBoundsIf);
+        }
+
+        @Specialization(replaces = "doTypedIntArrayIntValue")
+        protected final boolean doTypedIntArray(JSDynamicObject target, AbstractUint32Array typedArray, long index, Object value, WriteElementNode root,
+                        @Cached JSToNumberNode toNumberNode,
+                        @Cached @Shared InlinedConditionProfile inBoundsIf) {
+            int iValue = (int) JSRuntime.toUInt32(toNumberNode.executeNumber(value));
+            return doTypedIntArrayIntValue(target, typedArray, index, iValue, root, inBoundsIf);
+        }
+
+        @Specialization(replaces = "doTypedIntArrayIntValue")
+        protected final boolean doTypedIntArray(JSDynamicObject target, AbstractUint8ClampedArray typedArray, long index, Object value, WriteElementNode root,
+                        @Cached JSToDoubleNode toDoubleNode,
+                        @Cached @Shared InlinedConditionProfile inBoundsIf) {
+            double doubleValue = toDoubleNode.executeDouble(value);
+            int iValue = Uint8ClampedArray.toInt(doubleValue);
+            return doTypedIntArrayIntValue(target, typedArray, index, iValue, root, inBoundsIf);
         }
     }
 
-    private static class TypedBigIntArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
+    abstract static class TypedBigIntArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
 
         @Child private JSToBigIntNode toBigIntNode;
 
-        TypedBigIntArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        TypedBigIntArrayWriteElementCacheNode(TypedArray arrayType) {
+            super(arrayType);
             this.toBigIntNode = JSToBigIntNode.create();
         }
 
-        @Override
-        protected final boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            TypedBigIntArray typedArray = (TypedBigIntArray) cast(array);
+        @Specialization
+        protected final boolean doBigIntArray(JSDynamicObject target, TypedBigIntArray typedArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsIf) {
             BigInt biValue = toBigIntNode.executeBigInteger(value); // could throw
             if (!JSArrayBufferView.hasDetachedBuffer(target, root.context) && inBoundsIf.profile(this, typedArray.hasElement(target, index))) {
                 typedArray.setBigInt(target, (int) index, biValue, interop);
@@ -1572,79 +1589,23 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class Uint8ClampedArrayWriteElementCacheNode extends AbstractTypedIntArrayWriteElementCacheNode {
-        @Child private JSToDoubleNode toDoubleNode;
+    abstract static class TypedFloatArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
 
-        Uint8ClampedArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
+        TypedFloatArrayWriteElementCacheNode(TypedArray arrayType) {
+            super(arrayType);
         }
 
-        @Override
-        protected int toInt(Object value) {
-            if (toIntIf.profile(this, value instanceof Integer)) {
-                return (int) value;
-            } else {
-                double doubleValue = toDouble(value);
-                return Uint8ClampedArray.toInt(doubleValue);
-            }
-        }
-
-        private double toDouble(Object value) {
-            if (toDoubleNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toDoubleNode = insert(JSToDoubleNode.create());
-            }
-            return toDoubleNode.executeDouble(value);
-        }
-    }
-
-    private static class Uint32ArrayWriteElementCacheNode extends AbstractTypedIntArrayWriteElementCacheNode {
-        @Child private JSToNumberNode toNumberNode;
-
-        Uint32ArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
-        }
-
-        @Override
-        protected int toInt(Object value) {
-            if (toIntIf.profile(this, value instanceof Integer)) {
-                return (int) value;
-            } else {
-                return (int) JSRuntime.toUInt32(toNumber(value));
-            }
-        }
-
-        private Number toNumber(Object value) {
-            if (toNumberNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toNumberNode = insert(JSToNumberNode.create());
-            }
-            return toNumberNode.executeNumber(value);
-        }
-    }
-
-    private static class TypedFloatArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
-        @Child private JSToDoubleNode toDoubleNode;
-
-        TypedFloatArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(arrayType, arrayCacheNext);
-            this.toDoubleNode = JSToDoubleNode.create();
-        }
-
-        @Override
-        protected boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
-            TypedFloatArray typedArray = (TypedFloatArray) cast(array);
-            double dValue = toDouble(value); // could throw
+        @Specialization
+        protected boolean doTypedFloatArray(JSDynamicObject target, TypedFloatArray typedArray, long index, Object value, WriteElementNode root,
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached JSToDoubleNode toDouble) {
+            double dValue = toDouble.executeDouble(value); // could throw
             if (!JSArrayBufferView.hasDetachedBuffer(target, root.context) && inBoundsIf.profile(this, typedArray.hasElement(target, index))) {
                 typedArray.setDouble(target, (int) index, dValue, interop);
             } else {
                 // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)
             }
             return true;
-        }
-
-        private double toDouble(Object value) {
-            return toDoubleNode.executeDouble(value);
         }
     }
 
