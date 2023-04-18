@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -74,6 +75,7 @@ public abstract class IsJSDynamicObjectNode extends JavaScriptBaseNode {
         return resultProfile.profile(this, JSGuards.isJSDynamicObject(object));
     }
 
+    @NeverDefault
     public static IsJSDynamicObjectNode create() {
         return IsJSDynamicObjectNodeGen.create();
     }

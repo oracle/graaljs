@@ -44,15 +44,14 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 
 import java.lang.invoke.MethodHandles;
 import java.util.Set;
-import java.util.concurrent.locks.Lock;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.dsl.InlineSupport.StateField;
 import com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField;
@@ -69,20 +68,21 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.ArrayWriteElementCacheDispatchNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.BigIntWriteElementTypeCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.BooleanWriteElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.ConstantArrayWriteElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.DoubleArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.ForeignObjectWriteElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.HolesDoubleArrayWriteElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.HolesIntArrayWriteElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.HolesJSObjectArrayWriteElementCacheNodeGen;
@@ -91,11 +91,15 @@ import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.IntArrayWriteE
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.JSObjectArrayWriteElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.LazyRegexResultArrayWriteElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.LazyRegexResultIndicesArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.NumberWriteElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.ObjectArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.StringWriteElementTypeCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.SymbolWriteElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.TypedBigIntArrayWriteElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.TypedFloatArrayWriteElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.TypedIntArrayWriteElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.WritableArrayWriteElementCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.WriteElementNodeFactory.WriteElementTypeCacheDispatchNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
@@ -464,146 +468,146 @@ public class WriteElementNode extends JSTargetableNode {
         executeWithTargetAndIndexAndValue(target, index, value, target);
     }
 
-    @ExplodeLoop
     public final void executeWithTargetAndIndexAndValue(Object target, Object index, Object value, Object receiver) {
-        for (WriteElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
-            boolean guard = c.guard(target);
-            if (guard) {
-                c.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
-                return;
-            }
+        if (typeCacheNode == null) {
+            initTypeCacheNode();
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        WriteElementTypeCacheNode specialization = specialize(target);
-        specialization.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
+        typeCacheNode.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
     }
 
-    @ExplodeLoop
     public final void executeWithTargetAndIndexAndValue(Object target, int index, Object value, Object receiver) {
-        for (WriteElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
-            boolean guard = c.guard(target);
-            if (guard) {
-                c.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
-                return;
-            }
+        if (typeCacheNode == null) {
+            initTypeCacheNode();
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        WriteElementTypeCacheNode specialization = specialize(target);
-        specialization.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
+        typeCacheNode.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
     }
 
-    @ExplodeLoop
     public final void executeWithTargetAndIndexAndValue(Object target, long index, Object value, Object receiver) {
-        for (WriteElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
-            boolean guard = c.guard(target);
-            if (guard) {
-                c.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
-                return;
-            }
+        if (typeCacheNode == null) {
+            initTypeCacheNode();
         }
+        typeCacheNode.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
+    }
+
+    private void initTypeCacheNode() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        WriteElementTypeCacheNode specialization = specialize(target);
-        specialization.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
-    }
-
-    private WriteElementTypeCacheNode specialize(Object target) {
-        CompilerAsserts.neverPartOfCompilation();
-        Lock lock = getLock();
-        lock.lock();
-        try {
-            WriteElementTypeCacheNode currentHead = typeCacheNode;
-            for (WriteElementTypeCacheNode c = currentHead; c != null; c = c.typeCacheNext) {
-                if (c.guard(target)) {
-                    return c;
-                }
-            }
-
-            WriteElementTypeCacheNode newCacheNode = makeTypeCacheNode(target, currentHead);
-            insert(newCacheNode);
-            typeCacheNode = newCacheNode;
-            if (!newCacheNode.guard(target)) {
-                throw Errors.shouldNotReachHere();
-            }
-            return newCacheNode;
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static WriteElementTypeCacheNode makeTypeCacheNode(Object target, WriteElementTypeCacheNode next) {
-        if (JSDynamicObject.isJSDynamicObject(target)) {
-            return new JSObjectWriteElementTypeCacheNode(next);
-        } else if (Strings.isTString(target)) {
-            return new StringWriteElementTypeCacheNode(next);
-        } else if (target instanceof Boolean) {
-            return new BooleanWriteElementTypeCacheNode(next);
-        } else if (target instanceof Number) {
-            return new NumberWriteElementTypeCacheNode(target.getClass(), next);
-        } else if (target instanceof Symbol) {
-            return new SymbolWriteElementTypeCacheNode(next);
-        } else if (target instanceof BigInt) {
-            return new BigIntWriteElementTypeCacheNode(next);
-        } else if (target instanceof TruffleObject) {
-            assert JSRuntime.isForeignObject(target);
-            return new ForeignObjectWriteElementTypeCacheNode(target.getClass(), next);
-        } else {
-            assert JSRuntime.isJavaPrimitive(target);
-            return new JavaObjectWriteElementTypeCacheNode(target.getClass(), next);
-        }
+        typeCacheNode = insert(WriteElementTypeCacheDispatchNodeGen.create());
     }
 
     abstract static class WriteElementTypeCacheNode extends JavaScriptBaseNode {
-        @Child WriteElementTypeCacheNode typeCacheNext;
-
-        protected WriteElementTypeCacheNode(WriteElementTypeCacheNode next) {
-            this.typeCacheNext = next;
+        protected WriteElementTypeCacheNode() {
         }
 
         protected abstract void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root);
 
-        protected abstract void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root);
-
         protected abstract void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root);
 
-        public abstract boolean guard(Object target);
     }
 
-    private static class JSObjectWriteElementTypeCacheNode extends WriteElementTypeCacheNode {
+    abstract static class GuardedWriteElementTypeCacheNode extends JavaScriptBaseNode {
+        protected GuardedWriteElementTypeCacheNode() {
+        }
+
+        public abstract boolean guard(Object target);
+
+        protected abstract void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root);
+    }
+
+    @ImportStatic(WriteElementNode.class)
+    abstract static class WriteElementTypeCacheDispatchNode extends WriteElementTypeCacheNode {
+
+        protected WriteElementTypeCacheDispatchNode() {
+            super();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1")
+        protected static void doJSObjectLongIndex(Object target, long index, Object value, Object receiver, WriteElementNode root,
+                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
+                        @Cached @Shared JSObjectWriteElementTypeCacheNode objectHandler) {
+            objectHandler.executeWithTargetAndIndexUnguarded(target, index, value, receiver, root);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", replaces = {"doJSObjectLongIndex"})
+        protected static void doJSObject(Object target, Object index, Object value, Object receiver, WriteElementNode root,
+                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
+                        @Cached @Shared JSObjectWriteElementTypeCacheNode objectHandler) {
+            objectHandler.executeWithTargetAndIndexUnguarded(target, index, value, receiver, root);
+        }
+
+        @Specialization(guards = "otherHandler.guard(target)", limit = "BOUNDED_BY_TYPES")
+        protected static void doOther(Object target, Object index, Object value, Object receiver, WriteElementNode root,
+                        @Cached("makeHandler(target)") GuardedWriteElementTypeCacheNode otherHandler) {
+            otherHandler.executeWithTargetAndIndexUnguarded(target, index, value, receiver, root);
+        }
+
+        protected static GuardedWriteElementTypeCacheNode makeHandler(Object target) {
+            if (JSDynamicObject.isJSDynamicObject(target)) {
+                // Handled by other specializations.
+                throw Errors.shouldNotReachHere("JSDynamicObject");
+            } else if (Strings.isTString(target)) {
+                return StringWriteElementTypeCacheNodeGen.create();
+            } else if (target instanceof Boolean) {
+                return BooleanWriteElementTypeCacheNodeGen.create();
+            } else if (target instanceof Number) {
+                return NumberWriteElementTypeCacheNodeGen.create(target.getClass());
+            } else if (target instanceof Symbol) {
+                return SymbolWriteElementTypeCacheNodeGen.create();
+            } else if (target instanceof BigInt) {
+                return BigIntWriteElementTypeCacheNodeGen.create();
+            } else if (target instanceof TruffleObject) {
+                assert JSRuntime.isForeignObject(target);
+                return ForeignObjectWriteElementTypeCacheNodeGen.create();
+            } else {
+                assert JSRuntime.isJavaPrimitive(target);
+                return new JavaObjectWriteElementTypeCacheNode(target.getClass());
+            }
+        }
+    }
+
+    abstract static class JSObjectWriteElementTypeCacheNode extends WriteElementTypeCacheNode {
         @Child private IsArrayNode isArrayNode;
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private ArrayWriteElementCacheNode arrayWriteElementNode;
-        @Child private IsJSDynamicObjectNode isObjectNode;
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
         @Child private CachedSetPropertyNode setPropertyCachedNode;
 
-        @CompilationFinal @UnsafeAccessedField private int state;
-
-        private static final StateField STATE_FIELD = StateField.create(MethodHandles.lookup(), "state");
-
-        protected static final InlinedConditionProfile arrayIf;
-        protected static final InlinedConditionProfile intOrStringIndexIf;
-
-        static {
-            var b = new InlinedProfileBuilder(STATE_FIELD);
-            arrayIf = b.conditionProfile();
-            intOrStringIndexIf = b.conditionProfile();
-        }
-
-        JSObjectWriteElementTypeCacheNode(WriteElementTypeCacheNode next) {
-            super(next);
+        JSObjectWriteElementTypeCacheNode() {
+            super();
             this.isArrayNode = IsArrayNode.createIsFastOrTypedArray();
-            this.isObjectNode = IsJSDynamicObjectNode.create();
         }
 
-        private boolean isArray(JSDynamicObject targetObject) {
+        private boolean isArray(JSDynamicObject targetObject, InlinedConditionProfile arrayIf) {
             return arrayIf.profile(this, isArrayNode.execute(targetObject));
         }
 
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
+        @Specialization
+        protected void doJSObjectIntegerIndex(Object target, long index, Object value, Object receiver, WriteElementNode root,
+                        @Cached @Shared InlinedConditionProfile arrayIf,
+                        @Cached @Shared InlinedConditionProfile intOrStringIndexIf) {
             JSDynamicObject targetObject = ((JSDynamicObject) target);
-            if (isArray(targetObject)) {
+            if (isArray(targetObject, arrayIf)) {
+                ScriptArray array = JSObject.getArray(targetObject);
+
+                if (intOrStringIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
+                    if (!executeSetArray(targetObject, array, index, value, root)) {
+                        setPropertyGenericEvaluatedIndex(targetObject, index, value, receiver, root);
+                    }
+                } else {
+                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, Strings.fromLong(index), value, receiver, root);
+                }
+            } else {
+                setPropertyGeneric(targetObject, index, value, receiver, root);
+            }
+        }
+
+        @Specialization
+        protected void doJSObject(Object target, Object index, Object value, Object receiver, WriteElementNode root,
+                        @Cached @Shared InlinedConditionProfile arrayIf,
+                        @Cached @Shared InlinedConditionProfile intOrStringIndexIf) {
+            JSDynamicObject targetObject = ((JSDynamicObject) target);
+            if (isArray(targetObject, arrayIf)) {
                 ScriptArray array = JSObject.getArray(targetObject);
                 Object objIndex = toArrayIndex(index);
 
@@ -628,42 +632,6 @@ public class WriteElementNode extends JSTargetableNode {
             return toArrayIndexNode.execute(index);
         }
 
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
-            JSDynamicObject targetObject = ((JSDynamicObject) target);
-            if (isArray(targetObject)) {
-                ScriptArray array = JSObject.getArray(targetObject);
-
-                if (intOrStringIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    if (!executeSetArray(targetObject, array, index, value, root)) {
-                        setPropertyGenericEvaluatedIndex(targetObject, index, value, receiver, root);
-                    }
-                } else {
-                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, Strings.fromInt(index), value, receiver, root);
-                }
-            } else {
-                setPropertyGeneric(targetObject, index, value, receiver, root);
-            }
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
-            JSDynamicObject targetObject = ((JSDynamicObject) target);
-            if (isArray(targetObject)) {
-                ScriptArray array = JSObject.getArray(targetObject);
-
-                if (intOrStringIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    if (!executeSetArray(targetObject, array, index, value, root)) {
-                        setPropertyGenericEvaluatedIndex(targetObject, index, value, receiver, root);
-                    }
-                } else {
-                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, Strings.fromLong(index), value, receiver, root);
-                }
-            } else {
-                setPropertyGeneric(targetObject, index, value, receiver, root);
-            }
-        }
-
         private void setPropertyGenericEvaluatedIndex(JSDynamicObject targetObject, long index, Object value, Object receiver, WriteElementNode root) {
             JSObject.setWithReceiver(targetObject, index, value, receiver, root.isStrict, jsclassProfile, root);
         }
@@ -684,12 +652,6 @@ public class WriteElementNode extends JSTargetableNode {
             setPropertyCachedNode.execute(targetObject, index, value, receiver);
         }
 
-        @Override
-        public boolean guard(Object target) {
-            return isObjectNode.executeBoolean(target);
-        }
-
-        @ExplodeLoop
         private boolean executeSetArray(JSDynamicObject targetObject, ScriptArray array, long index, Object value, WriteElementNode root) {
             if (arrayWriteElementNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -699,24 +661,16 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class JavaObjectWriteElementTypeCacheNode extends WriteElementTypeCacheNode {
+    private static class JavaObjectWriteElementTypeCacheNode extends GuardedWriteElementTypeCacheNode {
         protected final Class<?> targetClass;
 
-        JavaObjectWriteElementTypeCacheNode(Class<?> targetClass, WriteElementTypeCacheNode next) {
-            super(next);
+        JavaObjectWriteElementTypeCacheNode(Class<?> targetClass) {
+            super();
             this.targetClass = targetClass;
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
         }
 
         @Override
@@ -1609,45 +1563,46 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private abstract static class ToPropertyKeyCachedWriteElementTypeCacheNode extends WriteElementTypeCacheNode {
-        @Child private JSToPropertyKeyNode indexToPropertyKeyNode;
+    private abstract static class ToPropertyKeyCachedWriteElementTypeCacheNode extends GuardedWriteElementTypeCacheNode {
         protected final JSClassProfile classProfile = JSClassProfile.create();
 
-        ToPropertyKeyCachedWriteElementTypeCacheNode(WriteElementTypeCacheNode next) {
-            super(next);
-        }
-
-        protected final Object toPropertyKey(Object index) {
-            if (indexToPropertyKeyNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                indexToPropertyKeyNode = insert(JSToPropertyKeyNode.create());
-            }
-            return indexToPropertyKeyNode.execute(index);
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
-            executeWithTargetAndIndexUnguarded(target, (long) index, value, receiver, root);
+        ToPropertyKeyCachedWriteElementTypeCacheNode() {
+            super();
         }
     }
 
-    private static class StringWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
-        private final ConditionProfile isIndexProfile = ConditionProfile.create();
-        private final ConditionProfile isImmutable = ConditionProfile.create();
-        @Child private ToArrayIndexNode toArrayIndexNode;
+    abstract static class StringWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
 
-        StringWriteElementTypeCacheNode(WriteElementTypeCacheNode next) {
-            super(next);
-            this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
+        StringWriteElementTypeCacheNode() {
+            super();
         }
 
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
+        @Specialization
+        protected void doStringIntegerIndex(Object target, long index, Object value, Object receiver, WriteElementNode root,
+                        @Cached @Shared InlinedConditionProfile isImmutable) {
+            TruffleString string = (TruffleString) target;
+            if (isImmutable.profile(this, index >= 0 && index < Strings.length(string))) {
+                // cannot set characters of immutable strings
+                if (root.isStrict) {
+                    throw Errors.createTypeErrorNotWritableIndex(index, string, this);
+                }
+                return;
+            } else {
+                JSObject.setWithReceiver(JSString.create(root.context, getRealm(), string), index, value, receiver, root.isStrict, classProfile, root);
+            }
+        }
+
+        @Specialization(replaces = {"doStringIntegerIndex"})
+        protected void doString(Object target, Object index, Object value, Object receiver, WriteElementNode root,
+                        @Cached @Shared InlinedConditionProfile isImmutable,
+                        @Cached @Exclusive InlinedConditionProfile isIndexProfile,
+                        @Cached("createNoToPropertyKey()") ToArrayIndexNode toArrayIndexNode,
+                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             TruffleString string = (TruffleString) target;
             Object convertedIndex = toArrayIndexNode.execute(index);
-            if (isIndexProfile.profile(convertedIndex instanceof Long)) {
+            if (isIndexProfile.profile(this, convertedIndex instanceof Long)) {
                 long longIndex = (long) convertedIndex;
-                if (isImmutable.profile(longIndex >= 0 && longIndex < Strings.length(string))) {
+                if (isImmutable.profile(this, longIndex >= 0 && longIndex < Strings.length(string))) {
                     // cannot set characters of immutable strings
                     if (root.isStrict) {
                         throw Errors.createTypeErrorNotWritableIndex(longIndex, string, this);
@@ -1655,21 +1610,7 @@ public class WriteElementNode extends JSTargetableNode {
                     return;
                 }
             }
-            JSObject.setWithReceiver(JSString.create(root.context, getRealm(), string), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
-            TruffleString string = (TruffleString) target;
-            if (isImmutable.profile(index >= 0 && index < Strings.length(string))) {
-                // cannot set characters of immutable strings
-                if (root.isStrict) {
-                    throw Errors.createTypeErrorNotWritableIndex(index, string, this);
-                }
-                return;
-            } else {
-                JSObject.setWithReceiver(JSString.create(root.context, getRealm(), string), index, value, target, root.isStrict, classProfile, root);
-            }
+            JSObject.setWithReceiver(JSString.create(root.context, getRealm(), string), indexToPropertyKeyNode.execute(index), value, receiver, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1678,24 +1619,25 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class NumberWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
+    abstract static class NumberWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
         private final Class<?> numberClass;
 
-        NumberWriteElementTypeCacheNode(Class<?> numberClass, WriteElementTypeCacheNode next) {
-            super(next);
+        NumberWriteElementTypeCacheNode(Class<?> numberClass) {
+            super();
             this.numberClass = numberClass;
         }
 
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
+        @Specialization
+        protected void doNumber(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             Number number = (Number) CompilerDirectives.castExact(target, numberClass);
-            JSObject.setWithReceiver(JSNumber.create(root.context, getRealm(), number), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSNumber.create(root.context, getRealm(), number), index, value, receiver, root.isStrict, classProfile, root);
         }
 
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
+        @Specialization
+        protected void doNumber(Object target, Object index, Object value, Object receiver, WriteElementNode root,
+                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             Number number = (Number) CompilerDirectives.castExact(target, numberClass);
-            JSObject.setWithReceiver(JSNumber.create(root.context, getRealm(), number), index, value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSNumber.create(root.context, getRealm(), number), indexToPropertyKeyNode.execute(index), value, receiver, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1704,21 +1646,22 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class BooleanWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
-        BooleanWriteElementTypeCacheNode(WriteElementTypeCacheNode next) {
-            super(next);
+    abstract static class BooleanWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
+        BooleanWriteElementTypeCacheNode() {
+            super();
         }
 
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
+        @Specialization
+        protected void doBoolean(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             Boolean bool = (Boolean) target;
-            JSObject.setWithReceiver(JSBoolean.create(root.context, getRealm(), bool), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSBoolean.create(root.context, getRealm(), bool), index, value, receiver, root.isStrict, classProfile, root);
         }
 
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
+        @Specialization
+        protected void doBoolean(Object target, Object index, Object value, Object receiver, WriteElementNode root,
+                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             Boolean bool = (Boolean) target;
-            JSObject.setWithReceiver(JSBoolean.create(root.context, getRealm(), bool), index, value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSBoolean.create(root.context, getRealm(), bool), indexToPropertyKeyNode.execute(index), value, receiver, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1727,27 +1670,28 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class SymbolWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
-        SymbolWriteElementTypeCacheNode(WriteElementTypeCacheNode next) {
-            super(next);
+    abstract static class SymbolWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
+        SymbolWriteElementTypeCacheNode() {
+            super();
         }
 
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
-            if (root.isStrict) {
-                throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
-            }
-            Symbol symbol = (Symbol) target;
-            JSObject.setWithReceiver(JSSymbol.create(root.context, getRealm(), symbol), toPropertyKey(index), value, receiver, root.isStrict, classProfile, root);
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
+        @Specialization
+        protected void doSymbol(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             if (root.isStrict) {
                 throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
             }
             Symbol symbol = (Symbol) target;
             JSObject.setWithReceiver(JSSymbol.create(root.context, getRealm(), symbol), index, value, receiver, root.isStrict, classProfile, root);
+        }
+
+        @Specialization
+        protected void doSymbol(Object target, Object index, Object value, Object receiver, WriteElementNode root,
+                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
+            if (root.isStrict) {
+                throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
+            }
+            Symbol symbol = (Symbol) target;
+            JSObject.setWithReceiver(JSSymbol.create(root.context, getRealm(), symbol), indexToPropertyKeyNode.execute(index), value, receiver, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1756,23 +1700,24 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class BigIntWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
-        BigIntWriteElementTypeCacheNode(WriteElementTypeCacheNode next) {
-            super(next);
+    abstract static class BigIntWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
+        BigIntWriteElementTypeCacheNode() {
+            super();
         }
 
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
+        @Specialization
+        protected void doBigIntIntegerIndex(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             BigInt bigInt = (BigInt) target;
             JSContext context = root.context;
-            JSObject.setWithReceiver(JSBigInt.create(context, getRealm(), bigInt), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSBigInt.create(context, getRealm(), bigInt), index, value, receiver, root.isStrict, classProfile, root);
         }
 
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
+        @Specialization
+        protected void doBigInt(Object target, Object index, Object value, Object receiver, WriteElementNode root,
+                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             BigInt bigInt = (BigInt) target;
             JSContext context = root.context;
-            JSObject.setWithReceiver(JSBigInt.create(context, getRealm(), bigInt), index, value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSBigInt.create(context, getRealm(), bigInt), indexToPropertyKeyNode.execute(index), value, receiver, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1781,28 +1726,26 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    static class ForeignObjectWriteElementTypeCacheNode extends WriteElementTypeCacheNode {
-        private final Class<?> targetClass;
+    abstract static class ForeignObjectWriteElementTypeCacheNode extends GuardedWriteElementTypeCacheNode {
         @Child private InteropLibrary interop;
         @Child private InteropLibrary keyInterop;
         @Child private InteropLibrary setterInterop;
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
         @Child private ExportValueNode exportValue;
         @Child private ToArrayIndexNode toArrayIndexNode;
-        private final BranchProfile errorBranch = BranchProfile.create();
 
-        ForeignObjectWriteElementTypeCacheNode(Class<?> targetClass, WriteElementTypeCacheNode next) {
-            super(next);
-            assert !JSDynamicObject.class.isAssignableFrom(targetClass) : targetClass;
-            this.targetClass = targetClass;
+        ForeignObjectWriteElementTypeCacheNode() {
+            super();
             this.exportValue = ExportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             this.keyInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
-            Object truffleObject = CompilerDirectives.castExact(target, targetClass);
+        @Specialization
+        protected void doForeignObject(Object target, Object index, Object value, @SuppressWarnings("unused") Object receiver, WriteElementNode root,
+                        @Cached InlinedExactClassProfile classProfile,
+                        @Cached InlinedBranchProfile errorBranch) {
+            Object truffleObject = classProfile.profile(this, target);
             if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this, root.getContext());
             }
@@ -1816,7 +1759,7 @@ public class WriteElementNode extends JSTargetableNode {
                         return;
                     } catch (InvalidArrayIndexException | UnsupportedTypeException | UnsupportedMessageException e) {
                         if (root.isStrict) {
-                            errorBranch.enter();
+                            errorBranch.enter(this);
                             throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
                         } else {
                             return;
@@ -1835,7 +1778,7 @@ public class WriteElementNode extends JSTargetableNode {
                     return;
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
                     if (root.isStrict) {
-                        errorBranch.enter();
+                        errorBranch.enter(this);
                         throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
                     } else {
                         return;
@@ -1856,7 +1799,7 @@ public class WriteElementNode extends JSTargetableNode {
                 interop.writeMember(truffleObject, javaPropertyKey, exportedValue);
             } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                 if (root.isStrict) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
                 } else {
                     return;
@@ -1865,18 +1808,8 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
-            executeWithTargetAndIndexUnguarded(target, (Object) index, value, receiver, root);
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
-            executeWithTargetAndIndexUnguarded(target, (Object) index, value, receiver, root);
-        }
-
-        @Override
         public boolean guard(Object target) {
-            return CompilerDirectives.isExact(target, targetClass);
+            return JSRuntime.isForeignObject(target);
         }
 
         private boolean tryInvokeSetter(Object thisObj, TruffleString key, Object value, JSContext context) {
