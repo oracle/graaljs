@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.access;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 
-import java.lang.invoke.MethodHandles;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -52,9 +51,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
-import com.oracle.truffle.api.dsl.InlineSupport.StateField;
-import com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -158,7 +154,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.util.InlinedProfileBuilder;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
@@ -755,21 +750,6 @@ public class WriteElementNode extends JSTargetableNode {
 
     private abstract static class RecursiveCachedArrayWriteElementCacheNode extends ArrayWriteElementCacheNode {
 
-        @CompilationFinal @UnsafeAccessedField private int state1;
-
-        private static final StateField STATE1_FIELD = StateField.create(MethodHandles.lookup(), "state1");
-
-        protected static final CreateWritableProfileAccess CREATE_WRITABLE_PROFILE;
-        protected static final SetSupportedProfileAccess SET_SUPPORTED_PROFILE;
-        private static final InlinedBranchProfile NEED_PROTOTYPE_BRANCH;
-
-        static {
-            var b = new InlinedProfileBuilder(STATE1_FIELD);
-            CREATE_WRITABLE_PROFILE = CreateWritableProfileAccess.inline(InlineTarget.create(CreateWritableProfileAccess.class, b.stateFieldForBits(CreateWritableProfileAccess.REQUIRED_BITS)));
-            SET_SUPPORTED_PROFILE = SetSupportedProfileAccess.inline(InlineTarget.create(SetSupportedProfileAccess.class, b.stateFieldForBits(SetSupportedProfileAccess.REQUIRED_BITS)));
-            NEED_PROTOTYPE_BRANCH = b.branchProfile();
-        }
-
         @Child private ArrayWriteElementCacheNode recursiveWrite;
 
         RecursiveCachedArrayWriteElementCacheNode() {
@@ -781,24 +761,22 @@ public class WriteElementNode extends JSTargetableNode {
             return executeRecursive(target, newArray, index, value, root);
         }
 
-        protected final boolean nonHolesArrayNeedsSlowSet(JSDynamicObject target, AbstractWritableArray arrayType, long index, WriteElementNode root) {
+        protected static boolean nonHolesArrayNeedsSlowSet(JSDynamicObject target, AbstractWritableArray arrayType, long index, WriteElementNode root) {
             assert !arrayType.isHolesType();
             if (!root.context.getArrayPrototypeNoElementsAssumption().isValid() && !root.writeOwn) {
                 if (!arrayType.hasElement(target, index)) {
-                    NEED_PROTOTYPE_BRANCH.enter(this);
                     return true;
                 }
             }
             return false;
         }
 
-        protected final boolean holesArrayNeedsSlowSet(JSDynamicObject target, AbstractWritableArray arrayType, long index, WriteElementNode root) {
+        protected static boolean holesArrayNeedsSlowSet(JSDynamicObject target, AbstractWritableArray arrayType, long index, WriteElementNode root) {
             assert arrayType.isHolesType();
             if ((!root.context.getArrayPrototypeNoElementsAssumption().isValid() && !root.writeOwn) ||
                             (!root.context.getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(target)) ||
                             (!root.context.getFastArgumentsObjectAssumption().isValid() && JSSlowArgumentsArray.isJSSlowArgumentsObject(target))) {
                 if (!arrayType.hasElement(target, index)) {
-                    NEED_PROTOTYPE_BRANCH.enter(this);
                     return true;
                 }
             }
@@ -887,21 +865,22 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedBranchProfile doubleValueBranch,
                         @Cached InlinedBranchProfile jsObjectValueBranch,
                         @Cached InlinedBranchProfile objectValueBranch,
-                        @Cached InlinedConditionProfile inBoundsIf) {
+                        @Cached InlinedConditionProfile inBoundsIf,
+                        @Cached CreateWritableProfileAccess createWritableProfile) {
             if (inBoundsIf.profile(this, index >= 0 && index < 0x7fff_ffff)) {
                 ScriptArray newArray;
                 if (value instanceof Integer) {
                     intValueBranch.enter(this);
-                    newArray = constantArray.createWriteableInt(target, index, (int) value, this, CREATE_WRITABLE_PROFILE);
+                    newArray = constantArray.createWriteableInt(target, index, (int) value, this, createWritableProfile);
                 } else if (value instanceof Double) {
                     doubleValueBranch.enter(this);
-                    newArray = constantArray.createWriteableDouble(target, index, (double) value, this, CREATE_WRITABLE_PROFILE);
+                    newArray = constantArray.createWriteableDouble(target, index, (double) value, this, createWritableProfile);
                 } else if (JSDynamicObject.isJSDynamicObject(value)) {
                     jsObjectValueBranch.enter(this);
-                    newArray = constantArray.createWriteableJSObject(target, index, (JSDynamicObject) value, this, CREATE_WRITABLE_PROFILE);
+                    newArray = constantArray.createWriteableJSObject(target, index, (JSDynamicObject) value, this, createWritableProfile);
                 } else {
                     objectValueBranch.enter(this);
-                    newArray = constantArray.createWriteableObject(target, index, value, this, CREATE_WRITABLE_PROFILE);
+                    newArray = constantArray.createWriteableObject(target, index, value, this, createWritableProfile);
                 }
                 return setArrayAndWrite(newArray, target, index, value, root);
             } else {
@@ -945,7 +924,9 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile supportedNonZeroIf,
                         @Cached InlinedConditionProfile supportedZeroIf,
                         @Cached InlinedConditionProfile supportedContiguousIf,
-                        @Cached InlinedConditionProfile supportedHolesIf) {
+                        @Cached InlinedConditionProfile supportedHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             if (value instanceof Integer) {
                 intValueBranch.enter(this);
                 return doIntArrayWithIntValue(target, intArray, index, (int) value, root,
@@ -954,7 +935,9 @@ public class WriteElementNode extends JSTargetableNode {
                                 supportedNonZeroIf,
                                 supportedZeroIf,
                                 supportedContiguousIf,
-                                supportedHolesIf);
+                                supportedHolesIf,
+                                needPrototypeBranch,
+                                setSupportedProfile);
             } else if (value instanceof Double) {
                 doubleValueBranch.enter(this);
                 double doubleValue = (double) value;
@@ -971,9 +954,12 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile supportedNonZeroIf,
                         @Cached InlinedConditionProfile supportedZeroIf,
                         @Cached InlinedConditionProfile supportedContiguousIf,
-                        @Cached InlinedConditionProfile supportedHolesIf) {
+                        @Cached InlinedConditionProfile supportedHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             assert !(intArray instanceof HolesIntArray);
             if (nonHolesArrayNeedsSlowSet(target, intArray, index, root)) {
+                needPrototypeBranch.enter(this);
                 return false;
             }
             int iIndex = (int) index;
@@ -981,15 +967,15 @@ public class WriteElementNode extends JSTargetableNode {
                 intArray.setInBoundsFast(target, iIndex, intValue);
                 return true;
             } else if (inBoundsIf.profile(this, intArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(intArray, target, index))) {
-                intArray.setInBounds(target, iIndex, intValue, this, SET_SUPPORTED_PROFILE);
+                intArray.setInBounds(target, iIndex, intValue, this, setSupportedProfile);
                 return true;
             } else if (supportedNonZeroIf.profile(this, intArray.isSupported(target, index) && !mightTransferToNonContiguous(intArray, target, index))) {
-                intArray.setSupported(target, iIndex, intValue, this, SET_SUPPORTED_PROFILE);
+                intArray.setSupported(target, iIndex, intValue, this, setSupportedProfile);
                 return true;
             } else {
                 ScriptArray toArrayType;
                 if (supportedZeroIf.profile(this, mightTransferToNonContiguous(intArray, target, index) && intArray.isSupported(target, index))) {
-                    toArrayType = intArray.toNonContiguous(target, iIndex, intValue, this, SET_SUPPORTED_PROFILE);
+                    toArrayType = intArray.toNonContiguous(target, iIndex, intValue, this, setSupportedProfile);
                 } else if (supportedContiguousIf.profile(this, !(intArray instanceof AbstractContiguousIntArray) && intArray.isSupportedContiguous(target, index))) {
                     toArrayType = intArray.toContiguous(target, index, intValue);
                 } else if (supportedHolesIf.profile(this, intArray.isSupportedHoles(target, index))) {
@@ -1022,7 +1008,9 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsIf,
                         @Cached InlinedConditionProfile supportedIf,
                         @Cached InlinedConditionProfile supportedContiguousIf,
-                        @Cached InlinedConditionProfile supportedHolesIf) {
+                        @Cached InlinedConditionProfile supportedHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             double doubleValue;
             if (value instanceof Double) {
                 doubleValueBranch.enter(this);
@@ -1039,7 +1027,9 @@ public class WriteElementNode extends JSTargetableNode {
                             inBoundsIf,
                             supportedIf,
                             supportedContiguousIf,
-                            supportedHolesIf);
+                            supportedHolesIf,
+                            needPrototypeBranch,
+                            setSupportedProfile);
         }
 
         private boolean executeWithDoubleValueInner(JSDynamicObject target, AbstractDoubleArray doubleArray, long index, double doubleValue, WriteElementNode root,
@@ -1047,9 +1037,12 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsIf,
                         @Cached InlinedConditionProfile supportedIf,
                         @Cached InlinedConditionProfile supportedContiguousIf,
-                        @Cached InlinedConditionProfile supportedHolesIf) {
+                        @Cached InlinedConditionProfile supportedHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             assert !(doubleArray instanceof HolesDoubleArray);
             if (nonHolesArrayNeedsSlowSet(target, doubleArray, index, root)) {
+                needPrototypeBranch.enter(this);
                 return false;
             }
             int iIndex = (int) index;
@@ -1057,10 +1050,10 @@ public class WriteElementNode extends JSTargetableNode {
                 doubleArray.setInBoundsFast(target, iIndex, doubleValue);
                 return true;
             } else if (inBoundsIf.profile(this, doubleArray.isInBounds(target, iIndex))) {
-                doubleArray.setInBounds(target, iIndex, doubleValue, this, SET_SUPPORTED_PROFILE);
+                doubleArray.setInBounds(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
             } else if (supportedIf.profile(this, doubleArray.isSupported(target, index))) {
-                doubleArray.setSupported(target, iIndex, doubleValue, this, SET_SUPPORTED_PROFILE);
+                doubleArray.setSupported(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1089,9 +1082,12 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsIf,
                         @Cached InlinedConditionProfile supportedIf,
                         @Cached InlinedConditionProfile supportedContiguousIf,
-                        @Cached InlinedConditionProfile supportedHolesIf) {
+                        @Cached InlinedConditionProfile supportedHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             assert !(objectArray instanceof HolesObjectArray);
             if (nonHolesArrayNeedsSlowSet(target, objectArray, index, root)) {
+                needPrototypeBranch.enter(this);
                 return false;
             }
             int iIndex = (int) index;
@@ -1099,10 +1095,10 @@ public class WriteElementNode extends JSTargetableNode {
                 objectArray.setInBoundsFast(target, iIndex, value);
                 return true;
             } else if (inBoundsIf.profile(this, objectArray.isInBounds(target, iIndex))) {
-                objectArray.setInBounds(target, iIndex, value, this, SET_SUPPORTED_PROFILE);
+                objectArray.setInBounds(target, iIndex, value, this, setSupportedProfile);
                 return true;
             } else if (supportedIf.profile(this, objectArray.isSupported(target, index))) {
-                objectArray.setSupported(target, iIndex, value, this, SET_SUPPORTED_PROFILE);
+                objectArray.setSupported(target, iIndex, value, this, setSupportedProfile);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1133,7 +1129,9 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsIf,
                         @Cached InlinedConditionProfile supportedIf,
                         @Cached InlinedConditionProfile supportedContiguousIf,
-                        @Cached InlinedConditionProfile supportedHolesIf) {
+                        @Cached InlinedConditionProfile supportedHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             if (JSDynamicObject.isJSDynamicObject(value)) {
                 jsObjectValueBranch.enter(this);
                 JSDynamicObject jsobjectValue = (JSDynamicObject) value;
@@ -1142,7 +1140,9 @@ public class WriteElementNode extends JSTargetableNode {
                                 inBoundsIf,
                                 supportedIf,
                                 supportedContiguousIf,
-                                supportedHolesIf);
+                                supportedHolesIf,
+                                needPrototypeBranch,
+                                setSupportedProfile);
             } else {
                 objectValueBranch.enter(this);
                 return setArrayAndWrite(jsobjectArray.toObject(target, index, value), target, index, value, root);
@@ -1154,20 +1154,23 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsIf,
                         @Cached InlinedConditionProfile supportedIf,
                         @Cached InlinedConditionProfile supportedContiguousIf,
-                        @Cached InlinedConditionProfile supportedHolesIf) {
+                        @Cached InlinedConditionProfile supportedHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             assert !(jsobjectArray instanceof HolesJSObjectArray);
             int iIndex = (int) index;
             if (nonHolesArrayNeedsSlowSet(target, jsobjectArray, index, root)) {
+                needPrototypeBranch.enter(this);
                 return false;
             }
             if (inBoundsFastIf.profile(this, jsobjectArray.isInBoundsFast(target, index))) {
                 jsobjectArray.setInBoundsFast(target, iIndex, jsobjectValue);
                 return true;
             } else if (inBoundsIf.profile(this, jsobjectArray.isInBounds(target, iIndex))) {
-                jsobjectArray.setInBounds(target, iIndex, jsobjectValue, this, SET_SUPPORTED_PROFILE);
+                jsobjectArray.setInBounds(target, iIndex, jsobjectValue, this, setSupportedProfile);
                 return true;
             } else if (supportedIf.profile(this, jsobjectArray.isSupported(target, index))) {
-                jsobjectArray.setSupported(target, iIndex, jsobjectValue, this, SET_SUPPORTED_PROFILE);
+                jsobjectArray.setSupported(target, iIndex, jsobjectValue, this, setSupportedProfile);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1201,7 +1204,9 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsFastHoleIf,
                         @Cached InlinedConditionProfile supportedContainsHolesIf,
                         @Cached InlinedConditionProfile supportedNotContainsHolesIf,
-                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
+                        @Cached InlinedConditionProfile hasExplicitHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             if (value instanceof Integer) {
                 intValueBranch.enter(this);
                 int intValue = (int) value;
@@ -1212,7 +1217,9 @@ public class WriteElementNode extends JSTargetableNode {
                                 inBoundsFastHoleIf,
                                 supportedContainsHolesIf,
                                 supportedNotContainsHolesIf,
-                                hasExplicitHolesIf);
+                                hasExplicitHolesIf,
+                                needPrototypeBranch,
+                                setSupportedProfile);
             } else if (value instanceof Double) {
                 doubleValueBranch.enter(this);
                 double doubleValue = (double) value;
@@ -1230,8 +1237,11 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsFastHoleIf,
                         @Cached InlinedConditionProfile supportedContainsHolesIf,
                         @Cached InlinedConditionProfile supportedNotContainsHolesIf,
-                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
+                        @Cached InlinedConditionProfile hasExplicitHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             if (holesArrayNeedsSlowSet(target, holesIntArray, index, root)) {
+                needPrototypeBranch.enter(this);
                 return false;
             }
             int iIndex = (int) index;
@@ -1244,10 +1254,10 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return true;
             } else if (containsHoles && inBoundsIf.profile(this, holesIntArray.isInBounds(target, iIndex) && !HolesIntArray.isHoleValue(intValue))) {
-                holesIntArray.setInBounds(target, iIndex, intValue, this, SET_SUPPORTED_PROFILE);
+                holesIntArray.setInBounds(target, iIndex, intValue, this, setSupportedProfile);
                 return true;
             } else if (containsHoles && supportedContainsHolesIf.profile(this, holesIntArray.isSupported(target, index) && !HolesIntArray.isHoleValue(intValue))) {
-                holesIntArray.setSupported(target, iIndex, intValue, this, SET_SUPPORTED_PROFILE);
+                holesIntArray.setSupported(target, iIndex, intValue, this, setSupportedProfile);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1283,7 +1293,9 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsFastHoleIf,
                         @Cached InlinedConditionProfile supportedContainsHolesIf,
                         @Cached InlinedConditionProfile supportedNotContainsHolesIf,
-                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
+                        @Cached InlinedConditionProfile hasExplicitHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             double doubleValue;
             if (value instanceof Double) {
                 doubleValueBranch.enter(this);
@@ -1303,7 +1315,9 @@ public class WriteElementNode extends JSTargetableNode {
                             inBoundsFastHoleIf,
                             supportedContainsHolesIf,
                             supportedNotContainsHolesIf,
-                            hasExplicitHolesIf);
+                            hasExplicitHolesIf,
+                            needPrototypeBranch,
+                            setSupportedProfile);
         }
 
         private boolean executeWithDoubleValueInner(JSDynamicObject target, HolesDoubleArray holesDoubleArray, long index, double doubleValue, WriteElementNode root,
@@ -1313,8 +1327,11 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsFastHoleIf,
                         @Cached InlinedConditionProfile supportedContainsHolesIf,
                         @Cached InlinedConditionProfile supportedNotContainsHolesIf,
-                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
+                        @Cached InlinedConditionProfile hasExplicitHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             if (holesArrayNeedsSlowSet(target, holesDoubleArray, index, root)) {
+                needPrototypeBranch.enter(this);
                 return false;
             }
             int iIndex = (int) index;
@@ -1327,10 +1344,10 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return true;
             } else if (containsHoles && inBoundsIf.profile(this, holesDoubleArray.isInBounds(target, iIndex) && !HolesDoubleArray.isHoleValue(doubleValue))) {
-                holesDoubleArray.setInBounds(target, iIndex, doubleValue, this, SET_SUPPORTED_PROFILE);
+                holesDoubleArray.setInBounds(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
             } else if (containsHoles && supportedContainsHolesIf.profile(this, holesDoubleArray.isSupported(target, index) && !HolesDoubleArray.isHoleValue(doubleValue))) {
-                holesDoubleArray.setSupported(target, iIndex, doubleValue, this, SET_SUPPORTED_PROFILE);
+                holesDoubleArray.setSupported(target, iIndex, doubleValue, this, setSupportedProfile);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1365,7 +1382,9 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsFastHoleIf,
                         @Cached InlinedConditionProfile supportedContainsHolesIf,
                         @Cached InlinedConditionProfile supportedNotContainsHolesIf,
-                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
+                        @Cached InlinedConditionProfile hasExplicitHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             if (JSDynamicObject.isJSDynamicObject(value)) {
                 jsObjectValueBranch.enter(this);
                 return executeWithJSObjectValueInner(target, holesArray, index, (JSDynamicObject) value, root,
@@ -1375,7 +1394,9 @@ public class WriteElementNode extends JSTargetableNode {
                                 inBoundsFastHoleIf,
                                 supportedContainsHolesIf,
                                 supportedNotContainsHolesIf,
-                                hasExplicitHolesIf);
+                                hasExplicitHolesIf,
+                                needPrototypeBranch,
+                                setSupportedProfile);
             } else {
                 objectValueBranch.enter(this);
                 return setArrayAndWrite(holesArray.toObject(target, index, value), target, index, value, root);
@@ -1389,8 +1410,11 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsFastHoleIf,
                         @Cached InlinedConditionProfile supportedContainsHolesIf,
                         @Cached InlinedConditionProfile supportedNotContainsHolesIf,
-                        @Cached InlinedConditionProfile hasExplicitHolesIf) {
+                        @Cached InlinedConditionProfile hasExplicitHolesIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             if (holesArrayNeedsSlowSet(target, jsobjectArray, index, root)) {
+                needPrototypeBranch.enter(this);
                 return false;
             }
             boolean containsHoles = containsHolesIf.profile(this, containsHoles(target, jsobjectArray, index, hasExplicitHolesIf));
@@ -1404,11 +1428,11 @@ public class WriteElementNode extends JSTargetableNode {
                 return true;
             } else if (containsHoles && inBoundsIf.profile(this, jsobjectArray.isInBounds(target, (int) index))) {
                 assert !HolesJSObjectArray.isHoleValue(value);
-                jsobjectArray.setInBounds(target, (int) index, value, this, SET_SUPPORTED_PROFILE);
+                jsobjectArray.setInBounds(target, (int) index, value, this, setSupportedProfile);
                 return true;
             } else if (containsHoles && supportedContainsHolesIf.profile(this, jsobjectArray.isSupported(target, index))) {
                 assert !HolesJSObjectArray.isHoleValue(value);
-                jsobjectArray.setSupported(target, (int) index, value, this, SET_SUPPORTED_PROFILE);
+                jsobjectArray.setSupported(target, (int) index, value, this, setSupportedProfile);
                 return true;
             } else {
                 ScriptArray toArrayType;
@@ -1438,8 +1462,11 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsFastIf,
                         @Cached InlinedConditionProfile inBoundsIf,
                         @Cached InlinedConditionProfile inBoundsFastHoleIf,
-                        @Cached InlinedConditionProfile supportedIf) {
+                        @Cached InlinedConditionProfile supportedIf,
+                        @Cached InlinedBranchProfile needPrototypeBranch,
+                        @Cached SetSupportedProfileAccess setSupportedProfile) {
             if (holesArrayNeedsSlowSet(target, objectArray, index, root)) {
+                needPrototypeBranch.enter(this);
                 return false;
             }
             if (inBoundsFastIf.profile(this, objectArray.isInBoundsFast(target, index))) {
@@ -1452,11 +1479,11 @@ public class WriteElementNode extends JSTargetableNode {
                 return true;
             } else if (inBoundsIf.profile(this, objectArray.isInBounds(target, (int) index))) {
                 assert !HolesObjectArray.isHoleValue(value);
-                objectArray.setInBounds(target, (int) index, value, this, SET_SUPPORTED_PROFILE);
+                objectArray.setInBounds(target, (int) index, value, this, setSupportedProfile);
                 return true;
             } else if (supportedIf.profile(this, objectArray.isSupported(target, index))) {
                 assert !HolesObjectArray.isHoleValue(value);
-                objectArray.setSupported(target, (int) index, value, this, SET_SUPPORTED_PROFILE);
+                objectArray.setSupported(target, (int) index, value, this, setSupportedProfile);
                 return true;
             } else {
                 assert objectArray.isSparse(target, index);
