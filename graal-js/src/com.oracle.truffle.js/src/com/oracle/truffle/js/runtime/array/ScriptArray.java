@@ -57,7 +57,6 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
@@ -137,15 +136,25 @@ public abstract class ScriptArray {
 
     public abstract int lengthInt(JSDynamicObject object);
 
-    public static class CreateWritableProfileAccess implements InlinedProfileBag {
+    public static class CreateWritableProfileAccess extends InlinedProfileBag {
 
-        private final InlinedConditionProfile newArrayLengthZero;
-        private final InlinedConditionProfile newArrayLengthBelowLimit;
-        private final InlinedConditionProfile indexZero;
-        private final InlinedConditionProfile indexLessThanLength;
+        protected static final int REQUIRED_BITS = 4 * CONDITION_PROFILE_STATE_BITS;
 
-        public static final int REQUIRED_BITS = 4 * 2;
-        private static final CreateWritableProfileAccess UNCACHED = new CreateWritableProfileAccess(new Builder());
+        private static final int newArrayLengthZero;
+        private static final int newArrayLengthBelowLimit;
+        private static final int indexZero;
+        private static final int indexLessThanLength;
+
+        static {
+            try (var b = new Builder(REQUIRED_BITS)) {
+                newArrayLengthZero = b.conditionProfile();
+                newArrayLengthBelowLimit = b.conditionProfile();
+                indexZero = b.conditionProfile();
+                indexLessThanLength = b.conditionProfile();
+            }
+        }
+
+        private static final CreateWritableProfileAccess UNCACHED = new CreateWritableProfileAccess(null);
 
         @NeverDefault
         public static CreateWritableProfileAccess getUncached() {
@@ -155,48 +164,58 @@ public abstract class ScriptArray {
         @NeverDefault
         public static CreateWritableProfileAccess inline(
                         @InlineSupport.RequiredField(value = InlineSupport.StateField.class, bits = REQUIRED_BITS) InlineSupport.InlineTarget inlineTarget) {
-            try (Builder b = new Builder(inlineTarget, REQUIRED_BITS)) {
-                return new CreateWritableProfileAccess(b);
-            }
+            return new CreateWritableProfileAccess(inlineTarget.getState(0, REQUIRED_BITS));
         }
 
-        protected CreateWritableProfileAccess(Builder b) {
-            this.newArrayLengthZero = b.conditionProfile();
-            this.newArrayLengthBelowLimit = b.conditionProfile();
-            this.indexZero = b.conditionProfile();
-            this.indexLessThanLength = b.conditionProfile();
+        protected CreateWritableProfileAccess(InlineSupport.StateField stateField) {
+            super(stateField);
         }
 
         public boolean newArrayLengthZero(Node node, boolean condition) {
-            return newArrayLengthZero.profile(node, condition);
+            return profile(node, condition, newArrayLengthZero);
         }
 
         public final boolean newArrayLengthBelowLimit(Node node, boolean condition) {
-            return newArrayLengthBelowLimit.profile(node, condition);
+            return profile(node, condition, newArrayLengthBelowLimit);
         }
 
         public final boolean indexZero(Node node, boolean condition) {
-            return indexZero.profile(node, condition);
+            return profile(node, condition, indexZero);
         }
 
         public final boolean indexLessThanLength(Node node, boolean condition) {
-            return indexLessThanLength.profile(node, condition);
+            return profile(node, condition, indexLessThanLength);
         }
     }
 
     public static class SetLengthProfileAccess extends CreateWritableProfileAccess {
 
-        private final InlinedConditionProfile lengthZero;
-        private final InlinedConditionProfile lengthLess;
-        private final InlinedConditionProfile zeroBasedSetUsedLength;
-        private final InlinedConditionProfile zeroBasedClearUnusedArea;
-        private final InlinedConditionProfile contiguousZeroUsed;
-        private final InlinedConditionProfile contiguousNegativeUsed;
-        private final InlinedConditionProfile contiguousShrinkUsed;
-        private final InlinedConditionProfile clearUnusedArea;
+        private static final int REQUIRED_BITS = 8 * CONDITION_PROFILE_STATE_BITS;
+        protected static final int TOTAL_REQUIRED_BITS = CreateWritableProfileAccess.REQUIRED_BITS + REQUIRED_BITS;
 
-        public static final int REQUIRED_BITS = 8 * 2 + CreateWritableProfileAccess.REQUIRED_BITS;
-        private static final SetLengthProfileAccess UNCACHED = new SetLengthProfileAccess(new Builder());
+        private static final int lengthZero;
+        private static final int lengthLess;
+        private static final int zeroBasedSetUsedLength;
+        private static final int zeroBasedClearUnusedArea;
+        private static final int contiguousZeroUsed;
+        private static final int contiguousNegativeUsed;
+        private static final int contiguousShrinkUsed;
+        private static final int clearUnusedArea;
+
+        static {
+            try (var b = new Builder(CreateWritableProfileAccess.REQUIRED_BITS, REQUIRED_BITS)) {
+                lengthZero = b.conditionProfile();
+                lengthLess = b.conditionProfile();
+                zeroBasedSetUsedLength = b.conditionProfile();
+                zeroBasedClearUnusedArea = b.conditionProfile();
+                contiguousZeroUsed = b.conditionProfile();
+                contiguousNegativeUsed = b.conditionProfile();
+                contiguousShrinkUsed = b.conditionProfile();
+                clearUnusedArea = b.conditionProfile();
+            }
+        }
+
+        private static final SetLengthProfileAccess UNCACHED = new SetLengthProfileAccess(null);
 
         @NeverDefault
         public static SetLengthProfileAccess getUncached() {
@@ -205,54 +224,44 @@ public abstract class ScriptArray {
 
         @NeverDefault
         public static SetLengthProfileAccess inline(
-                        @InlineSupport.RequiredField(value = InlineSupport.StateField.class, bits = REQUIRED_BITS) InlineSupport.InlineTarget inlineTarget) {
-            try (Builder b = new Builder(inlineTarget, REQUIRED_BITS)) {
-                return new SetLengthProfileAccess(b);
-            }
+                        @InlineSupport.RequiredField(value = InlineSupport.StateField.class, bits = TOTAL_REQUIRED_BITS) InlineSupport.InlineTarget inlineTarget) {
+            return new SetLengthProfileAccess(inlineTarget.getState(0, TOTAL_REQUIRED_BITS));
         }
 
-        protected SetLengthProfileAccess(Builder b) {
-            super(b);
-            this.lengthZero = b.conditionProfile();
-            this.lengthLess = b.conditionProfile();
-            this.zeroBasedSetUsedLength = b.conditionProfile();
-            this.zeroBasedClearUnusedArea = b.conditionProfile();
-            this.contiguousZeroUsed = b.conditionProfile();
-            this.contiguousNegativeUsed = b.conditionProfile();
-            this.contiguousShrinkUsed = b.conditionProfile();
-            this.clearUnusedArea = b.conditionProfile();
+        protected SetLengthProfileAccess(InlineSupport.StateField stateField) {
+            super(stateField);
         }
 
         public final boolean lengthZero(Node node, boolean condition) {
-            return lengthZero.profile(node, condition);
+            return profile(node, condition, lengthZero);
         }
 
         public final boolean lengthLess(Node node, boolean condition) {
-            return lengthLess.profile(node, condition);
+            return profile(node, condition, lengthLess);
         }
 
         public final boolean zeroBasedSetUsedLength(Node node, boolean condition) {
-            return zeroBasedSetUsedLength.profile(node, condition);
+            return profile(node, condition, zeroBasedSetUsedLength);
         }
 
         public final boolean zeroBasedClearUnusedArea(Node node, boolean condition) {
-            return zeroBasedClearUnusedArea.profile(node, condition);
+            return profile(node, condition, zeroBasedClearUnusedArea);
         }
 
         public final boolean contiguousZeroUsed(Node node, boolean condition) {
-            return contiguousZeroUsed.profile(node, condition);
+            return profile(node, condition, contiguousZeroUsed);
         }
 
         public final boolean contiguousNegativeUsed(Node node, boolean condition) {
-            return contiguousNegativeUsed.profile(node, condition);
+            return profile(node, condition, contiguousNegativeUsed);
         }
 
         public final boolean contiguousShrinkUsed(Node node, boolean condition) {
-            return contiguousShrinkUsed.profile(node, condition);
+            return profile(node, condition, contiguousShrinkUsed);
         }
 
         public final boolean clearUnusedArea(Node node, boolean condition) {
-            return clearUnusedArea.profile(node, condition);
+            return profile(node, condition, clearUnusedArea);
         }
     }
 

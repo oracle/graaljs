@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
-import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
-import com.oracle.truffle.api.dsl.InlineSupport.StateField;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
@@ -52,80 +50,47 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
  */
 public class InlinedProfileBuilder {
 
-    private static final int BRANCH_PROFILE_STATE_BITS = 1;
-    private static final int CONDITION_PROFILE_STATE_BITS = 2;
-
-    protected StateField stateField;
-    protected int stateFieldOffset;
-    protected int stateFieldLength;
-    protected int totalUsedBits;
-    private final boolean uncached;
+    protected final int stateFieldStart;
+    protected final int stateFieldLength;
+    protected int stateFieldCursor;
 
     /**
-     * Allocates a new inlined profile builder for a full stateField.
+     * Allocates a new inlined profile builder for a (partial) StateField.
      */
-    public InlinedProfileBuilder(StateField stateField) {
-        this(stateField, 0, 32);
-    }
-
-    /**
-     * Allocates a new inlined profile builder for a partial stateField.
-     */
-    public InlinedProfileBuilder(StateField stateField, int offset, int length) {
-        this.stateField = stateField;
-        this.stateFieldOffset = offset;
+    public InlinedProfileBuilder(int offset, int length) {
+        this.stateFieldStart = offset;
+        this.stateFieldCursor = offset;
         this.stateFieldLength = length;
-        this.uncached = false;
-    }
-
-    /**
-     * Allocates a new builder for uncached profiles.
-     */
-    public InlinedProfileBuilder() {
-        this.uncached = true;
     }
 
     protected final void maybeAdvanceStateField(int bits) {
-        if (stateFieldOffset + bits > stateFieldLength) {
-            advanceStateField(bits);
+        if (stateFieldCursor + bits > stateFieldStart + stateFieldLength) {
+            throw new UnsupportedOperationException("Not enough state bits available");
         }
-    }
-
-    protected void advanceStateField(@SuppressWarnings("unused") int bits) {
     }
 
     /**
      * Returns the next state subfield for the required number of bits.
      */
-    public final StateField stateFieldForBits(int bits) {
+    private int stateFieldOffsetForBits(int bits) {
         maybeAdvanceStateField(bits);
-        StateField subField = stateField.subUpdater(stateFieldOffset, bits);
-        stateFieldOffset += bits;
-        totalUsedBits += bits;
-        return subField;
+        int offset = stateFieldCursor;
+        stateFieldCursor += bits;
+        return offset;
     }
 
     /**
      * Adds and returns a new {@link InlinedConditionProfile}.
      */
-    public final InlinedConditionProfile conditionProfile() {
-        if (isUncached()) {
-            return InlinedConditionProfile.getUncached();
-        }
-        return InlinedConditionProfile.inline(InlineTarget.create(InlinedConditionProfile.class, stateFieldForBits(CONDITION_PROFILE_STATE_BITS)));
+    public final int conditionProfile() {
+        return stateFieldOffsetForBits(InlinedProfileBag.CONDITION_PROFILE_STATE_BITS);
     }
 
     /**
      * Adds and returns a new {@link InlinedBranchProfile}.
      */
-    public final InlinedBranchProfile branchProfile() {
-        if (isUncached()) {
-            return InlinedBranchProfile.getUncached();
-        }
-        return InlinedBranchProfile.inline(InlineTarget.create(InlinedBranchProfile.class, stateFieldForBits(BRANCH_PROFILE_STATE_BITS)));
+    public final int branchProfile() {
+        return stateFieldOffsetForBits(InlinedProfileBag.BRANCH_PROFILE_STATE_BITS);
     }
 
-    protected final boolean isUncached() {
-        return uncached;
-    }
 }

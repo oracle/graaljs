@@ -40,65 +40,29 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
-import java.util.Arrays;
-import java.util.Objects;
-
-import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
-import com.oracle.truffle.api.dsl.InlineSupport.IntField;
-import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.InlineSupport;
+import com.oracle.truffle.api.dsl.InlineSupport.StateField;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Helper interface for {@link com.oracle.truffle.api.profiles.InlinedProfile inlined profile} bags.
+ * A collections of {@link com.oracle.truffle.api.profiles.InlinedProfile inlined profiles}.
  */
-public interface InlinedProfileBag {
+public abstract class InlinedProfileBag {
 
-    final class Builder extends InlinedProfileBuilder implements AutoCloseable {
+    protected static final int BRANCH_PROFILE_STATE_BITS = 1;
+    protected static final int CONDITION_PROFILE_STATE_BITS = 2;
 
-        private final InlineTarget inlineTarget;
-        private final int[] stateFieldBits;
-        private int stateFieldIndex;
-        private int intFieldIndex;
+    private final InlineSupport.StateField state;
 
-        /**
-         * Allocates a new inlined profile builder for the given inline target and state field bits.
-         */
-        public Builder(InlineTarget inlineTarget, int... requiredStateBits) {
-            super(null, 0, 0);
-            this.inlineTarget = Objects.requireNonNull(inlineTarget);
-            this.stateFieldBits = requiredStateBits;
-            this.stateFieldIndex = -1;
-            this.intFieldIndex = requiredStateBits.length;
+    public static final class Builder extends InlinedProfileBuilder implements AutoCloseable {
+
+        public Builder(int length) {
+            this(0, length);
         }
 
-        /**
-         * Allocates a new builder for uncached profiles.
-         */
-        public Builder() {
-            super();
-            this.inlineTarget = null;
-            this.stateFieldBits = null;
-        }
-
-        @Override
-        protected void advanceStateField(int bits) {
-            do {
-                stateFieldOffset = 0;
-                stateFieldIndex += 1;
-                stateFieldLength = stateFieldBits[stateFieldIndex];
-                stateField = inlineTarget.getState(stateFieldIndex, stateFieldLength);
-            } while (stateFieldLength < bits);
-        }
-
-        /**
-         * Adds and returns a new {@link InlinedCountingConditionProfile}.
-         */
-        public InlinedCountingConditionProfile countingConditionProfile() {
-            if (isUncached()) {
-                return InlinedCountingConditionProfile.getUncached();
-            }
-            return InlinedCountingConditionProfile.inline(InlineTarget.create(InlinedCountingConditionProfile.class,
-                            inlineTarget.getPrimitive(intFieldIndex++, IntField.class),
-                            inlineTarget.getPrimitive(intFieldIndex++, IntField.class)));
+        public Builder(int offset, int length) {
+            super(offset, length);
         }
 
         /**
@@ -106,7 +70,46 @@ public interface InlinedProfileBag {
          */
         @Override
         public void close() {
-            assert isUncached() || totalUsedBits == Arrays.stream(stateFieldBits).sum() : totalUsedBits;
+            assert stateFieldCursor == stateFieldStart + stateFieldLength : stateFieldCursor;
+        }
+
+    }
+
+    protected InlinedProfileBag(StateField state) {
+        this.state = state;
+    }
+
+    protected final boolean profile(Node node, boolean value, int offset) {
+        if (state != null) {
+            int s = this.state.get(node);
+            if (value) {
+                int trueBit = 0b01 << offset;
+                if ((s & trueBit) == 0) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    state.set(node, s | trueBit);
+                }
+                return true;
+            } else {
+                int falseBit = 0b10 << offset;
+                if ((s & falseBit) == 0) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    state.set(node, s | falseBit);
+                }
+                return false;
+            }
+        }
+        return value;
+    }
+
+    protected final void enter(Node node, int offset) {
+        if (state == null) {
+            return;
+        }
+        int branchBit = 0b1 << offset;
+        int s = state.get(node);
+        if ((s & branchBit) == 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            state.set(node, s | branchBit);
         }
     }
 }
