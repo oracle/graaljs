@@ -160,6 +160,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     static final int EXPECT_RETURN_OBJECT = 0;
     static final int EXPECT_RETURN_INT = 1;
     static final int EXPECT_RETURN_DOUBLE = 2;
+    static final boolean ALLOW_RETURN_TYPE_SPECULATION = true;
+
+    static boolean isExpectedReturnInt(int expectedReturn) {
+        return expectedReturn == EXPECT_RETURN_INT && ALLOW_RETURN_TYPE_SPECULATION;
+    }
+
+    static boolean isExpectedReturnDouble(int expectedReturn) {
+        return expectedReturn == EXPECT_RETURN_DOUBLE && ALLOW_RETURN_TYPE_SPECULATION;
+    }
 
     @NeverDefault
     public static ReadElementNode create(JSContext context) {
@@ -477,14 +486,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected static Object doJSObjectLongIndex(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root, int expectedReturn,
                         @Cached @Shared IsJSDynamicObjectNode isObjectNode,
                         @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) {
-            if (expectedReturn == EXPECT_RETURN_INT) {
+            if (isExpectedReturnInt(expectedReturn)) {
                 try {
                     return objectHandler.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, root);
                 } catch (UnexpectedResultException e) {
                     // UnexpectedResultException is not declared here but declared in the caller.
                     throw JSRuntime.rethrow(e);
                 }
-            } else if (expectedReturn == EXPECT_RETURN_DOUBLE) {
+            } else if (isExpectedReturnDouble(expectedReturn)) {
                 try {
                     return objectHandler.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, root);
                 } catch (UnexpectedResultException e) {
@@ -501,14 +510,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected static Object doJSObject(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root, int expectedReturn,
                         @Cached @Shared IsJSDynamicObjectNode isObjectNode,
                         @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) {
-            if (expectedReturn == EXPECT_RETURN_INT) {
+            if (isExpectedReturnInt(expectedReturn)) {
                 try {
                     return objectHandler.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, root);
                 } catch (Throwable e) {
                     // UnexpectedResultException is not declared here but declared in the caller.
                     throw JSRuntime.rethrow(e);
                 }
-            } else if (expectedReturn == EXPECT_RETURN_DOUBLE) {
+            } else if (isExpectedReturnDouble(expectedReturn)) {
                 try {
                     return objectHandler.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, root);
                 } catch (Throwable e) {
@@ -800,14 +809,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
          * the expected unboxed return type.
          */
         protected final Object executeDelegateReturn(Node node, JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context, int expectedReturn) {
-            if (expectedReturn == EXPECT_RETURN_INT) {
+            if (isExpectedReturnInt(expectedReturn)) {
                 try {
                     return executeArrayGetInt(node, target, array, index, receiver, defaultValue, context);
                 } catch (Throwable e) {
                     // UnexpectedResultException is not declared here but declared in the caller.
                     throw JSRuntime.rethrow(e);
                 }
-            } else if (expectedReturn == EXPECT_RETURN_DOUBLE) {
+            } else if (isExpectedReturnDouble(expectedReturn)) {
                 try {
                     return executeArrayGetDouble(node, target, array, index, receiver, defaultValue, context);
                 } catch (Throwable e) {
@@ -841,14 +850,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                         int expectedReturn,
                         @Cached("arrayType") ScriptArray cachedArrayType,
                         @Cached("makeHandler(target, cachedArrayType)") ArrayReadElementCacheNode handler) {
-            if (expectedReturn == EXPECT_RETURN_INT) {
+            if (isExpectedReturnInt(expectedReturn)) {
                 try {
                     return handler.executeArrayGetInt(target, cachedArrayType, index, receiver, defaultValue, context);
                 } catch (Throwable e) {
                     // UnexpectedResultException is not declared here but declared in the caller.
                     throw JSRuntime.rethrow(e);
                 }
-            } else if (expectedReturn == EXPECT_RETURN_DOUBLE) {
+            } else if (isExpectedReturnDouble(expectedReturn)) {
                 try {
                     return handler.executeArrayGetDouble(target, cachedArrayType, index, receiver, defaultValue, context);
                 } catch (Throwable e) {
