@@ -157,6 +157,10 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     /** Exact cache limit unknown, but effectively bounded by the number of types. */
     static final int BOUNDED_BY_TYPES = Integer.MAX_VALUE;
 
+    static final int EXPECT_RETURN_OBJECT = 0;
+    static final int EXPECT_RETURN_INT = 1;
+    static final int EXPECT_RETURN_DOUBLE = 2;
+
     @NeverDefault
     public static ReadElementNode create(JSContext context) {
         return new ReadElementNode(null, null, context);
@@ -799,36 +803,46 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected ArrayReadElementCacheDispatchNode() {
         }
 
-        protected abstract Object executeArrayGet(Node node, JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context);
+        protected abstract Object executeExpectReturn(Node node, JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context, int expectedReturn);
 
-        protected int executeArrayGetInt(Node node, JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        @InliningCutoff
+        protected final Object executeArrayGet(Node node, JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
+            return executeExpectReturn(node, target, array, index, receiver, defaultValue, context, EXPECT_RETURN_OBJECT);
+        }
+
+        @InliningCutoff
+        protected final int executeArrayGetInt(Node node, JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(executeArrayGet(node, target, array, index, receiver, defaultValue, context));
+            return JSTypesGen.expectInteger(executeExpectReturn(node, target, array, index, receiver, defaultValue, context, EXPECT_RETURN_INT));
         }
 
-        protected double executeArrayGetDouble(Node node, JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        @InliningCutoff
+        protected final double executeArrayGetDouble(Node node, JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
-            return JSTypesGen.expectDouble(executeArrayGet(node, target, array, index, receiver, defaultValue, context));
-        }
-
-        @Specialization(guards = "arrayType == cachedArrayType", limit = "BOUNDED_BY_TYPES", rewriteOn = UnexpectedResultException.class)
-        protected int doDispatchInt(JSDynamicObject target, @SuppressWarnings("unused") ScriptArray arrayType, long index, Object receiver, Object defaultValue, JSContext context,
-                        @Cached("arrayType") ScriptArray cachedArrayType,
-                        @Cached("makeHandler(target, cachedArrayType)") ArrayReadElementCacheNode handler) throws UnexpectedResultException {
-            return handler.executeArrayGetInt(target, cachedArrayType, index, receiver, defaultValue, context);
-        }
-
-        @Specialization(guards = "arrayType == cachedArrayType", limit = "BOUNDED_BY_TYPES", rewriteOn = UnexpectedResultException.class)
-        protected double doDispatchDouble(JSDynamicObject target, @SuppressWarnings("unused") ScriptArray arrayType, long index, Object receiver, Object defaultValue, JSContext context,
-                        @Cached("arrayType") ScriptArray cachedArrayType,
-                        @Cached("makeHandler(target, cachedArrayType)") ArrayReadElementCacheNode handler) throws UnexpectedResultException {
-            return handler.executeArrayGetDouble(target, cachedArrayType, index, receiver, defaultValue, context);
+            return JSTypesGen.expectDouble(executeExpectReturn(node, target, array, index, receiver, defaultValue, context, EXPECT_RETURN_DOUBLE));
         }
 
         @Specialization(guards = "arrayType == cachedArrayType", limit = "BOUNDED_BY_TYPES")
         protected static Object doDispatch(JSDynamicObject target, @SuppressWarnings("unused") ScriptArray arrayType, long index, Object receiver, Object defaultValue, JSContext context,
+                        int expectedReturn,
                         @Cached("arrayType") ScriptArray cachedArrayType,
                         @Cached("makeHandler(target, cachedArrayType)") ArrayReadElementCacheNode handler) {
+            if (expectedReturn == EXPECT_RETURN_INT) {
+                try {
+                    return handler.executeArrayGetInt(target, cachedArrayType, index, receiver, defaultValue, context);
+                } catch (Throwable e) {
+                    // UnexpectedResultException is not declared here but declared in the caller.
+                    throw JSRuntime.rethrow(e);
+                }
+            } else if (expectedReturn == EXPECT_RETURN_DOUBLE) {
+                try {
+                    return handler.executeArrayGetDouble(target, cachedArrayType, index, receiver, defaultValue, context);
+                } catch (Throwable e) {
+                    // UnexpectedResultException is not declared here but declared in the caller.
+                    throw JSRuntime.rethrow(e);
+                }
+            }
+            assert expectedReturn == EXPECT_RETURN_OBJECT;
             return handler.executeArrayGet(target, cachedArrayType, index, receiver, defaultValue, context);
         }
 
