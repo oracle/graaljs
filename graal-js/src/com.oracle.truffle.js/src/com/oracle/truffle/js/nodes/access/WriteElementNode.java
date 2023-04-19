@@ -1128,13 +1128,13 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         private boolean executeWithJSObjectValueInner(JSDynamicObject target, AbstractJSObjectArray jsobjectArray, long index, JSDynamicObject jsobjectValue, WriteElementNode root,
-                        @Cached InlinedConditionProfile inBoundsFastIf,
-                        @Cached InlinedConditionProfile inBoundsIf,
-                        @Cached InlinedConditionProfile supportedIf,
-                        @Cached InlinedConditionProfile supportedContiguousIf,
-                        @Cached InlinedConditionProfile supportedHolesIf,
-                        @Cached InlinedBranchProfile needPrototypeBranch,
-                        @Cached SetSupportedProfileAccess setSupportedProfile) {
+                        InlinedConditionProfile inBoundsFastIf,
+                        InlinedConditionProfile inBoundsIf,
+                        InlinedConditionProfile supportedIf,
+                        InlinedConditionProfile supportedContiguousIf,
+                        InlinedConditionProfile supportedHolesIf,
+                        InlinedBranchProfile needPrototypeBranch,
+                        SetSupportedProfileAccess setSupportedProfile) {
             assert !(jsobjectArray instanceof HolesJSObjectArray);
             int iIndex = (int) index;
             if (nonHolesArrayNeedsSlowSet(target, jsobjectArray, index, root)) {
@@ -1209,15 +1209,15 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         private boolean executeWithIntValueInner(JSDynamicObject target, HolesIntArray holesIntArray, long index, int intValue, WriteElementNode root,
-                        @Cached InlinedConditionProfile inBoundsFastIf,
-                        @Cached InlinedConditionProfile inBoundsIf,
-                        @Cached InlinedConditionProfile containsHolesIf,
-                        @Cached InlinedConditionProfile inBoundsFastHoleIf,
-                        @Cached InlinedConditionProfile supportedContainsHolesIf,
-                        @Cached InlinedConditionProfile supportedNotContainsHolesIf,
-                        @Cached InlinedConditionProfile hasExplicitHolesIf,
-                        @Cached InlinedBranchProfile needPrototypeBranch,
-                        @Cached SetSupportedProfileAccess setSupportedProfile) {
+                        InlinedConditionProfile inBoundsFastIf,
+                        InlinedConditionProfile inBoundsIf,
+                        InlinedConditionProfile containsHolesIf,
+                        InlinedConditionProfile inBoundsFastHoleIf,
+                        InlinedConditionProfile supportedContainsHolesIf,
+                        InlinedConditionProfile supportedNotContainsHolesIf,
+                        InlinedConditionProfile hasExplicitHolesIf,
+                        InlinedBranchProfile needPrototypeBranch,
+                        SetSupportedProfileAccess setSupportedProfile) {
             if (holesArrayNeedsSlowSet(target, holesIntArray, index, root)) {
                 needPrototypeBranch.enter(this);
                 return false;
@@ -1299,15 +1299,15 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         private boolean executeWithDoubleValueInner(JSDynamicObject target, HolesDoubleArray holesDoubleArray, long index, double doubleValue, WriteElementNode root,
-                        @Cached InlinedConditionProfile inBoundsFastIf,
-                        @Cached InlinedConditionProfile inBoundsIf,
-                        @Cached InlinedConditionProfile containsHolesIf,
-                        @Cached InlinedConditionProfile inBoundsFastHoleIf,
-                        @Cached InlinedConditionProfile supportedContainsHolesIf,
-                        @Cached InlinedConditionProfile supportedNotContainsHolesIf,
-                        @Cached InlinedConditionProfile hasExplicitHolesIf,
-                        @Cached InlinedBranchProfile needPrototypeBranch,
-                        @Cached SetSupportedProfileAccess setSupportedProfile) {
+                        InlinedConditionProfile inBoundsFastIf,
+                        InlinedConditionProfile inBoundsIf,
+                        InlinedConditionProfile containsHolesIf,
+                        InlinedConditionProfile inBoundsFastHoleIf,
+                        InlinedConditionProfile supportedContainsHolesIf,
+                        InlinedConditionProfile supportedNotContainsHolesIf,
+                        InlinedConditionProfile hasExplicitHolesIf,
+                        InlinedBranchProfile needPrototypeBranch,
+                        SetSupportedProfileAccess setSupportedProfile) {
             if (holesArrayNeedsSlowSet(target, holesDoubleArray, index, root)) {
                 needPrototypeBranch.enter(this);
                 return false;
@@ -1382,15 +1382,15 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         private boolean executeWithJSObjectValueInner(JSDynamicObject target, HolesJSObjectArray jsobjectArray, long index, JSDynamicObject value, WriteElementNode root,
-                        @Cached InlinedConditionProfile inBoundsFastIf,
-                        @Cached InlinedConditionProfile inBoundsIf,
-                        @Cached InlinedConditionProfile containsHolesIf,
-                        @Cached InlinedConditionProfile inBoundsFastHoleIf,
-                        @Cached InlinedConditionProfile supportedContainsHolesIf,
-                        @Cached InlinedConditionProfile supportedNotContainsHolesIf,
-                        @Cached InlinedConditionProfile hasExplicitHolesIf,
-                        @Cached InlinedBranchProfile needPrototypeBranch,
-                        @Cached SetSupportedProfileAccess setSupportedProfile) {
+                        InlinedConditionProfile inBoundsFastIf,
+                        InlinedConditionProfile inBoundsIf,
+                        InlinedConditionProfile containsHolesIf,
+                        InlinedConditionProfile inBoundsFastHoleIf,
+                        InlinedConditionProfile supportedContainsHolesIf,
+                        InlinedConditionProfile supportedNotContainsHolesIf,
+                        InlinedConditionProfile hasExplicitHolesIf,
+                        InlinedBranchProfile needPrototypeBranch,
+                        SetSupportedProfileAccess setSupportedProfile) {
             if (holesArrayNeedsSlowSet(target, jsobjectArray, index, root)) {
                 needPrototypeBranch.enter(this);
                 return false;
