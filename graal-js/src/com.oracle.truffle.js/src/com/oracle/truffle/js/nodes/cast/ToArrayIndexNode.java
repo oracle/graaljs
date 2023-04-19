@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -172,6 +173,7 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         return index;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"notArrayIndex(value)", "toArrayIndex(value, interop) < 0"}, limit = "InteropLibraryLimit")
     protected final Object doNonArrayIndex(Object value,
                     @CachedLibrary("value") @SuppressWarnings("unused") InteropLibrary interop,
