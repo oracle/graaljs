@@ -432,17 +432,40 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected ReadElementTypeCacheNode() {
         }
 
-        protected abstract Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root);
+        protected abstract Object executeExpectReturn(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root, int expectedReturn);
 
-        protected abstract Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root);
+        protected abstract Object executeExpectReturn(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root, int expectedReturn);
 
-        protected abstract int executeWithTargetAndIndexUncheckedInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException;
+        @InliningCutoff
+        protected final Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
+            return executeExpectReturn(target, index, receiver, defaultValue, root, EXPECT_RETURN_OBJECT);
+        }
 
-        protected abstract int executeWithTargetAndIndexUncheckedInt(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException;
+        @InliningCutoff
+        protected final Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
+            return executeExpectReturn(target, index, receiver, defaultValue, root, EXPECT_RETURN_OBJECT);
+        }
 
-        protected abstract double executeWithTargetAndIndexUncheckedDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException;
+        @InliningCutoff
+        protected final int executeWithTargetAndIndexUncheckedInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
+            return JSTypesGen.expectInteger(executeExpectReturn(target, index, receiver, defaultValue, root, EXPECT_RETURN_INT));
+        }
 
-        protected abstract double executeWithTargetAndIndexUncheckedDouble(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException;
+        @InliningCutoff
+        protected final int executeWithTargetAndIndexUncheckedInt(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
+            return JSTypesGen.expectInteger(executeExpectReturn(target, index, receiver, defaultValue, root, EXPECT_RETURN_INT));
+        }
+
+        @InliningCutoff
+        protected final double executeWithTargetAndIndexUncheckedDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
+            return JSTypesGen.expectDouble(executeExpectReturn(target, index, receiver, defaultValue, root, EXPECT_RETURN_DOUBLE));
+        }
+
+        @InliningCutoff
+        protected final double executeWithTargetAndIndexUncheckedDouble(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) throws UnexpectedResultException {
+            return JSTypesGen.expectDouble(executeExpectReturn(target, index, receiver, defaultValue, root, EXPECT_RETURN_DOUBLE));
+        }
+
     }
 
     abstract static class GuardedReadElementTypeCacheNode extends JavaScriptBaseNode {
@@ -457,67 +480,67 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     abstract static class ReadElementTypeCacheDispatchNode extends ReadElementTypeCacheNode {
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", rewriteOn = UnexpectedResultException.class)
-        protected static int doJSObjectLongIndexAsInt(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
-                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
-                        @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) throws UnexpectedResultException {
-            return objectHandler.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, root);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", rewriteOn = UnexpectedResultException.class, replaces = {"doJSObjectLongIndexAsInt"})
-        protected static int doJSObjectAsInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
-                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
-                        @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) throws UnexpectedResultException {
-            return objectHandler.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, root);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", rewriteOn = UnexpectedResultException.class)
-        protected static double doJSObjectLongIndexAsDouble(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
-                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
-                        @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) throws UnexpectedResultException {
-            return objectHandler.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, root);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", rewriteOn = UnexpectedResultException.class, replaces = {"doJSObjectLongIndexAsDouble"})
-        protected static double doJSObjectAsDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
-                        @Cached @Shared IsJSDynamicObjectNode isObjectNode,
-                        @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) throws UnexpectedResultException {
-            return objectHandler.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, root);
-        }
-
-        @SuppressWarnings("unused")
         @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1")
-        protected static Object doJSObjectLongIndex(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+        protected static Object doJSObjectLongIndex(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root, int expectedReturn,
                         @Cached @Shared IsJSDynamicObjectNode isObjectNode,
                         @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) {
+            if (expectedReturn == EXPECT_RETURN_INT) {
+                try {
+                    return objectHandler.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, root);
+                } catch (UnexpectedResultException e) {
+                    // UnexpectedResultException is not declared here but declared in the caller.
+                    throw JSRuntime.rethrow(e);
+                }
+            } else if (expectedReturn == EXPECT_RETURN_DOUBLE) {
+                try {
+                    return objectHandler.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, root);
+                } catch (UnexpectedResultException e) {
+                    // UnexpectedResultException is not declared here but declared in the caller.
+                    throw JSRuntime.rethrow(e);
+                }
+            }
+            assert expectedReturn == EXPECT_RETURN_OBJECT;
             return objectHandler.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", replaces = {"doJSObjectLongIndex"})
-        protected static Object doJSObject(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+        protected static Object doJSObject(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root, int expectedReturn,
                         @Cached @Shared IsJSDynamicObjectNode isObjectNode,
                         @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) {
+            if (expectedReturn == EXPECT_RETURN_INT) {
+                try {
+                    return objectHandler.executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue, root);
+                } catch (Throwable e) {
+                    // UnexpectedResultException is not declared here but declared in the caller.
+                    throw JSRuntime.rethrow(e);
+                }
+            } else if (expectedReturn == EXPECT_RETURN_DOUBLE) {
+                try {
+                    return objectHandler.executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue, root);
+                } catch (Throwable e) {
+                    // UnexpectedResultException is not declared here but declared in the caller.
+                    throw JSRuntime.rethrow(e);
+                }
+            }
+            assert expectedReturn == EXPECT_RETURN_OBJECT;
             return objectHandler.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root);
         }
 
         @Specialization
-        protected static Object doStringLongIndex(TruffleString target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+        protected static Object doStringLongIndex(TruffleString target, long index, Object receiver, Object defaultValue, ReadElementNode root, @SuppressWarnings("unused") int expectedReturn,
                         @Cached @Shared StringReadElementTypeCacheNode stringHandler) {
             return stringHandler.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root);
         }
 
         @Specialization(replaces = {"doStringLongIndex"})
-        protected static Object doString(TruffleString target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+        protected static Object doString(TruffleString target, Object index, Object receiver, Object defaultValue, ReadElementNode root, @SuppressWarnings("unused") int expectedReturn,
                         @Cached @Shared StringReadElementTypeCacheNode stringHandler) {
             return stringHandler.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root);
         }
 
         @Specialization(guards = "otherHandler.guard(target)", limit = "BOUNDED_BY_TYPES")
-        protected static Object doOther(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+        protected static Object doOther(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root, @SuppressWarnings("unused") int expectedReturn,
                         @Cached("makeTypeCacheNode(target)") GuardedReadElementTypeCacheNode otherHandler) {
             return otherHandler.executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue, root);
         }
@@ -570,46 +593,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return getNonArrayNode().execute(targetObject, index, receiver, defaultValue, root);
         }
 
-        @Specialization(rewriteOn = UnexpectedResultException.class)
-        protected int doLongIndexAsInt(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
-                        @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
-                        @Cached @Shared InlinedConditionProfile arrayIf,
-                        @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
-            JSDynamicObject targetObject = (JSDynamicObject) target;
-            if (isArray(targetObject, arrayIf)) {
-                ScriptArray array = JSObject.getArray(targetObject);
-
-                if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    return arrayDispatch.executeArrayGetInt(this, targetObject, array, index, receiver, defaultValue, root.context);
-                } else {
-                    return JSTypesGen.expectInteger(getProperty(targetObject, Strings.fromLong(index), receiver, defaultValue));
-                }
-            } else {
-                return JSTypesGen.expectInteger(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
-            }
-        }
-
-        @Specialization(rewriteOn = UnexpectedResultException.class)
-        protected double doLongIndexAsDouble(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
-                        @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
-                        @Cached @Shared InlinedConditionProfile arrayIf,
-                        @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
-            JSDynamicObject targetObject = (JSDynamicObject) target;
-            if (isArray(targetObject, arrayIf)) {
-                ScriptArray array = JSObject.getArray(targetObject);
-
-                if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    return arrayDispatch.executeArrayGetDouble(this, targetObject, array, index, receiver, defaultValue, root.context);
-                } else {
-                    return JSTypesGen.expectDouble(getProperty(targetObject, Strings.fromLong(index), receiver, defaultValue));
-                }
-            } else {
-                return JSTypesGen.expectDouble(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
-            }
-        }
-
         @Specialization
-        protected Object doLongIndexAsObject(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+        protected Object doLongIndex(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root, int expectedReturn,
                         @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
                         @Cached @Shared InlinedConditionProfile arrayIf,
                         @Cached @Shared InlinedConditionProfile arrayIndexIf) {
@@ -617,7 +602,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             if (isArray(targetObject, arrayIf)) {
                 ScriptArray array = JSObject.getArray(targetObject);
                 if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    return arrayDispatch.executeArrayGet(this, targetObject, array, index, receiver, defaultValue, root.context);
+                    return arrayDispatch.executeExpectReturn(this, targetObject, array, index, receiver, defaultValue, root.context, expectedReturn);
                 } else {
                     return getProperty(targetObject, Strings.fromLong(index), receiver, defaultValue);
                 }
@@ -626,50 +611,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        @Specialization(rewriteOn = UnexpectedResultException.class)
-        protected int doObjectIndexAsInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
-                        @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
-                        @Cached @Shared InlinedConditionProfile arrayIf,
-                        @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
-            JSDynamicObject targetObject = (JSDynamicObject) target;
-            if (isArray(targetObject, arrayIf)) {
-                ScriptArray array = JSObject.getArray(targetObject);
-                Object objIndex = toArrayIndex(index);
-
-                if (arrayIndexIf.profile(this, objIndex instanceof Long)) {
-                    long longIndex = (Long) objIndex;
-                    return arrayDispatch.executeArrayGetInt(this, targetObject, array, longIndex, receiver, defaultValue, root.context);
-                } else {
-                    return JSTypesGen.expectInteger(getProperty(targetObject, objIndex, receiver, defaultValue));
-                }
-            } else {
-                return JSTypesGen.expectInteger(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
-            }
-        }
-
-        @Specialization(rewriteOn = UnexpectedResultException.class)
-        protected double doObjectIndexAsDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
-                        @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
-                        @Cached @Shared InlinedConditionProfile arrayIf,
-                        @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
-            JSDynamicObject targetObject = (JSDynamicObject) target;
-            if (isArray(targetObject, arrayIf)) {
-                ScriptArray array = JSObject.getArray(targetObject);
-                Object objIndex = toArrayIndex(index);
-
-                if (arrayIndexIf.profile(this, objIndex instanceof Long)) {
-                    long longIndex = (Long) objIndex;
-                    return arrayDispatch.executeArrayGetDouble(this, targetObject, array, longIndex, receiver, defaultValue, root.context);
-                } else {
-                    return JSTypesGen.expectDouble(getProperty(targetObject, objIndex, receiver, defaultValue));
-                }
-            } else {
-                return JSTypesGen.expectDouble(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue, root));
-            }
-        }
-
-        @Specialization(replaces = {"doLongIndexAsObject"})
-        protected Object doObjectIndexAsObject(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+        @Specialization(replaces = {"doLongIndex"})
+        protected Object doObjectIndex(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root, int expectedReturn,
                         @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
                         @Cached @Shared InlinedConditionProfile arrayIf,
                         @Cached @Shared InlinedConditionProfile arrayIndexIf) {
@@ -680,7 +623,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
                 if (arrayIndexIf.profile(this, objIndex instanceof Long)) {
                     long longIndex = (Long) objIndex;
-                    return arrayDispatch.executeArrayGet(this, targetObject, array, longIndex, receiver, defaultValue, root.context);
+                    return arrayDispatch.executeExpectReturn(this, targetObject, array, longIndex, receiver, defaultValue, root.context, expectedReturn);
                 } else {
                     return getProperty(targetObject, objIndex, receiver, defaultValue);
                 }
