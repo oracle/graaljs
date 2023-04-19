@@ -46,10 +46,13 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -63,6 +66,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -560,7 +564,6 @@ public class WriteElementNode extends JSTargetableNode {
     abstract static class JSObjectWriteElementTypeCacheNode extends WriteElementTypeCacheNode {
         @Child private IsArrayNode isArrayNode;
         @Child private ToArrayIndexNode toArrayIndexNode;
-        @Child private ArrayWriteElementCacheNode arrayWriteElementNode;
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
         @Child private CachedSetPropertyNode setPropertyCachedNode;
 
@@ -569,20 +572,17 @@ public class WriteElementNode extends JSTargetableNode {
             this.isArrayNode = IsArrayNode.createIsFastOrTypedArray();
         }
 
-        private boolean isArray(JSDynamicObject targetObject, InlinedConditionProfile arrayIf) {
-            return arrayIf.profile(this, isArrayNode.execute(targetObject));
-        }
-
         @Specialization
         protected void doJSObjectIntegerIndex(Object target, long index, Object value, Object receiver, WriteElementNode root,
                         @Cached @Shared InlinedConditionProfile arrayIf,
-                        @Cached @Shared InlinedConditionProfile intOrStringIndexIf) {
+                        @Cached @Shared InlinedConditionProfile intOrStringIndexIf,
+                        @Cached(inline = true) @Shared ArrayWriteElementCacheDispatchNode arrayDispatch) {
             JSDynamicObject targetObject = ((JSDynamicObject) target);
-            if (isArray(targetObject, arrayIf)) {
+            if (arrayIf.profile(this, isArrayNode.execute(targetObject))) {
                 ScriptArray array = JSObject.getArray(targetObject);
 
                 if (intOrStringIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    if (!executeSetArray(targetObject, array, index, value, root)) {
+                    if (!arrayDispatch.executeSetArray(this, targetObject, array, index, value, root)) {
                         setPropertyGenericEvaluatedIndex(targetObject, index, value, receiver, root);
                     }
                 } else {
@@ -596,15 +596,16 @@ public class WriteElementNode extends JSTargetableNode {
         @Specialization
         protected void doJSObject(Object target, Object index, Object value, Object receiver, WriteElementNode root,
                         @Cached @Shared InlinedConditionProfile arrayIf,
-                        @Cached @Shared InlinedConditionProfile intOrStringIndexIf) {
+                        @Cached @Shared InlinedConditionProfile intOrStringIndexIf,
+                        @Cached(inline = true) @Shared ArrayWriteElementCacheDispatchNode arrayDispatch) {
             JSDynamicObject targetObject = ((JSDynamicObject) target);
-            if (isArray(targetObject, arrayIf)) {
+            if (arrayIf.profile(this, isArrayNode.execute(targetObject))) {
                 ScriptArray array = JSObject.getArray(targetObject);
                 Object objIndex = toArrayIndex(index);
 
                 if (intOrStringIndexIf.profile(this, objIndex instanceof Long)) {
                     long longIndex = (Long) objIndex;
-                    if (!executeSetArray(targetObject, array, longIndex, value, root)) {
+                    if (!arrayDispatch.executeSetArray(this, targetObject, array, longIndex, value, root)) {
                         setPropertyGenericEvaluatedIndex(targetObject, longIndex, value, receiver, root);
                     }
                 } else {
@@ -616,11 +617,16 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         private Object toArrayIndex(Object index) {
-            if (toArrayIndexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toArrayIndexNode = insert(ToArrayIndexNode.create());
+            ToArrayIndexNode toArrayIndex = toArrayIndexNode;
+            if (toArrayIndex == null) {
+                toArrayIndex = initToArrayIndexNode();
             }
-            return toArrayIndexNode.execute(index);
+            return toArrayIndex.execute(index);
+        }
+
+        private ToArrayIndexNode initToArrayIndexNode() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return toArrayIndexNode = insert(ToArrayIndexNode.create());
         }
 
         private void setPropertyGenericEvaluatedIndex(JSDynamicObject targetObject, long index, Object value, Object receiver, WriteElementNode root) {
@@ -635,20 +641,13 @@ public class WriteElementNode extends JSTargetableNode {
             setCachedProperty(targetObject, index, value, receiver, root);
         }
 
+        @InliningCutoff
         private void setCachedProperty(JSDynamicObject targetObject, Object index, Object value, Object receiver, WriteElementNode root) {
             if (setPropertyCachedNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 setPropertyCachedNode = insert(CachedSetPropertyNode.create(root.context, root.isStrict, root.writeOwn, root.isSuperProperty()));
             }
             setPropertyCachedNode.execute(targetObject, index, value, receiver);
-        }
-
-        private boolean executeSetArray(JSDynamicObject targetObject, ScriptArray array, long index, Object value, WriteElementNode root) {
-            if (arrayWriteElementNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                arrayWriteElementNode = insert(ArrayWriteElementCacheDispatchNodeGen.create());
-            }
-            return arrayWriteElementNode.executeSetArray(targetObject, array, index, value, root);
         }
     }
 
@@ -708,11 +707,16 @@ public class WriteElementNode extends JSTargetableNode {
         protected abstract boolean executeSetArray(JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root);
     }
 
+    @SuppressWarnings("truffle-inlining")
+    @GenerateInline
+    @GenerateCached(true)
     @ImportStatic(WriteElementNode.class)
-    abstract static class ArrayWriteElementCacheDispatchNode extends ArrayWriteElementCacheNode {
+    abstract static class ArrayWriteElementCacheDispatchNode extends JavaScriptBaseNode {
 
         ArrayWriteElementCacheDispatchNode() {
         }
+
+        protected abstract boolean executeSetArray(Node node, JSDynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root);
 
         @Specialization(guards = "arrayType == cachedArrayType", limit = "BOUNDED_BY_TYPES")
         protected static boolean doDispatch(JSDynamicObject target, @SuppressWarnings("unused") ScriptArray arrayType, long index, Object value, WriteElementNode root,
@@ -728,7 +732,7 @@ public class WriteElementNode extends JSTargetableNode {
 
     private abstract static class RecursiveCachedArrayWriteElementCacheNode extends ArrayWriteElementCacheNode {
 
-        @Child private ArrayWriteElementCacheNode recursiveWrite;
+        @Child private ArrayWriteElementCacheDispatchNode recursiveWrite;
 
         RecursiveCachedArrayWriteElementCacheNode() {
             super();
@@ -766,7 +770,7 @@ public class WriteElementNode extends JSTargetableNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 recursiveWrite = insert(ArrayWriteElementCacheDispatchNodeGen.create());
             }
-            return recursiveWrite.executeSetArray(targetObject, array, index, value, root);
+            return recursiveWrite.executeSetArray(null, targetObject, array, index, value, root);
         }
     }
 
