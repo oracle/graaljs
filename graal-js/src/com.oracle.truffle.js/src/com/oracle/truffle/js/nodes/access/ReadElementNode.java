@@ -59,7 +59,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -87,7 +86,6 @@ import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.HolesDoubleArra
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.HolesIntArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.HolesJSObjectArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.HolesObjectArrayReadElementCacheNodeGen;
-import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.JavaObjectReadElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.LazyArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.LazyRegexResultArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.LazyRegexResultIndicesArrayReadElementCacheNodeGen;
@@ -532,12 +530,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 return SymbolReadElementTypeCacheNodeGen.create();
             } else if (target instanceof BigInt) {
                 return BigIntReadElementTypeCacheNodeGen.create();
-            } else if (target instanceof TruffleObject) {
-                assert JSRuntime.isForeignObject(target);
-                return ForeignObjectReadElementTypeCacheNodeGen.create();
             } else {
-                assert JSRuntime.isJavaPrimitive(target) : target;
-                return JavaObjectReadElementTypeCacheNodeGen.create(target.getClass());
+                assert JSRuntime.isForeignObject(target) : target.getClass();
+                return ForeignObjectReadElementTypeCacheNodeGen.create();
             }
         }
     }
@@ -739,33 +734,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 getPropertyCachedNode = insert(CachedGetPropertyNode.create(root.context));
             }
             return getPropertyCachedNode.execute(targetObject, index, receiver, defaultValue);
-        }
-    }
-
-    abstract static class JavaObjectReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
-        protected final Class<?> targetClass;
-
-        JavaObjectReadElementTypeCacheNode(Class<?> targetClass) {
-            this.targetClass = targetClass;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        protected Object doPrimitive(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
-            return Undefined.instance;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        protected Object doPrimitive(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
-                        @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
-            indexToPropertyKeyNode.execute(index);
-            return Undefined.instance;
-        }
-
-        @Override
-        public final boolean guard(Object target) {
-            return CompilerDirectives.isExact(target, targetClass);
         }
     }
 

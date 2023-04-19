@@ -59,7 +59,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -551,12 +550,9 @@ public class WriteElementNode extends JSTargetableNode {
                 return SymbolWriteElementTypeCacheNodeGen.create();
             } else if (target instanceof BigInt) {
                 return BigIntWriteElementTypeCacheNodeGen.create();
-            } else if (target instanceof TruffleObject) {
-                assert JSRuntime.isForeignObject(target);
-                return ForeignObjectWriteElementTypeCacheNodeGen.create();
             } else {
-                assert JSRuntime.isJavaPrimitive(target);
-                return new JavaObjectWriteElementTypeCacheNode(target.getClass());
+                assert JSRuntime.isForeignObject(target) : target.getClass();
+                return ForeignObjectWriteElementTypeCacheNodeGen.create();
             }
         }
     }
@@ -653,24 +649,6 @@ public class WriteElementNode extends JSTargetableNode {
                 arrayWriteElementNode = insert(ArrayWriteElementCacheDispatchNodeGen.create());
             }
             return arrayWriteElementNode.executeSetArray(targetObject, array, index, value, root);
-        }
-    }
-
-    private static class JavaObjectWriteElementTypeCacheNode extends GuardedWriteElementTypeCacheNode {
-        protected final Class<?> targetClass;
-
-        JavaObjectWriteElementTypeCacheNode(Class<?> targetClass) {
-            super();
-            this.targetClass = targetClass;
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
-        }
-
-        @Override
-        public final boolean guard(Object target) {
-            return CompilerDirectives.isExact(target, targetClass);
         }
     }
 
