@@ -107,7 +107,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     @Child private CallbackNode callbackNode;
     @Child protected MaybeResultNode maybeResultNode;
 
-    @Child private ReadElementNode.ArrayReadElementCacheDispatchNode readElementNode;
+    @Child private ReadElementNode.ReadElementArrayDispatchNode readElementNode;
     @Child private JSArrayFirstElementIndexNode firstElementIndexNode;
     @Child private JSArrayLastElementIndexNode lastElementIndexNode;
     @Child private JSHasPropertyNode hasPropertyNode;
@@ -121,7 +121,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         this.maybeResultNode = maybeResultNode;
         this.context = context;
         this.checkHasProperty = checkHasProperty;
-        this.readElementNode = ReadElementNode.ArrayReadElementCacheDispatchNode.create();
+        this.readElementNode = ReadElementNode.ReadElementArrayDispatchNode.create();
     }
 
     public static ForEachIndexCallNode create(JSContext context, CallbackNode callbackArgumentsNode, MaybeResultNode maybeResultNode, boolean forward, boolean checkHasProperty) {

@@ -50,6 +50,8 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -63,6 +65,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -75,7 +78,6 @@ import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
-import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.ArrayReadElementCacheDispatchNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.BigIntReadElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.BooleanReadElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.ConstantArrayReadElementCacheNodeGen;
@@ -90,6 +92,7 @@ import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.LazyArrayReadEl
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.LazyRegexResultArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.LazyRegexResultIndicesArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.NumberReadElementTypeCacheNodeGen;
+import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.ReadElementArrayDispatchNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.ReadElementTypeCacheDispatchNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.SymbolReadElementTypeCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.TypedBigIntArrayReadElementCacheNodeGen;
@@ -541,7 +544,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private IsArrayNode isArrayNode;
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private JSObjectReadElementNonArrayTypeCacheNode nonArrayCaseNode;
-        @Child private ArrayReadElementCacheDispatchNode arrayReadElementNode;
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
 
         JSObjectReadElementTypeCacheNode() {
@@ -566,6 +568,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Specialization(rewriteOn = UnexpectedResultException.class)
         protected int doLongIndexAsInt(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
                         @Cached @Shared InlinedConditionProfile arrayIf,
                         @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
             JSDynamicObject targetObject = (JSDynamicObject) target;
@@ -573,7 +576,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 ScriptArray array = JSObject.getArray(targetObject);
 
                 if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    return executeArrayGetInt(targetObject, array, index, receiver, defaultValue, root.context);
+                    return arrayDispatch.executeArrayGetInt(this, targetObject, array, index, receiver, defaultValue, root.context);
                 } else {
                     return JSTypesGen.expectInteger(getProperty(targetObject, Strings.fromLong(index), receiver, defaultValue));
                 }
@@ -584,6 +587,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Specialization(rewriteOn = UnexpectedResultException.class)
         protected double doLongIndexAsDouble(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
                         @Cached @Shared InlinedConditionProfile arrayIf,
                         @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
             JSDynamicObject targetObject = (JSDynamicObject) target;
@@ -591,7 +595,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 ScriptArray array = JSObject.getArray(targetObject);
 
                 if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    return executeArrayGetDouble(targetObject, array, index, receiver, defaultValue, root.context);
+                    return arrayDispatch.executeArrayGetDouble(this, targetObject, array, index, receiver, defaultValue, root.context);
                 } else {
                     return JSTypesGen.expectDouble(getProperty(targetObject, Strings.fromLong(index), receiver, defaultValue));
                 }
@@ -602,13 +606,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Specialization
         protected Object doLongIndexAsObject(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
                         @Cached @Shared InlinedConditionProfile arrayIf,
                         @Cached @Shared InlinedConditionProfile arrayIndexIf) {
             JSDynamicObject targetObject = (JSDynamicObject) target;
             if (isArray(targetObject, arrayIf)) {
                 ScriptArray array = JSObject.getArray(targetObject);
                 if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(index))) {
-                    return executeArrayGet(targetObject, array, index, receiver, defaultValue, root.context);
+                    return arrayDispatch.executeArrayGet(this, targetObject, array, index, receiver, defaultValue, root.context);
                 } else {
                     return getProperty(targetObject, Strings.fromLong(index), receiver, defaultValue);
                 }
@@ -619,6 +624,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Specialization(rewriteOn = UnexpectedResultException.class)
         protected int doObjectIndexAsInt(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
                         @Cached @Shared InlinedConditionProfile arrayIf,
                         @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
             JSDynamicObject targetObject = (JSDynamicObject) target;
@@ -628,7 +634,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
                 if (arrayIndexIf.profile(this, objIndex instanceof Long)) {
                     long longIndex = (Long) objIndex;
-                    return executeArrayGetInt(targetObject, array, longIndex, receiver, defaultValue, root.context);
+                    return arrayDispatch.executeArrayGetInt(this, targetObject, array, longIndex, receiver, defaultValue, root.context);
                 } else {
                     return JSTypesGen.expectInteger(getProperty(targetObject, objIndex, receiver, defaultValue));
                 }
@@ -639,6 +645,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Specialization(rewriteOn = UnexpectedResultException.class)
         protected double doObjectIndexAsDouble(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
                         @Cached @Shared InlinedConditionProfile arrayIf,
                         @Cached @Shared InlinedConditionProfile arrayIndexIf) throws UnexpectedResultException {
             JSDynamicObject targetObject = (JSDynamicObject) target;
@@ -648,7 +655,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
                 if (arrayIndexIf.profile(this, objIndex instanceof Long)) {
                     long longIndex = (Long) objIndex;
-                    return executeArrayGetDouble(targetObject, array, longIndex, receiver, defaultValue, root.context);
+                    return arrayDispatch.executeArrayGetDouble(this, targetObject, array, longIndex, receiver, defaultValue, root.context);
                 } else {
                     return JSTypesGen.expectDouble(getProperty(targetObject, objIndex, receiver, defaultValue));
                 }
@@ -659,6 +666,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Specialization(replaces = {"doLongIndexAsObject"})
         protected Object doObjectIndexAsObject(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
+                        @Cached @Shared ArrayReadElementCacheDispatchNode arrayDispatch,
                         @Cached @Shared InlinedConditionProfile arrayIf,
                         @Cached @Shared InlinedConditionProfile arrayIndexIf) {
             JSDynamicObject targetObject = (JSDynamicObject) target;
@@ -668,7 +676,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
                 if (arrayIndexIf.profile(this, objIndex instanceof Long)) {
                     long longIndex = (Long) objIndex;
-                    return executeArrayGet(targetObject, array, longIndex, receiver, defaultValue, root.context);
+                    return arrayDispatch.executeArrayGet(this, targetObject, array, longIndex, receiver, defaultValue, root.context);
                 } else {
                     return getProperty(targetObject, objIndex, receiver, defaultValue);
                 }
@@ -687,37 +695,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 nonArrayCaseNode = insert(new JSObjectReadElementNonArrayTypeCacheNode());
             }
             return nonArrayCaseNode;
-        }
-
-        private ArrayReadElementCacheDispatchNode initArrayReadElementNode() {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return arrayReadElementNode = insert(ArrayReadElementCacheDispatchNodeGen.create());
-        }
-
-        protected final int executeArrayGetInt(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root)
-                        throws UnexpectedResultException {
-            ArrayReadElementCacheDispatchNode dispatch = arrayReadElementNode;
-            if (dispatch == null) {
-                dispatch = initArrayReadElementNode();
-            }
-            return dispatch.executeArrayGetInt(target, array, index, receiver, defaultValue, root);
-        }
-
-        protected final double executeArrayGetDouble(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root)
-                        throws UnexpectedResultException {
-            ArrayReadElementCacheDispatchNode dispatch = arrayReadElementNode;
-            if (dispatch == null) {
-                dispatch = initArrayReadElementNode();
-            }
-            return dispatch.executeArrayGetDouble(target, array, index, receiver, defaultValue, root);
-        }
-
-        protected final Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext root) {
-            ArrayReadElementCacheDispatchNode dispatch = arrayReadElementNode;
-            if (dispatch == null) {
-                dispatch = initArrayReadElementNode();
-            }
-            return dispatch.executeArrayGet(target, array, index, receiver, defaultValue, root);
         }
     }
 
@@ -795,26 +772,43 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
+    public abstract static class ReadElementArrayDispatchNode extends JavaScriptBaseNode {
+
+        protected ReadElementArrayDispatchNode() {
+        }
+
+        public static ReadElementArrayDispatchNode create() {
+            return ReadElementArrayDispatchNodeGen.create();
+        }
+
+        protected abstract Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context);
+
+        @Specialization
+        protected final Object doDispatch(JSDynamicObject target, ScriptArray arrayType, long index, Object receiver, Object defaultValue, JSContext context,
+                        @Cached ArrayReadElementCacheDispatchNode dispatcher) {
+            return dispatcher.executeArrayGet(this, target, arrayType, index, receiver, defaultValue, context);
+        }
+    }
+
+    @SuppressWarnings("truffle-inlining")
+    @GenerateInline
+    @GenerateCached(false)
     @ImportStatic(ReadElementNode.class)
     public abstract static class ArrayReadElementCacheDispatchNode extends JavaScriptBaseNode {
 
         protected ArrayReadElementCacheDispatchNode() {
         }
 
-        public static ArrayReadElementCacheDispatchNode create() {
-            return ArrayReadElementCacheDispatchNodeGen.create();
+        protected abstract Object executeArrayGet(Node node, JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context);
+
+        protected int executeArrayGetInt(Node node, JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+                        throws UnexpectedResultException {
+            return JSTypesGen.expectInteger(executeArrayGet(node, target, array, index, receiver, defaultValue, context));
         }
 
-        protected abstract Object executeArrayGet(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context);
-
-        protected int executeArrayGetInt(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
+        protected double executeArrayGetDouble(Node node, JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(executeArrayGet(target, array, index, receiver, defaultValue, context));
-        }
-
-        protected double executeArrayGetDouble(JSDynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
-                        throws UnexpectedResultException {
-            return JSTypesGen.expectDouble(executeArrayGet(target, array, index, receiver, defaultValue, context));
+            return JSTypesGen.expectDouble(executeArrayGet(node, target, array, index, receiver, defaultValue, context));
         }
 
         @Specialization(guards = "arrayType == cachedArrayType", limit = "BOUNDED_BY_TYPES", rewriteOn = UnexpectedResultException.class)
