@@ -662,7 +662,7 @@ public final class JSContextOptions {
         CompilerAsserts.neverPartOfCompilation();
         optionValues = newOptions;
         cacheOptions(sandboxPolicy);
-        parserOptions = parserOptions.putOptions(newOptions);
+        parserOptions = parserOptions.fromOptions(this);
     }
 
     private void cacheOptions(SandboxPolicy sandboxPolicy) {
@@ -1197,6 +1197,38 @@ public final class JSContextOptions {
 
     public boolean isScopeOptimization() {
         return scopeOptimization;
+    }
+
+    public boolean isSyntaxExtensions() {
+        return SYNTAX_EXTENSIONS.hasBeenSet(optionValues) ? SYNTAX_EXTENSIONS.getValue(optionValues) : NASHORN_COMPATIBILITY_MODE.getValue(optionValues);
+    }
+
+    public boolean isScripting() {
+        return SCRIPTING.getValue(optionValues);
+    }
+
+    public boolean isShebang() {
+        return SHEBANG.hasBeenSet(optionValues) ? SHEBANG.getValue(optionValues) : getEcmaScriptVersion() >= JSConfig.ECMAScript2020;
+    }
+
+    public boolean isStrict() {
+        return STRICT.getValue(optionValues);
+    }
+
+    public boolean isConstAsVar() {
+        return CONST_AS_VAR.getValue(optionValues);
+    }
+
+    public boolean isFunctionStatementError() {
+        return FUNCTION_STATEMENT_ERROR.getValue(optionValues);
+    }
+
+    public boolean isClassFields() {
+        return CLASS_FIELDS.hasBeenSet(optionValues) ? CLASS_FIELDS.getValue(optionValues) : getEcmaScriptVersion() >= JSContextOptions.CLASS_FIELDS_ES_VERSION;
+    }
+
+    public boolean isV8Intrinsics() {
+        return V8_INTRINSICS.getValue(optionValues);
     }
 
     @Override
