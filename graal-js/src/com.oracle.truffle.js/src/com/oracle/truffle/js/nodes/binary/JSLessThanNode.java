@@ -182,6 +182,7 @@ public abstract class JSLessThanNode extends JSCompareNode {
         return Strings.ANGLE_BRACKET_OPEN;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {
                     "doString", "doStringDouble", "doDoubleString", "doStringBigInt", "doBigIntString",
                     "doBigInt", "doBigIntAndInt", "doIntAndBigInt", "doBigIntAndNumber", "doNumberAndBigInt"})
