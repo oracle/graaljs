@@ -115,12 +115,16 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
         }
         PromiseCapabilityRecord promiseCapability = PromiseCapabilityRecord.create(Undefined.instance, Undefined.instance, Undefined.instance);
         JSDynamicObject executor = getCapabilitiesExecutor(promiseCapability);
-        JSDynamicObject promise = (JSDynamicObject) newPromise.executeCall(JSArguments.create(Undefined.instance, constructor, executor));
+        Object promise = newPromise.executeCall(JSArguments.create(Undefined.instance, constructor, executor));
+        if (!(promise instanceof JSDynamicObject)) {
+            errorBranch.enter();
+            throw Errors.createTypeError("Promise cannot be a foreign object");
+        }
         if (!isCallable.executeBoolean(promiseCapability.getResolve()) || !isCallable.executeBoolean(promiseCapability.getReject())) {
             errorBranch.enter();
-            throw Errors.createTypeError("cannot create promise");
+            throw Errors.createTypeError("Promise resolve or reject function is not callable");
         }
-        promiseCapability.setPromise(promise);
+        promiseCapability.setPromise((JSDynamicObject) promise);
         return promiseCapability;
     }
 
