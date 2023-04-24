@@ -213,7 +213,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             this.isFastArrayNode = isTypedArrayImplementation ? null : IsArrayNode.createIsFastArray();
         }
 
-        protected void iteratorCloseAbrupt(JSDynamicObject iterator) {
+        protected void iteratorCloseAbrupt(Object iterator) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
@@ -229,7 +229,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             return getIteratorNode.execute(null, object, usingIterator);
         }
 
-        protected Object getIteratorValue(JSDynamicObject iteratorResult) {
+        protected Object getIteratorValue(Object iteratorResult) {
             if (getIteratorValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getIteratorValueNode = insert(IteratorValueNode.create());
@@ -306,7 +306,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                         setLength(obj, k);
                         return obj;
                     }
-                    Object mapped = getIteratorValue((JSDynamicObject) next);
+                    Object mapped = getIteratorValue(next);
                     if (mapping) {
                         mapped = callMapFn(thisArg, (JSDynamicObject) mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
                     }

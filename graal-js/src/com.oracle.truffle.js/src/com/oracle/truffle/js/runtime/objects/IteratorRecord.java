@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,25 +45,25 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
 public final class IteratorRecord {
-    private final JSDynamicObject iterator;
+    private final Object iterator;
     private final Object nextMethod;
     private boolean done;
 
-    private IteratorRecord(JSDynamicObject iterator, Object nextMethod, boolean done) {
+    private IteratorRecord(Object iterator, Object nextMethod, boolean done) {
         this.iterator = iterator;
         this.nextMethod = nextMethod;
         this.done = done;
     }
 
-    public static IteratorRecord create(JSDynamicObject iterator, Object nextMethod, boolean done) {
+    public static IteratorRecord create(Object iterator, Object nextMethod, boolean done) {
         return new IteratorRecord(iterator, nextMethod, done);
     }
 
-    public static IteratorRecord create(JSDynamicObject iterator, Object nextMethod) {
+    public static IteratorRecord create(Object iterator, Object nextMethod) {
         return create(iterator, nextMethod, false);
     }
 
-    public JSDynamicObject getIterator() {
+    public Object getIterator() {
         return iterator;
     }
 

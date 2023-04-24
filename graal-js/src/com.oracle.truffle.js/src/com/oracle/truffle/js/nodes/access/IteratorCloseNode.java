@@ -48,7 +48,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -59,12 +58,12 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public class IteratorCloseNode extends JavaScriptBaseNode {
     @Child private GetMethodNode getReturnNode;
     @Child private JSFunctionCallNode methodCallNode;
-    @Child private IsJSObjectNode isObjectNode;
+    @Child private IsObjectNode isObjectNode;
 
     protected IteratorCloseNode(JSContext context) {
         this.getReturnNode = GetMethodNode.create(context, Strings.RETURN);
         this.methodCallNode = JSFunctionCallNode.createCall();
-        this.isObjectNode = IsJSObjectNode.create();
+        this.isObjectNode = IsObjectNode.create();
     }
 
     @NeverDefault
@@ -72,7 +71,7 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
         return new IteratorCloseNode(context);
     }
 
-    public final void executeVoid(JSDynamicObject iterator) {
+    public final void executeVoid(Object iterator) {
         Object returnMethod = getReturnNode.executeWithTarget(iterator);
         if (returnMethod != Undefined.instance) {
             Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -82,12 +81,12 @@ public class IteratorCloseNode extends JavaScriptBaseNode {
         }
     }
 
-    public final Object execute(JSDynamicObject iterator, Object value) {
+    public final Object execute(Object iterator, Object value) {
         executeVoid(iterator);
         return value;
     }
 
-    public final void executeAbrupt(JSDynamicObject iterator) {
+    public final void executeAbrupt(Object iterator) {
         try {
             Object returnMethod = getReturnNode.executeWithTarget(iterator);
             if (returnMethod != Undefined.instance) {

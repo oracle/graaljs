@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -64,7 +66,17 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
 
     @Specialization
     protected IteratorRecord get(JSObject obj,
-                    @Cached InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
+        return getImpl(obj, errorBranch);
+    }
+
+    @Specialization(guards = "isForeignObject(obj)")
+    protected IteratorRecord get(Object obj,
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
+        return getImpl(obj, errorBranch);
+    }
+
+    private IteratorRecord getImpl(Object obj, InlinedBranchProfile errorBranch) {
         Object nextMethod = getNextMethodNode.getValue(obj);
         if (!isCallableNode.executeBoolean(nextMethod)) {
             errorBranch.enter(this);
@@ -74,7 +86,7 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
         return IteratorRecord.create(obj, nextMethod, false);
     }
 
-    @Specialization(guards = "!isJSObject(obj)")
+    @Fallback
     public IteratorRecord unsupported(Object obj) {
         throw Errors.createTypeErrorNotAnObject(obj, this);
     }

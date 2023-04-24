@@ -2646,7 +2646,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private JSFunctionCallNode callAdderNode;
         @Child private PropertyGetNode getAdderFnNode;
 
-        protected void iteratorCloseAbrupt(JSDynamicObject iterator) {
+        protected void iteratorCloseAbrupt(Object iterator) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
@@ -2654,7 +2654,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             iteratorCloseNode.executeAbrupt(iterator);
         }
 
-        protected Object getIteratorValue(JSDynamicObject iteratorResult) {
+        protected Object getIteratorValue(Object iteratorResult) {
             if (getIteratorValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getIteratorValueNode = insert(IteratorValueNode.create());
@@ -2725,7 +2725,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     if (next == Boolean.FALSE) {
                         break;
                     }
-                    Object nextItem = getIteratorValue((JSDynamicObject) next);
+                    Object nextItem = getIteratorValue(next);
                     if (!isObjectNode.executeBoolean(nextItem)) {
                         errorBranch.enter(node);
                         throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
@@ -2788,7 +2788,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     if (next == Boolean.FALSE) {
                         break;
                     }
-                    Object nextValue = getIteratorValue((JSDynamicObject) next);
+                    Object nextValue = getIteratorValue(next);
                     call(setObj, adder, nextValue);
                 }
             } catch (AbstractTruffleException ex) {

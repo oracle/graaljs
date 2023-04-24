@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.interop.JSInteropGetIteratorNextNode;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * A wrapper around a JS iterator that fetches the next element on
@@ -62,7 +61,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "iterator")
 public final class JSIteratorWrapper implements TruffleObject {
 
-    final JSDynamicObject iterator;
+    final Object iterator;
     private final IteratorRecord iteratorRecord;
     private Object next;
 

@@ -762,7 +762,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 // AsyncIteratorClose
                 AsyncIteratorArgs args = getArgs(frame);
                 if (isObjectNode == null) {
-                    JSDynamicObject iterator = args.iterated.getIterator();
+                    Object iterator = args.iterated.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
                         Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -820,7 +820,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 AsyncIteratorFlatMapNode.AsyncIteratorFlatMapArgs args = getArgs(frame);
                 if (isObjectNode == null) {
                     assert args.innerIterator != null;
-                    JSDynamicObject iterator = args.innerIterator.getIterator();
+                    Object iterator = args.innerIterator.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
                         Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -840,7 +840,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     }
                     assert args.innerIterator != null;
                     args.innerIterator = null;
-                    JSDynamicObject iterator = args.iterated.getIterator();
+                    Object iterator = args.iterated.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
                         Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));

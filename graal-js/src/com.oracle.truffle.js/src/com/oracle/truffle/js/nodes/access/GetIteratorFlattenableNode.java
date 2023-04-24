@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -82,6 +83,7 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
     @Specialization(guards = "isObjectNode.executeBoolean(iteratedObject)", limit = "1")
     protected final IteratorRecord getIteratorFlattenable(Object iteratedObject,
                     @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode,
+                    @Cached @Exclusive IsObjectNode isIteratorObjectNode,
                     @Cached IsCallableNode isCallableNode,
                     @Cached(value = "create(SYMBOL_ASYNC_ITERATOR, context)") PropertyGetNode getAsyncIteratorMethodNode,
                     @Cached(value = "create(SYMBOL_ITERATOR, context)") PropertyGetNode getIteratorMethodNode,
@@ -106,7 +108,7 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
         } else {
             iterator = iteratorCallNode.executeCall(JSArguments.create(iteratedObject, method));
         }
-        if (!(iterator instanceof JSObject)) {
+        if (!isIteratorObjectNode.executeBoolean(iterator)) {
             errorBranch.enter(this);
             throw Errors.createTypeErrorNotAnObject(iterator, this);
         }
@@ -115,7 +117,7 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
             errorBranch.enter(this);
             throw Errors.createTypeErrorNotAFunction(nextMethod, this);
         }
-        IteratorRecord iteratorRecord = IteratorRecord.create((JSObject) iterator, nextMethod, false);
+        IteratorRecord iteratorRecord = IteratorRecord.create(iterator, nextMethod, false);
         if (async && !alreadyAsync) {
             return createAsyncFromSyncIterator(iteratorRecord, getNextMethodNode, setSyncIteratorRecordNode);
         } else {

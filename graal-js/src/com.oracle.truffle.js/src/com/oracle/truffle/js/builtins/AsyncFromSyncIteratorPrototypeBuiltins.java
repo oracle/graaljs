@@ -301,7 +301,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 return promiseCapability.getPromise();
             }
             IteratorRecord syncIteratorRecord = (IteratorRecord) getSyncIteratorRecordNode.getValue(thisObj);
-            JSDynamicObject syncIterator = syncIteratorRecord.getIterator();
+            Object syncIterator = syncIteratorRecord.getIterator();
             Object method = getMethod().executeWithTarget(syncIterator);
             if (method == Undefined.instance) {
                 return processUndefinedMethod(frame, promiseCapability, value);

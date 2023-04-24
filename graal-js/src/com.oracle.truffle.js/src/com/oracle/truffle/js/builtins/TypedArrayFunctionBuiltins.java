@@ -149,7 +149,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
                 if (next == Boolean.FALSE) {
                     break;
                 }
-                Object nextValue = getIteratorValue((JSDynamicObject) next);
+                Object nextValue = getIteratorValue(next);
                 values.add(nextValue, this, growProfile);
             }
             int len = values.size();
