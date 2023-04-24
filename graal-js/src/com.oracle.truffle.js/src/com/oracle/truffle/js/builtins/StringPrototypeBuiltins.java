@@ -70,6 +70,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleString.CodeRange;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateHTMLNodeGen;
@@ -1926,19 +1927,59 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected Object toLowerCaseString(TruffleString thisStr) {
-            return toLowerCaseIntl(thisStr);
+        protected final TruffleString toLowerCaseString(TruffleString thisStr,
+                        @Cached TruffleString.CodeRangeEqualsNode codeRangeEquals,
+                        @Cached TruffleString.ReadCharUTF16Node readChar,
+                        @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+                        @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode,
+                        @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
+                        @Shared @Cached TruffleString.FromJavaStringNode fromJavaString,
+                        @Shared @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached InlinedConditionProfile isAscii,
+                        @Cached InlinedConditionProfile isAlreadyLowerCase) {
+            if (isAscii.profile(this, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
+                int firstUpperCase = firstUpperCaseAscii(thisStr, readChar);
+                if (isAlreadyLowerCase.profile(this, firstUpperCase < 0)) {
+                    return thisStr;
+                } else if (!locale) {
+                    TruffleString ascii = switchEncodingNode.execute(thisStr, TruffleString.Encoding.US_ASCII);
+                    byte[] buf = new byte[ascii.byteLength(TruffleString.Encoding.US_ASCII)];
+                    copyToByteArrayNode.execute(ascii, 0, buf, 0, buf.length, TruffleString.Encoding.US_ASCII);
+                    for (int i = firstUpperCase; i < buf.length; ++i) {
+                        if (buf[i] >= 'A' && buf[i] <= 'Z') {
+                            buf[i] = (byte) (buf[i] + ('a' - 'A'));
+                        }
+                    }
+                    return switchEncodingNode.execute(fromByteArrayNode.execute(buf, TruffleString.Encoding.US_ASCII, false), TruffleString.Encoding.UTF_16);
+                }
+            }
+            return toLowerCaseJava(thisStr, fromJavaString, toJavaString);
+        }
+
+        private static int firstUpperCaseAscii(TruffleString thisStr, TruffleString.ReadCharUTF16Node readChar) {
+            for (int i = 0; i < Strings.length(thisStr); i++) {
+                int c = Strings.charAt(readChar, thisStr, i);
+                if (c >= 'A' && c <= 'Z') {
+                    return i;
+                }
+            }
+            return -1;
         }
 
         @Specialization(guards = "!isString(thisObj)")
-        protected Object toLowerCase(Object thisObj) {
+        protected final Object toLowerCaseGeneric(Object thisObj,
+                        @Shared @Cached TruffleString.FromJavaStringNode fromJavaString,
+                        @Shared @Cached TruffleString.ToJavaStringNode toJavaString) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
-            return toLowerCaseIntl(thisStr);
+            return toLowerCaseJava(thisStr, fromJavaString, toJavaString);
         }
 
-        private Object toLowerCaseIntl(TruffleString str) {
-            return Strings.toLowerCase(str, locale ? getContext().getLocale() : Locale.US);
+        private TruffleString toLowerCaseJava(TruffleString str,
+                        TruffleString.FromJavaStringNode fromJavaString,
+                        TruffleString.ToJavaStringNode toJavaString) {
+            Locale usingLocale = locale ? getContext().getLocale() : Locale.US;
+            return fromJavaString.execute(Strings.javaStringToLowerCase(toJavaString.execute(str), usingLocale), TruffleString.Encoding.UTF_16);
         }
     }
 
@@ -2015,19 +2056,59 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected Object toUpperCaseString(TruffleString thisStr) {
-            return toUpperCaseIntl(thisStr);
+        protected final Object toUpperCaseString(TruffleString thisStr,
+                        @Cached TruffleString.CodeRangeEqualsNode codeRangeEquals,
+                        @Cached TruffleString.ReadCharUTF16Node readChar,
+                        @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+                        @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode,
+                        @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
+                        @Shared @Cached TruffleString.FromJavaStringNode fromJavaString,
+                        @Shared @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached InlinedConditionProfile isAscii,
+                        @Cached InlinedConditionProfile isAlreadyUpperCase) {
+            if (isAscii.profile(this, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
+                int firstLowerCase = firstLowerCaseAscii(thisStr, readChar);
+                if (isAlreadyUpperCase.profile(this, firstLowerCase < 0)) {
+                    return thisStr;
+                } else if (!locale) {
+                    TruffleString ascii = switchEncodingNode.execute(thisStr, TruffleString.Encoding.US_ASCII);
+                    byte[] buf = new byte[ascii.byteLength(TruffleString.Encoding.US_ASCII)];
+                    copyToByteArrayNode.execute(ascii, 0, buf, 0, buf.length, TruffleString.Encoding.US_ASCII);
+                    for (int i = firstLowerCase; i < buf.length; ++i) {
+                        if (buf[i] >= 'a' && buf[i] <= 'z') {
+                            buf[i] = (byte) (buf[i] - ('a' - 'A'));
+                        }
+                    }
+                    return switchEncodingNode.execute(fromByteArrayNode.execute(buf, TruffleString.Encoding.US_ASCII, false), TruffleString.Encoding.UTF_16);
+                }
+            }
+            return toUpperCaseJava(thisStr, fromJavaString, toJavaString);
+        }
+
+        private static int firstLowerCaseAscii(TruffleString thisStr, TruffleString.ReadCharUTF16Node readChar) {
+            for (int i = 0; i < Strings.length(thisStr); i++) {
+                int c = Strings.charAt(readChar, thisStr, i);
+                if (c >= 'a' && c <= 'z') {
+                    return i;
+                }
+            }
+            return -1;
         }
 
         @Specialization(guards = "!isString(thisObj)")
-        protected Object toUpperCaseGeneric(Object thisObj) {
+        protected final Object toUpperCaseGeneric(Object thisObj,
+                        @Shared @Cached TruffleString.FromJavaStringNode fromJavaString,
+                        @Shared @Cached TruffleString.ToJavaStringNode toJavaString) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
-            return toUpperCaseIntl(thisStr);
+            return toUpperCaseJava(thisStr, fromJavaString, toJavaString);
         }
 
-        private Object toUpperCaseIntl(TruffleString str) {
-            return Strings.toUpperCase(str, locale ? getContext().getLocale() : Locale.US);
+        private Object toUpperCaseJava(TruffleString str,
+                        TruffleString.FromJavaStringNode fromJavaString,
+                        TruffleString.ToJavaStringNode toJavaString) {
+            Locale usingLocale = locale ? getContext().getLocale() : Locale.US;
+            return fromJavaString.execute(Strings.javaStringToUpperCase(toJavaString.execute(str), usingLocale), TruffleString.Encoding.UTF_16);
         }
     }
 

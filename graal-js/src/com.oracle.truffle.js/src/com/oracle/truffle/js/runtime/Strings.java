@@ -862,21 +862,17 @@ public final class Strings {
         return s == null ? null : node.execute(s);
     }
 
-    public static TruffleString toLowerCase(TruffleString s, Locale locale) {
-        return fromJavaString(javaStringToLowerCase(toJavaString(s), locale));
-    }
-
     public static TruffleString toUpperCase(TruffleString s, Locale locale) {
         return fromJavaString(javaStringToUpperCase(toJavaString(s), locale));
     }
 
     @TruffleBoundary
-    private static String javaStringToLowerCase(String s, Locale locale) {
+    public static String javaStringToLowerCase(String s, Locale locale) {
         return s.toLowerCase(locale);
     }
 
     @TruffleBoundary
-    private static String javaStringToUpperCase(String s, Locale locale) {
+    public static String javaStringToUpperCase(String s, Locale locale) {
         return s.toUpperCase(locale);
     }
 
