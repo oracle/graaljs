@@ -13,15 +13,17 @@ local common = (import "ci/common.jsonnet");
     jdk:: 'jdk21',
   },
 
-  deploy::      {targets+: ['deploy']},
-  gate::        {targets+: ['gate']},
-  postMerge::   {targets+: ['post-merge']},
-  bench::       {targets+: ['bench', 'post-merge']},
-  dailyBench::  {targets+: ['bench', 'daily']},
-  weeklyBench:: {targets+: ['bench', 'weekly']},
-  manualBench:: {targets+: ['bench']},
-  daily::       {targets+: ['daily']},
-  weekly::      {targets+: ['weekly']},
+  deploy::      {targets+: ['deploy'], targetName:: 'deploy'},
+  gate::        {targets+: ['gate'], targetName:: 'gate'},
+  postMerge::   {targets+: ['post-merge'], targetName:: 'postmerge'},
+  daily::       {targets+: ['daily'], targetName:: 'daily'},
+  weekly::      {targets+: ['weekly'], targetName:: 'weekly'},
+  ondemand::    {targets+: ['ondemand'], targetName:: 'ondemand'},
+
+  bench::       self.postMerge + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  dailyBench::  self.daily     + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  weeklyBench:: self.weekly    + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  manualBench:: self.ondemand  + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
 
   deps:: common.deps,
 

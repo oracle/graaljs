@@ -32,6 +32,13 @@ local ci = import '../ci.jsonnet';
     ],
   },
 
+  local defaultGateTags = gateTags('all') + {
+    local tags = if 'os' in super && super.os == 'windows' then 'windows' else 'all',
+    environment+: {
+      TAGS: tags,
+    }
+  },
+
   local gateSubstrateVmSmokeTest = {
     run+: [
       ['mx', '--env', 'svm', 'build'],
@@ -110,48 +117,66 @@ local ci = import '../ci.jsonnet';
   local parallelHttp2 = 'parallel/test-http2-.*',
   local parallelNoHttp2 = 'parallel/(?!test-http2-).*',
 
-  builds: [
-    // gates
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64                                + common.gateStyleFullBuild                                                            + {name: 'nodejs-gate-style-fullbuild-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk20 + common.gate      + common.linux_amd64                                + common.gateStyleFullBuild                                                            + {name: 'nodejs-gate-style-fullbuild-jdk20-linux-amd64'},
+  local generateBuilds = ci.generateBuilds,
+  local promoteToTarget = ci.promoteToTarget,
+  local defaultToTarget = ci.defaultToTarget,
+  local includePlatforms = ci.includePlatforms,
+  local excludePlatforms = ci.excludePlatforms,
+  local gateOnMain = ci.gateOnMain,
 
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64                                + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-gate-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk20 + common.gate      + common.linux_amd64                                + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-gate-jdk20-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_aarch64                              + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-gate-jdk17-linux-aarch64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.darwin_aarch64                             + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-gate-jdk17-darwin-aarch64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.windows_amd64                              + gateTags('windows')      + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-gate-jdk17-windows-amd64'},
+  // Builds that should run on all supported platforms
+  local testingBuilds = generateBuilds([
+    graalNodeJs + common.gateStyleFullBuild                                                                                        + {name: 'nodejs-style-fullbuild'} +
+      defaultToTarget(common.gate) +
+      includePlatforms([common.linux_amd64]),
 
-    graalNodeJs + common.jdk17 + common.gate      + common.darwin_aarch64                             + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-ce-jdk17-darwin-aarch64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.windows_amd64                              + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-ce-jdk17-windows-amd64'},
+    graalNodeJs                             + defaultGateTags          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-default'} +
+      promoteToTarget(common.gate, [common.linux_amd64, common.jdk17 + common.linux_amd64, common.jdk17 + common.linux_aarch64, common.jdk17 + common.darwin_aarch64, common.jdk17 + common.windows_amd64]) +
+      promoteToTarget(common.postMerge, [common.jdk17 + common.darwin_amd64]),
 
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64    + vm_env                    + gateVmSmokeTest                                                    + artifact   + ce + {name: 'nodejs-gate-substratevm-ce-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64    + vm_env                    + gateVmSmokeTest                                                    + artifact   + ee + {name: 'nodejs-gate-substratevm-ee-jdk17-linux-amd64'},
+    graalNodeJs                             + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-substratevm-ce'} +
+      excludePlatforms([ci.mainGatePlatform]) +
+      promoteToTarget(common.gate, [common.jdk17 + common.darwin_aarch64, common.jdk17 + common.windows_amd64]) +
+      promoteToTarget(common.postMerge, [common.jdk17 + common.darwin_amd64]),
+    graalNodeJs                             + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-substratevm-ee'} +
+      excludePlatforms([ci.mainGatePlatform]),
 
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64             + buildAddons      + testNode('addons',        part='-r0,1', max_heap='8G')                               + {name: 'nodejs-gate-addons-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64             + buildNodeAPI     + testNode('node-api',      part='-r0,1', max_heap='8G')                               + {name: 'nodejs-gate-node-api-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64             + buildJSNativeAPI + testNode('js-native-api', part='-r0,1', max_heap='8G')                               + {name: 'nodejs-gate-js-native-api-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64    + vm_env + build            + testNode('async-hooks',   part='-r0,1', max_heap='8G')             + artifact        + {name: 'nodejs-gate-async-hooks-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64    + vm_env + build            + testNode('es-module',     part='-r0,1', max_heap='8G')             + artifact        + {name: 'nodejs-gate-es-module-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64    + vm_env + build            + testNode('sequential',    part='-r0,1', max_heap='8G')             + artifact        + {name: 'nodejs-gate-sequential-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64    + vm_env + build            + testNode(parallelNoHttp2, part='-r0,5', max_heap='8G')             + artifact        + {name: 'nodejs-gate-parallel-1-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64    + vm_env + build            + testNode(parallelNoHttp2, part='-r1,5', max_heap='8G')             + artifact        + {name: 'nodejs-gate-parallel-2-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64    + vm_env + build            + testNode(parallelNoHttp2, part='-r2,5', max_heap='8G')             + artifact        + {name: 'nodejs-gate-parallel-3-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64    + vm_env + build            + testNode(parallelNoHttp2, part='-r3,5', max_heap='8G')             + artifact        + {name: 'nodejs-gate-parallel-4-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64    + vm_env + build            + testNode(parallelNoHttp2, part='-r4,5', max_heap='8G')             + artifact        + {name: 'nodejs-gate-parallel-5-jdk17-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux_amd64    + vm_env + build            + auxEngineCache                                                     + artifact   + ee + {name: 'nodejs-gate-aux-engine-cache-jdk17-linux-amd64'},
+    graalNodeJs + vm_env                    + gateVmSmokeTest                                                    + artifact   + ce + {name: 'nodejs-substratevm-ce'} +
+      includePlatforms([ci.mainGatePlatform]) +
+      promoteToTarget(common.gate, [ci.mainGatePlatform]),
+    graalNodeJs + vm_env                    + gateVmSmokeTest                                                    + artifact   + ee + {name: 'nodejs-substratevm-ee'} +
+      includePlatforms([ci.mainGatePlatform]) +
+      promoteToTarget(common.gate, [ci.mainGatePlatform]),
 
-    graalNodeJs + common.jdk17 + common.gate      + common.windows_amd64           + build            + testNode('async-hooks',   part='-r0,1', max_heap='8G')                               + {name: 'nodejs-gate-async-hooks-jdk17-windows-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.windows_amd64           + build            + testNode('es-module',     part='-r0,1', max_heap='8G')                               + {name: 'nodejs-gate-es-module-jdk17-windows-amd64'},
+    graalNodeJs          + buildAddons      + testNode('addons',        part='-r0,1', max_heap='8G')                               + {name: 'nodejs-addons'} + gateOnMain,
+    graalNodeJs          + buildNodeAPI     + testNode('node-api',      part='-r0,1', max_heap='8G')                               + {name: 'nodejs-node-api'} + gateOnMain,
+    graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', part='-r0,1', max_heap='8G')                               + {name: 'nodejs-js-native-api'} + gateOnMain,
+
+    graalNodeJs + vm_env + build            + testNode('async-hooks',   part='-r0,1', max_heap='8G')             + artifact        + {name: 'nodejs-async-hooks'} + gateOnMain +
+      promoteToTarget(common.gate, [common.jdk17 + common.windows_amd64]),
+    graalNodeJs + vm_env + build            + testNode('es-module',     part='-r0,1', max_heap='8G')             + artifact        + {name: 'nodejs-es-module'} + gateOnMain +
+      promoteToTarget(common.gate, [common.jdk17 + common.windows_amd64]),
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
-    graalNodeJs + common.jdk17 + common.gate      + common.windows_amd64           + build            + testNode('sequential',    part='-r0,1', max_heap='512M')                             + {name: 'nodejs-gate-sequential-jdk17-windows-amd64'},
+    graalNodeJs + vm_env + build            + testNode('sequential',    part='-r0,1', max_heap='512M')           + artifact        + {name: 'nodejs-sequential'} + gateOnMain +
+      promoteToTarget(common.gate, [common.jdk17 + common.windows_amd64]),
 
-    // post-merges
-    graalNodeJs + common.jdk17 + common.postMerge + common.linux_amd64    + vm_env + build            + testNode(parallelHttp2,   part='-r0,1', max_heap='8G')                               + {name: 'nodejs-postmerge-parallel-http2-jdk17-linux-amd64'},
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r0,5', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-1'} + gateOnMain,
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r1,5', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-2'} + gateOnMain,
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r2,5', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-3'} + gateOnMain,
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r3,5', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-4'} + gateOnMain,
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r4,5', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-5'} + gateOnMain,
 
-    graalNodeJs + common.jdk17 + common.postMerge + common.darwin_amd64                               + gateTags('all')          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-postmerge-jdk17-darwin-amd64', timelimit: '1:00:00'},
-    graalNodeJs + common.jdk17 + common.postMerge + common.darwin_amd64                               + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-postmerge-substratevm-ce-jdk17-darwin-amd64', timelimit: '1:00:00'},
+    graalNodeJs + vm_env + build            + testNode(parallelHttp2,   part='-r0,1', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-http2'} +
+      promoteToTarget(common.postMerge, [ci.mainGatePlatform]),
 
-    // weekly
-    graalNodeJs + common.jdk17 + common.weekly    + common.linux_amd64                                + gateCoverage                                                                         + {name: 'weekly-nodejs-coverage-jdk17-linux-amd64'},
-  ],
+    graalNodeJs + vm_env + build            + auxEngineCache                                                     + artifact   + ee + {name: 'nodejs-aux-engine-cache'} + gateOnMain,
+  ], defaultTarget=common.weekly),
+
+  // Builds that only need to run on one platform
+  local otherBuilds = generateBuilds([
+    graalNodeJs + common.weekly    + gateCoverage                                                                                  + {name: 'nodejs-coverage'},
+
+  ], platforms=[ci.mainGatePlatform]),
+
+  builds: testingBuilds + otherBuilds,
 }

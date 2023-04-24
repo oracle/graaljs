@@ -80,8 +80,22 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     },
   },
 
-  ce: {defs:: $.defs, graalvm:: self.defs.ce},
-  ee: {defs:: $.defs, graalvm:: self.defs.ee},
+  ce:: {defs:: $.defs, graalvm:: self.defs.ce},
+  ee:: {defs:: $.defs, graalvm:: self.defs.ee},
+
+  supportedPlatforms:: [
+    common.jdk17 + common.linux_amd64,
+    common.jdk20 + common.linux_amd64,
+    common.jdk17 + common.linux_aarch64,
+    common.jdk20 + common.linux_aarch64,
+    common.jdk17 + common.darwin_amd64,
+    common.jdk20 + common.darwin_amd64,
+    common.jdk17 + common.darwin_aarch64,
+    common.jdk20 + common.darwin_aarch64,
+    common.jdk17 + common.windows_amd64,
+    common.jdk20 + common.windows_amd64,
+  ],
+  mainGatePlatform:: common.jdk17 + common.linux_amd64,
 
   local artifact_name(jdk, edition, os, arch, prefix='js', suffix='') =
     assert prefix != '' && edition != '' && jdk != '' && os != '' && arch != '';
@@ -162,4 +176,87 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     if self.useArtifacts then deriveArtifactBuilds(builds) else builds,
 
   finishBuilds:: finishBuilds,
+
+  local platformName(b) = (if 'jdk' in b then b.jdk + '-' else '') + b.os + '-' + b.arch,
+  local platformMatches(platform, query) =
+    (!std.objectHasAll(query, 'os') || platform.os == query.os) &&
+    (!std.objectHasAll(query, 'arch') || platform.arch == query.arch) &&
+    (!std.objectHasAll(query, 'jdk') || platform.jdk == query.jdk),
+  local platformMatchesAny(platform, queries) = std.foldl(function(found, query) found || platformMatches(platform, query), queries, false),
+  local generateTargets(build, platform, defaultTarget) =
+    if (std.objectHasAll(build, 'targets')) then
+      [{}] // targets are manually specified already
+    else if (std.objectHasAll(build, 'targetSelector')) then
+      local selectedTargets = build.targetSelector(platform);
+      assert std.isArray(selectedTargets);
+      // just a sanity check; remove this assertion to allow multiple targets
+      assert std.length(selectedTargets) <= 1 : "build '" + build.name + "-" + platformName(platform) + "' has multiple targets: " + std.toString(selectedTargets);
+      if std.length(selectedTargets) != 0 then
+        selectedTargets
+      else
+        [defaultTarget]
+    else
+      [defaultTarget],
+  local generatePlatforms(build, platforms) =
+    assert std.isObject(build);
+    if std.objectHasAll(build, 'os') then
+      [{}] // platform is manually specified already
+    else if std.objectHasAll(build, 'platformSelector') && std.isFunction(build.platformSelector) then
+      [p for p in platforms if build.platformSelector(p)]
+    else platforms,
+
+  // Expand builds to all platforms, unless otherwise specified (explicitly or using filterPlatforms).
+  // If any builds are missing targets, <defaultTarget> must be provided that is then applied to those builds.
+  local generateBuilds(builds, platforms=$.supportedPlatforms, defaultTarget={}) = [
+    target + platform + build + {
+      assert 'targets' in super : "build '" + super.name + "-" + platformName(self) + "' has no targets and no default targets specified",
+      name: super.targetName + '-' + super.name + '-' + platformName(self),
+    }
+    for build in (if std.isArray(builds) then builds else [builds])
+    for platform in generatePlatforms(build, platforms)
+    for target in generateTargets(build, platform, defaultTarget)
+  ],
+  local makePlatformPredicate(include=null, exclude=null) =
+    local includePredicate = if std.isFunction(include) then include else if std.isArray(include) then function(platform) platformMatchesAny(platform, include) else function(_) true;
+    local excludePredicate = if std.isFunction(exclude) then exclude else if std.isArray(exclude) then function(platform) platformMatchesAny(platform, exclude) else function(_) false;
+    function(platform) includePredicate(platform) && !excludePredicate(platform),
+  // Promote selected platforms of this build to <target> (e.g. common.gate).
+  local promoteToTarget(target, platformSelector, override=false) =
+    assert std.isObject(target);
+    assert std.isArray(platformSelector) || std.isFunction(platformSelector);
+    local platformPredicate = makePlatformPredicate(platformSelector);
+    {
+      targetSelector:: function(platform)
+        local superResult = if 'targetSelector' in super then super.targetSelector(platform) else [];
+        local thisResult = if platformPredicate(platform) then [target] else [];
+        if override && thisResult != [] then thisResult else thisResult + superResult,
+    },
+  // Set this build's default target for all non-promoted platforms.
+  local defaultToTarget(defaultTarget) =
+    assert std.isObject(defaultTarget);
+    {
+      targetSelector:: function(platform)
+        local superResult = if 'targetSelector' in super then super.targetSelector(platform) else [];
+        if superResult != [] then superResult else [defaultTarget],
+    },
+  // Filter platforms this build should be run on. Composable. Empty array = disable on all.
+  local filterPlatforms(platformSelector) =
+    assert std.isArray(platformSelector) || std.isFunction(platformSelector);
+    local platformPredicate = makePlatformPredicate(platformSelector);
+    {
+      platformSelector:: function(platform)
+        local superResult = if 'platformSelector' in super then super.platformSelector(platform) else true;
+        local thisResult = platformPredicate(platform);
+        superResult && thisResult,
+    },
+  local includePlatforms(platformSelector) = filterPlatforms(platformSelector),
+  local excludePlatforms(platformSelector) = filterPlatforms(function(platform) !platformMatchesAny(platform, platformSelector)),
+
+  generateBuilds:: generateBuilds,
+  platformMatches:: platformMatches,
+  promoteToTarget:: promoteToTarget,
+  defaultToTarget:: defaultToTarget,
+  includePlatforms:: includePlatforms,
+  excludePlatforms:: excludePlatforms,
+  gateOnMain:: promoteToTarget(common.gate, [self.mainGatePlatform]),
 }
