@@ -26,7 +26,9 @@ async function indirectEval() {
 async function dynamicFunction() {
     await (new Function("return import(importedUrl)"))();
 }
-[basic, directEval, indirectEval, dynamicFunction].reduce((p, f) => p.then(() => f().catch(err => {
+[basic, directEval, indirectEval, dynamicFunction].forEach((f) => {
+    f().catch(err => {
         console.error(`${f.name}() => ${err}`);
         throw err;
-    })), Promise.resolve());
+    });
+});
