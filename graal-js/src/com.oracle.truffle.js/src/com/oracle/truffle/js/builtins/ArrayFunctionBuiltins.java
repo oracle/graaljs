@@ -245,7 +245,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             return iteratorStepNode.execute(iteratorRecord);
         }
 
-        protected final Object callMapFn(Object target, JSDynamicObject function, Object... userArguments) {
+        protected final Object callMapFn(Object target, Object function, Object... userArguments) {
             if (callMapFnNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callMapFnNode = insert(JSFunctionCallNode.createCall());
@@ -308,7 +308,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                     }
                     Object mapped = getIteratorValue((JSDynamicObject) next);
                     if (mapping) {
-                        mapped = callMapFn(thisArg, (JSDynamicObject) mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
+                        mapped = callMapFn(thisArg, mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
                     }
                     if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
                         writeOwn(obj, k, mapped);
@@ -333,7 +333,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 Object value = read(items, k);
                 Object mapped = value;
                 if (mapping) {
-                    mapped = callMapFn(thisArg, (JSDynamicObject) mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
+                    mapped = callMapFn(thisArg, mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
                 }
                 if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
                     writeOwn(obj, k, mapped);
