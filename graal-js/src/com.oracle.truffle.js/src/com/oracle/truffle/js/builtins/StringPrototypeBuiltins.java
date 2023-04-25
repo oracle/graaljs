@@ -1000,10 +1000,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private Object builtinSplit(Object thisObj, Object separator, Object limit, StringSplitter stringSplitter, InlinedConditionProfile zeroLimit) {
             TruffleString thisStr = toString(thisObj);
             int lim = getLimit(limit);
-            TruffleString sepStr = toString2(separator);
             if (separator == Undefined.instance) {
                 return split(thisStr, lim, NOP_SPLITTER, null, 1, zeroLimit);
             } else {
+                TruffleString sepStr = toString2(separator);
                 return split(thisStr, lim, stringSplitter, sepStr, 1, zeroLimit);
             }
         }
