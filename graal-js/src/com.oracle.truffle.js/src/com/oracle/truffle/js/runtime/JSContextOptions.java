@@ -57,6 +57,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.TruffleOptionDescriptors;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -75,7 +76,7 @@ import org.graalvm.polyglot.SandboxPolicy;
 
 public final class JSContextOptions {
 
-    public static final String JS_OPTION_PREFIX = "js.";
+    public static final String JS_OPTION_PREFIX = JavaScriptLanguage.ID + ".";
 
     @CompilationFinal private JSParserOptions parserOptions;
     @CompilationFinal private OptionValues optionValues;
