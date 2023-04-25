@@ -215,6 +215,9 @@ test-zlib-unused-weak: FAIL
 test-http-outgoing-end-cork: SKIP
 test-http2-server-rst-stream: SKIP
 
+# Random OutOfMemoryError: Garbage-collected heap size exceeded.
+test-worker-init-failure: SKIP
+
 [$system==solaris]
 test-http2-respond-file-fd-invalid : FAIL
 
