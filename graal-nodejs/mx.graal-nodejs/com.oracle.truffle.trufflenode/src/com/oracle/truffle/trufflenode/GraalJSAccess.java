@@ -2983,7 +2983,7 @@ public final class GraalJSAccess {
     }
 
     public boolean contextIsCodeGenerationFromStringsAllowed(Object context) {
-        return !((JSRealm) context).getContext().getContextOptions().isDisableEval();
+        return !((JSRealm) context).getContext().getLanguageOptions().disableEval();
     }
 
     public void isolateRunMicrotasks() {

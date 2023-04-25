@@ -157,6 +157,7 @@ import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
+import com.oracle.truffle.js.runtime.util.StableContextOptionValue;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 
@@ -397,7 +398,12 @@ public class JSContext {
 
     @CompilationFinal private AllocationReporter allocationReporter;
 
-    private final JSContextOptions contextOptions;
+    private final JSLanguageOptions languageOptions;
+
+    private final StableContextOptionValue<Boolean> optionRegexpStaticResult;
+    private final StableContextOptionValue<Boolean> optionV8CompatibilityMode;
+    private final StableContextOptionValue<Boolean> optionDirectByteBuffer;
+    private final StableContextOptionValue<Long> optionTimerResolution;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
     private final Map<TruffleString, JSFunctionData> namedEmptyFunctionsDataMap = new ConcurrentHashMap<>();
@@ -527,15 +533,19 @@ public class JSContext {
         }
     }
 
-    protected JSContext(Evaluator evaluator, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
-        this.contextOptions = contextOptions;
+    protected JSContext(Evaluator evaluator, JavaScriptLanguage lang, JSLanguageOptions languageOptions, TruffleLanguage.Env env) {
+        this.language = lang;
+        this.languageOptions = languageOptions;
 
         if (env != null) { // env could still be null
             setAllocationReporter(env);
-            this.contextOptions.setOptionValues(env.getSandboxPolicy(), env.getOptions());
         }
 
-        this.language = lang;
+        this.optionRegexpStaticResult = new StableContextOptionValue<>(JSContextOptions::isRegexpStaticResult, JSContextOptions.REGEXP_STATIC_RESULT, JSContextOptions.REGEXP_STATIC_RESULT_NAME);
+        this.optionV8CompatibilityMode = new StableContextOptionValue<>(JSContextOptions::isV8CompatibilityMode, JSContextOptions.V8_COMPATIBILITY_MODE, JSContextOptions.V8_COMPATIBILITY_MODE_NAME);
+        this.optionDirectByteBuffer = new StableContextOptionValue<>(JSContextOptions::isDirectByteBuffer, JSContextOptions.DIRECT_BYTE_BUFFER, JSContextOptions.DIRECT_BYTE_BUFFER_NAME);
+        this.optionTimerResolution = new StableContextOptionValue<>(JSContextOptions::getTimerResolution, JSContextOptions.TIMER_RESOLUTION, JSContextOptions.TIMER_RESOLUTION_NAME);
+
         this.initialEnvironment = env;
 
         this.sharedRootNode = new SharedRootNode();
@@ -571,7 +581,7 @@ public class JSContext {
 
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
-        this.timeProfiler = contextOptions.isProfileTime() ? new TimeProfiler() : null;
+        this.timeProfiler = languageOptions.profileTime() ? new TimeProfiler() : null;
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
 
@@ -694,13 +704,13 @@ public class JSContext {
 
         this.regExpGroupsEmptyShape = JSRegExp.makeInitialGroupsObjectShape(this);
 
-        this.regexOptions = createRegexOptions(contextOptions);
+        this.regexOptions = createRegexOptions(languageOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
-        this.supportedImportAssertions = contextOptions.isImportAssertions() ? Set.of(TYPE_IMPORT_ASSERTION) : Set.of();
+        this.supportedImportAssertions = languageOptions.importAssertions() ? Set.of(TYPE_IMPORT_ASSERTION) : Set.of();
 
-        if (contextOptions.getUnhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
-            setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, contextOptions.getUnhandledRejectionsMode()));
+        if (languageOptions.unhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
+            setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, languageOptions.unhandledRejectionsMode()));
         }
     }
 
@@ -713,7 +723,7 @@ public class JSContext {
     }
 
     public final JSParserOptions getParserOptions() {
-        return contextOptions.getParserOptions();
+        return languageOptions.parserOptions();
     }
 
     public final Object getEmbedderData() {
@@ -756,8 +766,14 @@ public class JSContext {
         return globalObjectPristineAssumption;
     }
 
-    public static JSContext createContext(Evaluator evaluator, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
-        return new JSContext(evaluator, contextOptions, lang, env);
+    public static JSContext createContext(Evaluator evaluator, JavaScriptLanguage language, TruffleLanguage.Env env) {
+        JSContextOptions contextOptions = JSContextOptions.fromOptionValues(env.getSandboxPolicy(), env.getOptions());
+        JSLanguageOptions languageOptions = JSLanguageOptions.fromContextOptions(contextOptions);
+        JSContext context = new JSContext(evaluator, language, languageOptions, env);
+        if (!env.isPreInitialization()) {
+            context.updateStableOptions(contextOptions, StableContextOptionValue.UpdateKind.INITIALIZE);
+        }
+        return context;
     }
 
     public JSRealm createRealm(TruffleLanguage.Env env) {
@@ -775,12 +791,12 @@ public class JSContext {
         newRealm.setupGlobals();
 
         if (isTop) {
-            if (contextOptions.isTest262Mode() || contextOptions.isTestV8Mode()) {
-                newRealm.setAgent(new DebugJSAgent(getPromiseRejectionTracker(), contextOptions.canAgentBlock()));
+            if (languageOptions.test262Mode() || languageOptions.testV8Mode()) {
+                newRealm.setAgent(new DebugJSAgent(getPromiseRejectionTracker(), languageOptions.agentCanBlock()));
             } else {
                 newRealm.setAgent(new MainJSAgent(getPromiseRejectionTracker()));
             }
-            if (contextOptions.isV8RealmBuiltin()) {
+            if (languageOptions.v8RealmBuiltin()) {
                 newRealm.initRealmList();
                 newRealm.addToRealmList(newRealm);
             }
@@ -1191,21 +1207,21 @@ public class JSContext {
     private static final String REGEX_OPTION_ALWAYS_EAGER = "AlwaysEager";
     private static final String REGEX_OPTION_VALIDATE = "Validate=true";
 
-    private static String createRegexOptions(JSContextOptions contextOptions) {
-        StringBuilder options = new StringBuilder();
-        if (contextOptions.isRegexRegressionTestMode()) {
-            options.append(REGEX_OPTION_REGRESSION_TEST_MODE).append("=true,");
+    private static String createRegexOptions(JSLanguageOptions jsOptions) {
+        StringBuilder regexOptions = new StringBuilder();
+        if (jsOptions.regexRegressionTestMode()) {
+            regexOptions.append(REGEX_OPTION_REGRESSION_TEST_MODE).append("=true,");
         }
-        if (contextOptions.isRegexDumpAutomata()) {
-            options.append(REGEX_OPTION_DUMP_AUTOMATA).append("=true,");
+        if (jsOptions.regexDumpAutomata()) {
+            regexOptions.append(REGEX_OPTION_DUMP_AUTOMATA).append("=true,");
         }
-        if (contextOptions.isRegexStepExecution()) {
-            options.append(REGEX_OPTION_STEP_EXECUTION).append("=true,");
+        if (jsOptions.regexStepExecution()) {
+            regexOptions.append(REGEX_OPTION_STEP_EXECUTION).append("=true,");
         }
-        if (contextOptions.isRegexAlwaysEager()) {
-            options.append(REGEX_OPTION_ALWAYS_EAGER).append("=true,");
+        if (jsOptions.regexAlwaysEager()) {
+            regexOptions.append(REGEX_OPTION_ALWAYS_EAGER).append("=true,");
         }
-        return options.toString();
+        return regexOptions.toString();
     }
 
     public String getRegexOptions() {
@@ -1375,16 +1391,16 @@ public class JSContext {
     }
 
     public int getEcmaScriptVersion() {
-        return contextOptions.getEcmaScriptVersion();
+        return languageOptions.ecmaScriptVersion();
     }
 
     @Idempotent
     public int getPropertyCacheLimit() {
-        return contextOptions.getPropertyCacheLimit();
+        return languageOptions.propertyCacheLimit();
     }
 
     public int getFunctionCacheLimit() {
-        return contextOptions.getFunctionCacheLimit();
+        return languageOptions.functionCacheLimit();
     }
 
     void setAllocationReporter(TruffleLanguage.Env env) {
@@ -1407,42 +1423,38 @@ public class JSContext {
     }
 
     public boolean isOptionAnnexB() {
-        return contextOptions.isAnnexB();
+        return languageOptions.annexB();
     }
 
     public boolean isOptionIntl402() {
         assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option intl-402 accessed during context pre-initialization.";
-        return contextOptions.isIntl402();
+        return languageOptions.intl402();
     }
 
     public boolean isOptionRegexpMatchIndices() {
-        return contextOptions.isRegexpMatchIndices();
+        return languageOptions.regexpMatchIndices();
     }
 
     public boolean isOptionRegexpStaticResult() {
         assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option static-regex-result accessed during context pre-initialization.";
-        return contextOptions.isRegexpStaticResult();
+        return optionRegexpStaticResult.get();
     }
 
     public boolean isOptionRegexpStaticResultInContextInit() {
-        return contextOptions.isRegexpStaticResult();
+        return optionRegexpStaticResult.getFromContext();
     }
 
     public boolean isOptionSharedArrayBuffer() {
-        return contextOptions.isSharedArrayBuffer();
-    }
-
-    public boolean isOptionAtomics() {
-        return contextOptions.isAtomics();
+        return languageOptions.sharedArrayBuffer();
     }
 
     public boolean isOptionTemporal() {
-        return contextOptions.isTemporal();
+        return languageOptions.temporal();
     }
 
     public boolean isOptionV8CompatibilityMode() {
         assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option v8-compat accessed during context pre-initialization.";
-        return contextOptions.isV8CompatibilityMode();
+        return optionV8CompatibilityMode.get();
     }
 
     /**
@@ -1452,58 +1464,54 @@ public class JSContext {
      * undone during context-patching.
      */
     public boolean isOptionV8CompatibilityModeInContextInit() {
-        return contextOptions.isV8CompatibilityMode();
+        return optionV8CompatibilityMode.getFromContext();
     }
 
     @Idempotent
     public boolean isOptionNashornCompatibilityMode() {
-        return contextOptions.isNashornCompatibilityMode();
-    }
-
-    public boolean isOptionDebugBuiltin() {
-        return contextOptions.isDebugBuiltin();
+        return languageOptions.nashornCompatibilityMode();
     }
 
     public boolean isOptionMleBuiltin() {
-        return contextOptions.isMLEMode();
+        return languageOptions.isMLEMode();
     }
 
     public boolean isOptionDirectByteBuffer() {
         assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option direct-byte-buffer accessed during context pre-initialization.";
-        return contextOptions.isDirectByteBuffer();
+        return optionDirectByteBuffer.get();
     }
 
     public boolean isOptionParseOnly() {
-        return contextOptions.isParseOnly();
+        return languageOptions.parseOnly();
     }
 
     public boolean isOptionDisableWith() {
-        return contextOptions.isDisableWith();
+        return languageOptions.disableWith();
     }
 
     public boolean isOptionAsyncStackTraces() {
-        return contextOptions.isAsyncStackTraces();
+        return languageOptions.asyncStackTraces();
     }
 
     public boolean isOptionForeignObjectPrototype() {
-        return contextOptions.hasForeignObjectPrototype();
+        return languageOptions.hasForeignObjectPrototype();
     }
 
     public long getTimerResolution() {
         assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option timer-resolution accessed during context pre-initialization.";
-        return contextOptions.getTimerResolution();
+        return optionTimerResolution.get();
     }
 
     public long getFunctionArgumentsLimit() {
-        return contextOptions.getFunctionArgumentsLimit();
+        return languageOptions.functionArgumentsLimit();
     }
 
     public int getStringLengthLimit() {
-        return contextOptions.getStringLengthLimit();
+        return languageOptions.stringLengthLimit();
     }
 
     public boolean usePromiseResolve() {
-        return contextOptions.isAwaitOptimization();
+        return languageOptions.awaitOptimization();
     }
 
     public final void setPrepareStackTraceCallback(PrepareStackTraceCallback callback) {
@@ -1685,8 +1693,8 @@ public class JSContext {
         return singleRealmAssumption;
     }
 
-    public JSContextOptions getContextOptions() {
-        return contextOptions;
+    public JSLanguageOptions getLanguageOptions() {
+        return languageOptions;
     }
 
     @Idempotent
@@ -1791,17 +1799,9 @@ public class JSContext {
     }
 
     public void checkEvalAllowed() {
-        if (contextOptions.isDisableEval()) {
+        if (languageOptions.disableEval()) {
             throw Errors.createEvalDisabled();
         }
-    }
-
-    public boolean isOptionLoadFromURL() {
-        return contextOptions.isLoadFromURL();
-    }
-
-    public boolean isOptionLoadFromClasspath() {
-        return contextOptions.isLoadFromClasspath();
     }
 
     public Locale getLocale() {
@@ -1816,7 +1816,7 @@ public class JSContext {
 
     @TruffleBoundary
     private Locale getLocaleImpl() {
-        String name = getContextOptions().getLocale();
+        String name = getLanguageOptions().locale();
         if (name.isEmpty()) {
             return Locale.getDefault();
         } else {
@@ -1843,7 +1843,7 @@ public class JSContext {
     }
 
     public boolean isOptionTopLevelAwait() {
-        return getContextOptions().isTopLevelAwait();
+        return getLanguageOptions().topLevelAwait();
     }
 
     public final Set<TruffleString> getSupportedImportAssertions() {
@@ -1852,5 +1852,12 @@ public class JSContext {
 
     public static TruffleString getTypeImportAssertion() {
         return TYPE_IMPORT_ASSERTION;
+    }
+
+    void updateStableOptions(JSContextOptions contextOptions, StableContextOptionValue.UpdateKind kind) {
+        optionRegexpStaticResult.update(contextOptions, kind);
+        optionV8CompatibilityMode.update(contextOptions, kind);
+        optionDirectByteBuffer.update(contextOptions, kind);
+        optionTimerResolution.update(contextOptions, kind);
     }
 }

@@ -52,12 +52,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
-import com.oracle.truffle.api.TruffleOptionDescriptors;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -65,15 +61,38 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.SandboxPolicy;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import com.oracle.truffle.api.utilities.CyclicAssumption;
-import org.graalvm.polyglot.SandboxPolicy;
+import com.oracle.truffle.api.TruffleOptionDescriptors;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 
+/**
+ * Defines, and provides access to, all JS (context and language) options.
+ *
+ * Option values are per-context, and cached values may be constant-folded when running with a bound
+ * Engine, as long as no other contexts have been spawned, but have to be reread every time from the
+ * context in "multi-context mode", i.e., if code sharing is enabled via a shared Engine.
+ *
+ * {@link JSLanguageOptions} captures a subset of these options that are immutable and shared per
+ * language instance (polyglot sharing layer) and always treated as constant in compiled code, but
+ * will prevent code sharing between contexts that differ in these options.
+ *
+ * {@link JSParserOptions} captures the subset of both {@link JSContextOptions} and
+ * {@link JSLanguageOptions} that is used by the parser.
+ *
+ * Select context options are treated as stable and/or patchable in the preinitialized context.
+ * Stable options will be read from the language and treated as constant while stable but once the
+ * option's value has changed, it has to be looked up from the context. This gives fast access by
+ * default without preventing code sharing. Similarly, patchable options allow code and the
+ * preinitialized context to be reused even if the option changes.
+ *
+ * @see JSLanguageOptions
+ * @see JSParserOptions
+ * @see com.oracle.truffle.js.runtime.util.StableContextOptionValue
+ */
 public final class JSContextOptions {
 
     public static final String JS_OPTION_PREFIX = JavaScriptLanguage.ID + ".";
@@ -160,8 +179,6 @@ public final class JSContextOptions {
     public static final String REGEXP_STATIC_RESULT_NAME = JS_OPTION_PREFIX + "regexp-static-result";
     @Option(name = REGEXP_STATIC_RESULT_NAME, category = OptionCategory.USER, help = "Provide last RegExp match in RegExp global var, e.g. RegExp.$1.") //
     public static final OptionKey<Boolean> REGEXP_STATIC_RESULT = new OptionKey<>(true);
-    private final CyclicAssumption regexpStaticResultCyclicAssumption = new CyclicAssumption("The " + REGEXP_STATIC_RESULT_NAME + " option is stable.");
-    @CompilationFinal private Assumption regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
     @CompilationFinal private boolean regexpStaticResult;
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
@@ -176,8 +193,6 @@ public final class JSContextOptions {
     public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
     @Option(name = V8_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the Google V8 engine.") //
     public static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
-    private final CyclicAssumption v8CompatibilityModeCyclicAssumption = new CyclicAssumption("The " + V8_COMPATIBILITY_MODE_NAME + " option is stable.");
-    @CompilationFinal private Assumption v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
     @CompilationFinal private boolean v8CompatibilityMode;
 
     public static final String V8_REALM_BUILTIN_NAME = JS_OPTION_PREFIX + "v8-realm-builtin";
@@ -203,8 +218,6 @@ public final class JSContextOptions {
     public static final String DIRECT_BYTE_BUFFER_NAME = JS_OPTION_PREFIX + "direct-byte-buffer";
     @Option(name = DIRECT_BYTE_BUFFER_NAME, category = OptionCategory.USER, help = "Use direct (off-heap) byte buffer for typed arrays.") //
     public static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(false);
-    private final CyclicAssumption directByteBufferCyclicAssumption = new CyclicAssumption("The " + DIRECT_BYTE_BUFFER_NAME + " option is stable.");
-    @CompilationFinal private Assumption directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
     @CompilationFinal private boolean directByteBuffer;
 
     public static final String PARSE_ONLY_NAME = JS_OPTION_PREFIX + "parse-only";
@@ -238,8 +251,6 @@ public final class JSContextOptions {
     @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, usageSyntax = "<nanoseconds>", //
                     help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
     public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
-    private final CyclicAssumption timerResolutionCyclicAssumption = new CyclicAssumption("The " + TIMER_RESOLUTION_NAME + " option is stable.");
-    @CompilationFinal private Assumption timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
     @CompilationFinal private long timerResolution;
 
     public static final String AGENT_CAN_BLOCK_NAME = JS_OPTION_PREFIX + "agent-can-block";
@@ -640,23 +651,18 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SCOPE_OPTIMIZATION = new OptionKey<>(true);
     @CompilationFinal private boolean scopeOptimization;
 
-    JSContextOptions(SandboxPolicy sandboxPolicy, JSParserOptions parserOptions, OptionValues optionValues) {
-        this.parserOptions = parserOptions;
+    JSContextOptions(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
+        this.parserOptions = new JSParserOptions();
         this.optionValues = optionValues;
         setOptionValues(sandboxPolicy, optionValues);
     }
 
     public static JSContextOptions fromOptionValues(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
-        return new JSContextOptions(sandboxPolicy, new JSParserOptions(), optionValues);
+        return new JSContextOptions(sandboxPolicy, optionValues);
     }
 
     public JSParserOptions getParserOptions() {
         return parserOptions;
-    }
-
-    public void setParserOptions(JSParserOptions parserOptions) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.parserOptions = parserOptions;
     }
 
     public void setOptionValues(SandboxPolicy sandboxPolicy, OptionValues newOptions) {
@@ -668,38 +674,26 @@ public final class JSContextOptions {
 
     private void cacheOptions(SandboxPolicy sandboxPolicy) {
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE);
-        this.ecmascriptVersion = readIntegerOption(ECMASCRIPT_VERSION);
         if (nashornCompatibilityMode && !ECMASCRIPT_VERSION.hasBeenSet(optionValues)) {
             // default to ES5 in nashorn-compat mode
             this.ecmascriptVersion = JSConfig.ECMAScript5;
+        } else {
+            this.ecmascriptVersion = readIntegerOption(ECMASCRIPT_VERSION);
         }
 
         this.annexB = readBooleanOption(ANNEX_B);
         this.intl402 = INTL_402.hasBeenSet(optionValues) ? readBooleanOption(INTL_402) : !nashornCompatibilityMode;
-        this.regexpStaticResult = patchBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME, regexpStaticResult, msg -> {
-            regexpStaticResultCyclicAssumption.invalidate(msg);
-            regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
-        });
+        this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT);
         this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER);
-        this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, msg -> {
-            v8CompatibilityModeCyclicAssumption.invalidate(msg);
-            v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
-        });
+        this.v8CompatibilityMode = readBooleanOption(V8_COMPATIBILITY_MODE);
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN);
-        this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, msg -> {
-            directByteBufferCyclicAssumption.invalidate(msg);
-            directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
-        });
+        this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER);
         this.parseOnly = readBooleanOption(PARSE_ONLY);
         this.debug = readBooleanOption(DEBUG_BUILTIN);
         this.zoneRulesBasedTimeZones = readBooleanOption(ZONE_RULES_BASED_TIME_ZONES);
-        this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution,
-                        () -> sandboxPolicy.isStricterOrEqual(SandboxPolicy.UNTRUSTED) ? TimeUnit.SECONDS.toNanos(1) : TIMER_RESOLUTION.getDefaultValue(),
-                        msg -> {
-                            timerResolutionCyclicAssumption.invalidate(msg);
-                            timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
-                        });
+        this.timerResolution = optionValues.hasBeenSet(TIMER_RESOLUTION) ? readLongOption(TIMER_RESOLUTION)
+                        : sandboxPolicy.isStricterOrEqual(SandboxPolicy.UNTRUSTED) ? TimeUnit.SECONDS.toNanos(1) : TIMER_RESOLUTION.getDefaultValue();
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK);
         this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION);
         this.disableEval = readBooleanOption(DISABLE_EVAL);
@@ -752,14 +746,6 @@ public final class JSContextOptions {
         this.v8Intrinsics = readBooleanOption(V8_INTRINSICS);
     }
 
-    private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
-        boolean newValue = readBooleanOption(key);
-        if (oldValue != newValue) {
-            invalidate.accept(String.format("Option %s was changed from %b to %b.", name, oldValue, newValue));
-        }
-        return newValue;
-    }
-
     private UnhandledRejectionsTrackingMode readUnhandledRejectionsMode() {
         return UNHANDLED_REJECTIONS.getValue(optionValues);
     }
@@ -770,15 +756,6 @@ public final class JSContextOptions {
 
     private int readIntegerOption(OptionKey<Integer> key) {
         return key.getValue(optionValues);
-    }
-
-    private long patchLongOption(OptionKey<Long> key, String name, long oldValue, Supplier<Long> defaultValueProvider,
-                    Consumer<String> invalidate) {
-        long newValue = optionValues.hasBeenSet(key) ? readLongOption(key) : defaultValueProvider.get();
-        if (oldValue != newValue) {
-            invalidate.accept(String.format("Option %s was changed from %d to %d.", name, oldValue, newValue));
-        }
-        return newValue;
     }
 
     private long readLongOption(OptionKey<Long> key) {
@@ -840,10 +817,6 @@ public final class JSContextOptions {
     }
 
     public boolean isRegexpStaticResult() {
-        try {
-            regexpStaticResultCurrentAssumption.check();
-        } catch (InvalidAssumptionException e) {
-        }
         return regexpStaticResult;
     }
 
@@ -862,10 +835,6 @@ public final class JSContextOptions {
     }
 
     public boolean isV8CompatibilityMode() {
-        try {
-            v8CompatibilityModeCurrentAssumption.check();
-        } catch (InvalidAssumptionException e) {
-        }
         return v8CompatibilityMode;
     }
 
@@ -882,10 +851,6 @@ public final class JSContextOptions {
     }
 
     public boolean isDirectByteBuffer() {
-        try {
-            directByteBufferCurrentAssumption.check();
-        } catch (InvalidAssumptionException e) {
-        }
         return directByteBuffer;
     }
 
@@ -894,10 +859,6 @@ public final class JSContextOptions {
     }
 
     public long getTimerResolution() {
-        try {
-            timerResolutionCurrentAssumption.check();
-        } catch (InvalidAssumptionException e) {
-        }
         return timerResolution;
     }
 

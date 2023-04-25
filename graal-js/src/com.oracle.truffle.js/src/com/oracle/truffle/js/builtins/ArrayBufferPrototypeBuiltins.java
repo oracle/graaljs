@@ -464,7 +464,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             int newByteLength = 0;
             if (newLength != Undefined.instance) {
                 long byteLength = toIndexNode.executeLong(newLength);
-                if (byteLength > getContext().getContextOptions().getMaxTypedArrayLength()) {
+                if (byteLength > getContext().getLanguageOptions().maxTypedArrayLength()) {
                     errorBranch.enter(this);
                     throw Errors.createRangeErrorInvalidBufferSize();
                 }

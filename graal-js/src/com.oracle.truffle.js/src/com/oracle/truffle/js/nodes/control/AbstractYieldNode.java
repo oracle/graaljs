@@ -72,7 +72,7 @@ abstract class AbstractYieldNode extends JavaScriptNode implements ResumableNode
     }
 
     protected final Object throwValue(Object value) {
-        throw UserScriptException.create(value, this, context.getContextOptions().getStackTraceLimit());
+        throw UserScriptException.create(value, this, context.getLanguageOptions().stackTraceLimit());
     }
 
     protected final Object returnValue(VirtualFrame frame, Object value) {

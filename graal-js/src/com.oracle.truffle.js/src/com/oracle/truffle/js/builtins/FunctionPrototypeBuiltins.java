@@ -332,7 +332,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 proto = getPrototypeNode.execute(thisObj);
             } else {
                 assert JSRuntime.isCallableForeign(thisObj);
-                if (getContext().getContextOptions().hasForeignObjectPrototype()) {
+                if (getContext().getLanguageOptions().hasForeignObjectPrototype()) {
                     proto = foreignPrototypeNode.execute(thisObj);
                 } else {
                     proto = Null.instance;
@@ -476,7 +476,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         private Object apply(Object function, Object target, Object args) {
             Object[] applyUserArgs = toObjectArray.executeObjectArray(args);
-            assert applyUserArgs.length <= getContext().getContextOptions().getMaxApplyArgumentLength();
+            assert applyUserArgs.length <= getContext().getLanguageOptions().maxApplyArgumentLength();
             Object[] passedOnArguments = JSArguments.create(target, function, applyUserArgs);
             return call.executeCall(passedOnArguments);
         }

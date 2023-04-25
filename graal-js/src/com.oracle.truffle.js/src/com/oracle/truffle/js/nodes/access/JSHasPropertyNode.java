@@ -199,7 +199,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
             if (!(propertyName instanceof Symbol) && interop.isMemberExisting(object, Strings.toJavaString(toStringNode.executeString(propertyName)))) {
                 return true;
             }
-            if (getLanguage().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+            if (getLanguage().getJSContext().getLanguageOptions().hasForeignObjectPrototype()) {
                 JSDynamicObject prototype = foreignObjectPrototypeNode.execute(object);
                 return hasInPrototype.executeBoolean(prototype, propertyName);
             } else {

@@ -40,6 +40,13 @@
  */
 package com.oracle.truffle.js.runtime;
 
+/**
+ * Option values that affect JS language semantics, i.e. how code is parsed and translated. Must be
+ * a subset of {@link JSLanguageOptions} to ensure that code is only shared between contexts that
+ * agree on all these options (but may differ in others that do not affect code and shared state).
+ *
+ * @see JSLanguageOptions
+ */
 @SuppressWarnings("hiding")
 public record JSParserOptions(boolean strict,
                 boolean scripting,

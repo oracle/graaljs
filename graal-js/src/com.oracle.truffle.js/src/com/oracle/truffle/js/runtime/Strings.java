@@ -701,7 +701,7 @@ public final class Strings {
     }
 
     public static TruffleString substring(JSContext context, TruffleString.SubstringByteIndexNode node, TruffleString s, int fromIndex, int length) {
-        return substring(context.getContextOptions().isStringLazySubstrings(), node, s, fromIndex, length);
+        return substring(context.getLanguageOptions().stringLazySubstrings(), node, s, fromIndex, length);
     }
 
     /**

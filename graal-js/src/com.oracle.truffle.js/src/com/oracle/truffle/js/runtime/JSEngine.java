@@ -68,12 +68,7 @@ public final class JSEngine {
     }
 
     private JSContext createContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
-        JSContextOptions contextOptions = JSContextOptions.fromOptionValues(env.getSandboxPolicy(), env.getOptions());
-        return JSContext.createContext(parser, contextOptions, language, env);
-    }
-
-    public JSContext createContext(JavaScriptLanguage language, JSContextOptions contextOptions, TruffleLanguage.Env env) {
-        return JSContext.createContext(parser, contextOptions, language, env);
+        return JSContext.createContext(parser, language, env);
     }
 
     public static JSContext createJSContext(JavaScriptLanguage language, TruffleLanguage.Env env) {

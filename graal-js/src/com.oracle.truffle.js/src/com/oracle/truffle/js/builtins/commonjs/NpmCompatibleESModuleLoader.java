@@ -125,7 +125,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
         String specifier = moduleRequest.getSpecifier().toJavaStringUncached();
         log("IMPORT resolve ", specifier);
-        String moduleReplacementName = getCoreModuleReplacement(realm.getContext(), specifier);
+        String moduleReplacementName = getCoreModuleReplacement(realm, specifier);
         if (moduleReplacementName != null) {
             return loadCoreModuleReplacement(referencingModule, moduleRequest, moduleReplacementName);
         }
@@ -183,7 +183,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             } else {
                 // Just load the module
                 try {
-                    String cwdOption = realm.getContext().getContextOptions().getRequireCwd();
+                    String cwdOption = realm.getContextOptions().getRequireCwd();
                     TruffleFile cwd = cwdOption == null ? realm.getEnv().getCurrentWorkingDirectory() : realm.getEnv().getPublicTruffleFile(cwdOption);
                     TruffleFile modulePath = joinPaths(cwd, moduleReplacementName);
                     src = Source.newBuilder(ID, modulePath).build();
@@ -629,7 +629,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
     private TruffleFile getFullPath(ScriptOrModule referencingModule) {
         String refPath = referencingModule == null ? null : referencingModule.getSource().getPath();
         if (refPath == null) {
-            refPath = realm.getContext().getContextOptions().getRequireCwd();
+            refPath = realm.getContextOptions().getRequireCwd();
         }
         return realm.getEnv().getPublicTruffleFile(refPath);
     }

@@ -1612,13 +1612,13 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @InliningCutoff
         private Object fallback(Object receiver, Object[] arguments, Object[] callArguments, InteropException caughtException) {
             InteropException ex = caughtException;
-            if (getContext().getContextOptions().hasForeignObjectPrototype() || JSInteropUtil.isBoxedPrimitive(receiver, interop)) {
+            if (getContext().getLanguageOptions().hasForeignObjectPrototype() || JSInteropUtil.isBoxedPrimitive(receiver, interop)) {
                 Object function = maybeGetFromPrototype(receiver);
                 if (function != Undefined.instance) {
                     return callJSFunction(receiver, function, arguments);
                 }
             }
-            if (getContext().getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(receiver) && interop.isHashEntryReadable(receiver, functionName)) {
+            if (getContext().getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(receiver) && interop.isHashEntryReadable(receiver, functionName)) {
                 try {
                     Object function = interop.readHashValue(receiver, functionName);
                     return InteropLibrary.getUncached().execute(function, callArguments);

@@ -294,7 +294,7 @@ public final class GraalJSEvaluator implements JSParser {
                 // Non-standard: throw error from onRejected handler.
                 performPromiseThenNode.execute((JSDynamicObject) promise, onAccepted, onRejected, null);
             }
-            if (context.getContextOptions().isEsmEvalReturnsExports()) {
+            if (context.getLanguageOptions().esmEvalReturnsExports()) {
                 JSDynamicObject moduleNamespace = getModuleNamespace(moduleRecord);
                 assert moduleNamespace != null;
                 return moduleNamespace;

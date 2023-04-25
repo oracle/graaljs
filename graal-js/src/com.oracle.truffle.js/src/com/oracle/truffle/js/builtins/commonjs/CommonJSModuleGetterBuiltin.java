@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -129,13 +129,14 @@ public abstract class CommonJSModuleGetterBuiltin extends GlobalBuiltins.JSFileL
     private TruffleString getCurrentFolderName() {
         CompilerAsserts.neverPartOfCompilation();
         String filePath = CommonJSResolution.getCurrentFileNameFromStack();
-        TruffleLanguage.Env env = getRealm().getEnv();
+        JSRealm realm = getRealm();
+        TruffleLanguage.Env env = realm.getEnv();
         if (filePath != null) {
             TruffleFile truffleFile = env.getPublicTruffleFile(filePath);
             assert truffleFile.isRegularFile() && truffleFile.getParent().isDirectory();
             return Strings.fromJavaString(truffleFile.getParent().normalize().toString());
         }
-        return Strings.fromJavaString(CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext(), env).getAbsoluteFile().toString());
+        return Strings.fromJavaString(CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(realm, env).getAbsoluteFile().toString());
     }
 
 }

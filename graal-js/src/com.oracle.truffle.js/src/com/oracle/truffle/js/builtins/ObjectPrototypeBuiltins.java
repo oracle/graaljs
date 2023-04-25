@@ -564,7 +564,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int counter = 0;
             do {
                 counter++;
-                if (counter > getContext().getContextOptions().getMaxPrototypeChainLength()) {
+                if (counter > getContext().getLanguageOptions().maxPrototypeChainLength()) {
                     throw Errors.createRangeError("prototype chain length exceeded");
                 }
                 pobj = JSObject.getPrototype(pobj);

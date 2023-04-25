@@ -201,7 +201,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 return JSObject.getJSClass(jsobj).getHelper(jsobj, receiver, key, encapsulatingNode);
             } else {
                 Object result = JSInteropUtil.readMemberOrDefault(target, key, null);
-                if (result == null && JavaScriptLanguage.get(encapsulatingNode).getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+                if (result == null && JavaScriptLanguage.get(encapsulatingNode).getJSContext().getLanguageOptions().hasForeignObjectPrototype()) {
                     JSDynamicObject prototype = ForeignObjectPrototypeNode.getUncached().execute(target);
                     result = JSObject.getJSClass(prototype).getHelper(prototype, receiver, key, encapsulatingNode);
                 }
@@ -348,7 +348,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 return JSObject.hasProperty((JSDynamicObject) target, key);
             } else {
                 boolean result = JSInteropUtil.hasProperty(target, key);
-                if (!result && JavaScriptLanguage.get(null).getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+                if (!result && JavaScriptLanguage.get(null).getJSContext().getLanguageOptions().hasForeignObjectPrototype()) {
                     JSDynamicObject prototype = ForeignObjectPrototypeNode.getUncached().execute(target);
                     result = JSObject.hasProperty(prototype, key);
                 }

@@ -1489,7 +1489,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             } else {
                 propertyKey = toPropertyKey(key);
             }
-            if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
+            if (root.context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
                     return interop.readHashValue(truffleObject, propertyKey);
                 } catch (UnknownKeyException e) {
@@ -1580,7 +1580,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @InliningCutoff
         private Object maybeReadFromPrototype(Object truffleObject, Object key, JSContext context) {
             assert JSRuntime.isPropertyKey(key);
-            if (context.getContextOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(truffleObject, interop)) {
+            if (context.getLanguageOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(truffleObject, interop)) {
                 if (readFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     this.readFromPrototypeNode = insert(CachedGetPropertyNode.create(context));

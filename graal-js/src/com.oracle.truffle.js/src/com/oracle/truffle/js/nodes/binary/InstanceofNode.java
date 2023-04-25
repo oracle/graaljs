@@ -345,7 +345,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
             int counter = 0;
             while ((proto = getLoopedPrototypeNode.execute(proto)) != Null.instance) {
                 counter++;
-                if (counter > context.getContextOptions().getMaxPrototypeChainLength()) {
+                if (counter > context.getLanguageOptions().maxPrototypeChainLength()) {
                     errorBranch.enter(this);
                     throw Errors.createRangeError("prototype chain length exceeded");
                 }

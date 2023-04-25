@@ -208,6 +208,7 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+import com.oracle.truffle.js.runtime.util.StableContextOptionValue;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexCompiledRegexAccessor;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -237,6 +238,7 @@ public class JSRealm {
     private static final ContextReference<JSRealm> REFERENCE = ContextReference.create(JavaScriptLanguage.class);
 
     private final JSContext context;
+    private final JSContextOptions contextOptions;
 
     @CompilationFinal private JSDynamicObject globalObject;
 
@@ -583,7 +585,13 @@ public class JSRealm {
 
     protected JSRealm(JSContext context, TruffleLanguage.Env env, JSRealm parentRealm) {
         this.context = context;
+        this.contextOptions = JSContextOptions.fromOptionValues(env.getSandboxPolicy(), env.getOptions());
         this.truffleLanguageEnv = env;
+
+        if (!env.isPreInitialization()) {
+            context.updateStableOptions(contextOptions, StableContextOptionValue.UpdateKind.UPDATE);
+        }
+
         this.parentRealm = parentRealm;
         if (parentRealm == null) {
             // top-level realm
@@ -591,7 +599,7 @@ public class JSRealm {
         } else {
             this.currentRealm = null;
             this.agent = parentRealm.agent;
-            if (context.getContextOptions().isV8RealmBuiltin()) {
+            if (context.getLanguageOptions().v8RealmBuiltin()) {
                 JSRealm topLevelRealm = parentRealm;
                 while (topLevelRealm.parentRealm != null) {
                     topLevelRealm = topLevelRealm.parentRealm;
@@ -617,7 +625,7 @@ public class JSRealm {
 
         this.globalObject = JSGlobal.create(this, objectPrototype);
         this.globalScope = JSGlobal.createGlobalScope(context);
-        if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
+        if (context.getLanguageOptions().scriptEngineGlobalScopeImport()) {
             this.scriptEngineImportScope = JSOrdinary.createWithNullPrototypeInit(context);
         } else {
             this.scriptEngineImportScope = null;
@@ -653,7 +661,7 @@ public class JSRealm {
         this.dateConstructor = ctor.getFunctionObject();
         this.datePrototype = ctor.getPrototype();
         this.initialRegExpPrototypeShape = this.regExpPrototype.getShape();
-        int ecmaScriptVersion = context.getContextOptions().getEcmaScriptVersion();
+        int ecmaScriptVersion = context.getLanguageOptions().ecmaScriptVersion();
         boolean es6 = ecmaScriptVersion >= JSConfig.ECMAScript2015;
         if (es6) {
             ctor = JSSymbol.createConstructor(this);
@@ -711,7 +719,7 @@ public class JSRealm {
         this.dataViewConstructor = ctor.getFunctionObject();
         this.dataViewPrototype = ctor.getPrototype();
 
-        if (context.getContextOptions().isBigInt()) {
+        if (contextOptions.isBigInt()) {
             ctor = JSBigInt.createConstructor(this);
             this.bigIntConstructor = ctor.getFunctionObject();
             this.bigIntPrototype = ctor.getPrototype();
@@ -720,7 +728,7 @@ public class JSRealm {
             this.bigIntPrototype = null;
         }
 
-        if (context.getContextOptions().isIteratorHelpers()) {
+        if (context.getLanguageOptions().iteratorHelpers()) {
             assert ecmaScriptVersion >= JSConfig.ECMAScript2018;
             ctor = JSIterator.createConstructor(this);
             this.iteratorConstructor = ctor.getFunctionObject();
@@ -870,13 +878,13 @@ public class JSRealm {
         this.errorWriter = new PrintWriterWrapper(env.err(), true, charset);
         this.consoleUtil = new JSConsoleUtil();
 
-        if (context.getContextOptions().isCommonJSRequire()) {
+        if (context.getLanguageOptions().commonJSRequire()) {
             this.commonJSRequireCache = new HashMap<>();
         } else {
             this.commonJSRequireCache = null;
         }
 
-        if (context.getContextOptions().isWebAssembly()) {
+        if (context.getLanguageOptions().webAssembly()) {
             Object wasmMemSetGrowCallback;
             if (!isWasmAvailable()) {
                 String msg = "WebAssembly API enabled but wasm language cannot be accessed! Did you forget to set the --polyglot flag?";
@@ -1041,7 +1049,7 @@ public class JSRealm {
             this.temporalZonedDateTimePrototype = null;
         }
 
-        if (context.getContextOptions().isShadowRealm()) {
+        if (context.getLanguageOptions().shadowRealm()) {
             ctor = JSShadowRealm.createConstructor(this);
             this.shadowRealmConstructor = ctor.getFunctionObject();
             this.shadowRealmPrototype = ctor.getPrototype();
@@ -1784,12 +1792,12 @@ public class JSRealm {
     }
 
     public final JSContextOptions getContextOptions() {
-        return context.getContextOptions();
+        return contextOptions;
     }
 
     public void setupGlobals() {
         CompilerAsserts.neverPartOfCompilation("do not setup globals from compiled code");
-        long time = context.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
+        long time = context.getLanguageOptions().profileTime() ? System.nanoTime() : 0L;
 
         JSDynamicObject global = getGlobalObject();
         putGlobalProperty(JSOrdinary.CLASS_NAME, getObjectConstructor());
@@ -1813,7 +1821,7 @@ public class JSRealm {
         JSDynamicObject jsonBuiltin = (JSDynamicObject) JSObject.get(global, Strings.CAPS_JSON);
         this.jsonParseFunctionObject = JSObject.get(jsonBuiltin, Strings.PARSE);
 
-        boolean webassembly = context.getContextOptions().isWebAssembly();
+        boolean webassembly = getContextOptions().isWebAssembly();
         for (JSErrorType type : JSErrorType.errorTypes()) {
             switch (type) {
                 case CompileError:
@@ -1840,7 +1848,7 @@ public class JSRealm {
         }
         putGlobalProperty(JSDataView.CLASS_NAME, getDataViewConstructor());
 
-        if (context.getContextOptions().isBigInt()) {
+        if (getContextOptions().isBigInt()) {
             putGlobalProperty(JSBigInt.CLASS_NAME, getBigIntConstructor());
         }
 
@@ -1848,27 +1856,27 @@ public class JSRealm {
             initGlobalNashornExtensions();
             removeNashornIncompatibleBuiltins();
         }
-        if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
+        if (getContextOptions().isScriptEngineGlobalScopeImport()) {
             TruffleString builtin = Strings.IMPORT_SCRIPT_ENGINE_GLOBAL_BINDINGS;
             JSObjectUtil.putDataProperty(getScriptEngineImportScope(), builtin, lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, builtin),
                             JSAttributes.notConfigurableNotEnumerableNotWritable());
         }
-        if (context.getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed() || getEnv().isPolyglotBindingsAccessAllowed())) {
+        if (getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed() || getEnv().isPolyglotBindingsAccessAllowed())) {
             setupPolyglot();
         }
-        if (context.isOptionDebugBuiltin()) {
-            putGlobalProperty(Strings.fromJavaString(context.getContextOptions().getDebugPropertyName()), createDebugObject());
+        if (getContextOptions().isDebugBuiltin()) {
+            putGlobalProperty(Strings.fromJavaString(getContextOptions().getDebugPropertyName()), createDebugObject());
         }
         if (context.isOptionMleBuiltin()) {
             putGlobalProperty(Strings.fromJavaString(JSContextOptions.MLE_PROPERTY_NAME), createMleObject());
         }
-        if (context.getContextOptions().isTest262Mode()) {
+        if (getContextOptions().isTest262Mode()) {
             putGlobalProperty(JSTest262.GLOBAL_PROPERTY_NAME, JSTest262.create(this));
         }
-        if (context.getContextOptions().isTestV8Mode()) {
+        if (getContextOptions().isTestV8Mode()) {
             putGlobalProperty(JSTestV8.CLASS_NAME, JSTestV8.create(this));
         }
-        if (context.getContextOptions().isV8RealmBuiltin()) {
+        if (getContextOptions().isV8RealmBuiltin()) {
             initRealmBuiltinObject();
         }
         if (context.getEcmaScriptVersion() >= 6) {
@@ -1893,7 +1901,7 @@ public class JSRealm {
             putGlobalProperty(JSPromise.CLASS_NAME, getPromiseConstructor());
             this.promiseAllFunctionObject = (JSDynamicObject) JSObject.get(getPromiseConstructor(), Strings.ALL);
         }
-        if (context.getContextOptions().isIteratorHelpers()) {
+        if (getContextOptions().isIteratorHelpers()) {
             putGlobalProperty(JSIterator.CLASS_NAME, getIteratorConstructor());
             putGlobalProperty(JSAsyncIterator.CLASS_NAME, getAsyncIteratorConstructor());
         }
@@ -1901,7 +1909,7 @@ public class JSRealm {
         if (context.isOptionSharedArrayBuffer()) {
             putGlobalProperty(SHARED_ARRAY_BUFFER_CLASS_NAME, getSharedArrayBufferConstructor());
         }
-        if (context.isOptionAtomics()) {
+        if (getContextOptions().isAtomics()) {
             putGlobalProperty(ATOMICS_CLASS_NAME, createAtomics());
         }
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
@@ -1911,7 +1919,7 @@ public class JSRealm {
             putGlobalProperty(JSWeakRef.CLASS_NAME, getWeakRefConstructor());
             putGlobalProperty(JSFinalizationRegistry.CLASS_NAME, getFinalizationRegistryConstructor());
         }
-        if (context.getContextOptions().isGraalBuiltin()) {
+        if (getContextOptions().isGraalBuiltin()) {
             putGraalObject();
         }
         if (webassembly) {
@@ -1922,16 +1930,16 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(webAssemblyObject, JSFunction.getName(webAssemblyModuleConstructor), webAssemblyModuleConstructor, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(webAssemblyObject, JSFunction.getName(webAssemblyTableConstructor), webAssemblyTableConstructor, JSAttributes.getDefaultNotEnumerable());
         }
-        if (context.getContextOptions().isOperatorOverloading()) {
+        if (getContextOptions().isOperatorOverloading()) {
             JSObjectUtil.putFunctionsFromContainer(this, global, OperatorsBuiltins.BUILTINS);
         }
         if (context.isOptionTemporal()) {
             addTemporalGlobals();
         }
-        if (context.getContextOptions().isShadowRealm()) {
+        if (getContextOptions().isShadowRealm()) {
             putGlobalProperty(JSShadowRealm.CLASS_NAME, getShadowRealmConstructor());
         }
-        if (context.getContextOptions().isProfileTime()) {
+        if (context.getLanguageOptions().profileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
     }
@@ -1940,7 +1948,7 @@ public class JSRealm {
         assert getContext().isOptionNashornCompatibilityMode();
         putGlobalProperty(JSAdapter.CLASS_NAME, jsAdapterConstructor);
         putGlobalProperty(Strings.EXIT, lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, Strings.EXIT));
-        if (!getContext().getContextOptions().isShell()) {
+        if (!getContextOptions().isShell()) {
             putGlobalProperty(Strings.QUIT, lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, Strings.QUIT));
         } // else 'quit' built-in will be defined together with GLOBAL_SHELL built-ins
         putGlobalProperty(Strings.PARSE_TO_JSON, lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, Strings.PARSE_TO_JSON));
@@ -1954,7 +1962,7 @@ public class JSRealm {
     }
 
     private void addPrintGlobals() {
-        if (context.getContextOptions().isPrint()) {
+        if (getContextOptions().isPrint()) {
             putGlobalProperty(Strings.PRINT, lookupFunction(GlobalBuiltins.GLOBAL_PRINT, Strings.PRINT));
             putGlobalProperty(Strings.PRINT_ERR, lookupFunction(GlobalBuiltins.GLOBAL_PRINT, Strings.PRINT_ERR));
         }
@@ -1962,8 +1970,8 @@ public class JSRealm {
 
     @TruffleBoundary
     private void addCommonJSGlobals() {
-        if (getContext().getContextOptions().isCommonJSRequire()) {
-            String cwdOption = getContext().getContextOptions().getRequireCwd();
+        if (getContextOptions().isCommonJSRequire()) {
+            String cwdOption = getContextOptions().getRequireCwd();
             try {
                 TruffleFile cwdFile = getEnv().getPublicTruffleFile(cwdOption);
                 if (cwdOption != null && !cwdFile.exists()) {
@@ -1990,14 +1998,14 @@ public class JSRealm {
     }
 
     private void addLoadGlobals() {
-        if (getContext().getContextOptions().isLoad()) {
+        if (getContextOptions().isLoad()) {
             putGlobalProperty(Strings.LOAD, lookupFunction(GlobalBuiltins.GLOBAL_LOAD, Strings.LOAD));
             putGlobalProperty(Strings.LOAD_WITH_NEW_GLOBAL, lookupFunction(GlobalBuiltins.GLOBAL_LOAD, Strings.LOAD_WITH_NEW_GLOBAL));
         }
     }
 
     private void addPerformanceGlobal() {
-        if (context.getContextOptions().isPerformance()) {
+        if (getContextOptions().isPerformance()) {
             putGlobalProperty(PERFORMANCE_CLASS_NAME, preinitPerformanceObject != null ? preinitPerformanceObject : createPerformanceObject());
         }
     }
@@ -2024,13 +2032,13 @@ public class JSRealm {
     }
 
     private void addGlobalGlobal() {
-        if (getContext().getContextOptions().isGlobalProperty()) {
+        if (getContextOptions().isGlobalProperty()) {
             putGlobalProperty(Strings.GLOBAL, getGlobalObject());
         }
     }
 
     private void addShellGlobals() {
-        if (getContext().getContextOptions().isShell()) {
+        if (getContextOptions().isShell()) {
             GlobalBuiltins.GLOBAL_SHELL.forEachBuiltin((Builtin builtin) -> {
                 JSFunctionData functionData = builtin.createFunctionData(getContext());
                 putGlobalProperty(builtin.getKey(), JSFunction.create(JSRealm.this, functionData), builtin.getAttributeFlags());
@@ -2096,7 +2104,7 @@ public class JSRealm {
     private void putGraalObject() {
         JSObject graalObject = JSOrdinary.createInit(this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
-        JSContextOptions options = getContext().getContextOptions();
+        JSContextOptions options = getContextOptions();
         int esVersion = options.getEcmaScriptVersion();
         esVersion = (esVersion > JSConfig.ECMAScript6 ? esVersion + JSConfig.ECMAScriptVersionYearDelta : esVersion);
         JSObjectUtil.putDataProperty(graalObject, Strings.LANGUAGE, Strings.fromJavaString(JavaScriptLanguage.NAME), flags);
@@ -2224,9 +2232,9 @@ public class JSRealm {
         JSObject polyglotObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.BUILTINS);
 
-        if (getContext().isOptionDebugBuiltin()) {
+        if (getContextOptions().isDebugBuiltin()) {
             JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.INTERNAL_BUILTINS);
-        } else if (getContext().getContextOptions().isPolyglotEvalFile()) {
+        } else if (getContextOptions().isPolyglotEvalFile()) {
             // already loaded above when `debug-builtin` is true
             JSObjectUtil.putDataProperty(polyglotObject, Strings.EVAL_FILE, lookupFunction(PolyglotBuiltins.INTERNAL_BUILTINS, Strings.EVAL_FILE), JSAttributes.getDefaultNotEnumerable());
         }
@@ -2234,7 +2242,7 @@ public class JSRealm {
     }
 
     private void addConsoleGlobals() {
-        if (context.getContextOptions().isConsole()) {
+        if (getContextOptions().isConsole()) {
             putGlobalProperty(Strings.CONSOLE, preinitConsoleBuiltinObject != null ? preinitConsoleBuiltinObject : createConsoleObject());
         }
     }
@@ -2431,7 +2439,7 @@ public class JSRealm {
     }
 
     public void initRealmBuiltinObject() {
-        assert context.getContextOptions().isV8RealmBuiltin();
+        assert getContextOptions().isV8RealmBuiltin();
         setRealmBuiltinObject(createRealmBuiltinObject());
     }
 
@@ -2546,7 +2554,8 @@ public class JSRealm {
 
         truffleLanguageEnv = newEnv;
         getContext().setAllocationReporter(newEnv);
-        getContext().getContextOptions().setOptionValues(newEnv.getSandboxPolicy(), newEnv.getOptions());
+        getContextOptions().setOptionValues(newEnv.getSandboxPolicy(), newEnv.getOptions());
+        getContext().updateStableOptions(contextOptions, StableContextOptionValue.UpdateKind.PATCH);
 
         setOutputStreamsFromEnv(newEnv);
 
@@ -2607,7 +2616,7 @@ public class JSRealm {
 
     private void addArgumentsFromEnv(TruffleLanguage.Env newEnv) {
         String[] applicationArguments = newEnv.getApplicationArguments();
-        if (context.getContextOptions().isGlobalArguments()) {
+        if (getContextOptions().isGlobalArguments()) {
             TruffleString[] args = new TruffleString[applicationArguments.length];
             for (int i = 0; i < args.length; i++) {
                 args[i] = Strings.fromJavaString(applicationArguments[i]);
@@ -2780,7 +2789,7 @@ public class JSRealm {
     @TruffleBoundary
     private synchronized void createModuleLoader() {
         if (moduleLoader == null) {
-            if (context.getContextOptions().isCommonJSRequire()) {
+            if (getContextOptions().isCommonJSRequire()) {
                 moduleLoader = NpmCompatibleESModuleLoader.create(this);
             } else {
                 moduleLoader = DefaultESModuleLoader.create(this);
@@ -2970,7 +2979,7 @@ public class JSRealm {
     }
 
     public final Map<TruffleFile, JSDynamicObject> getCommonJSRequireCache() {
-        assert context.getContextOptions().isCommonJSRequire();
+        assert getContextOptions().isCommonJSRequire();
         return commonJSRequireCache;
     }
 
@@ -3258,7 +3267,7 @@ public class JSRealm {
 
     @TruffleBoundary
     public void putCachedCompiledRegex(Source regexSource, Object compiledRegex) {
-        int regexCacheSize = context.getContextOptions().getRegexCacheSize();
+        int regexCacheSize = getContextOptions().getRegexCacheSize();
         if (regexCacheSize > 0) {
             if (compiledRegexCache == null) {
                 compiledRegexCache = new LRUCache<>(regexCacheSize);
@@ -3269,7 +3278,7 @@ public class JSRealm {
 
     @TruffleBoundary
     public Object getCachedCompiledRegex(Source regexSource) {
-        int regexCacheSize = context.getContextOptions().getRegexCacheSize();
+        int regexCacheSize = getContextOptions().getRegexCacheSize();
         if (regexCacheSize > 0) {
             if (compiledRegexCache != null) {
                 return compiledRegexCache.get(regexSource);

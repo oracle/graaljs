@@ -162,7 +162,7 @@ public final class GraalJSParserHelper {
                 if (lexerToken instanceof RegexToken) {
                     final RegexToken regex = (RegexToken) lexerToken;
                     // validate regular expression
-                    if (context.getContextOptions().isValidateRegExpLiterals()) {
+                    if (context.getLanguageOptions().validateRegExpLiterals()) {
                         try {
                             RegexCompilerInterface.validate(context, regex.getExpression(), regex.getOptions(), parserOptions.ecmaScriptVersion());
                         } catch (JSException e) {

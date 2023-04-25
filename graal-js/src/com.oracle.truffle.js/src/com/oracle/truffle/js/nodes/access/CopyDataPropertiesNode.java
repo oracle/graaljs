@@ -152,7 +152,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
             return target;
         }
         try {
-            if (context.getContextOptions().hasForeignHashProperties() && objInterop.hasHashEntries(from)) {
+            if (context.getLanguageOptions().hasForeignHashProperties() && objInterop.hasHashEntries(from)) {
                 Object entriesIterator = objInterop.getHashEntriesIterator(from);
                 while (true) {
                     Object entry;

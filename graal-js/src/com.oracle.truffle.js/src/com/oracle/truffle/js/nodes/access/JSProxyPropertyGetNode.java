@@ -130,7 +130,7 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
     @InliningCutoff
     private Object maybeGetFromPrototype(Object target, Object propertyKey, Object receiver, Object defaultValue, JSClassProfile protoClassProfile) {
         assert JSRuntime.isPropertyKey(propertyKey);
-        if (getLanguage().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+        if (getLanguage().getJSContext().getLanguageOptions().hasForeignObjectPrototype()) {
             if (foreignObjectPrototypeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());

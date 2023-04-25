@@ -184,7 +184,7 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
         // Cleared WeakReferences may not appear in ReferenceQueue immediatelly
         // but V8 tests expect the invocation of the callbacks as soon as possible
         // => do not wait for enqueuing in TestV8 mode.
-        boolean performCleanup = queueNotEmpty || JSObject.getJSContext(finalizationRegistry).getContextOptions().isTestV8Mode();
+        boolean performCleanup = queueNotEmpty || JSObject.getJSContext(finalizationRegistry).getLanguageOptions().testV8Mode();
         if (performCleanup) {
             // empty the ReferenceQueue
             Object o;

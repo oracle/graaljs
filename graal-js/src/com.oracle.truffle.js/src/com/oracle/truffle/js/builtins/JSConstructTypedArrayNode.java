@@ -467,7 +467,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     private int checkLengthLimit(long length, int elementSize) {
-        if (length > getContext().getContextOptions().getMaxTypedArrayLength() / elementSize) {
+        if (length > getContext().getLanguageOptions().maxTypedArrayLength() / elementSize) {
             errorBranch.enter();
             throw throwInappropriateLengthError(length);
         }

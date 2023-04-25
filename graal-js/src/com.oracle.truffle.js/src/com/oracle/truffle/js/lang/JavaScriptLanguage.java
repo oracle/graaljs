@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.truffle.js.runtime.JSErrorType;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -108,6 +107,8 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSEngine;
+import com.oracle.truffle.js.runtime.JSLanguageOptions;
+import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -305,7 +306,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @TruffleBoundary
     private static ScriptNode parseScript(JSContext context, Source code, String prolog, String epilog, boolean strict, List<String> argumentNames) {
-        boolean profileTime = context.getContextOptions().isProfileTime();
+        boolean profileTime = context.getLanguageOptions().profileTime();
         long startTime = profileTime ? System.nanoTime() : 0L;
         try {
             return context.getEvaluator().parseScript(context, code, prolog, epilog, strict, argumentNames.isEmpty() ? null : argumentNames);
@@ -318,7 +319,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @TruffleBoundary
     protected static JavaScriptNode parseInlineScript(JSContext context, Source code, MaterializedFrame lexicalContextFrame, boolean strict, Node locationNode) {
-        boolean profileTime = context.getContextOptions().isProfileTime();
+        boolean profileTime = context.getLanguageOptions().profileTime();
         long startTime = profileTime ? System.nanoTime() : 0L;
         try {
             return context.getEvaluator().parseInlineScript(context, code, lexicalContextFrame, strict, locationNode);
@@ -350,7 +351,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         CompilerAsserts.neverPartOfCompilation();
         JSContext curContext = languageContext;
         if (curContext != null) {
-            assert curContext.getContextOptions().equals(JSContextOptions.fromOptionValues(env.getSandboxPolicy(), env.getOptions()));
+            assert curContext.getLanguageOptions().equals(JSLanguageOptions.fromOptionValues(env.getSandboxPolicy(), env.getOptions()));
             return curContext;
         }
         JSContext newContext = newJSContext(env);
@@ -452,10 +453,9 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     @Override
     protected void disposeContext(JSRealm realm) {
         CompilerAsserts.neverPartOfCompilation();
-        JSContext context = realm.getContext();
-        JSContextOptions options = context.getContextOptions();
+        var options = realm.getContextOptions();
         if (options.isProfileTime() && options.isProfileTimePrintCumulative()) {
-            context.getTimeProfiler().printCumulative();
+            realm.getContext().getTimeProfiler().printCumulative();
         }
         realm.dispose();
     }
@@ -542,7 +542,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             if (!promiseJobsQueueEmptyAssumption.isValid()) {
                 agent.processAllPromises(true);
             }
-            if (getJSContext().getContextOptions().isTestV8Mode()) {
+            if (getJSContext().getLanguageOptions().testV8Mode()) {
                 processTimeoutCallbacks(realm);
             }
         }
@@ -578,7 +578,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     }
 
     public boolean bindMemberFunctions() {
-        return getJSContext().getContextOptions().bindMemberFunctions();
+        return getJSContext().getLanguageOptions().bindMemberFunctions();
     }
 
     public int getAsyncStackDepth() {

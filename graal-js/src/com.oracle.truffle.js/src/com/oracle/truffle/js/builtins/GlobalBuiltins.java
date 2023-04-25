@@ -295,7 +295,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Override
         protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalPrint builtinEnum) {
-            boolean noNewline = context.getContextOptions().isPrintNoNewline();
+            boolean noNewline = context.getLanguageOptions().printNoNewline();
             switch (builtinEnum) {
                 case print:
                     return JSGlobalPrintNodeGen.create(context, builtin, false, noNewline, args().varArgs().createArgumentNodes(context));
@@ -602,21 +602,21 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return loadNode.executeLoad(source, realm);
         }
 
-        protected static ScriptNode loadStringImpl(JSContext ctxt, TruffleString name, TruffleString script) {
+        protected final ScriptNode loadStringImpl(TruffleString name, TruffleString script) {
             CompilerAsserts.neverPartOfCompilation();
-            long startTime = ctxt.getContextOptions().isProfileTime() ? System.nanoTime() : 0L;
+            long startTime = getContext().getLanguageOptions().profileTime() ? System.nanoTime() : 0L;
             try {
-                return ctxt.getEvaluator().evalCompile(ctxt, Strings.toJavaString(script), Strings.toJavaString(name));
+                return getContext().getEvaluator().evalCompile(getContext(), Strings.toJavaString(script), Strings.toJavaString(name));
             } finally {
-                if (ctxt.getContextOptions().isProfileTime()) {
-                    ctxt.getTimeProfiler().printElapsed(startTime, "parsing " + name);
+                if (getContext().getLanguageOptions().profileTime()) {
+                    getContext().getTimeProfiler().printElapsed(startTime, "parsing " + name);
                 }
             }
         }
 
         @TruffleBoundary
-        protected final Source sourceFromURL(URL url) {
-            assert getContext().isOptionNashornCompatibilityMode() || getContext().isOptionLoadFromURL();
+        protected final Source sourceFromURL(URL url, JSRealm realm) {
+            assert getContext().isOptionNashornCompatibilityMode() || realm.getContextOptions().isLoadFromURL();
             try {
                 return Source.newBuilder(JavaScriptLanguage.ID, url).name(url.getFile()).build();
             } catch (IOException | SecurityException e) {
@@ -639,7 +639,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             Source source = null;
             JSContext ctx = getContext();
             if (path.indexOf(':') >= 2) {
-                if (ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL() || ctx.isOptionLoadFromClasspath()) {
+                if (ctx.isOptionNashornCompatibilityMode() || realm.getContextOptions().isLoadFromURL() || realm.getContextOptions().isLoadFromClasspath()) {
                     source = sourceFromURI(path, realm);
                     if (source != null) {
                         return source;
@@ -680,10 +680,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
             if ((getContext().isOptionNashornCompatibilityMode() &&
                             (resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) ||
-                            (getContext().isOptionLoadFromClasspath() && resource.startsWith(LOAD_CLASSPATH))) {
-                return sourceFromResourceURL(resource);
+                            (realm.getContextOptions().isLoadFromClasspath() && resource.startsWith(LOAD_CLASSPATH))) {
+                return sourceFromResourceURL(resource, realm);
             }
-            if (getContext().isOptionNashornCompatibilityMode() || getContext().isOptionLoadFromURL()) {
+            if (getContext().isOptionNashornCompatibilityMode() || realm.getContextOptions().isLoadFromURL()) {
                 if (resource.startsWith("file:")) {
                     try {
                         TruffleLanguage.Env env = realm.getEnv();
@@ -715,7 +715,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 } else {
                     try {
                         URI uri = new URI(resource);
-                        return sourceFromURL(uri.toURL());
+                        return sourceFromURL(uri.toURL(), realm);
                     } catch (MalformedURLException | URISyntaxException e) {
                         throw Errors.createErrorFromException(e);
                     }
@@ -724,9 +724,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return null;
         }
 
-        private Source sourceFromResourceURL(String resource) {
+        private Source sourceFromResourceURL(String resource, JSRealm realm) {
             CompilerAsserts.neverPartOfCompilation();
-            assert getContext().isOptionNashornCompatibilityMode() || getContext().isOptionLoadFromClasspath();
+            assert getContext().isOptionNashornCompatibilityMode() || realm.getContextOptions().isLoadFromClasspath();
             InputStream stream = null;
             if (resource.startsWith(LOAD_NASHORN)) {
                 if (NASHORN_PARSER_JS.equals(resource) || NASHORN_MOZILLA_COMPAT_JS.equals(resource)) {
@@ -1465,12 +1465,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         protected Object loadURL(JSRealm realm, URL url) {
             assert getContext().isOptionNashornCompatibilityMode();
-            return runImpl(realm, sourceFromURL(url));
+            return runImpl(realm, sourceFromURL(url, realm));
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Object evalImpl(JSRealm realm, TruffleString fileName, TruffleString source, @SuppressWarnings("unused") Object[] args) {
-            return loadStringImpl(getContext(), fileName, source).run(realm);
+            return loadStringImpl(fileName, source).run(realm);
         }
     }
 
@@ -1494,7 +1494,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 JSDynamicObject argumentsArray = JSArray.createConstant(getContext(), childRealm, args);
                 assert JSObject.getPrototype(argumentsArray) == childRealm.getArrayPrototype();
                 JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argumentsArray);
-                return loadStringImpl(getContext(), fileName, source).run(childRealm);
+                return loadStringImpl(fileName, source).run(childRealm);
             } finally {
                 mainRealm.leaveRealm(this, prevRealm);
             }
