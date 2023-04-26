@@ -504,6 +504,7 @@ public class JSRealm {
     private long nanoToCurrentTimeOffset;
     private long lastFuzzyTime = Long.MIN_VALUE;
 
+    private final Charset charset;
     private PrintWriterWrapper outputWriter;
     private PrintWriterWrapper errorWriter;
 
@@ -864,7 +865,7 @@ public class JSRealm {
             this.javaImporterPrototype = null;
         }
 
-        Charset charset = context.getCharset();
+        this.charset = getCharsetImpl();
         this.outputWriter = new PrintWriterWrapper(env.out(), true, charset);
         this.errorWriter = new PrintWriterWrapper(env.err(), true, charset);
         this.consoleUtil = new JSConsoleUtil();
@@ -1780,6 +1781,10 @@ public class JSRealm {
 
     public final JSDynamicObject getShadowRealmPrototype() {
         return shadowRealmPrototype;
+    }
+
+    public final JSContextOptions getContextOptions() {
+        return context.getContextOptions();
     }
 
     public void setupGlobals() {
@@ -3230,6 +3235,20 @@ public class JSRealm {
     private void enterOncePerContextBranch() {
         if (CompilerDirectives.isPartialEvaluationConstant(this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
+    }
+
+    public Charset getCharset() {
+        return charset;
+    }
+
+    @TruffleBoundary
+    private Charset getCharsetImpl() {
+        String name = getContextOptions().getCharset();
+        if (name.isEmpty()) {
+            return Charset.defaultCharset();
+        } else {
+            return Charset.forName(name);
         }
     }
 

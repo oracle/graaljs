@@ -467,7 +467,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
                 process = builder.start();
 
-                try (OutputStreamWriter outputStream = new OutputStreamWriter(process.getOutputStream(), getContext().getCharset())) {
+                try (OutputStreamWriter outputStream = new OutputStreamWriter(process.getOutputStream(), realm.getCharset())) {
                     if (input != null) {
                         outputStream.write(input, 0, input.length());
                     }
@@ -1569,16 +1569,17 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (prompt != Undefined.instance) {
                 promptString = toString1(prompt);
             }
-            return doReadLine(promptString);
+            JSRealm realm = getRealm();
+            return doReadLine(promptString, realm);
         }
 
         @TruffleBoundary
-        private Object doReadLine(TruffleString promptString) {
+        private Object doReadLine(TruffleString promptString, JSRealm realm) {
             if (promptString != null) {
-                getRealm().getOutputWriter().print(Strings.toJavaString(promptString));
+                realm.getOutputWriter().print(Strings.toJavaString(promptString));
             }
             try {
-                final BufferedReader inReader = new BufferedReader(new InputStreamReader(getRealm().getEnv().in(), getContext().getCharset()));
+                final BufferedReader inReader = new BufferedReader(new InputStreamReader(realm.getEnv().in(), realm.getCharset()));
                 String result = inReader.readLine();
                 return result == null ? (returnNullWhenEmpty ? Null.instance : Undefined.instance) : Strings.fromJavaString(result);
             } catch (Exception ex) {

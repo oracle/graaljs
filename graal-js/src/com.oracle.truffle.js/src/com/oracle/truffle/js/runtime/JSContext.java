@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSNonProxy.GET_SYMBOL_SPECI
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.nio.charset.Charset;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -506,7 +505,6 @@ public class JSContext {
     private final int factoryCount;
 
     @CompilationFinal private Locale locale;
-    @CompilationFinal private Charset charset;
 
     private final Set<TruffleString> supportedImportAssertions;
 
@@ -1823,26 +1821,6 @@ public class JSContext {
             return Locale.getDefault();
         } else {
             return Locale.forLanguageTag(name);
-        }
-    }
-
-    public Charset getCharset() {
-        Charset chrset = charset;
-        if (chrset == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            chrset = getCharsetImpl();
-            charset = chrset;
-        }
-        return chrset;
-    }
-
-    @TruffleBoundary
-    private Charset getCharsetImpl() {
-        String name = getContextOptions().getCharset();
-        if (name.isEmpty()) {
-            return Charset.defaultCharset();
-        } else {
-            return Charset.forName(name);
         }
     }
 
