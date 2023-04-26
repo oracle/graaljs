@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.cast;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -145,6 +146,7 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         return doubleToStringNode.executeString(d);
     }
 
+    @InliningCutoff
     @Specialization(replaces = "doUndefined")
     protected TruffleString doJSObject(JSDynamicObject value,
                     @Shared("toPrimitiveHintStringNode") @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode,
@@ -162,6 +164,7 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         }
     }
 
+    @InliningCutoff
     @Specialization(guards = {"isForeignObject(object)"})
     protected TruffleString doTruffleObject(Object object,
                     @Shared("toPrimitiveHintStringNode") @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode,

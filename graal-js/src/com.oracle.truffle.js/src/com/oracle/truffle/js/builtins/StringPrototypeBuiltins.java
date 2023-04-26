@@ -56,10 +56,10 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.InlineSupport;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -151,7 +151,6 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.InlinedProfileBag;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LazyValue;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -946,57 +945,30 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return getContext().getEcmaScriptVersion() >= 6;
         }
 
-        protected static final class SplitProfiles implements InlinedProfileBag {
-            public final InlinedConditionProfile emptyInput;
-            public final InlinedConditionProfile emptySeparator;
-            public final InlinedConditionProfile zeroLimit;
-            public final InlinedBranchProfile growBranch;
-            public final InlinedCountingConditionProfile matchProfile;
-
-            public static final int REQUIRED_BITS = 3 * 2 + 1;
-
-            @NeverDefault
-            public static SplitProfiles inline(
-                            @InlineSupport.RequiredField(value = InlineSupport.StateField.class, bits = REQUIRED_BITS) //
-                            @InlineSupport.RequiredField(value = InlineSupport.IntField.class) //
-                            @InlineSupport.RequiredField(value = InlineSupport.IntField.class) //
-                            InlineSupport.InlineTarget inlineTarget) {
-                try (Builder b = new Builder(inlineTarget, REQUIRED_BITS)) {
-                    return new SplitProfiles(b);
-                }
-            }
-
-            protected SplitProfiles(Builder b) {
-                this.emptyInput = b.conditionProfile();
-                this.emptySeparator = b.conditionProfile();
-                this.zeroLimit = b.conditionProfile();
-                this.growBranch = b.branchProfile();
-                this.matchProfile = b.countingConditionProfile();
-            }
-        }
-
         @Specialization(guards = "!isES6OrNewer()")
         protected Object splitES5(Object thisObj, Object separator, Object limitObj,
                         @Cached @Exclusive InlinedBranchProfile isUndefinedBranch,
                         @Cached @Exclusive InlinedBranchProfile isRegexpBranch,
                         @Cached @Exclusive InlinedBranchProfile isStringBranch,
-                        @Cached @Shared("splitProfiles") SplitProfiles profiles,
+                        @Cached @Shared StringSplitter stringSplitter,
+                        @Cached RegExpSplitter regexpSplitter,
+                        @Cached @Shared InlinedConditionProfile zeroLimit,
                         @Cached(inline = true) TRegexUtil.InteropReadIntMemberNode readGroupCount) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             int limit = getLimit(limitObj);
             if (separator == Undefined.instance) {
                 isUndefinedBranch.enter(this);
-                return split(thisStr, limit, NOP_SPLITTER, null, 1, profiles);
+                return split(thisStr, limit, NOP_SPLITTER, null, 1, zeroLimit);
             } else if (JSRegExp.isJSRegExp(separator)) {
                 isRegexpBranch.enter(this);
                 JSRegExpObject regExp = (JSRegExpObject) separator;
                 int groupCount = TRegexCompiledRegexAccessor.groupCount(JSRegExp.getCompiledRegex(regExp), this, readGroupCount);
-                return split(thisStr, limit, REGEXP_SPLITTER, regExp, groupCount, profiles);
+                return split(thisStr, limit, regexpSplitter, regExp, groupCount, zeroLimit);
             } else {
                 isStringBranch.enter(this);
                 TruffleString separatorStr = toString2(separator);
-                return split(thisStr, limit, STRING_SPLITTER, separatorStr, 1, profiles);
+                return split(thisStr, limit, stringSplitter, separatorStr, 1, zeroLimit);
             }
         }
 
@@ -1006,13 +978,15 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = {"isES6OrNewer()", "isUndefined(limit)"})
         protected Object splitES6StrStrUndefined(TruffleString thisStr, TruffleString sepStr, @SuppressWarnings("unused") JSDynamicObject limit,
-                        @Cached @Shared("splitProfiles") SplitProfiles profiles) {
-            return split(thisStr, Integer.MAX_VALUE, STRING_SPLITTER, sepStr, 1, profiles);
+                        @Cached @Shared StringSplitter stringSplitter,
+                        @Cached @Shared InlinedConditionProfile zeroLimit) {
+            return split(thisStr, Integer.MAX_VALUE, stringSplitter, sepStr, 1, zeroLimit);
         }
 
         @Specialization(guards = {"isES6OrNewer()", "!isFastPath(thisObj, separator, limit)"})
         protected Object splitES6Generic(Object thisObj, Object separator, Object limit,
-                        @Cached @Shared("splitProfiles") SplitProfiles profiles) {
+                        @Cached @Shared StringSplitter stringSplitter,
+                        @Cached @Shared InlinedConditionProfile zeroLimit) {
             requireObjectCoercible(thisObj);
             if (isSpecialProfile.profile(!(separator == Undefined.instance || separator == Null.instance))) {
                 Object splitter = getMethod(separator, Symbol.SYMBOL_SPLIT);
@@ -1020,17 +994,17 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     return call(splitter, separator, new Object[]{thisObj, limit});
                 }
             }
-            return builtinSplit(thisObj, separator, limit, profiles);
+            return builtinSplit(thisObj, separator, limit, stringSplitter, zeroLimit);
         }
 
-        private Object builtinSplit(Object thisObj, Object separator, Object limit, SplitProfiles profiles) {
+        private Object builtinSplit(Object thisObj, Object separator, Object limit, StringSplitter stringSplitter, InlinedConditionProfile zeroLimit) {
             TruffleString thisStr = toString(thisObj);
             int lim = getLimit(limit);
-            TruffleString sepStr = toString2(separator);
             if (separator == Undefined.instance) {
-                return split(thisStr, lim, NOP_SPLITTER, null, 1, profiles);
+                return split(thisStr, lim, NOP_SPLITTER, null, 1, zeroLimit);
             } else {
-                return split(thisStr, lim, STRING_SPLITTER, sepStr, 1, profiles);
+                TruffleString sepStr = toString2(separator);
+                return split(thisStr, lim, stringSplitter, sepStr, 1, zeroLimit);
             }
         }
 
@@ -1038,54 +1012,77 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return (limit == Undefined.instance) ? Integer.MAX_VALUE : toUInt32(limit);
         }
 
-        private <T> JSDynamicObject split(TruffleString thisStr, int limit, Splitter<T> splitter, T separator, int groupCount, SplitProfiles profiles) {
+        private <T> JSDynamicObject split(TruffleString thisStr, int limit, Splitter<T> splitter, T separator, int groupCount, InlinedConditionProfile zeroLimit) {
             JSRealm realm = getRealm();
-            if (profiles.zeroLimit.profile(this, limit == 0)) {
+            if (zeroLimit.profile(this, limit == 0)) {
                 return JSArray.createEmptyZeroLength(getContext(), realm);
             }
-            Object[] splits = splitter.split(thisStr, limit, separator, groupCount, this, profiles);
+            Object[] splits = splitter.execute(this, thisStr, limit, separator, groupCount, this);
             return JSArray.createConstant(getContext(), realm, splits);
         }
 
-        private interface Splitter<T> {
-            Object[] split(TruffleString input, int limit, T separator, int groupCount, JSStringSplitNode parent, SplitProfiles profiles);
+        abstract static class Splitter<T> extends JavaScriptBaseNode {
+            abstract Object[] execute(Node node, TruffleString input, int limit, T separator, int groupCount, JSStringSplitNode parent);
         }
 
-        private static final Splitter<Void> NOP_SPLITTER = (input, limit, separator, groupCount, parent, profiles) -> new Object[]{input};
-        private static final Splitter<TruffleString> STRING_SPLITTER = new StringSplitter();
-        private static final Splitter<JSRegExpObject> REGEXP_SPLITTER = new RegExpSplitter();
+        private static final Splitter<Void> NOP_SPLITTER = new NoSeparatorSplitter();
 
-        private static final class StringSplitter implements Splitter<TruffleString> {
+        static final class NoSeparatorSplitter extends Splitter<Void> {
+
             @Override
-            public Object[] split(TruffleString input, int limit, TruffleString separator, int groupCount, JSStringSplitNode parent, SplitProfiles profiles) {
-                if (profiles.emptySeparator.profile(parent, Strings.isEmpty(separator))) {
+            Object[] execute(Node node, TruffleString input, int limit, Void separator, int groupCount, JSStringSplitNode parent) {
+                return new Object[]{input};
+            }
+
+            @Override
+            public boolean isAdoptable() {
+                return false;
+            }
+        }
+
+        @GenerateInline
+        @GenerateCached(false)
+        abstract static class StringSplitter extends Splitter<TruffleString> {
+
+            @Override
+            abstract Object[] execute(Node node, TruffleString input, int limit, TruffleString separator, int groupCount, JSStringSplitNode parent);
+
+            @Specialization
+            static Object[] splitString(Node node, TruffleString input, int limit, TruffleString separator, @SuppressWarnings("unused") int groupCount, JSStringSplitNode parent,
+                            @Cached InlinedConditionProfile emptySeparator,
+                            @Cached InlinedBranchProfile growBranch,
+                            @Cached InlinedCountingConditionProfile matchProfile) {
+                if (emptySeparator.profile(parent, Strings.isEmpty(separator))) {
                     return individualCharSplit(input, limit, parent);
                 } else {
-                    return regularSplit(input, limit, separator, parent, profiles);
+                    return regularSplit(node, input, limit, separator, parent, growBranch, matchProfile);
                 }
             }
 
-            private static Object[] regularSplit(TruffleString input, int limit, TruffleString separator, JSStringSplitNode parent, SplitProfiles profiles) {
+            private static Object[] regularSplit(Node node, TruffleString input, int limit, TruffleString separator, JSStringSplitNode parent,
+                            InlinedBranchProfile growBranch,
+                            InlinedCountingConditionProfile matchProfile) {
                 int end = parent.indexOf(input, separator, 0);
-                if (profiles.matchProfile.profile(parent, end == -1)) {
+                if (matchProfile.profile(node, end == -1)) {
                     return new Object[]{input};
                 }
-                return regularSplitIntl(input, limit, separator, end, parent, profiles);
+                return regularSplitIntl(node, input, limit, separator, end, parent, growBranch);
             }
 
-            private static Object[] regularSplitIntl(TruffleString input, int limit, TruffleString separator, int endParam, JSStringSplitNode parent, SplitProfiles profiles) {
+            private static Object[] regularSplitIntl(Node node, TruffleString input, int limit, TruffleString separator, int endParam, JSStringSplitNode parent,
+                            InlinedBranchProfile growBranch) {
                 SimpleArrayList<Object> splits = SimpleArrayList.create(limit);
                 int start = 0;
                 int end = endParam;
                 while (end != -1) {
-                    splits.add(parent.substring(input, start, end - start), parent, profiles.growBranch);
+                    splits.add(parent.substring(input, start, end - start), node, growBranch);
                     if (splits.size() == limit) {
                         return splits.toArray();
                     }
                     start = end + Strings.length(separator);
                     end = parent.indexOf(input, separator, start);
                 }
-                splits.add(parent.substring(input, start), parent, profiles.growBranch);
+                splits.add(parent.substring(input, start), node, growBranch);
                 return splits.toArray();
             }
 
@@ -1099,27 +1096,38 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        private static final class RegExpSplitter implements Splitter<JSRegExpObject> {
+        @GenerateInline
+        @GenerateCached(false)
+        abstract static class RegExpSplitter extends Splitter<JSRegExpObject> {
             private static final Object[] EMPTY_SPLITS = {};
             private static final Object[] SINGLE_ZERO_LENGTH_SPLIT = {Strings.EMPTY_STRING};
 
             @Override
-            public Object[] split(TruffleString input, int limit, JSRegExpObject regExp, int groupCount, JSStringSplitNode parent, SplitProfiles profiles) {
-                if (profiles.emptyInput.profile(parent, Strings.isEmpty(input))) {
-                    return splitEmptyString(regExp, parent, profiles);
+            abstract Object[] execute(Node node, TruffleString input, int limit, JSRegExpObject regExp, int groupCount, JSStringSplitNode parent);
+
+            @Specialization
+            static Object[] splitRegExp(Node node, TruffleString input, int limit, JSRegExpObject regExp, int groupCount, JSStringSplitNode parent,
+                            @Cached InlinedConditionProfile emptyInput,
+                            @Cached InlinedBranchProfile growBranch,
+                            @Cached InlinedCountingConditionProfile matchProfile) {
+                if (emptyInput.profile(node, Strings.isEmpty(input))) {
+                    return splitEmptyString(node, regExp, parent, matchProfile);
                 } else {
-                    return splitNonEmptyString(input, limit, regExp, groupCount, parent, profiles);
+                    return splitNonEmptyString(node, input, limit, regExp, groupCount, parent, growBranch, matchProfile);
                 }
             }
 
-            private static Object[] splitEmptyString(JSRegExpObject regExp, JSStringSplitNode parent, SplitProfiles profiles) {
+            private static Object[] splitEmptyString(Node node, JSRegExpObject regExp, JSStringSplitNode parent,
+                            InlinedCountingConditionProfile matchProfile) {
                 Object result = parent.matchIgnoreLastIndex(regExp, Strings.EMPTY_STRING, 0);
-                return profiles.matchProfile.profile(parent, TRegexResultAccessor.isMatch(result, parent, parent.readIsMatch)) ? EMPTY_SPLITS : SINGLE_ZERO_LENGTH_SPLIT;
+                return matchProfile.profile(node, TRegexResultAccessor.isMatch(result, parent, parent.readIsMatch)) ? EMPTY_SPLITS : SINGLE_ZERO_LENGTH_SPLIT;
             }
 
-            private static Object[] splitNonEmptyString(TruffleString input, int limit, JSRegExpObject regExp, int groupCount, JSStringSplitNode parent, SplitProfiles profiles) {
+            private static Object[] splitNonEmptyString(Node node, TruffleString input, int limit, JSRegExpObject regExp, int groupCount, JSStringSplitNode parent,
+                            @Cached InlinedBranchProfile growBranch,
+                            @Cached InlinedCountingConditionProfile matchProfile) {
                 Object result = parent.matchIgnoreLastIndex(regExp, input, 0);
-                if (profiles.matchProfile.profile(parent, !TRegexResultAccessor.isMatch(result, parent, parent.readIsMatch))) {
+                if (matchProfile.profile(node, !TRegexResultAccessor.isMatch(result, parent, parent.readIsMatch))) {
                     return new Object[]{input};
                 }
                 SimpleArrayList<Object> splits = new SimpleArrayList<>();
@@ -1136,15 +1144,15 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         continue;
                     }
                     TruffleString split = parent.substring(input, start, matchStart - start);
-                    splits.add(split, parent, profiles.growBranch);
+                    splits.add(split, node, growBranch);
                     int count = Math.min(groupCount - 1, limit - splits.size());
                     for (int i = 1; i <= count; i++) {
                         int groupStart = TRegexResultAccessor.captureGroupStart(result, i, parent, parent.getStartNode);
                         if (groupStart == TRegexUtil.Constants.CAPTURE_GROUP_NO_MATCH) {
-                            splits.add(Undefined.instance, parent, profiles.growBranch);
+                            splits.add(Undefined.instance, node, growBranch);
                         } else {
                             int groupEnd = TRegexResultAccessor.captureGroupEnd(result, i, parent, parent.getEndNode);
-                            splits.add(parent.substring(input, groupStart, groupEnd - groupStart), parent, profiles.growBranch);
+                            splits.add(parent.substring(input, groupStart, groupEnd - groupStart), node, growBranch);
                         }
                     }
                     if (splits.size() == limit) {
@@ -1153,7 +1161,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     start = matchEnd + (matchEnd == start ? 1 : 0);
                     result = parent.matchIgnoreLastIndex(regExp, input, start);
                 }
-                splits.add(parent.substring(input, start), parent, profiles.growBranch);
+                splits.add(parent.substring(input, start), node, growBranch);
                 return splits.toArray();
             }
         }

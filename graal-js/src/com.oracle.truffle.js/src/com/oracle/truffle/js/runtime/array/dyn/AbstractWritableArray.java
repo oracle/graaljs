@@ -56,8 +56,6 @@ import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -895,22 +893,38 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return true;
     }
 
-    public static class SetSupportedProfileAccess implements InlinedProfileBag {
+    public static class SetSupportedProfileAccess extends InlinedProfileBag {
 
-        private final InlinedConditionProfile ensureCapacityGrow;
-        private final InlinedConditionProfile ensureCapacityGrowLeft;
-        private final InlinedConditionProfile inBoundsZeroBasedSetLength;
-        private final InlinedConditionProfile inBoundsZeroBasedSetUsedLength;
-        private final InlinedConditionProfile updateStatePrepend;
-        private final InlinedConditionProfile updateStateAppend;
-        private final InlinedConditionProfile updateStateSetLength;
-        private final InlinedConditionProfile updateHolesStateIsHole;
-        private final InlinedConditionProfile fillHolesLeft;
-        private final InlinedConditionProfile fillHolesRight;
-        private final InlinedBranchProfile arrayTooLargeBranch;
+        protected static final int REQUIRED_BITS = 10 * CONDITION_PROFILE_STATE_BITS + 1 * BRANCH_PROFILE_STATE_BITS;
+        private static final int ensureCapacityGrow;
+        private static final int ensureCapacityGrowLeft;
+        private static final int inBoundsZeroBasedSetLength;
+        private static final int inBoundsZeroBasedSetUsedLength;
+        private static final int updateStatePrepend;
+        private static final int updateStateAppend;
+        private static final int updateStateSetLength;
+        private static final int updateHolesStateIsHole;
+        private static final int fillHolesLeft;
+        private static final int fillHolesRight;
+        private static final int arrayTooLargeBranch;
 
-        public static final int REQUIRED_BITS = 10 * 2 + 1;
-        private static final SetSupportedProfileAccess UNCACHED = new SetSupportedProfileAccess(new Builder());
+        private static final SetSupportedProfileAccess UNCACHED = new SetSupportedProfileAccess(null);
+
+        static {
+            try (var b = new Builder(REQUIRED_BITS)) {
+                ensureCapacityGrow = b.conditionProfile();
+                ensureCapacityGrowLeft = b.conditionProfile();
+                inBoundsZeroBasedSetLength = b.conditionProfile();
+                inBoundsZeroBasedSetUsedLength = b.conditionProfile();
+                updateStatePrepend = b.conditionProfile();
+                updateStateAppend = b.conditionProfile();
+                updateStateSetLength = b.conditionProfile();
+                updateHolesStateIsHole = b.conditionProfile();
+                fillHolesLeft = b.conditionProfile();
+                fillHolesRight = b.conditionProfile();
+                arrayTooLargeBranch = b.branchProfile();
+            }
+        }
 
         @NeverDefault
         public static SetSupportedProfileAccess getUncached() {
@@ -920,67 +934,55 @@ public abstract class AbstractWritableArray extends DynamicArray {
         @NeverDefault
         public static SetSupportedProfileAccess inline(
                         @InlineSupport.RequiredField(value = InlineSupport.StateField.class, bits = REQUIRED_BITS) InlineSupport.InlineTarget inlineTarget) {
-            try (Builder b = new Builder(inlineTarget, REQUIRED_BITS)) {
-                return new SetSupportedProfileAccess(b);
-            }
+            return new SetSupportedProfileAccess(inlineTarget.getState(0, REQUIRED_BITS));
         }
 
-        protected SetSupportedProfileAccess(Builder b) {
-            this.ensureCapacityGrow = b.conditionProfile();
-            this.ensureCapacityGrowLeft = b.conditionProfile();
-            this.inBoundsZeroBasedSetLength = b.conditionProfile();
-            this.inBoundsZeroBasedSetUsedLength = b.conditionProfile();
-            this.updateStatePrepend = b.conditionProfile();
-            this.updateStateAppend = b.conditionProfile();
-            this.updateStateSetLength = b.conditionProfile();
-            this.updateHolesStateIsHole = b.conditionProfile();
-            this.fillHolesLeft = b.conditionProfile();
-            this.fillHolesRight = b.conditionProfile();
-            this.arrayTooLargeBranch = b.branchProfile();
+        protected SetSupportedProfileAccess(InlineSupport.StateField stateField) {
+            super(stateField);
         }
 
         public final boolean ensureCapacityGrow(Node node, boolean condition) {
-            return ensureCapacityGrow.profile(node, condition);
+            return profile(node, condition, ensureCapacityGrow);
         }
 
         public final boolean ensureCapacityGrowLeft(Node node, boolean condition) {
-            return ensureCapacityGrowLeft.profile(node, condition);
+            return profile(node, condition, ensureCapacityGrowLeft);
         }
 
         public final boolean inBoundsZeroBasedSetLength(Node node, boolean condition) {
-            return inBoundsZeroBasedSetLength.profile(node, condition);
+            return profile(node, condition, inBoundsZeroBasedSetLength);
         }
 
         public final boolean inBoundsZeroBasedSetUsedLength(Node node, boolean condition) {
-            return inBoundsZeroBasedSetUsedLength.profile(node, condition);
+            return profile(node, condition, inBoundsZeroBasedSetUsedLength);
         }
 
         public final boolean updateStatePrepend(Node node, boolean condition) {
-            return updateStatePrepend.profile(node, condition);
+            return profile(node, condition, updateStatePrepend);
         }
 
         public final boolean updateStateAppend(Node node, boolean condition) {
-            return updateStateAppend.profile(node, condition);
+            return profile(node, condition, updateStateAppend);
         }
 
         public final boolean updateStateSetLength(Node node, boolean condition) {
-            return updateStateSetLength.profile(node, condition);
+            return profile(node, condition, updateStateSetLength);
         }
 
         public final boolean updateHolesStateIsHole(Node node, boolean condition) {
-            return updateHolesStateIsHole.profile(node, condition);
+            return profile(node, condition, updateHolesStateIsHole);
         }
 
         public final boolean fillHolesLeft(Node node, boolean condition) {
-            return fillHolesLeft.profile(node, condition);
+            return profile(node, condition, fillHolesLeft);
         }
 
         public final boolean fillHolesRight(Node node, boolean condition) {
-            return fillHolesRight.profile(node, condition);
+            return profile(node, condition, fillHolesRight);
         }
 
         public final void enterArrayTooLargeBranch(Node node) {
-            arrayTooLargeBranch.enter(node);
+            enter(node, arrayTooLargeBranch);
         }
     }
 }

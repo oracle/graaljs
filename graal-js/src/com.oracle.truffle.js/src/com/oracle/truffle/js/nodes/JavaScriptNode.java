@@ -68,7 +68,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.interop.ScopeVariables;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
@@ -176,10 +175,6 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
 
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
         return JSTypesGen.expectLong(execute(frame));
-    }
-
-    public SafeInteger executeSafeInteger(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectSafeInteger(execute(frame));
     }
 
     /**

@@ -190,8 +190,7 @@ abstract class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
     @ExplodeLoop
     @Specialization
     protected final Object[] fillObjectArray(VirtualFrame frame, Object[] arguments, int fixedArgumentsLength,
-                    @Cached InlinedBranchProfile growBranch,
-                    @Cached InlinedBranchProfile errorBranch) {
+                    @Cached InlinedBranchProfile growBranch) {
         // assume size that avoids growing
         SimpleArrayList<Object> argList = SimpleArrayList.create((long) fixedArgumentsLength + args.length + JSConfig.SpreadArgumentPlaceholderCount);
         for (int i = 0; i < fixedArgumentsLength; i++) {
@@ -199,7 +198,7 @@ abstract class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
         }
         for (int i = 0; i < args.length; i++) {
             if (args[i] instanceof SpreadArgumentNode) {
-                ((SpreadArgumentNode) args[i]).executeToList(frame, argList, this, growBranch, errorBranch);
+                ((SpreadArgumentNode) args[i]).executeToList(frame, argList);
             } else {
                 argList.add(args[i].execute(frame), this, growBranch);
             }

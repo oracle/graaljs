@@ -42,9 +42,11 @@ package com.oracle.truffle.js.nodes.function;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorUnaryNode;
@@ -55,12 +57,12 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
-public final class SpreadArgumentNode extends JavaScriptNode {
+public abstract class SpreadArgumentNode extends JavaScriptNode {
     @Child private GetIteratorUnaryNode getIteratorNode;
     @Child private IteratorGetNextValueNode iteratorStepNode;
     private final JSContext context;
 
-    private SpreadArgumentNode(JSContext context, GetIteratorUnaryNode getIteratorNode) {
+    protected SpreadArgumentNode(JSContext context, GetIteratorUnaryNode getIteratorNode) {
         this.context = context;
         this.getIteratorNode = getIteratorNode;
         this.iteratorStepNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), false);
@@ -72,17 +74,47 @@ public final class SpreadArgumentNode extends JavaScriptNode {
     }
 
     public static SpreadArgumentNode create(JSContext context, GetIteratorUnaryNode getIteratorNode) {
-        return new SpreadArgumentNode(context, getIteratorNode);
+        return SpreadArgumentNodeGen.create(context, getIteratorNode);
     }
 
     @Override
-    public Object[] execute(VirtualFrame frame) {
+    public final Object[] execute(VirtualFrame frame) {
         SimpleArrayList<Object> argList = new SimpleArrayList<>();
-        executeToList(frame, argList, null, InlinedBranchProfile.getUncached(), InlinedBranchProfile.getUncached());
+        executeToList(frame, argList);
         return argList.toArray();
     }
 
-    public void executeToList(VirtualFrame frame, SimpleArrayList<Object> argList, Node node, InlinedBranchProfile growBranch, InlinedBranchProfile errorBranch) {
+    @Override
+    public final boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeBoolean(frame);
+    }
+
+    @Override
+    public final double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeDouble(frame);
+    }
+
+    @Override
+    public final int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeInt(frame);
+    }
+
+    @Override
+    public final long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeLong(frame);
+    }
+
+    @Override
+    public final void executeVoid(VirtualFrame frame) {
+        super.executeVoid(frame);
+    }
+
+    public abstract void executeToList(VirtualFrame frame, SimpleArrayList<Object> argList);
+
+    @Specialization
+    protected final void doSpread(VirtualFrame frame, SimpleArrayList<Object> argList,
+                    @Cached InlinedBranchProfile growBranch,
+                    @Cached InlinedBranchProfile errorBranch) {
         IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
         for (;;) {
             Object nextArg = iteratorStepNode.execute(frame, iteratorRecord);
@@ -90,10 +122,10 @@ public final class SpreadArgumentNode extends JavaScriptNode {
                 break;
             }
             if (argList.size() >= context.getFunctionArgumentsLimit()) {
-                errorBranch.enter(node);
+                errorBranch.enter(this);
                 throw Errors.createRangeError("spreaded function argument count exceeds limit");
             }
-            argList.add(nextArg, node, growBranch);
+            argList.add(nextArg, this, growBranch);
         }
     }
 

@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -115,6 +116,7 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         return JSRuntime.doubleToNarrowestNumber(doubleValue);
     }
 
+    @InliningCutoff
     @Specialization
     protected Number doJSObject(JSObject value,
                     @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
@@ -142,6 +144,7 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         return value;
     }
 
+    @InliningCutoff
     @Specialization(guards = "isJSObject(value) || isForeignObject(value)", replaces = "doJSObject")
     protected Number doJSOrForeignObject(Object value,
                     @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,

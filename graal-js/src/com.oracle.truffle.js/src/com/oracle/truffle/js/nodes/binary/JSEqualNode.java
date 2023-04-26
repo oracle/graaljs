@@ -264,6 +264,7 @@ public abstract class JSEqualNode extends JSCompareNode {
         return a == b;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"!hasOverloadedOperators(a)", "isPrimitiveNode.executeBoolean(b)"}, limit = "1")
     protected static boolean doJSObjectVsPrimitive(JSObject a, Object b,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
@@ -276,6 +277,7 @@ public abstract class JSEqualNode extends JSCompareNode {
         return nestedEqualNode.executeBoolean(toPrimitiveNode.execute(a), b);
     }
 
+    @InliningCutoff
     @Specialization(guards = {"!hasOverloadedOperators(b)", "isPrimitiveNode.executeBoolean(a)"}, limit = "1")
     protected static boolean doJSObjectVsPrimitive(Object a, JSObject b,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
@@ -328,6 +330,7 @@ public abstract class JSEqualNode extends JSCompareNode {
         return false;
     }
 
+    @InliningCutoff
     @Specialization(guards = "isAForeign || isBForeign")
     protected final boolean doForeign(Object a, Object b,
                     @Bind("isForeignObjectOrNumber(a)") boolean isAForeign,

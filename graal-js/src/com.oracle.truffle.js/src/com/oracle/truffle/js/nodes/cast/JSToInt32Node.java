@@ -191,6 +191,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
         return JSRuntime.toInt32(d);
     }
 
+    @InliningCutoff
     @Specialization(guards = "isForeignObject(object)")
     protected static int doForeignObject(Object object,
                     @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,

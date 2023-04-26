@@ -183,7 +183,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         if (receiver != thisObj) {
             return ordinarySetWithReceiver(thisObj, Strings.fromLong(index), value, receiver, isStrict, encapsulatingNode);
         }
-        if (index < getStringLength(thisObj)) {
+        if (index >= 0 && index < getStringLength(thisObj)) {
             // Indexed properties of a String are non-writable and non-configurable.
             if (isStrict) {
                 throw Errors.createTypeErrorNotWritableIndex(index, thisObj, encapsulatingNode);

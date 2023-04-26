@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -111,6 +112,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
         return stringToNumberNode.execute(value);
     }
 
+    @InliningCutoff
     @Specialization
     protected double doJSObject(JSObject value,
                     @Shared @Cached JSToDoubleNode recursiveToDouble,
@@ -123,6 +125,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
+    @InliningCutoff
     @Specialization(guards = "isJSObject(object) || isForeignObjectOrNumber(object)", replaces = "doJSObject")
     protected double doForeignObject(Object object,
                     @Shared @Cached JSToDoubleNode recursiveToDouble,
