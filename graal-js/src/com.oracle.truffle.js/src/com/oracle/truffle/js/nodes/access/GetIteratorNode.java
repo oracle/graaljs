@@ -95,7 +95,7 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
                     @Cached(value = "createIteratorMethodNode()", uncached = "uncachedIteratorMethodNode()", inline = false) GetMethodNode getIteratorMethodNode,
                     @Cached(inline = false) IsCallableNode isCallableNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()", inline = false) JSFunctionCallNode iteratorCallNode,
-                    @Cached(inline = false) IsJSObjectNode isObjectNode,
+                    @Cached(inline = false) IsObjectNode isObjectNode,
                     @Cached(value = "createNextMethodNode()", uncached = "uncachedNextMethodNode()", inline = false) PropertyGetNode getNextMethodNode,
                     @Cached InlinedBranchProfile errorBranch) {
         Object method;
@@ -114,23 +114,20 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
 
     @InliningCutoff
     private static Object getIteratorMethodUncached(Object items) {
-        Object method;
         Object obj = JSRuntime.toObject(items);
-        if (JSRuntime.isForeignObject(obj)) {
-            obj = ForeignObjectPrototypeNode.getUncached().execute(obj);
-        }
+        JSDynamicObject target;
         if (obj instanceof JSDynamicObject) {
-            method = JSObject.get((JSDynamicObject) obj, Symbol.SYMBOL_ITERATOR);
+            target = (JSDynamicObject) obj;
         } else {
-            method = Undefined.instance;
+            target = ForeignObjectPrototypeNode.getUncached().execute(obj);
         }
-        return method;
+        return JSObject.getOrDefault(target, Symbol.SYMBOL_ITERATOR, obj, Undefined.instance);
     }
 
     public static IteratorRecord getIterator(Object iteratedObject, Object method,
                     IsCallableNode isCallableNode,
                     JSFunctionCallNode methodCallNode,
-                    IsJSObjectNode isObjectNode,
+                    IsObjectNode isObjectNode,
                     PropertyGetNode getNextMethodNode,
                     InlinedBranchProfile errorBranch,
                     Node node) {
@@ -143,14 +140,18 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
 
     public static IteratorRecord getIterator(Object iteratedObject, Object method,
                     JSFunctionCallNode methodCallNode,
-                    IsJSObjectNode isObjectNode,
+                    IsObjectNode isObjectNode,
                     PropertyGetNode getNextMethodNode,
                     Node node) {
         Object iterator = methodCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
         if (isObjectNode.executeBoolean(iterator)) {
-            JSDynamicObject jsIterator = (JSDynamicObject) iterator;
-            Object nextMethod = getNextMethodNode != null ? getNextMethodNode.getValue(jsIterator) : JSObject.get(jsIterator, Strings.NEXT);
-            return IteratorRecord.create(jsIterator, nextMethod, false);
+            Object nextMethod;
+            if (getNextMethodNode == null) {
+                nextMethod = JSRuntime.get(iterator, Strings.NEXT);
+            } else {
+                nextMethod = getNextMethodNode.getValue(iterator);
+            }
+            return IteratorRecord.create(iterator, nextMethod, false);
         } else {
             throw Errors.createTypeErrorNotAnObject(iterator, node);
         }

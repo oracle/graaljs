@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,7 +99,7 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         return new AsyncIteratorCloseNode(context);
     }
 
-    public final Object execute(JSDynamicObject iterator, Object outerResult) {
+    public final Object execute(Object iterator, Object outerResult) {
         Object returnMethod = getReturnNode.executeWithTarget(iterator);
         if (returnMethod != Undefined.instance) {
             Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -109,7 +109,7 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         return outerResult;
     }
 
-    public final Object executeAbrupt(JSDynamicObject iterator, Object error) {
+    public final Object executeAbrupt(Object iterator, Object error) {
         try {
             Object returnMethod = getReturnNode.executeWithTarget(iterator);
             if (returnMethod != Undefined.instance) {
@@ -162,7 +162,7 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         @Child protected JavaScriptNode valueNode;
 
         @Child private PropertyGetNode getCompletionNode;
-        @Child private IsJSObjectNode isObjectNode;
+        @Child private IsObjectNode isObjectNode;
 
         private final boolean isAbrupt;
 
@@ -172,7 +172,7 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
             getCompletionNode = PropertyGetNode.createGetHidden(COMPLETION_ID, context);
             if (!isAbrupt) {
                 valueNode = AccessIndexedArgumentNode.create(0);
-                isObjectNode = IsJSObjectNode.create();
+                isObjectNode = IsObjectNode.create();
             }
         }
 

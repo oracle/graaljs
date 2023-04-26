@@ -52,7 +52,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * IteratorNext(iterator) unary expression.
@@ -80,7 +79,7 @@ public abstract class IteratorNextUnaryNode extends JavaScriptNode {
     }
 
     protected final Object iteratorNext(IteratorRecord iteratorRecord, InlinedBranchProfile errorBranch) {
-        JSDynamicObject iterator = iteratorRecord.getIterator();
+        Object iterator = iteratorRecord.getIterator();
         Object next = iteratorRecord.getNextMethod();
         Object nextResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, next));
         if (!isObjectNode.executeBoolean(nextResult)) {

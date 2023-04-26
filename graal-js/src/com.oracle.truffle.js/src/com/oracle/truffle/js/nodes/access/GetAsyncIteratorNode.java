@@ -50,14 +50,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -98,10 +96,6 @@ public abstract class GetAsyncIteratorNode extends JavaScriptNode {
     }
 
     private JSObject createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord) {
-        JSDynamicObject syncIterator = syncIteratorRecord.getIterator();
-        if (!JSDynamicObject.isJSDynamicObject(syncIterator)) {
-            throw Errors.createTypeErrorNotAnObject(syncIterator, this);
-        }
         JSObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
         setState.setValue(obj, syncIteratorRecord);
         return obj;

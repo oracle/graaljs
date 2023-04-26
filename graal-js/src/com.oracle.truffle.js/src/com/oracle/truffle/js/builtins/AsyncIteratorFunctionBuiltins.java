@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<AsyncIteratorFunctionBuiltins.AsyncIteratorFunction> {
 
@@ -98,7 +97,7 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
         }
 
         @Specialization
-        protected JSDynamicObject asyncIteratorFrom(Object arg) {
+        protected Object asyncIteratorFrom(Object arg) {
             IteratorRecord iteratorRecord = getIteratorFlattenableNode.execute(arg);
 
             JSRealm realm = getRealm();

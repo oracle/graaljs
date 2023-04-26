@@ -1163,7 +1163,7 @@ public final class TemporalUtil {
         while (next != Boolean.FALSE) {
             next = JSRuntime.iteratorStep(iter);
             if (next != Boolean.FALSE) {
-                Object nextValue = JSRuntime.iteratorValue((JSDynamicObject) next);
+                Object nextValue = JSRuntime.iteratorValue(next);
                 if (!Strings.isTString(nextValue)) {
                     JSRuntime.iteratorClose(iter.getIterator());
                     throw Errors.createTypeError("string expected");
@@ -3178,7 +3178,7 @@ public final class TemporalUtil {
         while (next != Boolean.FALSE) {
             next = JSRuntime.iteratorStep(iteratorRecord);
             if (next != Boolean.FALSE) {
-                Object nextValue = JSRuntime.iteratorValue((JSDynamicObject) next);
+                Object nextValue = JSRuntime.iteratorValue(next);
                 if (!isTemporalInstant(nextValue)) {
                     JSRuntime.iteratorClose(possibleInstants);
                     throw Errors.createTypeError("unexpected value");

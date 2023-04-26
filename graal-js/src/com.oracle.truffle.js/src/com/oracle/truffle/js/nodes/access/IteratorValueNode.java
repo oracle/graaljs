@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * ES6 7.4.4 IteratorValue(iterResult).
@@ -100,7 +101,9 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
                     @Cached ImportValueNode importValueNode) {
         try {
             return importValueNode.executeWithTarget(interop.readMember(obj, Strings.VALUE_JLS));
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+        } catch (UnknownIdentifierException e) {
+            return Undefined.instance;
+        } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(obj, e, Strings.VALUE_JLS, this);
         }
     }

@@ -50,7 +50,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * ES6 7.4.2 IteratorNext(iterator, value).
@@ -77,7 +76,7 @@ public abstract class IteratorNextNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached InlinedBranchProfile errorBranch) {
         Object nextMethod = iteratorRecord.getNextMethod();
-        JSDynamicObject iterator = iteratorRecord.getIterator();
+        Object iterator = iteratorRecord.getIterator();
         Object result = methodCallNode.executeCall(passValue
                         ? JSArguments.createOneArg(iterator, nextMethod, value)
                         : JSArguments.createZeroArg(iterator, nextMethod));

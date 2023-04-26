@@ -49,6 +49,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetAsyncIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -60,12 +61,10 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorYieldNode extends AbstractAwaitNode implements ResumableNode.WithIntState {
@@ -164,6 +163,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
     @Child private IteratorNextNode iteratorNextNode;
     @Child private IteratorCompleteNode iteratorCompleteNode;
     @Child private IteratorValueNode iteratorValueNode;
+    @Child private IsObjectNode isObjectNode;
     @Child private GetMethodNode getThrowMethodNode;
     @Child private GetMethodNode getReturnMethodNode;
     @Child private JSFunctionCallNode callThrowNode;
@@ -179,6 +179,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         this.iteratorNextNode = IteratorNextNode.create();
         this.iteratorCompleteNode = IteratorCompleteNode.create();
         this.iteratorValueNode = IteratorValueNode.create();
+        this.isObjectNode = IsObjectNode.create();
         this.getThrowMethodNode = GetMethodNode.create(context, Strings.THROW);
         this.getReturnMethodNode = GetMethodNode.create(context, Strings.RETURN);
         this.callThrowNode = JSFunctionCallNode.createCall();
@@ -204,7 +205,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         } else {
             iteratorRecord = (IteratorRecord) frame.getObject(iteratorTempSlot);
         }
-        JSDynamicObject iterator = iteratorRecord.getIterator();
+        Object iterator = iteratorRecord.getIterator();
 
         Completion received = Completion.forNormal(Undefined.instance);
         for (;;) {
@@ -260,7 +261,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                 // received.[[Type]] is normal or throw
                 case normalOrThrowAwaitInnerResult: {
                     Object awaited = resumeAwait(frame);
-                    JSDynamicObject innerResult = checkcastIterResult(awaited);
+                    Object innerResult = checkIterResult(awaited);
                     boolean done = iteratorCompleteNode.execute(innerResult);
                     if (done) {
                         reset(frame);
@@ -273,7 +274,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                 // received.[[Type]] is return
                 case returnAwaitInnerReturnResult: {
                     Object awaited = resumeAwait(frame);
-                    JSDynamicObject innerReturnResult = checkcastIterResult(awaited);
+                    Object innerReturnResult = checkIterResult(awaited);
                     boolean done = iteratorCompleteNode.execute(innerReturnResult);
                     if (done) {
                         reset(frame);
@@ -345,19 +346,19 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         frame.setObject(iteratorTempSlot, Undefined.instance);
     }
 
-    private Object callThrowMethod(Object throwMethod, JSDynamicObject iterator, Object received) {
+    private Object callThrowMethod(Object throwMethod, Object iterator, Object received) {
         return callThrowNode.executeCall(JSArguments.createOneArg(iterator, throwMethod, received));
     }
 
-    private Object callReturnMethod(Object returnMethod, JSDynamicObject iterator, Object received) {
+    private Object callReturnMethod(Object returnMethod, Object iterator, Object received) {
         return callReturnNode.executeCall(JSArguments.createOneArg(iterator, returnMethod, received));
     }
 
-    private JSDynamicObject checkcastIterResult(Object iterResult) {
-        if (!JSRuntime.isObject(iterResult)) {
+    private Object checkIterResult(Object iterResult) {
+        if (!isObjectNode.executeBoolean(iterResult)) {
             throw Errors.createTypeErrorIterResultNotAnObject(iterResult, this);
         }
-        return (JSDynamicObject) iterResult;
+        return iterResult;
     }
 
     @Override

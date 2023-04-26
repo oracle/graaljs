@@ -287,7 +287,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
 
-        protected void iteratorCloseAbrupt(JSDynamicObject iterator) {
+        protected void iteratorCloseAbrupt(Object iterator) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
@@ -295,7 +295,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             iteratorCloseNode.executeAbrupt(iterator);
         }
 
-        protected Object getIteratorValue(JSDynamicObject iteratorResult) {
+        protected Object getIteratorValue(Object iteratorResult) {
             if (getIteratorValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getIteratorValueNode = insert(IteratorValueNode.create());
@@ -325,7 +325,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             while (next != Boolean.FALSE) {
                 next = iteratorStep(iter);
                 if (next != Boolean.FALSE) {
-                    Object nextValue = getIteratorValue((JSDynamicObject) next);
+                    Object nextValue = getIteratorValue(next);
                     if (!Strings.isTString(nextValue)) {
                         iteratorCloseAbrupt(iter.getIterator());
                         throw Errors.createTypeError("string expected");

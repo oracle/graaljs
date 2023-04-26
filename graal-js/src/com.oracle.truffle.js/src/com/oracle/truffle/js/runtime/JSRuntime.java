@@ -63,6 +63,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -2846,14 +2847,20 @@ public final class JSRuntime {
         }
     }
 
-    public static IteratorRecord getIterator(JSDynamicObject iteratedObject) {
-        Object method = JSObject.get(iteratedObject, Symbol.SYMBOL_ITERATOR);
+    public static IteratorRecord getIterator(Object iteratedObject) {
+        JSDynamicObject target;
+        if (iteratedObject instanceof JSDynamicObject) {
+            target = (JSDynamicObject) iteratedObject;
+        } else {
+            target = ForeignObjectPrototypeNode.getUncached().execute(iteratedObject);
+        }
+        Object method = JSObject.getOrDefault(target, Symbol.SYMBOL_ITERATOR, iteratedObject, Undefined.instance);
         if (!isCallable(method)) {
             throw Errors.createTypeErrorNotIterable(iteratedObject, null);
         }
         Object iterator = call(method, iteratedObject, new Object[]{});
-        if (isObject(iterator)) {
-            return IteratorRecord.create((JSDynamicObject) iterator, JSObject.get((JSDynamicObject) iterator, NEXT), false);
+        if (IsObjectNode.getUncached().executeBoolean(iterator)) {
+            return IteratorRecord.create(iterator, get(iterator, NEXT), false);
         } else {
             throw Errors.createTypeErrorNotAnObject(iterator);
         }
@@ -2861,28 +2868,27 @@ public final class JSRuntime {
 
     public static Object iteratorStep(IteratorRecord iteratorRecord) {
         Object nextMethod = iteratorRecord.getNextMethod();
-        JSDynamicObject iterator = iteratorRecord.getIterator();
+        Object iterator = iteratorRecord.getIterator();
         Object result = call(nextMethod, iterator, new Object[]{});
-        if (!isObject(result)) {
+        if (!IsObjectNode.getUncached().executeBoolean(result)) {
             throw Errors.createTypeErrorIteratorResultNotObject(result, null);
         }
-        boolean done = toBoolean(JSObject.get((JSDynamicObject) result, DONE));
+        boolean done = toBoolean(get(result, DONE));
         if (done) {
             return false;
         }
         return result;
     }
 
-    public static Object iteratorValue(JSDynamicObject iterator) {
-        // TODO foreign values not handled here, see IteratorValueNode
-        return JSObject.get(iterator, VALUE);
+    public static Object iteratorValue(Object iterator) {
+        return get(iterator, VALUE);
     }
 
-    public static void iteratorClose(JSDynamicObject iterator) {
-        Object returnMethod = JSObject.get(iterator, Strings.RETURN);
+    public static void iteratorClose(Object iterator) {
+        Object returnMethod = get(iterator, Strings.RETURN);
         if (returnMethod != Undefined.instance) {
             Object innerResult = call(returnMethod, iterator, new Object[]{});
-            if (!isObject(innerResult)) {
+            if (!IsObjectNode.getUncached().executeBoolean(innerResult)) {
                 throw Errors.createTypeErrorIterResultNotAnObject(innerResult, null);
             }
         }
