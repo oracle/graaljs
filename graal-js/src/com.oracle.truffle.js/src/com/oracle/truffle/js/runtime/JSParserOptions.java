@@ -124,14 +124,6 @@ public final class JSParserOptions {
         return ecmaScriptVersion;
     }
 
-    public boolean isES6() {
-        return ecmaScriptVersion >= 6;
-    }
-
-    public boolean isES8() {
-        return ecmaScriptVersion >= 8;
-    }
-
     public boolean isFunctionStatementError() {
         return functionStatementError;
     }
