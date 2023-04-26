@@ -822,10 +822,6 @@ public final class JSContextOptions {
         }
     }
 
-    public <T> boolean optionWillChange(OptionKey<T> option, OptionValues newOptionValues) {
-        return !option.getValue(this.optionValues).equals(option.getValue(newOptionValues));
-    }
-
     public int getEcmaScriptVersion() {
         return ecmascriptVersion;
     }
