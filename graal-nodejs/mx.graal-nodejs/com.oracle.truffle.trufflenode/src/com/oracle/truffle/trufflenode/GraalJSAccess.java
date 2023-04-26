@@ -2145,7 +2145,7 @@ public final class GraalJSAccess {
         JSContext jsContext = realm.getContext();
         Evaluator nodeEvaluator = jsContext.getEvaluator();
         JSParserOptions parserOptions = jsContext.getParserOptions();
-        boolean isStrict = parserOptions.isStrict();
+        boolean isStrict = parserOptions.strict();
         Object extraArgument = getExtraArgumentOfInternalScript(sourceName, realm);
         Object[] extensions;
         ByteBuffer snapshot = null;
@@ -2400,7 +2400,7 @@ public final class GraalJSAccess {
                 NodeFactory factory = NodeFactory.getInstance(jsContext);
                 Object prev = jsRealm.getTruffleContext().enter(null);
                 try {
-                    scriptNode = JavaScriptTranslator.translateFunction(factory, jsContext, null, source, options.isStrict(), (FunctionNode) parseResult);
+                    scriptNode = JavaScriptTranslator.translateFunction(factory, jsContext, null, source, options.strict(), (FunctionNode) parseResult);
                 } finally {
                     jsRealm.getTruffleContext().leave(null, prev);
                 }
@@ -2438,7 +2438,7 @@ public final class GraalJSAccess {
                 System.err.printf("error when parsing binary snapshot for %s: %s\n", moduleName, e);
                 System.err.printf("falling back to parsing %s at runtime\n", moduleName);
             }
-            return parser.parseScript(context, source, prefix, suffix, context.getParserOptions().isStrict());
+            return parser.parseScript(context, source, prefix, suffix, context.getParserOptions().strict());
         }
     }
 

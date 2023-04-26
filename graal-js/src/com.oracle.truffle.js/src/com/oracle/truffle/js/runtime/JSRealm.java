@@ -2384,7 +2384,7 @@ public class JSRealm {
     private void addScriptingGlobals() {
         CompilerAsserts.neverPartOfCompilation();
 
-        if (getContext().getParserOptions().isScripting()) {
+        if (getContext().getParserOptions().scripting()) {
             // $OPTIONS
             String timezone = getLocalTimeZoneId().getId();
             JSDynamicObject timezoneObj = JSOrdinary.create(context, this);

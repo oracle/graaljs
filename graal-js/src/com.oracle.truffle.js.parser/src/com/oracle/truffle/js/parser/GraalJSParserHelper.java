@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -164,7 +164,7 @@ public final class GraalJSParserHelper {
                     // validate regular expression
                     if (context.getContextOptions().isValidateRegExpLiterals()) {
                         try {
-                            RegexCompilerInterface.validate(context, regex.getExpression(), regex.getOptions(), parserOptions.getEcmaScriptVersion());
+                            RegexCompilerInterface.validate(context, regex.getExpression(), regex.getOptions(), parserOptions.ecmaScriptVersion());
                         } catch (JSException e) {
                             throw error(e.getRawMessage());
                         }
@@ -181,26 +181,26 @@ public final class GraalJSParserHelper {
 
     private static ScriptEnvironment makeScriptEnvironment(JSParserOptions parserOptions) {
         ScriptEnvironment.Builder builder = ScriptEnvironment.builder();
-        builder.strict(parserOptions.isStrict());
-        builder.ecmaScriptVersion(parserOptions.getEcmaScriptVersion());
-        builder.emptyStatements(parserOptions.isEmptyStatements());
-        builder.syntaxExtensions(parserOptions.isSyntaxExtensions());
-        builder.scripting(parserOptions.isScripting());
-        builder.shebang(parserOptions.isShebang());
-        builder.constAsVar(parserOptions.isConstAsVar());
-        builder.allowBigInt(parserOptions.isAllowBigInt());
-        builder.annexB(parserOptions.isAnnexB());
-        builder.classFields(parserOptions.isClassFields());
-        builder.importAssertions(parserOptions.isImportAssertions());
-        builder.privateFieldsIn(parserOptions.isPrivateFieldsIn());
-        builder.topLevelAwait(parserOptions.isTopLevelAwait());
-        builder.v8Intrinsics(parserOptions.isV8Intrinsics());
-        if (parserOptions.isFunctionStatementError()) {
+        builder.strict(parserOptions.strict());
+        builder.ecmaScriptVersion(parserOptions.ecmaScriptVersion());
+        builder.emptyStatements(parserOptions.emptyStatements());
+        builder.syntaxExtensions(parserOptions.syntaxExtensions());
+        builder.scripting(parserOptions.scripting());
+        builder.shebang(parserOptions.shebang());
+        builder.constAsVar(parserOptions.constAsVar());
+        builder.allowBigInt(parserOptions.allowBigInt());
+        builder.annexB(parserOptions.annexB());
+        builder.classFields(parserOptions.classFields());
+        builder.importAssertions(parserOptions.importAssertions());
+        builder.privateFieldsIn(parserOptions.privateFieldsIn());
+        builder.topLevelAwait(parserOptions.topLevelAwait());
+        builder.v8Intrinsics(parserOptions.v8Intrinsics());
+        if (parserOptions.functionStatementError()) {
             builder.functionStatementBehavior(FunctionStatementBehavior.ERROR);
         } else {
             builder.functionStatementBehavior(FunctionStatementBehavior.ACCEPT);
         }
-        if (parserOptions.isDumpOnError()) {
+        if (parserOptions.dumpOnError()) {
             builder.dumpOnError(new PrintWriter(System.err, true));
         }
         return builder.build();

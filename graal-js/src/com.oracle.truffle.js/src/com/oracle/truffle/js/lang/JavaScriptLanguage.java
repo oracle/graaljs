@@ -210,7 +210,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             boolean strict = Boolean.parseBoolean(argumentNames.get(3));
             program = parseScript(context, source, prolog, epilog, strict, new ArrayList<>());
         } else {
-            program = parseScript(context, source, "", "", context.getParserOptions().isStrict(), argumentNames);
+            program = parseScript(context, source, "", "", context.getParserOptions().strict(), argumentNames);
         }
 
         if (context.isOptionParseOnly()) {
