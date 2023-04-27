@@ -1314,8 +1314,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             this.joinPropertyNode = PropertyNode.createProperty(context, null, Strings.JOIN);
         }
 
-        private Object getJoinProperty(Object target) {
-            return joinPropertyNode.executeWithTarget(target);
+        private Object getJoinProperty(Object target, Object receiver) {
+            return joinPropertyNode.executeWithTarget(target, receiver);
         }
 
         private Object getToStringProperty(Object target) {
@@ -1389,7 +1389,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
             }
 
-            Object join = getJoinProperty(getForeignObjectPrototype(arrayObj));
+            Object join = getJoinProperty(getForeignObjectPrototype(arrayObj), arrayObj);
             if (isCallable(join)) {
                 return callJoin(arrayObj, join);
             } else {
@@ -1433,7 +1433,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached InlinedConditionProfile isJSObjectProfile) {
             Object arrayObj = toObject(thisObj);
             if (isJSObjectProfile.profile(this, JSObject.isJSObject(arrayObj))) {
-                Object join = getJoinProperty(arrayObj);
+                Object join = getJoinProperty(arrayObj, arrayObj);
                 if (isCallable(join)) {
                     return callJoin(arrayObj, join);
                 } else {
