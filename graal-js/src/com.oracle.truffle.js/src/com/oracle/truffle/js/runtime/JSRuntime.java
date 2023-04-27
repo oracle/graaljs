@@ -332,7 +332,8 @@ public final class JSRuntime {
 
         // Try foreign object prototype [Symbol.toPrimitive] property first.
         // e.g.: Instant and ZonedDateTime use Date.prototype[@@toPrimitive].
-        Object exoticToPrim = JSObject.get(ForeignObjectPrototypeNode.getUncached().execute(tObj), Symbol.SYMBOL_TO_PRIMITIVE);
+        JSDynamicObject proto = ForeignObjectPrototypeNode.getUncached().execute(tObj);
+        Object exoticToPrim = JSObject.getOrDefault(proto, Symbol.SYMBOL_TO_PRIMITIVE, tObj, Undefined.instance);
         if (!JSRuntime.isNullOrUndefined(exoticToPrim)) {
             Object result = JSRuntime.call(exoticToPrim, tObj, new Object[]{hint.getHintName()});
             if (IsPrimitiveNode.getUncached().executeBoolean(result)) {
@@ -385,7 +386,7 @@ public final class JSRuntime {
                 }
             }
 
-            Object method = JSObject.getMethod(proto, name);
+            Object method = JSObject.getMethod(proto, obj, name);
             if (isCallable(method)) {
                 Object result = call(method, obj, new Object[]{});
                 if (IsPrimitiveNode.getUncached().executeBoolean(result)) {

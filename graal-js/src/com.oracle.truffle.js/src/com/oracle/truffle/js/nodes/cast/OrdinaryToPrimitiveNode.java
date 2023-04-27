@@ -183,7 +183,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             return result;
         }
         JSDynamicObject proto = getForeignObjectPrototype(object);
-        Object func = getToString().getValue(proto);
+        Object func = getToString().getValueOrUndefined(proto, object);
         if (toStringIsFunction.profile(node, isCallableNode.executeBoolean(func))) {
             result = callToStringNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
@@ -213,7 +213,7 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             return result;
         }
         JSDynamicObject proto = getForeignObjectPrototype(object);
-        Object func = getValueOf().getValue(proto);
+        Object func = getValueOf().getValueOrUndefined(proto, object);
         if (valueOfIsFunction.profile(node, isCallableNode.executeBoolean(func))) {
             result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, func));
             if (isPrimitiveNode.executeBoolean(result)) {
