@@ -252,7 +252,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         JSContext context = functionData.getContext();
         JSBuiltinNode functionRoot = JSBuiltinNode.createBuiltin(context, builtin, false, false);
         FrameDescriptor frameDescriptor = null;
-        FunctionRootNode callRoot = FunctionRootNode.create(functionRoot, frameDescriptor, functionData, getSourceSection(), builtin.getFullName());
+        FunctionRootNode callRoot = FunctionRootNode.create(functionRoot, frameDescriptor, functionData, getSourceSection(), null, builtin.getFullName());
         // Note: there's no lock being held here; first thread to set the root node wins.
         // Built-in nodes are relatively cheap to create, so creating throwaway nodes is fine.
         functionData.setRootNode(callRoot);
@@ -268,7 +268,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
             RootNode constructRoot;
             if (builtin.hasSeparateConstructor()) {
                 JSBuiltinNode constructNode = JSBuiltinNode.createBuiltin(context, builtin, true, false);
-                constructRoot = FunctionRootNode.create(constructNode, frameDescriptor, functionData, getSourceSection(), builtin.getFullName());
+                constructRoot = FunctionRootNode.create(constructNode, frameDescriptor, functionData, getSourceSection(), null, builtin.getFullName());
             } else {
                 constructRoot = factory.createConstructorRootNode(functionData, callTarget, false);
             }
@@ -277,7 +277,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
             JavaScriptRootNode constructNewTargetRoot;
             if (builtin.hasNewTargetConstructor()) {
                 AbstractBodyNode constructNewTargetNode = JSBuiltinNode.createBuiltin(context, builtin, true, true);
-                constructNewTargetRoot = FunctionRootNode.create(constructNewTargetNode, frameDescriptor, functionData, getSourceSection(), builtin.getFullName());
+                constructNewTargetRoot = FunctionRootNode.create(constructNewTargetNode, frameDescriptor, functionData, getSourceSection(), null, builtin.getFullName());
             } else {
                 CallTarget constructTarget = functionData.getConstructTarget();
                 constructNewTargetRoot = factory.createDropNewTarget(functionData.getContext(), constructTarget);

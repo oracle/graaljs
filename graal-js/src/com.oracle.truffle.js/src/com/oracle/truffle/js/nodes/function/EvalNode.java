@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class EvalNode extends JavaScriptNode {
@@ -130,13 +131,13 @@ public abstract class EvalNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    private static String formatEvalOrigin(Node callNode, JSContext context) {
-        if (callNode == null) {
-            return null;
+    public static String formatEvalOrigin(Node callNode, JSContext context, String defaultName) {
+        if (callNode == null || !context.isOptionV8CompatibilityMode()) {
+            return defaultName;
         }
         SourceSection sourceSection = callNode.getEncapsulatingSourceSection();
         if (sourceSection == null) {
-            return null;
+            return defaultName;
         }
         String sourceName = sourceSection.getSource().getName();
         String callerName = callNode.getRootNode().getName();
@@ -151,12 +152,33 @@ public abstract class EvalNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    public static String findAndFormatEvalOrigin(Node evalNode, JSContext context) {
-        String evalOrigin = formatEvalOrigin(evalNode, context);
-        if (evalOrigin != null) {
-            return evalOrigin;
+    public static Node findCallNode(JSRealm realm) {
+        JavaScriptBaseNode caller = realm.getCallNode();
+        if (isValidCallNode(caller)) {
+            return caller;
         }
-        return Truffle.getRuntime().iterateFrames(frameInstance -> formatEvalOrigin(frameInstance.getCallNode(), context));
+        return Truffle.getRuntime().iterateFrames(frameInstance -> {
+            Node callNode = frameInstance.getCallNode();
+            // Skip built-in function frames to find the true caller.
+            if (isValidCallNode(callNode)) {
+                return callNode;
+            } else {
+                return null;
+            }
+        });
+    }
+
+    private static boolean isValidCallNode(Node callNode) {
+        return callNode != null && callNode.getRootNode() instanceof AbstractFunctionRootNode functionRoot && functionRoot.getActiveScriptOrModule() != null;
+    }
+
+    @TruffleBoundary
+    public static ScriptOrModule findActiveScriptOrModule(Node callNode) {
+        if (callNode != null && callNode.getRootNode() instanceof AbstractFunctionRootNode functionRoot) {
+            return functionRoot.getActiveScriptOrModule();
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -261,14 +283,8 @@ public abstract class EvalNode extends JavaScriptNode {
 
         @TruffleBoundary
         private Source sourceFromString(TruffleString sourceCode) {
-            String evalSourceName = null;
-            if (context.isOptionV8CompatibilityMode()) {
-                evalSourceName = formatEvalOrigin(this, context);
-            }
-            if (evalSourceName == null) {
-                evalSourceName = Evaluator.EVAL_SOURCE_NAME;
-            }
-            return Source.newBuilder(JavaScriptLanguage.ID, Strings.toJavaString(sourceCode), evalSourceName).build();
+            String evalSourceName = formatEvalOrigin(this, context, Evaluator.EVAL_SOURCE_NAME);
+            return Source.newBuilder(JavaScriptLanguage.ID, Strings.toJavaString(sourceCode), evalSourceName).cached(false).build();
         }
 
         protected DirectEvalNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {

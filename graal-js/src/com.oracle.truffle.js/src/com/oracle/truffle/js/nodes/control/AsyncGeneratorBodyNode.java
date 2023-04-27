@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,10 @@ package com.oracle.truffle.js.nodes.control;
 
 import java.util.ArrayDeque;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -55,16 +53,16 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
@@ -72,19 +70,19 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
-    @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async generator functions in JavaScript.")
-    private static final class AsyncGeneratorRootNode extends JavaScriptRealmBoundaryRootNode implements AsyncRootNode {
+    private static final class AsyncGeneratorRootNode extends AbstractFunctionRootNode implements AsyncRootNode {
 
         @Child private PropertySetNode setGeneratorState;
         @Child private JavaScriptNode functionBody;
@@ -96,11 +94,11 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
         private final JSContext context;
-        private final String functionName;
+        private final TruffleString functionName;
 
         AsyncGeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, JSReadFrameSlotNode readAsyncContext,
-                        SourceSection functionSourceSection, String functionName) {
-            super(context.getLanguage(), functionSourceSection, null);
+                        SourceSection functionSourceSection, TruffleString functionName, ScriptOrModule activeScriptOrModule) {
+            super(context.getLanguage(), functionSourceSection, null, activeScriptOrModule);
             this.readAsyncContext = readAsyncContext;
             this.functionName = functionName;
             this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
@@ -198,7 +196,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         @Override
         public String getName() {
             if (functionName != null && !functionName.isEmpty()) {
-                return functionName;
+                return Strings.toJavaString(functionName);
             }
             return ":asyncgenerator";
         }
@@ -252,17 +250,12 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     @Child private PropertySetNode setGeneratorTarget;
     @Child private PropertySetNode setGeneratorQueue;
 
-    @CompilationFinal volatile RootCallTarget resumeTarget;
+    private final AsyncGeneratorRootNode resumptionRootNode;
     private final JSContext context;
 
-    @Child private JavaScriptNode functionBody;
-    @Child private JSWriteFrameSlotNode writeYieldValueNode;
-    @Child private JSReadFrameSlotNode readYieldResultNode;
     @Child private JSWriteFrameSlotNode writeAsyncContext;
-    @Child private JSReadFrameSlotNode readAsyncContext;
 
-    public AsyncGeneratorBodyNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, JSWriteFrameSlotNode writeAsyncContext,
-                    JSReadFrameSlotNode readAsyncContext) {
+    public AsyncGeneratorBodyNode(JSContext context, JSWriteFrameSlotNode writeAsyncContext, AsyncGeneratorRootNode resumptionRootNode) {
         this.createAsyncGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, true);
 
         this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
@@ -273,46 +266,19 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         this.context = context;
 
         this.writeAsyncContext = writeAsyncContext;
-        // these children are adopted here only temporarily; they will be transferred later
-        this.functionBody = Objects.requireNonNull(body);
-        this.writeYieldValueNode = Objects.requireNonNull(writeYieldValueNode);
-        this.readYieldResultNode = Objects.requireNonNull(readYieldResultNode);
-        this.readAsyncContext = Objects.requireNonNull(readAsyncContext);
+        this.resumptionRootNode = resumptionRootNode;
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode,
-                    JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext) {
-        return new AsyncGeneratorBodyNode(context, body, writeYieldValueNode, readYieldResultNode, writeAsyncContext, readAsyncContext);
-    }
-
-    private void initializeCallTarget() {
-        CompilerAsserts.neverPartOfCompilation();
-        atomic(() -> {
-            if (resumeTarget == null) {
-                RootNode rootNode = getRootNode();
-                AsyncGeneratorRootNode asyncGeneratorRootNode = new AsyncGeneratorRootNode(context, functionBody, writeYieldValueNode, readYieldResultNode, readAsyncContext,
-                                rootNode.getSourceSection(),
-                                rootNode.getName());
-                this.resumeTarget = asyncGeneratorRootNode.getCallTarget();
-                // these children have been transferred to the generator root node and are now
-                // disowned
-                this.functionBody = null;
-                this.writeYieldValueNode = null;
-                this.readYieldResultNode = null;
-                this.readAsyncContext = null;
-            }
-        });
-    }
-
-    private void ensureCallTargetInitialized() {
-        if (resumeTarget == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            initializeCallTarget();
-        }
+                    JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext,
+                    SourceSection functionSourceSection, TruffleString functionName, ScriptOrModule activeScriptOrModule) {
+        var resumptionRootNode = new AsyncGeneratorRootNode(context, body, writeYieldValueNode, readYieldResultNode, readAsyncContext, functionSourceSection, functionName, activeScriptOrModule);
+        return new AsyncGeneratorBodyNode(context, writeAsyncContext, resumptionRootNode);
     }
 
     private void asyncGeneratorStart(VirtualFrame frame, JSDynamicObject generatorObject) {
         MaterializedFrame materializedFrame = frame.materialize();
+        CallTarget resumeTarget = resumptionRootNode.getCallTarget();
         setGeneratorState.setValue(generatorObject, AsyncGeneratorState.SuspendedStart);
         setGeneratorContext.setValue(generatorObject, materializedFrame);
         setGeneratorTarget.setValue(generatorObject, resumeTarget);
@@ -322,8 +288,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        ensureCallTargetInitialized();
-
         JSDynamicObject generatorObject = createAsyncGeneratorObject.execute(frame, JSFrameUtil.getFunctionObject(frame));
 
         asyncGeneratorStart(frame, generatorObject);
@@ -333,21 +297,17 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return atomic(() -> {
-            if (resumeTarget == null) {
-                return create(context, cloneUninitialized(functionBody, materializedTags),
-                                cloneUninitialized(writeYieldValueNode, materializedTags),
-                                cloneUninitialized(readYieldResultNode, materializedTags),
-                                cloneUninitialized(writeAsyncContext, materializedTags),
-                                cloneUninitialized(readAsyncContext, materializedTags));
-            } else {
-                AsyncGeneratorRootNode generatorRoot = (AsyncGeneratorRootNode) resumeTarget.getRootNode();
-                return create(context, cloneUninitialized(generatorRoot.functionBody, materializedTags),
-                                cloneUninitialized(generatorRoot.writeYieldValue, materializedTags),
-                                cloneUninitialized(generatorRoot.readYieldResult, materializedTags),
-                                cloneUninitialized(writeAsyncContext, materializedTags),
-                                cloneUninitialized(generatorRoot.readAsyncContext, materializedTags));
-            }
-        });
+        return new AsyncGeneratorBodyNode(context,
+                        cloneUninitialized(writeAsyncContext, materializedTags),
+                        resumptionRootNode);
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (!materializedTags.isEmpty()) {
+            // ensure resumption call target is visible to instrumentation.
+            resumptionRootNode.getCallTarget();
+        }
+        return this;
     }
 }

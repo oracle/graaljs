@@ -40,53 +40,24 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import java.util.Set;
-
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
-@NodeInfo(cost = NodeCost.NONE)
-public class FunctionBodyNode extends AbstractBodyNode {
-    @Child private JavaScriptNode body;
+public abstract class AbstractFunctionRootNode extends JavaScriptRealmBoundaryRootNode {
 
-    public FunctionBodyNode(JavaScriptNode body) {
-        this.body = body;
+    protected final ScriptOrModule activeScriptOrModule;
+
+    protected AbstractFunctionRootNode(JavaScriptLanguage lang,
+                    SourceSection sourceSection, FrameDescriptor frameDescriptor, ScriptOrModule activeScriptOrModule) {
+        super(lang, sourceSection, frameDescriptor);
+        this.activeScriptOrModule = activeScriptOrModule;
     }
 
-    public static FunctionBodyNode create(JavaScriptNode body) {
-        return new FunctionBodyNode(body);
+    public final ScriptOrModule getActiveScriptOrModule() {
+        return activeScriptOrModule;
     }
 
-    public JavaScriptNode getBody() {
-        return body;
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return body.execute(frame);
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(body, materializedTags));
-    }
-
-    @Override
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
-            FrameDescriptor frameDescriptor = getRootNode().getFrameDescriptor();
-            JavaScriptNode materialized = DeclareTagProvider.createMaterializedFunctionBodyNode(this, cloneUninitialized(body, materializedTags), frameDescriptor);
-            materialized.setSourceSection(getSourceSection());
-            return materialized;
-        } else {
-            return this;
-        }
-    }
 }

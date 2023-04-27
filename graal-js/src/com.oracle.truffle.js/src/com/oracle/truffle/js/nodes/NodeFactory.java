@@ -128,7 +128,6 @@ import com.oracle.truffle.js.nodes.arguments.AccessRestArgumentsNode;
 import com.oracle.truffle.js.nodes.arguments.AccessThisNode;
 import com.oracle.truffle.js.nodes.arguments.AccessVarArgsNode;
 import com.oracle.truffle.js.nodes.arguments.ArgumentsObjectNode;
-import com.oracle.truffle.js.nodes.arguments.GetActiveScriptOrModuleNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
 import com.oracle.truffle.js.nodes.binary.InNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode;
@@ -824,9 +823,9 @@ public class NodeFactory {
 
     // ##### Function nodes
 
-    public FunctionRootNode createFunctionRootNode(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection,
-                    TruffleString internalFunctionName) {
-        FunctionRootNode functionRoot = FunctionRootNode.create(body, frameDescriptor, functionData, sourceSection, internalFunctionName);
+    public FunctionRootNode createFunctionRootNode(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData,
+                    SourceSection sourceSection, ScriptOrModule activeScriptOrModule, TruffleString internalFunctionName) {
+        FunctionRootNode functionRoot = FunctionRootNode.create(body, frameDescriptor, functionData, sourceSection, activeScriptOrModule, internalFunctionName);
         functionData.setRootNode(functionRoot);
 
         // Lazy initialization is performed under a lock, so the root node should only be set once.
@@ -839,16 +838,16 @@ public class NodeFactory {
         return functionRoot;
     }
 
-    public FunctionRootNode createModuleRootNode(AbstractBodyNode linkBody, AbstractBodyNode evalBody, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection,
-                    TruffleString internalFunctionName) {
+    public FunctionRootNode createModuleRootNode(AbstractBodyNode linkBody, AbstractBodyNode evalBody, FrameDescriptor frameDescriptor, JSFunctionData functionData,
+                    SourceSection sourceSection, ScriptOrModule activeScriptOrModule, TruffleString internalFunctionName) {
         FunctionRootNode linkRoot;
         FunctionRootNode evalRoot;
         if (linkBody == evalBody) {
-            evalRoot = linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, internalFunctionName);
+            evalRoot = linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, activeScriptOrModule, internalFunctionName);
         } else {
-            linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection,
+            linkRoot = FunctionRootNode.create(linkBody, frameDescriptor, functionData, sourceSection, activeScriptOrModule,
                             Strings.concat(internalFunctionName, Evaluator.MODULE_LINK_SUFFIX));
-            evalRoot = FunctionRootNode.create(evalBody, JavaScriptRootNode.MODULE_DUMMY_FRAMEDESCRIPTOR, functionData, sourceSection,
+            evalRoot = FunctionRootNode.create(evalBody, JavaScriptRootNode.MODULE_DUMMY_FRAMEDESCRIPTOR, functionData, sourceSection, activeScriptOrModule,
                             Strings.concat(internalFunctionName, Evaluator.MODULE_EVAL_SUFFIX));
         }
 
@@ -1023,17 +1022,19 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createAsyncFunctionBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext,
-                    JSWriteFrameSlotNode writeAsyncResult) {
-        return AsyncFunctionBodyNode.create(context, body, writeAsyncContext, readAsyncContext, writeAsyncResult);
+                    JSWriteFrameSlotNode writeAsyncResult, SourceSection functionSourceSection, TruffleString functionName, ScriptOrModule activeScriptOrModule) {
+        return AsyncFunctionBodyNode.create(context, body, writeAsyncContext, readAsyncContext, writeAsyncResult, functionSourceSection, functionName, activeScriptOrModule);
     }
 
-    public JavaScriptNode createGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult) {
-        return GeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult);
+    public JavaScriptNode createGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult,
+                    SourceSection functionSourceSection, TruffleString functionName, ScriptOrModule activeScriptOrModule) {
+        return GeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult, functionSourceSection, functionName, activeScriptOrModule);
     }
 
     public JavaScriptNode createAsyncGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult,
-                    JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext) {
-        return AsyncGeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult, writeAsyncContext, readAsyncContext);
+                    JSWriteFrameSlotNode writeAsyncContext, JSReadFrameSlotNode readAsyncContext,
+                    SourceSection functionSourceSection, TruffleString functionName, ScriptOrModule activeScriptOrModule) {
+        return AsyncGeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult, writeAsyncContext, readAsyncContext, functionSourceSection, functionName, activeScriptOrModule);
     }
 
     public JavaScriptNode createGeneratorWrapper(JavaScriptNode child, JSFrameSlot stateSlot) {
@@ -1253,8 +1254,9 @@ public class NodeFactory {
         return ModuleYieldNode.create();
     }
 
-    public JavaScriptNode createTopLevelAsyncModuleBody(JSContext context, JavaScriptNode moduleBody, JSWriteFrameSlotNode asyncResult, JSWriteFrameSlotNode writeAsyncContextNode) {
-        return TopLevelAwaitModuleBodyNode.create(context, moduleBody, asyncResult, writeAsyncContextNode);
+    public JavaScriptNode createTopLevelAsyncModuleBody(JSContext context, JavaScriptNode moduleBody, JSWriteFrameSlotNode writeAsyncResult, JSWriteFrameSlotNode writeAsyncContext,
+                    SourceSection functionSourceSection, ScriptOrModule activeScriptOrModule) {
+        return TopLevelAwaitModuleBodyNode.create(context, moduleBody, writeAsyncResult, writeAsyncContext, functionSourceSection, activeScriptOrModule);
     }
 
     public JavaScriptNode createImportMeta(JavaScriptNode moduleNode) {
@@ -1273,11 +1275,11 @@ public class NodeFactory {
         return ReadImportBindingNode.create(readLocal);
     }
 
-    public JavaScriptNode createImportCall(JSContext context, JavaScriptNode argument, JavaScriptNode activeScriptOrModule) {
+    public JavaScriptNode createImportCall(JSContext context, JavaScriptNode argument, ScriptOrModule activeScriptOrModule) {
         return ImportCallNode.create(context, argument, activeScriptOrModule);
     }
 
-    public JavaScriptNode createImportCall(JSContext context, JavaScriptNode specifier, JavaScriptNode activeScriptOrModule, JavaScriptNode options) {
+    public JavaScriptNode createImportCall(JSContext context, JavaScriptNode specifier, ScriptOrModule activeScriptOrModule, JavaScriptNode options) {
         return ImportCallNode.createWithOptions(context, specifier, activeScriptOrModule, options);
     }
 
@@ -1364,17 +1366,8 @@ public class NodeFactory {
         return PrivateFieldInNode.create(left, right);
     }
 
-    public ScriptOrModule createScriptOrModule(JSContext context, Source source) {
+    public ScriptOrModule createScript(JSContext context, Source source) {
         return new ScriptOrModule(context, source);
-    }
-
-    public GetActiveScriptOrModuleNode createGetActiveScriptOrModule() {
-        return GetActiveScriptOrModuleNode.create();
-    }
-
-    public GetActiveScriptOrModuleNode fixGetActiveScriptOrModule(GetActiveScriptOrModuleNode node, ScriptOrModule scriptOrModule) {
-        node.setScriptOrModule(scriptOrModule);
-        return node;
     }
 
     public JavaScriptNode createToObjectForWithStatement(JSContext context, JavaScriptNode operand) {
