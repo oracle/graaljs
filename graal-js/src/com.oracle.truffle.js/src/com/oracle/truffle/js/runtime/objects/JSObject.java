@@ -346,10 +346,14 @@ public abstract class JSObject extends JSDynamicObject {
         return JSObject.getJSClass(obj).get(obj, key);
     }
 
-    @TruffleBoundary
     public static Object getMethod(JSDynamicObject obj, Object name) {
+        return getMethod(obj, obj, name);
+    }
+
+    @TruffleBoundary
+    public static Object getMethod(JSDynamicObject obj, Object receiver, Object name) {
         assert JSRuntime.isPropertyKey(name);
-        Object result = JSRuntime.nullToUndefined(JSObject.getJSClass(obj).getMethodHelper(obj, obj, name, null));
+        Object result = JSRuntime.nullToUndefined(JSObject.getJSClass(obj).getMethodHelper(obj, receiver, name, null));
         return (result == Null.instance) ? Undefined.instance : result;
     }
 

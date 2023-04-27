@@ -212,7 +212,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return getValueOrDefault(obj, obj, defaultValue);
     }
 
-    protected Object getValueOrUndefined(Object thisObj, Object receiver) {
+    public final Object getValueOrUndefined(Object thisObj, Object receiver) {
         return getValueOrDefault(thisObj, receiver, Undefined.instance);
     }
 

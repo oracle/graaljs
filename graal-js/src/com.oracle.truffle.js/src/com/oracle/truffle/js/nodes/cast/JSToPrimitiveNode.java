@@ -233,7 +233,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
         // Try foreign object prototype [Symbol.toPrimitive] property first.
         // e.g.: Instant and ZonedDateTime use Date.prototype[@@toPrimitive].
-        Object exoticToPrim = getToPrimitive.getValue(foreignObjectPrototypeNode.execute(object));
+        Object exoticToPrim = getToPrimitive.getValueOrUndefined(foreignObjectPrototypeNode.execute(object), object);
         if (exoticToPrimProfile.profile(node, !JSRuntime.isNullOrUndefined(exoticToPrim))) {
             Object result = callExoticToPrim.executeCall(JSArguments.createOneArg(object, exoticToPrim, hint.getHintName()));
             if (isPrimitive.executeBoolean(result)) {

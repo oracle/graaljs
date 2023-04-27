@@ -1443,7 +1443,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private ImportValueNode importValueNode;
         @Child private InteropLibrary getterInterop;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
-        @Child private ReadElementNode readFromPrototypeNode;
+        @Child private CachedGetPropertyNode readFromPrototypeNode;
         @Child private ToArrayIndexNode toArrayIndexNode;
 
         @CompilationFinal private boolean optimistic = true;
@@ -1583,11 +1583,11 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             if (context.getContextOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(truffleObject, interop)) {
                 if (readFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    this.readFromPrototypeNode = insert(ReadElementNode.create(context));
+                    this.readFromPrototypeNode = insert(CachedGetPropertyNode.create(context));
                     this.foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
                 JSDynamicObject prototype = foreignObjectPrototypeNode.execute(truffleObject);
-                return readFromPrototypeNode.executeWithTargetAndIndex(prototype, key);
+                return readFromPrototypeNode.execute(prototype, key, truffleObject, Undefined.instance);
             } else {
                 return Undefined.instance;
             }

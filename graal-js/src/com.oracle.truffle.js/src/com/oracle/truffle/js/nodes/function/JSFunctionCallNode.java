@@ -1637,15 +1637,15 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
             }
             JSDynamicObject prototype = foreignObjectPrototypeNode.execute(receiver);
-            return getFunction(prototype);
+            return getFunction(prototype, receiver);
         }
 
-        private Object getFunction(Object object) {
+        private Object getFunction(Object object, Object receiver) {
             if (getFunctionNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getFunctionNode = insert(PropertyGetNode.create(functionName, getContext()));
             }
-            return getFunctionNode.getValue(object);
+            return getFunctionNode.getValueOrUndefined(object, receiver);
         }
 
         private Object callJSFunction(Object receiver, Object function, Object[] arguments) {
