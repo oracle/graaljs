@@ -363,7 +363,8 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                 if (result == null) {
                     if (getContext().getContextOptions().hasForeignObjectPrototype()) {
                         JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
-                        result = doObject(prototype, key, optionalArgs, classProfile);
+                        Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
+                        return JSRuntime.nullToUndefined(classProfile.getJSClass(prototype).getHelper(prototype, receiver, key, this));
                     } else {
                         result = Undefined.instance;
                     }
