@@ -496,8 +496,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSFunctionCallNode callNode;
         @Child private PropertyGetNode getSymbolNode;
         @Child private GetMethodNode getMethodNode;
-        protected final ConditionProfile isSpecialProfile = ConditionProfile.create();
-        protected final ConditionProfile callSpecialProfile = ConditionProfile.create();
 
         public JSStringOperationWithRegExpArgument(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -982,11 +980,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = {"isES6OrNewer()", "!isFastPath(thisObj, separator, limit)"})
         protected Object splitES6Generic(Object thisObj, Object separator, Object limit,
                         @Cached @Shared StringSplitter stringSplitter,
-                        @Cached @Shared InlinedConditionProfile zeroLimit) {
+                        @Cached @Shared InlinedConditionProfile zeroLimit,
+                        @Cached @Exclusive InlinedConditionProfile isSpecialProfile,
+                        @Cached @Exclusive InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(!(separator == Undefined.instance || separator == Null.instance))) {
+            if (isSpecialProfile.profile(this, !(separator == Undefined.instance || separator == Null.instance))) {
                 Object splitter = getMethod(separator, Symbol.SYMBOL_SPLIT);
-                if (callSpecialProfile.profile(splitter != Undefined.instance)) {
+                if (callSpecialProfile.profile(this, splitter != Undefined.instance)) {
                     return call(splitter, separator, new Object[]{thisObj, limit});
                 }
             }
@@ -1331,11 +1331,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToStringNode toString3Node,
                         @Cached IsCallableNode isCallableNode,
-                        @Cached @Shared InlinedBranchProfile dollarProfile) {
+                        @Cached @Shared InlinedBranchProfile dollarProfile,
+                        @Cached InlinedConditionProfile isSpecialProfile,
+                        @Cached InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(!(searchValue == Undefined.instance || searchValue == Null.instance))) {
+            if (isSpecialProfile.profile(node, !(searchValue == Undefined.instance || searchValue == Null.instance))) {
                 Object replacer = getMethod(searchValue, Symbol.SYMBOL_REPLACE);
-                if (callSpecialProfile.profile(replacer != Undefined.instance)) {
+                if (callSpecialProfile.profile(node, replacer != Undefined.instance)) {
                     return call(replacer, searchValue, new Object[]{thisObj, replaceValue});
                 }
             }
@@ -1467,9 +1469,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode,
                         @Cached @Shared TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
                         @Cached @Shared InlinedConditionProfile isSearchValueEmpty,
-                        @Cached @Shared InlinedBranchProfile dollarProfile) {
+                        @Cached @Shared InlinedBranchProfile dollarProfile,
+                        @Cached @Exclusive InlinedConditionProfile isSpecialProfile,
+                        @Cached @Exclusive InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(!(searchValue == Undefined.instance || searchValue == Null.instance))) {
+            if (isSpecialProfile.profile(node, !(searchValue == Undefined.instance || searchValue == Null.instance))) {
                 if (isRegExp.profile(node, getIsRegExpNode().executeBoolean(searchValue))) {
                     Object flags = getFlags(searchValue);
                     requireObjectCoercible(flags);
@@ -1480,7 +1484,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                 }
                 Object replacer = getMethod(searchValue, Symbol.SYMBOL_REPLACE);
-                if (callSpecialProfile.profile(replacer != Undefined.instance)) {
+                if (callSpecialProfile.profile(node, replacer != Undefined.instance)) {
                     return call(replacer, searchValue, new Object[]{thisObj, replaceValue});
                 }
             }
@@ -2128,12 +2132,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected Object search(Object thisObj, Object regex) {
+        protected Object search(Object thisObj, Object regex,
+                        @Cached InlinedConditionProfile isSpecialProfile,
+                        @Cached InlinedConditionProfile callSpecialProfile) {
             assert getContext().getEcmaScriptVersion() >= 6;
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(!(regex == Undefined.instance || regex == Null.instance))) {
+            if (isSpecialProfile.profile(this, !(regex == Undefined.instance || regex == Null.instance))) {
                 Object searcher = getMethod(regex, Symbol.SYMBOL_SEARCH);
-                if (callSpecialProfile.profile(searcher != Undefined.instance)) {
+                if (callSpecialProfile.profile(this, searcher != Undefined.instance)) {
                     return call(searcher, regex, new Object[]{thisObj});
                 }
             }
@@ -2271,9 +2277,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected Object match(Object thisObj, Object regex,
-                        @Cached InlinedBranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedConditionProfile isSpecialProfile,
+                        @Cached InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(!(regex == Undefined.instance || regex == Null.instance))) {
+            if (isSpecialProfile.profile(this, !(regex == Undefined.instance || regex == Null.instance))) {
                 if (matchAll && getIsRegExpNode().executeBoolean(regex)) {
                     Object flags = getFlags(regex);
                     requireObjectCoercible(flags);
@@ -2283,7 +2291,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                 }
                 Object matcher = getMethod(regex, matchSymbol());
-                if (callSpecialProfile.profile(matcher != Undefined.instance)) {
+                if (callSpecialProfile.profile(this, matcher != Undefined.instance)) {
                     return call(matcher, regex, new Object[]{thisObj});
                 }
             }
