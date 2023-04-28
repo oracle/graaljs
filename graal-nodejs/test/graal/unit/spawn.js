@@ -159,4 +159,16 @@ describe('Spawn', function () {
             assert.strictEqual(result.stdout.toString(), '');
             assert.strictEqual(result.status, 0);
     });
+    it('should accept creation of identical synthetic modules', function () {
+        var moduleCreation = 'new vm.SyntheticModule([], () => {}, { identifier: "foo" }).link(() => {});';
+        var code = moduleCreation + moduleCreation;
+        var result = spawnSync(process.execPath, [
+            '--vm.ea',
+            '--experimental-vm-modules',
+            '--no-warnings=ExperimentalWarning',
+            '-e', code]);
+        assert.strictEqual(result.stderr.toString(), '');
+        assert.strictEqual(result.stdout.toString(), '');
+        assert.strictEqual(result.status, 0);        
+    });
 });
