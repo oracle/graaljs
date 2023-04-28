@@ -1941,9 +1941,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected final TruffleString toLowerCaseString(TruffleString thisStr,
-                        @Bind("this") Node node,
                         @Cached TruffleString.CodeRangeEqualsNode codeRangeEquals,
-                        @Cached TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
+                        @Cached(neverDefault = true) TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
                         @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
@@ -1951,9 +1950,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Shared @Cached TruffleString.ToJavaStringNode toJavaString,
                         @Cached InlinedConditionProfile isAscii,
                         @Cached InlinedConditionProfile isAlreadyLowerCase) {
-            if (isAscii.profile(node, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
+            if (isAscii.profile(this, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
                 int firstUpperCase = indexOfCodePointSet.execute(thisStr, 0, thisStr.byteLength(TruffleString.Encoding.UTF_16), UPPER_CASE_ASCII_SET) >> 1;
-                if (isAlreadyLowerCase.profile(node, firstUpperCase < 0)) {
+                if (isAlreadyLowerCase.profile(this, firstUpperCase < 0)) {
                     return thisStr;
                 } else if (!locale) {
                     TruffleString ascii = switchEncodingNode.execute(thisStr, TruffleString.Encoding.US_ASCII);
@@ -2075,9 +2074,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected final Object toUpperCaseString(TruffleString thisStr,
-                        @Bind("this") Node node,
                         @Cached TruffleString.CodeRangeEqualsNode codeRangeEquals,
-                        @Cached TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
+                        @Cached(neverDefault = true) TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
                         @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
@@ -2085,9 +2083,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Shared @Cached TruffleString.ToJavaStringNode toJavaString,
                         @Cached InlinedConditionProfile isAscii,
                         @Cached InlinedConditionProfile isAlreadyUpperCase) {
-            if (isAscii.profile(node, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
+            if (isAscii.profile(this, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
                 int firstLowerCase = indexOfCodePointSet.execute(thisStr, 0, thisStr.byteLength(TruffleString.Encoding.UTF_16), LOWER_CASE_ASCII_SET) >> 1;
-                if (isAlreadyUpperCase.profile(node, firstLowerCase < 0)) {
+                if (isAlreadyUpperCase.profile(this, firstLowerCase < 0)) {
                     return thisStr;
                 } else if (!locale) {
                     TruffleString ascii = switchEncodingNode.execute(thisStr, TruffleString.Encoding.US_ASCII);
