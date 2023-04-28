@@ -3873,23 +3873,26 @@ public final class GraalJSAccess {
     }
 
     public Object moduleCreateSyntheticModule(Object moduleName, Object[] exportNames, final long evaluationStepsCallback) {
-        JSFrameDescriptor frameDescBuilder = new JSFrameDescriptor(Undefined.instance);
         List<Module.ExportEntry> localExportEntries = new ArrayList<>();
         for (Object exportName : exportNames) {
-            frameDescBuilder.addFrameSlot(exportName);
             localExportEntries.add(Module.ExportEntry.exportSpecifier((TruffleString) exportName));
         }
-        FrameDescriptor frameDescriptor = frameDescBuilder.toFrameDescriptor();
         Module moduleNode = new Module(List.of(), List.of(), localExportEntries, List.of(), List.of(), null, null);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", Strings.toJavaString((TruffleString) moduleName)).build();
 
         EngineCacheData engineCacheData = getContextEngineCacheData(mainJSContext);
         JSFunctionData functionData = engineCacheData.getOrCreateSyntheticModuleData((TruffleString) moduleName, exportNames, (c) -> {
+            JSFrameDescriptor frameDescBuilder = new JSFrameDescriptor(Undefined.instance);
+            for (Object exportName : exportNames) {
+                frameDescBuilder.addFrameSlot(exportName);
+            }
+            FrameDescriptor frameDescriptor = frameDescBuilder.toFrameDescriptor();
             JavaScriptRootNode rootNode = new SyntheticModuleRootNode(mainJSContext.getLanguage(), source, frameDescriptor);
             CallTarget callTarget = rootNode.getCallTarget();
             return JSFunctionData.create(mainJSContext, callTarget, callTarget, 0, (TruffleString) moduleName, false, false, true, true);
         });
 
+        FrameDescriptor frameDescriptor = ((RootCallTarget) functionData.getCallTarget()).getRootNode().getFrameDescriptor();
         final JSModuleData parsedModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
         return new NativeBackedModuleRecord(parsedModule, getModuleLoader(), evaluationStepsCallback);
     }
