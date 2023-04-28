@@ -70,6 +70,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleString.CodeRange;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateHTMLNodeGen;
@@ -437,7 +438,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
         @Child private JSToStringNode toStringNode;
         @Child private JSToIntegerAsIntNode toIntegerNode;
-        @Child private TruffleString.ReadCharUTF16Node stringReadNode;
 
         protected static int within(int value, int min, int max) {
             assert min <= max;
@@ -480,14 +480,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toStringNode.executeString(target);
         }
 
-        protected char charAt(TruffleString s, int i) {
-            if (stringReadNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                stringReadNode = insert(TruffleString.ReadCharUTF16Node.create());
-            }
-            return Strings.charAt(stringReadNode, s, i);
-        }
-
         protected int toIntegerAsInt(Object target) {
             if (toIntegerNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -504,8 +496,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSFunctionCallNode callNode;
         @Child private PropertyGetNode getSymbolNode;
         @Child private GetMethodNode getMethodNode;
-        protected final ConditionProfile isSpecialProfile = ConditionProfile.create();
-        protected final ConditionProfile callSpecialProfile = ConditionProfile.create();
 
         public JSStringOperationWithRegExpArgument(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -624,7 +614,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.5.
      */
     public abstract static class JSStringCharCodeAtNode extends JSStringOperation implements JSBuiltinNode.Inlineable {
-        private final ConditionProfile indexOutOfBounds = ConditionProfile.create();
 
         public JSStringCharCodeAtNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -635,8 +624,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = {"posInBounds(thisStr, pos)"})
-        protected int charCodeAtInBounds(TruffleString thisStr, int pos) {
-            return charAt(thisStr, pos);
+        protected int charCodeAtInBounds(TruffleString thisStr, int pos,
+                        @Cached @Shared TruffleString.ReadCharUTF16Node readChar) {
+            return Strings.charAt(readChar, thisStr, pos);
         }
 
         @SuppressWarnings("unused")
@@ -647,15 +637,17 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(replaces = {"charCodeAtInBounds", "charCodeAtOutOfBounds"})
         protected Object charCodeAtGeneric(Object thisObj, Object indexObj,
-                        @Cached JSToNumberNode toNumberNode) {
+                        @Cached @Shared TruffleString.ReadCharUTF16Node readChar,
+                        @Cached JSToNumberNode toNumberNode,
+                        @Cached InlinedConditionProfile indexOutOfBounds) {
             requireObjectCoercible(thisObj);
             TruffleString s = toString(thisObj);
             Number index = toNumberNode.executeNumber(indexObj);
             long lIndex = JSRuntime.toInteger(index);
-            if (indexOutOfBounds.profile(0 > lIndex || lIndex >= Strings.length(s))) {
+            if (indexOutOfBounds.profile(this, 0 > lIndex || lIndex >= Strings.length(s))) {
                 return Double.NaN;
             } else {
-                return Integer.valueOf(charAt(s, (int) lIndex));
+                return Integer.valueOf(Strings.charAt(readChar, s, (int) lIndex));
             }
         }
 
@@ -672,7 +664,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             @Override
             @Specialization
             protected Object charCodeAtGeneric(Object thisObj, Object indexObj,
-                            @Cached JSToNumberNode toNumberNode) {
+                            @Cached @Shared TruffleString.ReadCharUTF16Node readChar,
+                            @Cached JSToNumberNode toNumberNode,
+                            @Cached InlinedConditionProfile indexOutOfBounds) {
                 throw rewriteToCall();
             }
 
@@ -693,34 +687,37 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.15.
      */
     public abstract static class JSStringSubstringNode extends JSStringOperation implements JSBuiltinNode.Inlineable {
-        private final ConditionProfile startLowerEnd = ConditionProfile.create();
-
-        @Child private TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
 
         public JSStringSubstringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected TruffleString substring(TruffleString thisStr, int start, int end) {
+        protected TruffleString substring(TruffleString thisStr, int start, int end,
+                        @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared InlinedConditionProfile startLowerEnd) {
             int len = Strings.length(thisStr);
             int finalStart = within(start, 0, len);
             int finalEnd = within(end, 0, len);
-            return substringIntl(thisStr, finalStart, finalEnd);
+            return substringIntl(thisStr, finalStart, finalEnd, substringNode, startLowerEnd);
         }
 
         @Specialization(guards = "isUndefined(end)")
-        protected TruffleString substringStart(TruffleString thisStr, int start, @SuppressWarnings("unused") Object end) {
+        protected TruffleString substringStart(TruffleString thisStr, int start, @SuppressWarnings("unused") Object end,
+                        @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared InlinedConditionProfile startLowerEnd) {
             int len = Strings.length(thisStr);
             int finalStart = within(start, 0, len);
             int finalEnd = len;
-            return substringIntl(thisStr, finalStart, finalEnd);
+            return substringIntl(thisStr, finalStart, finalEnd, substringNode, startLowerEnd);
         }
 
-        private TruffleString substringIntl(TruffleString thisStr, int start, int end) {
+        private TruffleString substringIntl(TruffleString thisStr, int start, int end,
+                        TruffleString.SubstringByteIndexNode substringNode,
+                        InlinedConditionProfile startLowerEnd) {
             final int fromIndex;
             final int length;
-            if (startLowerEnd.profile(start <= end)) {
+            if (startLowerEnd.profile(this, start <= end)) {
                 fromIndex = start;
                 length = end - start;
             } else {
@@ -734,8 +731,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected TruffleString substringGeneric(Object thisObj, Object start, Object end,
                         @Cached JSToNumberNode toNumberNode,
                         @Cached JSToNumberNode toNumber2Node,
-                        @Cached InlinedConditionProfile startUndefined,
-                        @Cached InlinedConditionProfile endUndefined) {
+                        @Cached @Exclusive InlinedConditionProfile startUndefined,
+                        @Cached @Exclusive InlinedConditionProfile endUndefined,
+                        @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared InlinedConditionProfile startLowerEnd) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             int len = Strings.length(thisStr);
@@ -751,7 +750,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 intEnd = withinNumber(toNumber2Node.executeNumber(end), 0, len);
             }
-            return substringIntl(thisStr, intStart, intEnd);
+            return substringIntl(thisStr, intStart, intEnd, substringNode, startLowerEnd);
         }
 
         @Override
@@ -769,8 +768,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected TruffleString substringGeneric(Object thisObj, Object start, Object end,
                             @Cached JSToNumberNode toNumberNode,
                             @Cached JSToNumberNode toNumber2Node,
-                            @Cached InlinedConditionProfile startUndefined,
-                            @Cached InlinedConditionProfile endUndefined) {
+                            @Cached @Exclusive InlinedConditionProfile startUndefined,
+                            @Cached @Exclusive InlinedConditionProfile endUndefined,
+                            @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                            @Cached @Shared InlinedConditionProfile startLowerEnd) {
                 throw rewriteToCall();
             }
 
@@ -794,7 +795,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.7.
      */
     public abstract static class JSStringIndexOfNode extends JSStringOperation {
-        private final ConditionProfile hasPos = ConditionProfile.create();
 
         public JSStringIndexOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -802,30 +802,34 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isUndefined(position)")
         protected int indexOfStringUndefined(TruffleString thisStr, TruffleString searchStr, @SuppressWarnings("unused") Object position,
-                        @Cached @Shared("indexOfStringNode") TruffleString.ByteIndexOfStringNode indexOfStringNode) {
+                        @Cached @Shared TruffleString.ByteIndexOfStringNode indexOfStringNode) {
             return Strings.indexOf(indexOfStringNode, thisStr, searchStr);
         }
 
         @Specialization
         protected int indexOfStringInt(TruffleString thisStr, TruffleString searchStr, int position,
-                        @Cached @Shared("indexOfStringNode") TruffleString.ByteIndexOfStringNode indexOfStringNode) {
-            return indexOfIntl(thisStr, searchStr, position, indexOfStringNode);
+                        @Cached @Shared TruffleString.ByteIndexOfStringNode indexOfStringNode,
+                        @Cached @Shared InlinedConditionProfile hasPos) {
+            return indexOfIntl(thisStr, searchStr, position, indexOfStringNode, hasPos);
         }
 
-        @Specialization(guards = "!isStringString(thisObj, searchObj) || !isUndefined(position)", replaces = {"indexOfStringInt"})
         // replace only the StringInt specialization that duplicates code
+        @Specialization(guards = "!isStringString(thisObj, searchObj) || !isUndefined(position)", replaces = {"indexOfStringInt"})
         protected int indexOfGeneric(Object thisObj, Object searchObj, Object position,
                         @Cached JSToStringNode toString2Node,
-                        @Cached @Shared("indexOfStringNode") TruffleString.ByteIndexOfStringNode indexOfStringNode) {
+                        @Cached @Shared TruffleString.ByteIndexOfStringNode indexOfStringNode,
+                        @Cached @Shared InlinedConditionProfile hasPos) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             TruffleString searchStr = toString2Node.executeString(searchObj);
-            return indexOfIntl(thisStr, searchStr, position, indexOfStringNode);
+            return indexOfIntl(thisStr, searchStr, position, indexOfStringNode, hasPos);
         }
 
-        private int indexOfIntl(TruffleString thisStr, TruffleString searchStr, Object position, TruffleString.ByteIndexOfStringNode indexOfStringNode) {
+        private int indexOfIntl(TruffleString thisStr, TruffleString searchStr, Object position,
+                        TruffleString.ByteIndexOfStringNode indexOfStringNode,
+                        InlinedConditionProfile hasPos) {
             int startPos;
-            if (hasPos.profile(position != Undefined.instance)) {
+            if (hasPos.profile(this, position != Undefined.instance)) {
                 startPos = Math.min(toIntegerAsInt(position), Strings.length(thisStr));
             } else {
                 startPos = 0;
@@ -846,13 +850,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isUndefined(position)")
         protected int lastIndexOfString(TruffleString thisObj, TruffleString searchString, @SuppressWarnings("unused") Object position,
-                        @Cached @Shared("lastIndexOfNode") TruffleString.LastByteIndexOfStringNode lastIndexOfNode) {
+                        @Cached @Shared TruffleString.LastByteIndexOfStringNode lastIndexOfNode) {
             return Strings.lastIndexOf(lastIndexOfNode, thisObj, searchString, Strings.length(thisObj));
         }
 
         @Specialization
         protected int lastIndexOfString(TruffleString thisObj, TruffleString searchString, int position,
-                        @Cached @Shared("lastIndexOfNode") TruffleString.LastByteIndexOfStringNode lastIndexOfNode) {
+                        @Cached @Shared TruffleString.LastByteIndexOfStringNode lastIndexOfNode) {
             int len = Strings.length(thisObj);
             int pos = within(position, 0, len);
             return Strings.lastIndexOf(lastIndexOfNode, thisObj, searchString, pos);
@@ -863,7 +867,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToNumberNode toNumberNode,
                         @Cached InlinedConditionProfile posNaN,
-                        @Cached @Shared("lastIndexOfNode") TruffleString.LastByteIndexOfStringNode lastIndexOfNode) {
+                        @Cached @Shared TruffleString.LastByteIndexOfStringNode lastIndexOfNode) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             TruffleString searchStr = toString2Node.executeString(searchString);
@@ -986,11 +990,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = {"isES6OrNewer()", "!isFastPath(thisObj, separator, limit)"})
         protected Object splitES6Generic(Object thisObj, Object separator, Object limit,
                         @Cached @Shared StringSplitter stringSplitter,
-                        @Cached @Shared InlinedConditionProfile zeroLimit) {
+                        @Cached @Shared InlinedConditionProfile zeroLimit,
+                        @Cached @Exclusive InlinedConditionProfile isSpecialProfile,
+                        @Cached @Exclusive InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(!(separator == Undefined.instance || separator == Null.instance))) {
+            if (isSpecialProfile.profile(this, !(separator == Undefined.instance || separator == Null.instance))) {
                 Object splitter = getMethod(separator, Symbol.SYMBOL_SPLIT);
-                if (callSpecialProfile.profile(splitter != Undefined.instance)) {
+                if (callSpecialProfile.profile(this, splitter != Undefined.instance)) {
                     return call(splitter, separator, new Object[]{thisObj, limit});
                 }
             }
@@ -1315,7 +1321,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("replaceValue") TruffleString cachedReplaceValue,
                         @Cached(value = "parseReplaceValue(replaceValue)", dimensions = 1) ReplaceStringParser.Token[] cachedParsedReplaceValue,
                         @SuppressWarnings("unused") @Cached TruffleString.EqualNode equalsNode,
-                        @Cached @Shared("dollar") InlinedBranchProfile dollarProfile) {
+                        @Cached @Shared InlinedBranchProfile dollarProfile) {
             requireObjectCoercible(thisObj);
             return builtinReplaceString(searchValue, cachedReplaceValue, thisObj, cachedParsedReplaceValue, dollarProfile, node);
         }
@@ -1323,7 +1329,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(replaces = "replaceStringCached")
         protected Object replaceString(Object thisObj, TruffleString searchValue, TruffleString replaceValue,
                         @Bind("this") Node node,
-                        @Cached @Shared("dollar") InlinedBranchProfile dollarProfile) {
+                        @Cached @Shared InlinedBranchProfile dollarProfile) {
             requireObjectCoercible(thisObj);
             return builtinReplaceString(searchValue, replaceValue, thisObj, null, dollarProfile, node);
         }
@@ -1335,11 +1341,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToStringNode toString3Node,
                         @Cached IsCallableNode isCallableNode,
-                        @Cached @Shared("dollar") InlinedBranchProfile dollarProfile) {
+                        @Cached @Shared InlinedBranchProfile dollarProfile,
+                        @Cached InlinedConditionProfile isSpecialProfile,
+                        @Cached InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(!(searchValue == Undefined.instance || searchValue == Null.instance))) {
+            if (isSpecialProfile.profile(node, !(searchValue == Undefined.instance || searchValue == Null.instance))) {
                 Object replacer = getMethod(searchValue, Symbol.SYMBOL_REPLACE);
-                if (callSpecialProfile.profile(replacer != Undefined.instance)) {
+                if (callSpecialProfile.profile(node, replacer != Undefined.instance)) {
                     return call(replacer, searchValue, new Object[]{thisObj, replaceValue});
                 }
             }
@@ -1415,9 +1423,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached(value = "parseReplaceValue(replaceValue)", dimensions = 1) ReplaceStringParser.Token[] cachedParsedReplaceValue,
                         @Bind("this") Node node,
                         @SuppressWarnings("unused") @Cached TruffleString.EqualNode equalsNode,
-                        @Cached @Shared("indexOfString") TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
-                        @Cached @Shared("isSearchValueEmpty") InlinedConditionProfile isSearchValueEmpty,
-                        @Cached @Shared("dollar") InlinedBranchProfile dollarProfile) {
+                        @Cached @Shared TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
+                        @Cached @Shared InlinedConditionProfile isSearchValueEmpty,
+                        @Cached @Shared InlinedBranchProfile dollarProfile) {
             requireObjectCoercible(thisObj);
             return performReplaceAll(searchValue, cachedReplaceValue, thisObj, cachedParsedReplaceValue,
                             node, stringIndexOfStringNode, isSearchValueEmpty, dollarProfile);
@@ -1425,9 +1433,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(replaces = "replaceStringCached")
         protected Object replaceString(Object thisObj, TruffleString searchValue, TruffleString replaceValue,
-                        @Cached @Shared("indexOfString") TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
-                        @Cached @Shared("isSearchValueEmpty") InlinedConditionProfile isSearchValueEmpty,
-                        @Cached @Shared("dollar") InlinedBranchProfile dollarProfile) {
+                        @Cached @Shared TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
+                        @Cached @Shared InlinedConditionProfile isSearchValueEmpty,
+                        @Cached @Shared InlinedBranchProfile dollarProfile) {
             requireObjectCoercible(thisObj);
             return performReplaceAll(searchValue, replaceValue, thisObj, null,
                             this, stringIndexOfStringNode, isSearchValueEmpty, dollarProfile);
@@ -1469,11 +1477,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached IsCallableNode isCallableNode,
                         @Cached @Exclusive InlinedConditionProfile isRegExp,
                         @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode,
-                        @Cached @Shared("indexOfString") TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
-                        @Cached @Shared("isSearchValueEmpty") InlinedConditionProfile isSearchValueEmpty,
-                        @Cached @Shared("dollar") InlinedBranchProfile dollarProfile) {
+                        @Cached @Shared TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
+                        @Cached @Shared InlinedConditionProfile isSearchValueEmpty,
+                        @Cached @Shared InlinedBranchProfile dollarProfile,
+                        @Cached @Exclusive InlinedConditionProfile isSpecialProfile,
+                        @Cached @Exclusive InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(!(searchValue == Undefined.instance || searchValue == Null.instance))) {
+            if (isSpecialProfile.profile(node, !(searchValue == Undefined.instance || searchValue == Null.instance))) {
                 if (isRegExp.profile(node, getIsRegExpNode().executeBoolean(searchValue))) {
                     Object flags = getFlags(searchValue);
                     requireObjectCoercible(flags);
@@ -1484,7 +1494,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                 }
                 Object replacer = getMethod(searchValue, Symbol.SYMBOL_REPLACE);
-                if (callSpecialProfile.profile(replacer != Undefined.instance)) {
+                if (callSpecialProfile.profile(node, replacer != Undefined.instance)) {
                     return call(replacer, searchValue, new Object[]{thisObj, replaceValue});
                 }
             }
@@ -1916,8 +1926,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     /**
      * Implementation of the String.prototype.toLowerCase() method as specified by ECMAScript 5.1 in
      * 15.5.4.16.
+     *
+     * @see JSStringToUpperCaseNode
      */
     public abstract static class JSStringToLowerCaseNode extends JSStringOperation {
+
+        private static final TruffleString.CodePointSet UPPER_CASE_ASCII_SET = TruffleString.CodePointSet.fromRanges(new int[]{'A', 'Z'}, TruffleString.Encoding.UTF_16);
+
         private final boolean locale;
 
         public JSStringToLowerCaseNode(JSContext context, JSBuiltin builtin, boolean locale) {
@@ -1925,20 +1940,59 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.locale = locale;
         }
 
+        private static boolean isUpperCaseAscii(int c) {
+            return c >= 'A' && c <= 'Z';
+        }
+
+        private static byte toLowerCaseAscii(byte c) {
+            return (byte) (c | 0x20);
+        }
+
         @Specialization
-        protected Object toLowerCaseString(TruffleString thisStr) {
-            return toLowerCaseIntl(thisStr);
+        protected final TruffleString toLowerCaseString(TruffleString thisStr,
+                        @Cached TruffleString.CodeRangeEqualsNode codeRangeEquals,
+                        @Cached(neverDefault = true) TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
+                        @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+                        @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode,
+                        @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
+                        @Shared @Cached TruffleString.FromJavaStringNode fromJavaString,
+                        @Shared @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached InlinedConditionProfile isAscii,
+                        @Cached InlinedConditionProfile isAlreadyLowerCase) {
+            if (isAscii.profile(this, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
+                int firstUpperCase = indexOfCodePointSet.execute(thisStr, 0, thisStr.byteLength(TruffleString.Encoding.UTF_16), UPPER_CASE_ASCII_SET) >> 1;
+                if (isAlreadyLowerCase.profile(this, firstUpperCase < 0)) {
+                    return thisStr;
+                } else if (!locale) {
+                    TruffleString ascii = switchEncodingNode.execute(thisStr, TruffleString.Encoding.US_ASCII);
+                    byte[] buf = new byte[ascii.byteLength(TruffleString.Encoding.US_ASCII)];
+                    copyToByteArrayNode.execute(ascii, 0, buf, 0, buf.length, TruffleString.Encoding.US_ASCII);
+                    for (int i = firstUpperCase; i < buf.length; ++i) {
+                        byte c = buf[i];
+                        if (isUpperCaseAscii(c)) {
+                            buf[i] = toLowerCaseAscii(c);
+                        }
+                    }
+                    return switchEncodingNode.execute(fromByteArrayNode.execute(buf, TruffleString.Encoding.US_ASCII, false), TruffleString.Encoding.UTF_16);
+                }
+            }
+            return toLowerCaseJava(thisStr, fromJavaString, toJavaString);
         }
 
         @Specialization(guards = "!isString(thisObj)")
-        protected Object toLowerCase(Object thisObj) {
+        protected final Object toLowerCaseGeneric(Object thisObj,
+                        @Shared @Cached TruffleString.FromJavaStringNode fromJavaString,
+                        @Shared @Cached TruffleString.ToJavaStringNode toJavaString) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
-            return toLowerCaseIntl(thisStr);
+            return toLowerCaseJava(thisStr, fromJavaString, toJavaString);
         }
 
-        private Object toLowerCaseIntl(TruffleString str) {
-            return Strings.toLowerCase(str, locale ? getContext().getLocale() : Locale.US);
+        private TruffleString toLowerCaseJava(TruffleString str,
+                        TruffleString.FromJavaStringNode fromJavaString,
+                        TruffleString.ToJavaStringNode toJavaString) {
+            Locale usingLocale = locale ? getContext().getLocale() : Locale.US;
+            return fromJavaString.execute(Strings.javaStringToLowerCase(toJavaString.execute(str), usingLocale), TruffleString.Encoding.UTF_16);
         }
     }
 
@@ -2005,8 +2059,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     /**
      * Implementation of the String.prototype.toUpperCase() method as specified by ECMAScript 5.1 in
      * 15.5.4.18.
+     *
+     * @see JSStringToLowerCaseNode
      */
     public abstract static class JSStringToUpperCaseNode extends JSStringOperation {
+
+        private static final TruffleString.CodePointSet LOWER_CASE_ASCII_SET = TruffleString.CodePointSet.fromRanges(new int[]{'a', 'z'}, TruffleString.Encoding.UTF_16);
+
         private final boolean locale;
 
         public JSStringToUpperCaseNode(JSContext context, JSBuiltin builtin, boolean locale) {
@@ -2014,20 +2073,59 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.locale = locale;
         }
 
+        private static boolean isLowerCaseAscii(int c) {
+            return c >= 'a' && c <= 'z';
+        }
+
+        private static byte toUpperCaseAscii(byte c) {
+            return (byte) (c & ~0x20);
+        }
+
         @Specialization
-        protected Object toUpperCaseString(TruffleString thisStr) {
-            return toUpperCaseIntl(thisStr);
+        protected final Object toUpperCaseString(TruffleString thisStr,
+                        @Cached TruffleString.CodeRangeEqualsNode codeRangeEquals,
+                        @Cached(neverDefault = true) TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
+                        @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+                        @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode,
+                        @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
+                        @Shared @Cached TruffleString.FromJavaStringNode fromJavaString,
+                        @Shared @Cached TruffleString.ToJavaStringNode toJavaString,
+                        @Cached InlinedConditionProfile isAscii,
+                        @Cached InlinedConditionProfile isAlreadyUpperCase) {
+            if (isAscii.profile(this, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
+                int firstLowerCase = indexOfCodePointSet.execute(thisStr, 0, thisStr.byteLength(TruffleString.Encoding.UTF_16), LOWER_CASE_ASCII_SET) >> 1;
+                if (isAlreadyUpperCase.profile(this, firstLowerCase < 0)) {
+                    return thisStr;
+                } else if (!locale) {
+                    TruffleString ascii = switchEncodingNode.execute(thisStr, TruffleString.Encoding.US_ASCII);
+                    byte[] buf = new byte[ascii.byteLength(TruffleString.Encoding.US_ASCII)];
+                    copyToByteArrayNode.execute(ascii, 0, buf, 0, buf.length, TruffleString.Encoding.US_ASCII);
+                    for (int i = firstLowerCase; i < buf.length; ++i) {
+                        byte c = buf[i];
+                        if (isLowerCaseAscii(c)) {
+                            buf[i] = toUpperCaseAscii(c);
+                        }
+                    }
+                    return switchEncodingNode.execute(fromByteArrayNode.execute(buf, TruffleString.Encoding.US_ASCII, false), TruffleString.Encoding.UTF_16);
+                }
+            }
+            return toUpperCaseJava(thisStr, fromJavaString, toJavaString);
         }
 
         @Specialization(guards = "!isString(thisObj)")
-        protected Object toUpperCaseGeneric(Object thisObj) {
+        protected final Object toUpperCaseGeneric(Object thisObj,
+                        @Shared @Cached TruffleString.FromJavaStringNode fromJavaString,
+                        @Shared @Cached TruffleString.ToJavaStringNode toJavaString) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
-            return toUpperCaseIntl(thisStr);
+            return toUpperCaseJava(thisStr, fromJavaString, toJavaString);
         }
 
-        private Object toUpperCaseIntl(TruffleString str) {
-            return Strings.toUpperCase(str, locale ? getContext().getLocale() : Locale.US);
+        private Object toUpperCaseJava(TruffleString str,
+                        TruffleString.FromJavaStringNode fromJavaString,
+                        TruffleString.ToJavaStringNode toJavaString) {
+            Locale usingLocale = locale ? getContext().getLocale() : Locale.US;
+            return fromJavaString.execute(Strings.javaStringToUpperCase(toJavaString.execute(str), usingLocale), TruffleString.Encoding.UTF_16);
         }
     }
 
@@ -2044,12 +2142,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected Object search(Object thisObj, Object regex) {
+        protected Object search(Object thisObj, Object regex,
+                        @Cached InlinedConditionProfile isSpecialProfile,
+                        @Cached InlinedConditionProfile callSpecialProfile) {
             assert getContext().getEcmaScriptVersion() >= 6;
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(!(regex == Undefined.instance || regex == Null.instance))) {
+            if (isSpecialProfile.profile(this, !(regex == Undefined.instance || regex == Null.instance))) {
                 Object searcher = getMethod(regex, Symbol.SYMBOL_SEARCH);
-                if (callSpecialProfile.profile(searcher != Undefined.instance)) {
+                if (callSpecialProfile.profile(this, searcher != Undefined.instance)) {
                     return call(searcher, regex, new Object[]{thisObj});
                 }
             }
@@ -2120,27 +2220,27 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected Object substrInt(TruffleString thisStr, int start, int length,
-                        @Cached @Shared("substring") TruffleString.SubstringByteIndexNode substringNode,
-                        @Cached @Shared("startNegativeBranch") InlinedBranchProfile startNegativeBranch,
-                        @Cached @Shared("finalLenEmptyBranch") InlinedBranchProfile finalLenEmptyBranch) {
+                        @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared InlinedBranchProfile startNegativeBranch,
+                        @Cached @Shared InlinedBranchProfile finalLenEmptyBranch) {
             return substrIntl(thisStr, start, length,
                             substringNode, startNegativeBranch, finalLenEmptyBranch);
         }
 
         @Specialization(guards = "isUndefined(length)")
         protected Object substrLenUndef(TruffleString thisStr, int start, @SuppressWarnings("unused") Object length,
-                        @Cached @Shared("substring") TruffleString.SubstringByteIndexNode substringNode,
-                        @Cached @Shared("startNegativeBranch") InlinedBranchProfile startNegativeBranch,
-                        @Cached @Shared("finalLenEmptyBranch") InlinedBranchProfile finalLenEmptyBranch) {
+                        @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared InlinedBranchProfile startNegativeBranch,
+                        @Cached @Shared InlinedBranchProfile finalLenEmptyBranch) {
             return substrIntl(thisStr, start, Strings.length(thisStr),
                             substringNode, startNegativeBranch, finalLenEmptyBranch);
         }
 
         @Specialization
         protected Object substrGeneric(Object thisObj, Object start, Object length,
-                        @Cached @Shared("substring") TruffleString.SubstringByteIndexNode substringNode,
-                        @Cached @Shared("startNegativeBranch") InlinedBranchProfile startNegativeBranch,
-                        @Cached @Shared("finalLenEmptyBranch") InlinedBranchProfile finalLenEmptyBranch) {
+                        @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared InlinedBranchProfile startNegativeBranch,
+                        @Cached @Shared InlinedBranchProfile finalLenEmptyBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             int startInt = toIntegerAsInt(start);
@@ -2187,9 +2287,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected Object match(Object thisObj, Object regex,
-                        @Cached InlinedBranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedConditionProfile isSpecialProfile,
+                        @Cached InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(!(regex == Undefined.instance || regex == Null.instance))) {
+            if (isSpecialProfile.profile(this, !(regex == Undefined.instance || regex == Null.instance))) {
                 if (matchAll && getIsRegExpNode().executeBoolean(regex)) {
                     Object flags = getFlags(regex);
                     requireObjectCoercible(flags);
@@ -2199,7 +2301,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                 }
                 Object matcher = getMethod(regex, matchSymbol());
-                if (callSpecialProfile.profile(matcher != Undefined.instance)) {
+                if (callSpecialProfile.profile(this, matcher != Undefined.instance)) {
                     return call(matcher, regex, new Object[]{thisObj});
                 }
             }
@@ -2349,13 +2451,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected Object trimString(TruffleString thisStr,
-                        @Shared("trimWhitespace") @Cached JSTrimWhitespaceNode trimWhitespaceNode) {
+                        @Shared @Cached JSTrimWhitespaceNode trimWhitespaceNode) {
             return trimWhitespaceNode.executeString(thisStr);
         }
 
         @Specialization(guards = "!isString(thisObj)")
         protected Object trimObject(Object thisObj,
-                        @Shared("trimWhitespace") @Cached JSTrimWhitespaceNode trimWhitespaceNode) {
+                        @Shared @Cached JSTrimWhitespaceNode trimWhitespaceNode) {
             requireObjectCoercible(thisObj);
             return trimWhitespaceNode.executeString(toString(thisObj));
         }
@@ -2365,24 +2467,24 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * Non-standard String.prototype.trimLeft to provide compatibility with Nashorn and V8.
      */
     public abstract static class JSStringTrimLeftNode extends JSStringOperation {
-        private final ConditionProfile lengthExceeded = ConditionProfile.create();
-        private final ConditionProfile lengthZero = ConditionProfile.create();
 
         public JSStringTrimLeftNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object trimLeft(Object thisObj,
+        protected final Object trimLeft(Object thisObj,
                         @Cached TruffleString.SubstringByteIndexNode substringNode,
-                        @Cached TruffleString.ReadCharUTF16Node readRawNode) {
+                        @Cached TruffleString.ReadCharUTF16Node readRawNode,
+                        @Cached InlinedConditionProfile lengthExceeded,
+                        @Cached InlinedConditionProfile lengthZero) {
             requireObjectCoercible(thisObj);
             TruffleString string = toString(thisObj);
 
             int firstIdx = JSRuntime.firstNonWhitespaceIndex(string, true, readRawNode);
-            if (lengthZero.profile(firstIdx == 0)) {
+            if (lengthZero.profile(this, firstIdx == 0)) {
                 return string;
-            } else if (lengthExceeded.profile(firstIdx >= Strings.length(string))) {
+            } else if (lengthExceeded.profile(this, firstIdx >= Strings.length(string))) {
                 return Strings.EMPTY_STRING;
             } else {
                 return Strings.substring(getContext(), substringNode, string, firstIdx);
@@ -2395,21 +2497,20 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringTrimRightNode extends JSStringOperation {
 
-        private final ConditionProfile lengthExceeded = ConditionProfile.create();
-
         public JSStringTrimRightNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object trimRight(Object thisObj,
+        protected final Object trimRight(Object thisObj,
                         @Cached TruffleString.ReadCharUTF16Node readRawNode,
-                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
+                        @Cached TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached InlinedConditionProfile lengthExceeded) {
             requireObjectCoercible(thisObj);
             TruffleString string = toString(thisObj);
 
             int lastIdx = JSRuntime.lastNonWhitespaceIndex(string, true, readRawNode);
-            if (lengthExceeded.profile(lastIdx >= Strings.length(string))) {
+            if (lengthExceeded.profile(this, lastIdx >= Strings.length(string))) {
                 return string;
             } else {
                 return Strings.substring(getContext(), substringNode, string, 0, lastIdx + 1);
@@ -2497,9 +2598,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected Object sliceStringIntInt(TruffleString thisObj, int start, int end,
-                        @Cached @Shared("offsetProfile1") InlinedConditionProfile offsetProfile1,
-                        @Cached @Shared("offsetProfile2") InlinedConditionProfile offsetProfile2,
-                        @Cached @Shared("canReturnEmpty") InlinedConditionProfile canReturnEmpty) {
+                        @Cached @Shared InlinedConditionProfile offsetProfile1,
+                        @Cached @Shared InlinedConditionProfile offsetProfile2,
+                        @Cached @Shared InlinedConditionProfile canReturnEmpty) {
             int len = Strings.length(thisObj);
             int istart = JSRuntime.getOffset(start, len, this, offsetProfile1);
             int iend = JSRuntime.getOffset(end, len, this, offsetProfile2);
@@ -2512,9 +2613,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isString(thisObj)", replaces = "sliceStringIntInt")
         protected Object sliceObjectIntInt(Object thisObj, int start, int end,
-                        @Cached @Shared("offsetProfile1") InlinedConditionProfile offsetProfile1,
-                        @Cached @Shared("offsetProfile2") InlinedConditionProfile offsetProfile2,
-                        @Cached @Shared("canReturnEmpty") InlinedConditionProfile canReturnEmpty) {
+                        @Cached @Shared InlinedConditionProfile offsetProfile1,
+                        @Cached @Shared InlinedConditionProfile offsetProfile2,
+                        @Cached @Shared InlinedConditionProfile canReturnEmpty) {
             requireObjectCoercible(thisObj);
             return sliceStringIntInt(toString(thisObj), start, end,
                             offsetProfile1, offsetProfile2, canReturnEmpty);
@@ -2522,8 +2623,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isUndefined(end)")
         protected Object sliceStringIntUndefined(TruffleString str, int start, @SuppressWarnings("unused") Object end,
-                        @Cached @Shared("offsetProfile1") InlinedConditionProfile offsetProfile1,
-                        @Cached @Shared("canReturnEmpty") InlinedConditionProfile canReturnEmpty) {
+                        @Cached @Shared InlinedConditionProfile offsetProfile1,
+                        @Cached @Shared InlinedConditionProfile canReturnEmpty) {
             int len = Strings.length(str);
             int istart = JSRuntime.getOffset(start, len, this, offsetProfile1);
             if (canReturnEmpty.profile(this, len > istart)) {
@@ -2536,9 +2637,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(replaces = {"sliceStringIntInt", "sliceObjectIntInt", "sliceStringIntUndefined"})
         protected Object sliceGeneric(Object thisObj, Object start, Object end,
                         @Cached @Exclusive InlinedConditionProfile isUndefined,
-                        @Cached @Shared("canReturnEmpty") InlinedConditionProfile canReturnEmpty,
-                        @Cached @Shared("offsetProfile1") InlinedConditionProfile offsetProfile1,
-                        @Cached @Shared("offsetProfile2") InlinedConditionProfile offsetProfile2) {
+                        @Cached @Shared InlinedConditionProfile canReturnEmpty,
+                        @Cached @Shared InlinedConditionProfile offsetProfile1,
+                        @Cached @Shared InlinedConditionProfile offsetProfile2) {
             requireObjectCoercible(thisObj);
             TruffleString s = toString(thisObj);
 
@@ -2565,11 +2666,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final BranchProfile noStringBranch = BranchProfile.create();
-
         @Specialization(guards = "isUndefined(position)")
         protected boolean startsWithString(TruffleString thisObj, TruffleString searchStr, @SuppressWarnings("unused") JSDynamicObject position,
-                        @Cached @Shared("regionEqualsNode") TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
+                        @Cached @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
             if (Strings.length(searchStr) <= 0) {
                 return true;
             }
@@ -2583,11 +2682,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected boolean startsWithGeneric(Object thisObj, Object searchString, Object position,
                         @Cached JSToStringNode toString2Node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode,
-                        @Cached @Shared("regionEqualsNode") TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
+                        @Cached @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode,
+                        @Cached InlinedBranchProfile noStringBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
-                noStringBranch.enter();
+                noStringBranch.enter(this);
                 throw Errors.createTypeError("First argument to String.prototype.startsWith must not be a regular expression");
             }
             TruffleString searchStr = toString2Node.executeString(searchString);
@@ -2608,11 +2708,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final BranchProfile noStringBranch = BranchProfile.create();
-
         @Specialization(guards = "isUndefined(position)")
         protected boolean endsWithStringUndefined(TruffleString thisStr, TruffleString searchStr, @SuppressWarnings("unused") Object position,
-                        @Cached @Shared("regionEqualsNode") TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
+                        @Cached @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
             int fromIndex = Strings.length(thisStr);
             if (Strings.length(searchStr) <= 0) {
                 return true;
@@ -2629,11 +2727,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected boolean endsWithGeneric(Object thisObj, Object searchString, Object position,
                         @Cached JSToStringNode toString2Node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode,
-                        @Cached @Shared("regionEqualsNode") TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
+                        @Cached @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode,
+                        @Cached InlinedBranchProfile noStringBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
-                noStringBranch.enter();
+                noStringBranch.enter(this);
                 throw Errors.createTypeError("First argument to String.prototype.endsWith must not be a regular expression");
             }
             TruffleString searchStr = toString2Node.executeString(searchString);
@@ -2668,7 +2767,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isUndefined(position)")
         protected boolean includesString(TruffleString thisStr, TruffleString searchStr, @SuppressWarnings("unused") Object position,
-                        @Cached @Shared("indexOfStringNode") TruffleString.ByteIndexOfStringNode indexOfStringNode) {
+                        @Cached @Shared TruffleString.ByteIndexOfStringNode indexOfStringNode) {
             return Strings.indexOf(indexOfStringNode, thisStr, searchStr) != -1;
         }
 
@@ -2676,7 +2775,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected boolean includesGeneric(Object thisObj, Object searchString, Object position,
                         @Cached JSToStringNode toString2Node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode,
-                        @Cached @Shared("indexOfStringNode") TruffleString.ByteIndexOfStringNode indexOfStringNode,
+                        @Cached @Shared TruffleString.ByteIndexOfStringNode indexOfStringNode,
                         @Cached InlinedBranchProfile errorBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
