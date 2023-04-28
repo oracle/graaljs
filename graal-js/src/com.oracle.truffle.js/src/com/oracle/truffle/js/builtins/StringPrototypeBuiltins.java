@@ -1917,8 +1917,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     /**
      * Implementation of the String.prototype.toLowerCase() method as specified by ECMAScript 5.1 in
      * 15.5.4.16.
+     *
+     * @see JSStringToUpperCaseNode
      */
     public abstract static class JSStringToLowerCaseNode extends JSStringOperation {
+
+        private static final TruffleString.CodePointSet UPPER_CASE_ASCII_SET = TruffleString.CodePointSet.fromRanges(new int[]{'A', 'Z'}, TruffleString.Encoding.UTF_16);
+
         private final boolean locale;
 
         public JSStringToLowerCaseNode(JSContext context, JSBuiltin builtin, boolean locale) {
@@ -1926,10 +1931,19 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.locale = locale;
         }
 
+        private static boolean isUpperCaseAscii(int c) {
+            return c >= 'A' && c <= 'Z';
+        }
+
+        private static byte toLowerCaseAscii(byte c) {
+            return (byte) (c | 0x20);
+        }
+
         @Specialization
         protected final TruffleString toLowerCaseString(TruffleString thisStr,
+                        @Bind("this") Node node,
                         @Cached TruffleString.CodeRangeEqualsNode codeRangeEquals,
-                        @Cached TruffleString.ReadCharUTF16Node readChar,
+                        @Cached TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
                         @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
@@ -1937,33 +1951,24 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Shared @Cached TruffleString.ToJavaStringNode toJavaString,
                         @Cached InlinedConditionProfile isAscii,
                         @Cached InlinedConditionProfile isAlreadyLowerCase) {
-            if (isAscii.profile(this, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
-                int firstUpperCase = firstUpperCaseAscii(thisStr, readChar);
-                if (isAlreadyLowerCase.profile(this, firstUpperCase < 0)) {
+            if (isAscii.profile(node, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
+                int firstUpperCase = indexOfCodePointSet.execute(thisStr, 0, thisStr.byteLength(TruffleString.Encoding.UTF_16), UPPER_CASE_ASCII_SET) >> 1;
+                if (isAlreadyLowerCase.profile(node, firstUpperCase < 0)) {
                     return thisStr;
                 } else if (!locale) {
                     TruffleString ascii = switchEncodingNode.execute(thisStr, TruffleString.Encoding.US_ASCII);
                     byte[] buf = new byte[ascii.byteLength(TruffleString.Encoding.US_ASCII)];
                     copyToByteArrayNode.execute(ascii, 0, buf, 0, buf.length, TruffleString.Encoding.US_ASCII);
                     for (int i = firstUpperCase; i < buf.length; ++i) {
-                        if (buf[i] >= 'A' && buf[i] <= 'Z') {
-                            buf[i] = (byte) (buf[i] + ('a' - 'A'));
+                        byte c = buf[i];
+                        if (isUpperCaseAscii(c)) {
+                            buf[i] = toLowerCaseAscii(c);
                         }
                     }
                     return switchEncodingNode.execute(fromByteArrayNode.execute(buf, TruffleString.Encoding.US_ASCII, false), TruffleString.Encoding.UTF_16);
                 }
             }
             return toLowerCaseJava(thisStr, fromJavaString, toJavaString);
-        }
-
-        private static int firstUpperCaseAscii(TruffleString thisStr, TruffleString.ReadCharUTF16Node readChar) {
-            for (int i = 0; i < Strings.length(thisStr); i++) {
-                int c = Strings.charAt(readChar, thisStr, i);
-                if (c >= 'A' && c <= 'Z') {
-                    return i;
-                }
-            }
-            return -1;
         }
 
         @Specialization(guards = "!isString(thisObj)")
@@ -2046,8 +2051,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     /**
      * Implementation of the String.prototype.toUpperCase() method as specified by ECMAScript 5.1 in
      * 15.5.4.18.
+     *
+     * @see JSStringToLowerCaseNode
      */
     public abstract static class JSStringToUpperCaseNode extends JSStringOperation {
+
+        private static final TruffleString.CodePointSet LOWER_CASE_ASCII_SET = TruffleString.CodePointSet.fromRanges(new int[]{'a', 'z'}, TruffleString.Encoding.UTF_16);
+
         private final boolean locale;
 
         public JSStringToUpperCaseNode(JSContext context, JSBuiltin builtin, boolean locale) {
@@ -2055,10 +2065,19 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.locale = locale;
         }
 
+        private static boolean isLowerCaseAscii(int c) {
+            return c >= 'a' && c <= 'z';
+        }
+
+        private static byte toUpperCaseAscii(byte c) {
+            return (byte) (c & ~0x20);
+        }
+
         @Specialization
         protected final Object toUpperCaseString(TruffleString thisStr,
+                        @Bind("this") Node node,
                         @Cached TruffleString.CodeRangeEqualsNode codeRangeEquals,
-                        @Cached TruffleString.ReadCharUTF16Node readChar,
+                        @Cached TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
                         @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
@@ -2066,33 +2085,24 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Shared @Cached TruffleString.ToJavaStringNode toJavaString,
                         @Cached InlinedConditionProfile isAscii,
                         @Cached InlinedConditionProfile isAlreadyUpperCase) {
-            if (isAscii.profile(this, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
-                int firstLowerCase = firstLowerCaseAscii(thisStr, readChar);
-                if (isAlreadyUpperCase.profile(this, firstLowerCase < 0)) {
+            if (isAscii.profile(node, codeRangeEquals.execute(thisStr, CodeRange.ASCII))) {
+                int firstLowerCase = indexOfCodePointSet.execute(thisStr, 0, thisStr.byteLength(TruffleString.Encoding.UTF_16), LOWER_CASE_ASCII_SET) >> 1;
+                if (isAlreadyUpperCase.profile(node, firstLowerCase < 0)) {
                     return thisStr;
                 } else if (!locale) {
                     TruffleString ascii = switchEncodingNode.execute(thisStr, TruffleString.Encoding.US_ASCII);
                     byte[] buf = new byte[ascii.byteLength(TruffleString.Encoding.US_ASCII)];
                     copyToByteArrayNode.execute(ascii, 0, buf, 0, buf.length, TruffleString.Encoding.US_ASCII);
                     for (int i = firstLowerCase; i < buf.length; ++i) {
-                        if (buf[i] >= 'a' && buf[i] <= 'z') {
-                            buf[i] = (byte) (buf[i] - ('a' - 'A'));
+                        byte c = buf[i];
+                        if (isLowerCaseAscii(c)) {
+                            buf[i] = toUpperCaseAscii(c);
                         }
                     }
                     return switchEncodingNode.execute(fromByteArrayNode.execute(buf, TruffleString.Encoding.US_ASCII, false), TruffleString.Encoding.UTF_16);
                 }
             }
             return toUpperCaseJava(thisStr, fromJavaString, toJavaString);
-        }
-
-        private static int firstLowerCaseAscii(TruffleString thisStr, TruffleString.ReadCharUTF16Node readChar) {
-            for (int i = 0; i < Strings.length(thisStr); i++) {
-                int c = Strings.charAt(readChar, thisStr, i);
-                if (c >= 'a' && c <= 'z') {
-                    return i;
-                }
-            }
-            return -1;
         }
 
         @Specialization(guards = "!isString(thisObj)")
