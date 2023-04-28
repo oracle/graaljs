@@ -438,7 +438,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
         @Child private JSToStringNode toStringNode;
         @Child private JSToIntegerAsIntNode toIntegerNode;
-        @Child private TruffleString.ReadCharUTF16Node stringReadNode;
 
         protected static int within(int value, int min, int max) {
             assert min <= max;
@@ -479,14 +478,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 toStringNode = insert(JSToStringNode.create());
             }
             return toStringNode.executeString(target);
-        }
-
-        protected char charAt(TruffleString s, int i) {
-            if (stringReadNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                stringReadNode = insert(TruffleString.ReadCharUTF16Node.create());
-            }
-            return Strings.charAt(stringReadNode, s, i);
         }
 
         protected int toIntegerAsInt(Object target) {
@@ -625,7 +616,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.5.
      */
     public abstract static class JSStringCharCodeAtNode extends JSStringOperation implements JSBuiltinNode.Inlineable {
-        private final ConditionProfile indexOutOfBounds = ConditionProfile.create();
 
         public JSStringCharCodeAtNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -636,8 +626,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = {"posInBounds(thisStr, pos)"})
-        protected int charCodeAtInBounds(TruffleString thisStr, int pos) {
-            return charAt(thisStr, pos);
+        protected int charCodeAtInBounds(TruffleString thisStr, int pos,
+                        @Cached @Shared TruffleString.ReadCharUTF16Node readChar) {
+            return Strings.charAt(readChar, thisStr, pos);
         }
 
         @SuppressWarnings("unused")
@@ -648,15 +639,17 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(replaces = {"charCodeAtInBounds", "charCodeAtOutOfBounds"})
         protected Object charCodeAtGeneric(Object thisObj, Object indexObj,
-                        @Cached JSToNumberNode toNumberNode) {
+                        @Cached @Shared TruffleString.ReadCharUTF16Node readChar,
+                        @Cached JSToNumberNode toNumberNode,
+                        @Cached InlinedConditionProfile indexOutOfBounds) {
             requireObjectCoercible(thisObj);
             TruffleString s = toString(thisObj);
             Number index = toNumberNode.executeNumber(indexObj);
             long lIndex = JSRuntime.toInteger(index);
-            if (indexOutOfBounds.profile(0 > lIndex || lIndex >= Strings.length(s))) {
+            if (indexOutOfBounds.profile(this, 0 > lIndex || lIndex >= Strings.length(s))) {
                 return Double.NaN;
             } else {
-                return Integer.valueOf(charAt(s, (int) lIndex));
+                return Integer.valueOf(Strings.charAt(readChar, s, (int) lIndex));
             }
         }
 
@@ -673,7 +666,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             @Override
             @Specialization
             protected Object charCodeAtGeneric(Object thisObj, Object indexObj,
-                            @Cached JSToNumberNode toNumberNode) {
+                            @Cached @Shared TruffleString.ReadCharUTF16Node readChar,
+                            @Cached JSToNumberNode toNumberNode,
+                            @Cached InlinedConditionProfile indexOutOfBounds) {
                 throw rewriteToCall();
             }
 
