@@ -687,34 +687,37 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.15.
      */
     public abstract static class JSStringSubstringNode extends JSStringOperation implements JSBuiltinNode.Inlineable {
-        private final ConditionProfile startLowerEnd = ConditionProfile.create();
-
-        @Child private TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
 
         public JSStringSubstringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected TruffleString substring(TruffleString thisStr, int start, int end) {
+        protected TruffleString substring(TruffleString thisStr, int start, int end,
+                        @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared InlinedConditionProfile startLowerEnd) {
             int len = Strings.length(thisStr);
             int finalStart = within(start, 0, len);
             int finalEnd = within(end, 0, len);
-            return substringIntl(thisStr, finalStart, finalEnd);
+            return substringIntl(thisStr, finalStart, finalEnd, substringNode, startLowerEnd);
         }
 
         @Specialization(guards = "isUndefined(end)")
-        protected TruffleString substringStart(TruffleString thisStr, int start, @SuppressWarnings("unused") Object end) {
+        protected TruffleString substringStart(TruffleString thisStr, int start, @SuppressWarnings("unused") Object end,
+                        @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared InlinedConditionProfile startLowerEnd) {
             int len = Strings.length(thisStr);
             int finalStart = within(start, 0, len);
             int finalEnd = len;
-            return substringIntl(thisStr, finalStart, finalEnd);
+            return substringIntl(thisStr, finalStart, finalEnd, substringNode, startLowerEnd);
         }
 
-        private TruffleString substringIntl(TruffleString thisStr, int start, int end) {
+        private TruffleString substringIntl(TruffleString thisStr, int start, int end,
+                        TruffleString.SubstringByteIndexNode substringNode,
+                        InlinedConditionProfile startLowerEnd) {
             final int fromIndex;
             final int length;
-            if (startLowerEnd.profile(start <= end)) {
+            if (startLowerEnd.profile(this, start <= end)) {
                 fromIndex = start;
                 length = end - start;
             } else {
@@ -728,8 +731,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected TruffleString substringGeneric(Object thisObj, Object start, Object end,
                         @Cached JSToNumberNode toNumberNode,
                         @Cached JSToNumberNode toNumber2Node,
-                        @Cached InlinedConditionProfile startUndefined,
-                        @Cached InlinedConditionProfile endUndefined) {
+                        @Cached @Exclusive InlinedConditionProfile startUndefined,
+                        @Cached @Exclusive InlinedConditionProfile endUndefined,
+                        @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached @Shared InlinedConditionProfile startLowerEnd) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             int len = Strings.length(thisStr);
@@ -745,7 +750,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 intEnd = withinNumber(toNumber2Node.executeNumber(end), 0, len);
             }
-            return substringIntl(thisStr, intStart, intEnd);
+            return substringIntl(thisStr, intStart, intEnd, substringNode, startLowerEnd);
         }
 
         @Override
@@ -763,8 +768,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected TruffleString substringGeneric(Object thisObj, Object start, Object end,
                             @Cached JSToNumberNode toNumberNode,
                             @Cached JSToNumberNode toNumber2Node,
-                            @Cached InlinedConditionProfile startUndefined,
-                            @Cached InlinedConditionProfile endUndefined) {
+                            @Cached @Exclusive InlinedConditionProfile startUndefined,
+                            @Cached @Exclusive InlinedConditionProfile endUndefined,
+                            @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
+                            @Cached @Shared InlinedConditionProfile startLowerEnd) {
                 throw rewriteToCall();
             }
 
@@ -788,7 +795,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.7.
      */
     public abstract static class JSStringIndexOfNode extends JSStringOperation {
-        private final ConditionProfile hasPos = ConditionProfile.create();
 
         public JSStringIndexOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -802,24 +808,28 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected int indexOfStringInt(TruffleString thisStr, TruffleString searchStr, int position,
-                        @Cached @Shared TruffleString.ByteIndexOfStringNode indexOfStringNode) {
-            return indexOfIntl(thisStr, searchStr, position, indexOfStringNode);
+                        @Cached @Shared TruffleString.ByteIndexOfStringNode indexOfStringNode,
+                        @Cached @Shared InlinedConditionProfile hasPos) {
+            return indexOfIntl(thisStr, searchStr, position, indexOfStringNode, hasPos);
         }
 
-        @Specialization(guards = "!isStringString(thisObj, searchObj) || !isUndefined(position)", replaces = {"indexOfStringInt"})
         // replace only the StringInt specialization that duplicates code
+        @Specialization(guards = "!isStringString(thisObj, searchObj) || !isUndefined(position)", replaces = {"indexOfStringInt"})
         protected int indexOfGeneric(Object thisObj, Object searchObj, Object position,
                         @Cached JSToStringNode toString2Node,
-                        @Cached @Shared TruffleString.ByteIndexOfStringNode indexOfStringNode) {
+                        @Cached @Shared TruffleString.ByteIndexOfStringNode indexOfStringNode,
+                        @Cached @Shared InlinedConditionProfile hasPos) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             TruffleString searchStr = toString2Node.executeString(searchObj);
-            return indexOfIntl(thisStr, searchStr, position, indexOfStringNode);
+            return indexOfIntl(thisStr, searchStr, position, indexOfStringNode, hasPos);
         }
 
-        private int indexOfIntl(TruffleString thisStr, TruffleString searchStr, Object position, TruffleString.ByteIndexOfStringNode indexOfStringNode) {
+        private int indexOfIntl(TruffleString thisStr, TruffleString searchStr, Object position,
+                        TruffleString.ByteIndexOfStringNode indexOfStringNode,
+                        InlinedConditionProfile hasPos) {
             int startPos;
-            if (hasPos.profile(position != Undefined.instance)) {
+            if (hasPos.profile(this, position != Undefined.instance)) {
                 startPos = Math.min(toIntegerAsInt(position), Strings.length(thisStr));
             } else {
                 startPos = 0;
@@ -2457,24 +2467,24 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * Non-standard String.prototype.trimLeft to provide compatibility with Nashorn and V8.
      */
     public abstract static class JSStringTrimLeftNode extends JSStringOperation {
-        private final ConditionProfile lengthExceeded = ConditionProfile.create();
-        private final ConditionProfile lengthZero = ConditionProfile.create();
 
         public JSStringTrimLeftNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object trimLeft(Object thisObj,
+        protected final Object trimLeft(Object thisObj,
                         @Cached TruffleString.SubstringByteIndexNode substringNode,
-                        @Cached TruffleString.ReadCharUTF16Node readRawNode) {
+                        @Cached TruffleString.ReadCharUTF16Node readRawNode,
+                        @Cached InlinedConditionProfile lengthExceeded,
+                        @Cached InlinedConditionProfile lengthZero) {
             requireObjectCoercible(thisObj);
             TruffleString string = toString(thisObj);
 
             int firstIdx = JSRuntime.firstNonWhitespaceIndex(string, true, readRawNode);
-            if (lengthZero.profile(firstIdx == 0)) {
+            if (lengthZero.profile(this, firstIdx == 0)) {
                 return string;
-            } else if (lengthExceeded.profile(firstIdx >= Strings.length(string))) {
+            } else if (lengthExceeded.profile(this, firstIdx >= Strings.length(string))) {
                 return Strings.EMPTY_STRING;
             } else {
                 return Strings.substring(getContext(), substringNode, string, firstIdx);
@@ -2487,21 +2497,20 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringTrimRightNode extends JSStringOperation {
 
-        private final ConditionProfile lengthExceeded = ConditionProfile.create();
-
         public JSStringTrimRightNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object trimRight(Object thisObj,
+        protected final Object trimRight(Object thisObj,
                         @Cached TruffleString.ReadCharUTF16Node readRawNode,
-                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
+                        @Cached TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached InlinedConditionProfile lengthExceeded) {
             requireObjectCoercible(thisObj);
             TruffleString string = toString(thisObj);
 
             int lastIdx = JSRuntime.lastNonWhitespaceIndex(string, true, readRawNode);
-            if (lengthExceeded.profile(lastIdx >= Strings.length(string))) {
+            if (lengthExceeded.profile(this, lastIdx >= Strings.length(string))) {
                 return string;
             } else {
                 return Strings.substring(getContext(), substringNode, string, 0, lastIdx + 1);
@@ -2657,8 +2666,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final BranchProfile noStringBranch = BranchProfile.create();
-
         @Specialization(guards = "isUndefined(position)")
         protected boolean startsWithString(TruffleString thisObj, TruffleString searchStr, @SuppressWarnings("unused") JSDynamicObject position,
                         @Cached @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
@@ -2675,11 +2682,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected boolean startsWithGeneric(Object thisObj, Object searchString, Object position,
                         @Cached JSToStringNode toString2Node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode,
-                        @Cached @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
+                        @Cached @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode,
+                        @Cached InlinedBranchProfile noStringBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
-                noStringBranch.enter();
+                noStringBranch.enter(this);
                 throw Errors.createTypeError("First argument to String.prototype.startsWith must not be a regular expression");
             }
             TruffleString searchStr = toString2Node.executeString(searchString);
@@ -2700,8 +2708,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final BranchProfile noStringBranch = BranchProfile.create();
-
         @Specialization(guards = "isUndefined(position)")
         protected boolean endsWithStringUndefined(TruffleString thisStr, TruffleString searchStr, @SuppressWarnings("unused") Object position,
                         @Cached @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
@@ -2721,11 +2727,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected boolean endsWithGeneric(Object thisObj, Object searchString, Object position,
                         @Cached JSToStringNode toString2Node,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode,
-                        @Cached @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
+                        @Cached @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode,
+                        @Cached InlinedBranchProfile noStringBranch) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
-                noStringBranch.enter();
+                noStringBranch.enter(this);
                 throw Errors.createTypeError("First argument to String.prototype.endsWith must not be a regular expression");
             }
             TruffleString searchStr = toString2Node.executeString(searchString);
