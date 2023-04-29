@@ -91,11 +91,9 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"}, limit = "1")
     Object doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object receiver, Object defaultValue,
-                    @Cached @Shared("requireObjectCoercible") RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
                     @Bind("toArrayIndexNode.execute(key)") Object maybeIndex,
                     @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
-        requireObjectCoercibleNode.executeVoid(target);
         long index = (long) maybeIndex;
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
@@ -110,7 +108,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     static Object doGeneric(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
                     @Bind("this") Node node,
-                    @Cached @Shared("requireObjectCoercible") RequireObjectCoercibleNode requireObjectCoercibleNode,
+                    @Cached RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached InlinedConditionProfile getType,
                     @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile,
