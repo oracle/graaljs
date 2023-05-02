@@ -757,6 +757,10 @@ public final class Strings {
         return s.charIndexOfAnyCharUTF16Uncached(0, length(s), chars);
     }
 
+    public static int indexOfAny(TruffleString.CharIndexOfAnyCharUTF16Node node, TruffleString s, char... chars) {
+        return node.execute(s, 0, length(s), chars);
+    }
+
     public static int indexOf(TruffleString.ByteIndexOfCodePointNode node, TruffleString s, int codepoint) {
         return indexOf(node, s, codepoint, 0);
     }

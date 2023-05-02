@@ -175,6 +175,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> REGEXP_MATCH_INDICES = new OptionKey<>(false);
     @CompilationFinal private boolean regexpMatchIndices;
 
+    public static final String REGEXP_UNICODE_SETS_NAME = JS_OPTION_PREFIX + "regexp-unicode-sets";
+    @Option(name = REGEXP_UNICODE_SETS_NAME, category = OptionCategory.USER, help = "Enable RegExp Unicode sets proposal (v flag).") //
+    public static final OptionKey<Boolean> REGEXP_UNICODE_SETS = new OptionKey<>(false);
+    @CompilationFinal private boolean regexpUnicodeSets;
+
     public static final String REGEXP_STATIC_RESULT_NAME = JS_OPTION_PREFIX + "regexp-static-result";
     @Option(name = REGEXP_STATIC_RESULT_NAME, category = OptionCategory.USER, help = "Provide last RegExp match in RegExp global var, e.g. RegExp.$1.") //
     public static final OptionKey<Boolean> REGEXP_STATIC_RESULT = new OptionKey<>(true);
@@ -678,6 +683,7 @@ public final class JSContextOptions {
         this.intl402 = INTL_402.hasBeenSet(optionValues) ? readBooleanOption(INTL_402) : !nashornCompatibilityMode;
         this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT);
         this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+        this.regexpUnicodeSets = readBooleanOption(REGEXP_UNICODE_SETS);
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER);
         this.v8CompatibilityMode = readBooleanOption(V8_COMPATIBILITY_MODE);
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN);
@@ -807,6 +813,10 @@ public final class JSContextOptions {
 
     public boolean isRegexpMatchIndices() {
         return regexpMatchIndices;
+    }
+
+    public boolean isRegexpUnicodeSets() {
+        return regexpUnicodeSets;
     }
 
     public boolean isRegexpStaticResult() {

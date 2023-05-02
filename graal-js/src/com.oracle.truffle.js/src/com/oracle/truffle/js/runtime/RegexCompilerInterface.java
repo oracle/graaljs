@@ -52,6 +52,7 @@ public final class RegexCompilerInterface {
     private static final String REPEATED_REG_EXP_FLAG_MSG = "Repeated RegExp flag: %c";
     private static final String UNSUPPORTED_REG_EXP_FLAG_MSG = "Invalid regular expression flags";
     private static final String UNSUPPORTED_REG_EXP_FLAG_MSG_NASHORN = "Unsupported RegExp flag: %c";
+    private static final String BOTH_FLAGS_SET_U_V = "Both flags 'u' and 'v' cannot be set at same time";
 
     private RegexCompilerInterface() {
     }
@@ -81,7 +82,7 @@ public final class RegexCompilerInterface {
         }
         // RegexLanguage does its own validation of the flags. This call to validateFlags only
         // serves the purpose of mimicking the error messages of Nashorn and V8.
-        validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode(), context.isOptionRegexpMatchIndices());
+        validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode(), context.isOptionRegexpMatchIndices(), context.isOptionRegexpUnicodeSets());
         try {
             compiledRegex = realm.getEnv().parseInternal(regexSource).call();
             realm.putCachedCompiledRegex(regexSource, compiledRegex);
@@ -101,7 +102,7 @@ public final class RegexCompilerInterface {
     public static void validate(JSContext context, String pattern, String flags, int ecmaScriptVersion) {
         Source regexSource = createRegexSource(pattern, flags, context.getRegexValidateOptions());
         if (context.isOptionNashornCompatibilityMode() && !flags.isEmpty()) {
-            validateFlags(flags, ecmaScriptVersion, true, context.isOptionRegexpMatchIndices());
+            validateFlags(flags, ecmaScriptVersion, true, context.isOptionRegexpMatchIndices(), context.isOptionRegexpUnicodeSets());
         }
         JSRealm realm = JSRealm.get(null);
         try {
@@ -112,7 +113,7 @@ public final class RegexCompilerInterface {
     }
 
     @TruffleBoundary
-    public static void validateFlags(String flags, int ecmaScriptVersion, boolean nashornCompat, boolean allowHasIndices) {
+    public static void validateFlags(String flags, int ecmaScriptVersion, boolean nashornCompat, boolean allowHasIndices, boolean allowUnicodeSets) {
         boolean ignoreCase = false;
         boolean multiline = false;
         boolean global = false;
@@ -120,11 +121,13 @@ public final class RegexCompilerInterface {
         boolean unicode = false;
         boolean dotAll = false;
         boolean hasIndices = false;
+        boolean unicodeSets = false;
 
         for (int i = 0; i < flags.length(); i++) {
             char ch = flags.charAt(i);
             boolean recognized = false;
             boolean repeated = false;
+            boolean clashing = false;
             switch (ch) {
                 case 'i':
                     recognized = true;
@@ -151,6 +154,7 @@ public final class RegexCompilerInterface {
                 case 'u':
                     if (ecmaScriptVersion >= 6) {
                         recognized = true;
+                        clashing = unicodeSets;
                         repeated = unicode;
                         unicode = true;
                     }
@@ -169,12 +173,23 @@ public final class RegexCompilerInterface {
                         hasIndices = true;
                     }
                     break;
+                case 'v':
+                    if (allowUnicodeSets) {
+                        recognized = true;
+                        clashing = unicode;
+                        repeated = unicodeSets;
+                        unicodeSets = true;
+                    }
+                    break;
             }
             if (!recognized) {
                 throw unsupportedFlagError(ch, nashornCompat);
             }
             if (repeated) {
                 throw throwFlagError(REPEATED_REG_EXP_FLAG_MSG, ch);
+            }
+            if (clashing) {
+                throw Errors.createSyntaxError(BOTH_FLAGS_SET_U_V);
             }
         }
     }

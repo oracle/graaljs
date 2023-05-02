@@ -108,6 +108,7 @@ public final class TRegexUtil {
             public static final String UNICODE = "unicode";
             public static final String DOT_ALL = "dotAll";
             public static final String HAS_INDICES = "hasIndices";
+            public static final String UNICODE_SETS = "unicodeSets";
         }
 
         public static final class RegexResult {
@@ -444,6 +445,10 @@ public final class TRegexUtil {
 
         public static boolean hasIndices(Object regexFlagsObject, Node node, InteropReadBooleanMemberNode readHasIndicesNode) {
             return readHasIndicesNode.execute(node, regexFlagsObject, Props.Flags.HAS_INDICES);
+        }
+
+        public static boolean unicodeSets(Object regexFlagsObject, Node node, InteropReadBooleanMemberNode readUnicodeSetsNode) {
+            return readUnicodeSetsNode.execute(node, regexFlagsObject, Props.Flags.UNICODE_SETS);
         }
     }
 

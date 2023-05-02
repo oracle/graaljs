@@ -651,7 +651,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached("create(LENGTH, context)") PropertyGetNode getLength,
                             @Cached JSToStringNode toString2,
                             @Cached JSToUInt32Node toUInt32,
-                            @Cached TruffleString.ByteIndexOfCodePointNode indexOfNode,
+                            @Cached TruffleString.CharIndexOfAnyCharUTF16Node indexOfNode,
                             @Cached EnsureStickyNode ensureSticky,
                             @Cached("createNew()") JSFunctionCallNode constructorCall,
                             @Cached JSToLengthNode toLength,
@@ -664,7 +664,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached InlinedConditionProfile isUnicode,
                             @Cached InlinedBranchProfile prematureReturnBranch) {
                 TruffleString flags = toString2.executeString(getFlags.getValue(rx));
-                boolean unicodeMatching = Strings.indexOf(indexOfNode, flags, 'u') >= 0;
+                boolean unicodeMatching = Strings.indexOfAny(indexOfNode, flags, 'u', 'v') >= 0;
                 TruffleString newFlags = ensureSticky.execute(node, flags);
                 JSDynamicObject splitter = (JSDynamicObject) callRegExpConstructor(constructor, rx, newFlags, constructorCall);
                 JSDynamicObject array = JSArray.createEmptyZeroLength(context, JSRealm.get(node));
@@ -737,6 +737,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicode,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicodeSets,
                             @Cached @Shared RemoveStickyFlagNode removeStickyFlag,
                             @Cached(inline = true) @Shared TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
                             @Cached(inline = true) @Shared TRegexUtil.InteropReadIntMemberNode readGroupCount,
@@ -752,7 +753,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached @Shared InlinedConditionProfile stickyFlagSet,
                             @Cached @Shared InlinedBranchProfile prematureReturnBranch) {
                 Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlags);
-                boolean unicodeMatching = TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode);
+                boolean unicodeMatching = TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode) || TRegexFlagsAccessor.unicodeSets(tRegexFlags, node, readUnicodeSets);
                 JSRealm realm = JSRealm.get(node);
                 JSDynamicObject splitter;
                 if (stickyFlagSet.profile(node, TRegexFlagsAccessor.sticky(tRegexFlags, node, readSticky))) {
@@ -826,6 +827,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicode,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicodeSets,
                             @Cached @Shared RemoveStickyFlagNode removeStickyFlag,
                             @Cached(inline = true) @Shared TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
                             @Cached(inline = true) @Shared TRegexUtil.InteropReadIntMemberNode readGroupCount,
@@ -841,7 +843,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached @Shared InlinedConditionProfile stickyFlagSet,
                             @Cached @Shared InlinedBranchProfile prematureReturnBranch) {
                 return doCached(rx, str, lim, context, parent, node, JSRegExp.getCompiledRegex(rx),
-                                readFlags, readSticky, readUnicode, removeStickyFlag, readIsMatch, readGroupCount, getStart, getEnd, constructorCall, execIgnoreLastIndex,
+                                readFlags, readSticky, readUnicode, readUnicodeSets, removeStickyFlag, readIsMatch, readGroupCount, getStart, getEnd, constructorCall, execIgnoreLastIndex,
                                 substringNode, advanceStringIndexUnicode, sizeIsZero, resultIsNull, isUnicode, stickyFlagSet, prematureReturnBranch);
             }
         }
@@ -879,6 +881,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 }
                 if (TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicodeNode)) {
                     flags[len++] = 'u';
+                }
+                if (TRegexFlagsAccessor.unicodeSets(tRegexFlags, node, readUnicodeNode)) {
+                    flags[len++] = 'v';
                 }
                 if (len == 0) {
                     return Strings.EMPTY_STRING;
@@ -1077,6 +1082,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readGlobal,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicode,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicodeSets,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readIsMatch,
                             @Cached(inline = true) @Shared InvokeGetGroupBoundariesMethodNode getStart,
                             @Cached(inline = true) @Shared InvokeGetGroupBoundariesMethodNode getEnd,
@@ -1085,7 +1091,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached(inline = true) @Shared InteropReadIntMemberNode readGroupCount) {
                 Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlags);
                 boolean global = globalProfile.profile(node, TRegexFlagsAccessor.global(tRegexFlags, node, readGlobal));
-                boolean unicode = unicodeProfile.profile(node, TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode));
+                boolean eitherUnicode = unicodeProfile.profile(node,
+                                TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode) || TRegexFlagsAccessor.unicodeSets(tRegexFlags, node, readUnicodeSets));
                 boolean sticky = stickyProfile.profile(node, TRegexFlagsAccessor.sticky(tRegexFlags, node, readSticky));
                 int length = Strings.length(s);
                 TruffleStringBuilder sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
@@ -1125,7 +1132,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     lastMatchEnd = matchEnd;
                     if (global) {
                         if (matchStart == matchEnd) {
-                            lastIndex = unicode ? advanceStringIndexUnicode.execute(node, s, matchEnd) : matchEnd + 1;
+                            lastIndex = eitherUnicode ? advanceStringIndexUnicode.execute(node, s, matchEnd) : matchEnd + 1;
                         } else {
                             lastIndex = matchEnd;
                         }
@@ -1162,6 +1169,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readGlobal,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicode,
+                            @Cached(inline = true) @Shared InteropReadBooleanMemberNode readUnicodeSets,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readIsMatch,
                             @Cached(inline = true) @Shared InvokeGetGroupBoundariesMethodNode getStart,
                             @Cached(inline = true) @Shared InvokeGetGroupBoundariesMethodNode getEnd,
@@ -1170,7 +1178,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached(inline = true) @Shared InteropReadIntMemberNode readGroupCount) {
                 return doCached(rx, s, replaceString, parsedWithNamedCG, parsedWithoutNamedCG, context, parent, node, JSRegExp.getCompiledRegex(rx),
                                 execIgnoreLastIndexNode, advanceStringIndexUnicode, toLength, unicodeProfile, globalProfile, stickyProfile, noMatchProfile, hasNamedCaptureGroupsProfile, dollarProfile,
-                                readGlobal, readSticky, readUnicode, readIsMatch, getStart, getEnd, readFlags, readGroups, readGroupCount);
+                                readGlobal, readSticky, readUnicode, readUnicodeSets, readIsMatch, getStart, getEnd, readFlags, readGroups, readGroupCount);
             }
         }
 
@@ -1189,6 +1197,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached JSToIntegerAsIntNode toIntegerNode,
                             @Cached JSToStringNode toStringForFlagsNode,
                             @Cached TruffleString.ByteIndexOfCodePointNode indexOfNode,
+                            @Cached TruffleString.CharIndexOfAnyCharUTF16Node indexOfAnyNode,
                             @Cached("create(LENGTH, context)") PropertyGetNode getLength,
                             @Cached("create(INDEX, context)") PropertyGetNode getIndexNode,
                             @Cached("create(GROUPS, context)") PropertyGetNode getGroupsNode,
@@ -1214,7 +1223,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 boolean global = globalProfile.profile(node, Strings.indexOf(indexOfNode, flags, 'g') != -1);
                 boolean fullUnicode = false;
                 if (global) {
-                    fullUnicode = unicodeProfile.profile(node, Strings.indexOf(indexOfNode, flags, 'u') != -1);
+                    fullUnicode = unicodeProfile.profile(node, Strings.indexOfAny(indexOfAnyNode, flags, 'u', 'v') != -1);
                     parent.setLastIndex(rx, 0);
                 }
                 SimpleArrayList<JSDynamicObject> results = null;
@@ -1593,6 +1602,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("create(FLAGS, getContext())") PropertyGetNode getFlagsNode,
                         @Cached JSToStringNode toStringNodeForFlags,
                         @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode,
+                        @Cached TruffleString.CharIndexOfAnyCharUTF16Node stringIndexOfAnyNode,
                         @Cached JSToStringNode toString1Node,
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToLengthNode toLengthNode,
@@ -1604,7 +1614,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (isGlobal.profile(node, Strings.indexOf(stringIndexOfNode, flags, 'g') == -1)) {
                 return regexExecIntl(rx, s);
             } else {
-                boolean fullUnicode = (Strings.indexOf(stringIndexOfNode, flags, 'u') != -1);
+                boolean fullUnicode = (Strings.indexOfAny(stringIndexOfAnyNode, flags, 'u', 'v') != -1);
                 setLastIndex(rx, 0);
                 JSDynamicObject array = JSArray.createEmptyZeroLength(getContext(), getRealm());
                 int n = 0;
@@ -1692,7 +1702,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("createCreateRegExpStringIteratorNode()") StringPrototypeBuiltins.CreateRegExpStringIteratorNode createRegExpStringIteratorNode,
                         @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached(inline = true) LongToIntOrDoubleNode indexToNumber,
-                        @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode) {
+                        @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode,
+                        @Cached TruffleString.CharIndexOfAnyCharUTF16Node stringIndexOfAnyNode) {
             Object string = toStringNodeForInput.executeString(stringObj);
             JSDynamicObject regExpConstructor = getRealm().getRegExpConstructor();
             JSDynamicObject constructor = speciesConstructNode.speciesConstructor(regex, regExpConstructor);
@@ -1701,7 +1712,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             long lastIndex = toLengthNode.executeLong(getLastIndexNode.getValue(regex));
             setLastIndexNode.setValue(matcher, indexToNumber.fromIndex(node, lastIndex));
             boolean global = Strings.indexOf(stringIndexOfNode, flags, 'g') != -1;
-            boolean fullUnicode = Strings.indexOf(stringIndexOfNode, flags, 'u') != -1;
+            boolean fullUnicode = Strings.indexOfAny(stringIndexOfAnyNode, flags, 'u', 'v') != -1;
             return createRegExpStringIteratorNode.createIterator(matcher, string, global, fullUnicode);
         }
 
@@ -1732,10 +1743,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             global(0),
             multiline(0),
             ignoreCase(0),
-            sticky(0),     // ES 2015
-            unicode(0),    // ES 2015
-            dotAll(0),     // ES 2018
-            hasIndices(0); // ES 2022
+            sticky(0),      // ES 2015
+            unicode(0),     // ES 2015
+            dotAll(0),      // ES 2018
+            hasIndices(0),  // ES 2022
+            unicodeSets(0); // Stage 3 proposal
 
             private final int length;
 
@@ -1789,6 +1801,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertyGetNode getUnicode;
         @Child private PropertyGetNode getSticky;
         @Child private PropertyGetNode getHasIndices;
+        @Child private PropertyGetNode getUnicodeSets;
         @Child private JSToBooleanNode toBoolean;
 
         public RegExpFlagsGetterNode(JSContext context, JSBuiltin builtin) {
@@ -1803,6 +1816,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.getSticky = PropertyGetNode.create(JSRegExp.STICKY, context);
             if (context.isOptionRegexpMatchIndices()) {
                 this.getHasIndices = PropertyGetNode.create(JSRegExp.HAS_INDICES, context);
+            }
+            if (context.isOptionRegexpUnicodeSets()) {
+                this.getUnicodeSets = PropertyGetNode.create(JSRegExp.UNICODE_SETS, context);
             }
         }
 
@@ -1829,6 +1845,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             if (getFlag(rx, getUnicode)) {
                 flags[len++] = 'u';
+            }
+            if (getFlag(rx, getUnicodeSets)) {
+                flags[len++] = 'v';
             }
             if (getFlag(rx, getSticky)) {
                 flags[len++] = 'y';
