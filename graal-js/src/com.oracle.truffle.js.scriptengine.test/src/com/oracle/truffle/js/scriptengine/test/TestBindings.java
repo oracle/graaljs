@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.scriptengine.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -396,6 +397,16 @@ public class TestBindings {
         bindings.put("polyglot.js.allowHostClassLookup", true);
         bindings.put("javaObj", new Object());
         assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));", bindings));
+    }
+
+    @Test
+    public void testSetContextOptionsViaSimpleBindingsOrder() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = new SimpleBindings();
+        bindings.put("polyglot.js.nashorn-compat", true);
+        bindings.put("polyglot.js.allowHostAccess", false);
+        bindings.put("opaqueToken", new Object());
+        assertFalse((boolean) engine.eval("'getClass' in opaqueToken", bindings));
     }
 
     @Test(expected = IllegalStateException.class)
