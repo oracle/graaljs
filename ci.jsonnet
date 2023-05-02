@@ -82,17 +82,20 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   ce: {defs:: $.defs, graalvm:: self.defs.ce},
   ee: {defs:: $.defs, graalvm:: self.defs.ee},
 
-  local artifact_name(jdk, edition, os, arch, suffix='') =
-    local desc = edition + "-" + jdk + "-" + os + "-" + arch + suffix;
-    "js-graalvm-" + desc,
+  local artifact_name(jdk, edition, os, arch, prefix='js', suffix='') =
+    assert prefix != '' && edition != '' && jdk != '' && os != '' && arch != '';
+    local parts = [prefix, 'graalvm-' + edition, jdk, os, arch, suffix];
+    std.join('-', std.filter(function(part) part != '', parts)),
+
+  local artifact_name_from_build(b) =
+    artifact_name(b.jdk, b.graalvm.edition, b.os, b.arch, b.artifact),
 
   local build_js_graalvm_artifact(build) =
     local jdk = build.jdk;
-    local edition = build.graalvm.edition;
     local os = build.os;
     local arch = build.arch;
     local os_arch = os + '_' + arch;
-    local artifactName = artifact_name(jdk, edition, os, arch);
+    local artifactName = artifact_name_from_build(build);
     self.jobtemplate + common[jdk] + common[os_arch] + {
     graalvm:: build.graalvm,
     suiteimports:: build.suiteimports,
@@ -119,10 +122,9 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
 
   local use_js_graalvm_artifact(build) =
     local jdk = build.jdk;
-    local edition = build.graalvm.edition;
     local os = build.os;
     local arch = build.arch;
-    local artifactName = artifact_name(jdk, edition, os, arch);
+    local artifactName = artifact_name_from_build(build);
     {
     environment+: {
       ARTIFACT_NAME: artifactName
@@ -141,17 +143,17 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
 
   local isBuildUsingArtifact(build) = std.objectHasAll(build, 'artifact') && build.artifact != '',
 
-  local applyArtifact(build) =
-    if isBuildUsingArtifact(build) then build + use_js_graalvm_artifact(build) else build,
-
   local deriveArtifactBuilds(builds) =
-    local buildKey(b) = artifact_name(b.jdk, b.graalvm.edition, b.os, b.arch);
     local buildsUsingArtifact = [a for a in builds if isBuildUsingArtifact(a)];
-    [build_js_graalvm_artifact(b) for b in std.uniq(std.sort(buildsUsingArtifact, keyF=buildKey), keyF=buildKey)],
+    local uniqueBuildArtifacts = std.uniq(std.sort(buildsUsingArtifact, keyF=artifact_name_from_build), keyF=artifact_name_from_build);
+    local artifactUseCount(b) = std.count(std.map(function(x) artifact_name_from_build(x) == artifact_name_from_build(b), buildsUsingArtifact), true);
+    local applyArtifact(build) = if isBuildUsingArtifact(build) && artifactUseCount(build) > 1 then build + use_js_graalvm_artifact(build) else build;
+    [applyArtifact(b) for b in builds] +
+    [build_js_graalvm_artifact(b) for b in uniqueBuildArtifacts if artifactUseCount(b) > 1],
 
   local finishBuilds(allBuilds) =
     local builds = [b for b in allBuilds if !std.objectHasAll(b, 'enabled') || b.enabled];
-    if self.useArtifacts then [applyArtifact(b) for b in builds] + deriveArtifactBuilds(builds) else builds,
+    if self.useArtifacts then deriveArtifactBuilds(builds) else builds,
 
   finishBuilds:: finishBuilds,
 }
