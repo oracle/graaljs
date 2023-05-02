@@ -6,14 +6,11 @@ local ci = import '../ci.jsonnet';
     cd:: 'graal-nodejs',
   },
 
-  local artifact = {
-    artifact:: 'nodejs',
-  },
-
   local ce = ci.ce,
   local ee = ci.ee,
 
   local vm_env = {
+    artifact:: 'nodejs',
     suiteimports+:: ['vm', 'substratevm', 'tools'],
     nativeimages+:: ['lib:graal-nodejs', 'lib:jvmcicompiler'], // 'js'
   },
@@ -141,10 +138,10 @@ local ci = import '../ci.jsonnet';
     graalNodeJs                             + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-substratevm-ee'} +
       excludePlatforms([ci.mainGatePlatform]),
 
-    graalNodeJs + vm_env                    + gateVmSmokeTest                                                    + artifact   + ce + {name: 'nodejs-substratevm-ce'} +
+    graalNodeJs + vm_env                    + gateVmSmokeTest                                                                 + ce + {name: 'nodejs-graalvm-ce'} +
       includePlatforms([ci.mainGatePlatform]) +
       promoteToTarget(common.gate, [ci.mainGatePlatform]),
-    graalNodeJs + vm_env                    + gateVmSmokeTest                                                    + artifact   + ee + {name: 'nodejs-substratevm-ee'} +
+    graalNodeJs + vm_env                    + gateVmSmokeTest                                                                 + ee + {name: 'nodejs-graalvm-ee'} +
       includePlatforms([ci.mainGatePlatform]) +
       promoteToTarget(common.gate, [ci.mainGatePlatform]),
 
@@ -152,24 +149,24 @@ local ci = import '../ci.jsonnet';
     graalNodeJs          + buildNodeAPI     + testNode('node-api',      part='-r0,1', max_heap='8G')                               + {name: 'nodejs-node-api'} + gateOnMain,
     graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', part='-r0,1', max_heap='8G')                               + {name: 'nodejs-js-native-api'} + gateOnMain,
 
-    graalNodeJs + vm_env + build            + testNode('async-hooks',   part='-r0,1', max_heap='8G')             + artifact        + {name: 'nodejs-async-hooks'} + gateOnMain +
+    graalNodeJs + vm_env + build            + testNode('async-hooks',   part='-r0,1', max_heap='8G')                               + {name: 'nodejs-async-hooks'} + gateOnMain +
       promoteToTarget(common.gate, [common.jdk17 + common.windows_amd64]),
-    graalNodeJs + vm_env + build            + testNode('es-module',     part='-r0,1', max_heap='8G')             + artifact        + {name: 'nodejs-es-module'} + gateOnMain +
+    graalNodeJs + vm_env + build            + testNode('es-module',     part='-r0,1', max_heap='8G')                               + {name: 'nodejs-es-module'} + gateOnMain +
       promoteToTarget(common.gate, [common.jdk17 + common.windows_amd64]),
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
-    graalNodeJs + vm_env + build            + testNode('sequential',    part='-r0,1', max_heap='512M')           + artifact        + {name: 'nodejs-sequential'} + gateOnMain +
+    graalNodeJs + vm_env + build            + testNode('sequential',    part='-r0,1', max_heap='512M')                             + {name: 'nodejs-sequential'} + gateOnMain +
       promoteToTarget(common.gate, [common.jdk17 + common.windows_amd64]),
 
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r0,5', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-1'} + gateOnMain,
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r1,5', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-2'} + gateOnMain,
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r2,5', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-3'} + gateOnMain,
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r3,5', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-4'} + gateOnMain,
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r4,5', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-5'} + gateOnMain,
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r0,5', max_heap='8G')                               + {name: 'nodejs-parallel-1'} + gateOnMain,
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r1,5', max_heap='8G')                               + {name: 'nodejs-parallel-2'} + gateOnMain,
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r2,5', max_heap='8G')                               + {name: 'nodejs-parallel-3'} + gateOnMain,
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r3,5', max_heap='8G')                               + {name: 'nodejs-parallel-4'} + gateOnMain,
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r4,5', max_heap='8G')                               + {name: 'nodejs-parallel-5'} + gateOnMain,
 
-    graalNodeJs + vm_env + build            + testNode(parallelHttp2,   part='-r0,1', max_heap='8G')             + artifact        + {name: 'nodejs-parallel-http2'} +
+    graalNodeJs + vm_env + build            + testNode(parallelHttp2,   part='-r0,1', max_heap='8G')                               + {name: 'nodejs-parallel-http2'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]),
 
-    graalNodeJs + vm_env + build            + auxEngineCache                                                     + artifact   + ee + {name: 'nodejs-aux-engine-cache'} + gateOnMain,
+    graalNodeJs + vm_env + build            + auxEngineCache                                                                  + ee + {name: 'nodejs-aux-engine-cache'} + gateOnMain,
   ], defaultTarget=common.weekly),
 
   // Builds that only need to run on one platform
