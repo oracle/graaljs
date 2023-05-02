@@ -168,6 +168,32 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
         @Override
         public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "nashorn-compat";
+        }
+
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            boolean val = toBoolean(this, value);
+            if (val) {
+                updateForNashornCompatibilityMode(builder);
+            }
+            return builder.option("js.nashorn-compat", String.valueOf(val));
+        }
+    }, new MagicBindingsOptionSetter() {
+
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "allowAllAccess";
+        }
+
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            return builder.allowAllAccess(toBoolean(this, value));
+        }
+    }, new MagicBindingsOptionSetter() {
+
+        @Override
+        public String getOptionKey() {
             return MAGIC_OPTION_PREFIX + "allowHostAccess";
         }
 
@@ -240,32 +266,6 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         @Override
         public Builder setOption(Builder builder, Object value) {
             return builder.allowHostClassLoading(toBoolean(this, value));
-        }
-    }, new MagicBindingsOptionSetter() {
-
-        @Override
-        public String getOptionKey() {
-            return MAGIC_OPTION_PREFIX + "allowAllAccess";
-        }
-
-        @Override
-        public Builder setOption(Builder builder, Object value) {
-            return builder.allowAllAccess(toBoolean(this, value));
-        }
-    }, new MagicBindingsOptionSetter() {
-
-        @Override
-        public String getOptionKey() {
-            return MAGIC_OPTION_PREFIX + "nashorn-compat";
-        }
-
-        @Override
-        public Builder setOption(Builder builder, Object value) {
-            boolean val = toBoolean(this, value);
-            if (val) {
-                updateForNashornCompatibilityMode(builder);
-            }
-            return builder.option("js.nashorn-compat", String.valueOf(val));
         }
     }, new MagicBindingsOptionSetter() {
 
