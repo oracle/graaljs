@@ -45,6 +45,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       ['git', 'clone', ['mx', 'urlrewrite', 'https://github.com/graalvm/graalvm-tests.git'], self.graalvmtests],
       ['git', '-C', self.graalvmtests, 'checkout', '75b6a9e16ebbfd8b9b0a24e4be7c4378e3281204'],
     ] else [],
+    using_artifact:: false,
     setup+: self.graalvm.setup,
     run+: []
       + self.export_envvars
@@ -126,6 +127,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     local arch = build.arch;
     local artifactName = artifact_name_from_build(build);
     {
+    using_artifact:: true,
     environment+: {
       ARTIFACT_NAME: artifactName
     },
@@ -141,15 +143,19 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     ],
   },
 
-  local isBuildUsingArtifact(build) = std.objectHasAll(build, 'artifact') && build.artifact != '',
-
   local deriveArtifactBuilds(builds) =
-    local buildsUsingArtifact = [a for a in builds if isBuildUsingArtifact(a)];
+    local isBuildDeclaringArtifact(build) = std.objectHasAll(build, 'artifact') && build.artifact != '';
+    local buildsDeclaringArtifact = [a for a in builds if isBuildDeclaringArtifact(a)];
+    // Do not build artifacts that would only be used by a single job per target group.
+    local artifactUseCountKey(b) = artifact_name_from_build(b) + (if 'targets' in b then ":" + std.join('-', std.sort(b.targets)) else '');
+    local artifactUseCount(b) = std.count(std.map(function(x) artifactUseCountKey(x) == artifactUseCountKey(b), buildsDeclaringArtifact), true);
+    local shouldUseArtifact(build) = isBuildDeclaringArtifact(build) && artifactUseCount(build) > 1;
+    local applyArtifact(build) = if shouldUseArtifact(build) then build + use_js_graalvm_artifact(build) else build;
+    local modifiedBuilds = [applyArtifact(b) for b in builds];
+    // Derive builds for artifacts that are actually used.
+    local buildsUsingArtifact = [a for a in modifiedBuilds if 'using_artifact' in a && a.using_artifact];
     local uniqueBuildArtifacts = std.uniq(std.sort(buildsUsingArtifact, keyF=artifact_name_from_build), keyF=artifact_name_from_build);
-    local artifactUseCount(b) = std.count(std.map(function(x) artifact_name_from_build(x) == artifact_name_from_build(b), buildsUsingArtifact), true);
-    local applyArtifact(build) = if isBuildUsingArtifact(build) && artifactUseCount(build) > 1 then build + use_js_graalvm_artifact(build) else build;
-    [applyArtifact(b) for b in builds] +
-    [build_js_graalvm_artifact(b) for b in uniqueBuildArtifacts if artifactUseCount(b) > 1],
+    modifiedBuilds + [build_js_graalvm_artifact(b) for b in uniqueBuildArtifacts],
 
   local finishBuilds(allBuilds) =
     local builds = [b for b in allBuilds if !std.objectHasAll(b, 'enabled') || b.enabled];
