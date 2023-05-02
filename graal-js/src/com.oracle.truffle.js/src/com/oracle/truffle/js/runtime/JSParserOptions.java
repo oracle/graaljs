@@ -65,43 +65,25 @@ public record JSParserOptions(boolean strict,
                 boolean topLevelAwait,
                 boolean v8Intrinsics) {
 
-    public JSParserOptions() {
-        this(
-                        false,
-                        false,
-                        false,
-                        JSConfig.LatestECMAScriptVersion,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false,
-                        JSConfig.AnnexB,
-                        true,
-                        true,
-                        false,
-                        false,
-                        false,
-                        false);
-    }
-
-    public JSParserOptions fromOptions(JSContextOptions contextOpts) {
-        JSParserOptions opts = this;
-        opts = opts.putEcmaScriptVersion(contextOpts.getEcmaScriptVersion());
-        opts = opts.putSyntaxExtensions(contextOpts.isSyntaxExtensions());
-        opts = opts.putScripting(contextOpts.isScripting());
-        opts = opts.putShebang(contextOpts.isShebang());
-        opts = opts.putStrict(contextOpts.isStrict());
-        opts = opts.putConstAsVar(contextOpts.isConstAsVar());
-        opts = opts.putFunctionStatementError(contextOpts.isFunctionStatementError());
-        opts = opts.putAnnexB(contextOpts.isAnnexB());
-        opts = opts.putAllowBigInt(contextOpts.isBigInt());
-        opts = opts.putClassFields(contextOpts.isClassFields());
-        opts = opts.putImportAssertions(contextOpts.isImportAssertions());
-        opts = opts.putPrivateFieldsIn(contextOpts.isPrivateFieldsIn());
-        opts = opts.putTopLevelAwait(contextOpts.isTopLevelAwait());
-        opts = opts.putV8Intrinsics(contextOpts.isV8Intrinsics());
-        return opts;
+    public static JSParserOptions fromOptions(JSContextOptions contextOpts) {
+        int ecmaScriptVersion = contextOpts.getEcmaScriptVersion();
+        boolean strict = contextOpts.isStrict();
+        boolean scripting = contextOpts.isScripting();
+        boolean shebang = contextOpts.isShebang();
+        boolean syntaxExtensions = contextOpts.isSyntaxExtensions();
+        boolean constAsVar = contextOpts.isConstAsVar();
+        boolean functionStatementError = contextOpts.isFunctionStatementError();
+        boolean dumpOnError = false;
+        boolean emptyStatements = false;
+        boolean annexB = contextOpts.isAnnexB();
+        boolean allowBigInt = contextOpts.isBigInt();
+        boolean classFields = contextOpts.isClassFields();
+        boolean importAssertions = contextOpts.isImportAssertions();
+        boolean privateFieldsIn = contextOpts.isPrivateFieldsIn();
+        boolean topLevelAwait = contextOpts.isTopLevelAwait();
+        boolean v8Intrinsics = contextOpts.isV8Intrinsics();
+        return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
+                        classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
     }
 
     public JSParserOptions putStrict(boolean strict) {

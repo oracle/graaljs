@@ -651,9 +651,9 @@ public final class JSContextOptions {
     @CompilationFinal private boolean scopeOptimization;
 
     JSContextOptions(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
-        this.parserOptions = new JSParserOptions();
         this.optionValues = optionValues;
         setOptionValues(sandboxPolicy, optionValues);
+        assert this.parserOptions != null;
     }
 
     public static JSContextOptions fromOptionValues(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
@@ -668,7 +668,7 @@ public final class JSContextOptions {
         CompilerAsserts.neverPartOfCompilation();
         optionValues = newOptions;
         cacheOptions(sandboxPolicy);
-        parserOptions = parserOptions.fromOptions(this);
+        parserOptions = JSParserOptions.fromOptions(this);
     }
 
     private void cacheOptions(SandboxPolicy sandboxPolicy) {
