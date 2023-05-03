@@ -212,7 +212,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       assert 'targets' in super : "build '" + super.name + "-" + platformName(self) + "' has no targets and no default targets specified",
       name: super.targetName + '-' + super.name + '-' + platformName(self),
     }
-    for build in (if std.isArray(builds) then builds else [builds])
+    for build in flattenArrayRec(builds)
     for platform in generatePlatforms(build, platforms)
     for target in generateTargets(build, platform, defaultTarget)
   ],
@@ -259,4 +259,13 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   includePlatforms:: includePlatforms,
   excludePlatforms:: excludePlatforms,
   gateOnMain:: promoteToTarget(common.gate, [self.mainGatePlatform]),
+
+  local flattenArrayRec(arr) =
+    if std.isArray(arr) then
+      if std.filter(std.isArray, arr) != [] then
+        flattenArrayRec(std.flatMap(function(x) if std.isArray(x) then x else [x], arr))
+      else
+        arr // already flat
+    else
+      [arr], // allow single argument; just wrap it in an array
 }
