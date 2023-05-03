@@ -10,9 +10,11 @@ local ci = import '../ci.jsonnet';
   local ee = ci.ee,
 
   local vm_env = {
-    artifact:: 'nodejs',
-    suiteimports+:: ['vm', 'substratevm', 'tools'],
-    nativeimages+:: ['lib:graal-nodejs', 'lib:jvmcicompiler'], // 'js'
+    // too slow on windows and darwin-amd64
+    local enabled = 'os' in self && !(self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')),
+    artifact:: if enabled then 'nodejs' else '',
+    suiteimports+:: if enabled then ['vm', 'substratevm', 'tools'] else [],
+    nativeimages+:: if enabled then ['lib:graal-nodejs', 'lib:jvmcicompiler'] else [], // 'js'
   },
 
   local gateTags(tags) = common.gateTags + {
