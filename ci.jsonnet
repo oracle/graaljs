@@ -132,7 +132,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
         ],
       },
     ],
-    timelimit: "40:00"
+    timelimit: if std.objectHasAll(self, 'os') && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:00:00' else '40:00',
   },
 
   local use_js_graalvm_artifact(build) =
