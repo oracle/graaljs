@@ -4,5 +4,5 @@ goto :eof
 
 :getself
 set "location=%~dp0"
-mx -p "%location%..\.." node %*
+call mx -p "%location%..\.." node %*
 goto :eof

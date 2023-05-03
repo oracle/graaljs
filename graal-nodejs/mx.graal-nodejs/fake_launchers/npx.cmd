@@ -4,5 +4,5 @@ goto :eof
 
 :getself
 set "location=%~dp0"
-mx -p "%location%..\.." npx %*
+call mx -p "%location%..\.." npx %*
 goto :eof
