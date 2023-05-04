@@ -94,6 +94,12 @@ local ci = import '../ci.jsonnet';
     ],
     timelimit: '1:15:00',
   },
+  local maxHeapOnWindows(max_heap) = {
+    local is_windows = ('os' in super && super.os == 'windows'),
+    environment+: {
+      MAX_HEAP: (if is_windows then max_heap else super.MAX_HEAP),
+    },
+  },
 
   local buildAddons = build + {
     run+: [
@@ -156,7 +162,7 @@ local ci = import '../ci.jsonnet';
     graalNodeJs + vm_env + build            + testNode('es-module',     part='-r0,1', max_heap='8G')                               + {name: 'nodejs-es-module'} + gateOnMain +
       promoteToTarget(common.gate, [common.jdk17 + common.windows_amd64]),
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
-    graalNodeJs + vm_env + build            + testNode('sequential',    part='-r0,1', max_heap='512M')                             + {name: 'nodejs-sequential'} + gateOnMain +
+    graalNodeJs + vm_env + build            + testNode('sequential',    part='-r0,1', max_heap='8G') + maxHeapOnWindows('512M')    + {name: 'nodejs-sequential'} + gateOnMain +
       promoteToTarget(common.gate, [common.jdk17 + common.windows_amd64]),
 
     graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r0,5', max_heap='8G')                               + {name: 'nodejs-parallel-1'} + gateOnMain,
