@@ -107,6 +107,7 @@ local ci = import '../ci.jsonnet';
   local promoteToTarget = ci.promoteToTarget,
   local defaultToTarget = ci.defaultToTarget,
   local includePlatforms = ci.includePlatforms,
+  local excludePlatforms = ci.excludePlatforms,
   local gateOnMain = ci.gateOnMain,
 
   // Builds that should run on all supported platforms
@@ -128,27 +129,35 @@ local ci = import '../ci.jsonnet';
     graalJs + gateTags('shareengine')                                                                     + {name: 'js-shareengine'} + gateOnMain,
     graalJs + gateTags('latestversion')                                                                   + {name: 'js-latestversion'} + gateOnMain,
     graalJs + gateTags('instrument')                                                                      + {name: 'js-instrument'} + gateOnMain,
-    graalJs + gateTags('tck')                                                                             + {name: 'js-tck'} + gateOnMain,
+    graalJs + gateTags('tck')                                                                             + {name: 'js-tck'} + gateOnMain +
+      excludePlatforms([common.darwin_amd64]), # Timeout/OOME
     graalJs + webassemblyTest                                                                             + {name: 'js-webassembly'} + gateOnMain,
     graalJs + nativeImageSmokeTest                                                                        + {name: 'js-native-image-smoke-test'} + gateOnMain,
-    graalJs + auxEngineCache                                                                         + ee + {name: 'js-aux-engine-cache'} + gateOnMain,
+    graalJs + auxEngineCache                                                                         + ee + {name: 'js-aux-engine-cache'} + gateOnMain +
+      excludePlatforms([common.windows_amd64, common.darwin_amd64]), # unsupported on windows, too slow on darwin-amd64
 
     // downstream graal gate
     graalJs + downstreamGraal                                                                             + {name: 'js-downstream-graal'} +
       promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk20 + common.linux_amd64]),
-    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}                           + {name: 'js-downstream-substratevm-enterprise'} + gateOnMain,
+    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}                           + {name: 'js-downstream-substratevm-enterprise'} + gateOnMain +
+      excludePlatforms([common.darwin_amd64]) + # Too slow
+      excludePlatforms([common.linux_aarch64]), # Fails on Linux AArch64 with "Creation of the VM failed."
+
+    // js.zone-rules-based-time-zones
+    graalJs + gateTags('zonerulesbasedtimezones')                                                         + {name: 'js-zonerulesbasedtimezones'} +
+      promoteToTarget(common.postMerge, [ci.mainGatePlatform]),
+
+    // PGO profiles
+    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'js-pgo-profiles'} +
+      promoteToTarget(common.postMerge, [ci.mainGatePlatform]) +
+      excludePlatforms([common.darwin_amd64]) +  # Too slow
+      excludePlatforms([common.darwin_aarch64]), # No such file or directory: 'mvn'
   ], defaultTarget=common.weekly),
 
   // Builds that only need to run on one platform
   local otherBuilds = generateBuilds([
     graalJs + common.gate      + mavenDeployDryRun                                                        + {name: 'js-maven-dry-run'},
     graalJs + common.weekly    + gateCoverage                                                             + {name: 'js-coverage'},
-
-    // PGO profiles
-    graalJs + common.postMerge + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}     + {name: 'js-pgo-profiles'},
-
-    // js.zone-rules-based-time-zones
-    graalJs + common.postMerge + gateTags('zonerulesbasedtimezones')                                      + {name: 'js-zonerulesbasedtimezones'},
   ], platforms=[ci.mainGatePlatform]),
 
   // Benchmark builds; need to run on a benchmark machine
