@@ -2466,7 +2466,7 @@ public class JSRealm {
     }
 
     private void addStaticRegexResultProperties() {
-        if (context.isOptionRegexpStaticResultInContextInit()) {
+        if (context.isOptionRegexpStaticResult()) {
             if (context.isOptionNashornCompatibilityMode()) {
                 putRegExpStaticPropertyAccessor(null, Strings.INPUT);
                 putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpMultiLine, Strings.MULTILINE);
@@ -2512,7 +2512,7 @@ public class JSRealm {
         if (setterBuiltin != null) {
             assert Strings.equals(propertyName, Strings.INPUT) || Strings.equals(propertyName, Strings.$_);
             setter = JSFunction.create(this, setterBuiltin.createFunctionData(context));
-        } else if (context.isOptionV8CompatibilityModeInContextInit()) {
+        } else if (context.isOptionV8CompatibilityMode()) {
             // set empty setter for V8 compatibility, see testv8/mjsunit/regress/regress-5566.js
             TruffleString setterName = Strings.concat(Strings.SET_SPC, getterName);
             JSFunctionData setterData = context.getOrCreateBuiltinFunctionData(builtinKey,
@@ -2529,7 +2529,7 @@ public class JSRealm {
 
     public void setArguments(TruffleString[] arguments) {
         JSObjectUtil.defineDataProperty(context, getGlobalObject(), ARGUMENTS_NAME, JSArray.createConstant(context, this, arguments),
-                        context.isOptionV8CompatibilityModeInContextInit() ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable());
+                        context.isOptionV8CompatibilityMode() ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable());
     }
 
     public final JSDynamicObject getOrdinaryHasInstanceFunction() {

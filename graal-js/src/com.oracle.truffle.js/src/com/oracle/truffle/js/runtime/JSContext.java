@@ -1440,10 +1440,6 @@ public class JSContext {
         return optionRegexpStaticResult.get();
     }
 
-    public boolean isOptionRegexpStaticResultInContextInit() {
-        return optionRegexpStaticResult.getFromContext();
-    }
-
     public boolean isOptionSharedArrayBuffer() {
         return languageOptions.sharedArrayBuffer();
     }
@@ -1455,16 +1451,6 @@ public class JSContext {
     public boolean isOptionV8CompatibilityMode() {
         assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option v8-compat accessed during context pre-initialization.";
         return optionV8CompatibilityMode.get();
-    }
-
-    /**
-     * Returns whether the v8-compat option is set or not. This method is the same as
-     * {@link #isOptionV8CompatibilityMode()}, but it does not trigger an assertion error when used
-     * during context pre-initialization. It is meant to be used for taking decisions which can be
-     * undone during context-patching.
-     */
-    public boolean isOptionV8CompatibilityModeInContextInit() {
-        return optionV8CompatibilityMode.getFromContext();
     }
 
     @Idempotent
