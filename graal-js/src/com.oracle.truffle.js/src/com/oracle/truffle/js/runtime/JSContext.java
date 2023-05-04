@@ -168,7 +168,6 @@ public class JSContext {
     private final Evaluator evaluator;
 
     private final JavaScriptLanguage language;
-    private TruffleLanguage.Env initialEnvironment;
 
     private final Shape emptyShape;
     private final Shape emptyShapePrototypeInObject;
@@ -545,8 +544,6 @@ public class JSContext {
         this.optionV8CompatibilityMode = new StableContextOptionValue<>(JSContextOptions::isV8CompatibilityMode, JSContextOptions.V8_COMPATIBILITY_MODE, JSContextOptions.V8_COMPATIBILITY_MODE_NAME);
         this.optionDirectByteBuffer = new StableContextOptionValue<>(JSContextOptions::isDirectByteBuffer, JSContextOptions.DIRECT_BYTE_BUFFER, JSContextOptions.DIRECT_BYTE_BUFFER_NAME);
         this.optionTimerResolution = new StableContextOptionValue<>(JSContextOptions::getTimerResolution, JSContextOptions.TIMER_RESOLUTION, JSContextOptions.TIMER_RESOLUTION_NAME);
-
-        this.initialEnvironment = env;
 
         this.sharedRootNode = new SharedRootNode();
 
@@ -1265,14 +1262,6 @@ public class JSContext {
         return language;
     }
 
-    private TruffleLanguage.Env getInitialEnvironment() {
-        return initialEnvironment;
-    }
-
-    public void clearInitialEnvironment() {
-        this.initialEnvironment = null;
-    }
-
     public CallTarget getEmptyFunctionCallTarget() {
         return emptyFunctionCallTarget;
     }
@@ -1427,7 +1416,6 @@ public class JSContext {
     }
 
     public boolean isOptionIntl402() {
-        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option intl-402 accessed during context pre-initialization.";
         return languageOptions.intl402();
     }
 
@@ -1436,7 +1424,6 @@ public class JSContext {
     }
 
     public boolean isOptionRegexpStaticResult() {
-        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option static-regex-result accessed during context pre-initialization.";
         return optionRegexpStaticResult.get();
     }
 
@@ -1449,7 +1436,6 @@ public class JSContext {
     }
 
     public boolean isOptionV8CompatibilityMode() {
-        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option v8-compat accessed during context pre-initialization.";
         return optionV8CompatibilityMode.get();
     }
 
@@ -1463,7 +1449,6 @@ public class JSContext {
     }
 
     public boolean isOptionDirectByteBuffer() {
-        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option direct-byte-buffer accessed during context pre-initialization.";
         return optionDirectByteBuffer.get();
     }
 
@@ -1484,7 +1469,6 @@ public class JSContext {
     }
 
     public long getTimerResolution() {
-        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option timer-resolution accessed during context pre-initialization.";
         return optionTimerResolution.get();
     }
 

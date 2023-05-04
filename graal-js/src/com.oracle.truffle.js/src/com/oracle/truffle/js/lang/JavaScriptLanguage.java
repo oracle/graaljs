@@ -337,13 +337,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         if (context == null) {
             context = initLanguageContext(env);
         }
-        JSRealm realm = context.createRealm(env);
-
-        // make sure initial environment is cleared otherwise
-        // it might leak data
-        context.clearInitialEnvironment();
-
-        return realm;
+        return context.createRealm(env);
     }
 
     private synchronized JSContext initLanguageContext(Env env) {
