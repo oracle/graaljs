@@ -66,7 +66,6 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callNode;
     @Child private JSToIntegerThrowOnInfinityNode toIntegerThrowOnInfinityNode;
     @Child private JSToStringNode toStringNode;
-    private TruffleString cachedName;
 
     protected TemporalCalendarGetterNode(JSContext ctx) {
         this.ctx = ctx;
@@ -108,9 +107,8 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
         if (getMethodNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.getMethodNode = insert(GetMethodNode.create(ctx, name));
-            cachedName = name;
         }
-        assert cachedName.equals(name);
+        assert getMethodNode.getKey().equals(name);
         return getMethodNode.executeWithTarget(calendar);
     }
 }

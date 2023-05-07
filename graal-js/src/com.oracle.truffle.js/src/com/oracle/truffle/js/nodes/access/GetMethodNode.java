@@ -69,6 +69,10 @@ public abstract class GetMethodNode extends JavaScriptBaseNode {
         return GetMethodNodeGen.create(ctx, key);
     }
 
+    public final Object getKey() {
+        return cacheNode.getKey();
+    }
+
     public abstract Object executeWithTarget(Object target);
 
     @Specialization
