@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeFalse;
@@ -480,6 +481,73 @@ public class TestBindings {
 
         bindings2.remove("key");
         assertTrue((boolean) engine.eval("typeof key === 'undefined'"));
+    }
+
+    @Test
+    public void testEngineBinding() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        assertSame(engine, engine.eval("engine"));
+        assertSame(engine, engine.getBindings(ScriptContext.ENGINE_SCOPE).get("engine"));
+    }
+
+    @Test
+    public void testContextBinding() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        ScriptContext context = engine.getContext();
+        assertSame(context, engine.eval("context"));
+        assertSame(context, engine.getBindings(ScriptContext.ENGINE_SCOPE).get("context"));
+        ScriptContext anotherContext = new SimpleScriptContext();
+        assertSame(anotherContext, engine.eval("context", anotherContext));
+    }
+
+    public void testBindingOverride1(String name) throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put(name, "foo");
+        assertEquals("foo", engine.eval(name));
+    }
+
+    public void testBindingOverride2(String name) throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = new SimpleBindings();
+        bindings.put(name, "foo");
+        engine.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
+        assertEquals("foo", engine.eval(name));
+    }
+
+    public void testBindingOverride3(String name) throws ScriptException {
+        ScriptEngine engine = getEngine();
+        assertEquals("foo", engine.eval(name + " = 'foo'; " + name));
+    }
+
+    @Test
+    public void testEngineBindingOverride1() throws ScriptException {
+        testBindingOverride1("engine");
+    }
+
+    @Test
+    public void testEngineBindingOverride2() throws ScriptException {
+        testBindingOverride2("engine");
+    }
+
+    @Test
+    public void testEngineBindingOverride3() throws ScriptException {
+        testBindingOverride3("engine");
+    }
+
+    @Test
+    public void testContextBindingOverride1() throws ScriptException {
+        testBindingOverride1("context");
+    }
+
+    @Test
+    public void testContextBindingOverride2() throws ScriptException {
+        testBindingOverride2("context");
+    }
+
+    @Test
+    public void testContextBindingOverride3() throws ScriptException {
+        testBindingOverride3("context");
     }
 
 }
