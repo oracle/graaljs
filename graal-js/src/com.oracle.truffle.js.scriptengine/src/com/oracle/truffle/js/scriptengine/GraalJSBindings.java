@@ -48,6 +48,7 @@ import java.util.Set;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
+import javax.script.ScriptEngine;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.TypeLiteral;
@@ -69,16 +70,19 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
     private Context.Builder contextBuilder;
     // ScriptContext of the ScriptEngine where these bindings form ENGINE_SCOPE bindings
     private ScriptContext engineScriptContext;
+    private ScriptEngine engineBinding;
 
-    GraalJSBindings(Context.Builder contextBuilder, ScriptContext scriptContext) {
+    GraalJSBindings(Context.Builder contextBuilder, ScriptContext scriptContext, ScriptEngine engine) {
         this.contextBuilder = contextBuilder;
         this.engineScriptContext = scriptContext;
+        this.engineBinding = engine;
     }
 
-    GraalJSBindings(Context context, ScriptContext scriptContext) {
+    GraalJSBindings(Context context, ScriptContext scriptContext, ScriptEngine engine) {
         this.context = context;
-        initGlobal();
         this.engineScriptContext = scriptContext;
+        this.engineBinding = engine;
+        initGlobal();
     }
 
     private void requireContext() {
@@ -94,6 +98,27 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
 
     private void initGlobal() {
         this.global = GraalJSScriptEngine.evalInternal(context, "this").as(STRING_MAP);
+        updateEngineBinding();
+        updateContextBinding();
+    }
+
+    private void updateEngineBinding() {
+        updateBinding("engine", engineBinding);
+    }
+
+    private void updateContextBinding() {
+        if (engineScriptContext != null) {
+            updateBinding("context", engineScriptContext);
+        }
+    }
+
+    private void updateBinding(String key, Object value) {
+        String code = "(function(key, value) {" +
+                        "try {" +
+                        "    Object.defineProperty(this, key, { value: value, writable: true, configurable: true });" +
+                        "} catch (e) {}" +
+                        "})";
+        GraalJSScriptEngine.evalInternal(context, code).execute(key, value);
     }
 
     private Value deletePropertyFunction() {
@@ -194,6 +219,7 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
 
     void updateEngineScriptContext(ScriptContext scriptContext) {
         engineScriptContext = scriptContext;
+        updateContextBinding();
     }
 
 }

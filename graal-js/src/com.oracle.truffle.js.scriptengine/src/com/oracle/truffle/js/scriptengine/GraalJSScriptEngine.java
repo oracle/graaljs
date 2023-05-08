@@ -339,7 +339,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         }
         this.factory = (factory == null) ? new GraalJSEngineFactory(engineToUse) : factory;
         this.contextConfig = contextConfigToUse.option(JS_SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_OPTION, "true").engine(engineToUse);
-        this.context.setBindings(new GraalJSBindings(this.contextConfig, this.context), ScriptContext.ENGINE_SCOPE);
+        this.context.setBindings(new GraalJSBindings(this.contextConfig, this.context, this), ScriptContext.ENGINE_SCOPE);
     }
 
     private static void updateForNashornCompatibilityMode(Context.Builder builder) {
@@ -410,7 +410,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public Bindings createBindings() {
-        return new GraalJSBindings(contextConfig, null);
+        return new GraalJSBindings(contextConfig, null, this);
     }
 
     @Override
@@ -535,7 +535,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         if (engineB instanceof GraalJSBindings) {
             return ((GraalJSBindings) engineB);
         } else {
-            GraalJSBindings bindings = new GraalJSBindings(createContext(engineB), scriptContext);
+            GraalJSBindings bindings = new GraalJSBindings(createContext(engineB), scriptContext, this);
             bindings.putAll(engineB);
             return bindings;
         }
