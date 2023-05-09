@@ -45,7 +45,7 @@ local ci = import '../ci.jsonnet';
     run+: [
       ['mx', '--env', 'svm', 'build'],
       ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', '--env', 'svm', 'graalvm-home']],
-      ['${GRAALVM_HOME}/bin/node', '-e', 'console.log(\'Hello, World!\')'],
+      ['${GRAALVM_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
     ],
     timelimit: '45:00',
@@ -54,7 +54,7 @@ local ci = import '../ci.jsonnet';
   local gateVmSmokeTest = build + {
     run+: [
       ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
-      ['${GRAALVM_HOME}/bin/node', '-e', 'console.log(\'Hello, World!\')'],
+      ['${GRAALVM_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
     ],
     timelimit: '45:00',

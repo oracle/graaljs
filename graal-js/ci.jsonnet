@@ -42,7 +42,7 @@ local ci = import '../ci.jsonnet';
     run+: [
       ['mx', 'build'],
       ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
-      ['${GRAALVM_HOME}/bin/js', '--native', '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'],
+      ['${GRAALVM_HOME}/bin/js', '--native', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${GRAALVM_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
     ],
     timelimit: '30:00',
