@@ -555,7 +555,6 @@ def _prepare_svm_env():
     if libgraal_nodejs is None:
         mx.abort("Cannot find graal-nodejs library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(candidates))
     _setEnvVar('NODE_JVM_LIB', libgraal_nodejs)
-    _setEnvVar('ICU4J_DATA_PATH', join(mx.suite('graal-js').dir, 'lib', 'icu4j', 'icudt'))
 
 def mx_post_parse_cmd_line(args):
     mx_graal_nodejs_benchmark.register_nodejs_vms()
