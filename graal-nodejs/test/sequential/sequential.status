@@ -48,6 +48,10 @@ test-child-process-pass-fd: SKIP
 test-worker-fshandles-error-on-termination: SKIP
 test-worker-fshandles-open-close-on-termination: SKIP
 
+[$system==macos]
+# setrlimit to increase file descriptor limit failed, errno 22
+test-child-process-emfile: SKIP
+
 ### Graal-specific end ###
 
 [$system==win32]
