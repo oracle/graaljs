@@ -275,6 +275,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -2056,7 +2057,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 body = Strings.EMPTY_STRING;
             }
             TruffleString paramList = hasParamsProfile.profile(this, argc > 1) ? join(params) : Strings.EMPTY_STRING;
-            return swapPrototype(functionNode.executeFunction(Strings.toJavaString(paramList), Strings.toJavaString(body), getSourceName()), newTarget);
+            assert isCallerSensitive();
+            Node callNode = EvalNode.findCallNode(getRealm());
+            String sourceName = EvalNode.formatEvalOrigin(callNode, getContext(), Evaluator.FUNCTION_SOURCE_NAME);
+            ScriptOrModule activeScriptOrModule = EvalNode.findActiveScriptOrModule(callNode);
+            JSFunctionObject functionObj = functionNode.executeFunction(Strings.toJavaString(paramList), Strings.toJavaString(body), sourceName, activeScriptOrModule);
+            return swapPrototype(functionObj, newTarget);
         }
 
         @TruffleBoundary
@@ -2084,20 +2090,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
         }
 
-        private String getSourceName() {
-            String sourceName = null;
-            if (isCallerSensitive()) {
-                sourceName = EvalNode.findAndFormatEvalOrigin(getRealm().getCallNode(), getContext());
-            }
-            if (sourceName == null) {
-                sourceName = Evaluator.FUNCTION_SOURCE_NAME;
-            }
-            return sourceName;
-        }
-
         @Override
         public boolean isCallerSensitive() {
-            return getContext().isOptionV8CompatibilityMode();
+            return true;
         }
     }
 
@@ -2115,7 +2110,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.context = context;
         }
 
-        protected abstract JSFunctionObject executeFunction(String paramList, String body, String sourceName);
+        protected abstract JSFunctionObject executeFunction(String paramList, String body, String sourceName, ScriptOrModule activeScriptOrModule);
 
         protected static boolean equals(String a, String b) {
             return a.equals(b);
@@ -2128,14 +2123,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"equals(cachedParamList, paramList)", "equals(cachedBody, body)", "equals(cachedSourceName, sourceName)"}, limit = "1")
-        protected final JSFunctionObject doCached(String paramList, String body, String sourceName,
+        protected final JSFunctionObject doCached(String paramList, String body, String sourceName, ScriptOrModule activeScriptOrModule,
                         @Cached(value = "paramList") String cachedParamList,
                         @Cached(value = "body") String cachedBody,
                         @Cached(value = "sourceName") String cachedSourceName,
                         @Cached(value = "createAssumedValue()") AssumedValue<ScriptNode> cachedParsedFunction) {
             ScriptNode parsedFunction = cachedParsedFunction.get();
             if (parsedFunction == null) {
-                parsedFunction = parseFunction(paramList, body, sourceName);
+                parsedFunction = parseFunction(paramList, body, sourceName, activeScriptOrModule);
                 cachedParsedFunction.set(parsedFunction);
             }
 
@@ -2143,28 +2138,28 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(replaces = "doCached")
-        protected final JSFunctionObject doUncached(String paramList, String body, String sourceName,
+        protected final JSFunctionObject doUncached(String paramList, String body, String sourceName, ScriptOrModule activeScriptOrModule,
                         @Cached("createCache()") LRUCache<CachedSourceKey, ScriptNode> cache) {
-            ScriptNode cached = cacheLookup(cache, new CachedSourceKey(paramList, body, sourceName));
+            ScriptNode cached = cacheLookup(cache, paramList, body, sourceName, activeScriptOrModule);
             JSRealm realm = getRealm();
             if (cached == null) {
-                return parseAndEvalFunction(cache, realm, paramList, body, sourceName);
+                return parseAndEvalFunction(cache, realm, paramList, body, sourceName, activeScriptOrModule);
             } else {
                 return evalParsedFunction(realm, cached);
             }
         }
 
         @TruffleBoundary
-        protected ScriptNode cacheLookup(LRUCache<CachedSourceKey, ScriptNode> cache, CachedSourceKey sourceKey) {
+        protected ScriptNode cacheLookup(LRUCache<CachedSourceKey, ScriptNode> cache, String paramList, String body, String sourceName, ScriptOrModule activeScriptOrModule) {
             synchronized (cache) {
-                return cache.get(sourceKey);
+                return cache.get(new CachedSourceKey(paramList, body, sourceName, activeScriptOrModule));
             }
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        protected final ScriptNode parseFunction(String paramList, String body, String sourceName) {
+        protected final ScriptNode parseFunction(String paramList, String body, String sourceName, ScriptOrModule activeScriptOrModule) {
             CompilerAsserts.neverPartOfCompilation();
-            return context.getEvaluator().parseFunction(context, paramList, body, generatorFunction, asyncFunction, sourceName);
+            return context.getEvaluator().parseFunction(context, paramList, body, generatorFunction, asyncFunction, sourceName, activeScriptOrModule);
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
@@ -2173,10 +2168,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private JSFunctionObject parseAndEvalFunction(LRUCache<CachedSourceKey, ScriptNode> cache, JSRealm realm, String paramList, String body, String sourceName) {
-            ScriptNode parsedBody = parseFunction(paramList, body, sourceName);
+        private JSFunctionObject parseAndEvalFunction(LRUCache<CachedSourceKey, ScriptNode> cache, JSRealm realm, String paramList, String body, String sourceName,
+                        ScriptOrModule activeScriptOrModule) {
+            ScriptNode parsedBody = parseFunction(paramList, body, sourceName, activeScriptOrModule);
             synchronized (cache) {
-                cache.put(new CachedSourceKey(paramList, body, sourceName), parsedBody);
+                cache.put(new CachedSourceKey(paramList, body, sourceName, activeScriptOrModule), parsedBody);
             }
             return evalParsedFunction(realm, parsedBody);
         }
@@ -2185,32 +2181,49 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return new AssumedValue<>("parsedFunction", null);
         }
 
-        protected static class CachedSourceKey {
-            private final String body;
+        protected static final class CachedSourceKey {
             private final String paramList;
+            private final String body;
             private final String sourceName;
+            private final ScriptOrModule activeScriptOrModule;
 
-            CachedSourceKey(String paramList, String body, String sourceName) {
-                this.body = body;
+            protected CachedSourceKey(String paramList, String body, String sourceName, ScriptOrModule activeScriptOrModule) {
                 this.paramList = paramList;
+                this.body = body;
                 this.sourceName = sourceName;
+                this.activeScriptOrModule = activeScriptOrModule;
+            }
+
+            public String paramList() {
+                return paramList;
+            }
+
+            public String body() {
+                return body;
+            }
+
+            public String sourceName() {
+                return sourceName;
+            }
+
+            public ScriptOrModule activeScriptOrModule() {
+                return activeScriptOrModule;
             }
 
             @Override
-            public boolean equals(Object o) {
-                if (!(o instanceof CachedSourceKey)) {
-                    return false;
-                }
-                CachedSourceKey k = (CachedSourceKey) o;
-                return k.body.equals(body) && k.paramList.equals(paramList) && k.sourceName.equals(sourceName);
+            public boolean equals(Object obj) {
+                return this == obj || (obj instanceof CachedSourceKey that &&
+                                Objects.equals(this.paramList, that.paramList) &&
+                                Objects.equals(this.body, that.body) &&
+                                Objects.equals(this.sourceName, that.sourceName) &&
+                                Objects.equals(this.activeScriptOrModule, that.activeScriptOrModule));
             }
 
             @Override
             public int hashCode() {
-                return Objects.hash(body, paramList, sourceName);
+                return Objects.hash(paramList, body, sourceName, activeScriptOrModule);
             }
         }
-
     }
 
     /**

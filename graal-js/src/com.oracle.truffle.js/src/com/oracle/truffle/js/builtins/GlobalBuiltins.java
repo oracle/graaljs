@@ -148,6 +148,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -1264,15 +1265,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @TruffleBoundary(transferToInterpreterOnException = false)
         private ScriptNode parseIndirectEval(JSRealm realm, String sourceCode) {
-            String sourceName = null;
-            if (isCallerSensitive()) {
-                sourceName = EvalNode.findAndFormatEvalOrigin(realm.getCallNode(), realm.getContext());
-            }
-            if (sourceName == null) {
-                sourceName = Evaluator.EVAL_SOURCE_NAME;
-            }
-            Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, sourceName).build();
-            return getContext().getEvaluator().parseEval(getContext(), this, source);
+            assert isCallerSensitive();
+            Node caller = EvalNode.findCallNode(realm);
+            String sourceName = EvalNode.formatEvalOrigin(caller, getContext(), Evaluator.EVAL_SOURCE_NAME);
+            ScriptOrModule activeScriptOrModule = EvalNode.findActiveScriptOrModule(caller);
+            Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, sourceName).cached(false).build();
+            return getContext().getEvaluator().parseEval(getContext(), this, source, activeScriptOrModule);
         }
 
         @Specialization
@@ -1317,7 +1315,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Override
         public boolean isCallerSensitive() {
-            return getContext().isOptionV8CompatibilityMode();
+            return true;
         }
     }
 

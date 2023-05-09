@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,7 @@ public interface Evaluator {
      *
      * @param lastNode the node invoking the eval or {@code null}
      */
-    ScriptNode parseEval(JSContext context, Node lastNode, Source code);
+    ScriptNode parseEval(JSContext context, Node lastNode, Source code, ScriptOrModule activeScriptOrModule);
 
     /**
      * Parse direct eval code using the local execution context.
@@ -121,7 +121,7 @@ public interface Evaluator {
     /**
      * Parse function using parameter list and body, to be used by the {@code Function} constructor.
      */
-    ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName);
+    ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName, ScriptOrModule activeScriptOrModule);
 
     default ScriptNode parseScript(JSContext context, Source source) {
         return parseScript(context, source, "", "", context.getParserOptions().isStrict());

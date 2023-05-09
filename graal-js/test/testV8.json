@@ -823,10 +823,6 @@
     "status" : "FAIL",
     "comment" : "test expects exact error message"
   }, {
-    "filePath" : "mjsunit/harmony/modules-import-16.mjs",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate"
-  }, {
     "filePath" : "mjsunit/harmony/private-accessors.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"

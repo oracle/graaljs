@@ -49,7 +49,6 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -223,11 +222,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     protected final List<String> argumentNames;
     protected final int sourceLength;
     protected final int prologLength;
+    protected final ScriptOrModule activeScriptOrModule;
     private final boolean isParentStrict;
-    private Consumer<ScriptOrModule> scriptOrModuleResolver;
 
     protected GraalJSTranslator(LexicalContext lc, NodeFactory factory, JSContext context, Source source, List<String> argumentNames, int prologLength, Environment environment,
-                    boolean isParentStrict) {
+                    boolean isParentStrict, ScriptOrModule scriptOrModule) {
         super(lc);
         this.context = context;
         this.environment = environment;
@@ -237,6 +236,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         this.isParentStrict = isParentStrict;
         this.sourceLength = source.getCharacters().length();
         this.prologLength = prologLength;
+        this.activeScriptOrModule = scriptOrModule;
     }
 
     protected final JavaScriptNode transform(com.oracle.js.parser.ir.Node node) {
@@ -317,12 +317,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     protected abstract GraalJSTranslator newTranslator(Environment env, LexicalContext savedLC);
-
-    protected final void resolveScriptOrModule(ScriptOrModule scriptOrModule) {
-        if (scriptOrModuleResolver != null) {
-            scriptOrModuleResolver.accept(scriptOrModule);
-        }
-    }
 
     // ---
 
@@ -464,6 +458,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (functionNode.isAsync() && !functionNode.isGenerator()) {
             ensureHasSourceSection(body, functionNode);
             body = handleAsyncFunctionBody(body);
+            ensureHasSourceSection(body, functionNode);
         }
 
         if (!declarations.isEmpty()) {
@@ -514,11 +509,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         SourceSection functionSourceSection = createSourceSection(functionNode);
         FunctionBodyNode functionBody = factory.createFunctionBody(body);
         FunctionRootNode functionRoot = factory.createFunctionRootNode(functionBody, environment.getFunctionFrameDescriptor().toFrameDescriptor(), functionData, functionSourceSection,
-                        currentFunction.getInternalFunctionName());
-
-        if (currentFunction.isScriptOrModule()) {
-            scriptOrModuleResolver = currentFunction.getScriptOrModuleResolver();
-        }
+                        activeScriptOrModule, currentFunction.getInternalFunctionName());
 
         if (JSConfig.PrintAst) {
             printAST(functionRoot);
@@ -534,8 +525,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      * @see #splitModuleBodyAtYield
      */
     private FunctionRootNode createModuleRoot(FunctionNode functionNode, JSFunctionData functionData, FunctionEnvironment currentFunction, JavaScriptNode body) {
-        scriptOrModuleResolver = currentFunction.getScriptOrModuleResolver();
-
         if (JSConfig.PrintAst) {
             printAST(body);
         }
@@ -562,7 +551,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     FunctionBodyNode linkBody = factory.createFunctionBody(linkBlock);
                     FunctionBodyNode evalBody = factory.createFunctionBody(evalBlock);
                     return factory.createModuleRootNode(linkBody, evalBody, environment.getFunctionFrameDescriptor().toFrameDescriptor(), functionData,
-                                    moduleSourceSection, internalFunctionName);
+                                    moduleSourceSection, activeScriptOrModule, internalFunctionName);
                 }
             }
         }
@@ -571,7 +560,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         currentFunction.addYield(); // yield has not been added yet.
         FunctionBodyNode generatorBody = factory.createFunctionBody(handleModuleBody(body));
         return factory.createModuleRootNode(generatorBody, generatorBody, environment.getFunctionFrameDescriptor().toFrameDescriptor(), functionData,
-                        moduleSourceSection, internalFunctionName);
+                        moduleSourceSection, activeScriptOrModule, internalFunctionName);
     }
 
     private static void printAST(Node functionRoot) {
@@ -600,7 +589,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JSWriteFrameSlotNode writeContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
         JSReadFrameSlotNode readContextNode = (JSReadFrameSlotNode) asyncContextVar.createReadNode();
         JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
-        return factory.createAsyncFunctionBody(context, instrumentedBody, writeContextNode, readContextNode, writeResultNode);
+        return factory.createAsyncFunctionBody(context, instrumentedBody, writeContextNode, readContextNode, writeResultNode,
+                        createSourceSection(lc.getCurrentFunction()), currentFunction().getExplicitOrInternalFunctionName(), activeScriptOrModule);
     }
 
     /**
@@ -625,7 +615,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef yieldVar = environment.findYieldValueVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         JSReadFrameSlotNode readYieldResultNode = JSConfig.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
-        return factory.createGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode);
+        return factory.createGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode,
+                        createSourceSection(lc.getCurrentFunction()), currentFunction().getExplicitOrInternalFunctionName(), activeScriptOrModule);
     }
 
     private JavaScriptNode handleAsyncGeneratorBody(JavaScriptNode body) {
@@ -637,7 +628,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JSReadFrameSlotNode readAsyncContextNode = (JSReadFrameSlotNode) asyncContextVar.createReadNode();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         JSReadFrameSlotNode readYieldResultNode = JSConfig.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
-        return factory.createAsyncGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode, writeAsyncContextNode, readAsyncContextNode);
+        return factory.createAsyncGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode, writeAsyncContextNode, readAsyncContextNode,
+                        createSourceSection(lc.getCurrentFunction()), currentFunction().getExplicitOrInternalFunctionName(), activeScriptOrModule);
     }
 
     private JavaScriptNode handleModuleBody(JavaScriptNode body) {
@@ -648,7 +640,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             VarRef yieldVar = environment.findAsyncResultVar();
             JSWriteFrameSlotNode writeAsyncContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
             JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
-            return factory.createTopLevelAsyncModuleBody(context, instrumentedBody, writeYieldValueNode, writeAsyncContextNode);
+            return factory.createTopLevelAsyncModuleBody(context, instrumentedBody, writeYieldValueNode, writeAsyncContextNode,
+                            createSourceSection(lc.getCurrentFunction()), activeScriptOrModule);
         } else {
             JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
             return factory.createModuleBody(instrumentedBody);
@@ -1867,10 +1860,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return environment.findActiveModule().createReadNode();
     }
 
-    private JavaScriptNode getActiveScriptOrModule() {
-        return environment.findActiveScriptOrModule().createReadNode();
-    }
-
     private VarRef findScopeVar(TruffleString name, boolean skipWith) {
         return environment.findVar(name, skipWith);
     }
@@ -2640,7 +2629,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode createCallEvalNode(JavaScriptNode function, JavaScriptNode[] args) {
         assert (currentFunction().isGlobal() || currentFunction().isStrictMode() || currentFunction().isDirectEval()) || currentFunction().isDynamicallyScoped();
         currentFunction().prepareForDirectEval();
-        return EvalNode.create(context, function, args, createThisNodeUnchecked(), new DirectEvalContext(lc.getCurrentScope(), environment, lc.getCurrentClass()),
+        return EvalNode.create(context, function, args, createThisNodeUnchecked(),
+                        new DirectEvalContext(lc.getCurrentScope(), environment, lc.getCurrentClass(), activeScriptOrModule),
                         environment.getCurrentBlockScopeSlot());
     }
 
@@ -2659,7 +2649,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
         assert args.length == 1 || (context.getContextOptions().isImportAssertions() && args.length == 2);
-        JavaScriptNode activeScriptOrModule = getActiveScriptOrModule();
         if (context.getContextOptions().isImportAssertions() && args.length == 2) {
             return factory.createImportCall(context, args[0], activeScriptOrModule, args[1]);
         }
