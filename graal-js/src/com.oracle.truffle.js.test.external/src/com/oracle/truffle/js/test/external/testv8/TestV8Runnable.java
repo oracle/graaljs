@@ -81,6 +81,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
     private static final String HARMONY_TEMPORAL = "--harmony-temporal";
     private static final String HARMONY_SHADOW_REALM = "--harmony-shadow-realm";
+    private static final String HARMONY_REGEXP_UNICODE_SETS = "--harmony-regexp-unicode-sets";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
@@ -102,7 +103,6 @@ public class TestV8Runnable extends TestRunnable {
                     "--expose-fast-api",
                     "--harmony-json-parse-with-source",
                     "--harmony-rab-gsab",
-                    "--harmony-regexp-unicode-sets",
                     "--harmony-struct",
                     "--wasm-staging"
     });
@@ -202,6 +202,9 @@ public class TestV8Runnable extends TestRunnable {
         }
         if (flags.contains(HARMONY_SHADOW_REALM)) {
             extraOptions.put(JSContextOptions.SHADOW_REALM_NAME, "true");
+        }
+        if (flags.contains(HARMONY_REGEXP_UNICODE_SETS)) {
+            extraOptions.put(JSContextOptions.REGEXP_UNICODE_SETS_NAME, "true");
         }
 
         if (supported) {
