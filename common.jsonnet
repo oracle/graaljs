@@ -87,7 +87,7 @@ targets +
     },
   },
 
-  gateCmd:: ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.SuppressWarnings=truffle', '--strict-mode'],
+  gateCmd:: ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.SuppressWarnings=truffle'],
   gateCmdWithTags:: self.gateCmd + ['--tags', '${TAGS}'],
 
   build:: {
@@ -110,11 +110,13 @@ targets +
   },
 
   gateStyleFullBuild:: common.deps.pylint + common.deps.eclipse + common.deps.jdt + {
+    # GR-45482 SpotBugs does not run on JDK 21.
+    local strict = !('jdk' in self && self.jdk == 'jdk21'),
     environment+: {
       TAGS: 'style,fullbuild',
     },
     run+: [
-      $.gateCmdWithTags,
+      $.gateCmdWithTags + (if strict then ['--strict-mode'] else []),
     ],
     timelimit: '45:00',
   },
