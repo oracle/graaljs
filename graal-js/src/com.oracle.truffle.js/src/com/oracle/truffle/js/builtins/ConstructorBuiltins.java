@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.truffle.api.Assumption;
@@ -2139,7 +2140,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(replaces = "doCached")
         protected final JSFunctionObject doUncached(String paramList, String body, String sourceName, ScriptOrModule activeScriptOrModule,
                         @Cached("createCache()") LRUCache<CachedSourceKey, ScriptNode> cache) {
-            ScriptNode cached = cacheLookup(cache, new CachedSourceKey(paramList, body, sourceName, activeScriptOrModule));
+            ScriptNode cached = cacheLookup(cache, paramList, body, sourceName, activeScriptOrModule);
             JSRealm realm = getRealm();
             if (cached == null) {
                 return parseAndEvalFunction(cache, realm, paramList, body, sourceName, activeScriptOrModule);
@@ -2149,9 +2150,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @TruffleBoundary
-        protected ScriptNode cacheLookup(LRUCache<CachedSourceKey, ScriptNode> cache, CachedSourceKey sourceKey) {
+        protected ScriptNode cacheLookup(LRUCache<CachedSourceKey, ScriptNode> cache, String paramList, String body, String sourceName, ScriptOrModule activeScriptOrModule) {
             synchronized (cache) {
-                return cache.get(sourceKey);
+                return cache.get(new CachedSourceKey(paramList, body, sourceName, activeScriptOrModule));
             }
         }
 
@@ -2180,7 +2181,48 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return new AssumedValue<>("parsedFunction", null);
         }
 
-        protected record CachedSourceKey(String paramList, String body, String sourceName, ScriptOrModule activeScriptOrModule) {
+        protected static final class CachedSourceKey {
+            private final String paramList;
+            private final String body;
+            private final String sourceName;
+            private final ScriptOrModule activeScriptOrModule;
+
+            protected CachedSourceKey(String paramList, String body, String sourceName, ScriptOrModule activeScriptOrModule) {
+                this.paramList = paramList;
+                this.body = body;
+                this.sourceName = sourceName;
+                this.activeScriptOrModule = activeScriptOrModule;
+            }
+
+            public String paramList() {
+                return paramList;
+            }
+
+            public String body() {
+                return body;
+            }
+
+            public String sourceName() {
+                return sourceName;
+            }
+
+            public ScriptOrModule activeScriptOrModule() {
+                return activeScriptOrModule;
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                return this == obj || (obj instanceof CachedSourceKey that &&
+                                Objects.equals(this.paramList, that.paramList) &&
+                                Objects.equals(this.body, that.body) &&
+                                Objects.equals(this.sourceName, that.sourceName) &&
+                                Objects.equals(this.activeScriptOrModule, that.activeScriptOrModule));
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(paramList, body, sourceName, activeScriptOrModule);
+            }
         }
     }
 
