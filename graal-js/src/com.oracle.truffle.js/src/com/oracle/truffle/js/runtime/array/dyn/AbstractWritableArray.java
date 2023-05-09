@@ -872,6 +872,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 int newUsedLength = (int) (usedLength - internalArrayShift);
                 long newIndexOffset = indexOffset - from;
                 int newArrayOffset = (int) (arrayOffset + internalArrayShift);
+                fillWithHoles(getArrayObject(object), arrayOffset, newArrayOffset);
                 setArrayProperties(object, newLength, newUsedLength, newIndexOffset, newArrayOffset);
                 return this;
             }
