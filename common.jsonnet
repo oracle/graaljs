@@ -9,7 +9,7 @@ local common = (import "ci/common.jsonnet");
     jdk:: 'jdk20',
   },
 
-  jdk21:: common.jdks["oraclejdk21"] + {
+  jdk21:: common.jdks["labsjdk-ee-21"] + {
     jdk:: 'jdk21',
   },
 
