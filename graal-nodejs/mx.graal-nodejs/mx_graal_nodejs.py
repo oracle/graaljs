@@ -187,7 +187,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         built = post_ts.isNewerThan(pre_ts)
         if built and _current_os == 'darwin':
             nodePath = join(self._build_dir, 'node')
-            _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'jre', 'lib'), '-add_rpath', join(_java_home(), 'lib'), nodePath], print_cmd=True, env=build_env)
+            _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'lib'), nodePath], print_cmd=True, env=build_env)
         return built
 
     def needsBuild(self, newestInput):
