@@ -28,7 +28,10 @@ local ci = import '../ci.jsonnet';
   local build = {
     run+: [
       ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac'], // build only if no artifact is being used
-    ],
+    ] + (if 'os' in self && self.os == 'darwin' then [
+      # Ensure correct LC_RPATH
+      ['install_name_tool', '-add_rpath', '${JAVA_HOME}/lib', 'out/Release/node', '||', 'true'],
+    ] else []),
   },
 
   local defaultGateTags = gateTags('all') + {
