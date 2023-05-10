@@ -64,23 +64,23 @@ public record JSParserOptions(boolean strict,
                 boolean topLevelAwait,
                 boolean v8Intrinsics) {
 
-    public static JSParserOptions fromOptions(JSContextOptions contextOpts) {
-        int ecmaScriptVersion = contextOpts.getEcmaScriptVersion();
-        boolean strict = contextOpts.isStrict();
-        boolean scripting = contextOpts.isScripting();
-        boolean shebang = contextOpts.isShebang();
-        boolean syntaxExtensions = contextOpts.isSyntaxExtensions();
-        boolean constAsVar = contextOpts.isConstAsVar();
-        boolean functionStatementError = contextOpts.isFunctionStatementError();
+    public static JSParserOptions fromLanguageOptions(JSLanguageOptions options) {
+        int ecmaScriptVersion = options.ecmaScriptVersion();
+        boolean strict = options.strict();
+        boolean scripting = options.scripting();
+        boolean shebang = options.shebang();
+        boolean syntaxExtensions = options.syntaxExtensions();
+        boolean constAsVar = options.constAsVar();
+        boolean functionStatementError = options.functionStatementError();
         boolean dumpOnError = false;
         boolean emptyStatements = false;
-        boolean annexB = contextOpts.isAnnexB();
-        boolean allowBigInt = contextOpts.isBigInt();
-        boolean classFields = contextOpts.isClassFields();
-        boolean importAssertions = contextOpts.isImportAssertions();
-        boolean privateFieldsIn = contextOpts.isPrivateFieldsIn();
-        boolean topLevelAwait = contextOpts.isTopLevelAwait();
-        boolean v8Intrinsics = contextOpts.isV8Intrinsics();
+        boolean annexB = options.annexB();
+        boolean allowBigInt = options.bigInt();
+        boolean classFields = options.classFields();
+        boolean importAssertions = options.importAssertions();
+        boolean privateFieldsIn = options.privateFieldsIn();
+        boolean topLevelAwait = options.topLevelAwait();
+        boolean v8Intrinsics = options.v8Intrinsics();
         return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
                         classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
     }

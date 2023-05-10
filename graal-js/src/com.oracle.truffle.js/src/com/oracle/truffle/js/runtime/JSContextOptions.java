@@ -653,22 +653,16 @@ public final class JSContextOptions {
     JSContextOptions(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
         this.optionValues = optionValues;
         setOptionValues(sandboxPolicy, optionValues);
-        assert this.parserOptions != null;
     }
 
     public static JSContextOptions fromOptionValues(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
         return new JSContextOptions(sandboxPolicy, optionValues);
     }
 
-    public JSParserOptions getParserOptions() {
-        return parserOptions;
-    }
-
     public void setOptionValues(SandboxPolicy sandboxPolicy, OptionValues newOptions) {
         CompilerAsserts.neverPartOfCompilation();
         optionValues = newOptions;
         cacheOptions(sandboxPolicy);
-        parserOptions = JSParserOptions.fromOptions(this);
     }
 
     private void cacheOptions(SandboxPolicy sandboxPolicy) {

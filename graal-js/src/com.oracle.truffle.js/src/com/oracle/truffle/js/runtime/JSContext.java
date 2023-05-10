@@ -398,6 +398,7 @@ public class JSContext {
     @CompilationFinal private AllocationReporter allocationReporter;
 
     private final JSLanguageOptions languageOptions;
+    private final JSParserOptions parserOptions;
 
     private final StableContextOptionValue<Boolean> optionRegexpStaticResult;
     private final StableContextOptionValue<Boolean> optionV8CompatibilityMode;
@@ -535,6 +536,7 @@ public class JSContext {
     protected JSContext(Evaluator evaluator, JavaScriptLanguage lang, JSLanguageOptions languageOptions, TruffleLanguage.Env env) {
         this.language = lang;
         this.languageOptions = languageOptions;
+        this.parserOptions = JSParserOptions.fromLanguageOptions(languageOptions);
 
         if (env != null) { // env could still be null
             setAllocationReporter(env);
@@ -720,7 +722,7 @@ public class JSContext {
     }
 
     public final JSParserOptions getParserOptions() {
-        return languageOptions.parserOptions();
+        return parserOptions;
     }
 
     public final Object getEmbedderData() {

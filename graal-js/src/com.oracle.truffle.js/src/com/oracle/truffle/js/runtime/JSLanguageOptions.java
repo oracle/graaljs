@@ -54,8 +54,9 @@ import com.oracle.truffle.js.runtime.JSContextOptions.UnhandledRejectionsTrackin
  * @see JSContextOptions
  * @see JSParserOptions
  */
-public record JSLanguageOptions(JSParserOptions parserOptions,
+public record JSLanguageOptions(
                 int ecmaScriptVersion,
+                boolean strict,
                 boolean annexB,
                 boolean intl402,
                 boolean regexpMatchIndices,
@@ -115,6 +116,12 @@ public record JSLanguageOptions(JSParserOptions parserOptions,
                 boolean esmBareSpecifierRelativeLookup,
                 boolean scopeOptimization,
                 boolean bigInt,
+                boolean classFields,
+                boolean shebang,
+                boolean syntaxExtensions,
+                boolean scripting,
+                boolean functionStatementError,
+                boolean constAsVar,
                 boolean profileTime,
                 String locale) {
 
@@ -124,9 +131,9 @@ public record JSLanguageOptions(JSParserOptions parserOptions,
 
     public static JSLanguageOptions fromContextOptions(JSContextOptions options) {
         CompilerAsserts.neverPartOfCompilation();
-        JSParserOptions parserOptions = options.getParserOptions();
         boolean nashornCompatibilityMode = options.isNashornCompatibilityMode();
         int ecmascriptVersion = options.getEcmaScriptVersion();
+        boolean strict = options.isStrict();
         boolean annexB = options.isAnnexB();
         boolean intl402 = options.isIntl402();
         boolean regexpMatchIndices = options.isRegexpMatchIndices();
@@ -185,11 +192,18 @@ public record JSLanguageOptions(JSParserOptions parserOptions,
         boolean scopeOptimization = options.isScopeOptimization();
         boolean v8Intrinsics = options.isV8Intrinsics();
         boolean bigInt = options.isBigInt();
+        boolean classFields = options.isClassFields();
+        boolean shebang = options.isShebang();
+        boolean syntaxExtensions = options.isSyntaxExtensions();
+        boolean scripting = options.isScripting();
+        boolean functionStatementError = options.isFunctionStatementError();
+        boolean constAsVar = options.isConstAsVar();
         boolean profileTime = options.isProfileTime();
         String locale = options.getLocale();
 
-        return new JSLanguageOptions(parserOptions,
+        return new JSLanguageOptions(
                         ecmascriptVersion,
+                        strict,
                         annexB,
                         intl402,
                         regexpMatchIndices,
@@ -249,6 +263,12 @@ public record JSLanguageOptions(JSParserOptions parserOptions,
                         esmBareSpecifierRelativeLookup,
                         scopeOptimization,
                         bigInt,
+                        classFields,
+                        shebang,
+                        syntaxExtensions,
+                        scripting,
+                        functionStatementError,
+                        constAsVar,
                         profileTime,
                         locale);
     }
