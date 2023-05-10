@@ -45,12 +45,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.function.Consumer;
 
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -72,7 +72,7 @@ import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedJSObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedObjectArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
@@ -144,9 +144,8 @@ public class InternalArrayTest extends JSTest {
 
     @Test
     public void testSimpleArraySetTest4() {
-        Object result = testHelper.runNoPolyglot("function fn() { var a = [1,2,3,4,5]; a[1] = -2; return a; } fn()");
-        // assertTrue(Arrays.equals(new Object[] { 1, -2, 3, 4, 5 }, (Object[])result));
-        var array = (JSArrayObject) result;
+        var array = testHelper.runJSArray("function fn() { var a = [1,2,3,4,5]; a[1] = -2; return a; } fn()");
+        assertTrue(Arrays.equals(new Object[]{1, -2, 3, 4, 5}, JSArray.toArray(array)));
         for (int i = 0; i < 5; i++) {
             assertEquals(i != 1 ? i + 1 : -2, JSObject.get(array, i));
         }
@@ -311,21 +310,21 @@ public class InternalArrayTest extends JSTest {
         var result = testHelper.runJSArray(script);
         Object[] arr = JSObject.getArray(result).toArray(result);
         assertEquals(5, arr.length);
-        assertTrue(arr[0] instanceof DynamicObject);
-        assertTrue(arr[1] instanceof DynamicObject);
-        assertTrue(arr[2] instanceof DynamicObject);
-        assertTrue(arr[3] instanceof DynamicObject);
-        assertTrue(arr[4] instanceof DynamicObject);
+        assertTrue(arr[0] instanceof JSDynamicObject);
+        assertTrue(arr[1] instanceof JSDynamicObject);
+        assertTrue(arr[2] instanceof JSDynamicObject);
+        assertTrue(arr[3] instanceof JSDynamicObject);
+        assertTrue(arr[4] instanceof JSDynamicObject);
     }
 
     @Test
     public void testObjectConstructorWithSize() {
-        // tests wheter the ObjectArray(int capacity) sets the length correctly
+        // tests whether the ObjectArray(int capacity) sets the length correctly
         String script = "var o = {}; var a = [1,2]; a[0] = undefined; a[1] = undefined; a[0]=o; a;";
         var result = testHelper.runJSArray(script);
         Object[] arr = JSObject.getArray(result).toArray(result);
         assertEquals(2, arr.length);
-        assertTrue(arr[0] instanceof DynamicObject);
+        assertTrue(arr[0] instanceof JSDynamicObject);
         assertEquals(Undefined.instance, arr[1]);
     }
 
@@ -638,6 +637,7 @@ public class InternalArrayTest extends JSTest {
      */
     @Test
     public void testTypedArrayConstructorToIntegerConversion() {
+        // This assertion only serves to document an invariant expected by this test.
         assert testHelper.getJSContext().getLanguageOptions().maxTypedArrayLength() <= Integer.MAX_VALUE;
         // We throw a RangeError if length is too big (> MaxTypedArrayLength).
         // If length were incorrectly cast to int32, we'd allocate an array with 4 elements.
