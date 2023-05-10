@@ -3,7 +3,9 @@ local ci = import '../ci.jsonnet';
 
 {
   local graalJs = ci.jobtemplate + {
-    cd:: 'graal-js'
+    cd:: 'graal-js',
+    // increase default timelimit on windows and darwin-amd64
+    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:15:00' else '45:00',
   },
 
   local compiler = {suiteimports+:: ['compiler']},
@@ -14,8 +16,6 @@ local ci = import '../ci.jsonnet';
     environment+: {
       TAGS: tags,
     },
-    // increase default timelimit on windows and darwin-amd64
-    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:15:00' else '45:00',
   },
 
   local gateCoverage = {
@@ -76,7 +76,6 @@ local ci = import '../ci.jsonnet';
       ['set-export', 'NATIVE_IMAGES', 'native-image'],
       ['mx', '--dynamicimports', '/graal-js,/substratevm', 'gate', '--no-warning-as-error', '--strict-mode', '--tags', 'build,svm-truffle-tck-js'],
     ],
-    timelimit: '45:00',
   },
 
   local downstreamSubstratevmEE = checkoutJsBenchmarks + ee + {
@@ -84,7 +83,6 @@ local ci = import '../ci.jsonnet';
     run+: [
       ['mx', 'gate', '--all-suites', '--no-warning-as-error', '--strict-mode', '--tags', 'build,${TAGS}'],
     ],
-    timelimit: '45:00',
   },
 
   local interopJmhBenchmarks = common.buildCompiler + {
@@ -92,7 +90,6 @@ local ci = import '../ci.jsonnet';
         ['mx', '--dynamicimports', '/compiler', '--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', 'js-interop-jmh:JS_INTEROP_MICRO_BENCHMARKS', '--', '-Dpolyglot.engine.TraceCompilation=true'],
         ['bench-uploader.py', 'bench-results.json'],
     ],
-    timelimit: '30:00',
   },
 
   local auxEngineCache = {

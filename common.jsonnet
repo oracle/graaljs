@@ -106,7 +106,7 @@ targets +
     run+: [
       $.gateCmdWithTags,
     ],
-    timelimit: '45:00',
+    timelimit: if 'timelimit' in super then super.timelimit else '45:00',
   },
 
   gateStyleFullBuild:: common.deps.pylint + common.deps.eclipse + common.deps.jdt + {
@@ -118,6 +118,6 @@ targets +
     run+: [
       $.gateCmdWithTags + (if strict then ['--strict-mode'] else []),
     ],
-    timelimit: '45:00',
+    timelimit: if 'timelimit' in super then super.timelimit else '45:00',
   },
 }

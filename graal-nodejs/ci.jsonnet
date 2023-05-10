@@ -4,6 +4,8 @@ local ci = import '../ci.jsonnet';
 {
   local graalNodeJs = ci.jobtemplate + {
     cd:: 'graal-nodejs',
+    // increase default timelimit on windows and darwin-amd64
+    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:15:00' else '45:00',
   },
 
   local ce = ci.ce,
@@ -21,8 +23,6 @@ local ci = import '../ci.jsonnet';
     environment+: {
       TAGS: tags,
     },
-    // increase default timelimit on windows and darwin-amd64
-    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:15:00' else '45:00',
   },
 
   local build = {
@@ -48,7 +48,6 @@ local ci = import '../ci.jsonnet';
       ['${GRAALVM_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
     ],
-    timelimit: '45:00',
   },
 
   local gateVmSmokeTest = build + {
@@ -57,7 +56,6 @@ local ci = import '../ci.jsonnet';
       ['${GRAALVM_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
     ],
-    timelimit: '45:00',
   },
 
   local gateCoverage = {
