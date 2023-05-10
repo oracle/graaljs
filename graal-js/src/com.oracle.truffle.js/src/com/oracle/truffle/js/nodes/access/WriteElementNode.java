@@ -1246,7 +1246,7 @@ public class WriteElementNode extends JSTargetableNode {
                 if (!containsHoles && supportedNotContainsHolesIf.profile(this, holesIntArray.isSupported(target, index))) {
                     toArrayType = holesIntArray.toNonHoles(target, index, intValue);
                 } else {
-                    assert holesIntArray.isSparse(target, index);
+                    assert holesIntArray.isSparse(target, index) || HolesIntArray.isHoleValue(intValue);
                     toArrayType = holesIntArray.toSparse(target, index, intValue);
                 }
                 return setArrayAndWrite(toArrayType, target, index, intValue, root);
@@ -1336,7 +1336,7 @@ public class WriteElementNode extends JSTargetableNode {
                 if (!containsHoles && supportedNotContainsHolesIf.profile(this, holesDoubleArray.isSupported(target, index))) {
                     toArrayType = holesDoubleArray.toNonHoles(target, index, doubleValue);
                 } else {
-                    assert holesDoubleArray.isSparse(target, index);
+                    assert holesDoubleArray.isSparse(target, index) || HolesDoubleArray.isHoleValue(doubleValue);
                     toArrayType = holesDoubleArray.toSparse(target, index, doubleValue);
                 }
                 return setArrayAndWrite(toArrayType, target, index, doubleValue, root);
