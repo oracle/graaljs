@@ -84,8 +84,8 @@ public abstract class JavaScriptBaseNode extends Node {
     }
 
     protected final boolean hasOverloadedOperators(Object obj) {
-        assert !JSGuards.hasOverloadedOperators(obj) || getLanguage().getJSContext().getContextOptions().isOperatorOverloading();
-        return (CompilerDirectives.inInterpreter() || getLanguage().getJSContext().getContextOptions().isOperatorOverloading()) &&
+        assert !JSGuards.hasOverloadedOperators(obj) || getLanguage().getJSContext().getLanguageOptions().operatorOverloading();
+        return (CompilerDirectives.inInterpreter() || getLanguage().getJSContext().getLanguageOptions().operatorOverloading()) &&
                         JSGuards.hasOverloadedOperators(obj);
     }
 

@@ -362,7 +362,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         boolean functionMode = !isGlobal || (isStrict && isIndirectEval);
 
-        boolean lazyTranslation = context.getContextOptions().isLazyTranslation() && functionMode && !functionNode.isProgram() && !inDirectEval;
+        boolean lazyTranslation = context.getLanguageOptions().lazyTranslation() && functionMode && !functionNode.isProgram() && !inDirectEval;
 
         TruffleString functionName = getFunctionName(functionNode);
         JSFunctionData functionData;
@@ -1022,7 +1022,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private static void functionNeedsParentFramePass(FunctionNode rootFunctionNode, JSContext context) {
-        if (!context.getContextOptions().isLazyTranslation()) {
+        if (!context.getLanguageOptions().lazyTranslation()) {
             return; // nothing to do
         }
 
@@ -1400,7 +1400,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private boolean allowScopeOptimization() {
-        return context.getContextOptions().isScopeOptimization();
+        return context.getLanguageOptions().scopeOptimization();
     }
 
     @SuppressWarnings("static-method")
@@ -2656,8 +2656,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
-        assert args.length == 1 || (context.getContextOptions().isImportAssertions() && args.length == 2);
-        if (context.getContextOptions().isImportAssertions() && args.length == 2) {
+        assert args.length == 1 || (context.getLanguageOptions().importAssertions() && args.length == 2);
+        if (context.getLanguageOptions().importAssertions() && args.length == 2) {
             return factory.createImportCall(context, args[0], activeScriptOrModule, args[1]);
         }
         return factory.createImportCall(context, args[0], activeScriptOrModule);

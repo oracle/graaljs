@@ -247,7 +247,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         } else {
             assert result.isThrow();
             Object reason = result.getValue();
-            throw UserScriptException.create(reason, this, context.getContextOptions().getStackTraceLimit());
+            throw UserScriptException.create(reason, this, context.getLanguageOptions().stackTraceLimit());
         }
     }
 

@@ -251,7 +251,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static TypedArrayFactory[] factories(JSContext context) {
-        if (context.getContextOptions().isBigInt()) {
+        if (context.getLanguageOptions().bigInt()) {
             return TypedArrayFactory.FACTORIES;
         } else {
             return TypedArrayFactory.getNoBigIntFactories();

@@ -132,7 +132,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
     @InliningCutoff
     private boolean maybeHasInPrototype(Object target, Object propertyKey) {
         assert JSRuntime.isPropertyKey(propertyKey);
-        if (getLanguage().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+        if (getLanguage().getJSContext().getLanguageOptions().hasForeignObjectPrototype()) {
             if (foreignObjectPrototypeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());

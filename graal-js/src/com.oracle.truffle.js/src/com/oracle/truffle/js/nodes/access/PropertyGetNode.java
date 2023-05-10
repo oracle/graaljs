@@ -1266,7 +1266,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (!(Strings.isTString(key))) {
                 return maybeGetFromPrototype(thisObj, key);
             }
-            if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(thisObj)) {
+            if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(thisObj)) {
                 try {
                     return interop.readHashValue(thisObj, key);
                 } catch (UnknownKeyException e) {
@@ -1305,7 +1305,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @InliningCutoff
         private Object maybeGetFromPrototype(Object thisObj, Object key) {
-            if (context.getContextOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(thisObj, interop)) {
+            if (context.getLanguageOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(thisObj, interop)) {
                 if (foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());

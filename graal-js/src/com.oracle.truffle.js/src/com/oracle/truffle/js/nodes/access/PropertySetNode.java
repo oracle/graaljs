@@ -906,7 +906,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
 
         private boolean performWriteMember(Object truffleObject, Object value, PropertySetNode root) {
-            if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
+            if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
                     interop.writeHashEntry(truffleObject, root.getKey(), value);
                     return true;

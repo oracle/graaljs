@@ -122,7 +122,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
                         return createIterResultObject.execute(frame, completion.getValue(), true);
                     } else {
                         assert completion.isThrow();
-                        throw UserScriptException.create(completion.getValue(), this, getGeneratorState.getContext().getContextOptions().getStackTraceLimit());
+                        throw UserScriptException.create(completion.getValue(), this, getGeneratorState.getContext().getLanguageOptions().stackTraceLimit());
                     }
                 }
                 assert GeneratorState.SuspendedYield.equals(generatorState);

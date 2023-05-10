@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
@@ -152,8 +151,8 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     private boolean bareSpecifierDirectLookup(String specifier) {
-        JSContextOptions options = realm.getContext().getContextOptions();
-        if (options.isEsmBareSpecifierRelativeLookup()) {
+        var options = realm.getContext().getLanguageOptions();
+        if (options.esmBareSpecifierRelativeLookup()) {
             return false;
         }
         return !(specifier.startsWith(SLASH) || specifier.startsWith(DOT_SLASH) || specifier.startsWith(DOT_DOT_SLASH));
@@ -218,7 +217,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     private int getModuleType(String moduleName) {
-        if (realm.getContext().getContextOptions().isJsonModules() && moduleName.endsWith(JavaScriptLanguage.JSON_SOURCE_NAME_SUFFIX)) {
+        if (realm.getContext().getLanguageOptions().jsonModules() && moduleName.endsWith(JavaScriptLanguage.JSON_SOURCE_NAME_SUFFIX)) {
             return JSON_MODULE_TYPE;
         }
         return JS_MODULE_TYPE;

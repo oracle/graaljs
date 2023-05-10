@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,7 @@ public final class BlockEnvironment extends Environment {
         super(parent, factory, context);
         this.isFunctionBlock = blockScope != null && (blockScope.isFunctionTopScope() || blockScope.isEvalScope());
         this.scope = blockScope;
-        if (isScopeCaptured(blockScope) || !context.getContextOptions().isScopeOptimization()) {
+        if (isScopeCaptured(blockScope) || !context.getLanguageOptions().scopeOptimization()) {
             this.blockFrameDescriptor = factory.createBlockFrameDescriptor();
             this.parentSlot = Objects.requireNonNull(blockFrameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
             this.scopeLevel = parent.getScopeLevel() + 1;
@@ -162,7 +162,7 @@ public final class BlockEnvironment extends Environment {
     public void addFrameSlotFromSymbol(Symbol symbol) {
         Object id = slotId(symbol.getNameTS());
         assert (!hasScopeFrame() || !getBlockFrameDescriptor().contains(id)) && !getFunctionFrameDescriptor().contains(id) : symbol;
-        if (symbol.isClosedOver() || (scope != null && scope.hasNestedEval()) || !context.getContextOptions().isScopeOptimization()) {
+        if (symbol.isClosedOver() || (scope != null && scope.hasNestedEval()) || !context.getLanguageOptions().scopeOptimization()) {
             getBlockFrameDescriptor().findOrAddFrameSlot(id, symbol.getFlags(), FrameSlotKind.Illegal);
         } else {
             JSFrameSlot slot = getFunctionFrameDescriptor().findOrAddFrameSlot(id, symbol.getFlags() | (!isFunctionBlock ? JSFrameUtil.IS_HOISTED_FROM_BLOCK : 0), FrameSlotKind.Illegal);

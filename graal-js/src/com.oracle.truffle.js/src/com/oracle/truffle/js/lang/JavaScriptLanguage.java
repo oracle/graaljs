@@ -41,13 +41,11 @@
 package com.oracle.truffle.js.lang;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.truffle.js.runtime.JSErrorType;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -108,7 +106,9 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSEngine;
+import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSLanguageOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
@@ -210,7 +210,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             boolean strict = Boolean.parseBoolean(argumentNames.get(3));
             program = parseScript(context, source, prolog, epilog, strict, new ArrayList<>());
         } else {
-            program = parseScript(context, source, "", "", context.getParserOptions().isStrict(), argumentNames);
+            program = parseScript(context, source, "", "", context.getParserOptions().strict(), argumentNames);
         }
 
         if (context.isOptionParseOnly()) {
@@ -305,7 +305,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @TruffleBoundary
     private static ScriptNode parseScript(JSContext context, Source code, String prolog, String epilog, boolean strict, List<String> argumentNames) {
-        boolean profileTime = context.getContextOptions().isProfileTime();
+        boolean profileTime = context.getLanguageOptions().profileTime();
         long startTime = profileTime ? System.nanoTime() : 0L;
         try {
             return context.getEvaluator().parseScript(context, code, prolog, epilog, strict, argumentNames.isEmpty() ? null : argumentNames);
@@ -318,7 +318,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @TruffleBoundary
     protected static JavaScriptNode parseInlineScript(JSContext context, Source code, MaterializedFrame lexicalContextFrame, boolean strict, Node locationNode) {
-        boolean profileTime = context.getContextOptions().isProfileTime();
+        boolean profileTime = context.getLanguageOptions().profileTime();
         long startTime = profileTime ? System.nanoTime() : 0L;
         try {
             return context.getEvaluator().parseInlineScript(context, code, lexicalContextFrame, strict, locationNode);
@@ -337,20 +337,14 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         if (context == null) {
             context = initLanguageContext(env);
         }
-        JSRealm realm = context.createRealm(env);
-
-        // make sure initial environment is cleared otherwise
-        // it might leak data
-        context.clearInitialEnvironment();
-
-        return realm;
+        return context.createRealm(env);
     }
 
     private synchronized JSContext initLanguageContext(Env env) {
         CompilerAsserts.neverPartOfCompilation();
         JSContext curContext = languageContext;
         if (curContext != null) {
-            assert curContext.getContextOptions().equals(JSContextOptions.fromOptionValues(env.getSandboxPolicy(), env.getOptions()));
+            assert curContext.getLanguageOptions().equals(JSLanguageOptions.fromOptionValues(env.getSandboxPolicy(), env.getOptions()));
             return curContext;
         }
         JSContext newContext = newJSContext(env);
@@ -402,23 +396,19 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     /**
      * Options which can be patched without throwing away the pre-initialized context.
      */
-    private static final OptionKey<?>[] PREINIT_CONTEXT_PATCHABLE_OPTIONS = {
+    private static final Set<OptionKey<?>> PREINIT_CONTEXT_PATCHABLE_OPTIONS = Set.of(
                     JSContextOptions.TIMER_RESOLUTION,
                     JSContextOptions.SHELL,
                     JSContextOptions.V8_COMPATIBILITY_MODE,
                     JSContextOptions.GLOBAL_PROPERTY,
                     JSContextOptions.GLOBAL_ARGUMENTS,
-                    JSContextOptions.SCRIPTING,
                     JSContextOptions.DIRECT_BYTE_BUFFER,
-                    JSContextOptions.INTL_402,
                     JSContextOptions.LOAD,
                     JSContextOptions.PRINT,
                     JSContextOptions.CONSOLE,
                     JSContextOptions.PERFORMANCE,
-                    JSContextOptions.CLASS_FIELDS,
                     JSContextOptions.REGEXP_STATIC_RESULT,
-                    JSContextOptions.TIME_ZONE,
-    };
+                    JSContextOptions.TIME_ZONE);
 
     /**
      * Check for options that differ from the expected options and do not support patching, in which
@@ -427,17 +417,14 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     private static boolean optionsAllowPreInitializedContext(Env preinitEnv, Env env) {
         OptionValues preinitOptions = preinitEnv.getOptions();
         OptionValues options = env.getOptions();
-        if (!preinitOptions.hasSetOptions() && !options.hasSetOptions()) {
-            return true;
-        } else if (preinitOptions.equals(options)) {
+        if (areOptionsEqual(preinitOptions, options)) {
             return true;
         } else {
             assert preinitOptions.getDescriptors().equals(options.getDescriptors());
-            Collection<OptionKey<?>> ignoredOptions = Arrays.asList(PREINIT_CONTEXT_PATCHABLE_OPTIONS);
             for (OptionDescriptor descriptor : options.getDescriptors()) {
                 OptionKey<?> key = descriptor.getKey();
                 if (preinitOptions.hasBeenSet(key) || options.hasBeenSet(key)) {
-                    if (ignoredOptions.contains(key)) {
+                    if (PREINIT_CONTEXT_PATCHABLE_OPTIONS.contains(key)) {
                         continue;
                     }
                     if (!preinitOptions.get(key).equals(options.get(key))) {
@@ -452,10 +439,9 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     @Override
     protected void disposeContext(JSRealm realm) {
         CompilerAsserts.neverPartOfCompilation();
-        JSContext context = realm.getContext();
-        JSContextOptions options = context.getContextOptions();
+        var options = realm.getContextOptions();
         if (options.isProfileTime() && options.isProfileTimePrintCumulative()) {
-            context.getTimeProfiler().printCumulative();
+            realm.getContext().getTimeProfiler().printCumulative();
         }
         realm.dispose();
     }
@@ -471,14 +457,21 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @Override
     protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
-        if (!firstOptions.hasSetOptions() && !newOptions.hasSetOptions()) {
+        if (areOptionsEqual(firstOptions, newOptions)) {
             return true;
+        } else {
+            return JSLanguageOptions.fromOptionValues(SandboxPolicy.TRUSTED, firstOptions).equals(JSLanguageOptions.fromOptionValues(SandboxPolicy.TRUSTED, newOptions));
         }
-        if (firstOptions.equals(newOptions)) {
-            assert JSContextOptions.fromOptionValues(SandboxPolicy.TRUSTED, firstOptions).equals(JSContextOptions.fromOptionValues(SandboxPolicy.TRUSTED, newOptions));
+    }
+
+    private static boolean areOptionsEqual(OptionValues prevOptions, OptionValues newOptions) {
+        if (!prevOptions.hasSetOptions() && !newOptions.hasSetOptions()) {
             return true;
+        } else if (prevOptions.equals(newOptions)) {
+            return true;
+        } else {
+            return false;
         }
-        return false;
     }
 
     @Override
@@ -542,7 +535,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             if (!promiseJobsQueueEmptyAssumption.isValid()) {
                 agent.processAllPromises(true);
             }
-            if (getJSContext().getContextOptions().isTestV8Mode()) {
+            if (getJSContext().getLanguageOptions().testV8Mode()) {
                 processTimeoutCallbacks(realm);
             }
         }
@@ -578,7 +571,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     }
 
     public boolean bindMemberFunctions() {
-        return getJSContext().getContextOptions().bindMemberFunctions();
+        return getJSContext().getLanguageOptions().bindMemberFunctions();
     }
 
     public int getAsyncStackDepth() {

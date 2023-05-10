@@ -82,7 +82,7 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     @Idempotent
     protected final boolean isInteropCompletePromises() {
-        return getLanguage().getJSContext().getContextOptions().isMLEMode();
+        return getLanguage().getJSContext().getLanguageOptions().isMLEMode();
     }
 
     @Specialization(guards = {"!bindFunctions", "!isInteropCompletePromises() || !isAsyncFunction(function)"})

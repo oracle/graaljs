@@ -253,7 +253,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         // sets the length just for the prototype
         JSObjectUtil.putDataProperty(prototype, LENGTH, 0, JSAttributes.notConfigurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, StringPrototypeBuiltins.BUILTINS);
-        if (ctx.isOptionNashornCompatibilityMode() || ctx.getParserOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
+        if (ctx.isOptionNashornCompatibilityMode() || ctx.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
             JSObjectUtil.putFunctionsFromContainer(realm, prototype, StringPrototypeBuiltins.EXTENSION_BUILTINS);
         }
         if (ctx.isOptionAnnexB()) {

@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
+import static com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader.DOT_DOT_SLASH;
+import static com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader.DOT_SLASH;
+import static com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader.SLASH;
+
 import java.io.IOException;
 import java.nio.file.InvalidPathException;
 import java.util.ArrayList;
@@ -55,7 +59,6 @@ import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
@@ -64,10 +67,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import static com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader.DOT_DOT_SLASH;
-import static com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader.DOT_SLASH;
-import static com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader.SLASH;
 
 public final class CommonJSResolution {
 
@@ -89,9 +88,9 @@ public final class CommonJSResolution {
     private CommonJSResolution() {
     }
 
-    public static String getCoreModuleReplacement(JSContext context, String moduleIdentifier) {
+    public static String getCoreModuleReplacement(JSRealm realm, String moduleIdentifier) {
         String identifier = moduleIdentifier.startsWith(NODE_PREFIX) ? moduleIdentifier.substring(NODE_PREFIX.length()) : moduleIdentifier;
-        return context.getContextOptions().getCommonJSRequireBuiltins().get(identifier);
+        return realm.getContextOptions().getCommonJSRequireBuiltins().get(identifier);
     }
 
     static String getCurrentFileNameFromStack() {

@@ -1781,7 +1781,7 @@ public class WriteElementNode extends JSTargetableNode {
             } else {
                 propertyKey = toPropertyKey(index);
             }
-            if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
+            if (root.context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
                     interop.writeHashEntry(truffleObject, propertyKey, exportedValue);
                     return;

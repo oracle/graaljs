@@ -270,7 +270,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)", "!interop.hasArrayElements(target)"})
     protected boolean member(Object target, TruffleString name,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-        if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
             try {
                 interop.removeHashEntry(target, name);
                 return true;
@@ -358,7 +358,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         } else {
             propertyKey = toPropertyKeyNode.execute(key);
         }
-        if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
             return hashEntry(target, propertyKey, interop);
         }
         if (interop.hasMembers(target)) {

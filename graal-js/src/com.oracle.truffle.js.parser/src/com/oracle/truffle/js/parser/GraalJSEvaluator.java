@@ -294,7 +294,7 @@ public final class GraalJSEvaluator implements JSParser {
                 // Non-standard: throw error from onRejected handler.
                 performPromiseThenNode.execute((JSDynamicObject) promise, onAccepted, onRejected, null);
             }
-            if (context.getContextOptions().isEsmEvalReturnsExports()) {
+            if (context.getLanguageOptions().esmEvalReturnsExports()) {
                 JSDynamicObject moduleNamespace = getModuleNamespace(moduleRecord);
                 assert moduleNamespace != null;
                 return moduleNamespace;
@@ -374,7 +374,7 @@ public final class GraalJSEvaluator implements JSParser {
      * Parses source to intermediate AST and returns a closure for the translation to Truffle AST.
      */
     public static Supplier<ScriptNode> internalParseForTiming(JSContext context, Source source) {
-        com.oracle.js.parser.ir.FunctionNode ast = GraalJSParserHelper.parseScript(context, source, new JSParserOptions());
+        com.oracle.js.parser.ir.FunctionNode ast = GraalJSParserHelper.parseScript(context, source, context.getParserOptions());
         return () -> JavaScriptTranslator.translateFunction(NodeFactory.getInstance(context), context, null, source, 0, false, ast);
     }
 

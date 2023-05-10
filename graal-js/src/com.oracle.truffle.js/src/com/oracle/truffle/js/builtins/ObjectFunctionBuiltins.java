@@ -324,7 +324,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     if (InteropLibrary.getUncached(object).isNull(object)) {
                         throw Errors.createTypeErrorNotAnObject(object);
                     }
-                    if (getContext().getContextOptions().hasForeignObjectPrototype()) {
+                    if (getContext().getLanguageOptions().hasForeignObjectPrototype()) {
                         return getForeignObjectPrototype(object);
                     } else {
                         return Null.instance;

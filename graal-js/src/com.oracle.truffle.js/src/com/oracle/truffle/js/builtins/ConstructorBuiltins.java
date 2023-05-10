@@ -1493,7 +1493,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             Object flagsStr = flagsToString(f);
             Object compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
             JSRegExpObject regExp = getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
-            if (getContext().getContextOptions().isTestV8Mode()) {
+            if (getContext().getLanguageOptions().testV8Mode()) {
                 // workaround for the reference equality check at the end of mjsunit/regexp.js
                 // TODO: remove this as soon as option maps are available for TRegex Sources
                 JSObjectUtil.putDataProperty(regExp, Strings.SOURCE, JSRegExp.escapeRegExpPattern(patternStr), JSAttributes.configurableNotEnumerableNotWritable());
@@ -2117,7 +2117,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @NeverDefault
         protected LRUCache<CachedSourceKey, ScriptNode> createCache() {
-            return new LRUCache<>(context.getContextOptions().getFunctionConstructorCacheSize());
+            return new LRUCache<>(context.getLanguageOptions().functionConstructorCacheSize());
         }
 
         @SuppressWarnings("unused")
@@ -2224,7 +2224,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 prototype = getPrototypeFromConstructorNode.executeWithConstructor(newTarget);
             }
 
-            if (byteLength > getContext().getContextOptions().getMaxTypedArrayLength()) {
+            if (byteLength > getContext().getLanguageOptions().maxTypedArrayLength()) {
                 errorBranch.enter(this);
                 throw Errors.createRangeError("Array buffer allocation failed");
             }
@@ -2356,7 +2356,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 setMessage.putWithFlags(errorObj, JSError.MESSAGE, message, JSError.MESSAGE_ATTRIBUTES);
             }
 
-            if (context.getContextOptions().isErrorCauseEnabled() && options != Undefined.instance) {
+            if (context.getLanguageOptions().errorCause() && options != Undefined.instance) {
                 installErrorCause(errorObj, options);
             }
 
@@ -3285,7 +3285,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (args.length == 0 || args[0] == Undefined.instance) {
                 webAssemblyValue = JSWebAssemblyValueTypes.getDefaultValue(realm, valueType);
             } else {
-                if (!getContext().getContextOptions().isWasmBigInt() && JSWebAssemblyValueTypes.isI64(valueType)) {
+                if (!getContext().getLanguageOptions().wasmBigInt() && JSWebAssemblyValueTypes.isI64(valueType)) {
                     throw Errors.createTypeError("WebAssembly.Global(): Can't set the value of i64 WebAssembly.Global", this);
                 }
                 webAssemblyValue = toWebAssemblyValueNode.execute(args[0], valueType);

@@ -128,7 +128,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     @TruffleBoundary
-    static TruffleFile getModuleResolveCurrentWorkingDirectory(JSContext context, TruffleLanguage.Env env) {
+    static TruffleFile getModuleResolveCurrentWorkingDirectory(JSRealm realm, TruffleLanguage.Env env) {
         String currentFileNameFromStack = CommonJSResolution.getCurrentFileNameFromStack();
         if (currentFileNameFromStack != null) {
             TruffleFile truffleFile = env.getPublicTruffleFile(currentFileNameFromStack);
@@ -136,11 +136,11 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
                 return truffleFile.getParent().normalize();
             }
         }
-        return getRequireCwd(context, env);
+        return getRequireCwd(realm, env);
     }
 
-    static TruffleFile getRequireCwd(JSContext context, TruffleLanguage.Env env) {
-        String cwdOption = context.getContextOptions().getRequireCwd();
+    static TruffleFile getRequireCwd(JSRealm realm, TruffleLanguage.Env env) {
+        String cwdOption = realm.getContextOptions().getRequireCwd();
         return cwdOption == null ? env.getCurrentWorkingDirectory() : env.getPublicTruffleFile(cwdOption);
     }
 
@@ -155,7 +155,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         TruffleLanguage.Env env = realm.getEnv();
         String moduleIdentifierJavaString = moduleIdentifier.toJavaStringUncached();
         try {
-            TruffleFile resolutionEntryPath = getModuleResolutionEntryPath(currentRequire, env);
+            TruffleFile resolutionEntryPath = getModuleResolutionEntryPath(currentRequire, realm, env);
             return requireImpl(moduleIdentifierJavaString, resolutionEntryPath, realm);
         } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
             throw fail(moduleIdentifierJavaString, e.getMessage());
@@ -170,10 +170,10 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     @TruffleBoundary
     private Object requireImpl(String moduleIdentifier, TruffleFile entryPath, JSRealm realm) {
         log("required module '", moduleIdentifier, "' from path ", entryPath);
-        String moduleReplacementName = getCoreModuleReplacement(getContext(), moduleIdentifier);
+        String moduleReplacementName = getCoreModuleReplacement(realm, moduleIdentifier);
         if (moduleReplacementName != null) {
             log("using module replacement for module '", moduleIdentifier, "' with ", moduleReplacementName);
-            return requireImpl(moduleReplacementName, getRequireCwd(getContext(), realm.getEnv()), realm);
+            return requireImpl(moduleReplacementName, getRequireCwd(realm, realm.getEnv()), realm);
         } // no core module replacement alias was found: continue and search in the FS.
         TruffleFile maybeModule;
         try {
@@ -353,7 +353,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return modulePath.isRegularFile();
     }
 
-    private TruffleFile getModuleResolutionEntryPath(JSDynamicObject currentRequire, TruffleLanguage.Env env) {
+    private static TruffleFile getModuleResolutionEntryPath(JSDynamicObject currentRequire, JSRealm realm, TruffleLanguage.Env env) {
         if (JSDynamicObject.isJSDynamicObject(currentRequire)) {
             Object maybeFilename = JSObject.get(currentRequire, Strings.FILENAME_VAR_NAME);
             if (Strings.isTString(maybeFilename)) {
@@ -368,7 +368,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             // dirname not a string. Use default cwd.
         }
         // This is not a nested `require()` call, so we use the default cwd.
-        return getModuleResolveCurrentWorkingDirectory(getContext(), env);
+        return getModuleResolveCurrentWorkingDirectory(realm, env);
     }
 
     private static TruffleFile getParent(TruffleLanguage.Env env, String fileName) {

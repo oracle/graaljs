@@ -138,7 +138,7 @@ public class ImportCallNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         ScriptOrModule referencingScriptOrModule = activeScriptOrModule;
         Object specifier = argRefNode.execute(frame);
-        if (context.getContextOptions().isImportAssertions() && optionsRefNode != null) {
+        if (context.getLanguageOptions().importAssertions() && optionsRefNode != null) {
             return executeAssertions(frame, referencingScriptOrModule, specifier);
         } else {
             return executeWithoutAssertions(referencingScriptOrModule, specifier);

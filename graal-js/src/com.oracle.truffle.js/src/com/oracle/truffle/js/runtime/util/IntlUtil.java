@@ -870,7 +870,7 @@ public final class IntlUtil {
     @TruffleBoundary
     public static TimeZone getICUTimeZone(String tzId, JSContext context) {
         assert tzId != null;
-        if (context.getContextOptions().hasZoneRulesBasedTimeZones()) {
+        if (context.getLanguageOptions().zoneRulesBasedTimeZones()) {
             return new ZoneRulesBasedTimeZone(tzId, ZoneRulesProvider.getRules(tzId, false));
         } else {
             return TimeZone.getTimeZone(tzId);
@@ -879,7 +879,7 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static TimeZone getICUTimeZone(ZoneId zoneId, JSContext context) {
-        if (context.getContextOptions().hasZoneRulesBasedTimeZones()) {
+        if (context.getLanguageOptions().zoneRulesBasedTimeZones()) {
             return new ZoneRulesBasedTimeZone(zoneId.getId(), zoneId.getRules());
         } else {
             return TimeZone.getTimeZone(toICUTimeZoneId(zoneId));

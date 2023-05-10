@@ -210,7 +210,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         private Object apply(Object target, Object thisArgument, Object argumentsList) {
             Object[] applyUserArgs = toObjectArray.executeObjectArray(argumentsList);
-            assert applyUserArgs.length <= getContext().getContextOptions().getMaxApplyArgumentLength();
+            assert applyUserArgs.length <= getContext().getLanguageOptions().maxApplyArgumentLength();
             Object[] passedOnArguments = JSArguments.create(thisArgument, target, applyUserArgs);
             return call.executeCall(passedOnArguments);
         }
@@ -361,7 +361,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             if (interop.hasMembers(target)) {
                 Object result = JSInteropUtil.readMemberOrDefault(target, key, null, interop, importValue, this);
                 if (result == null) {
-                    if (getContext().getContextOptions().hasForeignObjectPrototype()) {
+                    if (getContext().getLanguageOptions().hasForeignObjectPrototype()) {
                         JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
                         Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
                         return JSRuntime.nullToUndefined(classProfile.getJSClass(prototype).getHelper(prototype, receiver, key, this));
@@ -440,7 +440,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             if (interop.hasMembers(target)) {
                 if (key instanceof TruffleString) {
                     boolean result = interop.isMemberExisting(target, Strings.toJavaString(toJavaStringNode, (TruffleString) key));
-                    if (!result && getContext().getContextOptions().hasForeignObjectPrototype()) {
+                    if (!result && getContext().getLanguageOptions().hasForeignObjectPrototype()) {
                         JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
                         result = JSObject.hasProperty(prototype, key, classProfile);
                     }

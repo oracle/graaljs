@@ -138,7 +138,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
                     @Cached("create(context)") ReadElementNode readNode,
                     @Cached @Shared("error") InlinedBranchProfile errorBranch) {
         long len = getLengthNode.executeLong(obj);
-        if (len > context.getContextOptions().getMaxApplyArgumentLength()) {
+        if (len > context.getLanguageOptions().maxApplyArgumentLength()) {
             errorBranch.enter(node);
             throw Errors.createRangeErrorTooManyArguments();
         }
@@ -210,7 +210,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     @Specialization
     protected Object[] passArray(Object[] array,
                     @Cached @Shared("error") InlinedBranchProfile errorBranch) {
-        if (array.length > context.getContextOptions().getMaxApplyArgumentLength()) {
+        if (array.length > context.getLanguageOptions().maxApplyArgumentLength()) {
             errorBranch.enter(this);
             throw Errors.createRangeErrorTooManyArguments();
         }
@@ -222,7 +222,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     protected Object[] doList(Object value,
                     @Cached @Shared("error") InlinedBranchProfile errorBranch) {
         List<?> list = ((List<?>) value);
-        if (list.size() > context.getContextOptions().getMaxApplyArgumentLength()) {
+        if (list.size() > context.getLanguageOptions().maxApplyArgumentLength()) {
             errorBranch.enter(this);
             throw Errors.createRangeErrorTooManyArguments();
         }
@@ -244,7 +244,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
             }
 
             long len = interop.getArraySize(obj);
-            if (len > context.getContextOptions().getMaxApplyArgumentLength()) {
+            if (len > context.getLanguageOptions().maxApplyArgumentLength()) {
                 errorBranch.enter(node);
                 throw Errors.createRangeErrorTooManyArguments();
             }

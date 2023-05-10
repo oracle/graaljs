@@ -115,7 +115,7 @@ public class AsyncGeneratorYieldNode extends AbstractAwaitNode implements Resuma
                 if (completion.isNormal()) {
                     return completion.getValue();
                 } else if (completion.isThrow()) {
-                    throw UserScriptException.create(completion.getValue(), this, context.getContextOptions().getStackTraceLimit());
+                    throw UserScriptException.create(completion.getValue(), this, context.getLanguageOptions().stackTraceLimit());
                 } else {
                     assert completion.isReturn();
                     // Let awaited be Await(resumptionValue.[[Value]]).

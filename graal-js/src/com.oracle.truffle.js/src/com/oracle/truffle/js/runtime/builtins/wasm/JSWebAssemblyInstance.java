@@ -207,7 +207,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
             @Override
             public Object execute(VirtualFrame frame) {
-                if (!context.getContextOptions().isWasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
+                if (!context.getLanguageOptions().wasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
                     errorBranch.enter();
                     throw Errors.createTypeError("wasm function signature contains illegal type");
                 }
@@ -304,10 +304,10 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 } else if (Strings.equals(Strings.GLOBAL, externType)) {
                     boolean isNumber = JSRuntime.isNumber(value);
                     boolean isBigInt = JSRuntime.isBigInt(value);
-                    if (isNumber || context.getContextOptions().isWasmBigInt() && isBigInt) {
+                    if (isNumber || context.getLanguageOptions().wasmBigInt() && isBigInt) {
                         TruffleString valueType = asTString(descriptorInterop.readMember(descriptor, "type"));
                         boolean isI64 = JSWebAssemblyValueTypes.isI64(valueType);
-                        if (!context.getContextOptions().isWasmBigInt() && isI64) {
+                        if (!context.getLanguageOptions().wasmBigInt() && isI64) {
                             throw Errors.createLinkError("Can't import the value of i64 WebAssembly.Global");
                         }
                         if (isI64 && isNumber) {
