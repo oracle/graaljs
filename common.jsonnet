@@ -1,18 +1,20 @@
 local common = (import "ci/common.jsonnet");
 
-{
+local jdks = {
   jdk17:: common.jdks["labsjdk-ee-17"] + {
-    jdk:: 'jdk17',
+    jdk:: 'jdk' + super.jdk_version,
   },
 
   jdk20:: common.jdks["labsjdk-ee-20"] + {
-    jdk:: 'jdk20',
+    jdk:: 'jdk' + super.jdk_version,
   },
 
   jdk21:: common.jdks["labsjdk-ee-21"] + {
-    jdk:: 'jdk21',
+    jdk:: 'jdk' + super.jdk_version,
   },
+};
 
+local targets = {
   deploy::      {targets+: ['deploy'], targetName:: 'deploy'},
   gate::        {targets+: ['gate'], targetName:: 'gate'},
   postMerge::   {targets+: ['post-merge'], targetName:: 'postmerge'},
@@ -20,10 +22,17 @@ local common = (import "ci/common.jsonnet");
   weekly::      {targets+: ['weekly'], targetName:: 'weekly'},
   ondemand::    {targets+: ['ondemand'], targetName:: 'ondemand'},
 
-  bench::       self.postMerge + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
-  dailyBench::  self.daily     + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
-  weeklyBench:: self.weekly    + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
-  manualBench:: self.ondemand  + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  bench::         self.postMerge + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  dailyBench::    self.daily     + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  weeklyBench::   self.weekly    + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  ondemandBench:: self.ondemand  + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+};
+
+jdks +
+targets +
+{
+  jdks:: jdks,
+  targets:: targets,
 
   deps:: common.deps,
 
