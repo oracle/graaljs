@@ -207,7 +207,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
 
   // Expand builds to all platforms, unless otherwise specified (explicitly or using filterPlatforms).
   // If any builds are missing targets, <defaultTarget> must be provided that is then applied to those builds.
-  local generateBuilds(builds, platforms=$.supportedPlatforms, defaultTarget={}) = [
+  generateBuilds(builds, platforms=$.supportedPlatforms, defaultTarget={}):: [
     target + platform + build + {
       assert 'targets' in super : "build '" + super.name + "-" + platformName(self) + "' has no targets and no default targets specified",
       name: super.targetName + '-' + super.name + '-' + platformName(self),
@@ -221,7 +221,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     local excludePredicate = if std.isFunction(exclude) then exclude else if std.isArray(exclude) then function(platform) platformMatchesAny(platform, exclude) else function(_) false;
     function(platform) includePredicate(platform) && !excludePredicate(platform),
   // Promote selected platforms of this build to <target> (e.g. common.gate).
-  local promoteToTarget(target, platformSelector, override=false) =
+  promoteToTarget(target, platformSelector, override=false)::
     assert std.isObject(target);
     assert std.isArray(platformSelector) || std.isFunction(platformSelector);
     local platformPredicate = makePlatformPredicate(platformSelector);
@@ -232,7 +232,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
         if override && thisResult != [] then thisResult else thisResult + superResult,
     },
   // Set this build's default target for all non-promoted platforms.
-  local defaultToTarget(defaultTarget) =
+  defaultToTarget(defaultTarget)::
     assert std.isObject(defaultTarget);
     {
       targetSelector:: function(platform)
@@ -249,16 +249,10 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
         local thisResult = platformPredicate(platform);
         superResult && thisResult,
     },
-  local includePlatforms(platformSelector) = filterPlatforms(platformSelector),
-  local excludePlatforms(platformSelector) = filterPlatforms(function(platform) !platformMatchesAny(platform, platformSelector)),
+  includePlatforms(platformSelector):: filterPlatforms(platformSelector),
+  excludePlatforms(platformSelector):: filterPlatforms(makePlatformPredicate(exclude=platformSelector)),
 
-  generateBuilds:: generateBuilds,
-  platformMatches:: platformMatches,
-  promoteToTarget:: promoteToTarget,
-  defaultToTarget:: defaultToTarget,
-  includePlatforms:: includePlatforms,
-  excludePlatforms:: excludePlatforms,
-  gateOnMain:: promoteToTarget(common.gate, [self.mainGatePlatform]),
+  gateOnMain:: self.promoteToTarget(common.gate, [self.mainGatePlatform]),
 
   local flattenArrayRec(arr) =
     if std.isArray(arr) then
