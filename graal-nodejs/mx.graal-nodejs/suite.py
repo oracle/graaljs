@@ -109,6 +109,12 @@ suite = {
 
   "distributions" : {
     "TRUFFLENODE" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.nodejs",
+        "requires" : [
+          "static org.graalvm.launcher",
+        ],
+      },
       "subdir" : "mx.graal-nodejs",
       "dependencies" : ["com.oracle.truffle.trufflenode"],
       "distDependencies" : [
