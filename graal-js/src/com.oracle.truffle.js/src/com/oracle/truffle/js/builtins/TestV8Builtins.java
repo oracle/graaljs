@@ -353,7 +353,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected Object enqueueJob(Object function) {
             if (JSFunction.isJSFunction(function)) {
-                getContext().promiseEnqueueJob(getRealm(), (JSFunctionObject) function);
+                getContext().enqueuePromiseJob(getRealm(), (JSFunctionObject) function);
             }
             return 0;
         }

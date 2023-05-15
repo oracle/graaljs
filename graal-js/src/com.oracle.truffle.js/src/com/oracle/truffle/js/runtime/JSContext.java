@@ -846,11 +846,12 @@ public class JSContext {
     }
 
     /**
-     * ECMA 8.4.1 EnqueueJob.
+     * ES abstract operation HostEnqueuePromiseJob.
      */
-    public final void promiseEnqueueJob(JSRealm realm, JSFunctionObject job) {
+    public final void enqueuePromiseJob(JSRealm realm, JSFunctionObject job) {
         invalidatePromiseQueueNotUsedAssumption();
-        realm.getAgent().enqueuePromiseJob(job);
+        JSAgent agent = realm.getAgent();
+        agent.enqueuePromiseJob(job);
     }
 
     public final void signalAsyncWaiterRecordUsage() {

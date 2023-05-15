@@ -158,7 +158,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     return fulfillPromise(promise, resolution);
                 }
                 JSFunctionObject job = promiseResolveThenableJob(promise, resolution, then);
-                context.promiseEnqueueJob(getRealm(), job);
+                context.enqueuePromiseJob(getRealm(), job);
                 return Undefined.instance;
             }
 
