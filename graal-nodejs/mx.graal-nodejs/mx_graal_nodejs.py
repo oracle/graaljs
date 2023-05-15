@@ -111,12 +111,12 @@ def _graal_nodejs_post_gate_runner(args, tasks):
         if t:
             testnodeInstrument([])
 
-    suite = os.getenv('SUITE')
+    suite = os.getenv('NODE_SUITE')
     if suite is not None:
         with Task('TestNode:' + suite, tasks, tags=[GraalNodeJsTags.testnode], report=True) as t:
             if t:
-                max_heap = os.getenv('MAX_HEAP')
-                part = os.getenv('PART')
+                max_heap = os.getenv('NODE_MAX_HEAP')
+                part = os.getenv('NODE_PART')
                 testnode((['-Xmx' + max_heap] if max_heap else []) +
                         [suite] +
                         ([part] if part else []))

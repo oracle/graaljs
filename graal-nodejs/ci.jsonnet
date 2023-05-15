@@ -85,14 +85,14 @@ local ci = import '../ci.jsonnet';
 
   local testNode(suite, part='-r0,1', max_heap='8G') = gateTags('testnode') + {
     environment+:
-      {SUITE: suite} +
-      (if part != '' then {PART: part} else {}) +
-      (if max_heap != '' then {MAX_HEAP: max_heap} else {}),
+      {NODE_SUITE: suite} +
+      (if part != '' then {NODE_PART: part} else {}) +
+      (if max_heap != '' then {NODE_MAX_HEAP: max_heap} else {}),
     timelimit: '1:15:00',
   },
   local maxHeapOnWindows(max_heap) = {
     environment+: if 'os' in super && super.os == 'windows' then {
-      MAX_HEAP: max_heap,
+      NODE_MAX_HEAP: max_heap,
     } else {},
   },
 
