@@ -86,6 +86,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTypedArrayN
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAggregateErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAsyncContextNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAsyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBigIntNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBooleanNodeGen;
@@ -217,6 +218,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncContext;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
@@ -365,6 +367,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Table(1),
 
         ShadowRealm(0),
+        AsyncContext(1),
 
         // Temporal
         PlainTime(0),
@@ -748,6 +751,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (construct) {
                     return newTarget ? ConstructShadowRealmNodeGen.create(context, builtin, true, args().newTarget().createArgumentNodes(context))
                                     : ConstructShadowRealmNodeGen.create(context, builtin, false, args().function().createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case AsyncContext:
+                if (construct) {
+                    return newTarget ? ConstructAsyncContextNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
+                                    : ConstructAsyncContextNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -3020,6 +3030,40 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return getRealm().getShadowRealmPrototype();
+        }
+    }
+
+    @ImportStatic(Strings.class)
+    public abstract static class ConstructAsyncContextNode extends ConstructWithNewTargetNode {
+
+        public ConstructAsyncContextNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        @Specialization
+        protected final JSObject construct(JSDynamicObject newTarget, Object options,
+                        @Cached IsObjectNode isObject,
+                        @Cached JSToStringNode toString,
+                        @Cached("create(NAME, getContext())") PropertyGetNode getName,
+                        @Cached("create(DEFAULT_VALUE, getContext())") PropertyGetNode getDefaultValue) {
+            JSRealm realm = getRealm();
+            TruffleString nameStr;
+            Object defaultValue;
+            if (isObject.executeBoolean(options)) {
+                Object name = getName.getValue(options);
+                nameStr = toString.executeString(name);
+                defaultValue = getDefaultValue.getValue(options);
+            } else {
+                nameStr = Strings.EMPTY_STRING;
+                defaultValue = Undefined.instance;
+            }
+            Symbol asyncContextKey = Symbol.create(nameStr);
+            return swapPrototype(JSAsyncContext.create(getContext(), realm, asyncContextKey, defaultValue), newTarget);
+        }
+
+        @Override
+        protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return getRealm().getAsyncContextPrototype();
         }
     }
 

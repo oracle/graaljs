@@ -45,6 +45,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JobCallback;
@@ -88,8 +89,14 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         Pair<JSDynamicObject, JSDynamicObject> resolvingFunctions = createResolvingFunctions.execute(promiseToResolve);
         JSDynamicObject resolve = resolvingFunctions.getFirst();
         JSDynamicObject reject = resolvingFunctions.getSecond();
+        JSAgent agent = getRealm().getAgent();
         try {
-            return callResolveNode.executeCall(JSArguments.create(thenable, then.callback(), resolve, reject));
+            var previousContextMapping = agent.asyncContextSwap(then.asyncContextSnapshot());
+            try {
+                return callResolveNode.executeCall(JSArguments.create(thenable, then.callback(), resolve, reject));
+            } finally {
+                agent.asyncContextSwap(previousContextMapping);
+            }
         } catch (AbstractTruffleException ex) {
             return callReject(reject, ex);
         }

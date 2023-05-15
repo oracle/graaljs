@@ -361,7 +361,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
                 SimpleArrayList<?> fulfillList = (SimpleArrayList<?>) fulfillReactions;
                 PromiseReactionRecord reaction = (PromiseReactionRecord) fulfillList.get(0);
                 JobCallback handler = reaction.getHandler();
-                if (handler.callback() instanceof JSFunctionObject handlerFunction) {
+                if (handler != null && handler.callback() instanceof JSFunctionObject handlerFunction) {
                     RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(handlerFunction)).getRootNode();
                     if (rootNode instanceof AsyncHandlerRootNode) {
                         AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,15 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.js.runtime.objects.AsyncContext;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 /**
- * Represents a promise job callback (ES: JobCallback record).
+ * @see JSFunctionObject.Wrapped
  */
-public record JobCallback(Object callback, AsyncContext asyncContextSnapshot, Object hostDefined) {
-    public JobCallback(Object callback, AsyncContext asyncContextSnapshot) {
-        this(callback, asyncContextSnapshot, null);
+public final class JSAsyncContextObject extends JSNonProxyObject {
+
+    private final Symbol asyncContextKey;
+    private final Object asyncContextDefaultValue;
+
+    protected JSAsyncContextObject(Shape shape, Symbol asyncContextKey, Object asyncContextDefaultValue) {
+        super(shape);
+        this.asyncContextKey = asyncContextKey;
+        this.asyncContextDefaultValue = asyncContextDefaultValue;
+    }
+
+    @Override
+    public TruffleString getClassName() {
+        return JSIterator.CLASS_NAME;
+    }
+
+    public Symbol getAsyncContextKey() {
+        return asyncContextKey;
+    }
+
+    public Object getAsyncContextDefaultValue() {
+        return asyncContextDefaultValue;
+    }
+
+    public static JSAsyncContextObject create(JSRealm realm, JSObjectFactory factory, Symbol asyncContextKey, Object asyncContextDefaultValue) {
+        return factory.initProto(new JSAsyncContextObject(factory.getShape(realm), asyncContextKey, asyncContextDefaultValue), realm);
     }
 }

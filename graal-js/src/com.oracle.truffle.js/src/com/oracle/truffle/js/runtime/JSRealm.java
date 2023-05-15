@@ -125,6 +125,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncContext;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -478,6 +479,9 @@ public class JSRealm {
 
     private final JSFunctionObject shadowRealmConstructor;
     private final JSDynamicObject shadowRealmPrototype;
+
+    private final JSFunctionObject asyncContextConstructor;
+    private final JSDynamicObject asyncContextPrototype;
 
     /** Foreign object prototypes. */
     private final JSDynamicObject foreignIterablePrototype;
@@ -1056,6 +1060,14 @@ public class JSRealm {
         } else {
             this.shadowRealmConstructor = null;
             this.shadowRealmPrototype = null;
+        }
+        if (context.getLanguageOptions().asyncContext()) {
+            ctor = JSAsyncContext.createConstructor(this);
+            this.asyncContextConstructor = ctor.getFunctionObject();
+            this.asyncContextPrototype = ctor.getPrototype();
+        } else {
+            this.asyncContextConstructor = null;
+            this.asyncContextPrototype = null;
         }
 
         // always create, regardless of context.isOptionForeignObjectPrototype()
@@ -1791,6 +1803,14 @@ public class JSRealm {
         return shadowRealmPrototype;
     }
 
+    public final JSFunctionObject getAsyncContextConstructor() {
+        return asyncContextConstructor;
+    }
+
+    public final JSDynamicObject getAsyncContextPrototype() {
+        return asyncContextPrototype;
+    }
+
     public final JSContextOptions getContextOptions() {
         return contextOptions;
     }
@@ -1938,6 +1958,9 @@ public class JSRealm {
         }
         if (getContextOptions().isShadowRealm()) {
             putGlobalProperty(JSShadowRealm.CLASS_NAME, getShadowRealmConstructor());
+        }
+        if (getContextOptions().isAsyncContext()) {
+            putGlobalProperty(JSAsyncContext.CLASS_NAME, getAsyncContextConstructor());
         }
         if (context.getLanguageOptions().profileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);

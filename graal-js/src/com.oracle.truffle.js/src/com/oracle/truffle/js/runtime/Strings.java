@@ -175,6 +175,7 @@ public final class Strings {
     public static final TruffleString COMPARE = constant("compare");
     public static final TruffleString CONSTRUCT = Strings.constant("construct");
     public static final TruffleString DEFAULT = constant("default");
+    public static final TruffleString DEFAULT_VALUE = constant("defaultValue");
     public static final TruffleString DELETE = constant("delete");
     public static final TruffleString DONE = constant("done");
     public static final TruffleString EMPTY = constant("empty");
@@ -369,6 +370,7 @@ public final class Strings {
     public static final TruffleString FUNCTION_SPC = constant("function ");
     public static final TruffleString FUNCTION_NATIVE_CODE = constant("function () { [native code] }");
     public static final TruffleString PROXY_PAREN = constant("Proxy(");
+    public static final TruffleString WRAPPED_SPC = constant("wrapped ");
 
     public static final TruffleString ASYNC_SPC = constant("async ");
     public static final TruffleString ASYNC_PROMISE_ALL_BEGIN = constant("async Promise.all (index ");
