@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
     if (stack_size <= 0) {
         // stack size not specified using env. variable or arguments
         update_env = true;
-        stack_size = 2*1024*1024;
+        stack_size = 4*1024*1024;
     }
     if (update_env) { // NODE_STACK_SIZE is read elsewhere as well and propagated to child processes
         char buffer[32];

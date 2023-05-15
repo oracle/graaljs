@@ -1,27 +1,38 @@
 local common = (import "ci/common.jsonnet");
 
-{
+local jdks = {
   jdk17:: common.jdks["labsjdk-ee-17"] + {
-    jdk:: 'jdk17',
+    jdk:: 'jdk' + super.jdk_version,
   },
 
   jdk20:: common.jdks["labsjdk-ee-20"] + {
-    jdk:: 'jdk20',
+    jdk:: 'jdk' + super.jdk_version,
   },
 
-  jdk21:: common.jdks["oraclejdk21"] + {
-    jdk:: 'jdk21',
+  jdk21:: common.jdks["labsjdk-ee-21"] + {
+    jdk:: 'jdk' + super.jdk_version,
   },
+};
 
-  deploy::      {targets+: ['deploy']},
-  gate::        {targets+: ['gate']},
-  postMerge::   {targets+: ['post-merge']},
-  bench::       {targets+: ['bench', 'post-merge']},
-  dailyBench::  {targets+: ['bench', 'daily']},
-  weeklyBench:: {targets+: ['bench', 'weekly']},
-  manualBench:: {targets+: ['bench']},
-  daily::       {targets+: ['daily']},
-  weekly::      {targets+: ['weekly']},
+local targets = {
+  deploy::      {targets+: ['deploy'], targetName:: 'deploy'},
+  gate::        {targets+: ['gate'], targetName:: 'gate'},
+  postMerge::   {targets+: ['post-merge'], targetName:: 'postmerge'},
+  daily::       {targets+: ['daily'], targetName:: 'daily'},
+  weekly::      {targets+: ['weekly'], targetName:: 'weekly'},
+  ondemand::    {targets+: ['ondemand'], targetName:: 'ondemand'},
+
+  bench::         self.postMerge + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  dailyBench::    self.daily     + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  weeklyBench::   self.weekly    + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  ondemandBench:: self.ondemand  + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+};
+
+jdks +
+targets +
+{
+  jdks:: jdks,
+  targets:: targets,
 
   deps:: common.deps,
 
@@ -76,7 +87,7 @@ local common = (import "ci/common.jsonnet");
     },
   },
 
-  gateCmd:: ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.SuppressWarnings=truffle', '--strict-mode'],
+  gateCmd:: ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.SuppressWarnings=truffle'],
   gateCmdWithTags:: self.gateCmd + ['--tags', '${TAGS}'],
 
   build:: {
@@ -91,20 +102,22 @@ local common = (import "ci/common.jsonnet");
     ],
   },
 
-  gateTags:: self.build + {
+  gateTags:: {
     run+: [
       $.gateCmdWithTags,
     ],
-    timelimit: '45:00',
+    timelimit: if 'timelimit' in super then super.timelimit else '45:00',
   },
 
   gateStyleFullBuild:: common.deps.pylint + common.deps.eclipse + common.deps.jdt + {
+    # GR-45482 SpotBugs does not run on JDK 21.
+    local strict = !('jdk' in self && self.jdk == 'jdk21'),
     environment+: {
       TAGS: 'style,fullbuild',
     },
     run+: [
-      $.gateCmdWithTags,
+      $.gateCmdWithTags + (if strict then ['--strict-mode'] else []),
     ],
-    timelimit: '45:00',
+    timelimit: if 'timelimit' in super then super.timelimit else '45:00',
   },
 }

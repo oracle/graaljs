@@ -48,6 +48,7 @@ class GraalNodeJsTags:
     unitTests = 'unit'
     windows = 'windows'  # we cannot run `node-gyp` in our CI unless we install the "Visual Studio Build Tools" (using the "Visual C++ build tools" workload)
     coverage = 'coverage'
+    testnode = 'testnode'
 
 def _graal_nodejs_post_gate_runner(args, tasks):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
@@ -109,6 +110,16 @@ def _graal_nodejs_post_gate_runner(args, tasks):
     with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows, GraalNodeJsTags.coverage]) as t:
         if t:
             testnodeInstrument([])
+
+    suite = os.getenv('NODE_SUITE')
+    if suite is not None:
+        with Task('TestNode:' + suite, tasks, tags=[GraalNodeJsTags.testnode], report=True) as t:
+            if t:
+                max_heap = os.getenv('NODE_MAX_HEAP')
+                part = os.getenv('NODE_PART')
+                testnode((['-Xmx' + max_heap] if max_heap else []) +
+                        [suite] +
+                        ([part] if part else []))
 
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
@@ -187,7 +198,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         built = post_ts.isNewerThan(pre_ts)
         if built and _current_os == 'darwin':
             nodePath = join(self._build_dir, 'node')
-            _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'jre', 'lib'), '-add_rpath', join(_java_home(), 'lib'), nodePath], print_cmd=True, env=build_env)
+            _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'lib'), nodePath], print_cmd=True, env=build_env)
         return built
 
     def needsBuild(self, newestInput):
@@ -355,7 +366,7 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     if mode == 'Debug':
         progArgs += ['-m', 'debug']
     extraArgs = ['-Xmx8g'] if not any(vmArg.startswith('-Xmx') for vmArg in vmArgs) else []
-    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs'] + extraArgs + vmArgs))
+    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-Xrs'] + extraArgs + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
     return mx.run(['python3', join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
@@ -555,7 +566,6 @@ def _prepare_svm_env():
     if libgraal_nodejs is None:
         mx.abort("Cannot find graal-nodejs library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(candidates))
     _setEnvVar('NODE_JVM_LIB', libgraal_nodejs)
-    _setEnvVar('ICU4J_DATA_PATH', join(mx.suite('graal-js').dir, 'lib', 'icu4j', 'icudt'))
 
 def mx_post_parse_cmd_line(args):
     mx_graal_nodejs_benchmark.register_nodejs_vms()
