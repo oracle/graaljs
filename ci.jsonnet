@@ -126,7 +126,9 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
         name: artifactName,
         dir: "../",
         patterns: [
-          "*/*/mxbuild",
+          "graal/sdk/mxbuild/" + os + '-' + arch + "/GRAAL*",
+          "*/*/mxbuild/dists",
+          "*/*/mxbuild/jdk*",
           "*/mxbuild",
           "*/graal-nodejs/out", # js/graal-nodejs/out
         ],
