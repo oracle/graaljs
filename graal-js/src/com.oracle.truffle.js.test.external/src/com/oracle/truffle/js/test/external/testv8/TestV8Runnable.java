@@ -114,6 +114,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-intl-more_timezone",
                     "--harmony-intl-number-format-v3",
                     "--harmony-shadow-realm",
+                    "--harmony-weak-refs-with-cleanup-some",
     });
 
     private static final String FLAGS_PREFIX = "// Flags: ";

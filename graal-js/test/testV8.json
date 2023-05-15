@@ -872,7 +872,10 @@
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanupsome-optional.js",
-    "status" : "FAIL",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
     "comment" : "Check of V8-specific behaviour: cleanupSome is not available unless --harmony-weak-refs-with-cleanup-some is used"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/finalizationregistry-independent-lifetime-multiple.js",
