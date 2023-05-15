@@ -48,6 +48,7 @@ class GraalNodeJsTags:
     unitTests = 'unit'
     windows = 'windows'  # we cannot run `node-gyp` in our CI unless we install the "Visual Studio Build Tools" (using the "Visual C++ build tools" workload)
     coverage = 'coverage'
+    testnode = 'testnode'
 
 def _graal_nodejs_post_gate_runner(args, tasks):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
@@ -109,6 +110,16 @@ def _graal_nodejs_post_gate_runner(args, tasks):
     with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows, GraalNodeJsTags.coverage]) as t:
         if t:
             testnodeInstrument([])
+
+    suite = os.getenv('SUITE')
+    if suite is not None:
+        with Task('TestNode:' + suite, tasks, tags=[GraalNodeJsTags.testnode], report=True) as t:
+            if t:
+                max_heap = os.getenv('MAX_HEAP')
+                part = os.getenv('PART')
+                testnode((['-Xmx' + max_heap] if max_heap else []) +
+                        [suite] +
+                        ([part] if part else []))
 
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 

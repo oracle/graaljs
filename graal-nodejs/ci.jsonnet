@@ -83,23 +83,17 @@ local ci = import '../ci.jsonnet';
     timelimit: '1:00:00',
   },
 
-  local testNode(suite, part='-r0,1', max_heap='8G') = {
-    environment+: {
-      SUITE: suite,
-      PART: part,
-      MAX_HEAP: max_heap,
-    },
-    run+: [
-      ['mx', 'graalvm-show'],
-      ['mx', 'testnode', '-Xmx${MAX_HEAP}', '${SUITE}', '${PART}'],
-    ],
+  local testNode(suite, part='-r0,1', max_heap='8G') = gateTags('testnode') + {
+    environment+:
+      {SUITE: suite} +
+      (if part != '' then {PART: part} else {}) +
+      (if max_heap != '' then {MAX_HEAP: max_heap} else {}),
     timelimit: '1:15:00',
   },
   local maxHeapOnWindows(max_heap) = {
-    local is_windows = ('os' in super && super.os == 'windows'),
-    environment+: {
-      MAX_HEAP: (if is_windows then max_heap else super.MAX_HEAP),
-    },
+    environment+: if 'os' in super && super.os == 'windows' then {
+      MAX_HEAP: max_heap,
+    } else {},
   },
 
   local buildAddons = build + {
@@ -159,15 +153,15 @@ local ci = import '../ci.jsonnet';
   ] +
   // mx makeinnodeenv requires NASM on Windows.
   [gateOnMain + excludePlatforms([common.windows_amd64]) + b for b in [
-    graalNodeJs          + buildAddons      + testNode('addons',        part='-r0,1', max_heap='8G')                               + {name: 'nodejs-addons'},
-    graalNodeJs          + buildNodeAPI     + testNode('node-api',      part='-r0,1', max_heap='8G')                               + {name: 'nodejs-node-api'},
-    graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', part='-r0,1', max_heap='8G')                               + {name: 'nodejs-js-native-api'},
+    graalNodeJs          + buildAddons      + testNode('addons',        max_heap='8G')                                             + {name: 'nodejs-addons'},
+    graalNodeJs          + buildNodeAPI     + testNode('node-api',      max_heap='8G')                                             + {name: 'nodejs-node-api'},
+    graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', max_heap='8G')                                             + {name: 'nodejs-js-native-api'},
   ]] +
   [gateOnMain + promoteToTarget(common.gate, [common.jdk17 + common.windows_amd64]) + b for b in [
-    graalNodeJs + vm_env + build            + testNode('async-hooks',   part='-r0,1', max_heap='8G')                               + {name: 'nodejs-async-hooks'},
-    graalNodeJs + vm_env + build            + testNode('es-module',     part='-r0,1', max_heap='8G')                               + {name: 'nodejs-es-module'},
+    graalNodeJs + vm_env + build            + testNode('async-hooks',   max_heap='8G')                                             + {name: 'nodejs-async-hooks'},
+    graalNodeJs + vm_env + build            + testNode('es-module',     max_heap='8G')                                             + {name: 'nodejs-es-module'},
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
-    graalNodeJs + vm_env + build            + testNode('sequential',    part='-r0,1', max_heap='8G') + maxHeapOnWindows('512M')    + {name: 'nodejs-sequential'} +
+    graalNodeJs + vm_env + build            + testNode('sequential',    max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'nodejs-sequential'} +
       excludePlatforms([common.darwin_amd64]), # times out on darwin-amd64
   ]] +
   # too slow on darwin-amd64
@@ -178,7 +172,7 @@ local ci = import '../ci.jsonnet';
     graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r3,5', max_heap='8G')                               + {name: 'nodejs-parallel-4'},
     graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r4,5', max_heap='8G')                               + {name: 'nodejs-parallel-5'},
 
-    graalNodeJs + vm_env + build            + testNode(parallelHttp2,   part='-r0,1', max_heap='8G')                               + {name: 'nodejs-parallel-http2'} +
+    graalNodeJs + vm_env + build            + testNode(parallelHttp2, max_heap='8G')                                               + {name: 'nodejs-parallel-http2'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform], override=true),
   ]], defaultTarget=common.weekly),
 
