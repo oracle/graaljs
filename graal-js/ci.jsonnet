@@ -4,6 +4,7 @@ local ci = import '../ci.jsonnet';
 {
   local graalJs = ci.jobtemplate + {
     cd:: 'graal-js',
+    suite_prefix:: 'js',
     // increase default timelimit on windows and darwin-amd64
     timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:15:00' else '45:00',
   },
@@ -112,43 +113,43 @@ local ci = import '../ci.jsonnet';
 
   // Builds that should run on all supported platforms
   local testingBuilds = generateBuilds([
-    graalJs + common.gateStyleFullBuild                                                                   + {name: 'js-style-fullbuild'} +
+    graalJs + common.gateStyleFullBuild                                                                   + {name: 'style-fullbuild'} +
       defaultToTarget(common.gate) +
       includePlatforms([common.linux_amd64]),
 
-    graalJs + gateTags('default')                                                                    + ce + {name: 'js-default-ce'} +
+    graalJs + gateTags('default')                                                                    + ce + {name: 'default-ce'} +
       promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk20 + common.linux_amd64, common.jdk17 + common.linux_aarch64, common.jdk17 + common.windows_amd64]),
-    graalJs + gateTags('default')                                                                    + ee + {name: 'js-default-ee'} +
+    graalJs + gateTags('default')                                                                    + ee + {name: 'default-ee'} +
       promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk17 + common.darwin_aarch64]) +
       promoteToTarget(common.postMerge, [common.jdk17 + common.darwin_amd64]),
 
-    graalJs + gateTags('noic')                                                                            + {name: 'js-noic'} + gateOnMain,
-    graalJs + gateTags('directbytebuffer')                                                                + {name: 'js-directbytebuffer'} + gateOnMain,
-    graalJs + gateTags('cloneuninitialized')                                                              + {name: 'js-cloneuninitialized'} + gateOnMain,
-    graalJs + gateTags('lazytranslation')                                                                 + {name: 'js-lazytranslation'} + gateOnMain,
-    graalJs + gateTags('shareengine')                                                                     + {name: 'js-shareengine'} + gateOnMain,
-    graalJs + gateTags('latestversion')                                                                   + {name: 'js-latestversion'} + gateOnMain,
-    graalJs + gateTags('instrument')                                                                      + {name: 'js-instrument'} + gateOnMain,
-    graalJs + gateTags('tck')                                                                             + {name: 'js-tck'} + gateOnMain +
+    graalJs + gateTags('noic')                                                                            + {name: 'noic'} + gateOnMain,
+    graalJs + gateTags('directbytebuffer')                                                                + {name: 'directbytebuffer'} + gateOnMain,
+    graalJs + gateTags('cloneuninitialized')                                                              + {name: 'cloneuninitialized'} + gateOnMain,
+    graalJs + gateTags('lazytranslation')                                                                 + {name: 'lazytranslation'} + gateOnMain,
+    graalJs + gateTags('shareengine')                                                                     + {name: 'shareengine'} + gateOnMain,
+    graalJs + gateTags('latestversion')                                                                   + {name: 'latestversion'} + gateOnMain,
+    graalJs + gateTags('instrument')                                                                      + {name: 'instrument'} + gateOnMain,
+    graalJs + gateTags('tck')                                                                             + {name: 'tck'} + gateOnMain +
       excludePlatforms([common.darwin_amd64]), # Timeout/OOME
-    graalJs + webassemblyTest                                                                             + {name: 'js-webassembly'} + gateOnMain,
-    graalJs + nativeImageSmokeTest                                                                        + {name: 'js-native-image-smoke-test'} + gateOnMain,
-    graalJs + auxEngineCache                                                                         + ee + {name: 'js-aux-engine-cache'} + gateOnMain +
+    graalJs + webassemblyTest                                                                             + {name: 'webassembly'} + gateOnMain,
+    graalJs + nativeImageSmokeTest                                                                        + {name: 'native-image-smoke-test'} + gateOnMain,
+    graalJs + auxEngineCache                                                                         + ee + {name: 'aux-engine-cache'} + gateOnMain +
       excludePlatforms([common.windows_amd64, common.darwin_amd64]), # unsupported on windows, too slow on darwin-amd64
 
     // downstream graal gate
-    graalJs + downstreamGraal                                                                             + {name: 'js-downstream-graal'} +
+    graalJs + downstreamGraal                                                                             + {name: 'downstream-graal'} +
       promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk20 + common.linux_amd64]),
-    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}                           + {name: 'js-downstream-substratevm-enterprise'} + gateOnMain +
+    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}                           + {name: 'downstream-substratevm-enterprise'} + gateOnMain +
       excludePlatforms([common.darwin_amd64]) + # Too slow
       excludePlatforms([common.linux_aarch64]), # Fails on Linux AArch64 with "Creation of the VM failed."
 
     // js.zone-rules-based-time-zones
-    graalJs + gateTags('zonerulesbasedtimezones')                                                         + {name: 'js-zonerulesbasedtimezones'} +
+    graalJs + gateTags('zonerulesbasedtimezones')                                                         + {name: 'zonerulesbasedtimezones'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]),
 
     // PGO profiles
-    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'js-pgo-profiles'} +
+    graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]) +
       excludePlatforms([common.darwin_amd64]) +  # Too slow
       excludePlatforms([common.darwin_aarch64]), # No such file or directory: 'mvn'
@@ -156,13 +157,13 @@ local ci = import '../ci.jsonnet';
 
   // Builds that only need to run on one platform
   local otherBuilds = generateBuilds([
-    graalJs + common.gate      + mavenDeployDryRun                                                        + {name: 'js-maven-dry-run'},
-    graalJs + common.weekly    + gateCoverage                                                             + {name: 'js-coverage'},
+    graalJs + common.gate      + mavenDeployDryRun                                                        + {name: 'maven-dry-run'},
+    graalJs + common.weekly    + gateCoverage                                                             + {name: 'coverage'},
   ], platforms=[ci.mainGatePlatform]),
 
   // Benchmark builds; need to run on a benchmark machine
   local benchBuilds = generateBuilds([
-    graalJs + common.bench     + interopJmhBenchmarks                                                     + {name: 'js-interop-jmh'},
+    graalJs + common.bench     + interopJmhBenchmarks                                                     + {name: 'interop-jmh'},
   ], platforms=[common.jdk17 + common.x52]),
 
   builds: testingBuilds + otherBuilds + benchBuilds,

@@ -38,6 +38,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       EXTRA_IMAGE_BUILDER_ARGUMENTS: eiba,
     },
     export_envvars:: [['set-export', key, self.envvars[key]] for key in std.objectFields(self.envvars) if std.length(self.envvars[key]) > 0],
+    suite_prefix:: error 'suite_prefix not set',
     cd:: '',
     cd_run:: if self.cd != '' then [['cd', self.cd]] else [],
     graalvmtests:: '',
@@ -212,7 +213,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   generateBuilds(builds, platforms=$.supportedPlatforms, defaultTarget={}):: [
     target + platform + build + {
       assert 'targets' in super : "build '" + super.name + "-" + platformName(self) + "' has no targets and no default targets specified",
-      name: super.targetName + '-' + super.name + '-' + platformName(self),
+      name: std.join('-', [super.suite_prefix, super.targetName, super.name, platformName(self)]),
     }
     for build in flattenArrayRec(builds)
     for platform in generatePlatforms(build, platforms)

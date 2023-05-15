@@ -4,6 +4,7 @@ local ci = import '../ci.jsonnet';
 {
   local graalNodeJs = ci.jobtemplate + {
     cd:: 'graal-nodejs',
+    suite_prefix:: 'nodejs',
     // increase default timelimit on windows and darwin-amd64
     timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:15:00' else '45:00',
   },
@@ -126,59 +127,59 @@ local ci = import '../ci.jsonnet';
 
   // Builds that should run on all supported platforms
   local testingBuilds = generateBuilds([
-    graalNodeJs + common.gateStyleFullBuild                                                                                        + {name: 'nodejs-style-fullbuild'} +
+    graalNodeJs + common.gateStyleFullBuild                                                                                        + {name: 'style-fullbuild'} +
       defaultToTarget(common.gate) +
       includePlatforms([common.linux_amd64]),
 
-    graalNodeJs          + build            + defaultGateTags          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-default'} +
+    graalNodeJs          + build            + defaultGateTags          + {dynamicimports+:: ['/wasm']}                             + {name: 'default'} +
       promoteToTarget(common.gate, [common.linux_amd64, common.jdk17 + common.linux_amd64, common.jdk17 + common.linux_aarch64, common.jdk17 + common.darwin_aarch64, common.jdk17 + common.windows_amd64]) +
       promoteToTarget(common.postMerge, [common.jdk17 + common.darwin_amd64]),
 
-    graalNodeJs                             + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-substratevm-ce'} +
+    graalNodeJs                             + gateSubstrateVmSmokeTest                                                             + {name: 'substratevm-ce'} +
       excludePlatforms([ci.mainGatePlatform]) +
       promoteToTarget(common.gate, [common.jdk17 + common.darwin_aarch64, common.jdk17 + common.windows_amd64]) +
       promoteToTarget(common.postMerge, [common.jdk17 + common.darwin_amd64]),
-    graalNodeJs                             + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-substratevm-ee'} +
+    graalNodeJs                             + gateSubstrateVmSmokeTest                                                             + {name: 'substratevm-ee'} +
       excludePlatforms([ci.mainGatePlatform]),
     # We run either gateSubstrateVmSmokeTest or gateVmSmokeTest, but not both.
-    graalNodeJs + vm_env                    + gateVmSmokeTest                                                                 + ce + {name: 'nodejs-graalvm-ce'} +
+    graalNodeJs + vm_env                    + gateVmSmokeTest                                                                 + ce + {name: 'graalvm-ce'} +
       includePlatforms([ci.mainGatePlatform]) +
       promoteToTarget(common.gate, [ci.mainGatePlatform]),
-    graalNodeJs + vm_env                    + gateVmSmokeTest                                                                 + ee + {name: 'nodejs-graalvm-ee'} +
+    graalNodeJs + vm_env                    + gateVmSmokeTest                                                                 + ee + {name: 'graalvm-ee'} +
       includePlatforms([ci.mainGatePlatform]) +
       promoteToTarget(common.gate, [ci.mainGatePlatform]),
 
-    graalNodeJs + vm_env + build            + auxEngineCache                                                                  + ee + {name: 'nodejs-aux-engine-cache'} + gateOnMain +
+    graalNodeJs + vm_env + build            + auxEngineCache                                                                  + ee + {name: 'aux-engine-cache'} + gateOnMain +
       excludePlatforms([common.windows_amd64, common.darwin_amd64]), # unsupported on windows, too slow on darwin-amd64
   ] +
   // mx makeinnodeenv requires NASM on Windows.
   [gateOnMain + excludePlatforms([common.windows_amd64]) + b for b in [
-    graalNodeJs          + buildAddons      + testNode('addons',        max_heap='8G')                                             + {name: 'nodejs-addons'},
-    graalNodeJs          + buildNodeAPI     + testNode('node-api',      max_heap='8G')                                             + {name: 'nodejs-node-api'},
-    graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', max_heap='8G')                                             + {name: 'nodejs-js-native-api'},
+    graalNodeJs          + buildAddons      + testNode('addons',        max_heap='8G')                                             + {name: 'addons'},
+    graalNodeJs          + buildNodeAPI     + testNode('node-api',      max_heap='8G')                                             + {name: 'node-api'},
+    graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', max_heap='8G')                                             + {name: 'js-native-api'},
   ]] +
   [gateOnMain + promoteToTarget(common.gate, [common.jdk17 + common.windows_amd64]) + b for b in [
-    graalNodeJs + vm_env + build            + testNode('async-hooks',   max_heap='8G')                                             + {name: 'nodejs-async-hooks'},
-    graalNodeJs + vm_env + build            + testNode('es-module',     max_heap='8G')                                             + {name: 'nodejs-es-module'},
+    graalNodeJs + vm_env + build            + testNode('async-hooks',   max_heap='8G')                                             + {name: 'async-hooks'},
+    graalNodeJs + vm_env + build            + testNode('es-module',     max_heap='8G')                                             + {name: 'es-module'},
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
-    graalNodeJs + vm_env + build            + testNode('sequential',    max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'nodejs-sequential'} +
+    graalNodeJs + vm_env + build            + testNode('sequential',    max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'sequential'} +
       excludePlatforms([common.darwin_amd64]), # times out on darwin-amd64
   ]] +
   # too slow on darwin-amd64
   [gateOnMain + excludePlatforms([common.darwin_amd64]) + b for b in [
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r0,5', max_heap='8G')                               + {name: 'nodejs-parallel-1'},
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r1,5', max_heap='8G')                               + {name: 'nodejs-parallel-2'},
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r2,5', max_heap='8G')                               + {name: 'nodejs-parallel-3'},
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r3,5', max_heap='8G')                               + {name: 'nodejs-parallel-4'},
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r4,5', max_heap='8G')                               + {name: 'nodejs-parallel-5'},
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r0,5', max_heap='8G')                               + {name: 'parallel-1'},
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r1,5', max_heap='8G')                               + {name: 'parallel-2'},
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r2,5', max_heap='8G')                               + {name: 'parallel-3'},
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r3,5', max_heap='8G')                               + {name: 'parallel-4'},
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r4,5', max_heap='8G')                               + {name: 'parallel-5'},
 
-    graalNodeJs + vm_env + build            + testNode(parallelHttp2, max_heap='8G')                                               + {name: 'nodejs-parallel-http2'} +
+    graalNodeJs + vm_env + build            + testNode(parallelHttp2, max_heap='8G')                                               + {name: 'parallel-http2'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform], override=true),
   ]], defaultTarget=common.weekly),
 
   // Builds that only need to run on one platform
   local otherBuilds = generateBuilds([
-    graalNodeJs + common.weekly    + gateCoverage                                                                                  + {name: 'nodejs-coverage'},
+    graalNodeJs + common.weekly    + gateCoverage                                                                                  + {name: 'coverage'},
 
   ], platforms=[ci.mainGatePlatform]),
 
