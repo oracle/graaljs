@@ -12,7 +12,7 @@ local ci = import '../ci.jsonnet';
   local ce = ci.ce + compiler,
   local ee = ci.ee + compiler,
 
-  local gateTags(tags) = common.gateTags + {
+  local gateTags(tags) = common.build + common.gateTags + {
     environment+: {
       TAGS: tags,
     },

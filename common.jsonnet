@@ -102,7 +102,7 @@ targets +
     ],
   },
 
-  gateTags:: self.build + {
+  gateTags:: {
     run+: [
       $.gateCmdWithTags,
     ],

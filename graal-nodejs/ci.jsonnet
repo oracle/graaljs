@@ -136,7 +136,7 @@ local ci = import '../ci.jsonnet';
       defaultToTarget(common.gate) +
       includePlatforms([common.linux_amd64]),
 
-    graalNodeJs                             + defaultGateTags          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-default'} +
+    graalNodeJs          + build            + defaultGateTags          + {dynamicimports+:: ['/wasm']}                             + {name: 'nodejs-default'} +
       promoteToTarget(common.gate, [common.linux_amd64, common.jdk17 + common.linux_amd64, common.jdk17 + common.linux_aarch64, common.jdk17 + common.darwin_aarch64, common.jdk17 + common.windows_amd64]) +
       promoteToTarget(common.postMerge, [common.jdk17 + common.darwin_amd64]),
 
