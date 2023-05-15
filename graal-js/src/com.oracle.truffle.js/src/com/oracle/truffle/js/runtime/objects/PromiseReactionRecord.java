@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.truffle.js.runtime.JobCallback;
+
 public final class PromiseReactionRecord {
     private final PromiseCapabilityRecord capability;
     private final boolean fulfill;
-    private final Object handler;
+    private final JobCallback handler;
 
-    private PromiseReactionRecord(PromiseCapabilityRecord capability, Object handler, boolean fulfill) {
+    private PromiseReactionRecord(PromiseCapabilityRecord capability, JobCallback handler, boolean fulfill) {
         this.capability = capability;
         this.handler = handler;
         this.fulfill = fulfill;
@@ -55,7 +57,7 @@ public final class PromiseReactionRecord {
         return capability;
     }
 
-    public Object getHandler() {
+    public JobCallback getHandler() {
         return handler;
     }
 
@@ -67,7 +69,7 @@ public final class PromiseReactionRecord {
         return !isFulfill();
     }
 
-    public static PromiseReactionRecord create(PromiseCapabilityRecord capability, Object handler, boolean fulfill) {
+    public static PromiseReactionRecord create(PromiseCapabilityRecord capability, JobCallback handler, boolean fulfill) {
         return new PromiseReactionRecord(capability, handler, fulfill);
     }
 }

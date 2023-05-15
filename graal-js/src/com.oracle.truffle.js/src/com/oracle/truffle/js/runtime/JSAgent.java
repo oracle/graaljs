@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,6 +120,10 @@ public abstract class JSAgent {
         return canBlock;
     }
 
+    public final JobCallback hostMakeJobCallback(Object callback) {
+        return new JobCallback(callback);
+    }
+
     @TruffleBoundary
     public final void enqueuePromiseJob(JSFunctionObject job) {
         promiseJobsQueue.push(job);
@@ -145,10 +149,8 @@ public abstract class JSAgent {
                 }
                 if (!promiseJobsQueue.isEmpty()) {
                     JSFunctionObject nextJob = promiseJobsQueue.pollLast();
-                    if (JSFunction.isJSFunction(nextJob)) {
-                        checkWaiterRecords = true;
-                        JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
-                    }
+                    JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                    checkWaiterRecords = true;
                 }
             }
         } catch (Throwable t) {

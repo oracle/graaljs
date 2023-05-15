@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -359,9 +360,8 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
             if (fulfillReactions instanceof SimpleArrayList<?> && ((SimpleArrayList<?>) fulfillReactions).size() == 1) {
                 SimpleArrayList<?> fulfillList = (SimpleArrayList<?>) fulfillReactions;
                 PromiseReactionRecord reaction = (PromiseReactionRecord) fulfillList.get(0);
-                Object handler = reaction.getHandler();
-                if (JSFunction.isJSFunction(handler)) {
-                    JSFunctionObject handlerFunction = (JSFunctionObject) handler;
+                JobCallback handler = reaction.getHandler();
+                if (handler.callback() instanceof JSFunctionObject handlerFunction) {
                     RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(handlerFunction)).getRootNode();
                     if (rootNode instanceof AsyncHandlerRootNode) {
                         AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction);
