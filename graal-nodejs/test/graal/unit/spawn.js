@@ -163,10 +163,10 @@ describe('Spawn', function () {
         var moduleCreation = 'new vm.SyntheticModule([], () => {}, { identifier: "foo" }).link(() => {});';
         var code = moduleCreation + moduleCreation;
         var result = spawnSync(process.execPath, [
-            '--vm.ea',
             '--experimental-vm-modules',
             '--no-warnings=ExperimentalWarning',
-            '-e', code]);
+            '-e', code],
+            { env: { ...process.env, NODE_JVM_OPTIONS: (process.env.NODE_JVM_OPTIONS || '') + ' -ea' }});
         assert.strictEqual(result.stderr.toString(), '');
         assert.strictEqual(result.stdout.toString(), '');
         assert.strictEqual(result.status, 0);        

@@ -774,6 +774,12 @@ namespace v8 {
         reinterpret_cast<GraalObject*> (this)->SetAlignedPointerInInternalField(index, value);
     }
 
+    void Object::SetAlignedPointerInInternalFields(int argc, int indices[], void* values[]) {
+        for (int i = 0; i < argc; i++) {
+            this->SetAlignedPointerInInternalField(indices[i], values[i]);
+        }
+    }
+
     Maybe<bool> Object::SetPrototype(Local<Context> context, Local<Value> prototype) {
         return Just(reinterpret_cast<GraalObject*> (this)->SetPrototype(prototype));
     }
@@ -2288,6 +2294,10 @@ namespace v8 {
 
     Local<Symbol> Symbol::For(Isolate* isolate, Local<String> description) {
         return GraalSymbol::For(isolate, description);
+    }
+
+    Local<Symbol> Symbol::ForApi(Isolate* isolate, Local<String> description) {
+        return GraalSymbol::ForApi(isolate, description);
     }
 
     Local<Private> Private::New(Isolate* isolate, Local<String> name) {

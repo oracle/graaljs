@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@
 #include "graal_symbol-inl.h"
 
 GraalHandleContent* GraalSymbol::CopyImpl(jobject java_object_copy) {
-    return new GraalSymbol(Isolate(), java_object_copy);
+    return GraalSymbol::Allocate(Isolate(), java_object_copy);
 }
 
 v8::Local<v8::Symbol> GraalSymbol::New(v8::Isolate* isolate, v8::Local<v8::String> name) {
@@ -54,7 +54,7 @@ v8::Local<v8::Symbol> GraalSymbol::New(v8::Isolate* isolate, v8::Local<v8::Strin
     GraalString* graal_name = reinterpret_cast<GraalString*> (*name);
     jobject java_name = graal_name->GetJavaObject();
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_new, Object, java_name);
-    GraalSymbol* graal_symbol = new GraalSymbol(graal_isolate, java_symbol);
+    GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol);
     return reinterpret_cast<v8::Symbol*> (graal_symbol);
 }
 
@@ -63,7 +63,7 @@ v8::Local<v8::Private> GraalSymbol::NewPrivate(v8::Isolate* isolate, v8::Local<v
     GraalString* graal_description = reinterpret_cast<GraalString*> (*description);
     jobject java_description = graal_description->GetJavaObject();
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_private_new, Object, java_description);
-    GraalSymbol* graal_symbol = new GraalSymbol(graal_isolate, java_symbol);
+    GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol);
     return reinterpret_cast<v8::Private*> (graal_symbol);
 }
 
@@ -71,7 +71,7 @@ v8::Local<v8::Private> GraalSymbol::NewPrivate(v8::Isolate* isolate, v8::Local<v
 v8::Local<v8::Symbol> GraalSymbol::getter(v8::Isolate* isolate) { \
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate); \
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::method_id, Object); \
-    GraalSymbol* graal_symbol = new GraalSymbol(graal_isolate, java_symbol); \
+    GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol); \
     return reinterpret_cast<v8::Symbol*> (graal_symbol); \
 }
 
@@ -92,7 +92,16 @@ v8::Local<v8::Symbol> GraalSymbol::For(v8::Isolate* isolate, v8::Local<v8::Strin
     GraalString* graal_description = reinterpret_cast<GraalString*> (*description);
     jobject java_description = graal_description->GetJavaObject();
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_for, Object, java_description);
-    GraalSymbol* graal_symbol = new GraalSymbol(graal_isolate, java_symbol);
+    GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol);
+    return reinterpret_cast<v8::Symbol*> (graal_symbol);
+}
+
+v8::Local<v8::Symbol> GraalSymbol::ForApi(v8::Isolate* isolate, v8::Local<v8::String> description) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    GraalString* graal_description = reinterpret_cast<GraalString*> (*description);
+    jobject java_description = graal_description->GetJavaObject();
+    JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_for_api, Object, java_description);
+    GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol);
     return reinterpret_cast<v8::Symbol*> (graal_symbol);
 }
 
@@ -101,7 +110,7 @@ v8::Local<v8::Private> GraalSymbol::PrivateForApi(v8::Isolate* isolate, v8::Loca
     GraalString* graal_description = reinterpret_cast<GraalString*> (*description);
     jobject java_description = graal_description->GetJavaObject();
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_private_for_api, Object, java_description);
-    GraalSymbol* graal_symbol = new GraalSymbol(graal_isolate, java_symbol);
+    GraalSymbol* graal_symbol = GraalSymbol::Allocate(graal_isolate, java_symbol);
     return reinterpret_cast<v8::Private*> (graal_symbol);
 }
 
