@@ -1846,7 +1846,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (getFlag(rx, getUnicode)) {
                 flags[len++] = 'u';
             }
-            if (getFlag(rx, getUnicodeSets)) {
+            if (getUnicodeSets != null && getFlag(rx, getUnicodeSets)) {
                 flags[len++] = 'v';
             }
             if (getFlag(rx, getSticky)) {
