@@ -118,7 +118,7 @@ local ci = import '../ci.jsonnet';
       includePlatforms([common.linux_amd64]),
 
     graalJs + gateTags('default')                                                                    + ce + {name: 'default-ce'} +
-      promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk20 + common.linux_amd64, common.jdk17 + common.linux_aarch64, common.jdk17 + common.windows_amd64]),
+      promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk21 + common.linux_amd64, common.jdk17 + common.linux_aarch64, common.jdk17 + common.windows_amd64]),
     graalJs + gateTags('default')                                                                    + ee + {name: 'default-ee'} +
       promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk17 + common.darwin_aarch64]) +
       promoteToTarget(common.postMerge, [common.jdk17 + common.darwin_amd64]),
@@ -139,7 +139,7 @@ local ci = import '../ci.jsonnet';
 
     // downstream graal gate
     graalJs + downstreamGraal                                                                             + {name: 'downstream-graal'} +
-      promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk20 + common.linux_amd64]),
+      promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk21 + common.linux_amd64]),
     graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}                           + {name: 'downstream-substratevm-enterprise'} + gateOnMain +
       excludePlatforms([common.darwin_amd64]) + # Too slow
       excludePlatforms([common.linux_aarch64]), # Fails on Linux AArch64 with "Creation of the VM failed."
