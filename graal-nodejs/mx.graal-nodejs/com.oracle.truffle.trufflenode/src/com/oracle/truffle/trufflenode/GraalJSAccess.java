@@ -1665,6 +1665,13 @@ public final class GraalJSAccess {
         return registry.computeIfAbsent(stringDesc, Symbol::createRegistered);
     }
 
+    private Map<TruffleString, Symbol> symbolForApiRegistry = new HashMap<>();
+
+    public Object symbolForApi(Object description) {
+        TruffleString stringDesc = (TruffleString) description;
+        return symbolForApiRegistry.computeIfAbsent(stringDesc, Symbol::create);
+    }
+
     public Object symbolPrivateNew(Object description) {
         return Symbol.createPrivate((TruffleString) description);
     }

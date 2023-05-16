@@ -2290,6 +2290,10 @@ namespace v8 {
         return GraalSymbol::For(isolate, description);
     }
 
+    Local<Symbol> Symbol::ForApi(Isolate* isolate, Local<String> description) {
+        return GraalSymbol::ForApi(isolate, description);
+    }
+
     Local<Private> Private::New(Isolate* isolate, Local<String> name) {
         return GraalSymbol::NewPrivate(isolate, name);
     }

@@ -225,6 +225,7 @@
       { "name": "stringWrite" },
       { "name": "stringWriteOneByte" },
       { "name": "symbolFor" },
+      { "name": "symbolForApi" },
       { "name": "symbolGetAsyncIterator" },
       { "name": "symbolGetHasInstance" },
       { "name": "symbolGetIsConcatSpreadable" },

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,6 +92,15 @@ v8::Local<v8::Symbol> GraalSymbol::For(v8::Isolate* isolate, v8::Local<v8::Strin
     GraalString* graal_description = reinterpret_cast<GraalString*> (*description);
     jobject java_description = graal_description->GetJavaObject();
     JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_for, Object, java_description);
+    GraalSymbol* graal_symbol = new GraalSymbol(graal_isolate, java_symbol);
+    return reinterpret_cast<v8::Symbol*> (graal_symbol);
+}
+
+v8::Local<v8::Symbol> GraalSymbol::ForApi(v8::Isolate* isolate, v8::Local<v8::String> description) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    GraalString* graal_description = reinterpret_cast<GraalString*> (*description);
+    jobject java_description = graal_description->GetJavaObject();
+    JNI_CALL(jobject, java_symbol, graal_isolate, GraalAccessMethod::symbol_for_api, Object, java_description);
     GraalSymbol* graal_symbol = new GraalSymbol(graal_isolate, java_symbol);
     return reinterpret_cast<v8::Symbol*> (graal_symbol);
 }
