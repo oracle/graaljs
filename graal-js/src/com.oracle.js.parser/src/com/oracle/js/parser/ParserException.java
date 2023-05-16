@@ -184,6 +184,10 @@ public final class ParserException extends RuntimeException {
         return Token.descType(token) == TokenType.EOF;
     }
 
+    public String getRawMessage() {
+        return super.getMessage();
+    }
+
     @Override
     public String getMessage() {
         String message = super.getMessage();
