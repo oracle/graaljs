@@ -236,6 +236,7 @@ public class Test262Runnable extends TestRunnable {
                     "regexp-match-indices",
                     "regexp-named-groups",
                     "regexp-unicode-property-escapes",
+                    "regexp-v-flag",
                     "rest-parameters",
                     "string-trimming",
                     "super",
@@ -253,7 +254,6 @@ public class Test262Runnable extends TestRunnable {
                     "String.prototype.toWellFormed",
                     "arbitrary-module-namespace-names",
                     "regexp-duplicate-named-groups",
-                    "regexp-v-flag",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     });
@@ -307,6 +307,9 @@ public class Test262Runnable extends TestRunnable {
         }
         if (features.contains("ShadowRealm")) {
             extraOptions.put(JSContextOptions.SHADOW_REALM_NAME, "true");
+        }
+        if (features.contains("regexp-v-flag")) {
+            extraOptions.put(JSContextOptions.REGEXP_UNICODE_SETS_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
