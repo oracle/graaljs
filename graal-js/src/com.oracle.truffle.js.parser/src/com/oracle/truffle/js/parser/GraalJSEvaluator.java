@@ -209,10 +209,10 @@ public final class GraalJSEvaluator implements JSParser {
     private static JSException parserToJSError(Node lastNode, com.oracle.js.parser.ParserException e, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         String message;
-        if (context.isOptionNashornCompatibilityMode()) {
-            message = e.getMessage();
-        } else {
+        if (context.isOptionV8CompatibilityMode()) {
             message = e.getRawMessage();
+        } else {
+            message = e.getMessage();
         }
         message = message.replace("\r\n", "\n");
         if (e.getErrorType() == com.oracle.js.parser.JSErrorType.ReferenceError) {
