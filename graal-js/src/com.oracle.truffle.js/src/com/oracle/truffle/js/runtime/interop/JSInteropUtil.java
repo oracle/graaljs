@@ -54,6 +54,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -62,9 +63,11 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Utility class for interop operations. Provides methods that can be used in Cached annotations of
@@ -82,6 +85,43 @@ public final class JSInteropUtil {
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(foreignObj, e, "getArraySize", originatingNode);
         }
+    }
+
+    public static boolean setArraySize(Object obj, Object value, boolean isStrict, InteropLibrary interop, Node originatingNode, BranchProfile errorBranch) {
+        long newLen = JSAbstractArray.toArrayLengthOrRangeError(value, originatingNode);
+        long oldLen;
+        try {
+            oldLen = interop.getArraySize(obj);
+        } catch (UnsupportedMessageException e) {
+            if (errorBranch != null) {
+                errorBranch.enter();
+            }
+            throw Errors.createTypeErrorInteropException(obj, e, "getArraySize", originatingNode);
+        }
+        String message = null;
+        try {
+            if (newLen < oldLen) {
+                message = "removeArrayElement";
+                for (long idx = oldLen - 1; idx >= newLen; idx--) {
+                    interop.removeArrayElement(obj, idx);
+                }
+            } else {
+                message = "writeArrayElement";
+                for (long idx = oldLen; idx < newLen; idx++) {
+                    interop.writeArrayElement(obj, idx, Undefined.instance);
+                }
+            }
+        } catch (InteropException e) {
+            if (isStrict) {
+                if (errorBranch != null) {
+                    errorBranch.enter();
+                }
+                throw Errors.createTypeErrorInteropException(obj, e, message, originatingNode);
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue) {
