@@ -154,6 +154,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -1760,7 +1761,8 @@ public class WriteElementNode extends JSTargetableNode {
             }
             Object propertyKey;
             Object exportedValue = exportValue.execute(value);
-            if (interop.hasArrayElements(truffleObject)) {
+            boolean hasArrayElements = interop.hasArrayElements(truffleObject);
+            if (hasArrayElements) {
                 Object indexOrPropertyKey = toArrayIndex(index);
                 if (indexOrPropertyKey instanceof Long) {
                     try {
@@ -1798,6 +1800,9 @@ public class WriteElementNode extends JSTargetableNode {
                 return;
             }
             TruffleString stringKey = (TruffleString) propertyKey;
+            if (hasArrayElements && Strings.equals(JSAbstractArray.LENGTH, stringKey)) {
+                JSInteropUtil.setArraySize(truffleObject, value, root.isStrict, interop, this, null);
+            }
             if (root.context.isOptionNashornCompatibilityMode()) {
                 if (tryInvokeSetter(truffleObject, stringKey, exportedValue, root.context)) {
                     return;

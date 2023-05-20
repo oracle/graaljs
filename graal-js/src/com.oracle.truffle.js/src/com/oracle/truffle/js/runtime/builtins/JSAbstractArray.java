@@ -508,7 +508,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return list;
     }
 
-    protected static long toArrayLengthOrRangeError(Object obj, Node originatingNode) {
+    public static long toArrayLengthOrRangeError(Object obj, Node originatingNode) {
         Number len = JSRuntime.toNumber(obj);
         Number len32 = JSRuntime.toUInt32(len);
         /*

@@ -75,11 +75,13 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -805,7 +807,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             } else if (isForeignObject.profile(JSGuards.isForeignObject(thisObj))) {
                 if (foreignSetNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    foreignSetNode = insert(new ForeignPropertySetNode(root.getContext()));
+                    foreignSetNode = insert(new ForeignPropertySetNode(root.getContext(), root.getKey()));
                 }
                 foreignSetNode.setValue(thisObj, value, receiver, root, guard);
             } else {
@@ -858,12 +860,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Child private InteropLibrary interop;
         @Child private InteropLibrary setterInterop;
         private final BranchProfile errorBranch = BranchProfile.create();
+        private final boolean isLength;
 
-        public ForeignPropertySetNode(JSContext context) {
+        public ForeignPropertySetNode(JSContext context, Object key) {
             super(new ForeignLanguageCheckNode());
             this.context = context;
             this.export = ExportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+            this.isLength = key.equals(JSAbstractArray.LENGTH);
         }
 
         private Object nullCheck(Object truffleObject, Object key) {
@@ -873,36 +877,32 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return truffleObject;
         }
 
-        @Override
-        protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
+        private boolean setValueImpl(Object thisObj, Object value, PropertySetNode root) {
             Object key = root.getKey();
             Object truffleObject = nullCheck(thisObj, key);
             if (!Strings.isTString(key)) {
                 return false;
+            }
+            if (isLength && interop.hasArrayElements(thisObj)) {
+                return JSInteropUtil.setArraySize(thisObj, value, root.isStrict, interop, this, errorBranch);
             }
             return performWriteMember(truffleObject, value, root);
         }
 
         @Override
+        protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
+            return setValueImpl(thisObj, value, root);
+        }
+
+        @Override
         protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
-            Object key = root.getKey();
-            Object truffleObject = nullCheck(thisObj, key);
-            if (!Strings.isTString(key)) {
-                return false;
-            }
-            return performWriteMember(truffleObject, value, root);
+            return setValueImpl(thisObj, value, root);
         }
 
         @InliningCutoff
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            Object key = root.getKey();
-            Object truffleObject = nullCheck(thisObj, key);
-            if (!Strings.isTString(key)) {
-                return false;
-            }
-            Object exportedValue = export.execute(value);
-            return performWriteMember(truffleObject, exportedValue, root);
+            return setValueImpl(thisObj, export.execute(value), root);
         }
 
         private boolean performWriteMember(Object truffleObject, Object value, PropertySetNode root) {
@@ -1193,7 +1193,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @Override
     protected SetCacheNode createTruffleObjectPropertyNode() {
-        return new ForeignPropertySetNode(context);
+        return new ForeignPropertySetNode(context, getKey());
     }
 
     @Override
