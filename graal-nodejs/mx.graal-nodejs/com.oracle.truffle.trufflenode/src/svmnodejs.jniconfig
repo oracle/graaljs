@@ -142,6 +142,7 @@
       { "name": "numberNew" },
       { "name": "numberObjectNew" },
       { "name": "objectClone" },
+      { "name": "objectCreateDataProperty" },
       { "name": "objectCreationContext" },
       { "name": "objectDefineProperty" },
       { "name": "objectDelete" },
