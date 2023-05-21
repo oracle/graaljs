@@ -931,6 +931,14 @@ public final class GraalJSAccess {
         return JSRuntime.fromPropertyDescriptor(desc, context);
     }
 
+    public boolean objectCreateDataProperty(Object object, Object key, Object value) {
+        return JSRuntime.createDataProperty((JSDynamicObject) object, key, value);
+    }
+
+    public boolean objectCreateDataProperty(Object object, long index, Object value) {
+        return objectCreateDataProperty(object, Strings.fromLong(index), value);
+    }
+
     public boolean objectDefineProperty(Object object, Object key,
                     Object value, Object get, Object set,
                     boolean hasEnumerable, boolean enumerable,
