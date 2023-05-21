@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -248,6 +248,30 @@ EXPORT_TO_JS(SetIntegrityLevel) {
 
     IntegrityLevel level = freeze ? IntegrityLevel::kFrozen : IntegrityLevel::kSealed;
     Maybe<bool> result = obj->SetIntegrityLevel(context, level);
+
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
+}
+
+EXPORT_TO_JS(CreateDataProperty) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    Local<Object> obj = args[0].As<Object>();
+    Local<Name> key = args[1].As<Name>();
+
+    Maybe<bool> result = obj->CreateDataProperty(context, key, args[2]);
+
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
+}
+
+EXPORT_TO_JS(CreateDataPropertyIndex) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    Local<Object> obj = args[0].As<Object>();
+    uint32_t index = args[1]->Uint32Value(context).FromJust();
+
+    Maybe<bool> result = obj->CreateDataProperty(context, index, args[2]);
 
     if (result.IsJust()) {
         args.GetReturnValue().Set(result.FromJust());
