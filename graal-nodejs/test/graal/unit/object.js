@@ -507,4 +507,74 @@ describe('Object', function () {
             });
         }
     });
+    describe('CreateDataProperty', function () {
+        describe('name version', function () {
+            it('should create data property', function () {
+                var o = {};
+                var key = 'foo';
+                assert.strictEqual(module.Object_CreateDataProperty(o, key, 42), true);
+                var desc = Object.getOwnPropertyDescriptor(o, key);
+                assert.strictEqual(desc.value, 42);
+                assert.strictEqual(desc.configurable, true);
+                assert.strictEqual(desc.enumerable, true);
+                assert.strictEqual(desc.writable, true);
+            });
+            it('should not override existing non-configurable property', function () {
+                var o = {};
+                var key = 'foo';
+                Object.defineProperty(o, key, { value: 211 });
+                assert.strictEqual(module.Object_CreateDataProperty(o, key, 42), false);
+                var desc = Object.getOwnPropertyDescriptor(o, key);
+                assert.strictEqual(desc.value, 211);
+                assert.strictEqual(desc.configurable, false);
+                assert.strictEqual(desc.enumerable, false);
+                assert.strictEqual(desc.writable, false);
+            });
+            it('should not create data property on non-extensible object', function () {
+                var o = Object.freeze({});
+                var key = 'foo';
+                assert.strictEqual(module.Object_CreateDataProperty(o, key, 42), false);
+                assert.strictEqual(Object.getOwnPropertyDescriptor(o, key), undefined);
+            });
+        });
+        describe('index version', function () {
+            it('should create data property', function () {
+                var o = {};
+                var key = 123;
+                assert.strictEqual(module.Object_CreateDataPropertyIndex(o, key, 42), true);
+                var desc = Object.getOwnPropertyDescriptor(o, key);
+                assert.strictEqual(desc.value, 42);
+                assert.strictEqual(desc.configurable, true);
+                assert.strictEqual(desc.enumerable, true);
+                assert.strictEqual(desc.writable, true);
+            });
+            it('should not override existing non-configurable property', function () {
+                var o = {};
+                var key = 123;
+                Object.defineProperty(o, key, { value: 211 });
+                assert.strictEqual(module.Object_CreateDataPropertyIndex(o, key, 42), false);
+                var desc = Object.getOwnPropertyDescriptor(o, key);
+                assert.strictEqual(desc.value, 211);
+                assert.strictEqual(desc.configurable, false);
+                assert.strictEqual(desc.enumerable, false);
+                assert.strictEqual(desc.writable, false);
+            });
+            it('should not create data property on non-extensible object', function () {
+                var o = Object.freeze({});
+                var key = 123;
+                assert.strictEqual(module.Object_CreateDataPropertyIndex(o, key, 42), false);
+                assert.strictEqual(Object.getOwnPropertyDescriptor(o, key), undefined);
+            });
+            it('should work for indices that do not fit into int32', function () {
+                var o = {};
+                var key = 4294967295;
+                assert.strictEqual(module.Object_CreateDataPropertyIndex(o, key, 42), true);
+                var desc = Object.getOwnPropertyDescriptor(o, key);
+                assert.strictEqual(desc.value, 42);
+                assert.strictEqual(desc.configurable, true);
+                assert.strictEqual(desc.enumerable, true);
+                assert.strictEqual(desc.writable, true);
+            });
+        });
+    });
 });

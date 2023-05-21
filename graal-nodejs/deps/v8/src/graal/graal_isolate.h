@@ -157,6 +157,8 @@ enum GraalAccessMethod {
     object_get_property_names,
     object_get_own_property_names,
     object_creation_context,
+    object_create_data_property,
+    object_create_data_property_index,
     object_define_property,
     object_preview_entries,
     object_set_integrity_level,

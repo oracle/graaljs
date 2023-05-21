@@ -299,6 +299,20 @@ v8::MaybeLocal<v8::Value> GraalObject::GetOwnPropertyDescriptor(v8::Local<v8::Co
     return v8_result;
 }
 
+v8::Maybe<bool> GraalObject::CreateDataProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key, v8::Local<v8::Value> value) {
+    jobject java_key = reinterpret_cast<GraalHandleContent*> (*key)->GetJavaObject();
+    jobject java_value = reinterpret_cast<GraalHandleContent*> (*value)->GetJavaObject();
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::object_create_data_property, Boolean, GetJavaObject(), java_key, java_value);
+    return v8::Just((bool) result);
+}
+
+v8::Maybe<bool> GraalObject::CreateDataProperty(v8::Local<v8::Context> context, uint32_t index, v8::Local<v8::Value> value) {
+    jlong java_index = (jlong) index;
+    jobject java_value = reinterpret_cast<GraalHandleContent*> (*value)->GetJavaObject();
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::object_create_data_property_index, Boolean, GetJavaObject(), java_index, java_value);
+    return v8::Just((bool) result);
+}
+
 v8::Maybe<bool> GraalObject::DefineProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key, v8::PropertyDescriptor& descriptor) {
     jobject java_key = reinterpret_cast<GraalHandleContent*> (*key)->GetJavaObject();
     jobject value = descriptor.has_value() ? reinterpret_cast<GraalHandleContent*> (*descriptor.value())->GetJavaObject() : NULL;
