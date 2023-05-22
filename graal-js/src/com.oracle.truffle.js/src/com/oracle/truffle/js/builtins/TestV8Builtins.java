@@ -91,6 +91,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -439,12 +440,12 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         protected Object setTimeout(Object callback) {
             assert JSRuntime.isCallable(callback);
             JSRealm realm = getRealm();
-            List<Object> embedderData = (List<Object>) realm.getEmbedderData();
+            List<JobCallback> embedderData = (List<JobCallback>) realm.getEmbedderData();
             if (embedderData == null) {
                 embedderData = new ArrayList<>();
                 realm.setEmbedderData(embedderData);
             }
-            embedderData.add(callback);
+            embedderData.add(realm.getAgent().hostMakeJobCallback(callback));
             return Undefined.instance;
         }
     }
