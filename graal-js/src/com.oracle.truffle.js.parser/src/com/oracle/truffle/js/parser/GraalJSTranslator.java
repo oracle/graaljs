@@ -48,7 +48,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -664,8 +663,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return body;
         }
         JavaScriptNode newBody = (JavaScriptNode) instrumentSuspendHelper(body, null);
-        Objects.requireNonNull(newBody);
-        return newBody;
+        if (newBody == null) {
+            // No suspendable children found. They could have been eliminated
+            // as a dead code during translation (for example, 'while (false) yield').
+            return body;
+        } else {
+            return newBody;
+        }
     }
 
     private Node instrumentSuspendHelper(Node parent, Node grandparent) {
