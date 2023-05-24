@@ -577,4 +577,17 @@ describe('Object', function () {
             });
         });
     });
+    describe('CallAsConstructor', function () {
+        it('should create an instance of a function', function () {
+            var f = function() {};
+            var result = module.Object_CallAsConstructor(f);
+            assert.ok(result instanceof f);
+        });
+        it('should throw for an ordinary object', function () {
+            assert.throws(() => module.Object_CallAsConstructor({}), TypeError);
+        });
+        it('should throw for a non-constructor function', function () {
+            assert.throws(() => module.Object_CallAsConstructor(Math.abs), TypeError);
+        });
+    });
 });

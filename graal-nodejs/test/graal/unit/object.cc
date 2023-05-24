@@ -278,4 +278,15 @@ EXPORT_TO_JS(CreateDataPropertyIndex) {
     }
 }
 
+EXPORT_TO_JS(CallAsConstructor) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    Local<Object> obj = args[0].As<Object>();
+
+    MaybeLocal<Value> result = obj->CallAsConstructor(context, 0, nullptr);
+
+    if (!result.IsEmpty()) {
+        args.GetReturnValue().Set(result.ToLocalChecked());
+    }
+}
+
 #undef SUITE
