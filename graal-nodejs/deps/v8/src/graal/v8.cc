@@ -1505,6 +1505,10 @@ namespace v8 {
         return external->Value();
     }
 
+    MaybeLocal<Value> Object::CallAsConstructor(Local<Context> context, int argc, Local<Value> argv[]) {
+        return reinterpret_cast<const GraalFunction*> (this)->NewInstance(argc, argv);
+    }
+
     MaybeLocal<Object> Function::NewInstance(Local<Context> context, int argc, Local<Value> argv[]) const {
         return reinterpret_cast<const GraalFunction*> (this)->NewInstance(argc, argv);
     }

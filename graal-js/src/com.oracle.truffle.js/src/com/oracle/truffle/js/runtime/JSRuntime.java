@@ -2467,14 +2467,14 @@ public final class JSRuntime {
     }
 
     public static Object construct(Object fnObj, Object[] arguments) {
-        if (JSFunction.isJSFunction(fnObj)) {
+        if (JSFunction.isConstructor(fnObj)) {
             return JSFunction.construct((JSFunctionObject) fnObj, arguments);
-        } else if (JSProxy.isJSProxy(fnObj)) {
+        } else if (JSProxy.isJSProxy(fnObj) && isConstructorProxy((JSDynamicObject) fnObj)) {
             return JSProxy.construct((JSDynamicObject) fnObj, arguments);
         } else if (isForeignObject(fnObj)) {
             return JSInteropUtil.construct(fnObj, arguments);
         } else {
-            throw Errors.createTypeErrorNotAFunction(fnObj);
+            throw Errors.createTypeErrorNotAConstructor(fnObj, JavaScriptLanguage.get(null).getJSContext());
         }
     }
 

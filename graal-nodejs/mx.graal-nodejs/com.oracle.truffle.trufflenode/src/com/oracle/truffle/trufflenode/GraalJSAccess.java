@@ -1691,10 +1691,7 @@ public final class GraalJSAccess {
     }
 
     public Object functionNewInstance(Object function, Object[] arguments) {
-        JSFunctionObject functionObject = (JSFunctionObject) function;
-        JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
-        Object[] callArguments = JSArguments.create(null, function, arguments);
-        return functionData.getConstructTarget().call(callArguments);
+        return JSRuntime.construct(function, arguments);
     }
 
     public void functionSetName(Object function, Object name) {
