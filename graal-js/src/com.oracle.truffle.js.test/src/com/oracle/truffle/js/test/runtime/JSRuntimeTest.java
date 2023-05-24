@@ -403,13 +403,6 @@ public class JSRuntimeTest extends JSTest {
         result = JSRuntime.construct(JSProxy.create(ctx, testHelper.getRealm(), arrayCtrFn, createOrdinaryObject()), new Object[]{10});
         assertTrue(JSArray.isJSArray(result));
         assertEquals(10, JSArray.arrayGetLength((JSDynamicObject) result));
-
-        try {
-            JSRuntime.construct(createOrdinaryObject(), new Object[]{10});
-            assertTrue(false);
-        } catch (Exception ex) {
-            assertTrue(ex.getMessage().contains("not a function"));
-        }
     }
 
     @Test

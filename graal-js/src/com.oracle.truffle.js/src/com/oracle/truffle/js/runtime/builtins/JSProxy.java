@@ -879,9 +879,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     @TruffleBoundary
     public static Object construct(JSDynamicObject proxyObj, Object[] arguments) {
-        if (!JSRuntime.isConstructorProxy(proxyObj)) {
-            throw Errors.createTypeErrorNotAFunction(proxyObj);
-        }
+        assert JSRuntime.isConstructorProxy(proxyObj);
         JSDynamicObject handler = getHandlerChecked(proxyObj, CONSTRUCT);
         Object target = getTarget(proxyObj);
         Object trap = getTrapFromObject(handler, CONSTRUCT);
