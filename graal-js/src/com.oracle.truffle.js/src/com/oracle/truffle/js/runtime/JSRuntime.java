@@ -2474,7 +2474,7 @@ public final class JSRuntime {
         } else if (isForeignObject(fnObj)) {
             return JSInteropUtil.construct(fnObj, arguments);
         } else {
-            throw Errors.createTypeErrorNotAFunction(fnObj);
+            throw Errors.createTypeErrorNotAConstructor(fnObj, JavaScriptLanguage.get(null).getJSContext());
         }
     }
 
