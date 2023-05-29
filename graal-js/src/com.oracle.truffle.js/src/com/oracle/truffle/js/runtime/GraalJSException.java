@@ -835,6 +835,10 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return sourceSection != null ? sourceSection.getCharIndex() : -1;
         }
 
+        public int getCharLength() {
+            return sourceSection != null ? sourceSection.getCharLength() : 0;
+        }
+
         public Object getThis() {
             return thisObj;
         }

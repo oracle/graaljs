@@ -2669,6 +2669,22 @@ public final class GraalJSAccess {
         return Strings.UNKNOWN;
     }
 
+    public int messageGetStartPosition(Object exception) {
+        GraalJSException.JSStackTraceElement stackFrame = messageGraalJSExceptionStackFrame(exception);
+        if (stackFrame != null) {
+            return stackFrame.getPosition();
+        }
+        return -1;
+    }
+
+    public int messageGetEndPosition(Object exception) {
+        GraalJSException.JSStackTraceElement stackFrame = messageGraalJSExceptionStackFrame(exception);
+        if (stackFrame != null) {
+            return stackFrame.getPosition() + stackFrame.getCharLength();
+        }
+        return -1;
+    }
+
     public Object messageGetStackTrace(Object exception) {
         if (exception instanceof GraalJSException) {
             GraalJSException truffleException = (GraalJSException) exception;

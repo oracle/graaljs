@@ -1559,6 +1559,14 @@ namespace v8 {
         return reinterpret_cast<const GraalMessage*> (this)->GetStartColumn();
     }
 
+    int Message::GetStartPosition() const {
+        return reinterpret_cast<const GraalMessage*> (this)->GetStartPosition();
+    }
+
+    int Message::GetEndPosition() const {
+        return reinterpret_cast<const GraalMessage*> (this)->GetEndPosition();
+    }
+
     Local<String> Message::Get() const {
         return reinterpret_cast<const GraalMessage*> (this)->Get();
     }
@@ -1707,6 +1715,14 @@ namespace v8 {
             GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
             graal_isolate->GetJNIEnv()->ExceptionClear();
         }
+    }
+
+    MaybeLocal<Value> TryCatch::StackTrace(Local<Context> context) const {
+        Local<Value> exception = this->Exception();
+        if (!exception.IsEmpty() && exception->IsObject()) {
+            return exception.As<Object>()->Get(context, String::NewFromUtf8Literal(context->GetIsolate(), "stack"));
+        }
+        return MaybeLocal<Value>();
     }
 
     Maybe<bool> Value::Equals(Local<Context> context, Local<Value> that) const {

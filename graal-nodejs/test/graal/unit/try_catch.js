@@ -175,4 +175,30 @@ describe('TryCatch', function () {
             assert.strictEqual(hasCaught, false);
         });
     });
+    describe('StackTrace', function () {
+        it('should return the stack of the caught error', function () {
+            var thrower = function () {
+                throw new Error("foo");
+            };
+            var dropFirstTwoFrames = function(stack) {
+                var frames = stack.split('\n');
+                frames.splice(1, 2);
+                return frames.join('\n');
+            };
+            var expected;
+            try {
+                thrower();
+            } catch (e) {
+                expected = dropFirstTwoFrames(e.stack);
+            }
+            var actual = dropFirstTwoFrames(module.TryCatch_StackTrace(thrower));
+            assert.strictEqual(actual, expected);
+        });
+        it('should be empty when no error is thrown', function () {
+            assert.strictEqual(module.TryCatch_StackTrace(function() {}, 'empty'), 'empty');
+        });
+        it('should be empty when the error is not an object', function () {
+            assert.strictEqual(module.TryCatch_StackTrace(function() { throw 'error'; }, 'empty'), 'empty');
+        });
+    });
 });

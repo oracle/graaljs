@@ -282,6 +282,8 @@ enum GraalAccessMethod {
     message_get_source_line,
     message_get_start_column,
     message_get_stack_trace,
+    message_get_start_position,
+    message_get_end_position,
     message_get,
     stack_trace_current_stack_trace,
     stack_frame_get_line_number,
