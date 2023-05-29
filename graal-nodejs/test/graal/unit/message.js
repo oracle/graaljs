@@ -61,6 +61,16 @@ describe('Message', function () {
             assert.strictEqual(module.Message_GetLineNumber(throwException) > 0, true);
         });
     });
+    describe('GetStartPosition', function () {
+        it('querying simple message', function () {
+            assert.strictEqual(module.Message_GetStartPosition(throwException) > 0, true);
+        });
+    });
+    describe('GetEndPosition', function () {
+        it('querying simple message', function () {
+            assert.strictEqual(module.Message_GetEndPosition(throwException) > 0, true);
+        });
+    });
     describe('GetSourceLine', function () {
         it('querying simple message', function () {
             var line = module.Message_GetSourceLine(throwException);

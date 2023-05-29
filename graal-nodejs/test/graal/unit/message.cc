@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,6 +96,16 @@ EXPORT_TO_JS(GetScriptResourceName) {
 EXPORT_TO_JS(Get) {
     Local<Message> message = createMessage(args);
     args.GetReturnValue().Set(message->Get());
+}
+
+EXPORT_TO_JS(GetStartPosition) {
+    Local<Message> message = createMessage(args);
+    args.GetReturnValue().Set(message->GetStartPosition());
+}
+
+EXPORT_TO_JS(GetEndPosition) {
+    Local<Message> message = createMessage(args);
+    args.GetReturnValue().Set(message->GetEndPosition());
 }
 
 #undef SUITE
