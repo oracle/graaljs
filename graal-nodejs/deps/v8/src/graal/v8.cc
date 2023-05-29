@@ -1717,6 +1717,14 @@ namespace v8 {
         }
     }
 
+    MaybeLocal<Value> TryCatch::StackTrace(Local<Context> context) const {
+        Local<Value> exception = this->Exception();
+        if (!exception.IsEmpty() && exception->IsObject()) {
+            return exception.As<Object>()->Get(context, String::NewFromUtf8Literal(context->GetIsolate(), "stack"));
+        }
+        return MaybeLocal<Value>();
+    }
+
     Maybe<bool> Value::Equals(Local<Context> context, Local<Value> that) const {
         return reinterpret_cast<const GraalValue*> (this)->Equals(that);
     }
