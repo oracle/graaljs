@@ -226,4 +226,13 @@ EXPORT_TO_JS(Reset) {
     args.GetReturnValue().Set(tryCatch.HasCaught());
 }
 
+EXPORT_TO_JS(StackTrace) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    TryCatch_InvokeCallback(args);
+    MaybeLocal<Value> stack_trace = tryCatch.StackTrace(context);
+    args.GetReturnValue().Set(stack_trace.IsEmpty() ? args[1] : stack_trace.ToLocalChecked());
+}
+
 #undef SUITE
