@@ -1559,6 +1559,14 @@ namespace v8 {
         return reinterpret_cast<const GraalMessage*> (this)->GetStartColumn();
     }
 
+    int Message::GetStartPosition() const {
+        return reinterpret_cast<const GraalMessage*> (this)->GetStartPosition();
+    }
+
+    int Message::GetEndPosition() const {
+        return reinterpret_cast<const GraalMessage*> (this)->GetEndPosition();
+    }
+
     Local<String> Message::Get() const {
         return reinterpret_cast<const GraalMessage*> (this)->Get();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,4 +97,14 @@ v8::Local<v8::String> GraalMessage::Get() const {
     JNI_CALL(jobject, java_message, Isolate(), GraalAccessMethod::message_get, Object, GetJavaObject());
     GraalString* graal_message = GraalString::Allocate(Isolate(), java_message);
     return reinterpret_cast<v8::String*> (graal_message);
+}
+
+int GraalMessage::GetStartPosition() const {
+    JNI_CALL(jint, start_position, Isolate(), GraalAccessMethod::message_get_start_position, Int, GetJavaObject());
+    return start_position;
+}
+
+int GraalMessage::GetEndPosition() const {
+    JNI_CALL(jint, end_position, Isolate(), GraalAccessMethod::message_get_end_position, Int, GetJavaObject());
+    return end_position;
 }
