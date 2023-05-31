@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,28 @@
 var Mocha = require('mocha');
 var fs = require('fs');
 
+const {
+    EVENT_TEST_FAIL,
+    EVENT_TEST_PASS,
+    EVENT_TEST_PENDING
+} = Mocha.Runner.constants;
+
 var limitToSuites = [];
+var jsonResultsFile = null;
 for (var i = 2; i < process.argv.length; i++) {
     var arg = process.argv[i];
     if (arg.length > 0) {
+        if (arg.startsWith('--')) {
+            if (arg == '--help') {
+                console.log(`node ${process.argv[1]} [--json-results=file.json.gz] [testsuite.js...]`)
+                process.exit(0);
+            } else if (arg.startsWith('--json-results=')) {
+                jsonResultsFile = arg.split('=', 2)[1];
+            } else {
+                console.error(`Unknown option: ${arg}`);
+            }
+            continue;
+        }
         suite = process.argv[i];
         console.log("limiting to suite:", suite);
         limitToSuites.push(suite);
@@ -104,8 +122,40 @@ for (var i = 0; i < filesLength; i++) {
     }
 }
 
-mocha.run(function (failures) {
-    process.on('exit', function () {
-        process.exit(failures);  // exit with non-zero status if there were failures
+const JsonStatus = {
+    PASSED: "PASSED",
+    FAILED: "FAILED",
+    IGNORED: "IGNORED"
+};
+
+let results = [];
+function onTestEnd(test, status) {
+    results.push({
+        name: test.fullTitle(),
+        status: status,
+        duration: String(test.duration || 0)
     });
+}
+function onRunEnd() {
+    if (jsonResultsFile !== null) {
+        let output = JSON.stringify(results);
+        if (jsonResultsFile.endsWith('.gz')) {
+            const {gzipSync} = require('zlib');
+            output = gzipSync(output);
+        }
+        fs.writeFileSync(jsonResultsFile, output);
+    }
+}
+
+mocha.run(function (failures) {
+    onRunEnd();
+    process.on('exit', function () {
+        process.exit(failures ? 1 : 0); // exit with non-zero status if there were failures
+    });
+}).on(EVENT_TEST_PASS, (test) => {
+    onTestEnd(test, JsonStatus.PASSED);
+}).on(EVENT_TEST_FAIL, (test) => {
+    onTestEnd(test, JsonStatus.FAILED);
+}).on(EVENT_TEST_PENDING, (test) => {
+    onTestEnd(test, JsonStatus.IGNORED);
 });
