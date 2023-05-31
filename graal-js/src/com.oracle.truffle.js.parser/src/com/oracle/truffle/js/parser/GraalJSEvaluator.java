@@ -236,7 +236,7 @@ public final class GraalJSEvaluator implements JSParser {
             context.checkEvalAllowed();
             return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, name).build(), false, "", "");
         } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage());
+            throw Errors.createSyntaxError(e, context);
         }
     }
 
@@ -251,7 +251,7 @@ public final class GraalJSEvaluator implements JSParser {
         try {
             return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, isStrict, prolog, epilog, argumentNames);
         } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage());
+            throw Errors.createSyntaxError(e, context);
         }
     }
 
@@ -355,7 +355,7 @@ public final class GraalJSEvaluator implements JSParser {
         try {
             return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "<unknown>").build(), false, "", "");
         } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage());
+            throw Errors.createSyntaxError(e, context);
         }
     }
 
@@ -368,7 +368,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public String parseToJSON(JSContext context, String code, String name, boolean includeLoc) {
-        return GraalJSParserHelper.parseToJSON(code, name, includeLoc, context.getParserOptions());
+        return GraalJSParserHelper.parseToJSON(code, name, includeLoc, context);
     }
 
     @Override
@@ -390,7 +390,7 @@ public final class GraalJSEvaluator implements JSParser {
         try {
             return JavaScriptTranslator.translateModule(NodeFactory.getInstance(context), context, source);
         } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage(), e, null);
+            throw Errors.createSyntaxError(e, context);
         }
 
     }

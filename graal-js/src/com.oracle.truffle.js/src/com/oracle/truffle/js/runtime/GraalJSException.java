@@ -105,8 +105,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
         this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
     }
 
-    protected GraalJSException(String message, SourceSection location, int stackTraceLimit) {
-        super(message, null, stackTraceLimit, null);
+    protected GraalJSException(String message, Throwable cause, SourceSection location, int stackTraceLimit) {
+        super(message, cause, stackTraceLimit, null);
         this.location = location;
         this.stackTraceLimit = stackTraceLimit;
         this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;

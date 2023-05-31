@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import com.oracle.js.parser.ParserException;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -218,6 +219,12 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createSyntaxError(ParserException cause, JSContext context) {
+        String message = context.isOptionV8CompatibilityMode() ? cause.getRawMessage() : cause.getMessage();
+        return JSException.create(JSErrorType.SyntaxError, message, cause, null);
+    }
+
+    @TruffleBoundary
     public static JSException createSyntaxError(String message, Throwable cause, Node originatingNode) {
         return JSException.create(JSErrorType.SyntaxError, message, cause, originatingNode);
     }
@@ -238,8 +245,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createSyntaxError(String message, SourceSection sourceLocation, boolean isIncompleteSource) {
-        return JSException.create(JSErrorType.SyntaxError, message, sourceLocation, isIncompleteSource);
+    public static JSException createSyntaxError(String message, Throwable cause, SourceSection sourceLocation, boolean isIncompleteSource) {
+        return JSException.create(JSErrorType.SyntaxError, message, cause, sourceLocation, isIncompleteSource);
     }
 
     @TruffleBoundary

@@ -196,5 +196,4 @@ public final class ParserException extends RuntimeException {
         }
         return message;
     }
-
 }
