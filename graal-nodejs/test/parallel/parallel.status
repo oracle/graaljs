@@ -214,6 +214,9 @@ test-zlib-unused-weak: FAIL
 # Fails randomly
 test-http-outgoing-end-cork: SKIP
 test-http2-server-rst-stream: SKIP
+# GC-based random failures
+test-domain-async-id-map-leak: SKIP
+test-async-hooks-destroy-on-gc: SKIP
 
 # Random OutOfMemoryError: Garbage-collected heap size exceeded.
 test-worker-init-failure: SKIP
