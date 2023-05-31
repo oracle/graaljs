@@ -125,9 +125,8 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntSupplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import com.oracle.js.parser.ParserException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 
@@ -306,7 +305,6 @@ public final class GraalJSAccess {
     public static final TruffleString NODE_INTERNAL_MAIN_WORKER_THREAD = Strings.constant("node:internal/main/worker_thread");
     public static final TruffleString NODE_INSPECTOR = Strings.constant("node:inspector");
     public static final TruffleString DOT_JS = Strings.constant(".js");
-    public static final TruffleString SYNTAX_ERROR_COLON_SPC = Strings.constant("SyntaxError: ");
     public static final TruffleString SHEBANG = Strings.constant("#!");
 
     private static final boolean VERBOSE = Boolean.getBoolean("truffle.node.js.verbose");
@@ -2517,16 +2515,6 @@ public final class GraalJSAccess {
             if (JSError.getException(errorObject) == null) {
                 JSObjectUtil.putHiddenProperty(errorObject, JSError.EXCEPTION_PROPERTY_NAME, truffleException);
             }
-            // Patch stack property of SyntaxErrors so that it looks like the one from V8
-            Matcher matcher = messageSyntaxErrorMatcher(exception);
-            if (matcher != null) {
-                TruffleString stack = JSRuntime.toString(JSObject.get(errorObject, JSError.STACK_NAME));
-                if (Strings.startsWith(stack, Strings.fromJavaString(truffleException.getMessage()))) {
-                    TruffleString message = Strings.fromJavaString(matcher.group(SYNTAX_ERROR_MESSAGE_GROUP));
-                    stack = Strings.concatAll(SYNTAX_ERROR_COLON_SPC, message, Strings.lazySubstring(stack, truffleException.getMessage().length()));
-                    JSObject.set(errorObject, JSError.STACK_NAME, stack);
-                }
-            }
         }
         return exceptionObject;
     }
@@ -2554,57 +2542,44 @@ public final class GraalJSAccess {
         return null;
     }
 
-    private static final Pattern SYNTAX_ERROR_PATTERN = Pattern.compile("(.+):(\\d+):(\\d+) ([^\r\n]+)\r?\n([^\r\n]+)(?:\r?\n(?:.|(?:\r?\n))*)?");
-    private static final int SYNTAX_ERROR_RESOURCE_NAME_GROUP = 1;
-    private static final int SYNTAX_ERROR_LINE_NUMBER_GROUP = 2;
-    private static final int SYNTAX_ERROR_COLUMN_NUMBER_GROUP = 3;
-    private static final int SYNTAX_ERROR_MESSAGE_GROUP = 4;
-    private static final int SYNTAX_ERROR_SOURCE_LINE_GROUP = 5;
-
-    private static Matcher messageSyntaxErrorMatcher(Object exception) {
+    private static ParserException messageSyntaxErrorCause(Object exception) {
         if (exception instanceof JSException) {
             JSException jsException = (JSException) exception;
-            if (jsException.getErrorType() == JSErrorType.SyntaxError) {
-                String message = jsException.getRawMessage();
-                Matcher matcher = SYNTAX_ERROR_PATTERN.matcher(message);
-                if (matcher.matches()) {
-                    return matcher;
-                }
+            if (jsException.getErrorType() == JSErrorType.SyntaxError && jsException.getCause() instanceof ParserException) {
+                return (ParserException) jsException.getCause();
             }
         }
         return null;
     }
 
     private static TruffleString messageSyntaxErrorResourceName(Object exception) {
-        Matcher matcher = messageSyntaxErrorMatcher(exception);
-        if (matcher != null) {
-            return Strings.fromJavaString(matcher.group(SYNTAX_ERROR_RESOURCE_NAME_GROUP));
+        ParserException parserException = messageSyntaxErrorCause(exception);
+        if (parserException != null) {
+            return Strings.fromJavaString(parserException.getFileName());
         }
         return null;
     }
 
     private static int messageSyntaxErrorLineNumber(Object exception) {
-        Matcher matcher = messageSyntaxErrorMatcher(exception);
-        if (matcher != null) {
-            String lineNumber = matcher.group(SYNTAX_ERROR_LINE_NUMBER_GROUP);
-            return Integer.parseInt(lineNumber);
+        ParserException parserException = messageSyntaxErrorCause(exception);
+        if (parserException != null) {
+            return parserException.getLineNumber();
         }
         return -1;
     }
 
     private static int messageSyntaxErrorColumnNumber(Object exception) {
-        Matcher matcher = messageSyntaxErrorMatcher(exception);
-        if (matcher != null) {
-            String columnNumber = matcher.group(SYNTAX_ERROR_COLUMN_NUMBER_GROUP);
-            return Integer.parseInt(columnNumber);
+        ParserException parserException = messageSyntaxErrorCause(exception);
+        if (parserException != null) {
+            return parserException.getColumnNumber();
         }
         return -1;
     }
 
     private static TruffleString messageSyntaxErrorSourceLine(Object exception) {
-        Matcher matcher = messageSyntaxErrorMatcher(exception);
-        if (matcher != null) {
-            return Strings.fromJavaString(matcher.group(SYNTAX_ERROR_SOURCE_LINE_GROUP));
+        ParserException parserException = messageSyntaxErrorCause(exception);
+        if (parserException != null) {
+            return Strings.fromJavaString(parserException.getSource().getSourceLine(parserException.getPosition()));
         }
         return null;
     }
