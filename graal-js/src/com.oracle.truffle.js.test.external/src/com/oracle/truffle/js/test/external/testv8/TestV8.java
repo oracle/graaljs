@@ -88,7 +88,6 @@ public class TestV8 extends TestSuite {
         this.mockupSource = loadV8Mockup();
         Map<String, String> options = new HashMap<>();
         options.put(JSContextOptions.TESTV8_MODE_NAME, "true");
-        options.put(JSContextOptions.VALIDATE_REGEXP_LITERALS_NAME, "false");
         options.put(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
         options.put(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
         options.put(JSContextOptions.INTL_402_NAME, "true");

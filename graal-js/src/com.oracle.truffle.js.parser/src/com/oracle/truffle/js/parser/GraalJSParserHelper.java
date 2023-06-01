@@ -132,7 +132,7 @@ public final class GraalJSParserHelper {
         }
 
         if (errors.hasErrors()) {
-            throwErrors(truffleSource, errors);
+            throwErrors(truffleSource, errors, context);
         }
         return parsed;
     }
@@ -149,7 +149,7 @@ public final class GraalJSParserHelper {
         Parser parser = createParser(context, env, source, errors, parserOptions);
         Expression expression = parser.parseExpression();
         if (errors.hasErrors()) {
-            throwErrors(truffleSource, errors);
+            throwErrors(truffleSource, errors, context);
         }
 
         return expression;
@@ -216,7 +216,7 @@ public final class GraalJSParserHelper {
         parser.parseFunctionBody(generator, async);
     }
 
-    private static void throwErrors(com.oracle.truffle.api.source.Source source, ErrorManager errors) {
+    private static void throwErrors(com.oracle.truffle.api.source.Source source, ErrorManager errors, JSContext context) {
         ParserException parserException = errors.getParserException();
         SourceSection sourceLocation = null;
         boolean isIncompleteSource = false;
@@ -233,16 +233,22 @@ public final class GraalJSParserHelper {
                 assert parserException.getErrorType() == com.oracle.js.parser.JSErrorType.SyntaxError;
             }
         }
-        throw Errors.createSyntaxError(((ErrorManager.StringBuilderErrorManager) errors).getOutput(), sourceLocation, isIncompleteSource);
+        String message;
+        if (context.isOptionV8CompatibilityMode()) {
+            message = errors.getParserException().getRawMessage();
+        } else {
+            message = ((ErrorManager.StringBuilderErrorManager) errors).getOutput();
+        }
+        throw Errors.createSyntaxError(message, errors.getParserException(), sourceLocation, isIncompleteSource);
     }
 
-    public static String parseToJSON(String code, String name, boolean includeLoc, JSParserOptions parserOptions) {
+    public static String parseToJSON(String code, String name, boolean includeLoc, JSContext context) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
-        ScriptEnvironment env = makeScriptEnvironment(parserOptions);
+        ScriptEnvironment env = makeScriptEnvironment(context.getParserOptions());
         try {
             return JSONWriter.parse(env, code, name, includeLoc);
         } catch (ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage());
+            throw Errors.createSyntaxError(e, context);
         }
     }
 }

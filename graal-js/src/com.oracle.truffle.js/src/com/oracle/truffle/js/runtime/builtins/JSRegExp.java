@@ -104,6 +104,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     public static final TruffleString INDEX = Strings.constant("index");
     public static final TruffleString INDICES = Strings.constant("indices");
     public static final TruffleString HAS_INDICES = Strings.constant("hasIndices");
+    public static final TruffleString UNICODE_SETS = Strings.constant("unicodeSets");
 
     public static final PropertyProxy LAZY_INDEX_PROXY = new LazyRegexResultIndexProxyProperty();
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
@@ -327,6 +328,9 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         }
         if (ctx.isOptionRegexpMatchIndices()) {
             putRegExpPropertyAccessor(realm, prototype, HAS_INDICES);
+        }
+        if (ctx.isOptionRegexpUnicodeSets()) {
+            putRegExpPropertyAccessor(realm, prototype, UNICODE_SETS);
         }
         // ctor and functions
         JSObjectUtil.putConstructorProperty(prototype, ctor);

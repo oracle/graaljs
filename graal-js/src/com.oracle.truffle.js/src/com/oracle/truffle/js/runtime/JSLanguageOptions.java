@@ -60,6 +60,7 @@ public record JSLanguageOptions(
                 boolean annexB,
                 boolean intl402,
                 boolean regexpMatchIndices,
+                boolean regexpUnicodeSets,
                 boolean sharedArrayBuffer,
                 boolean v8RealmBuiltin,
                 boolean nashornCompatibilityMode,
@@ -137,6 +138,7 @@ public record JSLanguageOptions(
         boolean annexB = options.isAnnexB();
         boolean intl402 = options.isIntl402();
         boolean regexpMatchIndices = options.isRegexpMatchIndices();
+        boolean regexpUnicodeSets = options.isRegexpUnicodeSets();
         boolean sharedArrayBuffer = options.isSharedArrayBuffer();
         boolean v8RealmBuiltin = options.isV8RealmBuiltin();
         boolean parseOnly = options.isParseOnly();
@@ -207,6 +209,7 @@ public record JSLanguageOptions(
                         annexB,
                         intl402,
                         regexpMatchIndices,
+                        regexpUnicodeSets,
                         sharedArrayBuffer,
                         v8RealmBuiltin,
                         nashornCompatibilityMode,

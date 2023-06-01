@@ -94,7 +94,11 @@ public final class JSException extends GraalJSException {
     }
 
     private JSException(JSErrorType type, String message, SourceSection sourceLocation, JSRealm realm, int stackTraceLimit, boolean isIncompleteSource) {
-        super(message, sourceLocation, stackTraceLimit);
+        this(type, message, null, sourceLocation, realm, stackTraceLimit, isIncompleteSource);
+    }
+
+    private JSException(JSErrorType type, String message, Throwable cause, SourceSection sourceLocation, JSRealm realm, int stackTraceLimit, boolean isIncompleteSource) {
+        super(message, cause, sourceLocation, stackTraceLimit);
         CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = null;
@@ -138,6 +142,11 @@ public final class JSException extends GraalJSException {
     public static JSException create(JSErrorType type, String message, SourceSection sourceLocation, boolean isIncompleteSource) {
         JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
         return fillInStackTrace(new JSException(type, message, sourceLocation, realm, getStackTraceLimit(realm), isIncompleteSource), false);
+    }
+
+    public static JSException create(JSErrorType type, String message, Throwable cause, SourceSection sourceLocation, boolean isIncompleteSource) {
+        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+        return fillInStackTrace(new JSException(type, message, cause, sourceLocation, realm, getStackTraceLimit(realm), isIncompleteSource), false);
     }
 
     public static int getStackTraceLimit(JSRealm realm) {

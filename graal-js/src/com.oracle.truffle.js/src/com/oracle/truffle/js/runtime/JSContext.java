@@ -1425,6 +1425,10 @@ public class JSContext {
         return languageOptions.regexpMatchIndices();
     }
 
+    public boolean isOptionRegexpUnicodeSets() {
+        return languageOptions.regexpUnicodeSets();
+    }
+
     public boolean isOptionRegexpStaticResult() {
         return optionRegexpStaticResult.get();
     }
