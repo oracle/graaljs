@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -104,5 +104,5 @@ class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
 
 add_bm_suite(JMHDistGraalJsBenchmarkSuite())
 
-mx_sdk_vm.register_vm_config('ce', ['cmp', 'icu4j', 'js', 'jss', 'nfi', 'rgx', 'sdk', 'svm', 'svmnfi', 'svmsl', 'tfl', 'tflm'], _suite)
-mx_sdk_vm.register_vm_config('ee', ['cmp', 'cmpee', 'icu4j', 'js', 'jss', 'nfi', 'rgx', 'sdk', 'svm', 'svmee', 'svmeegc', 'svmnfi', 'svmsl', 'tfl', 'tflllm', 'tflm'], _suite)
+mx_sdk_vm.register_vm_config('ce', ['cmp', 'icu4j', 'js', 'jss', 'rgx', 'sdk', 'sdkl', 'svm', 'svmsl', 'tfl', 'tfla', 'tflm'], _suite)
+mx_sdk_vm.register_vm_config('ee', ['cmp', 'cmpee', 'icu4j', 'js', 'jss', 'rgx', 'sdk', 'sdkl', 'svm', 'svmee', 'svmeegc', 'svmsl', 'tfl', 'tfla', 'tflllm', 'tflm'], _suite)
