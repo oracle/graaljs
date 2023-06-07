@@ -86,15 +86,15 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
 
   supportedPlatforms:: [
     common.jdk17 + common.linux_amd64,
-    common.jdk20 + common.linux_amd64,
+    common.jdk21 + common.linux_amd64,
     common.jdk17 + common.linux_aarch64,
-    common.jdk20 + common.linux_aarch64,
+    common.jdk21 + common.linux_aarch64,
     common.jdk17 + common.darwin_amd64,
-    common.jdk20 + common.darwin_amd64,
+    common.jdk21 + common.darwin_amd64,
     common.jdk17 + common.darwin_aarch64,
-    common.jdk20 + common.darwin_aarch64,
+    common.jdk21 + common.darwin_aarch64,
     common.jdk17 + common.windows_amd64,
-    common.jdk20 + common.windows_amd64,
+    common.jdk21 + common.windows_amd64,
   ],
   mainGatePlatform:: common.jdk17 + common.linux_amd64,
 

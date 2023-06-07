@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,7 +107,7 @@ public class DebugJSAgent extends JSAgent {
 
         agentContext.initializePublic(null, JavaScriptLanguage.ID);
 
-        Thread thread = env.createThread(new Runnable() {
+        Thread thread = env.newTruffleThreadBuilder(new Runnable() {
             @Override
             public void run() {
                 JSRealm innerContext = JavaScriptLanguage.getCurrentJSRealm();
@@ -151,7 +151,7 @@ public class DebugJSAgent extends JSAgent {
                     System.err.println("Uncaught error from " + Thread.currentThread() + ": " + e.getMessage());
                 }
             }
-        }, agentContext);
+        }).context(agentContext).build();
 
         thread.setName("Debug-JSAgent-Worker-Thread");
         thread.start();
