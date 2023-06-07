@@ -87,7 +87,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
         try {
             URI uri = new URI(specifier);
-            return uri.getScheme() != null ? uri : null;
+            return uri.isAbsolute() ? uri : null;
         } catch (URISyntaxException e) {
             return null;
         }
