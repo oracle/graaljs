@@ -587,7 +587,6 @@ public final class GraalJSEvaluator implements JSParser {
             return moduleRecord.getNamespace();
         }
 
-        assert moduleRecord.getStatus() != Status.Unlinked;
         Collection<TruffleString> exportedNames = getExportedNames(moduleRecord);
         List<Map.Entry<TruffleString, ExportResolution>> unambiguousNames = new ArrayList<>();
         for (TruffleString exportedName : exportedNames) {
