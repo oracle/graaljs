@@ -76,6 +76,14 @@ describe('Other', function () {
             Object.create(script).runInThisContext();
         }, TypeError, "Illegal invocation");
     });
+    it('should refuse null and undefined (in a template with a signature check) properly', function () {
+        var nativeMethodWithASignatureCheck = Object.getPrototypeOf(vm.Script.prototype).runInContext;
+        [null, undefined].forEach(function (thiz) {
+            assert.throws(function() {
+                nativeMethodWithASignatureCheck.call(thiz);
+            }, TypeError, "Illegal invocation");
+        });
+    });
     it('should throw the right error from vm.runInNewContext() (GR-9592)', function () {
         Error.prepareStackTrace = function () {
             fs.existsSync("."); // a call that invokes a native method needed here
