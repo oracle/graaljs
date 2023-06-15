@@ -19,15 +19,22 @@ steps listed in the process as outlined in
 The current security stewards are documented in the main Node.js
 [README.md](https://github.com/nodejs/node#security-release-stewards).
 
-| Company    | Person          | Release Date |
-| ---------- | --------------- | ------------ |
-| NearForm   | Matteo          | 2021-Oct-12  |
-| Datadog    | Bryan           | 2022-Jan-10  |
-| RH and IBM | Joe             | 2022-Mar-18  |
-| NearForm   | Matteo / Rafael | 2022-Jul-07  |
-| Datadog    | Vladimir        | 2022-Sep-23  |
-| NodeSource | Juan            | 2022-Nov-04  |
-| RH and IBM | Michael         |              |
+| Company      | Person          | Release Date |
+| ------------ | --------------- | ------------ |
+| NearForm     | Matteo          | 2021-Oct-12  |
+| Datadog      | Bryan           | 2022-Jan-10  |
+| RH and IBM   | Joe             | 2022-Mar-18  |
+| NearForm     | Matteo / Rafael | 2022-Jul-07  |
+| Datadog      | Vladimir        | 2022-Sep-23  |
+| NodeSource   | Juan            | 2022-Nov-04  |
+| RH and IBM   | Michael         | 2023-Feb-16  |
+| Platformatic | Matteo          |              |
+| Datadog      | Bryan           |              |
+| IBM          | Joe             |              |
+| NearForm     | Rafael          |              |
+| Datadog      | Vladimir        |              |
+| NodeSource   | Juan            |              |
+| Red Hat      | Michael         |              |
 
 ## Planning
 
@@ -111,6 +118,7 @@ out a better way, forward the email you receive to
 `oss-security@lists.openwall.com` as a CC.
 
 * [ ] Create a new issue in [nodejs/tweet][]
+
   ```text
   Security release pre-alert:
 
@@ -122,6 +130,13 @@ out a better way, forward the email you receive to
 
   https://nodejs.org/en/blog/vulnerability/month-year-security-releases/
   ```
+
+  We specifically ask that collaborators other than the releasers and security
+  steward working on the security release do not tweet or publicise the release
+  until the tweet from the Node.js twitter handle goes out. We have often
+  seen tweets sent out before the release and associated announcements are
+  complete which may confuse those waiting for the release and also takes
+  away from the work the releasers have put into shipping the releases.
 
 * [ ] Request releaser(s) to start integrating the PRs to be released.
 

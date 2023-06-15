@@ -127,6 +127,7 @@ const customTypesMap = {
   'fs.FSWatcher': 'fs.html#class-fsfswatcher',
   'fs.ReadStream': 'fs.html#class-fsreadstream',
   'fs.Stats': 'fs.html#class-fsstats',
+  'fs.StatFs': 'fs.html#class-fsstatfs',
   'fs.StatWatcher': 'fs.html#class-fsstatwatcher',
   'fs.WriteStream': 'fs.html#class-fswritestream',
 
@@ -207,7 +208,7 @@ const customTypesMap = {
   'Timeout': 'timers.html#class-timeout',
   'Timer': 'timers.html#timers',
 
-  'TapStream': 'test.html#class-tapstream',
+  'TestsStream': 'test.html#class-testsstream',
 
   'tls.SecureContext': 'tls.html#tlscreatesecurecontextoptions',
   'tls.Server': 'tls.html#class-tlsserver',

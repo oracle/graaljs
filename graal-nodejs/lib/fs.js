@@ -53,7 +53,7 @@ const {
   W_OK,
   X_OK,
   O_WRONLY,
-  O_SYMLINK
+  O_SYMLINK,
 } = constants;
 
 const pathModule = require('path');
@@ -73,7 +73,7 @@ const {
   },
   AbortError,
   uvErrmapGet,
-  uvException
+  uvException,
 } = require('internal/errors');
 
 const { FSReqCallback } = binding;
@@ -104,6 +104,7 @@ const {
   nullCheck,
   preprocessSymlinkDestination,
   Stats,
+  getStatFsFromBinding,
   getStatsFromBinding,
   realpathCacheKey,
   stringToFlags,
@@ -120,12 +121,12 @@ const {
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
   validatePrimitiveStringAfterArrayBufferView,
-  warnOnNonPortableTemplate
+  warnOnNonPortableTemplate,
 } = require('internal/fs/utils');
 const {
   Dir,
   opendir,
-  opendirSync
+  opendirSync,
 } = require('internal/fs/dir');
 const {
   CHAR_FORWARD_SLASH,
@@ -170,7 +171,7 @@ const isOSX = process.platform === 'darwin';
 const showStringCoercionDeprecation = deprecate(
   () => {},
   'Implicit coercion of objects with own toString property is deprecated.',
-  'DEP0162'
+  'DEP0162',
 );
 function showTruncateDeprecation() {
   if (truncateWarn) {
@@ -973,7 +974,7 @@ function writev(fd, buffers, position, callback) {
 ObjectDefineProperty(writev, kCustomPromisifyArgsSymbol, {
   __proto__: null,
   value: ['bytesWritten', 'buffer'],
-  enumerable: false
+  enumerable: false,
 });
 
 /**
@@ -1523,6 +1524,24 @@ function stat(path, options = { bigint: false }, callback) {
   binding.stat(pathModule.toNamespacedPath(path), options.bigint, req);
 }
 
+function statfs(path, options = { bigint: false }, callback) {
+  if (typeof options === 'function') {
+    callback = options;
+    options = kEmptyObject;
+  }
+  callback = maybeCallback(callback);
+  path = getValidatedPath(path);
+  const req = new FSReqCallback(options.bigint);
+  req.oncomplete = (err, stats) => {
+    if (err) {
+      return callback(err);
+    }
+
+    callback(err, getStatFsFromBinding(stats));
+  };
+  binding.statfs(pathModule.toNamespacedPath(path), options.bigint, req);
+}
+
 function hasNoEntryError(ctx) {
   if (ctx.errno) {
     const uvErr = uvErrmapGet(ctx.errno);
@@ -1595,6 +1614,15 @@ function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
   }
   handleErrorFromBinding(ctx);
   return getStatsFromBinding(stats);
+}
+
+function statfsSync(path, options = { bigint: false }) {
+  path = getValidatedPath(path);
+  const ctx = { path };
+  const stats = binding.statfs(pathModule.toNamespacedPath(path),
+                               options.bigint, undefined, ctx);
+  handleErrorFromBinding(ctx);
+  return getStatFsFromBinding(stats);
 }
 
 /**
@@ -2368,7 +2396,7 @@ function watchFile(filename, options, listener) {
     // behavioral changes to a minimum.
     interval: 5007,
     persistent: true,
-    ...options
+    ...options,
   };
 
   validateFunction(listener, 'listener');
@@ -3025,7 +3053,9 @@ module.exports = fs = {
   rmdir,
   rmdirSync,
   stat,
+  statfs,
   statSync,
+  statfsSync,
   symlink,
   symlinkSync,
   truncate,
@@ -3086,7 +3116,7 @@ module.exports = fs = {
   },
 
   // For tests
-  _toUnixTimestamp: toUnixTimestamp
+  _toUnixTimestamp: toUnixTimestamp,
 };
 
 ObjectDefineProperties(fs, {
@@ -3098,7 +3128,7 @@ ObjectDefineProperties(fs, {
     __proto__: null,
     configurable: false,
     enumerable: true,
-    value: constants
+    value: constants,
   },
   promises: {
     __proto__: null,
@@ -3107,6 +3137,6 @@ ObjectDefineProperties(fs, {
     get() {
       promises ??= require('internal/fs/promises').exports;
       return promises;
-    }
-  }
+    },
+  },
 });

@@ -1,3 +1,5 @@
+// @ts-check
+
 'use strict'
 
 /* global WebAssembly */
@@ -85,7 +87,15 @@ try {
   channels.connected = { hasSubscribers: false }
 }
 
+/**
+ * @type {import('../types/client').default}
+ */
 class Client extends DispatcherBase {
+  /**
+   *
+   * @param {string|URL} url
+   * @param {import('../types/client').Client.Options} options
+   */
   constructor (url, {
     interceptors,
     maxHeaderSize,
@@ -109,7 +119,9 @@ class Client extends DispatcherBase {
     connect,
     maxRequestsPerClient,
     localAddress,
-    maxResponseSize
+    maxResponseSize,
+    autoSelectFamily,
+    autoSelectFamilyAttemptTimeout
   } = {}) {
     super()
 
@@ -185,12 +197,20 @@ class Client extends DispatcherBase {
       throw new InvalidArgumentError('maxResponseSize must be a positive number')
     }
 
+    if (
+      autoSelectFamilyAttemptTimeout != null &&
+      (!Number.isInteger(autoSelectFamilyAttemptTimeout) || autoSelectFamilyAttemptTimeout < -1)
+    ) {
+      throw new InvalidArgumentError('autoSelectFamilyAttemptTimeout must be a positive number')
+    }
+
     if (typeof connect !== 'function') {
       connect = buildConnector({
         ...tls,
         maxCachedSessions,
         socketPath,
         timeout: connectTimeout,
+        ...(util.nodeHasAutoSelectFamily && autoSelectFamily ? { autoSelectFamily, autoSelectFamilyAttemptTimeout } : undefined),
         ...connect
       })
     }
@@ -212,8 +232,8 @@ class Client extends DispatcherBase {
     this[kResuming] = 0 // 0, idle, 1, scheduled, 2 resuming
     this[kNeedDrain] = 0 // 0, idle, 1, scheduled, 2 resuming
     this[kHostHeader] = `host: ${this[kUrl].hostname}${this[kUrl].port ? `:${this[kUrl].port}` : ''}\r\n`
-    this[kBodyTimeout] = bodyTimeout != null ? bodyTimeout : 30e3
-    this[kHeadersTimeout] = headersTimeout != null ? headersTimeout : 30e3
+    this[kBodyTimeout] = bodyTimeout != null ? bodyTimeout : 300e3
+    this[kHeadersTimeout] = headersTimeout != null ? headersTimeout : 300e3
     this[kStrictContentLength] = strictContentLength == null ? true : strictContentLength
     this[kMaxRedirections] = maxRedirections
     this[kMaxRequests] = maxRequestsPerClient
@@ -1648,6 +1668,8 @@ class AsyncWriter {
       process.emitWarning(new RequestContentLengthMismatchError())
     }
 
+    socket.cork()
+
     if (bytesWritten === 0) {
       if (!expectsPayload) {
         socket[kReset] = true
@@ -1667,6 +1689,8 @@ class AsyncWriter {
     this.bytesWritten += len
 
     const ret = socket.write(chunk)
+
+    socket.uncork()
 
     request.onBodySent(chunk)
 

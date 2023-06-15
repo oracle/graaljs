@@ -16,11 +16,11 @@ const {
 } = binding;
 
 const {
-  getOptionValue
+  getOptionValue,
 } = require('internal/options');
 
 const {
-  readFileSync
+  readFileSync,
 } = require('fs');
 
 const supportedModules = new SafeSet(new SafeArrayIterator([
@@ -98,7 +98,7 @@ function requireForUserSnapshot(id) {
   if (!BuiltinModule.canBeRequiredByUsers(id)) {
     // eslint-disable-next-line no-restricted-syntax
     const err = new Error(
-      `Cannot find module '${id}'. `
+      `Cannot find module '${id}'. `,
     );
     err.code = 'MODULE_NOT_FOUND';
     throw err;
@@ -116,7 +116,7 @@ function requireForUserSnapshot(id) {
 
 function main() {
   const {
-    prepareMainThreadExecution
+    prepareMainThreadExecution,
   } = require('internal/process/pre_execution');
 
   prepareMainThreadExecution(true, false);

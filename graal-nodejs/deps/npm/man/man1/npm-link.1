@@ -1,4 +1,4 @@
-.TH "NPM-LINK" "1" "January 2023" "" ""
+.TH "NPM-LINK" "1" "February 2023" "" ""
 .SH "NAME"
 \fBnpm-link\fR - Symlink a package folder
 .SS "Synopsis"
@@ -129,11 +129,11 @@ man pages are linked to \fB{prefix}/share/man\fR
 .IP \(bu 4
 Default: "hoisted"
 .IP \(bu 4
-Type: "hoisted", "nested", or "shallow"
+Type: "hoisted", "nested", "shallow", or "linked"
 .RE 0
 
 .P
-Sets the strategy for installing packages in node_modules. hoisted (default): Install non-duplicated in top-level, and duplicated as necessary within directory structure. nested: (formerly --legacy-bundling) install in place, no hoisting. shallow (formerly --global-style) only install direct deps at top-level. linked: (coming soon) install in node_modules/.store, link in place, unhoisted.
+Sets the strategy for installing packages in node_modules. hoisted (default): Install non-duplicated in top-level, and duplicated as necessary within directory structure. nested: (formerly --legacy-bundling) install in place, no hoisting. shallow (formerly --global-style) only install direct deps at top-level. linked: (experimental) install in node_modules/.store, link in place, unhoisted.
 .SS "\fBlegacy-bundling\fR"
 .RS 0
 .IP \(bu 4
@@ -317,7 +317,7 @@ This value is not exported to the environment for child processes.
 .SS "\fBinstall-links\fR"
 .RS 0
 .IP \(bu 4
-Default: true
+Default: false
 .IP \(bu 4
 Type: Boolean
 .RE 0

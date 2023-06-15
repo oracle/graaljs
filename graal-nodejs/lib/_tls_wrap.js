@@ -79,7 +79,7 @@ const {
   ERR_TLS_REQUIRED_SERVER_NAME,
   ERR_TLS_SESSION_ATTACK,
   ERR_TLS_SNI_FROM_SERVER,
-  ERR_TLS_INVALID_STATE
+  ERR_TLS_INVALID_STATE,
 } = codes;
 const { onpskexchange: kOnPskExchange } = internalBinding('symbols');
 const {
@@ -97,7 +97,7 @@ const {
   validateUint32,
 } = require('internal/validators');
 const {
-  InternalX509Certificate
+  InternalX509Certificate,
 } = require('internal/crypto/x509');
 const traceTls = getOptionValue('--trace-tls');
 const tlsKeylog = getOptionValue('--tls-keylog');
@@ -171,7 +171,7 @@ function onhandshakedone() {
 function loadSession(hello) {
   debug('server onclienthello',
         'sessionid.len', hello.sessionId.length,
-        'ticket?', hello.tlsTicket
+        'ticket?', hello.tlsTicket,
   );
   const owner = this[owner_symbol];
 
@@ -350,7 +350,7 @@ function onPskServerCallback(identity, maxPskLen) {
       throw new ERR_INVALID_ARG_TYPE(
         'ret',
         ['Object', 'Buffer', 'TypedArray', 'DataView'],
-        ret
+        ret,
       );
     }
     psk = ret.psk;
@@ -361,7 +361,7 @@ function onPskServerCallback(identity, maxPskLen) {
     throw new ERR_INVALID_ARG_VALUE(
       'psk',
       psk,
-      `Pre-shared key exceeds ${maxPskLen} bytes`
+      `Pre-shared key exceeds ${maxPskLen} bytes`,
     );
   }
 
@@ -381,7 +381,7 @@ function onPskClientCallback(hint, maxPskLen, maxIdentityLen) {
     throw new ERR_INVALID_ARG_VALUE(
       'psk',
       ret.psk,
-      `Pre-shared key exceeds ${maxPskLen} bytes`
+      `Pre-shared key exceeds ${maxPskLen} bytes`,
     );
   }
 
@@ -390,7 +390,7 @@ function onPskClientCallback(hint, maxPskLen, maxIdentityLen) {
     throw new ERR_INVALID_ARG_VALUE(
       'identity',
       ret.identity,
-      `PSK identity exceeds ${maxIdentityLen} bytes`
+      `PSK identity exceeds ${maxIdentityLen} bytes`,
     );
   }
 
@@ -426,7 +426,7 @@ function onerror(err) {
     // so self._tlsError will return null instead of actual error
 
     // Set closing the socket after emitting an event since the socket needs to
-    // be accessible when the `tlsClientError` event is emmited.
+    // be accessible when the `tlsClientError` event is emitted.
     owner._closeAfterHandlingError = true;
     owner.destroy(err);
   } else if (owner._tlsOptions?.isServer &&
@@ -447,7 +447,7 @@ function initRead(tlsSocket, socket) {
   debug('%s initRead',
         tlsSocket._tlsOptions.isServer ? 'server' : 'client',
         'handle?', !!tlsSocket._handle,
-        'buffered?', !!socket && socket.readableLength
+        'buffered?', !!socket && socket.readableLength,
   );
   // If we were destroyed already don't bother reading
   if (!tlsSocket._handle)
@@ -653,7 +653,7 @@ function defineHandleReading(socket, handle) {
     },
     set: (value) => {
       socket[kRes].reading = value;
-    }
+    },
   });
 }
 
@@ -689,7 +689,7 @@ TLSSocket.prototype._init = function(socket, wrap) {
 
   debug('%s _init',
         options.isServer ? 'server' : 'client',
-        'handle?', !!ssl
+        'handle?', !!ssl,
   );
 
   // Clients (!isServer) always request a cert, servers request a client cert
@@ -846,7 +846,7 @@ TLSSocket.prototype.renegotiate = function(options, callback) {
 
   debug('%s renegotiate()',
         this._tlsOptions.isServer ? 'server' : 'client',
-        'destroyed?', this.destroyed
+        'destroyed?', this.destroyed,
   );
 
   if (this.destroyed)
@@ -1379,7 +1379,7 @@ Server.prototype.setSecureContext = function(options) {
 
 Server.prototype._getServerData = function() {
   return {
-    ticketKeys: this.getTicketKeys().toString('hex')
+    ticketKeys: this.getTicketKeys().toString('hex'),
   };
 };
 
@@ -1456,7 +1456,7 @@ Server.prototype.addContext = function(servername, context) {
 
   const re = new RegExp('^' + StringPrototypeReplaceAll(
     RegExpPrototypeSymbolReplace(/([.^$+?\-\\[\]{}])/g, servername, '\\$1'),
-    '*', '[^.]*'
+    '*', '[^.]*',
   ) + '$');
   ArrayPrototypePush(this._contexts,
                      [re, tls.createSecureContext(context).context]);
@@ -1615,7 +1615,7 @@ exports.connect = function connect(...args) {
     ciphers: tls.DEFAULT_CIPHERS,
     checkServerIdentity: tls.checkServerIdentity,
     minDHSize: 1024,
-    ...options
+    ...options,
   };
 
   if (!options.keepAlive)
@@ -1680,7 +1680,7 @@ exports.connect = function connect(...args) {
         'Setting the TLS ServerName to an IP address is not permitted by ' +
         'RFC 6066. This will be ignored in a future version.',
         'DeprecationWarning',
-        'DEP0123'
+        'DEP0123',
       );
       ipServernameWarned = true;
     }

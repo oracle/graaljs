@@ -32,7 +32,7 @@ const {
     ERR_EVENT_RECURSION,
     ERR_MISSING_ARGS,
     ERR_INVALID_THIS,
-  }
+  },
 } = require('internal/errors');
 const { validateObject, validateString } = require('internal/validators');
 
@@ -75,8 +75,15 @@ const isTrustedSet = new SafeWeakSet();
 const isTrusted = ObjectGetOwnPropertyDescriptor({
   get isTrusted() {
     return isTrustedSet.has(this);
-  }
+  },
 }, 'isTrusted').get;
+
+const isTrustedDescriptor = {
+  __proto__: null,
+  configurable: false,
+  enumerable: true,
+  get: isTrusted,
+};
 
 function isEvent(value) {
   return typeof value?.[kType] === 'string';
@@ -113,12 +120,7 @@ class Event {
     }
 
     // isTrusted is special (LegacyUnforgeable)
-    ObjectDefineProperty(this, 'isTrusted', {
-      __proto__: null,
-      get: isTrusted,
-      enumerable: true,
-      configurable: false
-    });
+    ObjectDefineProperty(this, 'isTrusted', isTrustedDescriptor);
     this[kTarget] = null;
     this[kIsBeingDispatched] = false;
   }
@@ -131,7 +133,7 @@ class Event {
       return name;
 
     const opts = ObjectAssign({}, options, {
-      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
+      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth,
     });
 
     return `${name} ${inspect({
@@ -385,7 +387,7 @@ let weakListenersState = null;
 let objectToWeakListenerMap = null;
 function weakListeners() {
   weakListenersState ??= new SafeFinalizationRegistry(
-    (listener) => listener.remove()
+    (listener) => listener.remove(),
   );
   objectToWeakListenerMap ??= new SafeWeakMap();
   return { registry: weakListenersState, map: objectToWeakListenerMap };
@@ -761,7 +763,7 @@ class EventTarget {
       return name;
 
     const opts = ObjectAssign({}, options, {
-      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
+      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth,
     });
 
     return `${name} ${inspect({}, opts)}`;
@@ -778,7 +780,7 @@ ObjectDefineProperties(EventTarget.prototype, {
     enumerable: false,
     configurable: true,
     value: 'EventTarget',
-  }
+  },
 });
 
 function initNodeEventTarget(self) {
@@ -914,7 +916,7 @@ class NodeEventTarget extends EventTarget {
   }
 
   /**
-   * @param {string} type
+   * @param {string} [type]
    * @returns {NodeEventTarget}
    */
   removeAllListeners(type) {
@@ -978,7 +980,7 @@ function validateEventListenerOptions(options) {
     passive: Boolean(options.passive),
     signal: options.signal,
     weak: options[kWeakHandler],
-    isNodeStyleListener: Boolean(options[kIsNodeStyleListener])
+    isNodeStyleListener: Boolean(options[kIsNodeStyleListener]),
   };
 }
 
@@ -1054,7 +1056,7 @@ function defineEventHandler(emitter, name) {
       this[kHandlers].set(name, wrappedHandler);
     },
     configurable: true,
-    enumerable: true
+    enumerable: true,
   });
 }
 

@@ -14,7 +14,7 @@ Last update:
 - console: https://github.com/web-platform-tests/wpt/tree/767ae35464/console
 - dom/abort: https://github.com/web-platform-tests/wpt/tree/8fadb38120/dom/abort
 - dom/events: https://github.com/web-platform-tests/wpt/tree/ab8999891c/dom/events
-- encoding: https://github.com/web-platform-tests/wpt/tree/779d175c40/encoding
+- encoding: https://github.com/web-platform-tests/wpt/tree/0c1b9d1622/encoding
 - fetch/data-urls/resources: https://github.com/web-platform-tests/wpt/tree/7c79d998ff/fetch/data-urls/resources
 - FileAPI: https://github.com/web-platform-tests/wpt/tree/3b279420d4/FileAPI
 - FileAPI/file: https://github.com/web-platform-tests/wpt/tree/c01f637cca/FileAPI/file
@@ -27,11 +27,11 @@ Last update:
 - performance-timeline: https://github.com/web-platform-tests/wpt/tree/17ebc3aea0/performance-timeline
 - resources: https://github.com/web-platform-tests/wpt/tree/fbf1e7d247/resources
 - streams: https://github.com/web-platform-tests/wpt/tree/9e5ef42bd3/streams
-- url: https://github.com/web-platform-tests/wpt/tree/0a187bc169/url
+- url: https://github.com/web-platform-tests/wpt/tree/f1ade799d0/url
 - user-timing: https://github.com/web-platform-tests/wpt/tree/df24fb604e/user-timing
 - wasm/jsapi: https://github.com/web-platform-tests/wpt/tree/d8dbe6990b/wasm/jsapi
 - wasm/webapi: https://github.com/web-platform-tests/wpt/tree/fd1b23eeaa/wasm/webapi
-- WebCryptoAPI: https://github.com/web-platform-tests/wpt/tree/84456654f4/WebCryptoAPI
+- WebCryptoAPI: https://github.com/web-platform-tests/wpt/tree/ee30029d47/WebCryptoAPI
 - webidl/ecmascript-binding/es-exceptions: https://github.com/web-platform-tests/wpt/tree/a370aad338/webidl/ecmascript-binding/es-exceptions
 
 [Web Platform Tests]: https://github.com/web-platform-tests/wpt

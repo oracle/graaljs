@@ -2,7 +2,7 @@
 'use strict';
 require('../common');
 const assert = require('node:assert');
-const { describe, it } = require('node:test');
+const { describe, it, test } = require('node:test');
 const util = require('util');
 
 
@@ -41,11 +41,13 @@ it('async pass', async () => {
 
 });
 
+test('mixing describe/it and test should work', () => {});
+
 it('async throw fail', async () => {
   throw new Error('thrown from async throw fail');
 });
 
-it('async skip fail', async (t) => {
+it('async skip fail', async (t, done) => {
   t.skip();
   throw new Error('thrown from async throw fail');
 });
@@ -95,6 +97,7 @@ describe('subtest sync throw fail', () => {
   it('+sync throw fail', () => {
     throw new Error('thrown from subtest sync throw fail');
   });
+  test('mixing describe/it and test should work', () => {});
 });
 
 it('sync throw non-error fail', async () => {
@@ -106,7 +109,7 @@ describe('level 0a', { concurrency: 4 }, () => {
     const p1a = new Promise((resolve) => {
       setTimeout(() => {
         resolve();
-      }, 1000);
+      }, 100);
     });
 
     return p1a;
@@ -124,7 +127,7 @@ describe('level 0a', { concurrency: 4 }, () => {
     const p1c = new Promise((resolve) => {
       setTimeout(() => {
         resolve();
-      }, 2000);
+      }, 200);
     });
 
     return p1c;
@@ -134,7 +137,7 @@ describe('level 0a', { concurrency: 4 }, () => {
     const p1c = new Promise((resolve) => {
       setTimeout(() => {
         resolve();
-      }, 1500);
+      }, 150);
     });
 
     return p1c;
@@ -143,7 +146,7 @@ describe('level 0a', { concurrency: 4 }, () => {
   const p0a = new Promise((resolve) => {
     setTimeout(() => {
       resolve();
-    }, 3000);
+    }, 300);
   });
 
   return p0a;
@@ -203,61 +206,61 @@ it('escaped skip message', { skip: '#skip' });
 // A test whose todo message needs to be escaped.
 it('escaped todo message', { todo: '#todo' });
 
-it('callback pass', (done) => {
+it('callback pass', (t, done) => {
   setImmediate(done);
 });
 
-it('callback fail', (done) => {
+it('callback fail', (t, done) => {
   setImmediate(() => {
     done(new Error('callback failure'));
   });
 });
 
-it('sync t is this in test', function() {
-  assert.deepStrictEqual(this, { signal: this.signal, name: this.name });
+it('sync t is this in test', function(t) {
+  assert.strictEqual(this, t);
 });
 
-it('async t is this in test', async function() {
-  assert.deepStrictEqual(this, { signal: this.signal, name: this.name });
+it('async t is this in test', async function(t) {
+  assert.strictEqual(this, t);
 });
 
-it('callback t is this in test', function(done) {
-  assert.deepStrictEqual(this, { signal: this.signal, name: this.name });
+it('callback t is this in test', function(t, done) {
+  assert.strictEqual(this, t);
   done();
 });
 
-it('callback also returns a Promise', async (done) => {
+it('callback also returns a Promise', async (t, done) => {
   throw new Error('thrown from callback also returns a Promise');
 });
 
-it('callback throw', (done) => {
+it('callback throw', (t, done) => {
   throw new Error('thrown from callback throw');
 });
 
-it('callback called twice', (done) => {
+it('callback called twice', (t, done) => {
   done();
   done();
 });
 
-it('callback called twice in different ticks', (done) => {
+it('callback called twice in different ticks', (t, done) => {
   setImmediate(done);
   done();
 });
 
-it('callback called twice in future tick', (done) => {
+it('callback called twice in future tick', (t, done) => {
   setImmediate(() => {
     done();
     done();
   });
 });
 
-it('callback async throw', (done) => {
+it('callback async throw', (t, done) => {
   setImmediate(() => {
     throw new Error('thrown from callback async throw');
   });
 });
 
-it('callback async throw after done', (done) => {
+it('callback async throw after done', (t, done) => {
   setImmediate(() => {
     throw new Error('thrown from callback async throw after done');
   });
@@ -270,7 +273,7 @@ it('custom inspect symbol fail', () => {
     [util.inspect.custom]() {
       return 'customized';
     },
-    foo: 1
+    foo: 1,
   };
 
   throw obj;
@@ -281,7 +284,7 @@ it('custom inspect symbol that throws fail', () => {
     [util.inspect.custom]() {
       throw new Error('bad-inspect');
     },
-    foo: 1
+    foo: 1,
   };
 
   throw obj;
@@ -309,12 +312,12 @@ describe('describe async throw fails', async () => {
 describe('timeouts', () => {
   it('timed out async test', { timeout: 5 }, async () => {
     return new Promise((resolve) => {
-      setTimeout(resolve, 1000);
+      setTimeout(resolve, 100);
     });
   });
 
-  it('timed out callback test', { timeout: 5 }, (done) => {
-    setTimeout(done, 1000);
+  it('timed out callback test', { timeout: 5 }, (t, done) => {
+    setTimeout(done, 100);
   });
 
 
@@ -324,7 +327,7 @@ describe('timeouts', () => {
     });
   });
 
-  it('large timeout callback test is ok', { timeout: 30_000_000 }, (done) => {
+  it('large timeout callback test is ok', { timeout: 30_000_000 }, (t, done) => {
     setTimeout(done, 10);
   });
 });

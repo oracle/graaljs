@@ -15,16 +15,16 @@ const {
     kPromiseRejectWithNoHandler,
     kPromiseHandlerAddedAfterReject,
     kPromiseResolveAfterResolved,
-    kPromiseRejectAfterResolved
+    kPromiseRejectAfterResolved,
   },
-  setPromiseRejectCallback
+  setPromiseRejectCallback,
 } = internalBinding('task_queue');
 
 const { deprecate } = require('internal/util');
 
 const {
   noSideEffectsToString,
-  triggerUncaughtException
+  triggerUncaughtException,
 } = internalBinding('errors');
 
 const {
@@ -32,8 +32,8 @@ const {
   popAsyncContext,
   symbols: {
     async_id_symbol: kAsyncIdSymbol,
-    trigger_async_id_symbol: kTriggerAsyncIdSymbol
-  }
+    trigger_async_id_symbol: kTriggerAsyncIdSymbol,
+  },
 } = require('internal/async_hooks');
 const { isErrorStackTraceLimitWritable } = require('internal/errors');
 
@@ -129,7 +129,7 @@ function promiseRejectHandler(type, promise, reason) {
 const multipleResolvesDeprecate = deprecate(
   () => {},
   'The multipleResolves event has been deprecated.',
-  'DEP0160'
+  'DEP0160',
 );
 function resolveError(type, promise, reason) {
   // We have to wrap this in a next tick. Otherwise the error could be caught by
@@ -154,7 +154,7 @@ function unhandledRejection(promise, reason) {
     uid: ++lastPromiseId,
     warned: false,
     domain: process.domain,
-    emit
+    emit,
   });
   // This causes the promise to be referenced at least for one tick.
   ArrayPrototypePush(pendingUnhandledRejections, promise);
@@ -192,7 +192,7 @@ function emitUnhandledRejectionWarning(uid, reason) {
       'To terminate the node process on unhandled promise ' +
       'rejection, use the CLI flag `--unhandled-rejections=strict` (see ' +
       'https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode). ' +
-      `(rejection id: ${uid})`
+      `(rejection id: ${uid})`,
   );
   try {
     if (isErrorLike(reason)) {
@@ -249,7 +249,7 @@ function processPromiseRejections() {
       pushAsyncContext(
         promiseAsyncId,
         promiseTriggerAsyncId,
-        promise
+        promise,
       );
     }
     try {
@@ -263,7 +263,7 @@ function processPromiseRejections() {
             pushAsyncContext(
               promise[kAsyncIdSymbol],
               promise[kTriggerAsyncIdSymbol],
-              promise
+              promise,
             );
           }
           const handled = emit(reason, promise, promiseInfo);

@@ -21,7 +21,7 @@ const hasCrypto = Boolean(process.versions.openssl);
 
 const {
   prepareMainThreadExecution,
-  markBootstrapComplete
+  markBootstrapComplete,
 } = require('internal/process/pre_execution');
 
 const typeLookup = [];
@@ -91,7 +91,7 @@ function fold(text, width) {
   return RegExpPrototypeSymbolReplace(
     new RegExp(`([^\n]{0,${width}})( |$)`, 'g'),
     text,
-    (_, newLine, end) => newLine + (end === ' ' ? '\n' : '')
+    (_, newLine, end) => newLine + (end === ' ' ? '\n' : ''),
   );
 }
 
@@ -115,7 +115,7 @@ function getArgDescription(type) {
 }
 
 function format(
-  { options, aliases = new SafeMap(), firstColumn, secondColumn }
+  { options, aliases = new SafeMap(), firstColumn, secondColumn },
 ) {
   let text = '';
   let maxFirstColumnUsed = 0;
@@ -134,7 +134,7 @@ function format(
   );
 
   for (const {
-    0: name, 1: { helpText, type, value, defaultIsTrue }
+    0: name, 1: { helpText, type, value, defaultIsTrue },
   } of sortedOptions) {
     if (!helpText) continue;
 
@@ -190,7 +190,7 @@ function format(
       options,
       aliases,
       firstColumn: maxFirstColumnUsed + 2,
-      secondColumn
+      secondColumn,
     });
   }
 
@@ -214,13 +214,13 @@ function print(stream) {
     '       node inspect [options] [ script.js | host:port ] [arguments]\n\n' +
     'Options:\n');
   stream.write(indent(format({
-    options, aliases, firstColumn, secondColumn
+    options, aliases, firstColumn, secondColumn,
   }), 2));
 
   stream.write('\nEnvironment variables:\n');
 
   stream.write(format({
-    options: envVars, firstColumn, secondColumn
+    options: envVars, firstColumn, secondColumn,
   }));
 
   stream.write('\nDocumentation can be found at https://nodejs.org/\n');

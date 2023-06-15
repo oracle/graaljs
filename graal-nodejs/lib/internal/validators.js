@@ -27,12 +27,12 @@ const {
     ERR_INVALID_ARG_VALUE,
     ERR_OUT_OF_RANGE,
     ERR_UNKNOWN_SIGNAL,
-  }
+  },
 } = require('internal/errors');
 const { normalizeEncoding } = require('internal/util');
 const {
   isAsyncFunction,
-  isArrayBufferView
+  isArrayBufferView,
 } = require('internal/util/types');
 const { signals } = internalBinding('constants').os;
 
@@ -98,7 +98,7 @@ const validateInteger = hideStackFrames(
       throw new ERR_OUT_OF_RANGE(name, 'an integer', value);
     if (value < min || value > max)
       throw new ERR_OUT_OF_RANGE(name, `>= ${min} && <= ${max}`, value);
-  }
+  },
 );
 
 /**
@@ -123,7 +123,7 @@ const validateInt32 = hideStackFrames(
     if (value < min || value > max) {
       throw new ERR_OUT_OF_RANGE(name, `>= ${min} && <= ${max}`, value);
     }
-  }
+  },
 );
 
 /**
@@ -459,7 +459,15 @@ function validateUnion(value, name, union) {
   }
 }
 
-const linkValueRegExp = /^(?:<[^>]*>;)\s*(?:rel=(")?[^;"]*\1;?)\s*(?:(?:as|anchor|title|crossorigin|disabled|fetchpriority|rel|referrerpolicy)=(")?[^;"]*\2)?$/;
+/*
+  The rules for the Link header field are described here:
+  https://www.rfc-editor.org/rfc/rfc8288.html#section-3
+
+  This regex validates any string surrounded by angle brackets
+  (not necessarily a valid URI reference) followed by zero or more
+  link-params separated by semicolons.
+*/
+const linkValueRegExp = /^(?:<[^>]*>)(?:\s*;\s*[^;"\s]+(?:=(")?[^;"\s]*\1)?)*$/;
 
 /**
  * @param {any} value
@@ -473,7 +481,7 @@ function validateLinkHeaderFormat(value, name) {
     throw new ERR_INVALID_ARG_VALUE(
       name,
       value,
-      'must be an array or string of format "</styles.css>; rel=preload; as=style"'
+      'must be an array or string of format "</styles.css>; rel=preload; as=style"',
     );
   }
 }
@@ -510,7 +518,7 @@ function validateLinkHeaderValue(hints) {
   throw new ERR_INVALID_ARG_VALUE(
     'hints',
     hints,
-    'must be an array or string of format "</styles.css>; rel=preload; as=style"'
+    'must be an array or string of format "</styles.css>; rel=preload; as=style"',
   );
 }
 
@@ -539,5 +547,5 @@ module.exports = {
   validateUndefined,
   validateUnion,
   validateAbortSignal,
-  validateLinkHeaderValue
+  validateLinkHeaderValue,
 };

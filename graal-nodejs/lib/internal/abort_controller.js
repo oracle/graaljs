@@ -8,6 +8,7 @@ const {
   ObjectDefineProperties,
   ObjectSetPrototypeOf,
   ObjectDefineProperty,
+  PromiseResolve,
   SafeFinalizationRegistry,
   SafeSet,
   Symbol,
@@ -22,11 +23,13 @@ const {
   kTrustEvent,
   kNewListener,
   kRemoveListener,
+  kWeakHandler,
 } = require('internal/event_target');
 const {
+  createDeferredPromise,
   customInspectSymbol,
-  kEnumerableProperty,
   kEmptyObject,
+  kEnumerableProperty,
 } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
 const {
@@ -34,10 +37,12 @@ const {
     ERR_ILLEGAL_CONSTRUCTOR,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_THIS,
-  }
+  },
 } = require('internal/errors');
 
 const {
+  validateAbortSignal,
+  validateObject,
   validateUint32,
 } = require('internal/validators');
 
@@ -53,7 +58,7 @@ const {
 const {
   messaging_deserialize_symbol: kDeserialize,
   messaging_transfer_symbol: kTransfer,
-  messaging_transfer_list_symbol: kTransferList
+  messaging_transfer_list_symbol: kTransferList,
 } = internalBinding('symbols');
 
 let _MessageChannel;
@@ -88,13 +93,13 @@ function customInspect(self, obj, depth, options) {
     return self;
 
   const opts = ObjectAssign({}, options, {
-    depth: options.depth === null ? null : options.depth - 1
+    depth: options.depth === null ? null : options.depth - 1,
   });
 
   return `${self.constructor.name} ${inspect(obj, opts)}`;
 }
 
-function validateAbortSignal(obj) {
+function validateThisAbortSignal(obj) {
   if (obj?.[kAborted] === undefined)
     throw new ERR_INVALID_THIS('AbortSignal');
 }
@@ -132,7 +137,7 @@ class AbortSignal extends EventTarget {
    * @type {boolean}
    */
   get aborted() {
-    validateAbortSignal(this);
+    validateThisAbortSignal(this);
     return !!this[kAborted];
   }
 
@@ -140,19 +145,20 @@ class AbortSignal extends EventTarget {
    * @type {any}
    */
   get reason() {
-    validateAbortSignal(this);
+    validateThisAbortSignal(this);
     return this[kReason];
   }
 
   throwIfAborted() {
-    if (this.aborted) {
-      throw this.reason;
+    validateThisAbortSignal(this);
+    if (this[kAborted]) {
+      throw this[kReason];
     }
   }
 
   [customInspectSymbol](depth, options) {
     return customInspect(this, {
-      aborted: this.aborted
+      aborted: this.aborted,
     }, depth, options);
   }
 
@@ -202,7 +208,7 @@ class AbortSignal extends EventTarget {
   }
 
   [kTransfer]() {
-    validateAbortSignal(this);
+    validateThisAbortSignal(this);
     const aborted = this.aborted;
     if (aborted) {
       const reason = this.reason;
@@ -303,7 +309,7 @@ function abortSignal(signal, reason) {
   signal[kAborted] = true;
   signal[kReason] = reason;
   const event = new Event('abort', {
-    [kTrustEvent]: true
+    [kTrustEvent]: true,
   });
   signal.dispatchEvent(event);
 }
@@ -340,7 +346,7 @@ class AbortController {
 
   [customInspectSymbol](depth, options) {
     return customInspect(this, {
-      signal: this.signal
+      signal: this.signal,
     }, depth, options);
   }
 
@@ -369,6 +375,24 @@ function transferableAbortController() {
   return AbortController[kMakeTransferable]();
 }
 
+/**
+ * @param {AbortSignal} signal
+ * @param {any} resource
+ * @returns {Promise<void>}
+ */
+async function aborted(signal, resource) {
+  if (signal === undefined) {
+    throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
+  }
+  validateAbortSignal(signal, 'signal');
+  validateObject(resource, 'resource', { nullable: false, allowFunction: true, allowArray: true });
+  if (signal.aborted)
+    return PromiseResolve();
+  const abortPromise = createDeferredPromise();
+  signal.addEventListener('abort', abortPromise.resolve, { [kWeakHandler]: resource, once: true });
+  return abortPromise.promise;
+}
+
 ObjectDefineProperties(AbortController.prototype, {
   signal: kEnumerableProperty,
   abort: kEnumerableProperty,
@@ -383,10 +407,10 @@ ObjectDefineProperty(AbortController.prototype, SymbolToStringTag, {
 });
 
 module.exports = {
-  kAborted,
   AbortController,
   AbortSignal,
   ClonedAbortSignal,
+  aborted,
   transferableAbortSignal,
   transferableAbortController,
 };

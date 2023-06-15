@@ -46,7 +46,7 @@ const {
 
 const { ERR_DEBUGGER_ERROR } = require('internal/errors').codes;
 
-const { validateString } = require('internal/validators');
+const { validateString, validateNumber } = require('internal/validators');
 
 const FS = require('fs');
 const Path = require('path');
@@ -67,7 +67,7 @@ const SHORTCUTS = {
   setBreakpoint: 'sb',
   clearBreakpoint: 'cb',
   run: 'r',
-  exec: 'p'
+  exec: 'p',
 };
 
 const HELP = StringPrototypeTrim(`
@@ -81,7 +81,7 @@ out, o                Step out, leaving the current function
 backtrace, bt         Print the current backtrace
 list                  Print the source around the current line where execution
                       is currently paused
-
+setContextLineNumber  Set which lines to check for context
 setBreakpoint, sb     Set a breakpoint
 clearBreakpoint, cb   Clear a breakpoint
 breakpoints           List all known breakpoints
@@ -91,6 +91,7 @@ breakOnNone           Don't pause on exceptions (this is the default)
 
 watch(expr)           Start watching the given expression
 unwatch(expr)         Stop watching an expression
+unwatch(index)        Stop watching an expression at specific index from watch list
 watchers              Print all watched expressions and their current values
 
 exec(expr), p(expr), exec expr, p expr
@@ -381,6 +382,7 @@ function createRepl(inspector) {
   let currentBacktrace;
   let selectedFrame;
   let exitDebugRepl;
+  let contextLineNumber = 2;
 
   function resetOnStart() {
     knownScripts = {};
@@ -521,7 +523,7 @@ function createRepl(inspector) {
       return SafePromiseAllReturnArrayLike(
         ArrayPrototypeFilter(
           this.scopeChain,
-          (scope) => scope.type !== 'global'
+          (scope) => scope.type !== 'global',
         ),
         async (scope) => {
           const { objectId } = scope.object;
@@ -544,7 +546,7 @@ function createRepl(inspector) {
         ArrayPrototypeMap(this, (callFrame, idx) => {
           const {
             location: { scriptId, lineNumber, columnNumber },
-            functionName
+            functionName,
           } = callFrame;
           const name = functionName || '(anonymous)';
 
@@ -566,7 +568,7 @@ function createRepl(inspector) {
         (callFrame) =>
           (callFrame instanceof CallFrame ?
             callFrame :
-            new CallFrame(callFrame))
+            new CallFrame(callFrame)),
       );
     }
   }
@@ -624,7 +626,7 @@ function createRepl(inspector) {
         FunctionPrototypeCall(
           then, result,
           (result) => returnToCallback(null, result),
-          returnToCallback
+          returnToCallback,
         );
       } else {
         returnToCallback(null, result);
@@ -643,7 +645,7 @@ function createRepl(inspector) {
 
     PromisePrototypeThen(evalInCurrentContext(input),
                          (result) => returnToCallback(null, result),
-                         returnToCallback
+                         returnToCallback,
     );
   }
 
@@ -683,6 +685,15 @@ function createRepl(inspector) {
       print("You can't list source code right now");
       throw error;
     });
+  }
+
+  function setContextLineNumber(delta = 2) {
+    if (!selectedFrame) {
+      throw new ERR_DEBUGGER_ERROR('Requires execution to be paused');
+    }
+    validateNumber(delta, 'delta', 1);
+    contextLineNumber = delta;
+    print(`The contextLine has been changed to ${delta}.`);
   }
 
   function handleBreakpointResolved({ breakpointId, location }) {
@@ -897,7 +908,7 @@ function createRepl(inspector) {
 
     inspector.suspendReplWhile(() =>
       PromisePrototypeThen(
-        SafePromiseAllReturnArrayLike([formatWatchers(true), selectedFrame.list(2)]),
+        SafePromiseAllReturnArrayLike([formatWatchers(true), selectedFrame.list(contextLineNumber)]),
         ({ 0: watcherList, 1: context }) => {
           const breakContext = watcherList ?
             `${watcherList}\n${inspect(context)}` :
@@ -926,7 +937,7 @@ function createRepl(inspector) {
     Profile.createAndRegister({ profile });
     print(
       'Captured new CPU profile.\n' +
-      `Access it with profiles[${profiles.length - 1}]`
+      `Access it with profiles[${profiles.length - 1}]`,
     );
   });
 
@@ -1010,7 +1021,7 @@ function createRepl(inspector) {
       takeHeapSnapshot(filename = 'node.heapsnapshot') {
         if (heapSnapshotPromise) {
           print(
-            'Cannot take heap snapshot because another snapshot is in progress.'
+            'Cannot take heap snapshot because another snapshot is in progress.',
           );
           return heapSnapshotPromise;
         }
@@ -1068,6 +1079,7 @@ function createRepl(inspector) {
       },
 
       watch(expr) {
+        validateString(expr, 'expression');
         ArrayPrototypePush(watchedExpressions, expr);
       },
 
@@ -1159,6 +1171,7 @@ function createRepl(inspector) {
       },
 
       list,
+      setContextLineNumber,
     });
     aliasProperties(context, SHORTCUTS);
   }

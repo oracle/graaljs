@@ -274,6 +274,15 @@ enum Flags : uint64_t {
 // TODO(addaleax): Make this the canonical name, as it is more descriptive.
 namespace ProcessInitializationFlags = ProcessFlags;
 
+namespace StopFlags {
+enum Flags : uint32_t {
+  kNoFlags = 0,
+  // Do not explicitly terminate the Isolate
+  // when exiting the Environment.
+  kDoNotTerminateIsolate = 1 << 0,
+};
+}  // namespace StopFlags
+
 class NODE_EXTERN InitializationResult {
  public:
   virtual ~InitializationResult();
@@ -310,6 +319,7 @@ NODE_EXTERN int Start(int argc, char* argv[]);
 // Tear down Node.js while it is running (there are active handles
 // in the loop and / or actively executing JavaScript code).
 NODE_EXTERN int Stop(Environment* env);
+NODE_EXTERN int Stop(Environment* env, StopFlags::Flags flags);
 
 // This runs a subset of the initialization performed by
 // InitializeOncePerProcess(), which supersedes this function.
@@ -438,7 +448,8 @@ enum IsolateSettingsFlags {
   MESSAGE_LISTENER_WITH_ERROR_LEVEL = 1 << 0,
   DETAILED_SOURCE_POSITIONS_FOR_PROFILING = 1 << 1,
   SHOULD_NOT_SET_PROMISE_REJECTION_CALLBACK = 1 << 2,
-  SHOULD_NOT_SET_PREPARE_STACK_TRACE_CALLBACK = 1 << 3
+  SHOULD_NOT_SET_PREPARE_STACK_TRACE_CALLBACK = 1 << 3,
+  ALLOW_MODIFY_CODE_GENERATION_FROM_STRINGS_CALLBACK = 1 << 4,
 };
 
 struct IsolateSettings {
@@ -456,6 +467,8 @@ struct IsolateSettings {
   v8::PromiseRejectCallback promise_reject_callback = nullptr;
   v8::AllowWasmCodeGenerationCallback
       allow_wasm_code_generation_callback = nullptr;
+  v8::ModifyCodeGenerationFromStringsCallback2
+      modify_code_generation_from_strings_callback = nullptr;
 };
 
 // Overriding IsolateSettings may produce unexpected behavior
@@ -576,6 +589,12 @@ NODE_EXTERN std::unique_ptr<InspectorParentHandle> GetInspectorParentHandle(
     Environment* parent_env,
     ThreadId child_thread_id,
     const char* child_url);
+
+NODE_EXTERN std::unique_ptr<InspectorParentHandle> GetInspectorParentHandle(
+    Environment* parent_env,
+    ThreadId child_thread_id,
+    const char* child_url,
+    const char* name);
 
 struct StartExecutionCallbackInfo {
   v8::Local<v8::Object> process_object;

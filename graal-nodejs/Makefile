@@ -175,7 +175,7 @@ with-code-cache test-code-cache:
 
 out/Makefile: config.gypi common.gypi node.gyp \
 	deps/uv/uv.gyp deps/llhttp/llhttp.gyp deps/zlib/zlib.gyp \
-	deps/simdutf/simdutf.gyp \
+	deps/simdutf/simdutf.gyp deps/ada/ada.gyp \
 	tools/v8_gypfiles/toolchain.gypi tools/v8_gypfiles/features.gypi \
 	tools/v8_gypfiles/inspector.gypi tools/v8_gypfiles/v8.gyp
 	$(PYTHON) tools/gyp_node.py -f make
@@ -371,6 +371,9 @@ test-check-deopts: all
 DOCBUILDSTAMP_PREREQS = tools/doc/addon-verify.mjs doc/api/addons.md
 
 ifeq ($(OSTYPE),aix)
+DOCBUILDSTAMP_PREREQS := $(DOCBUILDSTAMP_PREREQS) out/$(BUILDTYPE)/node.exp
+endif
+ifeq ($(OSTYPE),os400)
 DOCBUILDSTAMP_PREREQS := $(DOCBUILDSTAMP_PREREQS) out/$(BUILDTYPE)/node.exp
 endif
 
@@ -599,6 +602,12 @@ test-message: test-build
 .PHONY: test-wpt
 test-wpt: all
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) wpt
+
+.PHONY: test-wpt-report
+test-wpt-report:
+	$(RM) -r out/wpt
+	mkdir -p out/wpt
+	WPT_REPORT=1 $(PYTHON) tools/test.py --shell $(NODE) $(PARALLEL_ARGS) wpt
 
 .PHONY: test-simple
 test-simple: | cctest # Depends on 'all'.
@@ -1410,7 +1419,6 @@ LINT_CPP_ADDON_DOC_FILES = $(wildcard $(LINT_CPP_ADDON_DOC_FILES_GLOB))
 LINT_CPP_EXCLUDE ?=
 LINT_CPP_EXCLUDE += src/node_root_certs.h
 LINT_CPP_EXCLUDE += $(LINT_CPP_ADDON_DOC_FILES)
-LINT_CPP_EXCLUDE += $(wildcard test/js-native-api/??_*/*.cc test/js-native-api/??_*/*.h test/node-api/??_*/*.cc test/node-api/??_*/*.h)
 # These files were copied more or less verbatim from V8.
 LINT_CPP_EXCLUDE += src/tracing/trace_event.h src/tracing/trace_event_common.h
 
@@ -1430,9 +1438,7 @@ LINT_CPP_FILES = $(filter-out $(LINT_CPP_EXCLUDE), $(wildcard \
 	test/embedding/*.h \
 	test/fixtures/*.c \
 	test/js-native-api/*/*.cc \
-	test/js-native-api/*/*.h \
 	test/node-api/*/*.cc \
-	test/node-api/*/*.h \
 	tools/icu/*.cc \
 	tools/icu/*.h \
 	tools/code_cache/*.cc \
@@ -1440,6 +1446,16 @@ LINT_CPP_FILES = $(filter-out $(LINT_CPP_EXCLUDE), $(wildcard \
 	tools/snapshot/*.cc \
 	tools/snapshot/*.h \
 	))
+
+FORMAT_CPP_FILES ?=
+FORMAT_CPP_FILES += $(LINT_CPP_FILES)
+# C source codes.
+FORMAT_CPP_FILES += $(wildcard \
+	test/js-native-api/*/*.c \
+	test/js-native-api/*/*.h \
+	test/node-api/*/*.c \
+	test/node-api/*/*.h \
+	)
 
 # Code blocks don't have newline at the end,
 # and the actual filename is generated so it won't match header guards
@@ -1469,7 +1485,7 @@ ifneq ("","$(wildcard tools/clang-format/node_modules/)")
 		--binary=tools/clang-format/node_modules/.bin/clang-format \
 		--style=file \
 		$(CLANG_FORMAT_START) -- \
-		$(LINT_CPP_FILES)
+		$(FORMAT_CPP_FILES)
 else
 	$(info Required tooling for C++ code formatting is not installed.)
 	$(info To install (requires internet access) run: $$ make format-cpp-build)

@@ -20,7 +20,7 @@
 //   NM_F_LINKED.
 // - internalBinding(): the private internal C++ binding loader, inaccessible
 //   from user land unless through `require('internal/test/binding')`.
-//   These C++ bindings are created using NODE_MODULE_CONTEXT_AWARE_INTERNAL()
+//   These C++ bindings are created using NODE_BINDING_CONTEXT_AWARE_INTERNAL()
 //   and have their nm_flags set to NM_F_INTERNAL.
 //
 // Internal JavaScript module loader:
@@ -69,7 +69,7 @@ ObjectDefineProperty(process, 'moduleLoadList', {
   value: moduleLoadList,
   configurable: true,
   enumerable: true,
-  writable: false
+  writable: false,
 });
 
 
@@ -182,7 +182,7 @@ let internalBinding;
 const loaderId = 'internal/bootstrap/loaders';
 const {
   builtinIds,
-  compileFunction
+  compileFunction,
 } = internalBinding('builtins');
 
 const getOwn = (target, property, receiver) => {
@@ -202,7 +202,7 @@ class BuiltinModule {
    * @type {Map<string, BuiltinModule>}
    */
   static map = new SafeMap(
-    ArrayPrototypeMap(builtinIds, (id) => [id, new BuiltinModule(id)])
+    ArrayPrototypeMap(builtinIds, (id) => [id, new BuiltinModule(id)]),
   );
 
   constructor(id) {
@@ -350,7 +350,7 @@ class BuiltinModule {
 const loaderExports = {
   internalBinding,
   BuiltinModule,
-  require: requireBuiltin
+  require: requireBuiltin,
 };
 
 function requireBuiltin(id) {

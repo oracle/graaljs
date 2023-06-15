@@ -554,14 +554,14 @@ instance, the `URL` object will not percent encode the ASCII tilde (`~`)
 character, while `URLSearchParams` will always encode it:
 
 ```js
-const myUrl = new URL('https://example.org/abc?foo=~bar');
+const myURL = new URL('https://example.org/abc?foo=~bar');
 
-console.log(myUrl.search);  // prints ?foo=~bar
+console.log(myURL.search);  // prints ?foo=~bar
 
 // Modify the URL via searchParams...
-myUrl.searchParams.sort();
+myURL.searchParams.sort();
 
-console.log(myUrl.search);  // prints ?foo=%7Ebar
+console.log(myURL.search);  // prints ?foo=%7Ebar
 ```
 
 #### `url.username`
@@ -940,6 +940,14 @@ console.log(params.toString());
 // Prints foo=def&abc=def&xyz=opq
 ```
 
+#### `urlSearchParams.size`
+
+<!-- YAML
+added: v18.16.0
+-->
+
+The total number of parameter entries.
+
 #### `urlSearchParams.sort()`
 
 <!-- YAML
@@ -1263,7 +1271,7 @@ console.log(urlToHttpOptions(myURL));
 const { urlToHttpOptions } = require('node:url');
 const myURL = new URL('https://a:b@測試?abc#foo');
 
-console.log(urlToHttpOptions(myUrl));
+console.log(urlToHttpOptions(myURL));
 /*
 {
   protocol: 'https:',

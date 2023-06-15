@@ -27,6 +27,7 @@
 
 # net
 
+/deps/ada @nodejs/url
 /deps/cares @nodejs/net
 /doc/api/dns.md @nodejs/net
 /doc/api/dgram.md @nodejs/net
@@ -34,11 +35,14 @@
 /lib/dgram.js @nodejs/net
 /lib/dns.js @nodejs/net
 /lib/net.js @nodejs/net
+/lib/url.js @nodejs/url
 /lib/internal/dgram.js @nodejs/net
 /lib/internal/dns/* @nodejs/net
 /lib/internal/net.js @nodejs/net
 /lib/internal/socket_list.js @nodejs/net
 /lib/internal/js_stream_socket.js @nodejs/net
+/lib/internal/url.js @nodejs/url
+/src/node_url.* @nodejs/url
 /src/cares_wrap.cc @nodejs/net
 /src/connect_wrap.* @nodejs/net
 /src/connection_wrap.* @nodejs/net
@@ -136,3 +140,13 @@
 /lib/test.js @nodejs/test_runner
 /lib/internal/main/test_runner.js @nodejs/test_runner
 /lib/internal/test_runner/* @nodejs/test_runner
+
+# Single Executable Applications
+/deps/postject @nodejs/single-executable
+/doc/api/single-executable-applications.md @nodejs/single-executable
+/doc/contributing/maintaining-postject.md @nodejs/single-executable
+/doc/contributing/maintaining-single-executable-application-support.md @nodejs/single-executable
+/src/node_sea* @nodejs/single-executable
+/test/fixtures/postject-copy @nodejs/single-executable
+/test/parallel/test-single-executable-* @nodejs/single-executable
+/tools/dep_updaters/update-postject.sh @nodejs/single-executable

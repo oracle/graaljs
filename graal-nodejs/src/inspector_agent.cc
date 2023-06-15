@@ -647,8 +647,9 @@ class NodeInspectorClient : public V8InspectorClient {
         protocol::StringUtil::StringViewToUtf8(resource_name_view);
     if (!IsFilePath(resource_name))
       return nullptr;
-    node::url::URL url = node::url::URL::FromFilePath(resource_name);
-    return Utf8ToStringView(url.href());
+
+    std::string url = node::url::FromFilePath(resource_name);
+    return Utf8ToStringView(url);
   }
 
   node::Environment* env_;
@@ -948,7 +949,7 @@ void Agent::SetParentHandle(
 }
 
 std::unique_ptr<ParentInspectorHandle> Agent::GetParentHandle(
-    uint64_t thread_id, const std::string& url) {
+    uint64_t thread_id, const std::string& url, const std::string& name) {
   if (!parent_env_->should_create_inspector() && !client_) {
     ThrowUninitializedInspectorError(parent_env_);
     return std::unique_ptr<ParentInspectorHandle>{};
@@ -956,9 +957,9 @@ std::unique_ptr<ParentInspectorHandle> Agent::GetParentHandle(
 
   CHECK_NOT_NULL(client_);
   if (!parent_handle_) {
-    return client_->getWorkerManager()->NewParentHandle(thread_id, url);
+    return client_->getWorkerManager()->NewParentHandle(thread_id, url, name);
   } else {
-    return parent_handle_->NewParentInspectorHandle(thread_id, url);
+    return parent_handle_->NewParentInspectorHandle(thread_id, url, name);
   }
 }
 

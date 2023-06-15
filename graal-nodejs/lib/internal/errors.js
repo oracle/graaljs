@@ -321,7 +321,7 @@ class SystemError extends Error {
             lazyBuffer().from(value.toString()) : undefined;
         },
         enumerable: true,
-        configurable: true
+        configurable: true,
       });
     }
 
@@ -337,7 +337,7 @@ class SystemError extends Error {
             lazyBuffer().from(value.toString()) : undefined;
         },
         enumerable: true,
-        configurable: true
+        configurable: true,
       });
     }
   }
@@ -350,7 +350,7 @@ class SystemError extends Error {
     return lazyInternalUtilInspect().inspect(this, {
       ...ctx,
       getters: true,
-      customInspect: false
+      customInspect: false,
     });
   }
 }
@@ -445,7 +445,7 @@ function getMessage(key, args, self) {
     assert(
       msg.length <= args.length, // Default options do not count.
       `Code: ${key}; The provided arguments length (${args.length}) does not ` +
-        `match the required ones (${msg.length}).`
+        `match the required ones (${msg.length}).`,
     );
     return ReflectApply(msg, self, args);
   }
@@ -456,7 +456,7 @@ function getMessage(key, args, self) {
   assert(
     expectedLength === args.length,
     `Code: ${key}; The provided arguments length (${args.length}) does not ` +
-      `match the required ones (${expectedLength}).`
+      `match the required ones (${expectedLength}).`,
   );
   if (args.length === 0)
     return msg;
@@ -796,8 +796,8 @@ const fatalExceptionStackEnhancers = {
     const {
       inspect,
       inspectDefaultOptions: {
-        colors: defaultColors
-      }
+        colors: defaultColors,
+      },
     } = lazyInternalUtilInspect();
     const colors = useColors &&
                    ((internalBinding('util').guessHandleType(2) === 'TTY' &&
@@ -807,18 +807,18 @@ const fatalExceptionStackEnhancers = {
       return inspect(error, {
         colors,
         customInspect: false,
-        depth: MathMax(inspect.defaultOptions.depth, 5)
+        depth: MathMax(inspect.defaultOptions.depth, 5),
       });
     } catch {
       return originalStack;
     }
-  }
+  },
 };
 
 const {
   privateSymbols: {
     arrow_message_private_symbol,
-  }
+  },
 } = internalBinding('util');
 // Ensures the printed error line is from user code.
 function setArrowMessage(err, arrowMessage) {
@@ -833,7 +833,7 @@ function hideInternalStackFrames(error) {
       frames = ArrayPrototypeFilter(
         stackFrames,
         (frm) => !StringPrototypeStartsWith(frm.getFileName() || '',
-                                            'node:internal')
+                                            'node:internal'),
       );
     }
     ArrayPrototypeUnshift(frames, error);
@@ -1395,7 +1395,7 @@ E(
   '"%s" did not call the next hook in its chain and did not' +
   ' explicitly signal a short circuit. If this is intentional, include' +
   ' `shortCircuit: true` in the hook\'s return.',
-  Error
+  Error,
 );
 E('ERR_MANIFEST_ASSERT_INTEGRITY',
   (moduleURL, realIntegrities) => {
@@ -1406,7 +1406,7 @@ E('ERR_MANIFEST_ASSERT_INTEGRITY',
       const sri = ArrayPrototypeJoin(
         ArrayFrom(realIntegrities.entries(),
                   ({ 0: alg, 1: dgs }) => `${alg}-${dgs}`),
-        ' '
+        ' ',
       );
       msg += ` Integrities found are: ${sri}`;
     } else {
@@ -1442,7 +1442,7 @@ E('ERR_MISSING_ARGS',
       args,
       (a) => (ArrayIsArray(a) ?
         ArrayPrototypeJoin(ArrayPrototypeMap(a, wrap), ' or ') :
-        wrap(a))
+        wrap(a)),
     );
     msg += `${formatList(args)} argument${len > 1 ? 's' : ''}`;
     return `${msg} must be specified`;
@@ -1604,8 +1604,8 @@ E('ERR_TAP_VALIDATION_ERROR', function(errorMsg) {
 }, Error);
 E('ERR_TEST_FAILURE', function(error, failureType) {
   hideInternalStackFrames(this);
-  assert(typeof failureType === 'string',
-         "The 'failureType' argument must be of type string.");
+  assert(typeof failureType === 'string' || typeof failureType === 'symbol',
+         "The 'failureType' argument must be of type string or symbol.");
 
   let msg = error?.message ?? error;
 

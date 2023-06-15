@@ -33,7 +33,7 @@ const { inspect } = require('util');
 const { isMainThread } = require('worker_threads');
 
 const tmpdir = require('./tmpdir');
-const bits = ['arm64', 'mips', 'mipsel', 'ppc64', 'riscv64', 's390x', 'x64']
+const bits = ['arm64', 'loong64', 'mips', 'mipsel', 'ppc64', 'riscv64', 's390x', 'x64']
   .includes(process.arch) ? 64 : 32;
 const hasIntl = !!process.config.variables.v8_enable_i18n_support;
 
@@ -120,6 +120,7 @@ const isFreeBSD = process.platform === 'freebsd';
 const isOpenBSD = process.platform === 'openbsd';
 const isLinux = process.platform === 'linux';
 const isOSX = process.platform === 'darwin';
+const isAsan = process.env.ASAN !== undefined;
 const isPi = (() => {
   try {
     // Normal Raspberry Pi detection is to find the `Raspberry Pi` string in
@@ -899,6 +900,7 @@ const common = {
   invalidArgTypeHelper,
   isAIX,
   isAlive,
+  isAsan,
   isDumbTerminal,
   isFreeBSD,
   isLinux,

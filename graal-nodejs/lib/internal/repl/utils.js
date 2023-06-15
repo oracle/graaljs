@@ -27,7 +27,7 @@ const { tokTypes: tt, Parser: AcornParser } =
 const { sendInspectorCommand } = require('internal/util/inspector');
 
 const {
-  ERR_INSPECTOR_NOT_AVAILABLE
+  ERR_INSPECTOR_NOT_AVAILABLE,
 } = require('internal/errors').codes;
 
 const {
@@ -54,7 +54,7 @@ let debug = require('internal/util/debuglog').debuglog('repl', (fn) => {
 const previewOptions = {
   colors: false,
   depth: 1,
-  showHidden: false
+  showHidden: false,
 };
 
 const REPL_MODE_STRICT = Symbol('repl-strict');
@@ -123,7 +123,7 @@ function isRecoverableError(e, code) {
             super.raise(pos, message);
           }
         };
-      }
+      },
     );
 
   // Try to parse the code with acorn.  If the parse fails, ignore the acorn
@@ -147,7 +147,6 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
   }
 
   let inputPreview = null;
-  let lastInputPreview = '';
 
   let previewCompletionCounter = 0;
   let completionPreview = null;
@@ -179,7 +178,6 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
       moveCursor(repl.output, 0, rows);
       clearLine(repl.output);
       moveCursor(repl.output, 0, -rows);
-      lastInputPreview = inputPreview;
       inputPreview = null;
     }
     if (completionPreview !== null) {
@@ -291,7 +289,7 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
                         (e) => StringPrototypeReplaceAll(
                           StringPrototypeToLowerCase(e),
                           '_',
-                          '-'
+                          '-',
                         )),
       '--use-strict');
   }
@@ -340,7 +338,7 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
             colors: false,
             depth: 1,
             compact: true,
-            breakLength: Infinity
+            breakLength: Infinity,
           }, previewOptions);
           session.post('Runtime.callFunctionOn', {
             functionDeclaration:
@@ -349,7 +347,7 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
                     .getOwnPropertyDescriptor(globalThis, 'util')
                     .get().inspect(v, ${inspectOptions})`,
             objectId: result.objectId,
-            arguments: [result]
+            arguments: [result],
           }, (error, preview) => {
             if (error) {
               callback(error);
@@ -396,9 +394,8 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
 
       wrapped = false;
 
-      // Ignore the output if the value is identical to the current line and the
-      // former preview is not identical to this preview.
-      if (line === inspected && lastInputPreview !== inspected) {
+      // Ignore the output if the value is identical to the current line.
+      if (line === inspected) {
         return;
       }
 
@@ -520,7 +517,7 @@ function setupReverseSearch(repl) {
   const alreadyMatched = new SafeSet();
   const labels = {
     r: 'bck-i-search: ',
-    s: 'fwd-i-search: '
+    s: 'fwd-i-search: ',
   };
   let isInReverseSearch = false;
   let historyIndex = -1;
@@ -749,5 +746,5 @@ module.exports = {
   isRecoverableError,
   kStandaloneREPL: Symbol('kStandaloneREPL'),
   setupPreview,
-  setupReverseSearch
+  setupReverseSearch,
 };

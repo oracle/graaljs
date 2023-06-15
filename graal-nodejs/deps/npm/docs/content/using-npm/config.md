@@ -691,7 +691,7 @@ number, if not already set in package.json.
 
 #### `install-links`
 
-* Default: true
+* Default: false
 * Type: Boolean
 
 When set file: protocol dependencies will be packed and installed as regular
@@ -701,13 +701,13 @@ workspaces.
 #### `install-strategy`
 
 * Default: "hoisted"
-* Type: "hoisted", "nested", or "shallow"
+* Type: "hoisted", "nested", "shallow", or "linked"
 
 Sets the strategy for installing packages in node_modules. hoisted
 (default): Install non-duplicated in top-level, and duplicated as necessary
 within directory structure. nested: (formerly --legacy-bundling) install in
 place, no hoisting. shallow (formerly --global-style) only install direct
-deps at top-level. linked: (coming soon) install in node_modules/.store,
+deps at top-level. linked: (experimental) install in node_modules/.store,
 link in place, unhoisted.
 
 #### `json`
@@ -1004,6 +1004,13 @@ When set to `true`, npm will display a progress bar during time intensive
 operations, if `process.stderr` is a TTY.
 
 Set to `false` to suppress the progress bar.
+
+#### `provenance`
+
+* Default: false
+* Type: Boolean
+
+Indicates that a provenance statement should be generated.
 
 #### `proxy`
 

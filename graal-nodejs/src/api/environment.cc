@@ -263,8 +263,16 @@ void SetIsolateMiscHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
   auto* allow_wasm_codegen_cb = s.allow_wasm_code_generation_callback ?
     s.allow_wasm_code_generation_callback : AllowWasmCodeGenerationCallback;
   isolate->SetAllowWasmCodeGenerationCallback(allow_wasm_codegen_cb);
+
+  auto* modify_code_generation_from_strings_callback =
+      ModifyCodeGenerationFromStrings;
+  if (s.flags & ALLOW_MODIFY_CODE_GENERATION_FROM_STRINGS_CALLBACK &&
+      s.modify_code_generation_from_strings_callback) {
+    modify_code_generation_from_strings_callback =
+        s.modify_code_generation_from_strings_callback;
+  }
   isolate->SetModifyCodeGenerationFromStringsCallback(
-      ModifyCodeGenerationFromStrings);
+      modify_code_generation_from_strings_callback);
 
   Mutex::ScopedLock lock(node::per_process::cli_options_mutex);
   if (per_process::cli_options->get_per_isolate_options()
@@ -392,12 +400,13 @@ Environment* CreateEnvironment(
   // options than the global parse call.
   Environment* env = new Environment(
       isolate_data, context, args, exec_args, nullptr, flags, thread_id);
+
 #if HAVE_INSPECTOR
   if (env->should_create_inspector()) {
     if (inspector_parent_handle) {
-      env->InitializeInspector(
-          std::move(static_cast<InspectorParentHandleImpl*>(
-              inspector_parent_handle.get())->impl));
+      env->InitializeInspector(std::move(
+          static_cast<InspectorParentHandleImpl*>(inspector_parent_handle.get())
+              ->impl));
     } else {
       env->InitializeInspector({});
     }
@@ -447,11 +456,17 @@ NODE_EXTERN std::unique_ptr<InspectorParentHandle> GetInspectorParentHandle(
     Environment* env,
     ThreadId thread_id,
     const char* url) {
+  return GetInspectorParentHandle(env, thread_id, url, "");
+}
+
+NODE_EXTERN std::unique_ptr<InspectorParentHandle> GetInspectorParentHandle(
+    Environment* env, ThreadId thread_id, const char* url, const char* name) {
   CHECK_NOT_NULL(env);
+  if (name == nullptr) name = "";
   CHECK_NE(thread_id.id, static_cast<uint64_t>(-1));
 #if HAVE_INSPECTOR
   return std::make_unique<InspectorParentHandleImpl>(
-      env->inspector_agent()->GetParentHandle(thread_id.id, url));
+      env->inspector_agent()->GetParentHandle(thread_id.id, url, name));
 #else
   return {};
 #endif
@@ -796,9 +811,14 @@ ThreadId AllocateEnvironmentThreadId() {
 }
 
 void DefaultProcessExitHandler(Environment* env, int exit_code) {
+  env->set_stopping(true);
   env->set_can_call_into_js(false);
   env->stop_sub_worker_contexts();
   env->isolate()->DumpAndResetStats();
+  // The tracing agent could be in the process of writing data using the
+  // threadpool. Stop it before shutting down libuv. The rest of the tracing
+  // agent disposal will be performed in DisposePlatform().
+  per_process::v8_platform.StopTracingAgent();
   // When the process exits, the tasks in the thread pool may also need to
   // access the data of V8Platform, such as trace agent, or a field
   // added in the future. So make sure the thread pool exits first.

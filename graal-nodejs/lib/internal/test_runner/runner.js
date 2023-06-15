@@ -4,21 +4,31 @@ const {
   ArrayPrototypeFilter,
   ArrayPrototypeForEach,
   ArrayPrototypeIncludes,
+  ArrayPrototypeIndexOf,
   ArrayPrototypePush,
   ArrayPrototypeSlice,
+  ArrayPrototypeSome,
   ArrayPrototypeSort,
+  ArrayPrototypeSplice,
+  FunctionPrototypeCall,
+  Number,
   ObjectAssign,
+  ObjectKeys,
   PromisePrototypeThen,
   SafePromiseAll,
   SafePromiseAllReturnVoid,
   SafePromiseAllSettledReturnVoid,
+  PromiseResolve,
   SafeMap,
   SafeSet,
-  StringPrototypeRepeat,
+  StringPrototypeIndexOf,
+  StringPrototypeSlice,
+  StringPrototypeStartsWith,
 } = primordials;
 
 const { spawn } = require('child_process');
 const { readdirSync, statSync } = require('fs');
+const { finished } = require('internal/streams/end-of-stream');
 // TODO(aduh95): switch to internal/readline/interface when backporting to Node.js 16.x is no longer a concern.
 const { createInterface } = require('readline');
 const { FilesWatcher } = require('internal/watch_mode/files_watcher');
@@ -28,13 +38,20 @@ const {
     ERR_TEST_FAILURE,
   },
 } = require('internal/errors');
-const { validateArray, validateBoolean } = require('internal/validators');
+const { validateArray, validateBoolean, validateFunction } = require('internal/validators');
 const { getInspectPort, isUsingInspector, isInspectorMessage } = require('internal/util/inspector');
 const { kEmptyObject } = require('internal/util');
 const { createTestTree } = require('internal/test_runner/harness');
-const { kDefaultIndent, kSubtestsFailed, Test } = require('internal/test_runner/test');
+const {
+  kAborted,
+  kCancelledByParent,
+  kSubtestsFailed,
+  kTestCodeFailure,
+  kTestTimeoutFailure,
+  Test,
+} = require('internal/test_runner/test');
 const { TapParser } = require('internal/test_runner/tap_parser');
-const { YAMLToJs } = require('internal/test_runner/yaml_parser');
+const { YAMLToJs } = require('internal/test_runner/yaml_to_js');
 const { TokenKind } = require('internal/test_runner/tap_lexer');
 
 const {
@@ -47,7 +64,12 @@ const {
   triggerUncaughtException,
 } = internalBinding('errors');
 
-const kFilterArgs = ['--test', '--watch'];
+const kFilterArgs = ['--test', '--experimental-test-coverage', '--watch'];
+const kFilterArgValues = ['--test-reporter', '--test-reporter-destination'];
+const kDiagnosticsFilterArgs = ['tests', 'pass', 'fail', 'cancelled', 'skipped', 'todo', 'duration_ms'];
+
+const kCanceledTests = new SafeSet()
+  .add(kCancelledByParent).add(kAborted).add(kTestTimeoutFailure);
 
 // TODO(cjihrig): Replace this with recursive readdir once it lands.
 function processPath(path, testFiles, options) {
@@ -111,8 +133,9 @@ function createTestFileList() {
   return ArrayPrototypeSort(ArrayFrom(testFiles));
 }
 
-function filterExecArgv(arg) {
-  return !ArrayPrototypeIncludes(kFilterArgs, arg);
+function filterExecArgv(arg, i, arr) {
+  return !ArrayPrototypeIncludes(kFilterArgs, arg) &&
+  !ArrayPrototypeSome(kFilterArgValues, (p) => arg === p || (i > 0 && arr[i - 1] === p) || StringPrototypeStartsWith(arg, `${p}=`));
 }
 
 function getRunArgs({ path, inspectPort }) {
@@ -126,9 +149,22 @@ function getRunArgs({ path, inspectPort }) {
 
 class FileTest extends Test {
   #buffer = [];
-  #handleReportItem({ kind, node, nesting = 0 }) {
-    const indent = StringPrototypeRepeat(kDefaultIndent, nesting + 1);
-
+  #counters = { __proto__: null, all: 0, failed: 0, passed: 0, cancelled: 0, skipped: 0, todo: 0, totalFailed: 0 };
+  failedSubtests = false;
+  #skipReporting() {
+    return this.#counters.all > 0 && (!this.error || this.error.failureType === kSubtestsFailed);
+  }
+  #checkNestedComment({ comment }) {
+    const firstSpaceIndex = StringPrototypeIndexOf(comment, ' ');
+    if (firstSpaceIndex === -1) return false;
+    const secondSpaceIndex = StringPrototypeIndexOf(comment, ' ', firstSpaceIndex + 1);
+    return secondSpaceIndex === -1 &&
+          ArrayPrototypeIncludes(kDiagnosticsFilterArgs, StringPrototypeSlice(comment, 0, firstSpaceIndex));
+  }
+  #handleReportItem({ kind, node, comments, nesting = 0 }) {
+    if (comments) {
+      ArrayPrototypeForEach(comments, (comment) => this.reporter.diagnostic(nesting, this.name, comment));
+    }
     switch (kind) {
       case TokenKind.TAP_VERSION:
         // TODO(manekinekko): handle TAP version coming from the parser.
@@ -136,17 +172,20 @@ class FileTest extends Test {
         break;
 
       case TokenKind.TAP_PLAN:
-        this.reporter.plan(indent, node.end - node.start + 1);
+        if (nesting === 0 && this.#skipReporting()) {
+          break;
+        }
+        this.reporter.plan(nesting, this.name, node.end - node.start + 1);
         break;
 
       case TokenKind.TAP_SUBTEST_POINT:
-        this.reporter.subtest(indent, node.name);
+        this.reporter.start(nesting, this.name, node.name);
         break;
 
-      case TokenKind.TAP_TEST_POINT:
-        // eslint-disable-next-line no-case-declarations
+      case TokenKind.TAP_TEST_POINT: {
+
         const { todo, skip, pass } = node.status;
-        // eslint-disable-next-line no-case-declarations
+
         let directive;
 
         if (skip) {
@@ -157,35 +196,30 @@ class FileTest extends Test {
           directive = kEmptyObject;
         }
 
-        if (pass) {
-          this.reporter.ok(
-            indent,
-            node.id,
-            node.description,
-            YAMLToJs(node.diagnostics),
-            directive
-          );
-        } else {
-          this.reporter.fail(
-            indent,
-            node.id,
-            node.description,
-            YAMLToJs(node.diagnostics),
-            directive
-          );
+        const diagnostics = YAMLToJs(node.diagnostics);
+        const cancelled = kCanceledTests.has(diagnostics.error?.failureType);
+        const testNumber = nesting === 0 ? (Number(node.id) + this.testNumber - 1) : node.id;
+        const method = pass ? 'ok' : 'fail';
+        this.reporter[method](nesting, this.name, testNumber, node.description, diagnostics, directive);
+        if (nesting === 0) {
+          FunctionPrototypeCall(super.countSubtest,
+                                { finished: true, skipped: skip, isTodo: todo, passed: pass, cancelled },
+                                this.#counters);
+          this.failedSubtests ||= !pass;
         }
         break;
 
+      }
       case TokenKind.COMMENT:
-        if (indent === kDefaultIndent) {
+        if (nesting === 0 && this.#checkNestedComment(node)) {
           // Ignore file top level diagnostics
           break;
         }
-        this.reporter.diagnostic(indent, node.comment);
+        this.reporter.diagnostic(nesting, this.name, node.comment);
         break;
 
       case TokenKind.UNKNOWN:
-        this.reporter.diagnostic(indent, node.value);
+        this.reporter.diagnostic(nesting, this.name, node.value);
         break;
     }
   }
@@ -194,13 +228,27 @@ class FileTest extends Test {
       ArrayPrototypePush(this.#buffer, ast);
       return;
     }
-    this.reportSubtest();
+    this.reportStarted();
     this.#handleReportItem(ast);
   }
+  countSubtest(counters) {
+    if (this.#counters.all === 0) {
+      return super.countSubtest(counters);
+    }
+    ArrayPrototypeForEach(ObjectKeys(counters), (key) => {
+      counters[key] += this.#counters[key];
+    });
+  }
+  reportStarted() {}
   report() {
-    this.reportSubtest();
+    const skipReporting = this.#skipReporting();
+    if (!skipReporting) {
+      super.reportStarted();
+    }
     ArrayPrototypeForEach(this.#buffer, (ast) => this.#handleReportItem(ast));
-    super.report();
+    if (!skipReporting) {
+      super.report();
+    }
   }
 }
 
@@ -257,14 +305,15 @@ function runTestFile(path, root, inspectPort, filesWatcher) {
 
     const { 0: { 0: code, 1: signal } } = await SafePromiseAll([
       once(child, 'exit', { signal: t.signal }),
-      child.stdout.toArray({ signal: t.signal }),
+      finished(parser, { signal: t.signal }),
     ]);
 
     runningProcesses.delete(path);
     runningSubtests.delete(path);
     if (code !== 0 || signal !== null) {
       if (!err) {
-        err = ObjectAssign(new ERR_TEST_FAILURE('test failed', kSubtestsFailed), {
+        const failureType = subtest.failedSubtests ? kSubtestsFailed : kTestCodeFailure;
+        err = ObjectAssign(new ERR_TEST_FAILURE('test failed', failureType), {
           __proto__: null,
           exitCode: code,
           signal: signal,
@@ -277,7 +326,17 @@ function runTestFile(path, root, inspectPort, filesWatcher) {
       throw err;
     }
   });
-  return subtest.start();
+  const promise = subtest.start();
+  if (filesWatcher) {
+    return PromisePrototypeThen(promise, () => {
+      const index = ArrayPrototypeIndexOf(root.subtests, subtest);
+      if (index !== -1) {
+        ArrayPrototypeSplice(root.subtests, index, 1);
+        root.waitingOn--;
+      }
+    });
+  }
+  return promise;
 }
 
 function watchFiles(testFiles, root, inspectPort) {
@@ -306,13 +365,16 @@ function run(options) {
   if (options === null || typeof options !== 'object') {
     options = kEmptyObject;
   }
-  const { concurrency, timeout, signal, files, inspectPort, watch } = options;
+  const { concurrency, timeout, signal, files, inspectPort, watch, setup } = options;
 
   if (files != null) {
     validateArray(files, 'options.files');
   }
   if (watch != null) {
     validateBoolean(watch, 'options.watch');
+  }
+  if (setup != null) {
+    validateFunction(setup, 'options.setup');
   }
 
   const root = createTestTree({ concurrency, timeout, signal });
@@ -324,13 +386,16 @@ function run(options) {
     filesWatcher = watchFiles(testFiles, root, inspectPort);
     postRun = undefined;
   }
+  const runFiles = () => {
+    root.harness.bootstrapComplete = true;
+    return SafePromiseAllSettledReturnVoid(testFiles, (path) => {
+      const subtest = runTestFile(path, root, inspectPort, filesWatcher);
+      runningSubtests.set(path, subtest);
+      return subtest;
+    });
+  };
 
-  PromisePrototypeThen(SafePromiseAllSettledReturnVoid(testFiles, (path) => {
-    const subtest = runTestFile(path, root, inspectPort, filesWatcher);
-    runningSubtests.set(path, subtest);
-    return subtest;
-  }), postRun);
-
+  PromisePrototypeThen(PromisePrototypeThen(PromiseResolve(setup?.(root)), runFiles), postRun);
 
   return root.reporter;
 }

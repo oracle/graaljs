@@ -32,10 +32,10 @@ const {
     ERR_INCOMPATIBLE_OPTION_PAIR,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
-    ERR_OUT_OF_RANGE
+    ERR_OUT_OF_RANGE,
   },
   hideStackFrames,
-  uvException
+  uvException,
 } = require('internal/errors');
 const {
   isArrayBufferView,
@@ -96,13 +96,13 @@ const {
     UV_DIRENT_FIFO,
     UV_DIRENT_SOCKET,
     UV_DIRENT_CHAR,
-    UV_DIRENT_BLOCK
+    UV_DIRENT_BLOCK,
   },
   os: {
     errno: {
-      EISDIR
-    }
-  }
+      EISDIR,
+    },
+  },
 } = internalBinding('constants');
 
 // The access modes can be any of F_OK, R_OK, W_OK or X_OK. Some might not be
@@ -119,7 +119,7 @@ const kMinimumCopyMode = MathMin(
   kDefaultCopyMode,
   COPYFILE_EXCL,
   COPYFILE_FICLONE,
-  COPYFILE_FICLONE_FORCE
+  COPYFILE_FICLONE_FORCE,
 );
 const kMaximumCopyMode = COPYFILE_EXCL |
                          COPYFILE_FICLONE |
@@ -371,7 +371,7 @@ const nullCheck = hideStackFrames((path, propName, throwError = true) => {
   const err = new ERR_INVALID_ARG_VALUE(
     propName,
     path,
-    'must be a string or Uint8Array without null bytes'
+    'must be a string or Uint8Array without null bytes',
   );
   if (throwError) {
     throw err;
@@ -542,7 +542,7 @@ function getStatsFromBinding(stats, offset = 0) {
       nsFromTimeSpecBigInt(stats[10 + offset], stats[11 + offset]),
       nsFromTimeSpecBigInt(stats[12 + offset], stats[13 + offset]),
       nsFromTimeSpecBigInt(stats[14 + offset], stats[15 + offset]),
-      nsFromTimeSpecBigInt(stats[16 + offset], stats[17 + offset])
+      nsFromTimeSpecBigInt(stats[16 + offset], stats[17 + offset]),
     );
   }
   return new Stats(
@@ -553,7 +553,25 @@ function getStatsFromBinding(stats, offset = 0) {
     msFromTimeSpec(stats[10 + offset], stats[11 + offset]),
     msFromTimeSpec(stats[12 + offset], stats[13 + offset]),
     msFromTimeSpec(stats[14 + offset], stats[15 + offset]),
-    msFromTimeSpec(stats[16 + offset], stats[17 + offset])
+    msFromTimeSpec(stats[16 + offset], stats[17 + offset]),
+  );
+}
+
+class StatFs {
+  constructor(type, bsize, blocks, bfree, bavail, files, ffree) {
+    this.type = type;
+    this.bsize = bsize;
+    this.blocks = blocks;
+    this.bfree = bfree;
+    this.bavail = bavail;
+    this.files = files;
+    this.ffree = ffree;
+  }
+}
+
+function getStatFsFromBinding(stats) {
+  return new StatFs(
+    stats[0], stats[1], stats[2], stats[3], stats[4], stats[5], stats[6],
   );
 }
 
@@ -649,7 +667,7 @@ const validateOffsetLengthRead = hideStackFrames(
       throw new ERR_OUT_OF_RANGE('length',
                                  `<= ${bufferLength - offset}`, length);
     }
-  }
+  },
 );
 
 const validateOffsetLengthWrite = hideStackFrames(
@@ -667,7 +685,7 @@ const validateOffsetLengthWrite = hideStackFrames(
     }
 
     validateInt32(length, 'length', 0);
-  }
+  },
 );
 
 const validatePath = hideStackFrames((path, propName = 'path') => {
@@ -736,7 +754,7 @@ const defaultRmOptions = {
   recursive: false,
   force: false,
   retryDelay: 100,
-  maxRetries: 0
+  maxRetries: 0,
 };
 
 const defaultRmdirOptions = {
@@ -787,7 +805,7 @@ const validateRmOptions = hideStackFrames((path, options, expectDir, cb) => {
         message: 'is a directory',
         path,
         syscall: 'rm',
-        errno: EISDIR
+        errno: EISDIR,
       }));
     }
     return cb(null, options);
@@ -812,7 +830,7 @@ const validateRmOptionsSync = hideStackFrames((path, options, expectDir) => {
         message: 'is a directory',
         path,
         syscall: 'rm',
-        errno: EISDIR
+        errno: EISDIR,
       });
     }
   }
@@ -827,7 +845,7 @@ function emitRecursiveRmdirWarning() {
       'In future versions of Node.js, fs.rmdir(path, { recursive: true }) ' +
       'will be removed. Use fs.rm(path, { recursive: true }) instead',
       'DeprecationWarning',
-      'DEP0147'
+      'DEP0147',
     );
     recursiveRmdirWarned = true;
   }
@@ -883,7 +901,7 @@ const validateStringAfterArrayBufferView = hideStackFrames((buffer, name) => {
   throw new ERR_INVALID_ARG_TYPE(
     name,
     ['string', 'Buffer', 'TypedArray', 'DataView'],
-    buffer
+    buffer,
   );
 });
 
@@ -892,7 +910,7 @@ const validatePrimitiveStringAfterArrayBufferView = hideStackFrames((buffer, nam
     throw new ERR_INVALID_ARG_TYPE(
       name,
       ['string', 'Buffer', 'TypedArray', 'DataView'],
-      buffer
+      buffer,
     );
   }
 });
@@ -934,6 +952,7 @@ module.exports = {
   nullCheck,
   preprocessSymlinkDestination,
   realpathCacheKey: Symbol('realpathCacheKey'),
+  getStatFsFromBinding,
   getStatsFromBinding,
   stringToFlags,
   stringToSymlinkType,
@@ -950,5 +969,5 @@ module.exports = {
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
   validatePrimitiveStringAfterArrayBufferView,
-  warnOnNonPortableTemplate
+  warnOnNonPortableTemplate,
 };

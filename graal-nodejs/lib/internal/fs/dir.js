@@ -18,8 +18,8 @@ const {
   codes: {
     ERR_DIR_CLOSED,
     ERR_DIR_CONCURRENT_OPERATION,
-    ERR_MISSING_ARGS
-  }
+    ERR_MISSING_ARGS,
+  },
 } = require('internal/errors');
 
 const { FSReqCallback } = binding;
@@ -28,11 +28,11 @@ const {
   getDirent,
   getOptions,
   getValidatedPath,
-  handleErrorFromBinding
+  handleErrorFromBinding,
 } = require('internal/fs/utils');
 const {
   validateFunction,
-  validateUint32
+  validateUint32,
 } = require('internal/validators');
 
 const kDirHandle = Symbol('kDirHandle');
@@ -60,8 +60,8 @@ class Dir {
     this[kDirOptions] = {
       bufferSize: 32,
       ...getOptions(options, {
-        encoding: 'utf8'
-      })
+        encoding: 'utf8',
+      }),
     };
 
     validateUint32(this[kDirOptions].bufferSize, 'options.bufferSize', true);
@@ -128,7 +128,7 @@ class Dir {
     this[kDirHandle].read(
       this[kDirOptions].encoding,
       this[kDirOptions].bufferSize,
-      req
+      req,
     );
   }
 
@@ -152,7 +152,7 @@ class Dir {
       this[kDirOptions].encoding,
       this[kDirOptions].bufferSize,
       undefined,
-      ctx
+      ctx,
     );
     handleErrorFromBinding(ctx);
 
@@ -239,7 +239,7 @@ function opendir(path, options, callback) {
 
   path = getValidatedPath(path);
   options = getOptions(options, {
-    encoding: 'utf8'
+    encoding: 'utf8',
   });
 
   function opendirCallback(error, handle) {
@@ -256,14 +256,14 @@ function opendir(path, options, callback) {
   dirBinding.opendir(
     pathModule.toNamespacedPath(path),
     options.encoding,
-    req
+    req,
   );
 }
 
 function opendirSync(path, options) {
   path = getValidatedPath(path);
   options = getOptions(options, {
-    encoding: 'utf8'
+    encoding: 'utf8',
   });
 
   const ctx = { path };
@@ -271,7 +271,7 @@ function opendirSync(path, options) {
     pathModule.toNamespacedPath(path),
     options.encoding,
     undefined,
-    ctx
+    ctx,
   );
   handleErrorFromBinding(ctx);
 
@@ -281,5 +281,5 @@ function opendirSync(path, options) {
 module.exports = {
   Dir,
   opendir,
-  opendirSync
+  opendirSync,
 };

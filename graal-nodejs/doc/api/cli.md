@@ -169,7 +169,7 @@ $ node --completion-bash > node_bash_completion
 $ source node_bash_completion
 ```
 
-### `-C=condition`, `--conditions=condition`
+### `-C condition`, `--conditions=condition`
 
 <!-- YAML
 added:
@@ -190,7 +190,7 @@ The default Node.js conditions of `"node"`, `"default"`, `"import"`, and
 For example, to run a module with "development" resolutions:
 
 ```console
-$ node -C=development app.js
+$ node -C development app.js
 ```
 
 ### `--cpu-prof`
@@ -439,6 +439,17 @@ module. The `node` mode enables support for optional file extensions and
 the ability to import a directory that has an index file.
 
 See [customizing ESM specifier resolution][] for example usage.
+
+### `--experimental-test-coverage`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+When used in conjunction with the `node:test` module, a code coverage report is
+generated as part of the test runner output. If no tests are run, a coverage
+report is not generated. See the documentation on
+[collecting code coverage from tests][] for more details.
 
 ### `--experimental-vm-modules`
 
@@ -1219,6 +1230,24 @@ A regular expression that configures the test runner to only execute tests
 whose name matches the provided pattern. See the documentation on
 [filtering tests by name][] for more details.
 
+### `--test-reporter`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+A test reporter to use when running tests. See the documentation on
+[test reporters][] for more details.
+
+### `--test-reporter-destination`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+The destination for the corresponding test reporter. See the documentation on
+[test reporters][] for more details.
+
 ### `--test-only`
 
 <!-- YAML
@@ -1929,6 +1958,7 @@ V8 options that are allowed are:
 
 * `--abort-on-uncaught-exception`
 * `--disallow-code-generation-from-strings`
+* `--enable-etw-stack-walking`
 * `--huge-max-old-generation-size`
 * `--interpreted-frames-native-stack`
 * `--jitless`
@@ -1944,6 +1974,8 @@ V8 options that are allowed are:
 
 `--perf-basic-prof-only-functions`, `--perf-basic-prof`,
 `--perf-prof-unwinding-info`, and `--perf-prof` are only available on Linux.
+
+`--enable-etw-stack-walking` is only available on Windows.
 
 ### `NODE_PATH=path[:…]`
 
@@ -2298,6 +2330,7 @@ done
 [`unhandledRejection`]: process.md#event-unhandledrejection
 [`v8.startupSnapshot` API]: v8.md#startup-snapshot-api
 [`worker_threads.threadId`]: worker_threads.md#workerthreadid
+[collecting code coverage from tests]: test.md#collecting-code-coverage
 [conditional exports]: packages.md#conditional-exports
 [context-aware]: addons.md#context-aware-addons
 [customizing ESM specifier resolution]: esm.md#customizing-esm-specifier-resolution-algorithm
@@ -2312,6 +2345,7 @@ done
 [scavenge garbage collector]: https://v8.dev/blog/orinoco-parallel-scavenger
 [security warning]: #warning-binding-inspector-to-a-public-ipport-combination-is-insecure
 [semi-space]: https://www.memorymanagement.org/glossary/s.html#semi.space
+[test reporters]: test.md#test-reporters
 [timezone IDs]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 [tracking issue for user-land snapshots]: https://github.com/nodejs/node/issues/44014
 [ways that `TZ` is handled in other environments]: https://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html

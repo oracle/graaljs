@@ -1,11 +1,12 @@
 'use strict';
 const {
   prepareMainThreadExecution,
-  markBootstrapComplete
+  markBootstrapComplete,
 } = require('internal/process/pre_execution');
 const { getOptionValue } = require('internal/options');
 const { isUsingInspector } = require('internal/util/inspector');
 const { run } = require('internal/test_runner/runner');
+const { setupTestReporters } = require('internal/test_runner/utils');
 
 prepareMainThreadExecution(false);
 markBootstrapComplete();
@@ -20,8 +21,7 @@ if (isUsingInspector()) {
   inspectPort = process.debugPort;
 }
 
-const tapStream = run({ concurrency, inspectPort, watch: getOptionValue('--watch') });
-tapStream.pipe(process.stdout);
-tapStream.once('test:fail', () => {
+run({ concurrency, inspectPort, watch: getOptionValue('--watch'), setup: setupTestReporters })
+.once('test:fail', () => {
   process.exitCode = 1;
 });

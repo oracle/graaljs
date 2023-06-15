@@ -10,7 +10,6 @@ describe('require(\'node:test\').run', { concurrency: true }, () => {
 
   it('should run with no tests', async () => {
     const stream = run({ files: [] });
-    stream.setEncoding('utf8');
     stream.on('test:fail', common.mustNotCall());
     stream.on('test:pass', common.mustNotCall());
     // eslint-disable-next-line no-unused-vars
@@ -28,7 +27,7 @@ describe('require(\'node:test\').run', { concurrency: true }, () => {
   it('should succeed with a file', async () => {
     const stream = run({ files: [join(testFixtures, 'test/random.cjs')] });
     stream.on('test:fail', common.mustNotCall());
-    stream.on('test:pass', common.mustCall(2));
+    stream.on('test:pass', common.mustCall(1));
     // eslint-disable-next-line no-unused-vars
     for await (const _ of stream);
   });
@@ -36,7 +35,7 @@ describe('require(\'node:test\').run', { concurrency: true }, () => {
   it('should run same file twice', async () => {
     const stream = run({ files: [join(testFixtures, 'test/random.cjs'), join(testFixtures, 'test/random.cjs')] });
     stream.on('test:fail', common.mustNotCall());
-    stream.on('test:pass', common.mustCall(4));
+    stream.on('test:pass', common.mustCall(2));
     // eslint-disable-next-line no-unused-vars
     for await (const _ of stream);
   });

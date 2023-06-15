@@ -14,7 +14,7 @@ const {
   kDestroyed,
   isDestroyed,
   isFinished,
-  isServerRequest
+  isServerRequest,
 } = require('internal/streams/utils');
 
 const kDestroy = Symbol('kDestroy');
@@ -272,9 +272,11 @@ function constructNT(stream) {
   }
 
   try {
-    stream._construct(onConstruct);
+    stream._construct((err) => {
+      process.nextTick(onConstruct, err);
+    });
   } catch (err) {
-    onConstruct(err);
+    process.nextTick(onConstruct, err);
   }
 }
 
@@ -334,5 +336,5 @@ module.exports = {
   destroyer,
   destroy,
   undestroy,
-  errorOrDestroy
+  errorOrDestroy,
 };

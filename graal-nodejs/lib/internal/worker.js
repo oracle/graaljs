@@ -17,6 +17,7 @@ const {
   SafeArrayIterator,
   SafeMap,
   String,
+  StringPrototypeTrim,
   Symbol,
   SymbolFor,
   TypedArrayPrototypeFill,
@@ -51,12 +52,12 @@ const {
   kStdioWantsMoreDataCallback,
   setupPortReferencing,
   ReadableWorkerStdio,
-  WritableWorkerStdio
+  WritableWorkerStdio,
 } = workerIo;
 const { deserializeError } = require('internal/error_serdes');
 const { fileURLToPath, isURLInstance, pathToFileURL } = require('internal/url');
 const { kEmptyObject } = require('internal/util');
-const { validateArray } = require('internal/validators');
+const { validateArray, validateString } = require('internal/validators');
 
 const {
   ownsProcessState,
@@ -68,7 +69,7 @@ const {
   kMaxOldGenerationSizeMb,
   kCodeRangeSizeMb,
   kStackSizeMb,
-  kTotalResourceLimitCount
+  kTotalResourceLimitCount,
 } = internalBinding('worker');
 
 const kHandle = Symbol('kHandle');
@@ -91,7 +92,9 @@ let cwdCounter;
 
 const environmentData = new SafeMap();
 
-if (isMainThread) {
+// SharedArrayBuffers can be disabled with --no-harmony-sharedarraybuffer.
+// Atomics can be disabled with --no-harmony-atomics.
+if (isMainThread && SharedArrayBuffer !== undefined && Atomics !== undefined) {
   cwdCounter = new Uint32Array(new SharedArrayBuffer(4));
   const originalChdir = process.chdir;
   process.chdir = function(path) {
@@ -137,7 +140,7 @@ class Worker extends EventEmitter {
         throw new ERR_INVALID_ARG_VALUE(
           'options.eval',
           options.eval,
-          'must be false when \'filename\' is not a string'
+          'must be false when \'filename\' is not a string',
         );
       }
       url = null;
@@ -155,7 +158,7 @@ class Worker extends EventEmitter {
         throw new ERR_INVALID_ARG_TYPE(
           'filename',
           ['string', 'URL'],
-          filename
+          filename,
         );
       } else if (path.isAbsolute(filename) ||
                  RegExpPrototypeExec(/^\.\.?[\\/]/, filename) !== null) {
@@ -171,7 +174,7 @@ class Worker extends EventEmitter {
       env = ObjectCreate(null);
       ArrayPrototypeForEach(
         ObjectEntries(options.env),
-        ({ 0: key, 1: value }) => { env[key] = `${value}`; }
+        ({ 0: key, 1: value }) => { env[key] = `${value}`; },
       );
     } else if (options.env == null) {
       env = process.env;
@@ -182,12 +185,19 @@ class Worker extends EventEmitter {
         options.env);
     }
 
+    let name = '';
+    if (options.name) {
+      validateString(options.name, 'options.name');
+      name = StringPrototypeTrim(options.name);
+    }
+
     // Set up the C++ handle for the worker, as well as some internal wiring.
     this[kHandle] = new WorkerImpl(url,
                                    env === process.env ? null : env,
                                    options.execArgv,
                                    parseResourceLimits(options.resourceLimits),
-                                   !!(options.trackUnmanagedFds ?? true));
+                                   !!(options.trackUnmanagedFds ?? true),
+                                   name);
     if (this[kHandle].invalidExecArgv) {
       throw new ERR_WORKER_INVALID_EXEC_ARGV(this[kHandle].invalidExecArgv);
     }
@@ -248,7 +258,7 @@ class Worker extends EventEmitter {
       manifestSrc: getOptionValue('--experimental-policy') ?
         require('internal/process/policy').src :
         null,
-      hasStdin: !!options.stdin
+      hasStdin: !!options.stdin,
     }, transferList);
     // Use this to cache the Worker's loopStart value once available.
     this[kLoopStartTime] = -1;
@@ -452,7 +462,7 @@ function makeResourceLimits(float64arr) {
     maxYoungGenerationSizeMb: float64arr[kMaxYoungGenerationSizeMb],
     maxOldGenerationSizeMb: float64arr[kMaxOldGenerationSizeMb],
     codeRangeSizeMb: float64arr[kCodeRangeSizeMb],
-    stackSizeMb: float64arr[kStackSizeMb]
+    stackSizeMb: float64arr[kStackSizeMb],
   };
 }
 

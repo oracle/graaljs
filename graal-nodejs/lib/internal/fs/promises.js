@@ -22,7 +22,7 @@ const {
   O_SYMLINK,
   O_WRONLY,
   S_IFMT,
-  S_IFREG
+  S_IFREG,
 } = constants;
 
 const binding = internalBinding('fs');
@@ -52,6 +52,7 @@ const {
   emitRecursiveRmdirWarning,
   getDirents,
   getOptions,
+  getStatFsFromBinding,
   getStatsFromBinding,
   getValidatedPath,
   getValidMode,
@@ -104,7 +105,7 @@ const kLocked = Symbol('kLocked');
 const { kUsePromises } = binding;
 const { Interface } = require('internal/readline/interface');
 const {
-  JSTransferable, kDeserialize, kTransfer, kTransferList
+  JSTransferable, kDeserialize, kTransfer, kTransferList,
 } = require('internal/worker/js_transferable');
 
 const {
@@ -227,7 +228,7 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
       this[kFd] = -1;
       this[kClosePromise] = SafePromisePrototypeFinally(
         this[kHandle].close(),
-        () => { this[kClosePromise] = undefined; }
+        () => { this[kClosePromise] = undefined; },
       );
     } else {
       this[kClosePromise] = SafePromisePrototypeFinally(
@@ -238,7 +239,7 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
           this[kClosePromise] = undefined;
           this[kCloseReject] = undefined;
           this[kCloseResolve] = undefined;
-        }
+        },
       );
     }
 
@@ -320,7 +321,7 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
 
     return {
       data: { handle },
-      deserializeInfo: 'internal/fs/promises:FileHandle'
+      deserializeInfo: 'internal/fs/promises:FileHandle',
     };
   }
 
@@ -344,7 +345,7 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
       PromisePrototypeThen(
         this[kHandle].close(),
         this[kCloseResolve],
-        this[kCloseReject]
+        this[kCloseReject],
       );
     }
   }
@@ -358,8 +359,8 @@ async function handleFdClose(fileOpPromise, closeFunc) {
       PromisePrototypeThen(
         closeFunc(),
         () => PromiseReject(opError),
-        (closeError) => PromiseReject(aggregateTwoErrors(closeError, opError))
-      )
+        (closeError) => PromiseReject(aggregateTwoErrors(closeError, opError)),
+      ),
   );
 }
 
@@ -418,7 +419,7 @@ async function writeFileHandle(filehandle, data, signal, encoding) {
     data = new Uint8Array(
       data.buffer,
       data.byteOffset + bytesWritten,
-      data.byteLength - bytesWritten
+      data.byteLength - bytesWritten,
     );
   } while (remaining > 0);
 }
@@ -709,7 +710,7 @@ async function mkdir(path, options) {
   }
   const {
     recursive = false,
-    mode = 0o777
+    mode = 0o777,
   } = options || kEmptyObject;
   path = getValidatedPath(path);
   validateBoolean(recursive, 'options.recursive');
@@ -765,6 +766,13 @@ async function stat(path, options = { bigint: false }) {
   const result = await binding.stat(pathModule.toNamespacedPath(path),
                                     options.bigint, kUsePromises);
   return getStatsFromBinding(result);
+}
+
+async function statfs(path, options = { bigint: false }) {
+  path = getValidatedPath(path);
+  const result = await binding.statfs(pathModule.toNamespacedPath(path),
+                                      options.bigint, kUsePromises);
+  return getStatFsFromBinding(result);
 }
 
 async function link(existingPath, newPath) {
@@ -919,6 +927,7 @@ module.exports = {
     symlink,
     lstat,
     stat,
+    statfs,
     link,
     unlink,
     chmod,

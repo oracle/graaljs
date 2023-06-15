@@ -80,7 +80,7 @@ function validateKeyOrCertOption(name, value) {
         'TypedArray',
         'DataView',
       ],
-      value
+      value,
     );
   }
 }
@@ -240,7 +240,7 @@ function configSecureContext(context, options = kEmptyObject, name = 'options') 
 
   if (dhparam !== undefined && dhparam !== null) {
     validateKeyOrCertOption(`${name}.dhparam`, dhparam);
-    const warning = context.setDHParam(dhparam);
+    const warning = context.setDHParam(dhparam === 'auto' || dhparam);
     if (warning)
       process.emitWarning(warning, 'SecurityWarning');
   }

@@ -202,7 +202,7 @@ class PerformanceObserverEntryList {
 
     const opts = {
       ...options,
-      depth: options.depth == null ? null : options.depth - 1
+      depth: options.depth == null ? null : options.depth - 1,
     };
 
     return `PerformanceObserverEntryList ${inspect(this.#buffer, opts)}`;
@@ -327,7 +327,7 @@ class PerformanceObserver {
 
     const opts = {
       ...options,
-      depth: options.depth == null ? null : options.depth - 1
+      depth: options.depth == null ? null : options.depth - 1,
     };
 
     return `PerformanceObserver ${inspect({
@@ -410,7 +410,7 @@ function bufferResourceTiming(entry) {
         // Calculate the number of items to be pushed to the global buffer.
         const numbersToPreserve = MathMax(
           MathMin(resourceTimingBufferSizeLimit - resourceTimingBuffer.length, resourceTimingSecondaryBuffer.length),
-          0
+          0,
         );
         const excessNumberAfter = resourceTimingSecondaryBuffer.length - numbersToPreserve;
         for (let idx = 0; idx < numbersToPreserve; idx++) {

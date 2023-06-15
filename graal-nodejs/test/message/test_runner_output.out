@@ -24,7 +24,6 @@ not ok 3 - sync fail todo # TODO
     *
     *
     *
-    *
   ...
 # Subtest: sync fail todo with message
 not ok 4 - sync fail todo with message # TODO this is a failing todo
@@ -34,7 +33,6 @@ not ok 4 - sync fail todo with message # TODO this is a failing todo
   error: 'thrown from sync fail todo with message'
   code: 'ERR_TEST_FAILURE'
   stack: |-
-    *
     *
     *
     *
@@ -74,7 +72,6 @@ not ok 8 - sync throw fail
     *
     *
     *
-    *
   ...
 # Subtest: async skip pass
 ok 9 - async skip pass # SKIP
@@ -101,7 +98,6 @@ not ok 11 - async throw fail
     *
     *
     *
-    *
   ...
 # Subtest: async skip fail
 not ok 12 - async skip fail # SKIP
@@ -111,7 +107,6 @@ not ok 12 - async skip fail # SKIP
   error: 'thrown from async throw fail'
   code: 'ERR_TEST_FAILURE'
   stack: |-
-    *
     *
     *
     *
@@ -131,11 +126,11 @@ not ok 13 - async assertion fail
     true !== false
 
   code: 'ERR_ASSERTION'
+  name: 'AssertionError'
   expected: false
   actual: true
   operator: 'strictEqual'
   stack: |-
-    *
     *
     *
     *
@@ -157,7 +152,6 @@ not ok 15 - reject fail
   error: 'rejected from reject fail'
   code: 'ERR_TEST_FAILURE'
   stack: |-
-    *
     *
     *
     *
@@ -353,8 +347,8 @@ ok 36 - functionAndOptions # SKIP
   ---
   duration_ms: *
   ...
-# Subtest: escaped description \\ \# \\\#\\ \n \t \f \v \b \r
-ok 37 - escaped description \\ \# \\\#\\ \n \t \f \v \b \r
+# Subtest: escaped description \\ \# \\\#\\ \\n \\t \\f \\v \\b \\r
+ok 37 - escaped description \\ \# \\\#\\ \\n \\t \\f \\v \\b \\r
   ---
   duration_ms: *
   ...
@@ -482,11 +476,13 @@ ok 52 - callback async throw after done
       ---
       duration_ms: *
       ...
+    # 'only' and 'runOnly' require the --test-only command-line option.
     # Subtest: running subtest 3
     ok 3 - running subtest 3
       ---
       duration_ms: *
       ...
+    # 'only' and 'runOnly' require the --test-only command-line option.
     # Subtest: running subtest 4
     ok 4 - running subtest 4
       ---
@@ -497,6 +493,7 @@ ok 53 - only is set but not in only mode
   ---
   duration_ms: *
   ...
+# 'only' and 'runOnly' require the --test-only command-line option.
 # Subtest: custom inspect symbol fail
 not ok 54 - custom inspect symbol fail
   ---
@@ -640,6 +637,7 @@ not ok 65 - invalid subtest fail
 1..65
 # Warning: Test "unhandled rejection - passes but warns" generated asynchronous activity after the test ended. This activity created the error "Error: rejected from unhandled rejection fail" and would have caused the test to fail, but instead triggered an unhandledRejection event.
 # Warning: Test "async unhandled rejection - passes but warns" generated asynchronous activity after the test ended. This activity created the error "Error: rejected from async unhandled rejection fail" and would have caused the test to fail, but instead triggered an unhandledRejection event.
+# Warning: A resource generated asynchronous activity after the test ended. This activity created the error "Error: uncaught from outside of a test" which triggered an uncaughtException event, caught by the test runner.
 # Warning: Test "immediate throw - passes but warns" generated asynchronous activity after the test ended. This activity created the error "Error: thrown from immediate throw fail" and would have caused the test to fail, but instead triggered an uncaughtException event.
 # Warning: Test "immediate reject - passes but warns" generated asynchronous activity after the test ended. This activity created the error "Error: rejected from immediate reject fail" and would have caused the test to fail, but instead triggered an unhandledRejection event.
 # Warning: Test "callback called twice in different ticks" generated asynchronous activity after the test ended. This activity created the error "Error [ERR_TEST_FAILURE]: callback invoked multiple times" and would have caused the test to fail, but instead triggered an uncaughtException event.

@@ -13,6 +13,7 @@ const kIsReadable = Symbol('kIsReadable');
 const kIsDisturbed = Symbol('kIsDisturbed');
 
 const kIsClosedPromise = SymbolFor('nodejs.webstream.isClosedPromise');
+const kControllerErrorFunction = SymbolFor('nodejs.webstream.controllerErrorFunction');
 
 function isReadableNodeStream(obj, strict = false) {
   return !!(
@@ -75,6 +76,19 @@ function isWritableStream(obj) {
     typeof obj.getWriter === 'function' &&
     typeof obj.abort === 'function'
   );
+}
+
+function isTransformStream(obj) {
+  return !!(
+    obj &&
+    !isNodeStream(obj) &&
+    typeof obj.readable === 'object' &&
+    typeof obj.writable === 'object'
+  );
+}
+
+function isWebStream(obj) {
+  return isReadableStream(obj) || isWritableStream(obj) || isTransformStream(obj);
 }
 
 function isIterable(obj, isAsync) {
@@ -292,6 +306,7 @@ module.exports = {
   isReadable,
   kIsReadable,
   kIsClosedPromise,
+  kControllerErrorFunction,
   isClosed,
   isDestroyed,
   isDuplexNodeStream,
@@ -303,6 +318,7 @@ module.exports = {
   isReadableFinished,
   isReadableErrored,
   isNodeStream,
+  isWebStream,
   isWritable,
   isWritableNodeStream,
   isWritableStream,
@@ -312,4 +328,5 @@ module.exports = {
   isServerRequest,
   isServerResponse,
   willEmitClose,
+  isTransformStream,
 };

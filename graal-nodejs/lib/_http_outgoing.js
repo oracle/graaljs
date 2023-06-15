@@ -25,7 +25,6 @@ const {
   Array,
   ArrayIsArray,
   ArrayPrototypeJoin,
-  MathAbs,
   MathFloor,
   NumberPrototypeToString,
   ObjectCreate,
@@ -54,7 +53,7 @@ const {
 } = require('_http_common');
 const {
   defaultTriggerAsyncIdScope,
-  symbols: { async_id_symbol }
+  symbols: { async_id_symbol },
 } = require('internal/async_hooks');
 const {
   codes: {
@@ -71,9 +70,9 @@ const {
     ERR_STREAM_ALREADY_FINISHED,
     ERR_STREAM_WRITE_AFTER_END,
     ERR_STREAM_NULL_VALUES,
-    ERR_STREAM_DESTROYED
+    ERR_STREAM_DESTROYED,
   },
-  hideStackFrames
+  hideStackFrames,
 } = require('internal/errors');
 const { validateString } = require('internal/validators');
 const { isUint8Array } = require('internal/util/types');
@@ -87,7 +86,6 @@ const HIGH_WATER_MARK = getDefaultHighWaterMark();
 const kCorked = Symbol('corked');
 const kUniqueHeaders = Symbol('kUniqueHeaders');
 const kBytesWritten = Symbol('kBytesWritten');
-const kEndCalled = Symbol('kEndCalled');
 const kErrored = Symbol('errored');
 
 const nop = () => {};
@@ -99,6 +97,10 @@ const RE_CONN_CLOSE = /(?:^|\W)close(?:$|\W)/i;
 // using a case-insensitive RegExp.
 function isCookieField(s) {
   return s.length === 6 && StringPrototypeToLowerCase(s) === 'cookie';
+}
+
+function isContentDispositionField(s) {
+  return s.length === 19 && StringPrototypeToLowerCase(s) === 'content-disposition';
 }
 
 function OutgoingMessage() {
@@ -130,7 +132,6 @@ function OutgoingMessage() {
 
   this.strictContentLength = false;
   this[kBytesWritten] = 0;
-  this[kEndCalled] = false;
   this._contentLength = null;
   this._hasBody = true;
   this._trailer = '';
@@ -176,28 +177,28 @@ ObjectDefineProperty(OutgoingMessage.prototype, 'writableFinished', {
       this.outputSize === 0 &&
       (!this.socket || this.socket.writableLength === 0)
     );
-  }
+  },
 });
 
 ObjectDefineProperty(OutgoingMessage.prototype, 'writableObjectMode', {
   __proto__: null,
   get() {
     return false;
-  }
+  },
 });
 
 ObjectDefineProperty(OutgoingMessage.prototype, 'writableLength', {
   __proto__: null,
   get() {
     return this.outputSize + (this.socket ? this.socket.writableLength : 0);
-  }
+  },
 });
 
 ObjectDefineProperty(OutgoingMessage.prototype, 'writableHighWaterMark', {
   __proto__: null,
   get() {
     return this.socket ? this.socket.writableHighWaterMark : HIGH_WATER_MARK;
-  }
+  },
 });
 
 ObjectDefineProperty(OutgoingMessage.prototype, 'writableCorked', {
@@ -205,7 +206,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, 'writableCorked', {
   get() {
     const corked = this.socket ? this.socket.writableCorked : 0;
     return corked + this[kCorked];
-  }
+  },
 });
 
 ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
@@ -226,7 +227,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
         headers[StringPrototypeToLowerCase(name)] = [name, val[name]];
       }
     }
-  }, 'OutgoingMessage.prototype._headers is deprecated', 'DEP0066')
+  }, 'OutgoingMessage.prototype._headers is deprecated', 'DEP0066'),
 });
 
 ObjectDefineProperty(OutgoingMessage.prototype, 'connection', {
@@ -236,7 +237,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, 'connection', {
   },
   set: function(val) {
     this.socket = val;
-  }
+  },
 });
 
 ObjectDefineProperty(OutgoingMessage.prototype, '_headerNames', {
@@ -271,7 +272,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headerNames', {
           header[0] = val[keys[i]];
       }
     }
-  }, 'OutgoingMessage.prototype._headerNames is deprecated', 'DEP0066')
+  }, 'OutgoingMessage.prototype._headerNames is deprecated', 'DEP0066'),
 });
 
 
@@ -352,7 +353,7 @@ OutgoingMessage.prototype.destroy = function destroy(error) {
 
 
 // This abstract either writing directly to the socket or buffering it.
-OutgoingMessage.prototype._send = function _send(data, encoding, callback) {
+OutgoingMessage.prototype._send = function _send(data, encoding, callback, byteLength) {
   // This is a shameful hack to get the headers and first body chunk onto
   // the same packet. Future versions of Node are going to take care of
   // this at a lower level and in a more general way.
@@ -367,27 +368,18 @@ OutgoingMessage.prototype._send = function _send(data, encoding, callback) {
       this.outputData.unshift({
         data: header,
         encoding: 'latin1',
-        callback: null
+        callback: null,
       });
       this.outputSize += header.length;
       this._onPendingData(header.length);
     }
     this._headerSent = true;
   }
-  return this._writeRaw(data, encoding, callback);
+  return this._writeRaw(data, encoding, callback, byteLength);
 };
 
-function _getMessageBodySize(chunk, headers, encoding) {
-  if (Buffer.isBuffer(chunk)) return chunk.length;
-  const chunkLength = chunk ? Buffer.byteLength(chunk, encoding) : 0;
-  const headerLength = headers ? headers.length : 0;
-  if (headerLength === chunkLength) return 0;
-  if (headerLength < chunkLength) return MathAbs(chunkLength - headerLength);
-  return chunkLength;
-}
-
 OutgoingMessage.prototype._writeRaw = _writeRaw;
-function _writeRaw(data, encoding, callback) {
+function _writeRaw(data, encoding, callback, size) {
   const conn = this.socket;
   if (conn && conn.destroyed) {
     // The socket was destroyed. If we're still trying to write to it,
@@ -398,25 +390,6 @@ function _writeRaw(data, encoding, callback) {
   if (typeof encoding === 'function') {
     callback = encoding;
     encoding = null;
-  }
-
-  // TODO(sidwebworks): flip the `strictContentLength` default to `true` in a future PR
-  if (this.strictContentLength && conn && conn.writable && !this._removedContLen && this._hasBody) {
-    const skip = conn._httpMessage.statusCode === 304 || (this.hasHeader('transfer-encoding') || this.chunkedEncoding);
-
-    if (typeof this._contentLength === 'number' && !skip) {
-      const size = _getMessageBodySize(data, conn._httpMessage._header, encoding);
-
-      if ((size + this[kBytesWritten]) > this._contentLength) {
-        throw new ERR_HTTP_CONTENT_LENGTH_MISMATCH(size + this[kBytesWritten], this._contentLength);
-      }
-
-      if (this[kEndCalled] && (size + this[kBytesWritten]) !== this._contentLength) {
-        throw new ERR_HTTP_CONTENT_LENGTH_MISMATCH(size + this[kBytesWritten], this._contentLength);
-      }
-
-      this[kBytesWritten] += size;
-    }
   }
 
   if (conn && conn._httpMessage === this && conn.writable) {
@@ -446,7 +419,7 @@ function _storeHeader(firstLine, headers) {
     date: false,
     expect: false,
     trailer: false,
-    header: firstLine
+    header: firstLine,
   };
 
   if (headers) {
@@ -570,6 +543,15 @@ function _storeHeader(firstLine, headers) {
 function processHeader(self, state, key, value, validate) {
   if (validate)
     validateHeaderName(key);
+
+  // If key is content-disposition and there is content-length
+  // encode the value in latin1
+  // https://www.rfc-editor.org/rfc/rfc6266#section-4.3
+  // Refs: https://github.com/nodejs/node/pull/46528
+  if (isContentDispositionField(key) && self._contentLength) {
+    value = Buffer.from(value, 'latin1');
+  }
+
   if (ArrayIsArray(value)) {
     if (
       (value.length < 2 || !isCookieField(key)) &&
@@ -670,6 +652,28 @@ OutgoingMessage.prototype.setHeader = function setHeader(name, value) {
     this[kOutHeaders] = headers = ObjectCreate(null);
 
   headers[StringPrototypeToLowerCase(name)] = [name, value];
+  return this;
+};
+
+OutgoingMessage.prototype.setHeaders = function setHeaders(headers) {
+  if (this._header) {
+    throw new ERR_HTTP_HEADERS_SENT('set');
+  }
+
+
+  if (
+    !headers ||
+    ArrayIsArray(headers) ||
+    typeof headers.keys !== 'function' ||
+    typeof headers.get !== 'function'
+  ) {
+    throw new ERR_INVALID_ARG_TYPE('headers', ['Headers', 'Map'], headers);
+  }
+
+  for (const key of headers.keys()) {
+    this.setHeader(key, headers.get(key));
+  }
+
   return this;
 };
 
@@ -802,19 +806,19 @@ ObjectDefineProperty(OutgoingMessage.prototype, 'headersSent', {
   __proto__: null,
   configurable: true,
   enumerable: true,
-  get: function() { return !!this._header; }
+  get: function() { return !!this._header; },
 });
 
 ObjectDefineProperty(OutgoingMessage.prototype, 'writableEnded', {
   __proto__: null,
-  get: function() { return this.finished; }
+  get: function() { return this.finished; },
 });
 
 ObjectDefineProperty(OutgoingMessage.prototype, 'writableNeedDrain', {
   __proto__: null,
   get: function() {
     return !this.destroyed && !this.finished && this[kNeedDrain];
-  }
+  },
 });
 
 const crlf_buf = Buffer.from('\r\n');
@@ -847,18 +851,24 @@ function emitErrorNt(msg, err, callback) {
   }
 }
 
+function strictContentLength(msg) {
+  return (
+    msg.strictContentLength &&
+    msg._contentLength != null &&
+    msg._hasBody &&
+    !msg._removedContLen &&
+    !msg.chunkedEncoding &&
+    !msg.hasHeader('transfer-encoding')
+  );
+}
+
 function write_(msg, chunk, encoding, callback, fromEnd) {
   if (typeof callback !== 'function')
     callback = nop;
 
-  let len;
   if (chunk === null) {
     throw new ERR_STREAM_NULL_VALUES();
-  } else if (typeof chunk === 'string') {
-    len = Buffer.byteLength(chunk, encoding);
-  } else if (isUint8Array(chunk)) {
-    len = chunk.length;
-  } else {
+  } else if (typeof chunk !== 'string' && !isUint8Array(chunk)) {
     throw new ERR_INVALID_ARG_TYPE(
       'chunk', ['string', 'Buffer', 'Uint8Array'], chunk);
   }
@@ -879,8 +889,24 @@ function write_(msg, chunk, encoding, callback, fromEnd) {
     return false;
   }
 
+  let len;
+
+  if (msg.strictContentLength) {
+    len ??= typeof chunk === 'string' ? Buffer.byteLength(chunk, encoding) : chunk.byteLength;
+
+    if (
+      strictContentLength(msg) &&
+      (fromEnd ? msg[kBytesWritten] + len !== msg._contentLength : msg[kBytesWritten] + len > msg._contentLength)
+    ) {
+      throw new ERR_HTTP_CONTENT_LENGTH_MISMATCH(len + msg[kBytesWritten], msg._contentLength);
+    }
+
+    msg[kBytesWritten] += len;
+  }
+
   if (!msg._header) {
     if (fromEnd) {
+      len ??= typeof chunk === 'string' ? Buffer.byteLength(chunk, encoding) : chunk.byteLength;
       msg._contentLength = len;
     }
     msg._implicitHeader();
@@ -900,12 +926,13 @@ function write_(msg, chunk, encoding, callback, fromEnd) {
 
   let ret;
   if (msg.chunkedEncoding && chunk.length !== 0) {
+    len ??= typeof chunk === 'string' ? Buffer.byteLength(chunk, encoding) : chunk.byteLength;
     msg._send(NumberPrototypeToString(len, 16), 'latin1', null);
     msg._send(crlf_buf, null, null);
-    msg._send(chunk, encoding, null);
+    msg._send(chunk, encoding, null, len);
     ret = msg._send(crlf_buf, null, callback);
   } else {
-    ret = msg._send(chunk, encoding, callback);
+    ret = msg._send(chunk, encoding, callback, len);
   }
 
   debug('write ret = ' + ret);
@@ -977,8 +1004,6 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
     encoding = null;
   }
 
-  this[kEndCalled] = true;
-
   if (chunk) {
     if (this.finished) {
       onError(this,
@@ -1012,6 +1037,10 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
 
   if (typeof callback === 'function')
     this.once('finish', callback);
+
+  if (strictContentLength(this) && this[kBytesWritten] !== this._contentLength) {
+    throw new ERR_HTTP_CONTENT_LENGTH_MISMATCH(this[kBytesWritten], this._contentLength);
+  }
 
   const finish = onFinish.bind(undefined, this);
 
@@ -1142,5 +1171,5 @@ module.exports = {
   parseUniqueHeadersOption,
   validateHeaderName,
   validateHeaderValue,
-  OutgoingMessage
+  OutgoingMessage,
 };

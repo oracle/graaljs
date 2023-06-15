@@ -1,7 +1,20 @@
 'use strict';
-const { RegExp, RegExpPrototypeExec } = primordials;
+const {
+  ArrayPrototypeMap,
+  ArrayPrototypePush,
+  ObjectCreate,
+  ObjectGetOwnPropertyDescriptor,
+  SafePromiseAllReturnArrayLike,
+  RegExp,
+  RegExpPrototypeExec,
+  SafeMap,
+} = primordials;
 const { basename } = require('path');
+const { createWriteStream } = require('fs');
+const { pathToFileURL } = require('internal/url');
 const { createDeferredPromise } = require('internal/util');
+const { getOptionValue } = require('internal/options');
+
 const {
   codes: {
     ERR_INVALID_ARG_VALUE,
@@ -9,6 +22,7 @@ const {
   },
   kIsNodeError,
 } = require('internal/errors');
+const { compose } = require('stream');
 
 const kMultipleCallbackInvocations = 'multipleCallbackInvocations';
 const kRegExpPattern = /^\/(.*)\/([a-z]*)$/;
@@ -35,7 +49,7 @@ function createDeferredCallback() {
       if (calledCount === 2) {
         throw new ERR_TEST_FAILURE(
           'callback invoked multiple times',
-          kMultipleCallbackInvocations
+          kMultipleCallbackInvocations,
         );
       }
 
@@ -69,9 +83,135 @@ function convertStringToRegExp(str, name) {
     throw new ERR_INVALID_ARG_VALUE(
       name,
       str,
-      `is an invalid regular expression.${msg ? ` ${msg}` : ''}`
+      `is an invalid regular expression.${msg ? ` ${msg}` : ''}`,
     );
   }
+}
+
+const kBuiltinDestinations = new SafeMap([
+  ['stdout', process.stdout],
+  ['stderr', process.stderr],
+]);
+
+const kBuiltinReporters = new SafeMap([
+  ['spec', 'internal/test_runner/reporter/spec'],
+  ['dot', 'internal/test_runner/reporter/dot'],
+  ['tap', 'internal/test_runner/reporter/tap'],
+]);
+
+const kDefaultReporter = process.stdout.isTTY ? 'spec' : 'tap';
+const kDefaultDestination = 'stdout';
+
+function tryBuiltinReporter(name) {
+  const builtinPath = kBuiltinReporters.get(name);
+
+  if (builtinPath === undefined) {
+    return;
+  }
+
+  return require(builtinPath);
+}
+
+async function getReportersMap(reporters, destinations) {
+  return SafePromiseAllReturnArrayLike(reporters, async (name, i) => {
+    const destination = kBuiltinDestinations.get(destinations[i]) ?? createWriteStream(destinations[i]);
+
+    // Load the test reporter passed to --test-reporter
+    let reporter = tryBuiltinReporter(name);
+
+    if (reporter === undefined) {
+      let parentURL;
+
+      try {
+        parentURL = pathToFileURL(process.cwd() + '/').href;
+      } catch {
+        parentURL = 'file:///';
+      }
+
+      const { esmLoader } = require('internal/process/esm_loader');
+      reporter = await esmLoader.import(name, parentURL, ObjectCreate(null));
+    }
+
+    if (reporter?.default) {
+      reporter = reporter.default;
+    }
+
+    if (reporter?.prototype && ObjectGetOwnPropertyDescriptor(reporter.prototype, 'constructor')) {
+      reporter = new reporter();
+    }
+
+    if (!reporter) {
+      throw new ERR_INVALID_ARG_VALUE('Reporter', name, 'is not a valid reporter');
+    }
+
+    return { __proto__: null, reporter, destination };
+  });
+}
+
+
+async function setupTestReporters(rootTest) {
+  const { reporters, destinations } = parseCommandLine();
+  const reportersMap = await getReportersMap(reporters, destinations);
+  for (let i = 0; i < reportersMap.length; i++) {
+    const { reporter, destination } = reportersMap[i];
+    compose(rootTest.reporter, reporter).pipe(destination);
+  }
+}
+
+let globalTestOptions;
+
+function parseCommandLine() {
+  if (globalTestOptions) {
+    return globalTestOptions;
+  }
+
+  const isTestRunner = getOptionValue('--test');
+  const coverage = getOptionValue('--experimental-test-coverage');
+  const destinations = getOptionValue('--test-reporter-destination');
+  const reporters = getOptionValue('--test-reporter');
+  let testNamePatterns;
+  let testOnlyFlag;
+
+  if (reporters.length === 0 && destinations.length === 0) {
+    ArrayPrototypePush(reporters, kDefaultReporter);
+  }
+
+  if (reporters.length === 1 && destinations.length === 0) {
+    ArrayPrototypePush(destinations, kDefaultDestination);
+  }
+
+  if (destinations.length !== reporters.length) {
+    throw new ERR_INVALID_ARG_VALUE(
+      '--test-reporter',
+      reporters,
+      'must match the number of specified \'--test-reporter-destination\'',
+    );
+  }
+
+  if (isTestRunner) {
+    testOnlyFlag = false;
+    testNamePatterns = null;
+  } else {
+    const testNamePatternFlag = getOptionValue('--test-name-pattern');
+    testOnlyFlag = getOptionValue('--test-only');
+    testNamePatterns = testNamePatternFlag?.length > 0 ?
+      ArrayPrototypeMap(
+        testNamePatternFlag,
+        (re) => convertStringToRegExp(re, '--test-name-pattern'),
+      ) : null;
+  }
+
+  globalTestOptions = {
+    __proto__: null,
+    isTestRunner,
+    coverage,
+    testOnlyFlag,
+    testNamePatterns,
+    reporters,
+    destinations,
+  };
+
+  return globalTestOptions;
 }
 
 module.exports = {
@@ -80,4 +220,6 @@ module.exports = {
   doesPathMatchFilter,
   isSupportedFileType,
   isTestFailureError,
+  parseCommandLine,
+  setupTestReporters,
 };

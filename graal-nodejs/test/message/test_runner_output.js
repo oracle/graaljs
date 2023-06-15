@@ -113,13 +113,13 @@ test('level 0a', { concurrency: 4 }, async (t) => {
     const p1a = new Promise((resolve) => {
       setTimeout(() => {
         resolve();
-      }, 1000);
+      }, 100);
     });
 
     return p1a;
   });
 
-  t.test('level 1b', async (t) => {
+  test('level 1b', async (t) => {
     const p1b = new Promise((resolve) => {
       resolve();
     });
@@ -131,7 +131,7 @@ test('level 0a', { concurrency: 4 }, async (t) => {
     const p1c = new Promise((resolve) => {
       setTimeout(() => {
         resolve();
-      }, 2000);
+      }, 200);
     });
 
     return p1c;
@@ -141,7 +141,7 @@ test('level 0a', { concurrency: 4 }, async (t) => {
     const p1c = new Promise((resolve) => {
       setTimeout(() => {
         resolve();
-      }, 1500);
+      }, 150);
     });
 
     return p1c;
@@ -150,7 +150,7 @@ test('level 0a', { concurrency: 4 }, async (t) => {
   const p0a = new Promise((resolve) => {
     setTimeout(() => {
       resolve();
-    }, 3000);
+    }, 300);
   });
 
   return p0a;
@@ -159,7 +159,7 @@ test('level 0a', { concurrency: 4 }, async (t) => {
 test('top level', { concurrency: 2 }, async (t) => {
   t.test('+long running', async (t) => {
     return new Promise((resolve, reject) => {
-      setTimeout(resolve, 3000).unref();
+      setTimeout(resolve, 300).unref();
     });
   });
 
@@ -303,7 +303,7 @@ test('custom inspect symbol fail', () => {
     [util.inspect.custom]() {
       return 'customized';
     },
-    foo: 1
+    foo: 1,
   };
 
   throw obj;
@@ -314,7 +314,7 @@ test('custom inspect symbol that throws fail', () => {
     [util.inspect.custom]() {
       throw new Error('bad-inspect');
     },
-    foo: 1
+    foo: 1,
   };
 
   throw obj;
@@ -331,12 +331,12 @@ test('subtest sync throw fails', async (t) => {
 
 test('timed out async test', { timeout: 5 }, async (t) => {
   return new Promise((resolve) => {
-    setTimeout(resolve, 1000);
+    setTimeout(resolve, 100);
   });
 });
 
 test('timed out callback test', { timeout: 5 }, (t, done) => {
-  setTimeout(done, 1000);
+  setTimeout(done, 100);
 });
 
 
@@ -382,4 +382,10 @@ test('unfinished test with unhandledRejection', async () => {
   await new Promise(() => {
     setTimeout(() => Promise.reject(new Error('bar')));
   });
+});
+
+// Verify that uncaught exceptions outside of any tests are handled after the
+// test harness has finished bootstrapping itself.
+setImmediate(() => {
+  throw new Error('uncaught from outside of a test');
 });

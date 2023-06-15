@@ -421,8 +421,9 @@ the data is read it will consume memory that can eventually lead to a
 For backward compatibility, `res` will only emit `'error'` if there is an
 `'error'` listener registered.
 
-Set `Content-Length` header to limit the response body size. Mismatching the
-`Content-Length` header value will result in an \[`Error`]\[] being thrown,
+Set `Content-Length` header to limit the response body size.
+If [`response.strictContentLength`][] is set to `true`, mismatching the
+`Content-Length` header value will result in an `Error` being thrown,
 identified by `code:` [`'ERR_HTTP_CONTENT_LENGTH_MISMATCH'`][].
 
 `Content-Length` value should be in bytes, not characters. Use
@@ -1308,7 +1309,8 @@ changes:
 If a client connection emits an `'error'` event, it will be forwarded here.
 Listener of this event is responsible for closing/destroying the underlying
 socket. For example, one may wish to more gracefully close the socket with a
-custom HTTP response instead of abruptly severing the connection.
+custom HTTP response instead of abruptly severing the connection. The socket
+**must be closed or destroyed** before the listener ends.
 
 This event is guaranteed to be passed an instance of the {net.Socket} class,
 a subclass of {stream.Duplex}, unless the user specifies a socket
@@ -2057,6 +2059,21 @@ response.statusMessage = 'Not found';
 
 After response header was sent to the client, this property indicates the
 status message which was sent out.
+
+### `response.strictContentLength`
+
+<!-- YAML
+added:
+  - v18.10.0
+  - v16.18.0
+-->
+
+* {boolean} **Default:** `false`
+
+If set to `true`, Node.js will check whether the `Content-Length`
+header value and the size of the body, in bytes, are equal.
+Mismatching the `Content-Length` header value will result
+in an `Error` being thrown, identified by `code:` [`'ERR_HTTP_CONTENT_LENGTH_MISMATCH'`][].
 
 ### `response.uncork()`
 
@@ -2950,6 +2967,48 @@ Sets a single header value. If the header already exists in the to-be-sent
 headers, its value will be replaced. Use an array of strings to send multiple
 headers with the same name.
 
+### `outgoingMessage.setHeaders(headers)`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* `headers` {Headers|Map}
+* Returns: {http.ServerResponse}
+
+Returns the response object.
+
+Sets multiple header values for implicit headers.
+`headers` must be an instance of [`Headers`][] or `Map`,
+if a header already exists in the to-be-sent headers,
+its value will be replaced.
+
+```js
+const headers = new Headers({ foo: 'bar' });
+response.setHeaders(headers);
+```
+
+or
+
+```js
+const headers = new Map([['foo', 'bar']]);
+res.setHeaders(headers);
+```
+
+When headers have been set with [`outgoingMessage.setHeaders()`][],
+they will be merged with any headers passed to [`response.writeHead()`][],
+with the headers passed to [`response.writeHead()`][] given precedence.
+
+```js
+// Returns content-type = text/plain
+const server = http.createServer((req, res) => {
+  const headers = new Headers({ 'Content-Type': 'text/html' });
+  res.setHeaders(headers);
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('ok');
+});
+```
+
 ### `outgoingMessage.setTimeout(msesc[, callback])`
 
 <!-- YAML
@@ -3160,6 +3219,7 @@ changes:
   * `requestTimeout`: Sets the timeout value in milliseconds for receiving
     the entire request from the client.
     See [`server.requestTimeout`][] for more information.
+    **Default:** `300000`.
   * `joinDuplicateHeaders` {boolean} It joins the field line values of multiple
     headers in a request with `, ` instead of discarding the duplicates.
     See [`message.headers`][] for more information.
@@ -3167,7 +3227,6 @@ changes:
   * `ServerResponse` {http.ServerResponse} Specifies the `ServerResponse` class
     to be used. Useful for extending the original `ServerResponse`. **Default:**
     `ServerResponse`.
-    **Default:** `300000`.
   * `uniqueHeaders` {Array} A list of response headers that should be sent only
     once. If the header's value is an array, the items will be joined
     using `; `.
@@ -3721,6 +3780,7 @@ Set the maximum number of idle HTTP parsers.
 [`Buffer.byteLength()`]: buffer.md#static-method-bufferbytelengthstring-encoding
 [`Duplex`]: stream.md#class-streamduplex
 [`HPE_HEADER_OVERFLOW`]: errors.md#hpe_header_overflow
+[`Headers`]: globals.md#class-headers
 [`TypeError`]: errors.md#class-typeerror
 [`URL`]: url.md#the-whatwg-url-api
 [`agent.createConnection()`]: #agentcreateconnectionoptions-callback
@@ -3747,6 +3807,7 @@ Set the maximum number of idle HTTP parsers.
 [`net.createConnection()`]: net.md#netcreateconnectionoptions-connectlistener
 [`new URL()`]: url.md#new-urlinput-base
 [`outgoingMessage.setHeader(name, value)`]: #outgoingmessagesetheadername-value
+[`outgoingMessage.setHeaders()`]: #outgoingmessagesetheadersheaders
 [`outgoingMessage.socket`]: #outgoingmessagesocket
 [`removeHeader(name)`]: #requestremoveheadername
 [`request.destroy()`]: #requestdestroyerror
@@ -3765,6 +3826,7 @@ Set the maximum number of idle HTTP parsers.
 [`response.getHeader()`]: #responsegetheadername
 [`response.setHeader()`]: #responsesetheadername-value
 [`response.socket`]: #responsesocket
+[`response.strictContentLength`]: #responsestrictcontentlength
 [`response.writableEnded`]: #responsewritableended
 [`response.writableFinished`]: #responsewritablefinished
 [`response.write()`]: #responsewritechunk-encoding-callback

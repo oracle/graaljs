@@ -2229,7 +2229,7 @@ const anyBigFile = await Readable.from([
   'file3',
 ]).some(async (fileName) => {
   const stats = await stat(fileName);
-  return stat.size > 1024 * 1024;
+  return stats.size > 1024 * 1024;
 }, { concurrency: 2 });
 console.log(anyBigFile); // `true` if any file in the list is bigger than 1MB
 console.log('done'); // Stream has finished
@@ -2279,7 +2279,7 @@ const foundBigFile = await Readable.from([
   'file3',
 ]).find(async (fileName) => {
   const stats = await stat(fileName);
-  return stat.size > 1024 * 1024;
+  return stats.size > 1024 * 1024;
 }, { concurrency: 2 });
 console.log(foundBigFile); // File name of large file, if any file in the list is bigger than 1MB
 console.log('done'); // Stream has finished
@@ -2327,7 +2327,7 @@ const allBigFiles = await Readable.from([
   'file3',
 ]).every(async (fileName) => {
   const stats = await stat(fileName);
-  return stat.size > 1024 * 1024;
+  return stats.size > 1024 * 1024;
 }, { concurrency: 2 });
 // `true` if all files in the list are bigger than 1MiB
 console.log(allBigFiles);
@@ -2669,6 +2669,9 @@ const cleanup = finished(rs, (err) => {
 <!-- YAML
 added: v10.0.0
 changes:
+  - version: v18.16.0
+    pr-url: https://github.com/nodejs/node/pull/46307
+    description: Added support for webstreams.
   - version: v18.0.0
     pr-url: https://github.com/nodejs/node/pull/41678
     description: Passing an invalid callback to the `callback` argument
@@ -2685,13 +2688,14 @@ changes:
     description: Add support for async generators.
 -->
 
-* `streams` {Stream\[]|Iterable\[]|AsyncIterable\[]|Function\[]}
-* `source` {Stream|Iterable|AsyncIterable|Function}
+* `streams` {Stream\[]|Iterable\[]|AsyncIterable\[]|Function\[]|
+  ReadableStream\[]|WritableStream\[]|TransformStream\[]}
+* `source` {Stream|Iterable|AsyncIterable|Function|ReadableStream}
   * Returns: {Iterable|AsyncIterable}
-* `...transforms` {Stream|Function}
+* `...transforms` {Stream|Function|TransformStream}
   * `source` {AsyncIterable}
   * Returns: {AsyncIterable}
-* `destination` {Stream|Function}
+* `destination` {Stream|Function|WritableStream}
   * `source` {AsyncIterable}
   * Returns: {AsyncIterable|Promise}
 * `callback` {Function} Called when the pipeline is fully done.
@@ -2765,11 +2769,16 @@ const server = http.createServer((req, res) => {
 
 <!-- YAML
 added: v16.9.0
+changes:
+  - version: v18.16.0
+    pr-url: https://github.com/nodejs/node/pull/46675
+    description: Added support for webstreams.
 -->
 
 > Stability: 1 - `stream.compose` is experimental.
 
-* `streams` {Stream\[]|Iterable\[]|AsyncIterable\[]|Function\[]}
+* `streams` {Stream\[]|Iterable\[]|AsyncIterable\[]|Function\[]|
+  ReadableStream\[]|WritableStream\[]|TransformStream\[]}
 * Returns: {stream.Duplex}
 
 Combines two or more streams into a `Duplex` stream that writes to the
@@ -2972,8 +2981,14 @@ added: v17.0.0
 * `streamReadable` {stream.Readable}
 * `options` {Object}
   * `strategy` {Object}
-    * `highWaterMark` {number}
-    * `size` {Function}
+    * `highWaterMark` {number} The maximum internal queue size (of the created
+      `ReadableStream`) before backpressure is applied in reading from the given
+      `stream.Readable`. If no value is provided, it will be taken from the
+      given `stream.Readable`.
+    * `size` {Function} A function that size of the given chunk of data.
+      If no value is provided, the size will be `1` for all the chunks.
+      * `chunk` {any}
+      * Returns: {number}
 * Returns: {ReadableStream}
 
 ### `stream.Writable.fromWeb(writableStream[, options])`
@@ -3187,17 +3202,24 @@ readable.getReader().read().then((result) => {
 
 <!-- YAML
 added: v15.4.0
+changes:
+  - version: v18.16.0
+    pr-url: https://github.com/nodejs/node/pull/46273
+    description: Added support for `ReadableStream` and
+                 `WritableStream`.
 -->
 
 * `signal` {AbortSignal} A signal representing possible cancellation
-* `stream` {Stream} a stream to attach a signal to
+* `stream` {Stream|ReadableStream|WritableStream}
+
+A stream to attach a signal to.
 
 Attaches an AbortSignal to a readable or writeable stream. This lets code
 control stream destruction using an `AbortController`.
 
 Calling `abort` on the `AbortController` corresponding to the passed
 `AbortSignal` will behave the same way as calling `.destroy(new AbortError())`
-on the stream.
+on the stream, and `controller.error(new AbortError())` for webstreams.
 
 ```js
 const fs = require('node:fs');
@@ -3233,6 +3255,37 @@ const stream = addAbortSignal(
     }
   }
 })();
+```
+
+Or using an `AbortSignal` with a ReadableStream:
+
+```js
+const controller = new AbortController();
+const rs = new ReadableStream({
+  start(controller) {
+    controller.enqueue('hello');
+    controller.enqueue('world');
+    controller.close();
+  },
+});
+
+addAbortSignal(controller.signal, rs);
+
+finished(rs, (err) => {
+  if (err) {
+    if (err.name === 'AbortError') {
+      // The operation was cancelled
+    }
+  }
+});
+
+const reader = rs.getReader();
+
+reader.read().then(({ value, done }) => {
+  console.log(value); // hello
+  console.log(done); // false
+  controller.abort();
+});
 ```
 
 ## API for stream implementers

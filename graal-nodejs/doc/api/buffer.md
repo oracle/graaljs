@@ -1056,6 +1056,28 @@ console.log(bufA.length);
 `Buffer.concat()` may also use the internal `Buffer` pool like
 [`Buffer.allocUnsafe()`][] does.
 
+### Static method: `Buffer.copyBytesFrom(view[, offset[, length]])`
+
+<!-- YAML
+added: v18.16.0
+-->
+
+* `view` {TypedArray} The {TypedArray} to copy.
+* `offset` {integer} The starting offset within `view`. **Default:**: `0`.
+* `length` {integer} The number of elements from `view` to copy.
+  **Default:** `view.length - offset`.
+
+Copies the underlying memory of `view` into a new `Buffer`.
+
+```js
+const u16 = new Uint16Array([0, 0xffff]);
+const buf = Buffer.copyBytesFrom(u16, 0, 1);
+u16[1] = 0;
+console.log(buf.length); // 2
+console.log(buf[0]); // 255
+console.log(buf[1]); // 255
+```
+
 ### Static method: `Buffer.from(array)`
 
 <!-- YAML
@@ -5125,6 +5147,20 @@ binary data and predate the introduction of typed arrays in JavaScript.
 For code running using Node.js APIs, converting between base64-encoded strings
 and binary data should be performed using `Buffer.from(str, 'base64')` and
 `buf.toString('base64')`.**
+
+### `buffer.isAscii(input)`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* input {Buffer | ArrayBuffer | TypedArray} The input to validate.
+* Returns: {boolean}
+
+This function returns `true` if `input` contains only valid ASCII-encoded data,
+including the case in which `input` is empty.
+
+Throws if the `input` is a detached array buffer.
 
 ### `buffer.isUtf8(input)`
 

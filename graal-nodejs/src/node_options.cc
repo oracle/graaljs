@@ -5,6 +5,7 @@
 #include "node_binding.h"
 #include "node_external_reference.h"
 #include "node_internals.h"
+#include "node_sea.h"
 #if HAVE_OPENSSL
 #include "openssl/opensslv.h"
 #endif
@@ -148,6 +149,13 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors,
   }
 
   if (test_runner) {
+    if (test_runner_coverage) {
+      // TODO(cjihrig): This restriction can be removed once multi-process
+      // code coverage is supported.
+      errors->push_back(
+          "--experimental-test-coverage cannot be used with --test");
+    }
+
     if (syntax_check_only) {
       errors->push_back("either --test or --check can be used, not both");
     }
@@ -302,6 +310,10 @@ void Parse(
 // TODO(addaleax): Make that unnecessary.
 
 DebugOptionsParser::DebugOptionsParser() {
+#ifndef DISABLE_SINGLE_EXECUTABLE_APPLICATION
+  if (sea::IsSingleExecutable()) return;
+#endif
+
   AddOption("--inspect-port",
             "set host:port for inspector",
             &DebugOptions::host_port,
@@ -556,9 +568,18 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--test",
             "launch test runner on startup",
             &EnvironmentOptions::test_runner);
+  AddOption("--experimental-test-coverage",
+            "enable code coverage in the test runner",
+            &EnvironmentOptions::test_runner_coverage);
   AddOption("--test-name-pattern",
             "run tests whose name matches this regular expression",
             &EnvironmentOptions::test_name_pattern);
+  AddOption("--test-reporter",
+            "report test output using the given reporter",
+            &EnvironmentOptions::test_reporter);
+  AddOption("--test-reporter-destination",
+            "report given reporter to the given destination",
+            &EnvironmentOptions::test_reporter_destination);
   AddOption("--test-only",
             "run tests with 'only' option set",
             &EnvironmentOptions::test_only,
@@ -752,6 +773,10 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
             &PerIsolateOptions::report_signal,
             kAllowedInEnvironment);
   Implies("--report-signal", "--report-on-signal");
+  AddOption("--enable-etw-stack-walking",
+            "provides heap data to ETW Windows native tracing",
+            V8Option{},
+            kAllowedInEnvironment);
 
   AddOption(
       "--experimental-top-level-await", "", NoOp{}, kAllowedInEnvironment);

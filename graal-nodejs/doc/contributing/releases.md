@@ -341,10 +341,8 @@ The new entry should take the following form:
 
 ### Notable changes
 
-* List interesting changes here
-* Particularly changes that are responsible for minor or major version bumps
-* Also be sure to look at any changes introduced by dependencies such as npm
-* ... and include any notable items from there
+* List notable changes here
+* ...
 
 ### Commits
 
@@ -353,6 +351,12 @@ The new entry should take the following form:
 
 The release type should be either Current, LTS, or Maintenance, depending on the
 type of release being produced.
+
+By default, the `### Notable changes` section should be populated with the
+commits in the release that have either the `notable-change` or `semver-minor`
+label. Some `semver-minor` features may be determined by the releaser, or
+indicated by another contributor, to not be appropriate to be listed as a
+notable. The ultimate decision rests with the releaser.
 
 You can use `branch-diff` to get a list of commits with the `notable-change`
 label:
@@ -426,6 +430,12 @@ and substitute this node version with
 
 ```console
 sed -i "s/REPLACEME/$VERSION/g" doc/api/*.md
+```
+
+For macOS requires the extension to be specified.
+
+```bash
+sed -i "" "s/REPLACEME/$VERSION/g" doc/api/*.md
 ```
 
 or
@@ -1125,6 +1135,10 @@ Major releases should be targeted for the third Tuesday of the release month.
 
 A major release must not slip beyond the release month. In other words, major
 releases must not slip into May or November.
+
+The @nodejs/releasers make a call for releasers 3 months in advance.
+Currently, this call is automated in the `#nodejs-release-private`
+Slack channel.
 
 The release date for the next major release should be announced immediately
 following the current release (e.g. the release date for 13.0.0 should be
