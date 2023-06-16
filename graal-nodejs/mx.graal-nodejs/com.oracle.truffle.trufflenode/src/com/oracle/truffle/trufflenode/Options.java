@@ -224,6 +224,10 @@ public final class Options {
                     polyglotOptions.put("js.shared-array-buffer", "false");
                     continue;
                 }
+                if ("no-harmony-atomics".equals(normalizedKey)) {
+                    polyglotOptions.put("js.atomics", "false");
+                    continue;
+                }
                 if ("harmony-top-level-await".equals(normalizedKey)) {
                     polyglotOptions.put("js.top-level-await", "true");
                     continue;
