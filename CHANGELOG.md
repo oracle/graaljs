@@ -7,6 +7,8 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 
 ## Version 23.1.0
 * ECMAScript 2023 mode/features enabled by default.
+* Implemented the [Async Context](https://github.com/tc39/proposal-async-context) proposal. It is available behind the experimental option `--js.async-context`.
+* `FinalizationRegistry.prototype.cleanupSome` is not enabled by default any more; it has been moved to ECMAScript staging mode (`--js.ecmascript-version=staging`).
 
 ## Version 23.0.0
 * Implemented the [WebAssembly reference types](https://github.com/WebAssembly/reference-types) proposal.
