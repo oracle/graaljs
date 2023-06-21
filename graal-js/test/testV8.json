@@ -839,6 +839,10 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
+    "filePath" : "mjsunit/harmony/regexp-unicode-sets.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, will be fixed by the next test update."
+  }, {
     "filePath" : "mjsunit/harmony/shadowrealm-evaluate.js",
     "status" : "FAIL",
     "comment" : "Different error messages."
