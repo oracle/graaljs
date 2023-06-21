@@ -111,17 +111,18 @@ local ci = import '../ci.jsonnet';
   local excludePlatforms = ci.excludePlatforms,
   local gateOnMain = ci.gateOnMain,
 
+  // Style gates
+  local styleBuilds = generateBuilds([
+    graalJs + common.gateStyleFullBuild                                                                   + {name: 'style-fullbuild'}
+  ], platforms=ci.styleGatePlatforms, defaultTarget=common.gate),
+
   // Builds that should run on all supported platforms
   local testingBuilds = generateBuilds([
-    graalJs + common.gateStyleFullBuild                                                                   + {name: 'style-fullbuild'} +
-      defaultToTarget(common.gate) +
-      includePlatforms([common.linux_amd64]),
-
     graalJs + gateTags('default')                                                                    + ce + {name: 'default-ce'} +
-      promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk21 + common.linux_amd64, common.jdk17 + common.linux_aarch64, common.jdk17 + common.windows_amd64]),
+      promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64, common.jdk21 + common.linux_aarch64, common.jdk21 + common.windows_amd64]),
     graalJs + gateTags('default')                                                                    + ee + {name: 'default-ee'} +
-      promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk17 + common.darwin_aarch64]) +
-      promoteToTarget(common.postMerge, [common.jdk17 + common.darwin_amd64]),
+      promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64, common.jdk21 + common.darwin_aarch64]) +
+      promoteToTarget(common.postMerge, [common.jdk21 + common.darwin_amd64]),
 
     graalJs + gateTags('noic')                                                                            + {name: 'noic'} + gateOnMain,
     graalJs + gateTags('directbytebuffer')                                                                + {name: 'directbytebuffer'} + gateOnMain,
@@ -139,7 +140,7 @@ local ci = import '../ci.jsonnet';
 
     // downstream graal gate
     graalJs + downstreamGraal                                                                             + {name: 'downstream-graal'} +
-      promoteToTarget(common.gate, [common.jdk17 + common.linux_amd64, common.jdk21 + common.linux_amd64]),
+      promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64]),
     graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}                           + {name: 'downstream-substratevm-enterprise'} + gateOnMain +
       excludePlatforms([common.darwin_amd64]) + # Too slow
       excludePlatforms([common.linux_aarch64]), # Fails on Linux AArch64 with "Creation of the VM failed."
@@ -164,7 +165,7 @@ local ci = import '../ci.jsonnet';
   // Benchmark builds; need to run on a benchmark machine
   local benchBuilds = generateBuilds([
     graalJs + common.bench     + interopJmhBenchmarks                                                     + {name: 'interop-jmh'},
-  ], platforms=[common.jdk17 + common.x52]),
+  ], platforms=[common.jdk21 + common.x52]),
 
-  builds: testingBuilds + otherBuilds + benchBuilds,
+  builds: styleBuilds + testingBuilds + otherBuilds + benchBuilds,
 }

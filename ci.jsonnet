@@ -85,18 +85,17 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   ee:: {defs:: $.defs, graalvm:: self.defs.ee},
 
   supportedPlatforms:: [
-    common.jdk17 + common.linux_amd64,
     common.jdk21 + common.linux_amd64,
-    common.jdk17 + common.linux_aarch64,
     common.jdk21 + common.linux_aarch64,
-    common.jdk17 + common.darwin_amd64,
     common.jdk21 + common.darwin_amd64,
-    common.jdk17 + common.darwin_aarch64,
     common.jdk21 + common.darwin_aarch64,
-    common.jdk17 + common.windows_amd64,
     common.jdk21 + common.windows_amd64,
   ],
-  mainGatePlatform:: common.jdk17 + common.linux_amd64,
+  mainGatePlatform:: common.jdk21 + common.linux_amd64,
+  styleGatePlatforms:: [
+    common.jdk17 + common.linux_amd64,
+    common.jdk21 + common.linux_amd64,
+  ],
 
   local artifact_name(jdk, edition, os, arch, prefix='js', suffix='') =
     assert prefix != '' && edition != '' && jdk != '' && os != '' && arch != '';
