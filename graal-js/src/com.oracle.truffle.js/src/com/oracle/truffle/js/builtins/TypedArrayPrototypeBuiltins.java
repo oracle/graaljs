@@ -173,11 +173,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         // ES2022
         at(1),
 
-        // ES 2023
+        // ES2023
         findLast(1),
         findLastIndex(1),
-
-        // Change-Array-By-Copy
         toReversed(0),
         toSorted(1),
         with(2);
@@ -200,7 +198,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else if (this == at) {
                 return JSConfig.ECMAScript2022;
             } else if (EnumSet.of(findLast, findLastIndex, toReversed, toSorted, with).contains(this)) {
-                return JSConfig.StagingECMAScriptVersion;
+                return JSConfig.ECMAScript2023;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }

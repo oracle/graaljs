@@ -259,19 +259,16 @@ public class Test262Runnable extends TestRunnable {
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     });
-    private static final Set<String> ES2023_FEATURES = featureSet(new String[]{
+    private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
                     "Atomics.waitAsync",
                     "Intl-enumeration",
                     "Intl.DateTimeFormat-extend-timezonename",
                     "Intl.Locale-info",
                     "Intl.NumberFormat-v3",
                     "ShadowRealm",
-                    "array-find-from-last",
                     "array-grouping",
                     "arraybuffer-transfer",
-                    "change-array-by-copy",
                     "decorators",
-                    "symbols-as-weakmap-keys",
     });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
@@ -334,8 +331,8 @@ public class Test262Runnable extends TestRunnable {
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
                 assert !UNSUPPORTED_FEATURES.contains(feature) : feature;
-                if (ES2023_FEATURES.contains(feature)) {
-                    featureVersion = JSConfig.ECMAScript2023;
+                if (STAGING_FEATURES.contains(feature)) {
+                    featureVersion = JSConfig.StagingECMAScriptVersion;
                 }
             } else {
                 assert UNSUPPORTED_FEATURES.contains(feature) : feature;

@@ -106,17 +106,14 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-struct",
                     "--wasm-staging"
     });
-    private static final Set<String> ES2023_FLAGS = featureSet(new String[]{
-                    "--harmony-array-find-last",
+    private static final Set<String> STAGING_FLAGS = featureSet(new String[]{
                     "--harmony-array-grouping",
                     "--harmony-atomics-waitasync",
-                    "--harmony-change-array-by-copy",
                     "--harmony-intl-enumeration",
                     "--harmony-intl-locale_info",
                     "--harmony-intl-more_timezone",
                     "--harmony-intl-number-format-v3",
                     "--harmony-shadow-realm",
-                    "--harmony-symbol-as-weakmap-key",
     });
 
     private static final String FLAGS_PREFIX = "// Flags: ";
@@ -163,9 +160,9 @@ public class TestV8Runnable extends TestRunnable {
         int minESVersion = suite.getConfig().getMinESVersion();
         int flagVersion = minESVersion;
         for (String flag : flags) {
-            if (ES2023_FLAGS.contains(flag)) {
+            if (STAGING_FLAGS.contains(flag)) {
                 assert !UNSUPPORTED_FLAGS.contains(flag) : flag;
-                flagVersion = JSConfig.ECMAScript2023;
+                flagVersion = JSConfig.StagingECMAScriptVersion;
             } else if (UNSUPPORTED_FLAGS.contains(flag)) {
                 supported = false;
             }

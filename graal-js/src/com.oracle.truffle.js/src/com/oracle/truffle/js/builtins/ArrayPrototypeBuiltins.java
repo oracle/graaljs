@@ -259,17 +259,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         // ES2022
         at(1),
 
-        // staging
-        group(1),
-        groupToMap(1),
+        // ES2023
         findLast(1),
         findLastIndex(1),
-
-        // Next
         toReversed(0),
         toSorted(1),
         toSpliced(2),
-        with(2);
+        with(2),
+
+        // staging
+        group(1),
+        groupToMap(1);
 
         private final int length;
 
@@ -292,7 +292,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSConfig.ECMAScript2019;
             } else if (this == at) {
                 return JSConfig.ECMAScript2022;
-            } else if (EnumSet.of(group, groupToMap, findLast, findLastIndex, toReversed, toSorted, toSpliced, with).contains(this)) {
+            } else if (EnumSet.of(findLast, findLastIndex, toReversed, toSorted, toSpliced, with).contains(this)) {
+                return JSConfig.ECMAScript2023;
+            } else if (EnumSet.of(group, groupToMap).contains(this)) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();

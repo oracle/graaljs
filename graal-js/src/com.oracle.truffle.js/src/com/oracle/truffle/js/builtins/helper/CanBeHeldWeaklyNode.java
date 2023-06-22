@@ -67,7 +67,7 @@ public abstract class CanBeHeldWeaklyNode extends JavaScriptBaseNode {
 
     @Specialization
     static boolean doSymbol(Node node, Symbol value) {
-        return !value.isRegistered() && JavaScriptLanguage.get(node).getJSContext().getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion;
+        return !value.isRegistered() && JavaScriptLanguage.get(node).getJSContext().getEcmaScriptVersion() >= JSConfig.ECMAScript2023;
     }
 
     @Fallback

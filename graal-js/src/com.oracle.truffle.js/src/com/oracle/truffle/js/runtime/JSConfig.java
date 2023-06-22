@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,9 +74,10 @@ public final class JSConfig {
     public static final int ECMAScript2021 = 12;
     public static final int ECMAScript2022 = 13;
     public static final int ECMAScript2023 = 14;
+    public static final int ECMAScript2024 = 15;
     public static final int ECMAScriptVersionYearDelta = 2009; // ES6==ES2015
-    public static final int LatestECMAScriptVersion = ECMAScript2022;
-    public static final int StagingECMAScriptVersion = JSConfig.ECMAScript2023;
+    public static final int LatestECMAScriptVersion = ECMAScript2023;
+    public static final int StagingECMAScriptVersion = ECMAScript2024;
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = true;
 

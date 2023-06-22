@@ -33,105 +33,105 @@
   }, {
     "filePath" : "intl/enumeration/calendar-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/callendar-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/collation-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/collation-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/currency-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/currency-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/numberingSystem-no-algorithm.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/numberingSystem-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/numberingSystem-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-invalid-key.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-name.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-property.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-valid-key.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/timeZone-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/unit-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
@@ -151,56 +151,56 @@
   }, {
     "filePath" : "intl/locale/locale-calendars.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars"
   }, {
     "filePath" : "intl/locale/locale-collations.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.collations"
   }, {
     "filePath" : "intl/locale/locale-info-check-property.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-check-return-types.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-ext.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-no-undefined.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-timezones-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.timeZones"
   }, {
     "filePath" : "intl/locale/locale-numberingSystems.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.numberingSystems"
