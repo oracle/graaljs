@@ -125,20 +125,21 @@ local ci = import '../ci.jsonnet';
   local excludePlatforms = ci.excludePlatforms,
   local gateOnMain = ci.gateOnMain,
 
+  // Style gates
+  local styleBuilds = generateBuilds([
+    graalNodeJs + common.gateStyleFullBuild                                                                                        + {name: 'style-fullbuild'}
+  ], platforms=ci.styleGatePlatforms, defaultTarget=common.gate),
+
   // Builds that should run on all supported platforms
   local testingBuilds = generateBuilds([
-    graalNodeJs + common.gateStyleFullBuild                                                                                        + {name: 'style-fullbuild'} +
-      defaultToTarget(common.gate) +
-      includePlatforms([common.linux_amd64]),
-
     graalNodeJs          + build            + defaultGateTags          + {dynamicimports+:: ['/wasm']}                             + {name: 'default'} +
-      promoteToTarget(common.gate, [common.linux_amd64, common.jdk17 + common.linux_amd64, common.jdk17 + common.linux_aarch64, common.jdk17 + common.darwin_aarch64, common.jdk17 + common.windows_amd64]) +
-      promoteToTarget(common.postMerge, [common.jdk17 + common.darwin_amd64]),
+      promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64, common.jdk21 + common.linux_aarch64, common.jdk21 + common.darwin_aarch64, common.jdk21 + common.windows_amd64]) +
+      promoteToTarget(common.postMerge, [common.jdk21 + common.darwin_amd64]),
 
     graalNodeJs                             + gateSubstrateVmSmokeTest                                                             + {name: 'substratevm-ce'} +
       excludePlatforms([ci.mainGatePlatform]) +
-      promoteToTarget(common.gate, [common.jdk17 + common.darwin_aarch64, common.jdk17 + common.windows_amd64]) +
-      promoteToTarget(common.postMerge, [common.jdk17 + common.darwin_amd64]),
+      promoteToTarget(common.gate, [common.jdk21 + common.darwin_aarch64, common.jdk21 + common.windows_amd64]) +
+      promoteToTarget(common.postMerge, [common.jdk21 + common.darwin_amd64]),
     graalNodeJs                             + gateSubstrateVmSmokeTest                                                             + {name: 'substratevm-ee'} +
       excludePlatforms([ci.mainGatePlatform]),
     # We run either gateSubstrateVmSmokeTest or gateVmSmokeTest, but not both.
@@ -158,7 +159,7 @@ local ci = import '../ci.jsonnet';
     graalNodeJs          + buildNodeAPI     + testNode('node-api',      max_heap='8G')                                             + {name: 'node-api'},
     graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', max_heap='8G')                                             + {name: 'js-native-api'},
   ]] +
-  [gateOnMain + promoteToTarget(common.gate, [common.jdk17 + common.windows_amd64]) + b for b in [
+  [gateOnMain + promoteToTarget(common.gate, [common.jdk21 + common.windows_amd64]) + b for b in [
     graalNodeJs + vm_env + build            + testNode('async-hooks',   max_heap='8G')                                             + {name: 'async-hooks'},
     graalNodeJs + vm_env + build            + testNode('es-module',     max_heap='8G')                                             + {name: 'es-module'},
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
@@ -183,5 +184,5 @@ local ci = import '../ci.jsonnet';
 
   ], platforms=[ci.mainGatePlatform]),
 
-  builds: testingBuilds + otherBuilds,
+  builds: styleBuilds + testingBuilds + otherBuilds,
 }

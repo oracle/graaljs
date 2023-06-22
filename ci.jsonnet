@@ -6,7 +6,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   // Used to run fewer jobs
   local useOverlay = true,
 
-  local overlay = '137fff3614ac24b49483e6ce58d2623f95e47c1f',
+  local overlay = '3d5c5e6b3aa4481ec2a01a044e515ad2be2a0a29',
 
   local no_overlay = 'cb733e564850cd37b685fcef6f3c16b59802b22c',
 
@@ -85,18 +85,17 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   ee:: {defs:: $.defs, graalvm:: self.defs.ee},
 
   supportedPlatforms:: [
-    common.jdk17 + common.linux_amd64,
     common.jdk21 + common.linux_amd64,
-    common.jdk17 + common.linux_aarch64,
     common.jdk21 + common.linux_aarch64,
-    common.jdk17 + common.darwin_amd64,
     common.jdk21 + common.darwin_amd64,
-    common.jdk17 + common.darwin_aarch64,
     common.jdk21 + common.darwin_aarch64,
-    common.jdk17 + common.windows_amd64,
     common.jdk21 + common.windows_amd64,
   ],
-  mainGatePlatform:: common.jdk17 + common.linux_amd64,
+  mainGatePlatform:: common.jdk21 + common.linux_amd64,
+  styleGatePlatforms:: [
+    common.jdk17 + common.linux_amd64,
+    common.jdk21 + common.linux_amd64,
+  ],
 
   local artifact_name(jdk, edition, os, arch, prefix='js', suffix='') =
     assert prefix != '' && edition != '' && jdk != '' && os != '' && arch != '';
@@ -136,6 +135,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       },
     ],
     timelimit: if std.objectHasAll(self, 'os') && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:00:00' else '40:00',
+    notify_groups: ['javascript'],
   },
 
   local use_js_graalvm_artifact(build) =
