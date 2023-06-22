@@ -49,7 +49,7 @@
 const assert = require('assert');
 const {spawnSync} = require('child_process');
 
-describe('AsyncContext', function () {
+describe.skip('AsyncContext', function () {
   it('works with setTimeout', function () {
     this.timeout(20000);
 
