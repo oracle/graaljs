@@ -224,7 +224,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         names.add(Strings.FILL);
         names.add(Strings.FIND);
         names.add(Strings.FIND_INDEX);
-        if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2023) {
             names.add(Strings.FIND_LAST);
             names.add(Strings.FIND_LAST_INDEX);
         }
@@ -240,9 +240,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             names.add(Strings.INCLUDES);
         }
         names.add(Strings.KEYS);
-        names.add(Strings.TO_REVERSED);
-        names.add(Strings.TO_SORTED);
-        names.add(Strings.TO_SPLICED);
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2023) {
+            names.add(Strings.TO_REVERSED);
+            names.add(Strings.TO_SORTED);
+            names.add(Strings.TO_SPLICED);
+        }
         names.add(Strings.VALUES);
         assert isSorted(names);
         return names;
