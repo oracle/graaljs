@@ -104,10 +104,7 @@
     "comment" : "multi-threaded test"
   }, {
     "filePath" : "basic/javaexceptions.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "JDK15" : "FAIL"
-    },
+    "status" : "FAIL",
     "comment" : "IllegalMonitorStateException message changed in JDK 15."
   }, {
     "filePath" : "basic/javaimporter.js",
@@ -641,21 +638,15 @@
     "comment" : "Using 'jdk.nashorn.test.tools.StaticTypeInspector'"
   }, {
     "filePath" : "basic/optimistic_assignment_check_type.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "JDK15" : "FAIL"
-    },
-    "comment" : "Fails on JDK 15 due to Nashorn removal."
+    "status" : "FAIL",
+    "comment" : "Fails on JDK 15+ due to Nashorn removal."
   }, {
     "filePath" : "basic/optimistic_check_type.js",
     "status" : "FAIL"
   }, {
     "filePath" : "basic/optimistic_logical_check_type.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "JDK15" : "FAIL"
-    },
-    "comment" : "Fails on JDK 15 due to Nashorn removal."
+    "status" : "FAIL",
+    "comment" : "Fails on JDK 15+ due to Nashorn removal."
   }, {
     "filePath" : "basic/parser/continueStat.js",
     "status" : "FAIL",
