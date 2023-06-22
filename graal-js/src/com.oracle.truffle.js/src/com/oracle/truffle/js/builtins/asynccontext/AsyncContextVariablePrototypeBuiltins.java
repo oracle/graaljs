@@ -38,14 +38,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.asynccontext;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.builtins.AsyncContextPrototypeBuiltinsFactory.AsyncContextGetNodeGen;
-import com.oracle.truffle.js.builtins.AsyncContextPrototypeBuiltinsFactory.AsyncContextNameNodeGen;
-import com.oracle.truffle.js.builtins.AsyncContextPrototypeBuiltinsFactory.AsyncContextRunNodeGen;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.asynccontext.AsyncContextVariablePrototypeBuiltinsFactory.AsyncContextGetNodeGen;
+import com.oracle.truffle.js.builtins.asynccontext.AsyncContextVariablePrototypeBuiltinsFactory.AsyncContextNameNodeGen;
+import com.oracle.truffle.js.builtins.asynccontext.AsyncContextVariablePrototypeBuiltinsFactory.AsyncContextRunNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -54,23 +55,22 @@ import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSAsyncContext;
-import com.oracle.truffle.js.runtime.builtins.JSAsyncContextObject;
-import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariable;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariableObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * Contains built-in functions of the {@code %AsyncContext.prototype%}.
+ * Contains built-in functions of the {@code %AsyncContext.Variable.prototype%}.
  */
-public final class AsyncContextPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<AsyncContextPrototypeBuiltins.AsyncContextPrototype> {
+public final class AsyncContextVariablePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<AsyncContextVariablePrototypeBuiltins.AsyncContextVariablePrototype> {
 
-    public static final JSBuiltinsContainer BUILTINS = new AsyncContextPrototypeBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new AsyncContextVariablePrototypeBuiltins();
 
-    protected AsyncContextPrototypeBuiltins() {
-        super(JSShadowRealm.PROTOTYPE_NAME, AsyncContextPrototype.class);
+    protected AsyncContextVariablePrototypeBuiltins() {
+        super(JSAsyncContextVariable.PROTOTYPE_NAME, AsyncContextVariablePrototype.class);
     }
 
-    public enum AsyncContextPrototype implements BuiltinEnum<AsyncContextPrototype> {
+    public enum AsyncContextVariablePrototype implements BuiltinEnum<AsyncContextVariablePrototype> {
         run(2),
         get(0),
         name(0) {
@@ -82,7 +82,7 @@ public final class AsyncContextPrototypeBuiltins extends JSBuiltinsContainer.Swi
 
         private final int length;
 
-        AsyncContextPrototype(int length) {
+        AsyncContextVariablePrototype(int length) {
             this.length = length;
         }
 
@@ -93,7 +93,7 @@ public final class AsyncContextPrototypeBuiltins extends JSBuiltinsContainer.Swi
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, AsyncContextPrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, AsyncContextVariablePrototype builtinEnum) {
         switch (builtinEnum) {
             case run:
                 return AsyncContextRunNodeGen.create(context, builtin, args().withThis().fixedArgs(2).varArgs().createArgumentNodes(context));
@@ -105,7 +105,7 @@ public final class AsyncContextPrototypeBuiltins extends JSBuiltinsContainer.Swi
         return null;
     }
 
-    @ImportStatic(JSAsyncContext.class)
+    @ImportStatic(JSAsyncContextVariable.class)
     public abstract static class AsyncContextRunNode extends JSBuiltinNode {
 
         public AsyncContextRunNode(JSContext context, JSBuiltin builtin) {
@@ -113,7 +113,7 @@ public final class AsyncContextPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
 
         @Specialization
-        protected Object run(JSAsyncContextObject thisObj, Object value, Object func, Object[] args,
+        protected Object run(JSAsyncContextVariableObject thisObj, Object value, Object func, Object[] args,
                         @Cached("createCall()") JSFunctionCallNode callNode) {
             JSAgent agent = getRealm().getAgent();
             var previousContextMapping = agent.getAsyncContextMapping();
@@ -127,13 +127,13 @@ public final class AsyncContextPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSAsyncContext(thisObj)")
+        @Specialization(guards = "!isJSAsyncContextVariable(thisObj)")
         protected Object invalidReceiver(Object thisObj, Object value, Object func, Object[] args) {
             throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
         }
     }
 
-    @ImportStatic(JSAsyncContext.class)
+    @ImportStatic(JSAsyncContextVariable.class)
     public abstract static class AsyncContextGetNode extends JSBuiltinNode {
 
         public AsyncContextGetNode(JSContext context, JSBuiltin builtin) {
@@ -141,18 +141,18 @@ public final class AsyncContextPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
 
         @Specialization
-        protected Object get(JSAsyncContextObject thisObj) {
+        protected Object get(JSAsyncContextVariableObject thisObj) {
             return getRealm().getAgent().getAsyncContextMapping().getOrDefault(thisObj.getAsyncContextKey(), thisObj.getAsyncContextDefaultValue());
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSAsyncContext(thisObj)")
+        @Specialization(guards = "!isJSAsyncContextVariable(thisObj)")
         protected Object invalidReceiver(Object thisObj) {
             throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
         }
     }
 
-    @ImportStatic(JSAsyncContext.class)
+    @ImportStatic(JSAsyncContextVariable.class)
     public abstract static class AsyncContextNameNode extends JSBuiltinNode {
 
         public AsyncContextNameNode(JSContext context, JSBuiltin builtin) {
@@ -160,12 +160,12 @@ public final class AsyncContextPrototypeBuiltins extends JSBuiltinsContainer.Swi
         }
 
         @Specialization
-        protected Object name(JSAsyncContextObject thisObj) {
+        protected Object name(JSAsyncContextVariableObject thisObj) {
             return thisObj.getAsyncContextKey().getDescription();
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSAsyncContext(thisObj)")
+        @Specialization(guards = "!isJSAsyncContextVariable(thisObj)")
         protected Object invalidReceiver(Object thisObj) {
             throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
         }

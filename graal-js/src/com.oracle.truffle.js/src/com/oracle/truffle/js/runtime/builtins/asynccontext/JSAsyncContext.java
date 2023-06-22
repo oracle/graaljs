@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.asynccontext;
 
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 /**
- * @see JSFunctionObject.Wrapped
+ * AsyncContext namespace.
  */
-public final class JSAsyncContextObject extends JSNonProxyObject {
+public final class JSAsyncContext {
 
-    private final Symbol asyncContextKey;
-    private final Object asyncContextDefaultValue;
+    public static final TruffleString NAMESPACE_NAME = Strings.constant("AsyncContext");
 
-    protected JSAsyncContextObject(Shape shape, Symbol asyncContextKey, Object asyncContextDefaultValue) {
-        super(shape);
-        this.asyncContextKey = asyncContextKey;
-        this.asyncContextDefaultValue = asyncContextDefaultValue;
+    private JSAsyncContext() {
     }
 
-    @Override
-    public TruffleString getClassName() {
-        return JSIterator.CLASS_NAME;
-    }
-
-    public Symbol getAsyncContextKey() {
-        return asyncContextKey;
-    }
-
-    public Object getAsyncContextDefaultValue() {
-        return asyncContextDefaultValue;
-    }
-
-    public static JSAsyncContextObject create(JSRealm realm, JSObjectFactory factory, Symbol asyncContextKey, Object asyncContextDefaultValue) {
-        return factory.initProto(new JSAsyncContextObject(factory.getShape(realm), asyncContextKey, asyncContextDefaultValue), realm);
+    public static JSObject create(JSRealm realm) {
+        JSObject obj = JSOrdinary.createInit(realm);
+        JSObjectUtil.putDataProperty(obj, JSAsyncContextSnapshot.PROPERTY_NAME, realm.getAsyncContextSnapshotConstructor());
+        JSObjectUtil.putDataProperty(obj, JSAsyncContextVariable.PROPERTY_NAME, realm.getAsyncContexVariableConstructor());
+        return obj;
     }
 }

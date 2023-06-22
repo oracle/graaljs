@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariableObject;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
 import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -381,7 +382,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     /**
      * AsyncContext wrapped function exotic object.
      *
-     * @see JSAsyncContextObject
+     * @see JSAsyncContextVariableObject
      */
     public static final class AsyncContextWrapped extends Wrapped {
 

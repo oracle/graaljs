@@ -38,32 +38,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.asynccontext;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.AsyncContextFunctionBuiltins;
-import com.oracle.truffle.js.builtins.AsyncContextPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.asynccontext.AsyncContextNamespaceBuiltins;
+import com.oracle.truffle.js.builtins.asynccontext.AsyncContextVariablePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSConstructor;
+import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
+import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public final class JSAsyncContext extends JSNonProxy implements JSConstructorFactory.WithFunctions, PrototypeSupplier {
+public final class JSAsyncContextVariable extends JSNonProxy implements JSConstructorFactory.WithFunctions, PrototypeSupplier {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("AsyncContext");
-    public static final TruffleString PROTOTYPE_NAME = Strings.constant("AsyncContext.prototype");
+    public static final TruffleString PROPERTY_NAME = Strings.constant("Variable");
+    public static final TruffleString CLASS_NAME = Strings.constant("AsyncContext.Variable");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("AsyncContext.Variable.prototype");
 
-    public static final JSAsyncContext INSTANCE = new JSAsyncContext();
+    public static final JSAsyncContextVariable INSTANCE = new JSAsyncContextVariable();
 
-    private JSAsyncContext() {
+    private JSAsyncContextVariable() {
     }
 
-    public static JSAsyncContextObject create(JSContext context, JSRealm realm, Symbol asyncContextKey, Object asyncContextDefaultValue) {
-        JSAsyncContextObject obj = JSAsyncContextObject.create(realm, context.getAsyncContextFactory(), asyncContextKey, asyncContextDefaultValue);
+    public static JSAsyncContextVariableObject create(JSContext context, JSRealm realm, Symbol asyncContextKey, Object asyncContextDefaultValue) {
+        JSAsyncContextVariableObject obj = JSAsyncContextVariableObject.create(realm, context.getAsyncContextVariableFactory(), asyncContextKey, asyncContextDefaultValue);
         return context.trackAllocation(obj);
     }
 
@@ -71,8 +77,8 @@ public final class JSAsyncContext extends JSNonProxy implements JSConstructorFac
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(prototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, prototype, AsyncContextPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putAccessorsFromContainer(realm, prototype, AsyncContextPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, AsyncContextVariablePrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, AsyncContextVariablePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;
     }
@@ -82,8 +88,13 @@ public final class JSAsyncContext extends JSNonProxy implements JSConstructorFac
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
 
+    @Override
+    public JSFunctionObject createConstructorObject(JSRealm realm) {
+        return realm.lookupFunction(AsyncContextNamespaceBuiltins.BUILTINS, getClassName());
+    }
+
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm, AsyncContextFunctionBuiltins.BUILTINS);
+        return INSTANCE.createConstructorAndPrototype(realm, AsyncContextNamespaceBuiltins.BUILTINS);
     }
 
     @Override
@@ -98,10 +109,10 @@ public final class JSAsyncContext extends JSNonProxy implements JSConstructorFac
 
     @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getAsyncContextPrototype();
+        return realm.getAsyncContextVariablePrototype();
     }
 
-    public static boolean isJSAsyncContext(Object object) {
-        return object instanceof JSAsyncContext;
+    public static boolean isJSAsyncContextVariable(Object object) {
+        return object instanceof JSAsyncContextVariableObject;
     }
 }

@@ -84,7 +84,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
-import com.oracle.truffle.js.runtime.builtins.JSAsyncContext;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -121,6 +120,8 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextSnapshot;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariable;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
@@ -376,7 +377,6 @@ public class JSContext {
         FinishImportModuleDynamicallyResolve,
         ExportGetter,
         OrdinaryWrappedFunctionCall,
-        AsyncContextWrappedFunctionCall,
         DecoratorContextAddInitializer,
     }
 
@@ -509,7 +509,8 @@ public class JSContext {
     private final JSObjectFactory webAssemblyGlobalFactory;
 
     private final JSObjectFactory shadowRealmFactory;
-    private final JSObjectFactory asyncContextFactory;
+    private final JSObjectFactory asyncContextSnapshotFactory;
+    private final JSObjectFactory asyncContextVariableFactory;
 
     private final int factoryCount;
 
@@ -701,7 +702,8 @@ public class JSContext {
         this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
 
         this.shadowRealmFactory = builder.create(JSShadowRealm.INSTANCE);
-        this.asyncContextFactory = builder.create(JSAsyncContext.INSTANCE);
+        this.asyncContextSnapshotFactory = builder.create(JSAsyncContextSnapshot.INSTANCE);
+        this.asyncContextVariableFactory = builder.create(JSAsyncContextVariable.INSTANCE);
 
         this.factoryCount = builder.finish();
 
@@ -1205,8 +1207,12 @@ public class JSContext {
         return shadowRealmFactory;
     }
 
-    public final JSObjectFactory getAsyncContextFactory() {
-        return asyncContextFactory;
+    public final JSObjectFactory getAsyncContextSnapshotFactory() {
+        return asyncContextSnapshotFactory;
+    }
+
+    public final JSObjectFactory getAsyncContextVariableFactory() {
+        return asyncContextVariableFactory;
     }
 
     private static final String REGEX_OPTION_REGRESSION_TEST_MODE = "RegressionTestMode";
