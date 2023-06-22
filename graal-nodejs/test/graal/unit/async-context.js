@@ -65,8 +65,11 @@ describe('AsyncContext', function () {
     function code() {
       const assert = require('assert');
 
-      const context = new AsyncContext({name: 'ctx'});
+      const context = new AsyncContext.Variable({name: 'ctx', defaultValue: 'default'});
       const timeout = 10;
+
+      assert.strictEqual(context.name, 'ctx');
+      assert.strictEqual(context.get(), 'default');
 
       context.run("top", main);
 
@@ -93,15 +96,12 @@ describe('AsyncContext', function () {
 
         assert.strictEqual(context.get(), 'top');
 
-        const snapshotDuringTop = AsyncContext.wrap((cb) => {
-          assert.strictEqual(context.get(), 'top');
-          cb();
-        });
+        const snapshotDuringTop = new AsyncContext.Snapshot();
 
         context.run("C", () => {
           assert.strictEqual(context.get(), 'C');
 
-          snapshotDuringTop(() => {
+          snapshotDuringTop.run(() => {
             assert.strictEqual(context.get(), 'top');
           });
         });

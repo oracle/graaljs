@@ -15,12 +15,15 @@
 
 load("assert.js");
 
-const context = new AsyncContext({name: 'ctx'});
-const timeout = 10; // does not really matter
+const context = new AsyncContext.Variable({name: 'ctx', defaultValue: 'default'});
+const timeout = 10; // random timeout
 
 if (typeof setTimeout === 'undefined' && typeof TestV8 !== 'undefined') {
   setTimeout = TestV8.setTimeout;
 }
+
+assertSame(context.name, 'ctx');
+assertSame(context.get(), 'default');
 
 context.run("top", main);
 
@@ -47,15 +50,12 @@ function main() {
 
   assertSame(context.get(), 'top');
 
-  const snapshotDuringTop = AsyncContext.wrap((cb) => {
-    assertSame(context.get(), 'top');
-    cb();
-  });
+  const snapshotDuringTop = new AsyncContext.Snapshot();
 
   context.run("C", () => {
     assertSame(context.get(), 'C');
 
-    snapshotDuringTop(() => {
+    snapshotDuringTop.run(() => {
       assertSame(context.get(), 'top');
     });
   });
