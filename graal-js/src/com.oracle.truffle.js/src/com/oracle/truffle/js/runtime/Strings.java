@@ -370,7 +370,6 @@ public final class Strings {
     public static final TruffleString FUNCTION_SPC = constant("function ");
     public static final TruffleString FUNCTION_NATIVE_CODE = constant("function () { [native code] }");
     public static final TruffleString PROXY_PAREN = constant("Proxy(");
-    public static final TruffleString WRAPPED_SPC = constant("wrapped ");
 
     public static final TruffleString ASYNC_SPC = constant("async ");
     public static final TruffleString ASYNC_PROMISE_ALL_BEGIN = constant("async Promise.all (index ");

@@ -83,7 +83,6 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
-import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -302,11 +301,6 @@ public final class JSFunction extends JSNonProxy {
     public static JSFunctionObject createWrapped(JSContext context, JSRealm realm, JSFunctionData functionData, Object wrappedTargetFunction) {
         JSFunctionFactory factory = context.getWrappedFunctionFactory();
         return factory.createWrapped(functionData, realm, wrappedTargetFunction);
-    }
-
-    public static JSFunctionObject createAsyncContextWrapped(JSContext context, JSRealm realm, JSFunctionData functionData, Object wrappedTargetFunction, AsyncContext asyncContextSnapshot) {
-        JSFunctionFactory factory = context.getWrappedFunctionFactory();
-        return factory.createAsyncContextWrapped(functionData, realm, wrappedTargetFunction, asyncContextSnapshot);
     }
 
     private static JSFunctionFactory initialFactory(JSFunctionData functionData) {

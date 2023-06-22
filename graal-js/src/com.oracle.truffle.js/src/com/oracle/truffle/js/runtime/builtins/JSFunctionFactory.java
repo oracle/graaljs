@@ -49,7 +49,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.objects.Accessor;
-import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -137,16 +136,6 @@ public abstract class JSFunctionFactory {
         assert shape.getDynamicType() == JSFunction.INSTANCE;
         assert functionData.hasStrictFunctionProperties();
         JSFunctionObject obj = JSFunctionObject.createWrapped(shape, functionData, realm, wrappedTargetFunction);
-        objectFactory.initProto(obj, realm);
-        initProperties(obj, functionData);
-        return obj;
-    }
-
-    public final JSFunctionObject createAsyncContextWrapped(JSFunctionData functionData, JSRealm realm, Object wrappedTargetFunction, AsyncContext asyncContextSnapshot) {
-        Shape shape = objectFactory.getShape(realm);
-        assert shape.getDynamicType() == JSFunction.INSTANCE;
-        assert functionData.hasStrictFunctionProperties();
-        JSFunctionObject obj = JSFunctionObject.createAsyncContextWrapped(shape, functionData, realm, wrappedTargetFunction, asyncContextSnapshot);
         objectFactory.initProto(obj, realm);
         initProperties(obj, functionData);
         return obj;

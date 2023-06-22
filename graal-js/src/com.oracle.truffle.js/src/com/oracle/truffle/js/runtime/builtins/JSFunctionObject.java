@@ -66,9 +66,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariableObject;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
-import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -259,10 +257,6 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
         return new Wrapped(shape, functionData, realm, boundTargetFunction);
     }
 
-    public static JSFunctionObject createAsyncContextWrapped(Shape shape, JSFunctionData functionData, JSRealm realm, Object wrappedTargetFunction, AsyncContext asyncContextSnapshot) {
-        return new AsyncContextWrapped(shape, functionData, realm, wrappedTargetFunction, asyncContextSnapshot);
-    }
-
     public static final class Unbound extends JSFunctionObject {
         protected Unbound(Shape shape, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {
             super(shape, functionData, enclosingFrame, realm, classPrototype);
@@ -360,7 +354,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
      *
      * @see JSShadowRealmObject
      */
-    public static class Wrapped extends BoundOrWrapped {
+    public static final class Wrapped extends BoundOrWrapped {
         private final Object wrappedTargetFunction;
 
         protected Wrapped(Shape shape, JSFunctionData functionData, JSRealm realm, Object wrappedTargetFunction) {
@@ -376,25 +370,6 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
         protected void initializeName() {
             // This method should not be called if the wrapped target function is not a JS function.
             setBoundName(getFunctionName((JSFunctionObject) getWrappedTargetFunction()), Strings.EMPTY_STRING);
-        }
-    }
-
-    /**
-     * AsyncContext wrapped function exotic object.
-     *
-     * @see JSAsyncContextVariableObject
-     */
-    public static final class AsyncContextWrapped extends Wrapped {
-
-        private final AsyncContext asyncContextSnapshot;
-
-        protected AsyncContextWrapped(Shape shape, JSFunctionData functionData, JSRealm realm, Object wrappedTargetFunction, AsyncContext asyncContextSnapshot) {
-            super(shape, functionData, realm, wrappedTargetFunction);
-            this.asyncContextSnapshot = asyncContextSnapshot;
-        }
-
-        public AsyncContext getAsyncContextSnapshot() {
-            return asyncContextSnapshot;
         }
     }
 }
