@@ -218,11 +218,6 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         state.numberingSystem = locale.getUnicodeLocaleType("nu");
     }
 
-    public static InternalState getInternalState(JSDynamicObject localeObject) {
-        assert isJSLocale(localeObject);
-        return ((JSLocaleObject) localeObject).getInternalState();
-    }
-
     @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getLocalePrototype();

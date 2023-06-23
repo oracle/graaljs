@@ -113,7 +113,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     @Specialization
     public JSNumberFormatObject initializeNumberFormat(JSNumberFormatObject numberFormatObj, Object localesArg, Object optionsArg) {
         try {
-            JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
+            JSNumberFormat.InternalState state = numberFormatObj.getInternalState();
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             Object options = coerceOptionsToObjectNode.execute(optionsArg);

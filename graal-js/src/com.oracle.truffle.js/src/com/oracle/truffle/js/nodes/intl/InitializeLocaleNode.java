@@ -115,7 +115,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
                 IntlUtil.validateUnicodeLocaleIdentifierType(optNumberingSystem, errorBranch);
             }
             Locale locale = applyUnicodeExtensionToTag(tag, optCalendar, optCollation, optHourCycle, optCaseFirst, optNumeric, optNumberingSystem);
-            JSLocale.InternalState state = JSLocale.getInternalState(localeObject);
+            JSLocale.InternalState state = localeObject.getInternalState();
             JSLocale.setupInternalState(state, locale);
         } catch (MissingResourceException e) {
             errorBranch.enter();
@@ -126,7 +126,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
 
     @Specialization
     public JSLocaleObject initializeLocaleUsingLocale(JSLocaleObject localeObject, JSLocaleObject tagArg, Object optionsArg) {
-        JSLocale.InternalState state = JSLocale.getInternalState(tagArg);
+        JSLocale.InternalState state = tagArg.getInternalState();
         return initializeLocaleUsingJString(localeObject, state.getLocale(), optionsArg);
     }
 

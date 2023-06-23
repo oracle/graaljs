@@ -86,7 +86,7 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
         // must be invoked before any code that tries to access ICU library data
         try {
 
-            JSListFormat.InternalState state = JSListFormat.getInternalState(listFormatObj);
+            JSListFormat.InternalState state = listFormatObj.getInternalState();
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             Object options = getOptionsObjectNode.execute(optionsArg);

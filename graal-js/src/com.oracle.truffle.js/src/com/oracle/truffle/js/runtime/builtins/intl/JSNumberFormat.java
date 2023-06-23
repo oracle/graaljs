@@ -484,14 +484,14 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
     @TruffleBoundary
     public static TruffleString format(JSNumberFormatObject numberFormatObj, Object n) {
-        InternalState state = getInternalState(numberFormatObj);
+        InternalState state = numberFormatObj.getInternalState();
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
         return Strings.fromJavaString(formattedValue(state, x).toString());
     }
 
     @TruffleBoundary
     public static TruffleString formatMV(JSNumberFormatObject numberFormatObj, Number mv) {
-        InternalState state = getInternalState(numberFormatObj);
+        InternalState state = numberFormatObj.getInternalState();
         return Strings.fromJavaString(formattedValue(state, mv).toString());
     }
 
@@ -499,7 +499,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         if (JSRuntime.isNaN(x) || JSRuntime.isNaN(y)) {
             throw Errors.createRangeError("invalid range");
         }
-        InternalState state = getInternalState(numberFormatObj);
+        InternalState state = numberFormatObj.getInternalState();
         boolean xNegative = (x instanceof BigDecimal) ? (((BigDecimal) x).signum() == -1) : ((Double) x < 0);
         boolean yNegative = (y instanceof BigDecimal) ? (((BigDecimal) y).signum() == -1) : ((Double) y < 0);
         LocalizedNumberRangeFormatter formatter = state.getNumberRangeFormatter(xNegative, yNegative);
@@ -624,18 +624,18 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj, Object n) {
-        InternalState state = getInternalState(numberFormatObj);
+    public static JSObject formatToParts(JSContext context, JSRealm realm, JSNumberFormatObject numberFormatObj, Object n) {
+        InternalState state = numberFormatObj.getInternalState();
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
         FormattedValue formattedValue = formattedValue(state, x);
         AttributedCharacterIterator fit = formattedValue.toCharacterIterator();
         String formatted = formattedValue.toString();
-        List<JSDynamicObject> resultParts = innerFormatToParts(context, realm, fit, x.doubleValue(), formatted, null, IntlUtil.PERCENT.equals(state.getStyle()));
+        List<JSObject> resultParts = innerFormatToParts(context, realm, fit, x.doubleValue(), formatted, null, IntlUtil.PERCENT.equals(state.getStyle()));
         return JSArray.createConstant(context, realm, resultParts.toArray());
     }
 
-    static List<JSDynamicObject> innerFormatToParts(JSContext context, JSRealm realm, AttributedCharacterIterator iterator, double value, String formattedValue, String unit, boolean stylePercent) {
-        List<JSDynamicObject> resultParts = new ArrayList<>();
+    static List<JSObject> innerFormatToParts(JSContext context, JSRealm realm, AttributedCharacterIterator iterator, double value, String formattedValue, String unit, boolean stylePercent) {
+        List<JSObject> resultParts = new ArrayList<>();
         int i = iterator.getBeginIndex();
         while (i < iterator.getEndIndex()) {
             iterator.setIndex(i);
@@ -715,8 +715,8 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         private int roundingIncrement;
         private String trailingZeroDisplay;
 
-        JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            JSDynamicObject resolvedOptions = JSOrdinary.create(context, realm);
+        JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            JSObject resolvedOptions = JSOrdinary.create(context, realm);
             fillResolvedOptions(context, realm, resolvedOptions);
             return resolvedOptions;
         }
@@ -1074,14 +1074,9 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj) {
-        InternalState state = getInternalState(numberFormatObj);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSNumberFormatObject numberFormatObj) {
+        InternalState state = numberFormatObj.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject obj) {
-        assert isJSNumberFormat(obj);
-        return ((JSNumberFormatObject) obj).getInternalState();
     }
 
     @Override

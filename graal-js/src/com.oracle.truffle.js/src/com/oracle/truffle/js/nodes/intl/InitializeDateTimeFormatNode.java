@@ -143,7 +143,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
         // must be invoked before any code that tries to access ICU library data
         try {
-            JSDateTimeFormat.InternalState state = JSDateTimeFormat.getInternalState(dateTimeFormatObj);
+            JSDateTimeFormat.InternalState state = dateTimeFormatObj.getInternalState();
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             JSDynamicObject options = createOptionsNode.execute(optionsArg, required, defaults);

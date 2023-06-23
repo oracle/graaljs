@@ -182,18 +182,18 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         }
     }
 
-    public static ListFormatter getListFormatterProperty(JSDynamicObject obj) {
-        return getInternalState(obj).listFormatter;
+    public static ListFormatter getListFormatterProperty(JSListFormatObject obj) {
+        return obj.getInternalState().listFormatter;
     }
 
     @TruffleBoundary
-    public static TruffleString format(JSDynamicObject listFormatObj, List<String> list) {
+    public static TruffleString format(JSListFormatObject listFormatObj, List<String> list) {
         ListFormatter listFormatter = getListFormatterProperty(listFormatObj);
         return Strings.fromJavaString(listFormatter.format(list));
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDynamicObject listFormatObj, List<String> list) {
+    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSListFormatObject listFormatObj, List<String> list) {
         if (list.size() == 0) {
             return JSArray.createConstantEmptyArray(context, realm);
         }
@@ -233,8 +233,8 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         private String type = IntlUtil.CONJUNCTION;
         private String style = IntlUtil.LONG;
 
-        JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            JSDynamicObject result = JSOrdinary.create(context, realm);
+        JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            JSObject result = JSOrdinary.create(context, realm);
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
@@ -265,14 +265,9 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject listFormatObj) {
-        InternalState state = getInternalState(listFormatObj);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSListFormatObject listFormatObj) {
+        InternalState state = listFormatObj.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject obj) {
-        assert isJSListFormat(obj);
-        return ((JSListFormatObject) obj).getInternalState();
     }
 
     @Override

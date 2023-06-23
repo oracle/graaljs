@@ -82,7 +82,7 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
 
         // must be invoked before any code that tries to access ICU library data
         try {
-            JSSegmenter.InternalState state = JSSegmenter.getInternalState(segmenterObj);
+            JSSegmenter.InternalState state = segmenterObj.getInternalState();
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             Object options = getOptionsObjectNode.execute(optionsArg);

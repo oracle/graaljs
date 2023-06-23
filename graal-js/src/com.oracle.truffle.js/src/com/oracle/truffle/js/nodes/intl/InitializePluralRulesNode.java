@@ -88,7 +88,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
         // must be invoked before any code that tries to access ICU library data
         try {
-            JSPluralRules.InternalState state = JSPluralRules.getInternalState(pluralRulesObj);
+            JSPluralRules.InternalState state = pluralRulesObj.getInternalState();
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             Object options = coerceOptionsToObjectNode.execute(optionsArg);

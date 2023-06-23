@@ -100,7 +100,7 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
             }
             String optFallback = getFallbackOption.executeValue(options);
             String optLanguageDisplay = getLanguageDisplayOption.executeValue(options);
-            JSDisplayNames.InternalState state = JSDisplayNames.getInternalState(displayNamesObject);
+            JSDisplayNames.InternalState state = displayNamesObject.getInternalState();
             JSDisplayNames.setupInternalState(context, state, locales, optStyle, optType, optFallback, optLanguageDisplay);
         } catch (MissingResourceException e) {
             errorBranch.enter();

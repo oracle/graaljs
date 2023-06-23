@@ -131,8 +131,8 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         return context.trackAllocation(obj);
     }
 
-    public static RelativeDateTimeFormatter getRelativeDateTimeFormatterProperty(JSDynamicObject obj) {
-        return getInternalState(obj).getRelativeDateTimeFormatter();
+    public static RelativeDateTimeFormatter getRelativeDateTimeFormatterProperty(JSRelativeTimeFormatObject obj) {
+        return obj.getInternalState().getRelativeDateTimeFormatter();
     }
 
     private static void ensureFiniteNumber(double d) {
@@ -142,9 +142,9 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @TruffleBoundary
-    public static TruffleString format(JSDynamicObject relativeTimeFormatObj, double amount, String unit) {
+    public static TruffleString format(JSRelativeTimeFormatObject relativeTimeFormatObj, double amount, String unit) {
         ensureFiniteNumber(amount);
-        InternalState state = getInternalState(relativeTimeFormatObj);
+        InternalState state = relativeTimeFormatObj.getInternalState();
         RelativeDateTimeUnit icuUnit = singularRelativeTimeUnit("format", unit);
         return Strings.fromJavaString(innerFormat(amount, state, state.getRelativeDateTimeFormatter(), icuUnit));
     }
@@ -158,9 +158,9 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDynamicObject relativeTimeFormatObj, double amount, String unit) {
+    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSRelativeTimeFormatObject relativeTimeFormatObj, double amount, String unit) {
         ensureFiniteNumber(amount);
-        InternalState state = getInternalState(relativeTimeFormatObj);
+        InternalState state = relativeTimeFormatObj.getInternalState();
         RelativeDateTimeFormatter relativeDateTimeFormatter = state.getRelativeDateTimeFormatter();
         NumberFormat numberFormat = relativeDateTimeFormatter.getNumberFormat();
         RelativeDateTimeUnit icuUnit = singularRelativeTimeUnit("formatToParts", unit);
@@ -199,8 +199,8 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         private String numeric;
 
         @Override
-        JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            JSDynamicObject result = JSOrdinary.create(context, realm);
+        JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            JSObject result = JSOrdinary.create(context, realm);
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_NUMERIC, Strings.fromJavaString(numeric), JSAttributes.getDefault());
@@ -244,14 +244,9 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject relativeTimeFormatObj) {
-        InternalState state = getInternalState(relativeTimeFormatObj);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSRelativeTimeFormatObject relativeTimeFormatObj) {
+        InternalState state = relativeTimeFormatObj.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject obj) {
-        assert isJSRelativeTimeFormat(obj);
-        return ((JSRelativeTimeFormatObject) obj).getInternalState();
     }
 
     @Override

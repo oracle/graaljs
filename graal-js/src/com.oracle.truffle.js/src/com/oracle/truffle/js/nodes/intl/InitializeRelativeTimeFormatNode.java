@@ -85,7 +85,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
     public JSRelativeTimeFormatObject initializeRelativeTimeFormat(JSRelativeTimeFormatObject relativeTimeFormatObj, Object localesArg, Object optionsArg) {
         try {
 
-            JSRelativeTimeFormat.InternalState state = JSRelativeTimeFormat.getInternalState(relativeTimeFormatObj);
+            JSRelativeTimeFormat.InternalState state = relativeTimeFormatObj.getInternalState();
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             Object options = coerceOptionsToObjectNode.execute(optionsArg);
