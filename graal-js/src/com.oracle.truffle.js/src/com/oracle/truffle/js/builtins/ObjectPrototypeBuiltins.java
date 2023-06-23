@@ -196,9 +196,9 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
          * Coerce to Object or throw TypeError. Must be the first statement (evaluation order!) and
          * executed only once.
          */
-        protected final JSDynamicObject asJSObject(Object object) {
+        protected final JSObject asJSObject(Object object) {
             if (isObject.profile(JSRuntime.isObject(object))) {
-                return (JSDynamicObject) object;
+                return (JSObject) object;
             } else {
                 throw createTypeErrorCalledOnNonObject(object);
             }
@@ -226,7 +226,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDynamicObject(thisObj)")
+        @Specialization
         protected JSDynamicObject valueOfJSObject(JSDynamicObject thisObj) {
             return toJSObject(thisObj);
         }
@@ -470,24 +470,24 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected boolean doJSObjectTStringKey(JSDynamicObject thisObj, TruffleString propertyName) {
+        @Specialization
+        protected boolean doJSObjectTStringKey(JSObject thisObj, TruffleString propertyName) {
             return getHasOwnPropertyNode().executeBoolean(thisObj, propertyName);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected boolean doJSObjectIntKey(JSDynamicObject thisObj, int index) {
+        @Specialization
+        protected boolean doJSObjectIntKey(JSObject thisObj, int index) {
             return getHasOwnPropertyNode().executeBoolean(thisObj, index);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)", replaces = {"doJSObjectTStringKey", "doJSObjectIntKey"})
-        protected boolean doJSObjectAnyKey(JSDynamicObject thisObj, Object propName) {
+        @Specialization(replaces = {"doJSObjectTStringKey", "doJSObjectIntKey"})
+        protected boolean doJSObjectAnyKey(JSObject thisObj, Object propName) {
             Object key = getToPropertyKeyNode().execute(propName);
             return getHasOwnPropertyNode().executeBoolean(thisObj, key);
         }
 
         @Specialization(guards = "isNullOrUndefined(thisObj)")
-        protected boolean hasOwnPropertyNullOrUndefined(JSDynamicObject thisObj, Object propName) {
+        protected boolean hasOwnPropertyNullOrUndefined(Object thisObj, Object propName) {
             getToPropertyKeyNode().execute(propName); // may have side effect
             throw Errors.createTypeErrorNotObjectCoercible(thisObj, this);
         }
@@ -550,8 +550,8 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ConditionProfile argIsNull = ConditionProfile.create();
         private final ConditionProfile firstPrototypeFits = ConditionProfile.create();
 
-        @Specialization(guards = "isJSObject(arg)")
-        protected boolean isPrototypeOf(Object thisObj, JSDynamicObject arg) {
+        @Specialization
+        protected boolean isPrototypeOf(Object thisObj, JSObject arg) {
             JSDynamicObject object = toJSObject(thisObj);
             if (argIsNull.profile(arg == null)) {
                 return false;

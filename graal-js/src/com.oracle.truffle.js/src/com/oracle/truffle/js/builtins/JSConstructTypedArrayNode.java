@@ -89,6 +89,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -321,8 +322,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * [[TypedArrayName]] or an [[ArrayBufferData]] internal slot.
      */
     @SuppressWarnings("truffle-static-method")
-    @Specialization(guards = {"!isUndefined(newTarget)", "isJSObject(object)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)"})
-    protected JSDynamicObject doObject(JSDynamicObject newTarget, JSDynamicObject object, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
+    @Specialization(guards = {"!isUndefined(newTarget)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)"})
+    protected JSDynamicObject doObject(JSDynamicObject newTarget, JSObject object, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
                     @Bind("this") Node node,
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                     @Cached @Exclusive InlinedConditionProfile isIterableProfile,

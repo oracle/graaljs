@@ -49,7 +49,6 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
@@ -77,8 +76,8 @@ public abstract class CreateMethodPropertyNode extends JavaScriptBaseNode {
         propertyCache.setValue(object, value);
     }
 
-    @Specialization(guards = {"context.getPropertyCacheLimit() == 0", "isJSObject(object)"})
-    protected final void doUncached(JSDynamicObject object, Object value) {
+    @Specialization(guards = {"context.getPropertyCacheLimit() == 0"})
+    protected final void doUncached(JSObject object, Object value) {
         JSObject.defineOwnProperty(object, key, PropertyDescriptor.createData(value, false, true, true));
     }
 

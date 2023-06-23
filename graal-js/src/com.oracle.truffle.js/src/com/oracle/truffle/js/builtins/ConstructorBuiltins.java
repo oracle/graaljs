@@ -2522,18 +2522,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSObject(adaptee)", "isUndefined(undefined1)", "isUndefined(undefined2)"})
-        protected JSDynamicObject constructJSAdapter(JSDynamicObject adaptee, @SuppressWarnings("unused") Object undefined1, @SuppressWarnings("unused") Object undefined2) {
+        @Specialization(guards = {"isUndefined(undefined1)", "isUndefined(undefined2)"})
+        protected JSDynamicObject constructJSAdapter(JSObject adaptee, @SuppressWarnings("unused") Object undefined1, @SuppressWarnings("unused") Object undefined2) {
             return JSAdapter.create(getContext(), getRealm(), adaptee, null, null);
         }
 
-        @Specialization(guards = {"isJSObject(overrides)", "isJSObject(adaptee)", "isUndefined(undefined2)"})
-        protected JSDynamicObject constructJSAdapter(JSDynamicObject overrides, JSDynamicObject adaptee, @SuppressWarnings("unused") Object undefined2) {
+        @Specialization(guards = {"isUndefined(undefined2)"})
+        protected JSDynamicObject constructJSAdapter(JSObject overrides, JSObject adaptee, @SuppressWarnings("unused") Object undefined2) {
             return JSAdapter.create(getContext(), getRealm(), adaptee, overrides, null);
         }
 
-        @Specialization(guards = {"isJSObject(proto)", "isJSObject(overrides)", "isJSObject(adaptee)"})
-        protected JSDynamicObject constructJSAdapter(JSDynamicObject proto, JSDynamicObject overrides, JSDynamicObject adaptee) {
+        @Specialization
+        protected JSDynamicObject constructJSAdapter(JSObject proto, JSObject overrides, JSObject adaptee) {
             return JSAdapter.create(getContext(), getRealm(), adaptee, overrides, proto);
         }
 

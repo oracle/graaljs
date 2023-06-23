@@ -48,7 +48,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * CreateDataPropertyOrThrow abstract operation.
@@ -90,8 +90,8 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
         propertyCache.setValue(object, value);
     }
 
-    @Specialization(guards = {"context.getPropertyCacheLimit() == 0", "isJSObject(object)"})
-    protected final void doUncached(JSDynamicObject object, Object value) {
+    @Specialization(guards = {"context.getPropertyCacheLimit() == 0"})
+    protected final void doUncached(JSObject object, Object value) {
         if (enumerable) {
             JSRuntime.createDataPropertyOrThrow(object, key, value);
         } else {

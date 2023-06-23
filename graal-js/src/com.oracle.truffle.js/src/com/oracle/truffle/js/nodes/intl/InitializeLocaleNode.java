@@ -54,7 +54,9 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
+import com.oracle.truffle.js.runtime.builtins.intl.JSLocaleObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
@@ -123,14 +125,14 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         return localeObject;
     }
 
-    @Specialization(guards = "isJSLocale(tagArg)")
-    public JSDynamicObject initializeLocaleUsingLocale(JSDynamicObject localeObject, JSDynamicObject tagArg, Object optionsArg) {
+    @Specialization
+    public JSDynamicObject initializeLocaleUsingLocale(JSDynamicObject localeObject, JSLocaleObject tagArg, Object optionsArg) {
         JSLocale.InternalState state = JSLocale.getInternalState(tagArg);
         return initializeLocaleUsingJString(localeObject, state.getLocale(), optionsArg);
     }
 
-    @Specialization(guards = {"isJSObject(tagArg)", "!isJSLocale(tagArg)"})
-    public JSDynamicObject initializeLocaleUsingObject(JSDynamicObject localeObject, JSDynamicObject tagArg, Object optionsArg,
+    @Specialization(guards = {"!isJSLocale(tagArg)"})
+    public JSDynamicObject initializeLocaleUsingObject(JSDynamicObject localeObject, JSObject tagArg, Object optionsArg,
                     @Cached JSToStringNode toStringNode) {
         return initializeLocaleUsingString(localeObject, toStringNode.executeString(tagArg), optionsArg);
     }
