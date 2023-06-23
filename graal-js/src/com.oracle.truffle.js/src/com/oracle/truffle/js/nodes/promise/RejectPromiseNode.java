@@ -43,8 +43,6 @@ package com.oracle.truffle.js.nodes.promise;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -52,23 +50,14 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class RejectPromiseNode extends JavaScriptBaseNode {
     private final JSContext context;
-    @Child private PropertyGetNode getPromiseRejectReactions;
-    @Child private PropertySetNode setPromiseResult;
-    @Child private PropertySetNode setPromiseFulfillReactions;
-    @Child private PropertySetNode setPromiseRejectReactions;
     @Child private TriggerPromiseReactionsNode triggerPromiseReactions;
     private final ConditionProfile unhandledProf = ConditionProfile.create();
 
     protected RejectPromiseNode(JSContext context) {
         this.context = context;
-        this.getPromiseRejectReactions = PropertyGetNode.createGetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
-        this.setPromiseResult = PropertySetNode.createSetHidden(JSPromise.PROMISE_RESULT, context);
-        this.setPromiseFulfillReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
-        this.setPromiseRejectReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
         this.triggerPromiseReactions = TriggerPromiseReactionsNode.create(context);
     }
 
@@ -84,10 +73,9 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
             materializeLazyStackTrace((JSErrorObject) reason);
         }
 
-        Object reactions = getPromiseRejectReactions.getValue(promise);
-        setPromiseResult.setValue(promise, reason);
-        setPromiseFulfillReactions.setValue(promise, Undefined.instance);
-        setPromiseRejectReactions.setValue(promise, Undefined.instance);
+        var reactions = promise.getPromiseRejectReactions();
+        promise.setPromiseResult(reason);
+        promise.clearPromiseReactions();
         JSPromise.setPromiseState(promise, JSPromise.REJECTED);
         if (unhandledProf.profile(!promise.isHandled())) {
             context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT, reason);

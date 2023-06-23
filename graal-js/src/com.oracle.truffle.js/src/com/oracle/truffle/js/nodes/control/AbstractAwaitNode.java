@@ -91,7 +91,6 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public abstract class AbstractAwaitNode extends JavaScriptNode implements ResumableNode, SuspendNode {
 
@@ -348,30 +347,28 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
             JSDynamicObject currPromise = nextPromise;
             nextPromise = null;
 
-            Object fulfillReactions = null;
             if (currPromise instanceof JSPromiseObject currPromiseObj && JSPromise.isPending(currPromiseObj)) {
                 // only pending promises have reactions
-                fulfillReactions = JSObjectUtil.getHiddenProperty(currPromiseObj, JSPromise.PROMISE_FULFILL_REACTIONS);
-            }
-            if (fulfillReactions instanceof SimpleArrayList<?> && ((SimpleArrayList<?>) fulfillReactions).size() == 1) {
-                SimpleArrayList<?> fulfillList = (SimpleArrayList<?>) fulfillReactions;
-                PromiseReactionRecord reaction = (PromiseReactionRecord) fulfillList.get(0);
-                JobCallback handler = reaction.getHandler();
-                if (handler != null && handler.callback() instanceof JSFunctionObject handlerFunction) {
-                    RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(handlerFunction)).getRootNode();
-                    if (rootNode instanceof AsyncHandlerRootNode) {
-                        AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction);
-                        if (result.stackTraceElement != null) {
-                            stackTrace.add(result.stackTraceElement);
+                var fulfillReactions = currPromiseObj.getPromiseFulfillReactions();
+                if (fulfillReactions != null && fulfillReactions.size() == 1) {
+                    PromiseReactionRecord reaction = fulfillReactions.get(0);
+                    JobCallback handler = reaction.getHandler();
+                    if (handler != null && handler.callback() instanceof JSFunctionObject handlerFunction) {
+                        RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(handlerFunction)).getRootNode();
+                        if (rootNode instanceof AsyncHandlerRootNode) {
+                            AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction);
+                            if (result.stackTraceElement != null) {
+                                stackTrace.add(result.stackTraceElement);
+                            }
+                            nextPromise = result.promise;
+                            continue;
                         }
-                        nextPromise = result.promise;
+                    }
+                    if (reaction.getCapability() != null) {
+                        // follow the promise chain
+                        nextPromise = reaction.getCapability().getPromise();
                         continue;
                     }
-                }
-                if (reaction.getCapability() != null) {
-                    // follow the promise chain
-                    nextPromise = reaction.getCapability().getPromise();
-                    continue;
                 }
             }
         } while (nextPromise != null);

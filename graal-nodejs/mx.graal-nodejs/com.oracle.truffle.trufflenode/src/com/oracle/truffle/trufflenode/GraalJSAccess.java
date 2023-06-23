@@ -3711,7 +3711,7 @@ public final class GraalJSAccess {
     }
 
     public Object promiseResult(Object promise) {
-        return JSObjectUtil.getHiddenProperty((JSDynamicObject) promise, JSPromise.PROMISE_RESULT);
+        return JSPromise.getPromiseResult((JSPromiseObject) promise);
     }
 
     public int promiseState(Object promise) {

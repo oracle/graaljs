@@ -43,10 +43,15 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public final class JSPromiseObject extends JSNonProxyObject {
     private int promiseState;
     private boolean promiseIsHandled;
+    private Object promiseResult;
+    private SimpleArrayList<PromiseReactionRecord> promiseFulfillReactions;
+    private SimpleArrayList<PromiseReactionRecord> promiseRejectReactions;
 
     protected JSPromiseObject(Shape shape, int promiseState) {
         super(shape);
@@ -67,6 +72,32 @@ public final class JSPromiseObject extends JSNonProxyObject {
 
     public void setIsHandled(boolean handled) {
         this.promiseIsHandled = handled;
+    }
+
+    public Object getPromiseResult() {
+        return promiseResult;
+    }
+
+    public void setPromiseResult(Object promiseResult) {
+        this.promiseResult = promiseResult;
+    }
+
+    public SimpleArrayList<PromiseReactionRecord> getPromiseFulfillReactions() {
+        return promiseFulfillReactions;
+    }
+
+    public SimpleArrayList<PromiseReactionRecord> getPromiseRejectReactions() {
+        return promiseRejectReactions;
+    }
+
+    public void allocatePromiseReactions() {
+        promiseFulfillReactions = new SimpleArrayList<>();
+        promiseRejectReactions = new SimpleArrayList<>();
+    }
+
+    public void clearPromiseReactions() {
+        promiseFulfillReactions = null;
+        promiseRejectReactions = null;
     }
 
     public static JSPromiseObject create(JSRealm realm, JSObjectFactory factory, int promiseState) {

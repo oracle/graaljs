@@ -156,7 +156,6 @@ import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
@@ -2974,16 +2973,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child protected IsCallableNode isCallable;
         @Child private PromiseResolveThenableNode promiseResolveThenable;
         @Child private OrdinaryCreateFromConstructorNode createPromiseFromConstructor;
-        @Child private PropertySetNode setPromiseFulfillReactions;
-        @Child private PropertySetNode setPromiseRejectReactions;
 
         public PromiseConstructorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.isCallable = IsCallableNode.create();
             this.promiseResolveThenable = PromiseResolveThenableNode.create(context);
             this.createPromiseFromConstructor = OrdinaryCreateFromConstructorNode.create(context, null, JSRealm::getPromisePrototype, JSPromise.INSTANCE);
-            this.setPromiseFulfillReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
-            this.setPromiseRejectReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
         }
 
         @Specialization(guards = "isCallable.executeBoolean(executor)")
@@ -2991,8 +2986,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             JSPromiseObject promise = (JSPromiseObject) createPromiseFromConstructor.executeWithConstructor(newTarget);
             promise.setPromiseState(JSPromise.PENDING);
             promise.setIsHandled(false);
-            setPromiseFulfillReactions.setValue(promise, new SimpleArrayList<>());
-            setPromiseRejectReactions.setValue(promise, new SimpleArrayList<>());
+            promise.allocatePromiseReactions();
 
             getContext().notifyPromiseHook(PromiseHook.TYPE_INIT, promise);
 

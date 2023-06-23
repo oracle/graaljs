@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSPromise extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
     public static final TruffleString CLASS_NAME = Strings.constant("Promise");
@@ -63,11 +62,6 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
 
     public static final TruffleString RESOLVE = Strings.constant("resolve");
     public static final TruffleString THEN = Strings.constant("then");
-
-    public static final HiddenKey PROMISE_RESULT = new HiddenKey("PromiseResult");
-
-    public static final HiddenKey PROMISE_FULFILL_REACTIONS = new HiddenKey("PromiseFulfillReactions");
-    public static final HiddenKey PROMISE_REJECT_REACTIONS = new HiddenKey("PromiseRejectReactions");
 
     // for Promise.prototype.finally
     public static final HiddenKey PROMISE_ON_FINALLY = new HiddenKey("OnFinally");
@@ -134,16 +128,16 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
         return promise.getPromiseState();
     }
 
-    public static void setPromiseState(JSDynamicObject promise, int promiseState) {
-        assert isJSPromise(promise);
-        ((JSPromiseObject) promise).setPromiseState(promiseState);
+    public static void setPromiseState(JSPromiseObject promise, int promiseState) {
+        assert isPending(promise) : getStatus(promise);
+        promise.setPromiseState(promiseState);
     }
 
     @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         JSPromiseObject promiseObj = (JSPromiseObject) obj;
         return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
-                        CLASS_NAME, new TruffleString[]{Strings.PROMISE_STATUS, Strings.PROMISE_VALUE}, new Object[]{getStatus(promiseObj), getValue(promiseObj)});
+                        CLASS_NAME, new TruffleString[]{Strings.PROMISE_STATUS, Strings.PROMISE_VALUE}, new Object[]{getStatus(promiseObj), getPromiseResult(promiseObj)});
     }
 
     private static TruffleString getStatus(JSPromiseObject obj) {
@@ -157,8 +151,8 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
         }
     }
 
-    private static Object getValue(JSDynamicObject obj) {
-        return JSDynamicObject.getOrDefault(obj, PROMISE_RESULT, Undefined.instance);
+    public static Object getPromiseResult(JSPromiseObject obj) {
+        return JSRuntime.nullToUndefined(obj.getPromiseResult());
     }
 
     @Override
