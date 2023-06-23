@@ -118,21 +118,20 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
         return obj instanceof JSPromiseObject;
     }
 
-    public static boolean isRejected(JSDynamicObject promise) {
+    public static boolean isRejected(JSPromiseObject promise) {
         return REJECTED == getPromiseState(promise);
     }
 
-    public static boolean isPending(JSDynamicObject promise) {
+    public static boolean isPending(JSPromiseObject promise) {
         return PENDING == getPromiseState(promise);
     }
 
-    public static boolean isFulfilled(JSDynamicObject promise) {
+    public static boolean isFulfilled(JSPromiseObject promise) {
         return FULFILLED == getPromiseState(promise);
     }
 
-    public static int getPromiseState(JSDynamicObject promise) {
-        assert isJSPromise(promise);
-        return ((JSPromiseObject) promise).getPromiseState();
+    public static int getPromiseState(JSPromiseObject promise) {
+        return promise.getPromiseState();
     }
 
     public static void setPromiseState(JSDynamicObject promise, int promiseState) {
@@ -142,11 +141,12 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
 
     @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        JSPromiseObject promiseObj = (JSPromiseObject) obj;
         return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
-                        CLASS_NAME, new TruffleString[]{Strings.PROMISE_STATUS, Strings.PROMISE_VALUE}, new Object[]{getStatus(obj), getValue(obj)});
+                        CLASS_NAME, new TruffleString[]{Strings.PROMISE_STATUS, Strings.PROMISE_VALUE}, new Object[]{getStatus(promiseObj), getValue(promiseObj)});
     }
 
-    private static TruffleString getStatus(JSDynamicObject obj) {
+    private static TruffleString getStatus(JSPromiseObject obj) {
         if (isFulfilled(obj)) {
             return Strings.RESOLVED;
         } else if (isRejected(obj)) {

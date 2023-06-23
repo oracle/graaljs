@@ -349,9 +349,9 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
             nextPromise = null;
 
             Object fulfillReactions = null;
-            if (JSPromise.isJSPromise(currPromise) && JSPromise.isPending(currPromise)) {
+            if (currPromise instanceof JSPromiseObject currPromiseObj && JSPromise.isPending(currPromiseObj)) {
                 // only pending promises have reactions
-                fulfillReactions = JSObjectUtil.getHiddenProperty(currPromise, JSPromise.PROMISE_FULFILL_REACTIONS);
+                fulfillReactions = JSObjectUtil.getHiddenProperty(currPromiseObj, JSPromise.PROMISE_FULFILL_REACTIONS);
             }
             if (fulfillReactions instanceof SimpleArrayList<?> && ((SimpleArrayList<?>) fulfillReactions).size() == 1) {
                 SimpleArrayList<?> fulfillList = (SimpleArrayList<?>) fulfillReactions;

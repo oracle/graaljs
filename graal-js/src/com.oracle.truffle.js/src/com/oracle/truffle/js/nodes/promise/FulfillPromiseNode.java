@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class FulfillPromiseNode extends JavaScriptBaseNode {
@@ -67,7 +67,7 @@ public class FulfillPromiseNode extends JavaScriptBaseNode {
         return new FulfillPromiseNode(context);
     }
 
-    public Object execute(JSDynamicObject promise, Object value) {
+    public Object execute(JSPromiseObject promise, Object value) {
         assert JSPromise.isPending(promise);
         Object reactions = getPromiseFulfillReactions.getValue(promise);
         setPromiseResult.setValue(promise, value);

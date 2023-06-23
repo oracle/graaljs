@@ -52,7 +52,6 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class RejectPromiseNode extends JavaScriptBaseNode {
@@ -77,7 +76,7 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
         return new RejectPromiseNode(context);
     }
 
-    public Object execute(JSDynamicObject promise, Object reason) {
+    public Object execute(JSPromiseObject promise, Object reason) {
         assert JSPromise.isPending(promise);
 
         if (!JSConfig.EagerStackTrace && context.isOptionAsyncStackTraces() && JSError.isJSError(reason)) {
@@ -90,7 +89,7 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
         setPromiseFulfillReactions.setValue(promise, Undefined.instance);
         setPromiseRejectReactions.setValue(promise, Undefined.instance);
         JSPromise.setPromiseState(promise, JSPromise.REJECTED);
-        if (unhandledProf.profile(!((JSPromiseObject) promise).isHandled())) {
+        if (unhandledProf.profile(!promise.isHandled())) {
             context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT, reason);
         }
         return triggerPromiseReactions.execute(reactions, reason);
