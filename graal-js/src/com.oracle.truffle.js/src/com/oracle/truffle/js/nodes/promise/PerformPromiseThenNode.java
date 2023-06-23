@@ -44,19 +44,17 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
@@ -71,14 +69,12 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getPromiseRejectReactionsNode;
     @Child private PropertyGetNode getPromiseResultNode;
     @Child private PropertyGetNode getPromiseIsHandledNode;
-    @Child private PropertySetNode setPromiseIsHandledNode;
     @Child private PromiseReactionJobNode promiseReactionJobNode;
 
     protected PerformPromiseThenNode(JSContext context) {
         this.context = context;
         this.getPromiseFulfillReactionsNode = PropertyGetNode.createGetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
         this.getPromiseRejectReactionsNode = PropertyGetNode.createGetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
-        this.setPromiseIsHandledNode = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
     }
 
     @NeverDefault
@@ -86,16 +82,15 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
         return PerformPromiseThenNodeGen.create(context);
     }
 
-    public abstract JSDynamicObject execute(JSDynamicObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability);
+    public abstract JSDynamicObject execute(JSPromiseObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability);
 
     @SuppressWarnings("unchecked")
     @Specialization
-    protected JSDynamicObject promiseThen(JSDynamicObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability,
+    protected JSDynamicObject promiseThen(JSPromiseObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability,
                     @Cached InlinedConditionProfile pendingProf,
                     @Cached InlinedConditionProfile fulfilledProf,
                     @Cached InlinedConditionProfile unhandledProf,
                     @Cached InlinedBranchProfile growProfile) {
-        assert JSPromise.isJSPromise(promise);
         JSRealm realm = getRealm();
         JobCallback onFulfilledHandler = isCallableFulfillNode.executeBoolean(onFulfilled) ? realm.getAgent().hostMakeJobCallback(onFulfilled) : null;
         JobCallback onRejectedHandler = isCallableRejectNode.executeBoolean(onRejected) ? realm.getAgent().hostMakeJobCallback(onRejected) : null;
@@ -114,13 +109,13 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
         } else {
             assert promiseState == JSPromise.REJECTED;
             Object reason = getPromiseResult(promise);
-            if (unhandledProf.profile(this, !getPromiseIsHandled(promise))) {
+            if (unhandledProf.profile(this, !promise.isHandled())) {
                 context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE, Undefined.instance);
             }
             JSFunctionObject job = getPromiseReactionJob(rejectReaction, reason);
             context.enqueuePromiseJob(realm, job);
         }
-        setPromiseIsHandledNode.setValueBoolean(promise, true);
+        promise.setIsHandled(true);
         if (resultCapability == null) {
             return Undefined.instance;
         }
@@ -135,23 +130,11 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
         return promiseReactionJobNode.execute(reaction, value);
     }
 
-    private Object getPromiseResult(JSDynamicObject promise) {
+    private Object getPromiseResult(JSPromiseObject promise) {
         if (getPromiseResultNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getPromiseResultNode = insert(PropertyGetNode.createGetHidden(JSPromise.PROMISE_RESULT, context));
         }
         return getPromiseResultNode.getValue(promise);
-    }
-
-    private boolean getPromiseIsHandled(JSDynamicObject promise) {
-        try {
-            if (getPromiseIsHandledNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getPromiseIsHandledNode = insert(PropertyGetNode.createGetHidden(JSPromise.PROMISE_IS_HANDLED, context));
-            }
-            return getPromiseIsHandledNode.getValueBoolean(promise);
-        } catch (UnexpectedResultException e) {
-            throw Errors.shouldNotReachHere();
-        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,9 +55,9 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNode {
@@ -103,7 +103,7 @@ public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNod
         assert !queue.isEmpty();
         AsyncGeneratorRequest next = queue.peekFirst();
         // PromiseResolve error caught in caller
-        JSDynamicObject promise = promiseResolve(next.getCompletionValue());
+        JSPromiseObject promise = promiseResolve(next.getCompletionValue());
         if (performPromiseThenNode == null || setGeneratorNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.performPromiseThenNode = insert(PerformPromiseThenNode.create(context));
@@ -114,12 +114,12 @@ public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNod
         performPromiseThenNode.execute(promise, onFulfilled, onRejected, null);
     }
 
-    private JSDynamicObject promiseResolve(Object value) {
+    private JSPromiseObject promiseResolve(Object value) {
         if (promiseResolveNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             promiseResolveNode = insert(PromiseResolveNode.create(context));
         }
-        return promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
+        return (JSPromiseObject) promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
     }
 
     protected final void asyncGeneratorRejectBrokenPromise(VirtualFrame frame, Object generator, AbstractTruffleException exception, ArrayDeque<AsyncGeneratorRequest> queue) {

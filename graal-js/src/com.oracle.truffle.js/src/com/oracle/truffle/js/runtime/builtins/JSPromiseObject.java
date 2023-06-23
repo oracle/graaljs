@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSPromiseObject extends JSNonProxyObject {
     private int promiseState;
+    private boolean promiseIsHandled;
 
     protected JSPromiseObject(Shape shape, int promiseState) {
         super(shape);
@@ -58,6 +59,14 @@ public final class JSPromiseObject extends JSNonProxyObject {
 
     public void setPromiseState(int promiseState) {
         this.promiseState = promiseState;
+    }
+
+    public boolean isHandled() {
+        return promiseIsHandled;
+    }
+
+    public void setIsHandled(boolean handled) {
+        this.promiseIsHandled = handled;
     }
 
     public static JSPromiseObject create(JSRealm realm, JSObjectFactory factory, int promiseState) {

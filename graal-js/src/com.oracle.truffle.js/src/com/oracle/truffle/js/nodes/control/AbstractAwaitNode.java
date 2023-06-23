@@ -84,6 +84,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -102,7 +103,6 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
     @Child private PerformPromiseThenNode performPromiseThenNode;
     @Child private PromiseResolveNode promiseResolveNode;
     @Child private JSFunctionCallNode callPromiseResolveNode;
-    @Child private PropertySetNode setPromiseIsHandledNode;
     @Child private PropertySetNode setAsyncContextNode;
     @Child private PropertySetNode setAsyncTargetNode;
     @Child private PropertySetNode setAsyncCallNode;
@@ -159,7 +159,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
             context.notifyPromiseHook(-1 /* parent info */, parentPromise);
         }
 
-        JSDynamicObject promise = promiseResolve(value);
+        JSPromiseObject promise = promiseResolve(value);
         JSFunctionObject onFulfilled = createAwaitFulfilledFunction(resumeTarget, asyncContext, generatorOrCapability);
         JSFunctionObject onRejected = createAwaitRejectedFunction(resumeTarget, asyncContext, generatorOrCapability);
         PromiseCapabilityRecord throwawayCapability = newThrowawayCapability();
@@ -210,14 +210,14 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         return filteredStackTrace;
     }
 
-    private JSDynamicObject promiseResolve(Object value) {
+    private JSPromiseObject promiseResolve(Object value) {
         if (context.usePromiseResolve()) {
-            return promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
+            return (JSPromiseObject) promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
         } else {
             PromiseCapabilityRecord promiseCapability = newPromiseCapability();
             Object resolve = promiseCapability.getResolve();
             callPromiseResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, value));
-            return promiseCapability.getPromise();
+            return (JSPromiseObject) promiseCapability.getPromise();
         }
     }
 
@@ -225,12 +225,8 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
             return null;
         }
-        if (setPromiseIsHandledNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            setPromiseIsHandledNode = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context));
-        }
         PromiseCapabilityRecord throwawayCapability = newPromiseCapability();
-        setPromiseIsHandledNode.setValueBoolean(throwawayCapability.getPromise(), true);
+        ((JSPromiseObject) throwawayCapability.getPromise()).setIsHandled(true);
         return throwawayCapability;
     }
 

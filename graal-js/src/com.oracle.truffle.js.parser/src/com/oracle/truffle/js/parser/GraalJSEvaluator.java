@@ -113,7 +113,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
-import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
@@ -294,11 +294,10 @@ public final class GraalJSEvaluator implements JSParser {
             Object promise = moduleEvaluation(realm, moduleRecord);
             boolean isAsync = context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation();
             if (isAsync) {
-                assert JSPromise.isJSPromise(promise);
                 JSFunctionObject onRejected = createTopLevelAwaitReject(context, realm);
                 JSFunctionObject onAccepted = createTopLevelAwaitResolve(context, realm);
                 // Non-standard: throw error from onRejected handler.
-                performPromiseThenNode.execute((JSDynamicObject) promise, onAccepted, onRejected, null);
+                performPromiseThenNode.execute((JSPromiseObject) promise, onAccepted, onRejected, null);
             }
             if (context.getLanguageOptions().esmEvalReturnsExports()) {
                 JSDynamicObject moduleNamespace = getModuleNamespace(moduleRecord);

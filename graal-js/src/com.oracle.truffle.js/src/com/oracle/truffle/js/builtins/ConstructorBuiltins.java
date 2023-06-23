@@ -2976,7 +2976,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private OrdinaryCreateFromConstructorNode createPromiseFromConstructor;
         @Child private PropertySetNode setPromiseFulfillReactions;
         @Child private PropertySetNode setPromiseRejectReactions;
-        @Child private PropertySetNode setPromiseIsHandled;
 
         public PromiseConstructorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -2985,16 +2984,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.createPromiseFromConstructor = OrdinaryCreateFromConstructorNode.create(context, null, JSRealm::getPromisePrototype, JSPromise.INSTANCE);
             this.setPromiseFulfillReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
             this.setPromiseRejectReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
-            this.setPromiseIsHandled = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
         }
 
         @Specialization(guards = "isCallable.executeBoolean(executor)")
         protected JSPromiseObject construct(JSDynamicObject newTarget, Object executor) {
             JSPromiseObject promise = (JSPromiseObject) createPromiseFromConstructor.executeWithConstructor(newTarget);
             promise.setPromiseState(JSPromise.PENDING);
+            promise.setIsHandled(false);
             setPromiseFulfillReactions.setValue(promise, new SimpleArrayList<>());
             setPromiseRejectReactions.setValue(promise, new SimpleArrayList<>());
-            setPromiseIsHandled.setValueBoolean(promise, false);
 
             getContext().notifyPromiseHook(PromiseHook.TYPE_INIT, promise);
 

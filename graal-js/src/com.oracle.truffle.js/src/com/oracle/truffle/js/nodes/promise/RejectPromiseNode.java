@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -60,7 +61,6 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
     @Child private PropertySetNode setPromiseResult;
     @Child private PropertySetNode setPromiseFulfillReactions;
     @Child private PropertySetNode setPromiseRejectReactions;
-    @Child private PropertyGetNode getPromiseIsHandled;
     @Child private TriggerPromiseReactionsNode triggerPromiseReactions;
     private final ConditionProfile unhandledProf = ConditionProfile.create();
 
@@ -70,7 +70,6 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
         this.setPromiseResult = PropertySetNode.createSetHidden(JSPromise.PROMISE_RESULT, context);
         this.setPromiseFulfillReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
         this.setPromiseRejectReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
-        this.getPromiseIsHandled = PropertyGetNode.createGetHidden(JSPromise.PROMISE_IS_HANDLED, context);
         this.triggerPromiseReactions = TriggerPromiseReactionsNode.create(context);
     }
 
@@ -91,7 +90,7 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
         setPromiseFulfillReactions.setValue(promise, Undefined.instance);
         setPromiseRejectReactions.setValue(promise, Undefined.instance);
         JSPromise.setPromiseState(promise, JSPromise.REJECTED);
-        if (unhandledProf.profile(getPromiseIsHandled.getValue(promise) != Boolean.TRUE)) {
+        if (unhandledProf.profile(!((JSPromiseObject) promise).isHandled())) {
             context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT, reason);
         }
         return triggerPromiseReactions.execute(reactions, reason);

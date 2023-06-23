@@ -65,7 +65,6 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     public static final TruffleString THEN = Strings.constant("then");
 
     public static final HiddenKey PROMISE_RESULT = new HiddenKey("PromiseResult");
-    public static final HiddenKey PROMISE_IS_HANDLED = new HiddenKey("PromiseIsHandled");
 
     public static final HiddenKey PROMISE_FULFILL_REACTIONS = new HiddenKey("PromiseFulfillReactions");
     public static final HiddenKey PROMISE_REJECT_REACTIONS = new HiddenKey("PromiseRejectReactions");

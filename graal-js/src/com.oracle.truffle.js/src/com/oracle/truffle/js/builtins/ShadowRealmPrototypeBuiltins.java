@@ -98,6 +98,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealmObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -354,7 +355,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
             var onFulfilled = JSFunction.create(callerRealm, functionData);
             setExportNameStringNode.setValue(onFulfilled, exportNameString);
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
-            return performPromiseThenNode.execute(innerCapability.getPromise(), onFulfilled, callerRealm.getThrowTypeErrorFunction(), promiseCapability);
+            return performPromiseThenNode.execute((JSPromiseObject) innerCapability.getPromise(), onFulfilled, callerRealm.getThrowTypeErrorFunction(), promiseCapability);
         }
 
         private static JSFunctionData createExportGetterImpl(JSContext context) {
