@@ -101,6 +101,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -361,7 +362,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         protected JSDynamicObject createDateTimeFormat(InitializeDateTimeFormatNode initDateTimeFormatNode, Object locales, Object options) {
-            JSDynamicObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
+            JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
             initDateTimeFormatNode.executeInit(dateTimeFormatObj, locales, options);
             return dateTimeFormatObj;
         }

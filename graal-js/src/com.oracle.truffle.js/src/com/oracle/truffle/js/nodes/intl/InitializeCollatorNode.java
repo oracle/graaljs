@@ -48,7 +48,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSCollatorObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
@@ -83,14 +83,14 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
         this.getIgnorePunctuationOption = GetBooleanOptionNode.create(context, IntlUtil.KEY_IGNORE_PUNCTUATION, false);
     }
 
-    public abstract JSDynamicObject executeInit(JSDynamicObject collator, Object locales, Object options);
+    public abstract JSCollatorObject executeInit(JSCollatorObject collator, Object locales, Object options);
 
     public static InitializeCollatorNode createInitalizeCollatorNode(JSContext context) {
         return InitializeCollatorNodeGen.create(context);
     }
 
     @Specialization
-    public JSDynamicObject initializeCollator(JSDynamicObject collatorObj, Object localesArg, Object optionsArg) {
+    public JSCollatorObject initializeCollator(JSCollatorObject collatorObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
         try {

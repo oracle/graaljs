@@ -243,14 +243,23 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
+import com.oracle.truffle.js.runtime.builtins.intl.JSCollatorObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNamesObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSListFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSListFormatObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
+import com.oracle.truffle.js.runtime.builtins.intl.JSLocaleObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormatObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
+import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRulesObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormatObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenterObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
@@ -806,14 +815,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         protected abstract JSDynamicObject getIntrinsicDefaultProto(JSRealm realm);
 
-        protected JSObject swapPrototype(JSObject resultObj, JSDynamicObject newTarget) {
+        protected <T extends JSObject> T swapPrototype(T resultObj, JSDynamicObject newTarget) {
             if (isNewTargetCase) {
                 return setPrototypeFromNewTarget(resultObj, newTarget);
             }
             return resultObj;
         }
 
-        protected JSObject setPrototypeFromNewTarget(JSObject resultObj, JSDynamicObject newTarget) {
+        protected <T extends JSObject> T setPrototypeFromNewTarget(T resultObj, JSDynamicObject newTarget) {
             Object prototype = JSObject.get(newTarget, JSObject.PROTOTYPE);
             if (!JSRuntime.isObject(prototype)) {
                 prototype = getIntrinsicDefaultProto(getRealmFromNewTarget(newTarget));
@@ -1665,7 +1674,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject callCollator(Object locales, Object options) {
-            JSDynamicObject collator = JSCollator.create(getContext(), getRealm());
+            JSCollatorObject collator = JSCollator.create(getContext(), getRealm());
             return initializeCollatorNode.executeInit(collator, locales, options);
         }
     }
@@ -1681,7 +1690,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructCollator(JSDynamicObject newTarget, Object locales, Object options) {
-            JSDynamicObject collator = swapPrototype(JSCollator.create(getContext(), getRealm()), newTarget);
+            JSCollatorObject collator = swapPrototype(JSCollator.create(getContext(), getRealm()), newTarget);
             return initializeCollatorNode.executeInit(collator, locales, options);
         }
 
@@ -1703,7 +1712,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructListFormat(JSDynamicObject newTarget, Object locales, Object options) {
-            JSDynamicObject listFormat = swapPrototype(JSListFormat.create(getContext(), getRealm()), newTarget);
+            JSListFormatObject listFormat = swapPrototype(JSListFormat.create(getContext(), getRealm()), newTarget);
             return initializeListFormatNode.executeInit(listFormat, locales, options);
         }
 
@@ -1724,7 +1733,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructRelativeTimeFormat(JSDynamicObject newTarget, Object locales, Object options) {
-            JSDynamicObject listFormat = swapPrototype(JSRelativeTimeFormat.create(getContext(), getRealm()), newTarget);
+            JSRelativeTimeFormatObject listFormat = swapPrototype(JSRelativeTimeFormat.create(getContext(), getRealm()), newTarget);
             return initializeRelativeTimeFormatNode.executeInit(listFormat, locales, options);
         }
 
@@ -1745,7 +1754,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructSegmenter(JSDynamicObject newTarget, Object locales, Object options) {
-            JSDynamicObject segmenter = swapPrototype(JSSegmenter.create(getContext(), getRealm()), newTarget);
+            JSSegmenterObject segmenter = swapPrototype(JSSegmenter.create(getContext(), getRealm()), newTarget);
             return initializeSegmenterNode.executeInit(segmenter, locales, options);
         }
 
@@ -1766,7 +1775,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructDisplayNames(JSDynamicObject newTarget, Object locales, Object options) {
-            JSDynamicObject displayNames = swapPrototype(JSDisplayNames.create(getContext(), getRealm()), newTarget);
+            JSDisplayNamesObject displayNames = swapPrototype(JSDisplayNames.create(getContext(), getRealm()), newTarget);
             return initializeDisplayNamesNode.executeInit(displayNames, locales, options);
         }
 
@@ -1786,7 +1795,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructLocale(JSDynamicObject newTarget, Object tag, Object options) {
-            JSDynamicObject locale = swapPrototype(JSLocale.create(getContext(), getRealm()), newTarget);
+            JSLocaleObject locale = swapPrototype(JSLocale.create(getContext(), getRealm()), newTarget);
             return initializeLocaleNode.executeInit(locale, tag, options);
         }
 
@@ -1807,7 +1816,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject callNumberFormat(Object locales, Object options) {
-            JSDynamicObject numberFormat = JSNumberFormat.create(getContext(), getRealm());
+            JSNumberFormatObject numberFormat = JSNumberFormat.create(getContext(), getRealm());
             return initializeNumberFormatNode.executeInit(numberFormat, locales, options);
         }
     }
@@ -1823,7 +1832,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructNumberFormat(JSDynamicObject newTarget, Object locales, Object options) {
-            JSDynamicObject numberFormat = swapPrototype(JSNumberFormat.create(getContext(), getRealm()), newTarget);
+            JSNumberFormatObject numberFormat = swapPrototype(JSNumberFormat.create(getContext(), getRealm()), newTarget);
             return initializeNumberFormatNode.executeInit(numberFormat, locales, options);
         }
 
@@ -1845,7 +1854,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructPluralRules(JSDynamicObject newTarget, Object locales, Object options) {
-            JSDynamicObject pluralRules = swapPrototype(JSPluralRules.create(getContext(), getRealm()), newTarget);
+            JSPluralRulesObject pluralRules = swapPrototype(JSPluralRules.create(getContext(), getRealm()), newTarget);
             return initializePluralRulesNode.executeInit(pluralRules, locales, options);
         }
 
@@ -1866,7 +1875,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject callDateTimeFormat(Object locales, Object options) {
-            JSDynamicObject dateTimeFormat = JSDateTimeFormat.create(getContext(), getRealm());
+            JSDateTimeFormatObject dateTimeFormat = JSDateTimeFormat.create(getContext(), getRealm());
             return initializeDateTimeFormatNode.executeInit(dateTimeFormat, locales, options);
         }
     }
@@ -1882,7 +1891,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructDateTimeFormat(JSDynamicObject newTarget, Object locales, Object options) {
-            JSDynamicObject dateTimeFormat = swapPrototype(JSDateTimeFormat.create(getContext(), getRealm()), newTarget);
+            JSDateTimeFormatObject dateTimeFormat = swapPrototype(JSDateTimeFormat.create(getContext(), getRealm()), newTarget);
             return initializeDateTimeFormatNode.executeInit(dateTimeFormat, locales, options);
         }
 

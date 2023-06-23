@@ -48,7 +48,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormatObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
@@ -104,14 +104,14 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         this.setNumberFormatDigitOptions = SetNumberFormatDigitOptionsNode.create(context);
     }
 
-    public abstract JSDynamicObject executeInit(JSDynamicObject collator, Object locales, Object options);
+    public abstract JSNumberFormatObject executeInit(JSNumberFormatObject numberFormatObj, Object locales, Object options);
 
     public static InitializeNumberFormatNode createInitalizeNumberFormatNode(JSContext context) {
         return InitializeNumberFormatNodeGen.create(context);
     }
 
     @Specialization
-    public JSDynamicObject initializeNumberFormat(JSDynamicObject numberFormatObj, Object localesArg, Object optionsArg) {
+    public JSNumberFormatObject initializeNumberFormat(JSNumberFormatObject numberFormatObj, Object localesArg, Object optionsArg) {
         try {
             JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
 

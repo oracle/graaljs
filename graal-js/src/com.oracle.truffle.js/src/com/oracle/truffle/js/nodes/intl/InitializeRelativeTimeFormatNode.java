@@ -48,7 +48,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormatObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNode {
@@ -75,14 +75,14 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
         this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMBERING_SYSTEM, null, null);
     }
 
-    public abstract JSDynamicObject executeInit(JSDynamicObject collator, Object locales, Object options);
+    public abstract JSRelativeTimeFormatObject executeInit(JSRelativeTimeFormatObject relativeTimeFormatObj, Object locales, Object options);
 
     public static InitializeRelativeTimeFormatNode createInitalizeRelativeTimeFormatNode(JSContext context) {
         return InitializeRelativeTimeFormatNodeGen.create(context);
     }
 
     @Specialization
-    public JSDynamicObject initializeRelativeTimeFormat(JSDynamicObject relativeTimeFormatObj, Object localesArg, Object optionsArg) {
+    public JSRelativeTimeFormatObject initializeRelativeTimeFormat(JSRelativeTimeFormatObject relativeTimeFormatObj, Object localesArg, Object optionsArg) {
         try {
 
             JSRelativeTimeFormat.InternalState state = JSRelativeTimeFormat.getInternalState(relativeTimeFormatObj);

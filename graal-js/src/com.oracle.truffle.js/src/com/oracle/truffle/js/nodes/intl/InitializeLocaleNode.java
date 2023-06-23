@@ -55,7 +55,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocaleObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -85,18 +84,18 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMBERING_SYSTEM, null, null);
     }
 
-    public abstract JSDynamicObject executeInit(JSDynamicObject locale, Object tag, Object options);
+    public abstract JSLocaleObject executeInit(JSLocaleObject locale, Object tag, Object options);
 
     public static InitializeLocaleNode createInitalizeLocaleNode(JSContext context) {
         return InitializeLocaleNodeGen.create(context);
     }
 
     @Specialization
-    public JSDynamicObject initializeLocaleUsingString(JSDynamicObject localeObject, TruffleString tagArg, Object optionsArg) {
+    public JSLocaleObject initializeLocaleUsingString(JSLocaleObject localeObject, TruffleString tagArg, Object optionsArg) {
         return initializeLocaleUsingJString(localeObject, Strings.toJavaString(tagArg), optionsArg);
     }
 
-    private JSDynamicObject initializeLocaleUsingJString(JSDynamicObject localeObject, String tagArg, Object optionsArg) {
+    private JSLocaleObject initializeLocaleUsingJString(JSLocaleObject localeObject, String tagArg, Object optionsArg) {
         try {
             Object options = coerceOptionsToObjectNode.execute(optionsArg);
             String tag = applyOptionsToTag(tagArg, options);
@@ -126,19 +125,19 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    public JSDynamicObject initializeLocaleUsingLocale(JSDynamicObject localeObject, JSLocaleObject tagArg, Object optionsArg) {
+    public JSLocaleObject initializeLocaleUsingLocale(JSLocaleObject localeObject, JSLocaleObject tagArg, Object optionsArg) {
         JSLocale.InternalState state = JSLocale.getInternalState(tagArg);
         return initializeLocaleUsingJString(localeObject, state.getLocale(), optionsArg);
     }
 
     @Specialization(guards = {"!isJSLocale(tagArg)"})
-    public JSDynamicObject initializeLocaleUsingObject(JSDynamicObject localeObject, JSObject tagArg, Object optionsArg,
+    public JSLocaleObject initializeLocaleUsingObject(JSLocaleObject localeObject, JSObject tagArg, Object optionsArg,
                     @Cached JSToStringNode toStringNode) {
         return initializeLocaleUsingString(localeObject, toStringNode.executeString(tagArg), optionsArg);
     }
 
     @Specialization(guards = {"!isJSObject(tagArg)", "!isString(tagArg)"})
-    public JSDynamicObject initializeLocaleOther(@SuppressWarnings("unused") JSDynamicObject localeObject, @SuppressWarnings("unused") Object tagArg, @SuppressWarnings("unused") Object optionsArg) {
+    public JSLocaleObject initializeLocaleOther(@SuppressWarnings("unused") JSLocaleObject localeObject, @SuppressWarnings("unused") Object tagArg, @SuppressWarnings("unused") Object optionsArg) {
         throw Errors.createTypeError("Tag should be a string or an object.");
     }
 

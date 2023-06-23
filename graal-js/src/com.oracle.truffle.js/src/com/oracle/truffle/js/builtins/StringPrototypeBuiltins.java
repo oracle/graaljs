@@ -149,6 +149,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
+import com.oracle.truffle.js.runtime.builtins.intl.JSCollatorObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -2568,7 +2569,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @TruffleBoundary
         private JSDynamicObject createCollator(Object locales, Object options) {
-            JSDynamicObject collatorObj = JSCollator.create(getContext(), getRealm());
+            JSCollatorObject collatorObj = JSCollator.create(getContext(), getRealm());
             initCollatorNode.executeInit(collatorObj, locales, options);
             return collatorObj;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -131,14 +132,14 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.toStringNode = JSToStringNode.create();
     }
 
-    public abstract JSDynamicObject executeInit(JSDynamicObject collator, Object locales, Object options);
+    public abstract JSDateTimeFormatObject executeInit(JSDateTimeFormatObject dateTimeFormatObj, Object locales, Object options);
 
     public static InitializeDateTimeFormatNode createInitalizeDateTimeFormatNode(JSContext context, String required, String defaults) {
         return InitializeDateTimeFormatNodeGen.create(context, required, defaults);
     }
 
     @Specialization
-    public JSDynamicObject initializeDateTimeFormat(JSDynamicObject dateTimeFormatObj, Object localesArg, Object optionsArg) {
+    public JSDateTimeFormatObject initializeDateTimeFormat(JSDateTimeFormatObject dateTimeFormatObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
         try {
