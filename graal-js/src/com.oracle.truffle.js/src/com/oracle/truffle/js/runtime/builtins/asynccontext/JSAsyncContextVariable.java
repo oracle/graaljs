@@ -59,9 +59,9 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSAsyncContextVariable extends JSNonProxy implements JSConstructorFactory.WithFunctions, PrototypeSupplier {
 
-    public static final TruffleString PROPERTY_NAME = Strings.constant("Variable");
-    public static final TruffleString CLASS_NAME = Strings.constant("AsyncContext.Variable");
-    public static final TruffleString PROTOTYPE_NAME = Strings.constant("AsyncContext.Variable.prototype");
+    public static final TruffleString CLASS_NAME = Strings.constant("Variable");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Variable.prototype");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("AsyncContext.Variable");
 
     public static final JSAsyncContextVariable INSTANCE = new JSAsyncContextVariable();
 
@@ -79,7 +79,7 @@ public final class JSAsyncContextVariable extends JSNonProxy implements JSConstr
         JSObjectUtil.putConstructorProperty(prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, AsyncContextVariablePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putAccessorsFromContainer(realm, prototype, AsyncContextVariablePrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
+        JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
         return prototype;
     }
 

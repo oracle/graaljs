@@ -60,3 +60,15 @@ function main() {
     });
   });
 }
+
+(function testNames() {
+    assertSame(AsyncContext.Variable.prototype[Symbol.toStringTag], 'AsyncContext.Variable');
+    assertSame(AsyncContext.Snapshot.prototype[Symbol.toStringTag], 'AsyncContext.Snapshot');
+    assertSame(String(new AsyncContext.Variable()), '[object AsyncContext.Variable]');
+    assertSame(String(new AsyncContext.Snapshot()), '[object AsyncContext.Snapshot]');
+    assertSame(AsyncContext.Variable.name, 'Variable');
+    assertSame(AsyncContext.Snapshot.name, 'Snapshot');
+    
+    assertSame(new AsyncContext.Variable().name, '');
+    assertSame(new AsyncContext.Variable({}).name, '');
+})();

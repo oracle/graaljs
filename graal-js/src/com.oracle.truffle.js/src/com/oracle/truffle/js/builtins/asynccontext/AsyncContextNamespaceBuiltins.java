@@ -78,25 +78,13 @@ public final class AsyncContextNamespaceBuiltins extends JSBuiltinsContainer.Swi
     }
 
     public enum AsyncContextNamespace implements BuiltinEnum<AsyncContextNamespace> {
-        Snapshot(0, JSAsyncContextSnapshot.CLASS_NAME),
-        Variable(1, JSAsyncContextVariable.CLASS_NAME);
+        Snapshot(0),
+        Variable(1);
 
         private final int length;
-        private final TruffleString key;
 
-        AsyncContextNamespace(int length, TruffleString key) {
+        AsyncContextNamespace(int length) {
             this.length = length;
-            this.key = key;
-        }
-
-        @Override
-        public Object getKey() {
-            return key;
-        }
-
-        @Override
-        public TruffleString getName() {
-            return key;
         }
 
         @Override

@@ -59,8 +59,8 @@ public final class JSAsyncContext {
 
     public static JSObject create(JSRealm realm) {
         JSObject obj = JSOrdinary.createInit(realm);
-        JSObjectUtil.putDataProperty(obj, JSAsyncContextSnapshot.PROPERTY_NAME, realm.getAsyncContextSnapshotConstructor());
-        JSObjectUtil.putDataProperty(obj, JSAsyncContextVariable.PROPERTY_NAME, realm.getAsyncContexVariableConstructor());
+        JSObjectUtil.putDataProperty(obj, JSAsyncContextSnapshot.CLASS_NAME, realm.getAsyncContextSnapshotConstructor());
+        JSObjectUtil.putDataProperty(obj, JSAsyncContextVariable.CLASS_NAME, realm.getAsyncContexVariableConstructor());
         return obj;
     }
 }
