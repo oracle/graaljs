@@ -47,8 +47,8 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins.ConstructWithNewTargetNode;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.builtins.asynccontext.AsyncContextNamespaceBuiltinsFactory.ConstructAsyncContextSnapshotNodeGen;
-import com.oracle.truffle.js.builtins.asynccontext.AsyncContextNamespaceBuiltinsFactory.ConstructAsyncContextVariableNodeGen;
+import com.oracle.truffle.js.builtins.asynccontext.AsyncContextBuiltinsFactory.ConstructAsyncContextSnapshotNodeGen;
+import com.oracle.truffle.js.builtins.asynccontext.AsyncContextBuiltinsFactory.ConstructAsyncContextVariableNodeGen;
 import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -69,21 +69,21 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * Contains built-in functions of the {@code %AsyncContext%} constructor.
  */
-public final class AsyncContextNamespaceBuiltins extends JSBuiltinsContainer.SwitchEnum<AsyncContextNamespaceBuiltins.AsyncContextNamespace> {
+public final class AsyncContextBuiltins extends JSBuiltinsContainer.SwitchEnum<AsyncContextBuiltins.AsyncContext> {
 
-    public static final JSBuiltinsContainer BUILTINS = new AsyncContextNamespaceBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new AsyncContextBuiltins();
 
-    protected AsyncContextNamespaceBuiltins() {
-        super(JSAsyncContext.NAMESPACE_NAME, AsyncContextNamespace.class);
+    protected AsyncContextBuiltins() {
+        super(JSAsyncContext.NAMESPACE_NAME, AsyncContext.class);
     }
 
-    public enum AsyncContextNamespace implements BuiltinEnum<AsyncContextNamespace> {
+    public enum AsyncContext implements BuiltinEnum<AsyncContext> {
         Snapshot(0),
         Variable(1);
 
         private final int length;
 
-        AsyncContextNamespace(int length) {
+        AsyncContext(int length) {
             this.length = length;
         }
 
@@ -104,7 +104,7 @@ public final class AsyncContextNamespaceBuiltins extends JSBuiltinsContainer.Swi
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, AsyncContextNamespace builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, AsyncContext builtinEnum) {
         switch (builtinEnum) {
             case Snapshot:
                 if (construct) {

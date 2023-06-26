@@ -42,7 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.asynccontext;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.asynccontext.AsyncContextNamespaceBuiltins;
+import com.oracle.truffle.js.builtins.asynccontext.AsyncContextBuiltins;
 import com.oracle.truffle.js.builtins.asynccontext.AsyncContextVariablePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -90,11 +90,11 @@ public final class JSAsyncContextVariable extends JSNonProxy implements JSConstr
 
     @Override
     public JSFunctionObject createConstructorObject(JSRealm realm) {
-        return realm.lookupFunction(AsyncContextNamespaceBuiltins.BUILTINS, getClassName());
+        return realm.lookupFunction(AsyncContextBuiltins.BUILTINS, getClassName());
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm, AsyncContextNamespaceBuiltins.BUILTINS);
+        return INSTANCE.createConstructorAndPrototype(realm, AsyncContextBuiltins.BUILTINS);
     }
 
     @Override
