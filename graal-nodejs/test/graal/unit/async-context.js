@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,74 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.promise;
 
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+/**
+ * Tests AsyncContext proposal.
+ *
+ * @option unhandled-rejections=throw
+ * @option async-context
+ */
 
-public class TriggerPromiseReactionsNode extends JavaScriptBaseNode {
-    private final JSContext context;
-    @Child private PromiseReactionJobNode promiseReactionJob;
+const assert = require('assert');
+const {spawnSync} = require('child_process');
 
-    protected TriggerPromiseReactionsNode(JSContext context) {
-        this.context = context;
-        this.promiseReactionJob = PromiseReactionJobNode.create(context);
+describe.skip('AsyncContext', function () {
+  it('works with setTimeout', function () {
+    this.timeout(20000);
+
+    if (typeof AsyncContext === 'undefined') {
+      const result = spawnSync(process.execPath, ['--experimental-options', '--async-context', '-e', code.toString() + 'code();']);
+      assert.strictEqual(result.status, 0, result.stderr.toString());
+      assert.strictEqual(result.stdout.toString(), '');
+      assert.strictEqual(result.stderr.toString(), '');
+    } else {
+      code();
     }
 
-    public static TriggerPromiseReactionsNode create(JSContext context) {
-        return new TriggerPromiseReactionsNode(context);
-    }
+    function code() {
+      const assert = require('assert');
 
-    /**
-     * For each reaction in reactions, in original insertion order, do Perform
-     * EnqueueJob("PromiseJobs", PromiseReactionJob, << reaction, argument >>).
-     */
-    public Object execute(Object reactions, Object argument) {
-        SimpleArrayList<?> list = (SimpleArrayList<?>) reactions;
-        for (int i = 0; i < list.size(); i++) {
-            Object reaction = list.get(i);
-            JSFunctionObject job = promiseReactionJob.execute(reaction, argument);
-            context.enqueuePromiseJob(getRealm(), job);
-        }
-        return Undefined.instance;
+      const context = new AsyncContext.Variable({name: 'ctx', defaultValue: 'default'});
+      const timeout = 10;
+
+      assert.strictEqual(context.name, 'ctx');
+      assert.strictEqual(context.get(), 'default');
+
+      context.run("top", main);
+
+      function main() {
+        setTimeout(() => {
+          assert.strictEqual(context.get(), 'top');
+
+          context.run("A", () => {
+            assert.strictEqual(context.get(), 'A');
+
+            setTimeout(() => {
+              assert.strictEqual(context.get(), 'A');
+            }, timeout);
+          });
+        }, timeout);
+
+        context.run("B", () => {
+          assert.strictEqual(context.get(), 'B');
+
+          setTimeout(() => {
+            assert.strictEqual(context.get(), 'B');
+          }, timeout);
+        });
+
+        assert.strictEqual(context.get(), 'top');
+
+        const snapshotDuringTop = new AsyncContext.Snapshot();
+
+        context.run("C", () => {
+          assert.strictEqual(context.get(), 'C');
+
+          snapshotDuringTop.run(() => {
+            assert.strictEqual(context.get(), 'top');
+          });
+        });
+      }
     }
-}
+  });
+});

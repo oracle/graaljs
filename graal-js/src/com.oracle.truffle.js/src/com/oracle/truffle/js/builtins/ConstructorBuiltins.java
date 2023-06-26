@@ -231,6 +231,7 @@ import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
@@ -784,7 +785,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
-    private static CallRequiresNewNode createCallRequiresNew(JSContext context, JSBuiltin builtin) {
+    public static JSBuiltinNode createCallRequiresNew(JSContext context, JSBuiltin builtin) {
         return CallRequiresNewNodeGen.create(context, builtin, args().createArgumentNodes(context));
     }
 
@@ -1638,7 +1639,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"isCallableNode.executeBoolean(cleanupCallback)"})
         protected JSDynamicObject constructFinalizationRegistry(JSDynamicObject newTarget, Object cleanupCallback) {
-            return swapPrototype(JSFinalizationRegistry.create(getContext(), getRealm(), cleanupCallback), newTarget);
+            JSRealm realm = getRealm();
+            return swapPrototype(JSFinalizationRegistry.create(getContext(), realm, realm.getAgent().hostMakeJobCallback(cleanupCallback)), newTarget);
         }
 
         @Specialization(guards = {"!isCallableNode.executeBoolean(cleanupCallback)"})
@@ -2978,16 +2980,16 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = "isCallable.executeBoolean(executor)")
-        protected JSDynamicObject construct(JSDynamicObject newTarget, Object executor) {
-            JSDynamicObject promise = createPromiseFromConstructor.executeWithConstructor(newTarget);
-            JSPromise.setPromiseState(promise, JSPromise.PENDING);
+        protected JSPromiseObject construct(JSDynamicObject newTarget, Object executor) {
+            JSPromiseObject promise = (JSPromiseObject) createPromiseFromConstructor.executeWithConstructor(newTarget);
+            promise.setPromiseState(JSPromise.PENDING);
             setPromiseFulfillReactions.setValue(promise, new SimpleArrayList<>());
             setPromiseRejectReactions.setValue(promise, new SimpleArrayList<>());
             setPromiseIsHandled.setValueBoolean(promise, false);
 
             getContext().notifyPromiseHook(PromiseHook.TYPE_INIT, promise);
 
-            promiseResolveThenable.execute(promise, Undefined.instance, executor);
+            promiseResolveThenable.executePromiseConstructor(promise, executor);
             return promise;
         }
 

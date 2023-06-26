@@ -7,6 +7,8 @@
 
 /**
  * Tests potential memory leaks caused by Array.prototype.splice
+ * 
+ * @option ecmascript-version=staging
  */
 
 load('assert.js');

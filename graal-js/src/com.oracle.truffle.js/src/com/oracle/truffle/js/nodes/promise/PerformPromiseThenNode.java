@@ -53,6 +53,8 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -94,9 +96,10 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile unhandledProf,
                     @Cached InlinedBranchProfile growProfile) {
         assert JSPromise.isJSPromise(promise);
-        Object onFulfilledHandler = isCallableFulfillNode.executeBoolean(onFulfilled) ? onFulfilled : Undefined.instance;
-        Object onRejectedHandler = isCallableRejectNode.executeBoolean(onRejected) ? onRejected : Undefined.instance;
-        assert resultCapability != null || (onFulfilledHandler != Undefined.instance && onRejectedHandler != Undefined.instance);
+        JSRealm realm = getRealm();
+        JobCallback onFulfilledHandler = isCallableFulfillNode.executeBoolean(onFulfilled) ? realm.getAgent().hostMakeJobCallback(onFulfilled) : null;
+        JobCallback onRejectedHandler = isCallableRejectNode.executeBoolean(onRejected) ? realm.getAgent().hostMakeJobCallback(onRejected) : null;
+        assert resultCapability != null || (onFulfilledHandler != null && onRejectedHandler != null);
         PromiseReactionRecord fulfillReaction = PromiseReactionRecord.create(resultCapability, onFulfilledHandler, true);
         PromiseReactionRecord rejectReaction = PromiseReactionRecord.create(resultCapability, onRejectedHandler, false);
 
@@ -107,7 +110,7 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
         } else if (fulfilledProf.profile(this, promiseState == JSPromise.FULFILLED)) {
             Object value = getPromiseResult(promise);
             JSFunctionObject job = getPromiseReactionJob(fulfillReaction, value);
-            context.promiseEnqueueJob(getRealm(), job);
+            context.enqueuePromiseJob(realm, job);
         } else {
             assert promiseState == JSPromise.REJECTED;
             Object reason = getPromiseResult(promise);
@@ -115,7 +118,7 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
                 context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE, Undefined.instance);
             }
             JSFunctionObject job = getPromiseReactionJob(rejectReaction, reason);
-            context.promiseEnqueueJob(getRealm(), job);
+            context.enqueuePromiseJob(realm, job);
         }
         setPromiseIsHandledNode.setValueBoolean(promise, true);
         if (resultCapability == null) {

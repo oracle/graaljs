@@ -161,6 +161,9 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContext;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextSnapshot;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariable;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
@@ -478,6 +481,11 @@ public class JSRealm {
 
     private final JSFunctionObject shadowRealmConstructor;
     private final JSDynamicObject shadowRealmPrototype;
+
+    private final JSFunctionObject asyncContextSnapshotConstructor;
+    private final JSDynamicObject asyncContextSnapshotPrototype;
+    private final JSFunctionObject asyncContextVariableConstructor;
+    private final JSDynamicObject asyncContextVariablePrototype;
 
     /** Foreign object prototypes. */
     private final JSDynamicObject foreignIterablePrototype;
@@ -1056,6 +1064,19 @@ public class JSRealm {
         } else {
             this.shadowRealmConstructor = null;
             this.shadowRealmPrototype = null;
+        }
+        if (context.getLanguageOptions().asyncContext()) {
+            ctor = JSAsyncContextSnapshot.createConstructor(this);
+            this.asyncContextSnapshotConstructor = ctor.getFunctionObject();
+            this.asyncContextSnapshotPrototype = ctor.getPrototype();
+            ctor = JSAsyncContextVariable.createConstructor(this);
+            this.asyncContextVariableConstructor = ctor.getFunctionObject();
+            this.asyncContextVariablePrototype = ctor.getPrototype();
+        } else {
+            this.asyncContextSnapshotConstructor = null;
+            this.asyncContextSnapshotPrototype = null;
+            this.asyncContextVariableConstructor = null;
+            this.asyncContextVariablePrototype = null;
         }
 
         // always create, regardless of context.isOptionForeignObjectPrototype()
@@ -1791,6 +1812,22 @@ public class JSRealm {
         return shadowRealmPrototype;
     }
 
+    public final JSFunctionObject getAsyncContextSnapshotConstructor() {
+        return asyncContextSnapshotConstructor;
+    }
+
+    public final JSDynamicObject getAsyncContextSnapshotPrototype() {
+        return asyncContextSnapshotPrototype;
+    }
+
+    public final JSFunctionObject getAsyncContexVariableConstructor() {
+        return asyncContextVariableConstructor;
+    }
+
+    public final JSDynamicObject getAsyncContextVariablePrototype() {
+        return asyncContextVariablePrototype;
+    }
+
     public final JSContextOptions getContextOptions() {
         return contextOptions;
     }
@@ -1938,6 +1975,9 @@ public class JSRealm {
         }
         if (getContextOptions().isShadowRealm()) {
             putGlobalProperty(JSShadowRealm.CLASS_NAME, getShadowRealmConstructor());
+        }
+        if (getContextOptions().isAsyncContext()) {
+            putGlobalProperty(JSAsyncContext.NAMESPACE_NAME, JSAsyncContext.create(this));
         }
         if (context.getLanguageOptions().profileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);

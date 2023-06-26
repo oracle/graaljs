@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.promise;
+package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+import com.oracle.truffle.js.runtime.objects.AsyncContext;
 
-public class TriggerPromiseReactionsNode extends JavaScriptBaseNode {
-    private final JSContext context;
-    @Child private PromiseReactionJobNode promiseReactionJob;
-
-    protected TriggerPromiseReactionsNode(JSContext context) {
-        this.context = context;
-        this.promiseReactionJob = PromiseReactionJobNode.create(context);
-    }
-
-    public static TriggerPromiseReactionsNode create(JSContext context) {
-        return new TriggerPromiseReactionsNode(context);
-    }
-
-    /**
-     * For each reaction in reactions, in original insertion order, do Perform
-     * EnqueueJob("PromiseJobs", PromiseReactionJob, << reaction, argument >>).
-     */
-    public Object execute(Object reactions, Object argument) {
-        SimpleArrayList<?> list = (SimpleArrayList<?>) reactions;
-        for (int i = 0; i < list.size(); i++) {
-            Object reaction = list.get(i);
-            JSFunctionObject job = promiseReactionJob.execute(reaction, argument);
-            context.enqueuePromiseJob(getRealm(), job);
-        }
-        return Undefined.instance;
+/**
+ * Represents a promise job callback (ES: JobCallback record).
+ */
+public record JobCallback(Object callback, AsyncContext asyncContextSnapshot, Object hostDefined) {
+    public JobCallback(Object callback, AsyncContext asyncContextSnapshot) {
+        this(callback, asyncContextSnapshot, null);
     }
 }

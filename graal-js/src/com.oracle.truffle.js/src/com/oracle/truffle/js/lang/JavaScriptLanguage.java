@@ -111,9 +111,11 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSLanguageOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.interop.JavaScriptLanguageView;
+import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @ProvidedTags({
@@ -545,11 +547,16 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     @SuppressWarnings("unchecked")
     private static void processTimeoutCallbacks(JSRealm realm) {
         JSAgent agent = realm.getAgent();
-        List<Object> callbackList;
-        while ((callbackList = (List<Object>) realm.getEmbedderData()) != null && !callbackList.isEmpty()) {
+        List<JobCallback> callbackList;
+        while ((callbackList = (List<JobCallback>) realm.getEmbedderData()) != null && !callbackList.isEmpty()) {
             realm.setEmbedderData(null);
-            for (Object callback : callbackList) {
-                JSRuntime.call(callback, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+            for (JobCallback callback : callbackList) {
+                AsyncContext previousContextMapping = agent.asyncContextSwap(callback.asyncContextSnapshot());
+                try {
+                    JSRuntime.call(callback.callback(), Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                } finally {
+                    agent.asyncContextSwap(previousContextMapping);
+                }
             }
             agent.processAllPromises(true);
         }

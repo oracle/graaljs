@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.promise;
+package com.oracle.truffle.js.runtime.builtins.asynccontext;
 
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public class TriggerPromiseReactionsNode extends JavaScriptBaseNode {
-    private final JSContext context;
-    @Child private PromiseReactionJobNode promiseReactionJob;
+/**
+ * AsyncContext namespace.
+ */
+public final class JSAsyncContext {
 
-    protected TriggerPromiseReactionsNode(JSContext context) {
-        this.context = context;
-        this.promiseReactionJob = PromiseReactionJobNode.create(context);
+    public static final TruffleString NAMESPACE_NAME = Strings.constant("AsyncContext");
+
+    private JSAsyncContext() {
     }
 
-    public static TriggerPromiseReactionsNode create(JSContext context) {
-        return new TriggerPromiseReactionsNode(context);
-    }
-
-    /**
-     * For each reaction in reactions, in original insertion order, do Perform
-     * EnqueueJob("PromiseJobs", PromiseReactionJob, << reaction, argument >>).
-     */
-    public Object execute(Object reactions, Object argument) {
-        SimpleArrayList<?> list = (SimpleArrayList<?>) reactions;
-        for (int i = 0; i < list.size(); i++) {
-            Object reaction = list.get(i);
-            JSFunctionObject job = promiseReactionJob.execute(reaction, argument);
-            context.enqueuePromiseJob(getRealm(), job);
-        }
-        return Undefined.instance;
+    public static JSObject create(JSRealm realm) {
+        JSObject obj = JSOrdinary.createInit(realm);
+        JSObjectUtil.putDataProperty(obj, JSAsyncContextSnapshot.CLASS_NAME, realm.getAsyncContextSnapshotConstructor());
+        JSObjectUtil.putDataProperty(obj, JSAsyncContextVariable.CLASS_NAME, realm.getAsyncContexVariableConstructor());
+        return obj;
     }
 }

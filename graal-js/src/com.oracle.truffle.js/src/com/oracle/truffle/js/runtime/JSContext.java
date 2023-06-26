@@ -120,6 +120,8 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextSnapshot;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariable;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
@@ -507,6 +509,8 @@ public class JSContext {
     private final JSObjectFactory webAssemblyGlobalFactory;
 
     private final JSObjectFactory shadowRealmFactory;
+    private final JSObjectFactory asyncContextSnapshotFactory;
+    private final JSObjectFactory asyncContextVariableFactory;
 
     private final int factoryCount;
 
@@ -698,6 +702,8 @@ public class JSContext {
         this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
 
         this.shadowRealmFactory = builder.create(JSShadowRealm.INSTANCE);
+        this.asyncContextSnapshotFactory = builder.create(JSAsyncContextSnapshot.INSTANCE);
+        this.asyncContextVariableFactory = builder.create(JSAsyncContextVariable.INSTANCE);
 
         this.factoryCount = builder.finish();
 
@@ -846,11 +852,12 @@ public class JSContext {
     }
 
     /**
-     * ECMA 8.4.1 EnqueueJob.
+     * ES abstract operation HostEnqueuePromiseJob.
      */
-    public final void promiseEnqueueJob(JSRealm realm, JSFunctionObject job) {
+    public final void enqueuePromiseJob(JSRealm realm, JSFunctionObject job) {
         invalidatePromiseQueueNotUsedAssumption();
-        realm.getAgent().enqueuePromiseJob(job);
+        JSAgent agent = realm.getAgent();
+        agent.enqueuePromiseJob(job);
     }
 
     public final void signalAsyncWaiterRecordUsage() {
@@ -1198,6 +1205,14 @@ public class JSContext {
 
     public final JSObjectFactory getShadowRealmFactory() {
         return shadowRealmFactory;
+    }
+
+    public final JSObjectFactory getAsyncContextSnapshotFactory() {
+        return asyncContextSnapshotFactory;
+    }
+
+    public final JSObjectFactory getAsyncContextVariableFactory() {
+        return asyncContextVariableFactory;
     }
 
     private static final String REGEX_OPTION_REGRESSION_TEST_MODE = "RegressionTestMode";

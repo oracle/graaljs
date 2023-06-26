@@ -175,6 +175,7 @@ public final class Strings {
     public static final TruffleString COMPARE = constant("compare");
     public static final TruffleString CONSTRUCT = Strings.constant("construct");
     public static final TruffleString DEFAULT = constant("default");
+    public static final TruffleString DEFAULT_VALUE = constant("defaultValue");
     public static final TruffleString DELETE = constant("delete");
     public static final TruffleString DONE = constant("done");
     public static final TruffleString EMPTY = constant("empty");

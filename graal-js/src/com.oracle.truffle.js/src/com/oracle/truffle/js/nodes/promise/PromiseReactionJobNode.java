@@ -60,10 +60,12 @@ import com.oracle.truffle.js.nodes.control.AwaitNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -128,8 +130,9 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
             Object argument = getArgument.getValue(functionObject);
 
             PromiseCapabilityRecord promiseCapability = reaction.getCapability();
-            Object handler = reaction.getHandler();
-            assert promiseCapability != null || handler != Undefined.instance;
+            JobCallback handler = reaction.getHandler();
+            assert promiseCapability != null || handler != null;
+            JSAgent agent = getRealm().getAgent();
 
             if (promiseCapability != null) {
                 context.notifyPromiseHook(PromiseHook.TYPE_BEFORE, promiseCapability.getPromise());
@@ -137,12 +140,17 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
 
             Object handlerResult;
             boolean fulfill;
-            if (handlerProf.profile(handler == Undefined.instance)) {
+            if (handlerProf.profile(handler == null)) {
                 handlerResult = argument;
                 fulfill = reaction.isFulfill();
             } else {
                 try {
-                    handlerResult = callHandler().executeCall(JSArguments.createOneArg(Undefined.instance, handler, argument));
+                    var previousContextMapping = agent.asyncContextSwap(handler.asyncContextSnapshot());
+                    try {
+                        handlerResult = callHandler().executeCall(JSArguments.createOneArg(Undefined.instance, handler.callback(), argument));
+                    } finally {
+                        agent.asyncContextSwap(previousContextMapping);
+                    }
                     // If promiseCapability is undefined, return NormalCompletion(empty).
                     if (promiseCapability == null) {
                         return Undefined.instance;
@@ -219,8 +227,8 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
             PromiseCapabilityRecord promiseCapability = reaction.getCapability();
             if (promiseCapability != null) {
                 return AwaitNode.findAsyncStackFramesFromPromise(promiseCapability.getPromise());
-            } else if (JSFunction.isJSFunction(reaction.getHandler())) {
-                return AwaitNode.findAsyncStackFramesFromHandler((JSFunctionObject) reaction.getHandler());
+            } else if (reaction.getHandler() != null && reaction.getHandler().callback() instanceof JSFunctionObject callbackFunction) {
+                return AwaitNode.findAsyncStackFramesFromHandler(callbackFunction);
             }
             return null;
         }

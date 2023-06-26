@@ -51,11 +51,14 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltins;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
+import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -73,7 +76,7 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
     private JSFinalizationRegistry() {
     }
 
-    public static JSFinalizationRegistryObject create(JSContext context, JSRealm realm, Object cleanupCallback) {
+    public static JSFinalizationRegistryObject create(JSContext context, JSRealm realm, JobCallback cleanupCallback) {
         JSObjectFactory factory = context.getFinalizationRegistryFactory();
         JSFinalizationRegistryObject obj = factory.initProto(new JSFinalizationRegistryObject(factory.getShape(realm), cleanupCallback, new ArrayList<>(), createReferenceQueue()), realm);
         context.registerFinalizationRegistry(obj);
@@ -153,11 +156,25 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
 
     @TruffleBoundary
     public static void cleanupFinalizationRegistry(JSFinalizationRegistryObject finalizationRegistry, Object callbackArg) {
-        Object callback = callbackArg == Undefined.instance ? finalizationRegistry.getCleanupCallback() : callbackArg;
+        JSAgent agent = JSRealm.get(null).getAgent();
+        Object callback;
+        AsyncContext asyncContext = null;
+        if (callbackArg == Undefined.instance) {
+            callback = finalizationRegistry.getCleanupCallback().callback();
+            asyncContext = finalizationRegistry.getCleanupCallback().asyncContextSnapshot();
+        } else {
+            callback = callbackArg;
+            asyncContext = agent.getAsyncContextMapping();
+        }
         FinalizationRecord cell;
         while ((cell = removeCellEmptyTarget(finalizationRegistry)) != null) {
             assert (cell.getWeakRefTarget().get() == null);
-            JSRuntime.call(callback, Undefined.instance, new Object[]{cell.getHeldValue()});
+            AsyncContext previousContextMapping = agent.asyncContextSwap(asyncContext);
+            try {
+                JSRuntime.call(callback, Undefined.instance, new Object[]{cell.getHeldValue()});
+            } finally {
+                agent.asyncContextSwap(previousContextMapping);
+            }
         }
     }
 

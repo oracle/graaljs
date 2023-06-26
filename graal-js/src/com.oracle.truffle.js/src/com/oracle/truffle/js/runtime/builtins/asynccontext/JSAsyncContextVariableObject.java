@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,48 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.cast;
+package com.oracle.truffle.js.runtime.builtins.asynccontext;
 
-import java.util.Set;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+public final class JSAsyncContextVariableObject extends JSNonProxyObject {
 
-/**
- * This node can be used to add a {@link JSFunction} to the queue of pending tasks in a given
- * {@link JSContext}.
- */
-@NodeChild(value = "function")
-public abstract class JSEnqueueJobNode extends JavaScriptNode {
+    private final Symbol asyncContextKey;
+    private final Object asyncContextDefaultValue;
 
-    private final JSContext context;
-
-    public JSEnqueueJobNode(JSContext context) {
-        this.context = context;
+    protected JSAsyncContextVariableObject(Shape shape, Symbol asyncContextKey, Object asyncContextDefaultValue) {
+        super(shape);
+        this.asyncContextKey = asyncContextKey;
+        this.asyncContextDefaultValue = asyncContextDefaultValue;
     }
-
-    public static JSEnqueueJobNode create(JSContext context, JavaScriptNode argument) {
-        return JSEnqueueJobNodeGen.create(context, argument);
-    }
-
-    @TruffleBoundary
-    @Specialization
-    protected Object doOther(JSFunctionObject function) {
-        context.promiseEnqueueJob(getRealm(), function);
-        return Undefined.instance;
-    }
-
-    abstract JavaScriptNode getFunction();
 
     @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSEnqueueJobNodeGen.create(context, cloneUninitialized(getFunction(), materializedTags));
+    public TruffleString getClassName() {
+        return JSAsyncContextVariable.CLASS_NAME;
+    }
+
+    public Symbol getAsyncContextKey() {
+        return asyncContextKey;
+    }
+
+    public Object getAsyncContextDefaultValue() {
+        return asyncContextDefaultValue;
+    }
+
+    public static JSAsyncContextVariableObject create(JSRealm realm, JSObjectFactory factory, Symbol asyncContextKey, Object asyncContextDefaultValue) {
+        return factory.initProto(new JSAsyncContextVariableObject(factory.getShape(realm), asyncContextKey, asyncContextDefaultValue), realm);
     }
 }

@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -157,8 +158,9 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 if (!isCallableNode.executeBoolean(then)) {
                     return fulfillPromise(promise, resolution);
                 }
-                JSFunctionObject job = promiseResolveThenableJob(promise, resolution, then);
-                context.promiseEnqueueJob(getRealm(), job);
+                JobCallback thenJobCallback = getRealm().getAgent().hostMakeJobCallback(then);
+                JSFunctionObject job = promiseResolveThenableJob(promise, resolution, thenJobCallback);
+                context.enqueuePromiseJob(getRealm(), job);
                 return Undefined.instance;
             }
 
@@ -199,7 +201,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 }
             }
 
-            private JSFunctionObject promiseResolveThenableJob(JSDynamicObject promise, Object thenable, Object then) {
+            private JSFunctionObject promiseResolveThenableJob(JSDynamicObject promise, Object thenable, JobCallback then) {
                 if (setPromiseNode == null || setThenableNode == null || setThenNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setPromiseNode = insert(PropertySetNode.createSetHidden(PROMISE_KEY, context));
@@ -236,7 +238,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 JSDynamicObject promiseToResolve = (JSDynamicObject) getPromiseToResolveNode.getValue(functionObject);
                 Object thenable = getThenableNode.getValue(functionObject);
-                Object then = getThenNode.getValue(functionObject);
+                JobCallback then = (JobCallback) getThenNode.getValue(functionObject);
                 return promiseResolveThenable.execute(promiseToResolve, thenable, then);
             }
         }

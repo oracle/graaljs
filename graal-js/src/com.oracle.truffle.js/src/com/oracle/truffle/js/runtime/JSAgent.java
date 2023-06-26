@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -97,6 +98,8 @@ public abstract class JSAgent {
 
     private final PromiseRejectionTracker promiseRejectionTracker;
 
+    private AsyncContext asyncContextMapping = AsyncContext.empty();
+
     public JSAgent(boolean canBlock) {
         this(null, canBlock);
     }
@@ -118,6 +121,10 @@ public abstract class JSAgent {
 
     public boolean canBlock() {
         return canBlock;
+    }
+
+    public final JobCallback hostMakeJobCallback(Object callback) {
+        return new JobCallback(callback, getAsyncContextMapping());
     }
 
     @TruffleBoundary
@@ -145,10 +152,8 @@ public abstract class JSAgent {
                 }
                 if (!promiseJobsQueue.isEmpty()) {
                     JSFunctionObject nextJob = promiseJobsQueue.pollLast();
-                    if (JSFunction.isJSFunction(nextJob)) {
-                        checkWaiterRecords = true;
-                        JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
-                    }
+                    JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                    checkWaiterRecords = true;
                 }
             }
         } catch (Throwable t) {
@@ -265,5 +270,20 @@ public abstract class JSAgent {
      * Terminate the agent.
      */
     public abstract void terminate();
+
+    public AsyncContext getAsyncContextMapping() {
+        return asyncContextMapping;
+    }
+
+    private void setAsyncContextMapping(AsyncContext asyncContextMapping) {
+        assert asyncContextMapping != null;
+        this.asyncContextMapping = asyncContextMapping;
+    }
+
+    public AsyncContext asyncContextSwap(AsyncContext snapshot) {
+        var previous = getAsyncContextMapping();
+        setAsyncContextMapping(snapshot);
+        return previous;
+    }
 
 }

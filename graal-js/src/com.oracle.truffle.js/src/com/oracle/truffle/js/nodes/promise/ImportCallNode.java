@@ -72,6 +72,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -229,7 +230,7 @@ public class ImportCallNode extends JavaScriptNode {
             assert JSPromise.isJSPromise(promise);
             return promise;
         } else {
-            context.promiseEnqueueJob(realm, createImportModuleDynamicallyJob(referencingScriptOrModule, moduleRequest, promiseCapability));
+            context.enqueuePromiseJob(realm, createImportModuleDynamicallyJob(referencingScriptOrModule, moduleRequest, promiseCapability, realm));
             return promiseCapability.getPromise();
         }
     }
@@ -269,15 +270,16 @@ public class ImportCallNode extends JavaScriptNode {
     /**
      * Returns a promise job that performs both HostImportModuleDynamically and FinishDynamicImport.
      */
-    public JSFunctionObject createImportModuleDynamicallyJob(ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
+    public JSFunctionObject createImportModuleDynamicallyJob(ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability, JSRealm realm) {
+        JobCallback importModuleDynamicallyHandler = realm.getAgent().hostMakeJobCallback(createImportModuleDynamicallyHandler(realm));
         if (context.isOptionTopLevelAwait()) {
             Triple<ScriptOrModule, ModuleRequest, PromiseCapabilityRecord> request = new Triple<>(referencingScriptOrModule, moduleRequest, promiseCapability);
             PromiseCapabilityRecord startModuleLoadCapability = newPromiseCapability();
-            PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, createImportModuleDynamicallyHandler(), true);
+            PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, importModuleDynamicallyHandler, true);
             return promiseReactionJobNode.execute(startModuleLoad, request);
         } else {
             Pair<ScriptOrModule, ModuleRequest> request = new Pair<>(referencingScriptOrModule, moduleRequest);
-            return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, createImportModuleDynamicallyHandler(), true), request);
+            return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, importModuleDynamicallyHandler, true), request);
         }
     }
 
@@ -285,9 +287,9 @@ public class ImportCallNode extends JavaScriptNode {
      * Returns a handler function to be used together with a PromiseReactionJob in order to perform
      * the steps of both HostImportModuleDynamically and FinishDynamicImport.
      */
-    private JSDynamicObject createImportModuleDynamicallyHandler() {
+    private JSFunctionObject createImportModuleDynamicallyHandler(JSRealm realm) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ImportModuleDynamically, (c) -> createImportModuleDynamicallyHandlerImpl(c));
-        return JSFunction.create(getRealm(), functionData);
+        return JSFunction.create(realm, functionData);
     }
 
     private static JSFunctionData createImportModuleDynamicallyHandlerImpl(JSContext context) {
