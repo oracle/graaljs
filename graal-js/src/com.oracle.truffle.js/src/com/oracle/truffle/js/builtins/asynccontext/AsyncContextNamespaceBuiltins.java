@@ -49,6 +49,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltins.ConstructWithNewTarget
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.asynccontext.AsyncContextNamespaceBuiltinsFactory.ConstructAsyncContextSnapshotNodeGen;
 import com.oracle.truffle.js.builtins.asynccontext.AsyncContextNamespaceBuiltinsFactory.ConstructAsyncContextVariableNodeGen;
+import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -164,18 +165,18 @@ public final class AsyncContextNamespaceBuiltins extends JSBuiltinsContainer.Swi
         protected final JSObject construct(JSDynamicObject newTarget, Object options,
                         @Cached IsObjectNode isObject,
                         @Cached JSToStringNode toString,
+                        @Cached("create(NAME, getContext())") HasPropertyCacheNode hasName,
                         @Cached("create(NAME, getContext())") PropertyGetNode getName,
                         @Cached("create(DEFAULT_VALUE, getContext())") PropertyGetNode getDefaultValue) {
             JSRealm realm = getRealm();
-            TruffleString nameStr;
-            Object defaultValue;
+            TruffleString nameStr = Strings.EMPTY_STRING;
+            Object defaultValue = Undefined.instance;
             if (isObject.executeBoolean(options)) {
-                Object name = getName.getValue(options);
-                nameStr = toString.executeString(name);
+                if (hasName.hasProperty(options)) {
+                    Object name = getName.getValue(options);
+                    nameStr = toString.executeString(name);
+                }
                 defaultValue = getDefaultValue.getValue(options);
-            } else {
-                nameStr = Strings.EMPTY_STRING;
-                defaultValue = Undefined.instance;
             }
             Symbol asyncContextKey = Symbol.create(nameStr);
             return swapPrototype(JSAsyncContextVariable.create(getContext(), realm, asyncContextKey, defaultValue), newTarget);
