@@ -681,10 +681,19 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return getInternalState(obj).dateFormat;
     }
 
+    private static String maybeReplaceNarrowSpaces(String formatted) {
+        if (!JSRealm.getMain(null).getContextOptions().allowNarrowSpacesInDateFormat()) {
+            return formatted.replace('\u202f', ' ');
+        }
+        return formatted;
+    }
+
     @TruffleBoundary
     public static TruffleString format(JSDynamicObject numberFormatObj, Object n) {
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
-        return Strings.fromJavaString(dateFormat.format(timeClip(n)));
+        String formatted = dateFormat.format(timeClip(n));
+        formatted = maybeReplaceNarrowSpaces(formatted);
+        return Strings.fromJavaString(formatted);
     }
 
     private static double timeClip(Object n) {
