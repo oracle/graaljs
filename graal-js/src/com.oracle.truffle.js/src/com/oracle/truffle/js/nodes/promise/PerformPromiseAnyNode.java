@@ -185,7 +185,7 @@ public abstract class PerformPromiseAnyNode extends PerformPromiseCombinatorNode
                 JSRealm realm = getRealm();
                 JSArrayObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors);
                 JSErrorObject aggregateErrorObject = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
-                JSDynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
+                JSFunctionObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
                 GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, null, aggregateErrorObject, realm, stackTraceLimit, errorFunction, false);
                 initErrorObjectNode.execute(aggregateErrorObject, exception, null, errorsArray);
                 return aggregateErrorObject;

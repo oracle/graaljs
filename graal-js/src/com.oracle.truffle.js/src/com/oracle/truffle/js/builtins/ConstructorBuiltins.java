@@ -2317,7 +2317,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             swapPrototype(errorObj, newTarget);
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();
-            JSDynamicObject errorFunction = realm.getErrorConstructor(errorType);
+            JSFunctionObject errorFunction = realm.getErrorConstructor(errorType);
 
             // We skip until newTarget (if any) so as to also skip user-defined Error constructors.
             JSDynamicObject skipUntil = newTarget == Undefined.instance ? errorFunction : newTarget;
@@ -2378,7 +2378,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             JSArrayObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors.toArray());
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();
-            JSDynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
+            JSFunctionObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
 
             // We skip until newTarget (if any) so as to also skip user-defined Error constructors.
             JSDynamicObject skipUntil = newTarget == Undefined.instance ? errorFunction : newTarget;

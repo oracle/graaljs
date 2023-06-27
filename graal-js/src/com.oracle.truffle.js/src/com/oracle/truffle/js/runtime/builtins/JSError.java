@@ -316,7 +316,7 @@ public final class JSError extends JSNonProxy {
      */
     @TruffleBoundary
     public static Object prepareStackNoCallback(JSRealm realm, JSDynamicObject errorObj, JSStackTraceElement[] jsStackTrace) {
-        JSDynamicObject error = realm.getErrorConstructor(JSErrorType.Error);
+        JSFunctionObject error = realm.getErrorConstructor(JSErrorType.Error);
         Object prepareStackTrace = JSObject.get(error, PREPARE_STACK_TRACE_NAME);
         if (JSFunction.isJSFunction(prepareStackTrace)) {
             return prepareStackWithUserFunction(realm, (JSFunctionObject) prepareStackTrace, errorObj, jsStackTrace);
