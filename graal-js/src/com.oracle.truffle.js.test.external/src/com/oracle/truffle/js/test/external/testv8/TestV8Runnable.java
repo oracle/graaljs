@@ -80,6 +80,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
     private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
+    private static final String HARMONY_SET_METHODS = "--harmony-set-methods";
     private static final String HARMONY_TEMPORAL = "--harmony-temporal";
     private static final String HARMONY_SHADOW_REALM = "--harmony-shadow-realm";
     private static final String HARMONY_REGEXP_UNICODE_SETS = "--harmony-regexp-unicode-sets";
@@ -198,6 +199,9 @@ public class TestV8Runnable extends TestRunnable {
         }
         if (flags.contains(HARMONY_ITERATOR_HELPERS)) {
             extraOptions.put(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        }
+        if (flags.contains(HARMONY_SET_METHODS)) {
+            extraOptions.put(JSContextOptions.NEW_SET_METHODS_NAME, "true");
         }
         if (flags.contains(HARMONY_TEMPORAL)) {
             extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");
