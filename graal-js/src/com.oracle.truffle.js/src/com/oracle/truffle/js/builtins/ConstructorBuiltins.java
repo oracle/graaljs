@@ -72,6 +72,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.AbstractClassConstructorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBigIntNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBooleanNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallCollatorNodeGen;
@@ -82,7 +83,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberNodeG
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRequiresNewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallSymbolNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTypedArrayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAggregateErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayNodeGen;
@@ -571,7 +571,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return ConstructAggregateErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(3).createArgumentNodes(context));
 
             case TypedArray:
-                return CallTypedArrayNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                return AbstractClassConstructorNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case Int8Array:
             case Uint8Array:
             case Uint8ClampedArray:
@@ -2197,18 +2197,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
     }
 
-    /**
-     * Implements ECMAScript 2015, 22.2.1.4 %TypedArray% (object).
-     *
-     */
-    public abstract static class CallTypedArrayNode extends JSBuiltinNode {
-        public CallTypedArrayNode(JSContext context, JSBuiltin builtin) {
+    public abstract static class AbstractClassConstructorNode extends JSBuiltinNode {
+        public AbstractClassConstructorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
+        @TruffleBoundary(transferToInterpreterOnException = false)
         @Specialization
-        protected Object callTypedArray(@SuppressWarnings("unused") Object... args) {
-            throw Errors.createTypeError("wrong");
+        protected final Object construct() {
+            throw Errors.createTypeErrorFormat("Abstract class %s not directly constructable", getBuiltin().getName());
         }
     }
 
@@ -2522,6 +2519,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin);
         }
 
+        @TruffleBoundary(transferToInterpreterOnException = false)
         @Specialization
         protected final Object call() {
             throw Errors.createTypeErrorFormat("Constructor %s requires 'new'", getBuiltin().getName());
