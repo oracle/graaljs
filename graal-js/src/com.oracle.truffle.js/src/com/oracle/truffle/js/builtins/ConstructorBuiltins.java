@@ -2375,7 +2375,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             IteratorRecord iterator = getIteratorNode.execute(this, errorsObj);
             SimpleArrayList<Object> errors = iterableToListNode.execute(iterator);
-            JSDynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors.toArray());
+            JSArrayObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors.toArray());
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();
             JSDynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);

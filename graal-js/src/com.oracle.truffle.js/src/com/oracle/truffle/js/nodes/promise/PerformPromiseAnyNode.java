@@ -64,14 +64,15 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -182,8 +183,8 @@ public abstract class PerformPromiseAnyNode extends PerformPromiseCombinatorNode
             private JSDynamicObject createAggregateError(Object[] errors) {
                 int stackTraceLimit = stackTraceLimitNode.executeInt();
                 JSRealm realm = getRealm();
-                JSDynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors);
-                JSObject aggregateErrorObject = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
+                JSArrayObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors);
+                JSErrorObject aggregateErrorObject = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
                 JSDynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
                 GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, null, aggregateErrorObject, realm, stackTraceLimit, errorFunction, false);
                 initErrorObjectNode.execute(aggregateErrorObject, exception, null, errorsArray);
