@@ -87,7 +87,6 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Array.prototype");
     public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("Array Iterator");
     public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("Array Iterator.prototype");
-    public static final TruffleString ENTRIES = Strings.constant("entries");
 
     public static final JSArray INSTANCE = new JSArray();
 
@@ -220,7 +219,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             names.add(Strings.AT);
         }
         names.add(Strings.COPY_WITHIN);
-        names.add(JSArray.ENTRIES);
+        names.add(Strings.ENTRIES);
         names.add(Strings.FILL);
         names.add(Strings.FIND);
         names.add(Strings.FIND_INDEX);

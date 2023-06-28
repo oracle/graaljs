@@ -100,7 +100,7 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         // The initial value of the @@iterator property is the same function object as
         // the initial value of the entries property.
-        Object entriesFunction = JSDynamicObject.getOrNull(prototype, JSArray.ENTRIES);
+        Object entriesFunction = JSDynamicObject.getOrNull(prototype, Strings.ENTRIES);
         JSObjectUtil.putDataProperty(prototype, Symbol.SYMBOL_ITERATOR, entriesFunction, JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
