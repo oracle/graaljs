@@ -887,7 +887,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization(guards = "!isCallable(mapper)")
         public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -982,7 +981,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization(guards = "!isCallable(filterer)")
         public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object filterer) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1110,8 +1108,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization
         public JSDynamicObject take(Object thisObj, Object limit,
+                        @Cached IsObjectNode isObjectNode,
                         @Cached InlinedBranchProfile errorBranch) {
-            IteratorRecord record = getIteratorDirect(thisObj);
+
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
@@ -1125,6 +1128,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
+            IteratorRecord record = getIteratorDirect(thisObj);
             AsyncIteratorTakeArgs args = new AsyncIteratorTakeArgs(record, integerLimit);
             return createAsyncIteratorHelperNode.execute(record, awaitNode.createFunction(args));
         }
@@ -1228,8 +1232,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization
         public JSDynamicObject drop(Object thisObj, Object limit,
+                        @Cached IsObjectNode isObjectNode,
                         @Cached InlinedBranchProfile errorBranch) {
-            IteratorRecord record = getIteratorDirect(thisObj);
+
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
@@ -1243,6 +1252,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
+            IteratorRecord record = getIteratorDirect(thisObj);
             AsyncIteratorDropArgs args = new AsyncIteratorDropArgs(record, integerLimit);
             return createAsyncIteratorHelperNode.execute(record, awaitNode.createFunction(args));
         }
@@ -1379,7 +1389,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization(guards = "!isCallable(mapper)")
         public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1563,7 +1572,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization(guards = "!isCallable(reducer)")
         public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object reducer, @SuppressWarnings("unused") Object[] args) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1768,7 +1776,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization(guards = "!isCallable(fn)")
         public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1865,7 +1872,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization(guards = "!isCallable(fn)")
         public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1972,7 +1978,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization(guards = "!isCallable(fn)")
         public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -2078,7 +2083,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         @Specialization(guards = "!isCallable(fn)")
         public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 

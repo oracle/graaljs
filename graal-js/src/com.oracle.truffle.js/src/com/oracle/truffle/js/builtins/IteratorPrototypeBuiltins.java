@@ -58,6 +58,7 @@ import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
@@ -380,7 +381,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "!isCallable(mapper)")
         public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -449,7 +449,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "!isCallable(filterer)")
         public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object filterer) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -526,8 +525,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         public JSDynamicObject take(Object thisObj, Object limit,
+                        @Cached IsObjectNode isObjectNode,
                         @Cached InlinedBranchProfile errorBranch) {
-            IteratorRecord iterated = getIteratorDirect(thisObj);
+
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
@@ -540,6 +544,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 errorBranch.enter(this);
                 throw Errors.createRangeErrorIndexNegative(this);
             }
+
+            IteratorRecord iterated = getIteratorDirect(thisObj);
 
             return createIterator(new IteratorTakeArgs(iterated, integerLimit));
         }
@@ -605,8 +611,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         public JSDynamicObject drop(Object thisObj, Object limit,
+                        @Cached IsObjectNode isObjectNode,
                         @Cached InlinedBranchProfile errorBranch) {
-            IteratorRecord iterated = getIteratorDirect(thisObj);
+
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
@@ -619,6 +630,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 errorBranch.enter(this);
                 throw Errors.createRangeErrorIndexNegative(this);
             }
+
+            IteratorRecord iterated = getIteratorDirect(thisObj);
 
             return createIterator(new IteratorDropArgs(iterated, integerLimit));
         }
@@ -686,7 +699,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "!isCallable(mapper)")
         public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -835,7 +847,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "!isCallable(fn)")
         protected void incompatible(Object thisObj, Object fn) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorNotAFunction(fn);
         }
 
@@ -1001,7 +1012,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "!isCallable(reducer)")
         protected void incompatible(Object thisObj, Object reducer, @SuppressWarnings("unused") Object[] args) {
-            getIteratorDirect(thisObj);
             throw Errors.createTypeErrorNotAFunction(reducer);
         }
 
