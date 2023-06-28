@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
-import com.ibm.icu.util.GregorianCalendar;
-import com.ibm.icu.util.TimeZone;
+import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.js.runtime.Errors;
 import java.time.Instant;
 import java.time.LocalDate;

@@ -44,9 +44,9 @@ import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.Locale;
 
-import com.ibm.icu.text.Collator;
-import com.ibm.icu.text.RuleBasedCollator;
-import com.ibm.icu.util.ULocale;
+import org.graalvm.shadowed.com.ibm.icu.text.Collator;
+import org.graalvm.shadowed.com.ibm.icu.text.RuleBasedCollator;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
