@@ -589,7 +589,8 @@ suite = {
       "distDependencies" : [
         "sdk:GRAAL_SDK",
         "GRAALJS"
-      ]
+      ],
+      "maven" : False,
     }
   }
 }
