@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -74,10 +75,12 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     private boolean propertyAssumptionCheckEnabled = true;
     @Child protected HasCacheNode cacheNode;
 
+    @NeverDefault
     public static HasPropertyCacheNode create(Object key, JSContext context, boolean hasOwnProperty) {
         return new HasPropertyCacheNode(key, context, hasOwnProperty);
     }
 
+    @NeverDefault
     public static HasPropertyCacheNode create(Object key, JSContext context) {
         return create(key, context, false);
     }
