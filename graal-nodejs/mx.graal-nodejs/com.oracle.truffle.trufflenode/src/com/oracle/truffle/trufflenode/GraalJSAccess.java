@@ -126,10 +126,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntSupplier;
 
-import com.oracle.js.parser.ParserException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 
+import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
@@ -230,6 +230,7 @@ import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
@@ -3710,11 +3711,11 @@ public final class GraalJSAccess {
     }
 
     public Object promiseResult(Object promise) {
-        return JSObjectUtil.getHiddenProperty((JSDynamicObject) promise, JSPromise.PROMISE_RESULT);
+        return JSPromise.getPromiseResult((JSPromiseObject) promise);
     }
 
     public int promiseState(Object promise) {
-        return JSPromise.getPromiseState((JSDynamicObject) promise);
+        return JSPromise.getPromiseState((JSPromiseObject) promise);
     }
 
     public Object promiseResolverNew(Object context) {

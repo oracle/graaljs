@@ -373,8 +373,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             this.getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
         }
 
-        @Specialization(guards = "isJSObject(syncIterator)")
-        protected Object createAsyncFromSyncIterator(JSDynamicObject syncIterator) {
+        @Specialization
+        protected Object createAsyncFromSyncIterator(JSObject syncIterator) {
             JSContext context = getContext();
             JSObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
             IteratorRecord syncIteratorRecord = IteratorRecord.create(syncIterator, getNextMethodNode.getValue(syncIterator), false);

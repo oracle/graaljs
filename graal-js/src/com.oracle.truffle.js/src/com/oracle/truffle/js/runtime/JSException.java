@@ -60,6 +60,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -150,7 +151,7 @@ public final class JSException extends GraalJSException {
     }
 
     public static int getStackTraceLimit(JSRealm realm) {
-        JSDynamicObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error);
+        JSFunctionObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error);
         DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
         if (JSProperty.isData(lib.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
             Object stackTraceLimit = lib.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);

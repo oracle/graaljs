@@ -973,13 +973,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"isArray(object)", "longIsRepresentableAsInt(longLength)"})
-        protected static void setArrayLength(JSDynamicObject object, long longLength,
+        protected static void setArrayLength(JSObject object, long longLength,
                         @Cached("createSetOrDelete(THROW_ERROR)") ArrayLengthWriteNode arrayLengthWriteNode) {
             arrayLengthWriteNode.executeVoid(object, (int) longLength);
         }
 
-        @Specialization(guards = {"isJSObject(object)", "longIsRepresentableAsInt(longLength)"})
-        protected static void setIntLength(JSDynamicObject object, long longLength,
+        @Specialization(guards = {"longIsRepresentableAsInt(longLength)"})
+        protected static void setIntLength(JSObject object, long longLength,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
                         @Shared("setLengthProperty") @Cached("createSetLengthProperty()") PropertySetNode setLengthProperty) {
             int intLength = (int) longLength;
@@ -987,8 +987,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             setLengthProperty.setValueInt(object, intLength);
         }
 
-        @Specialization(guards = {"isJSObject(object)"}, replaces = "setIntLength")
-        protected void setLength(JSDynamicObject object, long longLength,
+        @Specialization(replaces = "setIntLength")
+        protected void setLength(JSObject object, long longLength,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
                         @Shared("setLengthProperty") @Cached("createSetLengthProperty()") PropertySetNode setLengthProperty,
                         @Cached(inline = true) LongToIntOrDoubleNode indexToNumber) {
@@ -3368,8 +3368,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             this.createArrayIteratorNode = CreateArrayIteratorNode.create(context, iterationKind);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected JSDynamicObject doJSObject(JSDynamicObject thisObj) {
+        @Specialization
+        protected JSDynamicObject doJSObject(JSObject thisObj) {
             return createArrayIteratorNode.execute(thisObj);
         }
 

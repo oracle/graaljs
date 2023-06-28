@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -103,7 +104,7 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         Object returnMethod = getReturnNode.executeWithTarget(iterator);
         if (returnMethod != Undefined.instance) {
             Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-            JSDynamicObject promise = promiseResolve(innerResult);
+            JSPromiseObject promise = promiseResolve(innerResult);
             return performPromiseThenNode.execute(promise, createCloseFunction(promise, outerResult), Undefined.instance, newPromiseCapabilityNode.executeDefault());
         }
         return outerResult;
@@ -114,7 +115,7 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
             Object returnMethod = getReturnNode.executeWithTarget(iterator);
             if (returnMethod != Undefined.instance) {
                 Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-                JSDynamicObject promise = promiseResolve(innerResult);
+                JSPromiseObject promise = promiseResolve(innerResult);
                 JSFunctionObject finallyFunction = createCloseAbruptFunction(promise, error);
                 return performPromiseThenNode.execute(promise, finallyFunction, finallyFunction, newPromiseCapabilityNode.executeDefault());
             }
@@ -124,14 +125,14 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         return error;
     }
 
-    private JSDynamicObject promiseResolve(Object promiseOrValue) {
-        if (!JSPromise.isJSPromise(promiseOrValue) || getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) != getRealm().getPromiseConstructor()) {
+    private JSPromiseObject promiseResolve(Object promiseOrValue) {
+        if (JSPromise.isJSPromise(promiseOrValue) && getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) == getRealm().getPromiseConstructor()) {
+            return (JSPromiseObject) promiseOrValue;
+        } else {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
             callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), promiseOrValue));
-            return promiseCapability.getPromise();
+            return (JSPromiseObject) promiseCapability.getPromise();
         }
-
-        return (JSDynamicObject) promiseOrValue;
     }
 
     public JSFunctionObject createCloseFunction(JSDynamicObject promise, Object completion) {

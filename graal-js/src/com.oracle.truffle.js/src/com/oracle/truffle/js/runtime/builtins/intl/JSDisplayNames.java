@@ -224,14 +224,14 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject displayNamesObject) {
-        InternalState state = getInternalState(displayNamesObject);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSDisplayNamesObject displayNamesObject) {
+        InternalState state = displayNamesObject.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
     }
 
     @TruffleBoundary
-    public static Object of(JSDynamicObject displayNamesObject, String code) {
-        InternalState state = getInternalState(displayNamesObject);
+    public static Object of(JSDisplayNamesObject displayNamesObject, String code) {
+        InternalState state = displayNamesObject.getInternalState();
         String type = state.type;
         LocaleDisplayNames displayNames = state.displayNames;
         String result;
@@ -268,11 +268,6 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
                 throw Errors.shouldNotReachHere(type);
         }
         return (result == null) ? Undefined.instance : Strings.fromJavaString(result);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject displayNamesObject) {
-        assert isJSDisplayNames(displayNamesObject);
-        return ((JSDisplayNamesObject) displayNamesObject).getInternalState();
     }
 
     @Override

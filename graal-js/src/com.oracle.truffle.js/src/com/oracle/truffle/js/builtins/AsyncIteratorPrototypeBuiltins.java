@@ -600,18 +600,18 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             return executeThis(promiseOrValue, args, getThisNode.getValue(JSFrameUtil.getFunctionObject(frame)));
         }
 
-        private JSDynamicObject promiseResolve(Object promiseOrValue) {
+        private JSPromiseObject promiseResolve(Object promiseOrValue) {
             if (JSPromise.isJSPromise(promiseOrValue) && getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) == getRealm().getPromiseConstructor()) {
-                return (JSDynamicObject) promiseOrValue;
+                return (JSPromiseObject) promiseOrValue;
             } else {
                 PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
                 callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), promiseOrValue));
-                return promiseCapability.getPromise();
+                return (JSPromiseObject) promiseCapability.getPromise();
             }
         }
 
         public final JSDynamicObject executeThis(Object promiseOrValue, T args, Object thisObj) {
-            JSDynamicObject promise = promiseResolve(promiseOrValue);
+            JSPromiseObject promise = promiseResolve(promiseOrValue);
 
             JSFunctionObject then = createFunction(args);
             JSFunctionObject catchObj = createFunctionWithArgs(args, context.getOrCreateBuiltinFunctionData(catchKey, catchCreate));

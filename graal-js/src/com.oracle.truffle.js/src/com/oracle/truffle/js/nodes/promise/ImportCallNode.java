@@ -78,6 +78,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -348,18 +349,17 @@ public class ImportCallNode extends JavaScriptNode {
                     JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
                     if (moduleRecord.hasTLA()) {
                         context.getEvaluator().moduleLinking(realm, moduleRecord);
-                        Object innerPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
-                        assert JSPromise.isJSPromise(innerPromise);
+                        JSPromiseObject innerPromise = (JSPromiseObject) context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                         JSDynamicObject resolve = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, false);
                         JSDynamicObject reject = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, true);
-                        promiseThenNode.execute((JSDynamicObject) innerPromise, resolve, reject, moduleLoadedCapability);
+                        promiseThenNode.execute(innerPromise, resolve, reject, moduleLoadedCapability);
                     } else {
                         Object result = finishDynamicImport(realm, moduleRecord, referencingScriptOrModule, moduleRequest);
                         if (moduleRecord.isAsyncEvaluation()) {
                             // Some module import started an async loading chain. The top-level
                             // capability will reject/resolve the dynamic import promise.
                             PromiseCapabilityRecord topLevelCapability = moduleRecord.getTopLevelCapability();
-                            promiseThenNode.execute(topLevelCapability.getPromise(), moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), null);
+                            promiseThenNode.execute((JSPromiseObject) topLevelCapability.getPromise(), moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), null);
                         } else {
                             callPromiseResolve.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
                         }

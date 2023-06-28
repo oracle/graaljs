@@ -72,6 +72,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -171,13 +172,8 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             super(context, builtin);
         }
 
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject getStackTrace(Object thisObj) {
-            throw Errors.createTypeErrorNotAnObject(thisObj);
-        }
-
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected JSDynamicObject getStackTrace(JSDynamicObject thisObj) {
+        @Specialization
+        protected JSDynamicObject getStackTrace(JSObject thisObj) {
             // get original exception from special exception property; call
             // Throwable#getStackTrace(), transform it a bit and turn it into a JSArray
             Object exception = JSDynamicObject.getOrNull(thisObj, JSError.EXCEPTION_PROPERTY_NAME);
@@ -192,6 +188,11 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             } else {
                 return new StackTraceElement[0];
             }
+        }
+
+        @Specialization(guards = "!isJSObject(thisObj)")
+        protected JSDynamicObject getStackTrace(Object thisObj) {
+            throw Errors.createTypeErrorNotAnObject(thisObj);
         }
     }
 

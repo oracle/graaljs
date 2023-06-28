@@ -48,7 +48,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRulesObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
@@ -77,18 +77,18 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         this.setNumberFormatDigitOptions = SetNumberFormatDigitOptionsNode.create(context);
     }
 
-    public abstract JSDynamicObject executeInit(JSDynamicObject collator, Object locales, Object options);
+    public abstract JSPluralRulesObject executeInit(JSPluralRulesObject collator, Object locales, Object options);
 
     public static InitializePluralRulesNode createInitalizePluralRulesNode(JSContext context) {
         return InitializePluralRulesNodeGen.create(context);
     }
 
     @Specialization
-    public JSDynamicObject initializePluralRules(JSDynamicObject pluralRulesObj, Object localesArg, Object optionsArg) {
+    public JSPluralRulesObject initializePluralRules(JSPluralRulesObject pluralRulesObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
         try {
-            JSPluralRules.InternalState state = JSPluralRules.getInternalState(pluralRulesObj);
+            JSPluralRules.InternalState state = pluralRulesObj.getInternalState();
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             Object options = coerceOptionsToObjectNode.execute(optionsArg);

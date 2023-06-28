@@ -677,8 +677,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return false;
     }
 
-    public static DateFormat getDateFormatProperty(JSDynamicObject obj) {
-        return getInternalState(obj).dateFormat;
+    public static DateFormat getDateFormatProperty(JSDateTimeFormatObject obj) {
+        return obj.getInternalState().dateFormat;
     }
 
     private static String maybeReplaceNarrowSpaces(String formatted) {
@@ -689,7 +689,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static TruffleString format(JSDynamicObject numberFormatObj, Object n) {
+    public static TruffleString format(JSDateTimeFormatObject numberFormatObj, Object n) {
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
         String formatted = dateFormat.format(timeClip(n));
         formatted = maybeReplaceNarrowSpaces(formatted);
@@ -746,7 +746,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj, Object n, String source) {
+    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDateTimeFormatObject numberFormatObj, Object n, String source) {
 
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
         String yearPattern = yearRelatedSubpattern(dateFormat);
@@ -795,8 +795,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return JSArray.createConstant(context, realm, resultParts.toArray());
     }
 
-    private static DateIntervalFormat.FormattedDateInterval formatRangeImpl(JSDynamicObject dateTimeFormat, double startDate, double endDate) {
-        InternalState state = getInternalState(dateTimeFormat);
+    private static DateIntervalFormat.FormattedDateInterval formatRangeImpl(JSDateTimeFormatObject dateTimeFormat, double startDate, double endDate) {
+        InternalState state = dateTimeFormat.getInternalState();
         DateFormat dateFormat = state.dateFormat;
         Calendar calendar = dateFormat.getCalendar();
         Calendar fromCalendar = ((Calendar) calendar.clone());
@@ -807,7 +807,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static TruffleString formatRange(JSDynamicObject dateTimeFormat, double startDate, double endDate) {
+    public static TruffleString formatRange(JSDateTimeFormatObject dateTimeFormat, double startDate, double endDate) {
         DateIntervalFormat.FormattedDateInterval formattedRange = formatRangeImpl(dateTimeFormat, startDate, endDate);
 
         if (dateFieldsPracticallyEqual(formattedRange)) {
@@ -828,7 +828,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatRangeToParts(JSContext context, JSRealm realm, JSDynamicObject dateTimeFormat, double startDate, double endDate) {
+    public static JSDynamicObject formatRangeToParts(JSContext context, JSRealm realm, JSDateTimeFormatObject dateTimeFormat, double startDate, double endDate) {
         DateIntervalFormat.FormattedDateInterval formattedRange = formatRangeImpl(dateTimeFormat, startDate, endDate);
 
         if (dateFieldsPracticallyEqual(formattedRange)) {
@@ -875,7 +875,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                 if (field == DateFormat.Field.YEAR) {
                     // DateFormat.Field.YEAR covers both "year" and "yearName"
                     if (digits == null) {
-                        String numberingSystem = getInternalState(dateTimeFormat).numberingSystem;
+                        String numberingSystem = dateTimeFormat.getInternalState().numberingSystem;
                         digits = NumberingSystem.getInstanceByName(numberingSystem).getDescription();
                     }
                     boolean year = (value.length() > 0) && (digits.indexOf(value.charAt(0)) != -1);
@@ -1030,14 +1030,9 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj) {
-        InternalState state = getInternalState(numberFormatObj);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSDateTimeFormatObject dateTimeFormatObj) {
+        InternalState state = dateTimeFormatObj.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject obj) {
-        assert isJSDateTimeFormat(obj);
-        return ((JSDateTimeFormatObject) obj).getInternalState();
     }
 
     @Override

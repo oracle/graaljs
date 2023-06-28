@@ -85,7 +85,7 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         }
     }
 
-    public Object execute(JSDynamicObject promiseToResolve, Object thenable, JobCallback then) {
+    public Object execute(JSPromiseObject promiseToResolve, Object thenable, JobCallback then) {
         Pair<JSDynamicObject, JSDynamicObject> resolvingFunctions = createResolvingFunctions.execute(promiseToResolve);
         JSDynamicObject resolve = resolvingFunctions.getFirst();
         JSDynamicObject reject = resolvingFunctions.getSecond();

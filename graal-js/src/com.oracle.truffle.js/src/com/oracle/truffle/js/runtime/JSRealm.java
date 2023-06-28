@@ -282,7 +282,7 @@ public class JSRealm {
     private final JSDynamicObject localePrototype;
     private final JSFunctionObject dateConstructor;
     private final JSDynamicObject datePrototype;
-    @CompilationFinal(dimensions = 1) private final JSDynamicObject[] errorConstructors;
+    @CompilationFinal(dimensions = 1) private final JSFunctionObject[] errorConstructors;
     @CompilationFinal(dimensions = 1) private final JSDynamicObject[] errorPrototypes;
     private final JSFunctionObject callSiteConstructor;
     private final JSDynamicObject callSitePrototype;
@@ -710,7 +710,7 @@ public class JSRealm {
             this.promisePrototype = null;
         }
 
-        this.errorConstructors = new JSDynamicObject[JSErrorType.errorTypes().length];
+        this.errorConstructors = new JSFunctionObject[JSErrorType.errorTypes().length];
         this.errorPrototypes = new JSDynamicObject[JSErrorType.errorTypes().length];
         initializeErrorConstructors();
         ctor = JSError.createCallSiteConstructor(this);
@@ -1191,7 +1191,7 @@ public class JSRealm {
         return objectConstructor;
     }
 
-    public final JSDynamicObject getErrorConstructor(JSErrorType type) {
+    public final JSFunctionObject getErrorConstructor(JSErrorType type) {
         return errorConstructors[type.ordinal()];
     }
 

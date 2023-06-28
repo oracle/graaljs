@@ -253,7 +253,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         @Specialization
         public Object doDateTimeFormat(JSDateTimeFormatObject dateTimeFormatObj,
                         @Cached InlinedBranchProfile errorBranch) {
-            JSDateTimeFormat.InternalState state = JSDateTimeFormat.getInternalState(dateTimeFormatObj);
+            JSDateTimeFormat.InternalState state = dateTimeFormatObj.getInternalState();
 
             if (state == null || !state.isInitialized()) {
                 errorBranch.enter(this);

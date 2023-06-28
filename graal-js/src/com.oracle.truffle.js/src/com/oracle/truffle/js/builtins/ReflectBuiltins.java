@@ -296,8 +296,8 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSObject(target)")
-        protected boolean doObject(JSDynamicObject target, Object propertyKey,
+        @Specialization
+        protected boolean doObject(JSObject target, Object propertyKey,
                         @Cached JSClassProfile classProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSObject.delete(target, key, false, classProfile);
@@ -342,8 +342,8 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSObject(target)")
-        protected Object doObject(JSDynamicObject target, Object propertyKey, Object[] optionalArgs,
+        @Specialization
+        protected Object doObject(JSObject target, Object propertyKey, Object[] optionalArgs,
                         @Shared("jsclassProf") @Cached JSClassProfile classProfile) {
             Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
             Object key = toPropertyKeyNode.execute(propertyKey);
@@ -422,8 +422,8 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSObject(target)")
-        protected Object doObject(JSDynamicObject target, Object propertyKey,
+        @Specialization
+        protected Object doObject(JSObject target, Object propertyKey,
                         @Shared("jsclassProf") @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSObject.hasProperty(target, key, jsclassProfile);
@@ -481,11 +481,11 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSObject(target)")
-        protected JSDynamicObject reflectOwnKeys(Object target,
+        @Specialization
+        protected JSDynamicObject reflectOwnKeys(JSObject target,
                         @Cached JSClassProfile jsclassProfile,
                         @Cached ListSizeNode listSize) {
-            List<Object> list = JSObject.ownPropertyKeys((JSDynamicObject) target, jsclassProfile);
+            List<Object> list = JSObject.ownPropertyKeys(target, jsclassProfile);
             if (getContext().isOptionV8CompatibilityMode()) {
                 list = JSRuntime.filterPrivateSymbols(list);
             }
