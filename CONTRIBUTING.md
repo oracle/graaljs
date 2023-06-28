@@ -17,7 +17,7 @@ All incoming pull requests will be evaluated there.
 Once all tests are passing, we can merge the pull request.
 
 ## Oracle Contributor Agreement
-To allow your pull request for the GraalVM project to be accepted, you need to sign the [Oracle Contributor Agreement](http://www.oracle.com/technetwork/community/oca-486395.html).
+To allow your pull request for the GraalVM project to be accepted, you need to sign the [Oracle Contributor Agreement](https://oca.opensource.oracle.com/).
 There is a white-list for contributors who have signed the OCA, determined by e-mail address.
 The process is fully automated if you provide the same e-mail address on your OCA and in your github profile.
 Please add a comment to your first pull request indicating the name you used to sign the OCA if it isn't clear from your github profile and you cannot use the identical e-mail address.
