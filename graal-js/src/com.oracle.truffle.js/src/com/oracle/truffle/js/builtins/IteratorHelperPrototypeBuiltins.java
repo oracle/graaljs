@@ -146,6 +146,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == SuspendedStart"})
         public Object suspendedStart(VirtualFrame frame, Object thisObj) {
             setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
+            var args = (IteratorPrototypeBuiltins.IteratorArgs) getArgsNode.getValue(thisObj);
+            iteratorCloseNode.executeVoid(args.iterated.getIterator());
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 
@@ -169,6 +171,11 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             } finally {
                 setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
             }
+            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+        }
+
+        @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == Completed"})
+        public Object completed(VirtualFrame frame, Object thisObj) {
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 
