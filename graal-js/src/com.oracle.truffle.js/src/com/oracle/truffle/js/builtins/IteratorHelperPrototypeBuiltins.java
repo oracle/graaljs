@@ -175,7 +175,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = {"hasImpl(thisObj)", "getState(thisObj) == Completed"})
-        public Object completed(VirtualFrame frame, Object thisObj) {
+        public Object completed(VirtualFrame frame, @SuppressWarnings("unused") Object thisObj) {
             return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 

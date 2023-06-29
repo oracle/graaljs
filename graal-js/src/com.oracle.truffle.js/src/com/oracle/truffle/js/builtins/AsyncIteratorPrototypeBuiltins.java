@@ -886,7 +886,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -980,7 +980,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(filterer)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object filterer) {
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object filterer) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1388,7 +1388,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1571,7 +1571,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(reducer)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object reducer, @SuppressWarnings("unused") Object[] args) {
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object reducer, @SuppressWarnings("unused") Object[] args) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1775,7 +1775,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1871,7 +1871,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1977,7 +1977,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -2082,7 +2082,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
