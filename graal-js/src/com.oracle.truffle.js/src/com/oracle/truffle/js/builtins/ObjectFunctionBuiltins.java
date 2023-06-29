@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -79,6 +80,7 @@ import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectGetOwn
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectGetOwnPropertyDescriptorsNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectGetOwnPropertyNamesOrSymbolsNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectGetPrototypeOfNodeGen;
+import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectGroupByNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectHasOwnNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectIsExtensibleNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectIsNodeGen;
@@ -99,6 +101,7 @@ import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.FromPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
+import com.oracle.truffle.js.nodes.access.GroupByNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
@@ -130,6 +133,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -187,7 +191,10 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         fromEntries(1),
 
         // ES2022
-        hasOwn(2);
+        hasOwn(2),
+
+        // staging
+        groupBy(2);
 
         private final int length;
 
@@ -210,6 +217,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSConfig.ECMAScript2019;
             } else if (this == hasOwn) {
                 return JSConfig.ECMAScript2022;
+            } else if (this == groupBy) {
+                return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -263,6 +272,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return ObjectFromEntriesNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case hasOwn:
                 return ObjectHasOwnNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case groupBy:
+                return ObjectGroupByNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -1359,6 +1370,34 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object obj = toObject(o);
             Object key = toPropertyKeyNode.execute(p);
             return hasOwnPropertyNode.executeBoolean(obj, key);
+        }
+
+    }
+
+    public abstract static class ObjectGroupByNode extends JSBuiltinNode {
+
+        public ObjectGroupByNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected JSObject groupBy(Object items, Object callbackfn,
+                        @Cached("create(getContext(), true)") GroupByNode groupByNode) {
+            Map<Object, List<Object>> groups = groupByNode.execute(items, callbackfn);
+            JSObject obj = JSOrdinary.createWithNullPrototype(getContext());
+            setGroups(obj, groups);
+            return obj;
+        }
+
+        @TruffleBoundary
+        protected void setGroups(JSObject obj, Map<Object, List<Object>> groups) {
+            JSContext context = getContext();
+            JSRealm realm = getRealm();
+            int attrs = JSAttributes.getDefault();
+            for (Map.Entry<Object, List<Object>> entry : groups.entrySet()) {
+                JSArrayObject elements = JSArray.createConstant(context, realm, entry.getValue().toArray());
+                JSObjectUtil.defineDataProperty(context, obj, entry.getKey(), elements, attrs);
+            }
         }
 
     }
