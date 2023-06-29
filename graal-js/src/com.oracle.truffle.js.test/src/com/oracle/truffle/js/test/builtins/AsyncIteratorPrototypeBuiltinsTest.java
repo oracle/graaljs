@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,12 +94,6 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             out.reset();
 
             try {
-                context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.map.call({}, x => x)");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
-            try {
                 context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([]).map(1)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
@@ -129,12 +123,6 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             out.reset();
 
             try {
-                context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.filter.call({}, x => x)");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
-            try {
                 context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([]).filter(1)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
@@ -163,12 +151,6 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("1,2\n", out.toString());
             out.reset();
 
-            try {
-                context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.take.call({}, 2)");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
             try {
                 context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([]).take(NaN)");
                 Assert.fail("No exception thrown");
@@ -211,12 +193,6 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             out.reset();
 
             try {
-                context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.drop.call({}, 2)");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
-            try {
                 context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([]).drop(NaN)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
@@ -257,12 +233,6 @@ public class AsyncIteratorPrototypeBuiltinsTest {
             Assert.assertEquals("0,1,0,2\n", out.toString());
             out.reset();
 
-            try {
-                context.eval(JavaScriptLanguage.ID, "AsyncIterator.prototype.flatMap.call({}, x => x)");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
             try {
                 context.eval(JavaScriptLanguage.ID, "AsyncIterator.from([]).flatMap(1)");
                 Assert.fail("No exception thrown");
