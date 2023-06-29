@@ -1845,6 +1845,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/dateAdd/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/dateAdd/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -1889,6 +1893,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/dateUntil/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/dateUntil/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -1929,6 +1937,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/day/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/day/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -1964,6 +1976,10 @@
     "filePath" : "built-ins/Temporal/Calendar/prototype/dayOfWeek/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/dayOfWeek/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/dayOfWeek/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -2001,6 +2017,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/dayOfYear/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/dayOfYear/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2036,6 +2056,10 @@
     "filePath" : "built-ins/Temporal/Calendar/prototype/daysInMonth/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/daysInMonth/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/daysInMonth/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -2073,6 +2097,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/daysInWeek/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/daysInWeek/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2109,6 +2137,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/daysInYear/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/daysInYear/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2144,6 +2176,10 @@
     "filePath" : "built-ins/Temporal/Calendar/prototype/inLeapYear/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/inLeapYear/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/inLeapYear/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -2193,6 +2229,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/month/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/month/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2228,6 +2268,10 @@
     "filePath" : "built-ins/Temporal/Calendar/prototype/monthCode/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/monthCode/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/monthCode/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -2269,6 +2313,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/monthsInYear/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/monthsInYear/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2309,6 +2357,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/weekOfYear/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/weekOfYear/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2344,6 +2396,10 @@
     "filePath" : "built-ins/Temporal/Calendar/prototype/year/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/year/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/year/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -2416,6 +2472,10 @@
     "filePath" : "built-ins/Temporal/Calendar/prototype/yearOfWeek/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/yearOfWeek/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/Calendar/prototype/yearOfWeek/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -2733,6 +2793,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/zero-day-length-1.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/zero-day-length-2.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/days-is-number-max-value-with-zoneddatetime.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
@@ -2865,6 +2933,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/zero-day-length-1.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/zero-day-length-2.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/Instant/compare/argument-string-calendar-annotation.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2876,6 +2952,10 @@
     "filePath" : "built-ins/Temporal/Instant/compare/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/compare/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/Instant/compare/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -2904,6 +2984,10 @@
     "filePath" : "built-ins/Temporal/Instant/from/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/from/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/Instant/from/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -2952,6 +3036,10 @@
     "filePath" : "built-ins/Temporal/Instant/prototype/equals/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/equals/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/equals/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -3012,6 +3100,10 @@
     "filePath" : "built-ins/Temporal/Instant/prototype/since/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/since/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/since/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -3208,6 +3300,10 @@
     "filePath" : "built-ins/Temporal/Instant/prototype/until/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Instant/prototype/until/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/until/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -3573,6 +3669,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDate/compare/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDate/compare/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -3616,6 +3716,10 @@
     "filePath" : "built-ins/Temporal/PlainDate/from/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/from/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/from/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -3733,6 +3837,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/equals/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/equals/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -3837,6 +3945,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/since/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -3920,6 +4032,10 @@
     "filePath" : "built-ins/Temporal/PlainDate/prototype/toPlainDateTime/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/toPlainDateTime/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/toPlainDateTime/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -4009,6 +4125,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -4084,6 +4204,10 @@
     "filePath" : "built-ins/Temporal/PlainDate/prototype/until/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/until/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -4261,6 +4385,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/compare/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/compare/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -4304,6 +4432,10 @@
     "filePath" : "built-ins/Temporal/PlainDateTime/from/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/from/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/from/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -4412,6 +4544,10 @@
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/equals/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/equals/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/equals/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -4564,6 +4700,10 @@
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -4773,6 +4913,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -4929,6 +5073,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainDate/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainDate/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -4964,6 +5112,10 @@
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainTime/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainTime/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/withPlainTime/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -5065,6 +5217,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/from/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/from/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -5128,6 +5284,10 @@
     "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/equals/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/equals/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/equals/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -5265,6 +5425,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainTime/compare/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainTime/compare/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -5296,6 +5460,10 @@
     "filePath" : "built-ins/Temporal/PlainTime/from/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/from/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/from/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -5348,6 +5516,10 @@
     "filePath" : "built-ins/Temporal/PlainTime/prototype/equals/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/equals/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/equals/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -5412,6 +5584,10 @@
     "filePath" : "built-ins/Temporal/PlainTime/prototype/since/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/since/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/since/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -5493,6 +5669,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/toPlainDateTime/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/toPlainDateTime/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -5561,6 +5741,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -5624,6 +5808,10 @@
     "filePath" : "built-ins/Temporal/PlainTime/prototype/until/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/until/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/until/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -5713,6 +5901,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/compare/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/compare/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -5752,6 +5944,10 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/from/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/from/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/from/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -5849,6 +6045,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/equals/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/equals/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -5944,6 +6144,10 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -6101,6 +6305,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/until/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/until/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -6209,6 +6417,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/getInstantFor/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getInstantFor/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -6241,6 +6453,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/getNextTransition/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getNextTransition/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -6269,6 +6485,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetNanosecondsFor/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetNanosecondsFor/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -6296,6 +6516,10 @@
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetStringFor/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetStringFor/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getOffsetStringFor/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -6328,6 +6552,10 @@
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getPlainDateTimeFor/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPlainDateTimeFor/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getPlainDateTimeFor/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -6393,6 +6621,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPossibleInstantsFor/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getPossibleInstantsFor/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -6424,6 +6656,10 @@
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getPreviousTransition/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/getPreviousTransition/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getPreviousTransition/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -7541,6 +7777,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainDate/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainDate/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -7580,6 +7820,10 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -7728,6 +7972,14 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Locale/constructor-non-iana-canon.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
+    "filePath" : "intl402/Locale/prototype/minimize/removing-likely-subtags-first-adds-likely-subtags.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
+  }, {
     "filePath" : "intl402/Temporal/Calendar/calendar-case-insensitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -7839,6 +8091,10 @@
     "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/era/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
@@ -7967,6 +8223,10 @@
     "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-invalid.js",
     "status" : "FAIL",
     "comment" : "new Temporal failures 2022-04-11"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-multiple-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2013-06-28"
   }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/eraYear/argument-string-multiple-time-zone.js",
     "status" : "FAIL",
