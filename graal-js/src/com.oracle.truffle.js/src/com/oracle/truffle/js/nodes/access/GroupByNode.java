@@ -50,12 +50,12 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
+import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import java.util.ArrayList;
@@ -84,6 +84,7 @@ public abstract class GroupByNode extends JavaScriptBaseNode {
                     @Cached IteratorValueNode iteratorValueNode,
                     @Cached("create(context)") IteratorCloseNode iteratorCloseNode,
                     @Cached("createCall()") JSFunctionCallNode callNode,
+                    @Cached LongToIntOrDoubleNode toIntOrDoubleNode,
                     @Cached(value = "maybeCreateToPropertyKeyNode(toPropertyKeyCoercion)", neverDefault = false) JSToPropertyKeyNode toPropertyKeyNode,
                     @Cached(value = "maybeCreateNormalizeKeyNode(toPropertyKeyCoercion)", neverDefault = false) JSCollectionsNormalizeNode normalizeKeyNode,
                     @Cached InlinedBranchProfile errorBranch) {
@@ -104,7 +105,7 @@ public abstract class GroupByNode extends JavaScriptBaseNode {
                     return groups;
                 }
                 Object value = iteratorValueNode.execute(next);
-                Object key = callNode.executeCall(JSArguments.create(Undefined.instance, callbackfn, value, JSRuntime.longToIntOrDouble(k)));
+                Object key = callNode.executeCall(JSArguments.create(Undefined.instance, callbackfn, value, toIntOrDoubleNode.execute(node, k)));
                 if (toPropertyKeyNode != null) { // toPropertyKeyCoercion
                     key = toPropertyKeyNode.execute(key);
                 }
