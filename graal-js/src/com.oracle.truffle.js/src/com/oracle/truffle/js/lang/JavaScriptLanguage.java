@@ -40,11 +40,15 @@
  */
 package com.oracle.truffle.js.lang;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -74,6 +78,7 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNodeFactory;
@@ -361,6 +366,31 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     @Override
     protected void initializeContext(JSRealm realm) {
         realm.initialize();
+
+        if (realm.getContextOptions().isFetch()) {
+            loadFetch(realm);
+        }
+    }
+
+    private static final AtomicReference<Source> FETCH_SOURCE = new AtomicReference<>();
+
+    private static void loadFetch(JSRealm realm) {
+        Source source = FETCH_SOURCE.get();
+        if (source == null) {
+            try (InputStream stream = JSContext.class.getResourceAsStream(GlobalBuiltins.JSGlobalLoadNode.RESOURCES_PATH + "fetch.js")) {
+                if (stream != null) {
+                    String content = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+                    source = Source.newBuilder(JavaScriptLanguage.ID, content, "fetch.js").build();
+                    Source existing = FETCH_SOURCE.compareAndExchange(null, source);
+                    if (existing != null) {
+                        source = existing;
+                    }
+                }
+            } catch (IOException e) {
+                throw Errors.createErrorFromException(e);
+            }
+        }
+        realm.getEnv().parsePublic(source).call();
     }
 
     @Override
