@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,35 +40,40 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
-import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
-import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.builtins.MapFunctionBuiltinsFactory.MapGroupByNodeGen;
+import com.oracle.truffle.js.nodes.access.GroupByNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
-import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
-import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.util.JSHashMap;
+import java.util.List;
+import java.util.Map;
 
-public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<AsyncIteratorFunctionBuiltins.AsyncIteratorFunction> {
+public class MapFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<MapFunctionBuiltins.MapFunction> {
+    public static final JSBuiltinsContainer BUILTINS = new MapFunctionBuiltins();
 
-    public static final JSBuiltinsContainer BUILTINS = new AsyncIteratorFunctionBuiltins();
-
-    protected AsyncIteratorFunctionBuiltins() {
-        super(JSAsyncIterator.CLASS_NAME, AsyncIteratorFunction.class);
+    protected MapFunctionBuiltins() {
+        super(JSMap.CLASS_NAME, MapFunction.class);
     }
 
-    public enum AsyncIteratorFunction implements BuiltinEnum<AsyncIteratorFunction> {
-        from(1);
+    public enum MapFunction implements BuiltinEnum<MapFunction> {
+        // staging
+        groupBy(2);
 
         private final int length;
 
-        AsyncIteratorFunction(int length) {
+        MapFunction(int length) {
             this.length = length;
         }
 
@@ -76,47 +81,51 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
         public int getLength() {
             return length;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (this == groupBy) {
+                return JSConfig.StagingECMAScriptVersion;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, AsyncIteratorFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, MapFunction builtinEnum) {
         switch (builtinEnum) {
-            case from:
-                return AsyncIteratorFunctionBuiltinsFactory.JSAsyncIteratorFromNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case groupBy:
+                return MapGroupByNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
-
         return null;
     }
 
-    public abstract static class JSAsyncIteratorFromNode extends JSBuiltinNode {
-        @Child private GetIteratorFlattenableNode getIteratorFlattenableNode;
+    public abstract static class MapGroupByNode extends JSBuiltinNode {
 
-        @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
-
-        public JSAsyncIteratorFromNode(JSContext context, JSBuiltin builtin) {
+        public MapGroupByNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(true, context);
-            this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
-        }
-
-        @Specialization(guards = "!isString(arg)")
-        protected Object asyncIteratorFrom(Object arg) {
-            IteratorRecord iteratorRecord = getIteratorFlattenableNode.execute(arg);
-
-            JSRealm realm = getRealm();
-            boolean hasInstance = ordinaryHasInstanceNode.executeBoolean(iteratorRecord.getIterator(), realm.getAsyncIteratorConstructor());
-            if (hasInstance) {
-                return iteratorRecord.getIterator();
-            }
-
-            return JSWrapForValidAsyncIterator.create(getContext(), realm, iteratorRecord);
         }
 
         @Specialization
-        protected Object asyncIteratorFromString(TruffleString arg,
-                        @Cached JSToObjectNode toObjectNode) {
-            return asyncIteratorFrom(toObjectNode.execute(arg));
+        protected JSObject groupBy(Object items, Object callbackfn,
+                        @Cached("create(getContext(), false)") GroupByNode groupByNode) {
+            Map<Object, List<Object>> groups = groupByNode.execute(items, callbackfn);
+            JSMapObject map = JSMap.create(getContext(), getRealm());
+            setGroups(map, groups);
+            return map;
+        }
+
+        @TruffleBoundary
+        protected void setGroups(JSMapObject map, Map<Object, List<Object>> groups) {
+            JSHashMap internalMap = JSMap.getInternalMap(map);
+            JSRealm realm = getRealm();
+            JSContext context = getContext();
+            for (Map.Entry<Object, List<Object>> entry : groups.entrySet()) {
+                JSArrayObject elements = JSArray.createConstant(context, realm, entry.getValue().toArray());
+                internalMap.put(entry.getKey(), elements);
+            }
         }
 
     }
+
 }

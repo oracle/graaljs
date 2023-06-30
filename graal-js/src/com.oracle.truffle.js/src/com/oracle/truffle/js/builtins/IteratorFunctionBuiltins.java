@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -100,7 +103,7 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
         }
 
-        @Specialization
+        @Specialization(guards = "!isString(arg)")
         protected Object iteratorFrom(Object arg) {
             IteratorRecord iteratorRecord = getIteratorFlattenableNode.execute(arg);
 
@@ -111,6 +114,12 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             }
 
             return JSWrapForValidIterator.create(getContext(), realm, iteratorRecord);
+        }
+
+        @Specialization
+        protected Object iteratorFromString(TruffleString arg,
+                        @Cached JSToObjectNode toObjectNode) {
+            return iteratorFrom(toObjectNode.execute(arg));
         }
 
     }

@@ -221,6 +221,7 @@ public class Test262Runnable extends TestRunnable {
                     "import-assertions",
                     "import.meta",
                     "intl-normative-optional",
+                    "iterator-helpers",
                     "json-modules",
                     "json-superset",
                     "legacy-regexp",
@@ -310,6 +311,9 @@ public class Test262Runnable extends TestRunnable {
         }
         if (features.contains("regexp-v-flag")) {
             extraOptions.put(JSContextOptions.REGEXP_UNICODE_SETS_NAME, "true");
+        }
+        if (features.contains("iterator-helpers")) {
+            extraOptions.put(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();

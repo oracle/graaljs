@@ -771,6 +771,18 @@
     "status" : "FAIL",
     "comment" : "Expects globalThis.__proto__.__proto__ to be Object.prototype (not null)"
   }, {
+    "filePath" : "mjsunit/harmony/array-prototype-groupby-fast-path-assumptions.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, there is no Array.prototype.groupBy(ToMap) anymore."
+  }, {
+    "filePath" : "mjsunit/harmony/array-prototype-groupby.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, there is no Array.prototype.groupBy(ToMap) anymore."
+  }, {
+    "filePath" : "mjsunit/harmony/array-prototype-groupbytomap.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, there is no Array.prototype.groupBy(ToMap) anymore."
+  }, {
     "filePath" : "mjsunit/harmony/async-for-of-non-iterable.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
