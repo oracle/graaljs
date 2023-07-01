@@ -168,3 +168,13 @@ load('../assert.js');
     assertThrows(() => new Headers(0), TypeError);
     assertThrows(() => new Headers(false), TypeError);
 })();
+
+(function shouldAcceptMap() {
+    const h = new Headers(new Map(Object.entries({y: 43, x: 42})));
+
+    assertTrue(h.has('x'));
+    assertTrue(h.has('y'));
+    assertSame('42', h.get('x'));
+    assertSame('43', h.get('y'));
+    assertSame('x,y', String([...h.keys()]));
+})();
