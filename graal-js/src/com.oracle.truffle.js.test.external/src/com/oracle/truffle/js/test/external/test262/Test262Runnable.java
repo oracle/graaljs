@@ -519,7 +519,7 @@ public class Test262Runnable extends TestRunnable {
                 Matcher matcher = NEGATIVE_PREFIX.matcher(line);
                 if (matcher.find()) {
                     String candidate = line.substring(matcher.end());
-                    if (candidate.length() > 0) {
+                    if (!candidate.isBlank()) {
                         return candidate;
                     } else {
                         lookForType = true;
