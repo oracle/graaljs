@@ -1,12 +1,14 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
  */
 
 /**
- * Tests of the Response class
+ * Tests of the Response class.
+ *
+ * @option global-fetch
  */
 
 load('../assert.js');
@@ -56,12 +58,16 @@ load('../assert.js');
     return res.arrayBuffer().then(result => assertSame('a=1', result));
 })();
 
-(function shouldSupportFormDataMethod() {
-    console.log(".formData() not implemented");
+(function shouldSupportBlobMethod() {
+    // .blob() not implemented
+    const res = new Response('a=1');
+    assertThrows(() => res.blob(), TypeError);
 })();
 
-(function shouldSupportBlobMethod() {
-    console.log(".blob() not implemented");
+(function shouldSupportFormDataMethod() {
+    // .formData() not implemented
+    const res = new Response('a=1');
+    assertThrows(() => res.formData(), TypeError);
 })();
 
 (function shouldSupportJsonMethod() {

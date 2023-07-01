@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,20 @@
  */
 package com.oracle.truffle.js.test.builtins.fetch;
 
-import com.sun.net.httpserver.HttpServer;
+import static java.net.HttpURLConnection.HTTP_BAD_REQUEST;
+import static java.net.HttpURLConnection.HTTP_INTERNAL_ERROR;
+import static java.net.HttpURLConnection.HTTP_MOVED_PERM;
+import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
+import static java.net.HttpURLConnection.HTTP_NOT_MODIFIED;
+import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
+import static java.net.HttpURLConnection.HTTP_OK;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static java.net.HttpURLConnection.*;
+import com.sun.net.httpserver.HttpServer;
 
 public class FetchTestServer {
     private final HttpServer server;
@@ -69,7 +75,8 @@ public class FetchTestServer {
         server.createContext("/inspect", ctx -> {
             String method = ctx.getRequestMethod();
             String url = ctx.getRequestURI().toString();
-            String headers = ctx.getRequestHeaders().entrySet().stream().map(e -> String.format("\"%s\":\"%s\"", e.getKey().toLowerCase(), String.join(", ", e.getValue()))).collect(Collectors.joining(","));
+            String headers = ctx.getRequestHeaders().entrySet().stream().map(e -> String.format("\"%s\":\"%s\"", e.getKey().toLowerCase(), String.join(", ", e.getValue()))).collect(
+                            Collectors.joining(","));
             String reqBody = new String(ctx.getRequestBody().readAllBytes());
 
             // build inspect response body
@@ -125,8 +132,8 @@ public class FetchTestServer {
         });
 
         server.createContext("/plain", ctx -> {
-            byte[] body = "text".getBytes();
-            ctx.getResponseHeaders().set("Content-Type", "text/plain");
+            byte[] body = "text\uD83D\uDCA9".getBytes();
+            ctx.getResponseHeaders().set("Content-Type", "text/plain;charset=UTF-8");
             ctx.sendResponseHeaders(HTTP_OK, body.length);
             ctx.getResponseBody().write(body);
             ctx.close();
@@ -150,7 +157,9 @@ public class FetchTestServer {
 
         Set.of(301, 302, 303, 307, 308).forEach(code -> {
             server.createContext("/redirect/" + code, ctx -> {
-                ctx.getResponseHeaders().add("Location", "/inspect");
+                String query = ctx.getRequestURI().getQuery();
+                String location = (query == null || query.isEmpty()) ? "/inspect" : query;
+                ctx.getResponseHeaders().add("Location", location);
                 ctx.sendResponseHeaders(code, 0);
                 ctx.close();
             });
@@ -170,12 +179,6 @@ public class FetchTestServer {
 
         server.createContext("/redirect/chain", ctx -> {
             ctx.getResponseHeaders().add("Location", "/redirect/301");
-            ctx.sendResponseHeaders(HTTP_MOVED_PERM, 0);
-            ctx.close();
-        });
-
-        server.createContext("/redirect/other-domain", ctx -> {
-            ctx.getResponseHeaders().add("Location", "https://httpbin.org/get");
             ctx.sendResponseHeaders(HTTP_MOVED_PERM, 0);
             ctx.close();
         });
@@ -208,6 +211,13 @@ public class FetchTestServer {
 
         server.createContext("/cookie", ctx -> {
             ctx.getResponseHeaders().set("Set-Cookie", "a=1, b=2");
+            ctx.sendResponseHeaders(HTTP_OK, 0);
+            ctx.close();
+        });
+
+        server.createContext("/cookie2", ctx -> {
+            ctx.getResponseHeaders().add("Set-Cookie", "a=1, b=2");
+            ctx.getResponseHeaders().add("Set-Cookie", "c=3, d=4");
             ctx.sendResponseHeaders(HTTP_OK, 0);
             ctx.close();
         });

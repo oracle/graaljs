@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,916 +40,1042 @@
  */
 package com.oracle.truffle.js.test.builtins.fetch;
 
-import com.oracle.truffle.js.builtins.helper.FetchHttpConnection;
-import com.oracle.truffle.js.builtins.helper.FetchResponse;
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
-import com.oracle.truffle.js.test.interop.AsyncInteropTest.TestOutput;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Locale;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
-import org.junit.AfterClass;
+import org.graalvm.polyglot.io.IOAccess;
+import org.junit.After;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
-import static org.junit.Assert.*;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.interop.AsyncInteropTest.TestOutput;
 
 /**
  * Tests for the fetch builtin.
  */
 public class FetchMethodTest extends JSTest {
-    private static FetchTestServer localServer;
+    private static final int TEST_TIMEOUT = 10000;
+
+    private FetchTestServer localServer;
 
     @BeforeClass
-    public static void testSetup() throws IOException {
+    public static void testSetup() {
+        // allow overwriting restricted headers
+        System.setProperty("jdk.httpclient.allowRestrictedHeaders", "Host,Content-Length");
+    }
+
+    @Before
+    public void startServer() throws IOException {
         localServer = new FetchTestServer(8080);
         localServer.start();
     }
 
-    @AfterClass
-    public static void testCleanup() {
+    @After
+    public void stopServer() {
         localServer.stop();
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testReturnsPromise() {
-        String out = async(
-            "const res = fetch('http://localhost:8080/200');" +
-            "console.log(res instanceof Promise);"
-        );
+        String out = async("""
+                        const res = fetch('http://localhost:8080/200');
+                        console.log(res instanceof Promise);
+                        """);
         assertEquals("true\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void test200() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/200');" +
-            "console.log(res.ok, res.status, res.statusText);"
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/200');
+                        console.log(res.ok, res.status, res.statusText);
+                        """);
         assertEquals("true 200 OK\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testHandleClientErrorResponse() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/error/400');" +
-            log("res.headers.get('content-type')") +
-            log("res.status") +
-            log("res.statusText") +
-            "const result = await res.text();" +
-            log("result")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/error/400');
+                        console.log(res.headers.get('content-type'));
+                        console.log(res.status);
+                        console.log(res.statusText);
+                        const result = await res.text();
+                        console.log(result);
+                        """);
         assertEquals("text/plain\n400\nBad Request\nclient error\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testHandleServerErrorResponse() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/error/500');" +
-            log("res.headers.get('content-type')") +
-            log("res.status") +
-            log("res.statusText") +
-            "const result = await res.text();" +
-            log("result")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/error/500');
+                        console.log(res.headers.get('content-type'));
+                        console.log(res.status);
+                        console.log(res.statusText);
+                        const result = await res.text();
+                        console.log(result);
+                        """);
         assertEquals("text/plain\n500\nInternal Server Error\nserver error\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testResolvesIntoResponseObject() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/200');" +
-            log("res instanceof Response") +
-            log("res.headers instanceof Headers") +
-            log("res.status") +
-            log("res.ok") +
-            log("res.statusText")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/200');
+                        console.log(res instanceof Response);
+                        console.log(res.headers instanceof Headers);
+                        console.log(res.status);
+                        console.log(res.ok);
+                        console.log(res.statusText);
+                        """);
         assertEquals("true\ntrue\n200\ntrue\nOK\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRejectUnsupportedProtocol() {
         String out = asyncThrows(
-            "const res = await fetch('ftp://example.com/');"
-        );
+                        "const res = await fetch('ftp://example.com/');");
         assertEquals("fetch cannot load ftp://example.com/. Scheme not supported: ftp\n", out);
     }
 
     @Test
-    public void testDataUrlProcessor() throws MalformedURLException, URISyntaxException {
-        FetchResponse res = FetchHttpConnection.processDataUrl(new URI("data:,helloworld"));
-        assertEquals(res.getBody(), "helloworld");
-        res = FetchHttpConnection.processDataUrl(new URI("data:text/plain,helloworld"));
-        assertEquals(res.getBody(), "helloworld");
+    public void testDataUrlProcessor() {
+        String out = async("""
+                        let res;
+                        res = await fetch('data:,helloworld');
+                        console.log(await res.text());
+                        res = await fetch('data:text/plain,helloworld');
+                        console.log(await res.text());
+                        """);
+        assertEquals("""
+                        helloworld
+                        helloworld
+                        """, out);
     }
 
     @Test
-    public void testBase64DataUrlEncoding() throws MalformedURLException, URISyntaxException {
-        FetchResponse res = FetchHttpConnection.processDataUrl(new URI("data:text/plain;base64,aGVsbG93b3JsZA"));
-        assertEquals(res.getBody(), "helloworld");
-        res = FetchHttpConnection.processDataUrl(new URI("data:;base64,aGVsbG93b3JsZA"));
-        assertEquals(res.getBody(), "helloworld");
+    public void testBase64DataUrlEncoding() {
+        String out = async("""
+                        let res;
+                        res = await fetch('data:text/plain;base64,aGVsbG93b3JsZA');
+                        console.log(await res.text());
+                        res = await fetch('data:;base64,aGVsbG93b3JsZA==');
+                        console.log(await res.text());
+                        """);
+        assertEquals("""
+                        helloworld
+                        helloworld
+                        """, out);
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = TEST_TIMEOUT)
     public void testRejectOnNetworkFailure() {
         String out = asyncThrows(
-            "const res = await fetch('http://localhost:50000');"
-        );
+                        "const res = await fetch('http://localhost:50000');");
         assertEquals("Connection refused\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testAcceptPlainTextResponse() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/plain');" +
-            "const result = await res.text();" +
-            log("res.headers.get('content-type')") +
-            log("res.bodyUsed") +
-            log("result")
-        );
-        assertEquals("text/plain\ntrue\ntext\n", out);
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/plain');
+                        const result = await res.text();
+                        console.log(res.headers.get('content-type'));
+                        console.log(res.bodyUsed);
+                        console.log(result);
+                        """);
+        assertEquals("text/plain;charset=UTF-8\ntrue\ntext\uD83D\uDCA9\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testAcceptHtmlResponse() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/html');" +
-            "const result = await res.text();" +
-            log("res.headers.get('content-type')") +
-            log("res.bodyUsed") +
-            log("result")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/html');
+                        const result = await res.text();
+                        console.log(res.headers.get('content-type'));
+                        console.log(res.bodyUsed);
+                        console.log(result);
+                        """);
         assertEquals("text/html\ntrue\n<html></html>\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testAcceptJsonResponse() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/json');" +
-            "const result = await res.json();" +
-            log("res.headers.get('content-type')") +
-            log("res.bodyUsed") +
-            log("result.name")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/json');
+                        const result = await res.json();
+                        console.log(res.headers.get('content-type'));
+                        console.log(res.bodyUsed);
+                        console.log(result.name);
+                        """);
         assertEquals("application/json\ntrue\nvalue\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testSendRequestWithCustomHeader() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', {" +
-            "   headers: { 'x-custom-header': 'abc' }" +
-            "});" +
-            "const result = await res.json();" +
-            log("result.headers['x-custom-header']")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', {
+                           headers: { 'x-custom-header': 'abc' }
+                        });
+                        const result = await res.json();
+                        console.log(result.headers['x-custom-header']);
+                        """);
         assertEquals("abc\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testCustomHostHeader() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', {" +
-            "   headers: { 'host': 'example.com' }" +
-            "});" +
-            "const result = await res.json();" +
-            log("result.headers.host")
-        );
+        // Host is a restricted header.
+        Assume.assumeTrue(System.getProperty("jdk.httpclient.allowRestrictedHeaders", "").toLowerCase(Locale.ROOT).contains("host"));
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', {
+                           headers: { 'host': 'example.com' }
+                        });
+                        const result = await res.json();
+                        console.log(result.headers.host);
+                        """);
         assertEquals("example.com\n", out);
     }
 
-    @Test
-    @Ignore("HttpURLConnection does not support custom methods")
+    @Test(timeout = TEST_TIMEOUT)
     public void testCustomMethod() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', {method: 'foo'});" +
-            "const result = await res.json();" +
-            log("result.method === 'foo'")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', {method: 'foo'});
+                        const result = await res.json();
+                        console.log(result.method === 'foo');
+                        """);
         assertEquals("true\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testFollowRedirectCode301() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/301');" +
-            log("res.url, res.status")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/301');
+                        console.log(res.url, res.status);
+                        """);
         assertEquals("http://localhost:8080/inspect 200\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testFollowRedirectCode302() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/302');" +
-            log("res.url, res.status")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/302');
+                        console.log(res.url, res.status);
+                        """);
         assertEquals("http://localhost:8080/inspect 200\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testFollowRedirectCode303() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/303');" +
-            log("res.url, res.status")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/303');
+                        console.log(res.url, res.status);
+                        """);
         assertEquals("http://localhost:8080/inspect 200\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testFollowRedirectCode307() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/307');" +
-            log("res.url, res.status")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/307');
+                        console.log(res.url, res.status);
+                        """);
         assertEquals("http://localhost:8080/inspect 200\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testFollowRedirectCode308() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/308');" +
-            log("res.url, res.status")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/308');
+                        console.log(res.url, res.status);
+                        """);
         assertEquals("http://localhost:8080/inspect 200\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRedirectChain() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/chain');" +
-            log("res.url, res.status")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/chain');
+                        console.log(res.url, res.status);
+                        """);
         assertEquals("http://localhost:8080/inspect 200\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testFollowPOSTRequestRedirectWithGET() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/301', {" +
-            "method: 'POST'" +
-            "});" +
-            "const result = await res.json();" +
-            log("res.url, res.status") +
-            log("result.method, result.body === ''")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/301', {
+                        method: 'POST'
+                        });
+                        const result = await res.json();
+                        console.log(res.url, res.status);
+                        console.log(result.method, result.body === '');
+                        """);
         assertEquals("http://localhost:8080/inspect 200\nGET true\n", out);
     }
 
-    @Test
-    @Ignore("HttpURLConnection does not support PATCH")
+    @Test(timeout = TEST_TIMEOUT)
     public void testFollowPATCHRequestRedirectWithPATCH() {
-        String out = asyncThrows(
-            "const res = await fetch('http://localhost:8080/redirect/301', {" +
-            "method: 'PATCH'" +
-            "});" +
-            "const result = await res.json();" +
-            log("res.url, res.status") +
-            log("result.method, result.body === ''")
-        );
+        String out = asyncThrows("""
+                        const res = await fetch('http://localhost:8080/redirect/301', {
+                        method: 'PATCH'
+                        });
+                        const result = await res.json();
+                        console.log(res.url, res.status);
+                        console.log(result.method, result.body === '');
+                        """);
         assertEquals("http://localhost:8080/inspect 200\nPATCH true\n", out);
     }
 
-    @Test
-    public void testFollow303WithGET() throws IOException {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/303', {" +
-            "method: 'PUT'" +
-            "});" +
-            "const result = await res.json();" +
-            log("res.url, res.status") +
-            log("result.method, result.body === ''")
-        );
+    @Test(timeout = TEST_TIMEOUT)
+    public void testFollow303WithGET() {
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/303', {
+                        method: 'PUT'
+                        });
+                        const result = await res.json();
+                        console.log(res.url, res.status);
+                        console.log(result.method, result.body === '');
+                        """);
         assertEquals("http://localhost:8080/inspect 200\nGET true\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testMaximumFollowsReached() {
-        String out = asyncThrows(
-            "const res = await fetch('http://localhost:8080/redirect/chain', {" +
-            "follow: 1" +
-            "});"
-        );
+        String out = asyncThrows("""
+                        const res = await fetch('http://localhost:8080/redirect/chain', {
+                        follow: 1
+                        });
+                        """);
         assertEquals("maximum redirect reached at: http://localhost:8080/redirect/chain\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testNoRedirectsAllowed() {
-        String out = asyncThrows(
-            "const res = await fetch('http://localhost:8080/redirect/301', {" +
-            "follow: 0" +
-            "});"
-        );
+        String out = asyncThrows("""
+                        const res = await fetch('http://localhost:8080/redirect/301', {
+                        follow: 0
+                        });
+                        """);
         assertEquals("maximum redirect reached at: http://localhost:8080/redirect/301\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRedirectModeManual() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/301', {" +
-            "redirect: 'manual'" +
-            "});" +
-            log("res.url") +
-            log("res.status") +
-            log("res.headers.get('location')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/301', {
+                        redirect: 'manual'
+                        });
+                        console.log(res.url);
+                        console.log(res.status);
+                        console.log(res.headers.get('location'));
+                        """);
         assertEquals("http://localhost:8080/redirect/301\n301\n/inspect\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRedirectModeManualBrokenLocationHeader() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/bad-location', {" +
-            "redirect: 'manual'" +
-            "});" +
-            log("res.url") +
-            log("res.status") +
-            log("res.headers.get('location')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/bad-location', {
+                        redirect: 'manual'
+                        });
+                        console.log(res.url);
+                        console.log(res.status);
+                        console.log(res.headers.get('location'));
+                        """);
         assertEquals("http://localhost:8080/redirect/bad-location\n301\n<>\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRedirectModeManualOtherHost() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/other-host', {" +
-            "redirect: 'manual'" +
-            "});" +
-            log("res.url") +
-            log("res.status") +
-            log("res.headers.get('location')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/other-host', {
+                        redirect: 'manual'
+                        });
+                        console.log(res.url);
+                        console.log(res.status);
+                        console.log(res.headers.get('location'));
+                        """);
         assertEquals("http://localhost:8080/redirect/other-host\n301\nhttps://github.com/oracle/graaljs\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRedirectModeManualNoRedirect() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/200', {" +
-            "redirect: 'manual'" +
-            "});" +
-            log("res.url") +
-            log("res.status") +
-            log("res.headers.has('location')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/200', {
+                        redirect: 'manual'
+                        });
+                        console.log(res.url);
+                        console.log(res.status);
+                        console.log(res.headers.has('location'));
+                        """);
         assertEquals("http://localhost:8080/200\n200\nfalse\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRedirectModeError() {
-        String out = asyncThrows(
-            "const res = await fetch('http://localhost:8080/redirect/301', {" +
-            "redirect: 'error'" +
-            "});"
-        );
+        String out = asyncThrows("""
+                        const res = await fetch('http://localhost:8080/redirect/301', {
+                        redirect: 'error'
+                        });
+                        """);
         assertEquals("uri requested responds with a redirect, redirect mode is set to error\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testFollowRedirectAndKeepHeaders() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/301', {" +
-            "headers: {'x-custom-header': 'abc'}" +
-            "});" +
-            "const result = await res.json();" +
-            log("res.url") +
-            log("result.headers['x-custom-header']")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/301', {
+                        headers: {'x-custom-header': 'abc'}
+                        });
+                        const result = await res.json();
+                        console.log(res.url);
+                        console.log(result.headers['x-custom-header']);
+                        """);
         assertEquals("http://localhost:8080/inspect\nabc\n", out);
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = TEST_TIMEOUT)
     public void testDontForwardSensitiveToDifferentHost() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/other-domain', {" +
-            "headers: {" +
-                "'authorization': 'gets=removed'," +
-                "'cookie': 'gets=removed'," +
-                "'cookie2': 'gets=removed'," +
-                "'www-authenticate': 'gets=removed'," +
-                "'safe-header': 'gets=forwarded'" +
-                "}" +
-            "});" +
-            "const headers = new Headers((await res.json()).headers);" +
-            log("headers.has('authorization')") +
-            log("headers.has('cookie')") +
-            log("headers.has('cookie2')") +
-            log("headers.has('www-authenticate')") +
-            log("headers.get('safe-header')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/301?http://127.0.0.1:8080/inspect', {
+                        headers: {
+                        'authorization': 'gets=removed',
+                        'cookie': 'gets=removed',
+                        'cookie2': 'gets=removed',
+                        'www-authenticate': 'gets=removed',
+                        'safe-header': 'gets=forwarded'
+                        }
+                        });
+                        const headers = new Headers((await res.json()).headers);
+                        console.log(headers.has('authorization'));
+                        console.log(headers.has('cookie'));
+                        console.log(headers.has('cookie2'));
+                        console.log(headers.has('www-authenticate'));
+                        console.log(headers.get('safe-header'));
+                        """);
         assertEquals("false\nfalse\nfalse\nfalse\ngets=forwarded\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testForwardSensitiveHeadersToSameHost() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/301', {" +
-            "headers: {" +
-                "'authorization': 'gets=forwarded'," +
-                "'cookie': 'gets=forwarded'," +
-                "'cookie2': 'gets=forwarded'," +
-                "'www-authenticate': 'gets=forwarded'," +
-                "'safe-header': 'gets=forwarded'" +
-            "}" +
-            "});" +
-            "const headers = new Headers((await res.json()).headers);" +
-            log("headers.get('authorization')") +
-            log("headers.get('cookie')") +
-            log("headers.get('cookie2')") +
-            log("headers.get('www-authenticate')") +
-            log("headers.get('safe-header')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/301', {
+                        headers: {
+                        'authorization': 'gets=forwarded',
+                        'cookie': 'gets=forwarded',
+                        'cookie2': 'gets=forwarded',
+                        'www-authenticate': 'gets=forwarded',
+                        'safe-header': 'gets=forwarded'
+                        }
+                        });
+                        const headers = new Headers((await res.json()).headers);
+                        console.log(headers.get('authorization'));
+                        console.log(headers.get('cookie'));
+                        console.log(headers.get('cookie2'));
+                        console.log(headers.get('www-authenticate'));
+                        console.log(headers.get('safe-header'));
+                        """);
         assertEquals("gets=forwarded\ngets=forwarded\ngets=forwarded\ngets=forwarded\ngets=forwarded\n", out);
     }
 
-    @Test
-    public void testIsDomainOrSubDomain() throws MalformedURLException {
+    @Test(timeout = TEST_TIMEOUT)
+    public void testIsDomainOrSubDomain() throws URISyntaxException {
         // forward headers to same (sub)domain
-        assertTrue(FetchHttpConnection.isDomainOrSubDomain(new URL("http://a.com"), new URL("http://a.com")));
-        assertTrue(FetchHttpConnection.isDomainOrSubDomain(new URL("http://a.com"), new URL("http://www.a.com")));
-        assertTrue(FetchHttpConnection.isDomainOrSubDomain(new URL("http://a.com"), new URL("http://foo.bar.a.com")));
+        assertTrue(isDomainOrSubDomain(url("http://a.com"), url("http://a.com")));
+        assertTrue(isDomainOrSubDomain(url("http://a.com"), url("http://www.a.com")));
+        assertTrue(isDomainOrSubDomain(url("http://a.com"), url("http://foo.bar.a.com")));
         // dont forward to parent domain, another sibling or a unrelated domain
-        assertFalse(FetchHttpConnection.isDomainOrSubDomain(new URL("http://b.com"), new URL("http://a.com")));
-        assertFalse(FetchHttpConnection.isDomainOrSubDomain(new URL("http://www.a.com"), new URL("http://a.com")));
-        assertFalse(FetchHttpConnection.isDomainOrSubDomain(new URL("http://bob.uk.com"), new URL("http://uk.com")));
-        assertFalse(FetchHttpConnection.isDomainOrSubDomain(new URL("http://bob.uk.com"), new URL("http://xyz.uk.com")));
+        assertFalse(isDomainOrSubDomain(url("http://b.com"), url("http://a.com")));
+        assertFalse(isDomainOrSubDomain(url("http://www.a.com"), url("http://a.com")));
+        assertFalse(isDomainOrSubDomain(url("http://bob.uk.com"), url("http://uk.com")));
+        assertFalse(isDomainOrSubDomain(url("http://bob.uk.com"), url("http://xyz.uk.com")));
     }
 
-    @Test(timeout = 5000)
+    @Ignore("TODO Mock https server")
+    @Test(timeout = TEST_TIMEOUT)
     public void testDontForwardSensitiveHeadersToDifferentProtocol() {
-        String out = async(
-            "const res = await fetch('https://httpbin.org/redirect-to?url=http%3A%2F%2Fhttpbin.org%2Fget&status_code=302', {" +
-            "headers: {" +
-                "'authorization': 'gets=removed'," +
-                "'cookie': 'gets=removed'," +
-                "'cookie2': 'gets=removed'," +
-                "'www-authenticate': 'gets=removed'," +
-                "'safe-header': 'gets=forwarded'" +
-            "}" +
-            "});" +
-            "const headers = new Headers((await res.json()).headers);" +
-            log("headers.has('authorization')") +
-            log("headers.has('cookie')") +
-            log("headers.has('cookie2')") +
-            log("headers.has('www-authenticate')") +
-            log("headers.get('safe-header')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/302?https://localhost:8081/inspect', {
+                        headers: {
+                        'authorization': 'gets=removed',
+                        'cookie': 'gets=removed',
+                        'cookie2': 'gets=removed',
+                        'www-authenticate': 'gets=removed',
+                        'safe-header': 'gets=forwarded'
+                        }
+                        });
+                        const headers = new Headers((await res.json()).headers);
+                        console.log(headers.has('authorization'));
+                        console.log(headers.has('cookie'));
+                        console.log(headers.has('cookie2'));
+                        console.log(headers.has('www-authenticate'));
+                        console.log(headers.get('safe-header'));
+                        """);
         assertEquals("false\nfalse\nfalse\nfalse\ngets=forwarded\n", out);
     }
 
-    @Test
-    public void testIsSameProtocol() throws MalformedURLException {
+    @Test(timeout = TEST_TIMEOUT)
+    public void testIsSameProtocol() throws URISyntaxException {
         // forward headers to same protocol
-        assertTrue(FetchHttpConnection.isSameProtocol(new URL("http://a.com"), new URL("http://a.com")));
-        assertTrue(FetchHttpConnection.isSameProtocol(new URL("https://a.com"), new URL("https://a.com")));
+        assertTrue(isSameProtocol(url("http://a.com"), url("http://a.com")));
+        assertTrue(isSameProtocol(url("https://a.com"), url("https://a.com")));
         // dont forward to different protocol
-        assertFalse(FetchHttpConnection.isSameProtocol(new URL("http://b.com"), new URL("https://b.com")));
-        assertFalse(FetchHttpConnection.isSameProtocol(new URL("http://a.com"), new URL("https://www.a.com")));
+        assertFalse(isSameProtocol(url("http://b.com"), url("https://b.com")));
+        assertFalse(isSameProtocol(url("http://a.com"), url("https://www.a.com")));
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testBrokenRedirectNormalResponseInFollowMode() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/no-location');" +
-            log("res.url") +
-            log("res.status") +
-            log("res.headers.get('location')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/no-location');
+                        console.log(res.url);
+                        console.log(res.status);
+                        console.log(res.headers.get('location'));
+                        """);
         assertEquals("http://localhost:8080/redirect/no-location\n301\nundefined\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testBrokenRedirectNormalResponseInManualMode() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/no-location', { redirect: 'manual' });" +
-            log("res.url") +
-            log("res.status") +
-            log("res.headers.get('location')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/no-location', { redirect: 'manual' });
+                        console.log(res.url);
+                        console.log(res.status);
+                        console.log(res.headers.get('location'));
+                        """);
         assertEquals("http://localhost:8080/redirect/no-location\n301\nundefined\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRejectInvalidRedirect() {
         String out = asyncThrows(
-            "const res = await fetch('http://localhost:8080/redirect/301/invalid-url');"
-        );
+                        "const res = await fetch('http://localhost:8080/redirect/301/invalid-url');");
         assertEquals("invalid url in location header\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testProcessInvalidRedirectInManualMode() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/301/invalid-url', { redirect: 'manual' });" +
-            log("res.url") +
-            log("res.status") +
-            log("res.headers.get('location')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/301/invalid-url', { redirect: 'manual' });
+                        console.log(res.url);
+                        console.log(res.status);
+                        console.log(res.headers.get('location'));
+                        """);
         assertEquals("http://localhost:8080/redirect/301/invalid-url\n301\n//super:invalid:url%/\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testSetRedirectedPropertyWhenRedirected() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/redirect/301/');" +
-            log("res.url") +
-            log("res.status") +
-            log("res.redirected")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/redirect/301/');
+                        console.log(res.url);
+                        console.log(res.status);
+                        console.log(res.redirected);
+                        """);
         assertEquals("http://localhost:8080/inspect\n200\ntrue\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testDontSetRedirectedPropertyWithoutRedirect() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/200');" +
-            log("res.url") +
-            log("res.redirected")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/200');
+                        console.log(res.url);
+                        console.log(res.redirected);
+                        """);
         assertEquals("http://localhost:8080/200\nfalse\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testHandleDNSErrorResponse() {
-        String out = async(
-            "const res = await fetch('http://domain.invalid');"
-        );
-        assertEquals("", out);
+        String out = async("""
+                        try {
+                            await fetch('http://domain.invalid');
+                            throw new Error("should have thrown");
+                        } catch (err) {
+                            console.log(err.name);
+                        }
+                        """);
+        assertEquals("TypeError\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRejectInvalidJsonResponse() {
-        String out = asyncThrows(
-            "const res = await fetch('http://localhost:8080/error/json');" +
-            log("res.headers.get('content-type')") +
-            "const result = await res.json();"
-        );
+        String out = asyncThrows("""
+                        const res = await fetch('http://localhost:8080/error/json');
+                        console.log(res.headers.get('content-type'));
+                        const result = await res.json();
+                        """);
         assertEquals("application/json\nUnexpected token < in JSON at position 0\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testResponseWithoutStatusText() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/no-status-text');" +
-            log("res.statusText === ''")
-        );
-        assertEquals("true\n", out);
+        String out = async("""
+                        try {
+                            await fetch('http://localhost:8080/no-status-text');
+                            throw new Error("should have thrown");
+                        } catch (err) {
+                            console.log(err.name);
+                        }
+                        """);
+        assertEquals("TypeError\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testNoContentResponse204() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/no-content');" +
-            log("res.status, res.statusText, res.ok") +
-            "const result = await res.text();" +
-            log("result === ''")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/no-content');
+                        console.log(res.status, res.statusText, res.ok);
+                        const result = await res.text();
+                        console.log(result === '');
+                        """);
         assertEquals("204 No Content true\ntrue\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testNotModifierResponse304() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/not-modified');" +
-            log("res.status, res.statusText, res.ok") +
-            "const result = await res.text();" +
-            log("result === ''")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/not-modified');
+                        console.log(res.status, res.statusText, res.ok);
+                        const result = await res.text();
+                        console.log(result === '');
+                        """);
         assertEquals("304 Not Modified false\ntrue\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testSetDefaultUserAgent() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect');" +
-            "const result = await res.json();" +
-            log("result.headers['user-agent']")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect');
+                        const result = await res.json();
+                        console.log(result.headers['user-agent']);
+                        """);
         assertEquals("graaljs-fetch\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testSetCustomUserAgent() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', {" +
-            "headers: { 'user-agent': 'faked' }" +
-            "});" +
-            "const result = await res.json();" +
-            log("result.headers['user-agent']")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', {
+                        headers: { 'user-agent': 'faked' }
+                        });
+                        const result = await res.json();
+                        console.log(result.headers['user-agent']);
+                        """);
         assertEquals("faked\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testSetDefaultAcceptHeader() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect');" +
-            "const result = await res.json();" +
-            log("result.headers['accept']")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect');
+                        const result = await res.json();
+                        console.log(result.headers['accept']);
+                        """);
         assertEquals("*/*\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testSetCustomAcceptHeader() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', {" +
-            "headers: { 'accept': 'application/json' }" +
-            "});" +
-            "const result = await res.json();" +
-            log("result.headers['accept']")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', {
+                        headers: { 'accept': 'application/json' }
+                        });
+                        const result = await res.json();
+                        console.log(result.headers['accept']);
+                        """);
         assertEquals("application/json\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testPOSTRequest() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', { method: 'POST' });" +
-            "const result = await res.json();" +
-            log("result.method") +
-            log("result.headers['content-length'] === '0'")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', { method: 'POST' });
+                        const result = await res.json();
+                        console.log(result.method);
+                        console.log(result.headers['content-length'] === '0');
+                        """);
         assertEquals("POST\ntrue\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testPOSTRequestWithStringBody() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', { method: 'POST', body: 'a=1' });" +
-            "const result = await res.json();" +
-            log("result.method") +
-            log("result.headers['content-length'] === '3'") +
-            log("result.headers['content-type'] === 'text/plain;charset=UTF-8'")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', { method: 'POST', body: 'a=1' });
+                        const result = await res.json();
+                        console.log(result.method);
+                        console.log(result.headers['content-length'] === '3');
+                        console.log(result.headers['content-type'] === 'text/plain;charset=UTF-8');
+                        """);
         assertEquals("POST\ntrue\ntrue\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testPOSTRequestWithObjectBody() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', { method: 'POST', body: {a: 1} });" +
-            "const result = await res.json();" +
-            log("result.method") +
-            log("result.headers['content-length'] === '15'") +
-            log("result.headers['content-type'] === 'text/plain;charset=UTF-8'")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', { method: 'POST', body: {a: 1} });
+                        const result = await res.json();
+                        console.log(result.method);
+                        console.log(result.headers['content-length'] === '15');
+                        console.log(result.headers['content-type'] === 'text/plain;charset=UTF-8');
+                        """);
         assertEquals("POST\ntrue\ntrue\n", out);
     }
 
-    @Test
-    public void testShouldOverriteContentLengthIfAble() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', { method: 'POST', body: 'a=1', headers: { 'Content-Length': '1000' } });" +
-            "const result = await res.json();" +
-            log("result.method") +
-            log("result.headers['content-length'] === '3'") +
-            log("result.headers['content-type'] === 'text/plain;charset=UTF-8'")
-        );
-        assertEquals("POST\ntrue\ntrue\n", out);
+    @Test(timeout = TEST_TIMEOUT)
+    public void testShouldOverwriteContentLengthIfAble() {
+        Assume.assumeTrue(System.getProperty("jdk.httpclient.allowRestrictedHeaders", "").toLowerCase(Locale.ROOT).contains("content-length"));
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', { method: 'POST', body: 'a = 1;;;', headers: { 'Content-Length': '5' } });
+                        const result = await res.json();
+                        console.log(result.method);
+                        console.log(result.body);
+                        console.log(result.headers['content-length']);
+                        console.log(result.headers['content-type'] === 'text/plain;charset=UTF-8');
+                        """);
+        assertEquals("POST\na = 1\n5\ntrue\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testShouldAllowPUTRequest() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', { method: 'PUT', body: 'a=1'});" +
-            "const result = await res.json();" +
-            log("result.method") +
-            log("result.headers['content-length'] === '3'") +
-            log("result.headers['content-type'] === 'text/plain;charset=UTF-8'")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', { method: 'PUT', body: 'a=1'});
+                        const result = await res.json();
+                        console.log(result.method);
+                        console.log(result.headers['content-length'] === '3');
+                        console.log(result.headers['content-type'] === 'text/plain;charset=UTF-8');
+                        """);
         assertEquals("PUT\ntrue\ntrue\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testShouldAllowDELETERequest() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', { method: 'DELETE' });" +
-            "const result = await res.json();" +
-            log("result.method")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', { method: 'DELETE' });
+                        const result = await res.json();
+                        console.log(result.method);
+                        """);
         assertEquals("DELETE\n", out);
     }
 
-    @Test
-    public void testShouldAllowDELETERequestWithBody() throws InterruptedException {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/inspect', { method: 'DELETE', body: 'a=1' });" +
-            "const result = await res.json();" +
-            log("result.method") +
-            log("result.headers['content-length'] === '3'") +
-            log("result.body")
-        );
+    @Test(timeout = TEST_TIMEOUT)
+    public void testShouldAllowDELETERequestWithBody() {
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/inspect', { method: 'DELETE', body: 'a=1' });
+                        const result = await res.json();
+                        console.log(result.method);
+                        console.log(result.headers['content-length'] === '3');
+                        console.log(result.body);
+                        """);
         assertEquals("DELETE\ntrue\na=1\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testShouldAllowHEADRequestWithContentEncodingHeader() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/error/404', { method: 'HEAD' });" +
-            log("res.status") +
-            log("res.headers.get('content-encoding')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/error/404', { method: 'HEAD' });
+                        console.log(res.status);
+                        console.log(res.headers.get('content-encoding'));
+                        """);
         assertEquals("404\ngzip\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testShouldAllowOPTIONSRequest() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/options', { method: 'OPTIONS' });" +
-            log("res.status") +
-            log("res.headers.get('allow')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/options', { method: 'OPTIONS' });
+                        console.log(res.status);
+                        console.log(res.headers.get('allow'));
+                        """);
         assertEquals("200\nGET, HEAD, OPTIONS\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testShouldRejectConsumingBodyTwice() {
-        String out = asyncThrows(
-            "const res = await fetch('http://localhost:8080/plain');" +
-            log("res.headers.get('content-type')") +
-            "await res.text();" +
-            log("res.bodyUsed") +
-            "await res.text()"
-        );
-        assertEquals("text/plain\ntrue\nBody already used\n", out);
+        String out = asyncThrows("""
+                        const res = await fetch('http://localhost:8080/plain');
+                        console.log(res.headers.get('content-type'));
+                        await res.text();
+                        console.log(res.bodyUsed);
+                        await res.text()
+                        """);
+        assertEquals("text/plain;charset=UTF-8\ntrue\nBody already used\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRejectCloneAfterBodyConsumed() {
-        String out = asyncThrows(
-            "const res = await fetch('http://localhost:8080/plain');" +
-            log("res.headers.get('content-type')") +
-            "await res.text();" +
-            "const res2 = res.clone();"
-        );
-        assertEquals("text/plain\ncannot clone body after it is used\n", out);
+        String out = asyncThrows("""
+                        const res = await fetch('http://localhost:8080/plain');
+                        console.log(res.headers.get('content-type'));
+                        await res.text();
+                        const res2 = res.clone();
+                        """);
+        assertEquals("text/plain;charset=UTF-8\ncannot clone body after it is used\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testAllowCloningResponseAndReadBothBodies() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/plain');" +
-            log("res.headers.get('content-type')") +
-            "const res2 = res.clone();" +
-            "await res.text();" +
-            "await res2.text();" +
-            log("res.bodyUsed, res2.bodyUsed")
-        );
-        assertEquals("text/plain\ntrue true\n", out);
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/plain');
+                        console.log(res.headers.get('content-type'));
+                        const res2 = res.clone();
+                        await res.text();
+                        await res2.text();
+                        console.log(res.bodyUsed, res2.bodyUsed);
+                        """);
+        assertEquals("text/plain;charset=UTF-8\ntrue true\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testGetAllResponseValuesOfHeader() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/cookie');" +
-            log("res.headers.get('set-cookie')") +
-            log("res.headers.get('Set-Cookie')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/cookie');
+                        console.log(res.headers.get('set-cookie'));
+                        console.log(res.headers.get('Set-Cookie'));
+                        """);
         assertEquals("a=1, b=2\na=1, b=2\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
+    public void testResponseHeadersGetSetCookie() {
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/cookie2');
+                        const headers = res.headers;
+                        // all values of Set-Cookie, joined by ', '
+                        console.log(headers.get('set-cookie'));
+                        console.log(headers.get('Set-Cookie'));
+
+                        // all values of Set-Cookie
+                        console.log(headers.getSetCookie().join(';'));
+                        console.log();
+
+                        // all header values
+                        headers.forEach((value, name, obj) => {
+                            if (obj !== headers) {
+                                throw new Error("Third argument must be this Headers object");
+                            }
+                            if (name === 'set-cookie') {
+                                console.log(name + ': ' + value);
+                            }
+                        });
+                        console.log('--');
+                        for (const name of headers.keys()) {
+                            if (name === 'set-cookie') {
+                                console.log(name);
+                            }
+                        }
+                        console.log('--');
+                        for (const value of headers.values()) {
+                            if (value.includes('=')) {
+                                console.log(value);
+                            }
+                        }
+                        console.log('--');
+                        for (const [name, value] of headers.entries()) {
+                            if (name === 'set-cookie') {
+                                console.log(name + ': ' + value);
+                            }
+                        }
+                        console.log('--');
+                        for (const [name, value] of headers) {
+                            if (name === 'set-cookie') {
+                                console.log(name + ': ' + value);
+                            }
+                        }
+                        """);
+        assertEquals("""
+                        a=1, b=2, c=3, d=4
+                        a=1, b=2, c=3, d=4
+                        a=1, b=2;c=3, d=4
+
+                        set-cookie: a=1, b=2
+                        set-cookie: c=3, d=4
+                        --
+                        set-cookie
+                        set-cookie
+                        --
+                        a=1, b=2
+                        c=3, d=4
+                        --
+                        set-cookie: a=1, b=2
+                        set-cookie: c=3, d=4
+                        --
+                        set-cookie: a=1, b=2
+                        set-cookie: c=3, d=4
+                        """, out);
+    }
+
+    @Test(timeout = TEST_TIMEOUT)
     public void testDeleteHeader() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/cookie');" +
-            log("res.headers.has('set-cookie')") +
-            "res.headers.delete('set-cookie');" +
-            log("res.headers.has('set-cookie')")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/cookie');
+                        console.log(res.headers.has('set-cookie'));
+                        res.headers.delete('set-cookie');
+                        console.log(res.headers.has('set-cookie'));
+                        """);
         assertEquals("true\nfalse\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testFetchWithRequestInstance() {
-        String out = async(
-            "const req = new Request('http://localhost:8080/200');" +
-            "const res = await fetch(req);" +
-            log("res.url")
-        );
+        String out = async("""
+                        const req = new Request('http://localhost:8080/200');
+                        const res = await fetch(req);
+                        console.log(res.url);
+                        """);
         assertEquals("http://localhost:8080/200\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testFetchOptionsOverwriteRequestInstance() {
-        String out = async(
-            "const req = new Request('http://localhost:8080/inspect', { method: 'POST', headers: {a:'1'} });" +
-            "const res = await fetch(req, { method: 'GET', headers: {a:'2'} } );" +
-            "const result = await res.json();" +
-            log("result.method") +
-            log("result.headers['a'] === '2'")
-        );
+        String out = async("""
+                        const req = new Request('http://localhost:8080/inspect', { method: 'POST', headers: {a:'1'} });
+                        const res = await fetch(req, { method: 'GET', headers: {a:'2'} } );
+                        const result = await res.json();
+                        console.log(result.method);
+                        console.log(result.headers['a'] === '2');
+                        """);
         assertEquals("GET\ntrue\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testKeepQuestionMarkWithoutParams() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/question?');" +
-            log("res.url")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/question?');
+                        console.log(res.url);
+                        """);
         assertEquals("http://localhost:8080/question?\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testKeepUrlParams() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/question?a=1');" +
-            log("res.url")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/question?a=1');
+                        console.log(res.url);
+                        """);
         assertEquals("http://localhost:8080/question?a=1\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testKeepHashSymbol() {
-        String out = async(
-            "const res = await fetch('http://localhost:8080/question?#');" +
-            log("res.url")
-        );
+        String out = async("""
+                        const res = await fetch('http://localhost:8080/question?#');
+                        console.log(res.url);
+                        """);
         assertEquals("http://localhost:8080/question?#\n", out);
     }
 
-    @Test(timeout = 5000)
+    @Ignore
+    @Test(timeout = TEST_TIMEOUT)
     public void testSupportsHttps() {
-        String out = async(
-            "const res = await fetch('https://github.com/', {method: 'HEAD'});" +
-            log("res.ok === true")
-        );
-        assertEquals("true\n", out);
+        String out = async("""
+                        const res = await fetch('https://openjdk.org/', {method: 'HEAD'});
+                        console.log(res.ok);
+                        console.log(res.status);
+                        """);
+        assertEquals("true\n200\n", out);
     }
 
-    @Test
-    public void testCustomFetchError() {
-        String out = async(
-            "const sysErr = new Error('system');" +
-            "const err = new FetchError('test message','test-type', sysErr);" +
-            log("err.message") +
-            log("err.type")
-        );
-        assertEquals("test message\ntest-type\n", out);
+    @Test(timeout = TEST_TIMEOUT)
+    public void testFetchUrlError() {
+        String out = async("""
+                        try {
+                            await fetch('<invalid> "url"');
+                        } catch (err) {
+                            console.log(err.name);
+                            console.log(err.message.toLowerCase().match('invalid url')?.[0]);
+                        }
+                        """);
+        assertEquals("TypeError\ninvalid url\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testRejectNetworkFailure() {
         String out = asyncThrows(
-            "const res = await fetch('http://localhost:50000');"
-        );
+                        "const res = await fetch('http://localhost:50000');");
         assertEquals("Connection refused\n", out);
     }
 
-    @Test
+    @Test(timeout = TEST_TIMEOUT)
     public void testExtractErroredSysCall() {
-        String out = async(
-            "try {" +
-            "const res = await fetch('http://localhost:50000');" +
-            "} catch (err) {" +
-            log("err.message") +
-            "}"
-        );
+        String out = async("""
+                        try {
+                            const res = await fetch('http://localhost:50000');
+                        } catch (err) {
+                            console.log(err.message);
+                        }
+                        """);
         assertEquals("Connection refused\n", out);
     }
 
-    private String async(String test) {
+    private static String async(String test) {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(new TestOutput()).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+        try (Context context = newContext(out)) {
             Value asyncFn = context.eval(ID, "" +
-                    "(async function () {" +
-                    test +
-                    "})");
+                            "(async function () {" +
+                            test +
+                            "})");
             asyncFn.executeVoid();
         }
         return out.toString();
     }
 
-    private String asyncThrows(String test) {
+    private static String asyncThrows(String test) {
         TestOutput out = new TestOutput();
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(new TestOutput()).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+        try (Context context = newContext(out)) {
             Value asyncFn = context.eval(ID, "" +
-                    "(async function () {" +
-                    "try {" +
-                    test +
-                    "}" +
-                    "catch (error) {" +
-                    "console.log(error.message)" +
-                    "}" +
-                    "})");
+                            "(async function () {" +
+                            "try {" +
+                            test +
+                            "}" +
+                            "catch (error) {" +
+                            "console.log(error.message)" +
+                            "}" +
+                            "})");
             asyncFn.executeVoid();
         }
         return out.toString();
     }
 
-    private String log(String code) {
-        return "console.log(" + code + ");";
+    private static Context newContext(TestOutput out) {
+        var b = JSTest.newContextBuilder().err(out).out(out);
+        b.allowHostAccess(HostAccess.ALL);
+        b.allowIO(IOAccess.ALL);
+        b.option(JSContextOptions.CONSOLE_NAME, "true");
+        b.option(JSContextOptions.GLOBAL_FETCH_NAME, "true");
+        b.option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw");
+        b.option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false");
+        return b.build();
+    }
+
+    private static URI url(String url) throws URISyntaxException {
+        return new URI(url);
+    }
+
+    public static boolean isDomainOrSubDomain(URI destination, URI origin) {
+        String d = destination.getHost();
+        String o = origin.getHost();
+        return d.equals(o) || o.endsWith("." + d);
+    }
+
+    public static boolean isSameProtocol(URI destination, URI origin) {
+        return destination.getScheme().equals(origin.getScheme());
     }
 }

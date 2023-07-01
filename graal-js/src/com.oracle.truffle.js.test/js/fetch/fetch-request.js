@@ -1,12 +1,14 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
  */
 
 /**
- * Tests of the Request class
+ * Tests of the Request class.
+ *
+ * @option global-fetch
  */
 
 load('../assert.js');
@@ -56,6 +58,7 @@ const baseURL = "http://localhost:8080";
     });
 
     assertSame(baseURL, r1.url);
+    assertSame('POST', r1.method);
     assertSame(baseURL, r2.url);
     assertSame('POST2', r2.method);
 })();
@@ -162,11 +165,15 @@ const baseURL = "http://localhost:8080";
 })();
 
 (function shouldSupportBlobMethod() {
-    console.log(".blob() not implemented")
+    // .blob() not implemented
+    const request = new Request(baseURL);
+    assertThrows(() => request.blob(), TypeError);
 })();
 
 (function shouldSupportFormDataMethod() {
-    console.log(".formData() not implemented")
+    // .formData() not implemented
+    const request = new Request(baseURL);
+    assertThrows(() => request.formData(), TypeError);
 })();
 
 (function shouldSupportCloneMethod() {
