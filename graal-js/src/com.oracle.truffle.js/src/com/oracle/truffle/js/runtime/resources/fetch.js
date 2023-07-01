@@ -147,7 +147,7 @@
             } else if (Array.isArray(init)) {
                 init = init;
             } else if (typeof init === 'object' && init !== null) {
-                init = Object.entries(init);
+                init = init[Symbol.iterator]?.() ?? Object.entries(init);
             } else {
                 throw new TypeError("Failed to construct 'Headers': The provided value has incorrect type");
             }
