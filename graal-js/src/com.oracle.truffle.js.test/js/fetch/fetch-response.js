@@ -9,6 +9,7 @@
  * Tests of the Response class.
  *
  * @option global-fetch
+ * @option unhandled-rejections=throw
  */
 
 load('../assert.js');
@@ -30,9 +31,10 @@ load('../assert.js');
     assertTrue(Reflect.has(res, 'bodyUsed'));
     assertTrue(Reflect.has(res, 'arrayBuffer'));
     assertTrue(Reflect.has(res, 'blob'));
-    assertTrue(Reflect.has(res, 'formData'));
     assertTrue(Reflect.has(res, 'json'));
     assertTrue(Reflect.has(res, 'text'));
+    // currently unsupported:
+    //assertTrue(Reflect.has(res, 'formData'));
 })();
 
 (function shouldSupportEmptyOptions() {
@@ -53,15 +55,13 @@ load('../assert.js');
     assertSame('2', res.headers.get('b'));
 })();
 
-(function shouldSupportArrayBufferMethod() {
-    const res = new Response('a=1');
-    return res.arrayBuffer().then(result => assertSame('a=1', result));
-})();
-
 (function shouldSupportBlobMethod() {
-    // .blob() not implemented
-    const res = new Response('a=1');
-    assertThrows(() => res.blob(), TypeError);
+    new Response().blob().then(b => b.text());
+    new Response().blob().then(b => b.arrayBuffer());
+    new Response('a=1').blob().then(b => b.text());
+    // currently unsupported:
+    new Response('a=1').blob().then(b => b.arrayBuffer())
+        .then(() => {throw new Error()}).catch((e) => {if (!(e instanceof TypeError)) throw new Error("Expected TypeError")});
 })();
 
 (function shouldSupportFormDataMethod() {
@@ -107,7 +107,7 @@ load('../assert.js');
 (function shouldDefaultToNullAsBody() {
     const res = new Response();
     assertSame(null, res.body);
-    return res.text().then(result => assertSame('', result));
+    res.text().then(result => assertSame('', result));
 })();
 
 (function shouldDefaultTo200AsStatus() {
@@ -149,4 +149,24 @@ load('../assert.js');
     assertThrows(() => Response.redirect(url, 200), RangeError);
     // reject invalid url
     assertThrows(() => Response.redirect('foobar', 200), TypeError);
+})();
+
+(function shouldSupportStaticJsonMethod() {
+    const res = Response.json({key: 'value'});
+    assertTrue(res instanceof Response);
+    assertSame('application/json', res.headers.get('Content-Type'));
+    assertSame(200, res.status);
+    res.text().then(result => assertSame(JSON.stringify({key: 'value'}), result));
+})();
+
+function stringToBytes(s) {
+    return Uint8Array.from([...s].map(s => s.charCodeAt(0))).buffer;
+}
+
+(function shouldSupportArrayBufferMethod() {
+    const res = new Response(stringToBytes('a=1'));
+    res.arrayBuffer().then(result => {
+        const string = String.fromCharCode.apply(null, new Uint8Array(result));
+        assertSame('a=1', string);
+    });
 })();

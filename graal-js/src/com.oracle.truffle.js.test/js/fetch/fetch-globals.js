@@ -9,6 +9,7 @@
  * Test non-networking behaviour of the fetch api.
  *
  * @option global-fetch
+ * @option unhandled-rejections=throw
  */
 
 load('../assert.js');
@@ -42,10 +43,10 @@ const url = "http://localhost:8080";
 
 (function shouldSupportProperStringOutput() {
     // init/options must be undefined, null, or an object.
-    assertThrows(() => fetch(url, 42), TypeError);
     assertThrows(() => new Headers(42), TypeError);
     assertThrows(() => new Request(url, 42), TypeError);
     assertThrows(() => new Response(url, 42), TypeError);
+    fetch(url, 42).then(() => {throw new Error()}).catch((e) => {if (!(e instanceof TypeError)) throw new Error("Expected TypeError for non-object argument")});
 })();
 
 (function shouldHaveCorrectFunctionLength() {

@@ -9,6 +9,7 @@
  * Tests of the Request class.
  *
  * @option global-fetch
+ * @option unhandled-rejections=throw
  */
 
 load('../assert.js');
@@ -33,8 +34,9 @@ const baseURL = "http://localhost:8080";
     assertTrue(Reflect.has(req, 'arrayBuffer'));
     assertTrue(Reflect.has(req, 'text'));
     assertTrue(Reflect.has(req, 'json'));
-    assertTrue(Reflect.has(req, 'formData'));
     assertTrue(Reflect.has(req, 'blob'));
+    // currently unsupported:
+    //assertTrue(Reflect.has(req, 'formData'));
 })();
 
 (function shouldSetCorrectDefaults() {
@@ -85,7 +87,7 @@ const baseURL = "http://localhost:8080";
 (function shouldDefaultToNullBody() {
     const req = new Request(baseURL);
     assertSame(null, req.body);
-    return req.text().then(result => assertSame('', result));
+    req.text().then(result => assertSame('', result));
 })();
 
 (function shouldSupportParsingHeaders() {
@@ -126,20 +128,6 @@ const baseURL = "http://localhost:8080";
     }
 })();
 
-(function shouldSupportArrayBufferMethod() {
-    const request = new Request(baseURL, {
-        method: 'POST',
-        body: 'a=1'
-    });
-
-    assertSame(baseURL, request.url);
-    return request.arrayBuffer().then(result => {
-        assertTrue(result instanceof ArrayBuffer);
-        const string = String.fromCharCode.apply(null, new Uint8Array(result));
-        assertSame('a=1', string);
-    });
-})();
-
 (function shouldSupportTextMethod() {
     const request = new Request(baseURL, {
         method: 'POST',
@@ -159,15 +147,18 @@ const baseURL = "http://localhost:8080";
     });
 
     assertSame(baseURL, request.url);
-    return request.text().then(result => {
+    request.json().then(result => {
         assertSame(1, result.a);
     });
 })();
 
 (function shouldSupportBlobMethod() {
-    // .blob() not implemented
-    const request = new Request(baseURL);
-    assertThrows(() => request.blob(), TypeError);
+    new Request(baseURL).blob().then(b => b.text());
+    new Request(baseURL).blob().then(b => b.arrayBuffer());
+    new Request(baseURL, {method: 'POST', body: 'a=1'}).blob().then(b => b.text());
+    // currently unsupported:
+    new Request(baseURL, {method: 'POST', body: 'a=1'}).blob().then(b => b.arrayBuffer())
+        .then(() => {throw new Error()}).catch((e) => {if (!(e instanceof TypeError)) throw new Error("Expected TypeError")});
 })();
 
 (function shouldSupportFormDataMethod() {
@@ -192,8 +183,33 @@ const baseURL = "http://localhost:8080";
     assertSame('POST', clone.method);
     assertSame('manual', clone.redirect);
     assertSame('1', clone.headers.get('a'));
-    return Promise.all([request.text(), clone.text()]).then(results => {
+    Promise.all([request.text(), clone.text()]).then(results => {
         assertSame('b=2', results[0]);
         assertSame('b=2', results[1]);
+    });
+})();
+
+(function shouldThrowErrorOnForbiddenMethod() {
+    for (const method of ['CONNECT', 'TRACE', 'TRACK']) {
+        assertThrows(() => new Request(baseURL, {method}), TypeError);
+        assertThrows(() => new Request(baseURL, {method: method.toLowerCase()}), TypeError);
+    }
+})();
+
+function stringToBytes(s) {
+    return Uint8Array.from([...s].map(s => s.charCodeAt(0))).buffer;
+}
+
+(function shouldSupportArrayBufferMethod() {
+    const request = new Request(baseURL, {
+        method: 'POST',
+        body: stringToBytes('a=1')
+    });
+
+    assertSame(baseURL, request.url);
+    request.arrayBuffer().then(result => {
+        assertTrue(result instanceof ArrayBuffer);
+        const string = String.fromCharCode.apply(null, new Uint8Array(result));
+        assertSame('a=1', string);
     });
 })();

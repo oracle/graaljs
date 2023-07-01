@@ -340,7 +340,10 @@ public class FetchMethodTest extends JSTest {
                         console.log(res.url, res.status);
                         console.log(result.method, result.body === '');
                         """);
-        assertEquals("http://localhost:8080/inspect 200\nPATCH true\n", out);
+        assertEquals("""
+                        http://localhost:8080/inspect 200
+                        PATCH true
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -353,7 +356,10 @@ public class FetchMethodTest extends JSTest {
                         console.log(res.url, res.status);
                         console.log(result.method, result.body === '');
                         """);
-        assertEquals("http://localhost:8080/inspect 200\nGET true\n", out);
+        assertEquals("""
+                        http://localhost:8080/inspect 200
+                        GET true
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -363,7 +369,7 @@ public class FetchMethodTest extends JSTest {
                         follow: 1
                         });
                         """);
-        assertEquals("maximum redirect reached at: http://localhost:8080/redirect/chain\n", out);
+        assertEquals("maximum redirect reached at: http://localhost:8080/redirect/301\n", out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -386,7 +392,11 @@ public class FetchMethodTest extends JSTest {
                         console.log(res.status);
                         console.log(res.headers.get('location'));
                         """);
-        assertEquals("http://localhost:8080/redirect/301\n301\n/inspect\n", out);
+        assertEquals("""
+                        http://localhost:8080/redirect/301
+                        301
+                        /inspect
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -463,14 +473,21 @@ public class FetchMethodTest extends JSTest {
                         'safe-header': 'gets=forwarded'
                         }
                         });
-                        const headers = new Headers((await res.json()).headers);
+                        const headersJson = (await res.json()).headers;
+                        const headers = new Headers(headersJson);
                         console.log(headers.has('authorization'));
                         console.log(headers.has('cookie'));
                         console.log(headers.has('cookie2'));
                         console.log(headers.has('www-authenticate'));
                         console.log(headers.get('safe-header'));
                         """);
-        assertEquals("false\nfalse\nfalse\nfalse\ngets=forwarded\n", out);
+        assertEquals("""
+                        false
+                        false
+                        false
+                        false
+                        gets=forwarded
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -492,7 +509,13 @@ public class FetchMethodTest extends JSTest {
                         console.log(headers.get('www-authenticate'));
                         console.log(headers.get('safe-header'));
                         """);
-        assertEquals("gets=forwarded\ngets=forwarded\ngets=forwarded\ngets=forwarded\ngets=forwarded\n", out);
+        assertEquals("""
+                        gets=forwarded
+                        gets=forwarded
+                        gets=forwarded
+                        gets=forwarded
+                        gets=forwarded
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -528,7 +551,13 @@ public class FetchMethodTest extends JSTest {
                         console.log(headers.has('www-authenticate'));
                         console.log(headers.get('safe-header'));
                         """);
-        assertEquals("false\nfalse\nfalse\nfalse\ngets=forwarded\n", out);
+        assertEquals("""
+                        false
+                        false
+                        false
+                        false
+                        gets=forwarded
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -549,7 +578,11 @@ public class FetchMethodTest extends JSTest {
                         console.log(res.status);
                         console.log(res.headers.get('location'));
                         """);
-        assertEquals("http://localhost:8080/redirect/no-location\n301\nundefined\n", out);
+        assertEquals("""
+                        http://localhost:8080/redirect/no-location
+                        301
+                        null
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -560,7 +593,11 @@ public class FetchMethodTest extends JSTest {
                         console.log(res.status);
                         console.log(res.headers.get('location'));
                         """);
-        assertEquals("http://localhost:8080/redirect/no-location\n301\nundefined\n", out);
+        assertEquals("""
+                        http://localhost:8080/redirect/no-location
+                        301
+                        null
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -589,7 +626,11 @@ public class FetchMethodTest extends JSTest {
                         console.log(res.status);
                         console.log(res.redirected);
                         """);
-        assertEquals("http://localhost:8080/inspect\n200\ntrue\n", out);
+        assertEquals("""
+                        http://localhost:8080/inspect
+                        200
+                        true
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -644,9 +685,12 @@ public class FetchMethodTest extends JSTest {
                         const res = await fetch('http://localhost:8080/no-content');
                         console.log(res.status, res.statusText, res.ok);
                         const result = await res.text();
-                        console.log(result === '');
+                        console.log(`'${result}'`);
                         """);
-        assertEquals("204 No Content true\ntrue\n", out);
+        assertEquals("""
+                        204 No Content true
+                        ''
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -730,39 +774,61 @@ public class FetchMethodTest extends JSTest {
     @Test(timeout = TEST_TIMEOUT)
     public void testPOSTRequestWithObjectBody() {
         String out = async("""
-                        const res = await fetch('http://localhost:8080/inspect', { method: 'POST', body: {a: 1} });
+                        const res = await fetch('http://localhost:8080/inspect', {
+                            method: 'POST',
+                            body: {a: 1},
+                            headers: [['Content-Type', 'text/plain;charset=UTF-8']],
+                        });
                         const result = await res.json();
                         console.log(result.method);
-                        console.log(result.headers['content-length'] === '15');
-                        console.log(result.headers['content-type'] === 'text/plain;charset=UTF-8');
+                        console.log(result.body);
+                        console.log(result.headers['content-length']);
+                        console.log(result.headers['content-type']);
                         """);
-        assertEquals("POST\ntrue\ntrue\n", out);
+        assertEquals("""
+                        POST
+                        [object Object]
+                        15
+                        text/plain;charset=UTF-8
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
     public void testShouldOverwriteContentLengthIfAble() {
         Assume.assumeTrue(System.getProperty("jdk.httpclient.allowRestrictedHeaders", "").toLowerCase(Locale.ROOT).contains("content-length"));
         String out = async("""
-                        const res = await fetch('http://localhost:8080/inspect', { method: 'POST', body: 'a = 1;;;', headers: { 'Content-Length': '5' } });
+                        const res = await fetch('http://localhost:8080/inspect', {
+                            method: 'POST', body: 'a = 1;;;',
+                            headers: { 'Content-Length': '5' }
+                        });
                         const result = await res.json();
                         console.log(result.method);
                         console.log(result.body);
                         console.log(result.headers['content-length']);
-                        console.log(result.headers['content-type'] === 'text/plain;charset=UTF-8');
+                        console.log(result.headers['content-type']);
                         """);
-        assertEquals("POST\na = 1\n5\ntrue\n", out);
+        assertEquals("""
+                        POST
+                        a = 1
+                        5
+                        text/plain;charset=UTF-8
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
     public void testShouldAllowPUTRequest() {
         String out = async("""
-                        const res = await fetch('http://localhost:8080/inspect', { method: 'PUT', body: 'a=1'});
+                        const res = await fetch('http://localhost:8080/inspect', { method: 'PUT', body: 'a=1' });
                         const result = await res.json();
                         console.log(result.method);
-                        console.log(result.headers['content-length'] === '3');
-                        console.log(result.headers['content-type'] === 'text/plain;charset=UTF-8');
+                        console.log(result.headers['content-length']);
+                        console.log(result.headers['content-type']);
                         """);
-        assertEquals("PUT\ntrue\ntrue\n", out);
+        assertEquals("""
+                        PUT
+                        3
+                        text/plain;charset=UTF-8
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -781,10 +847,14 @@ public class FetchMethodTest extends JSTest {
                         const res = await fetch('http://localhost:8080/inspect', { method: 'DELETE', body: 'a=1' });
                         const result = await res.json();
                         console.log(result.method);
-                        console.log(result.headers['content-length'] === '3');
+                        console.log(result.headers['content-length']);
                         console.log(result.body);
                         """);
-        assertEquals("DELETE\ntrue\na=1\n", out);
+        assertEquals("""
+                        DELETE
+                        3
+                        a=1
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -825,9 +895,12 @@ public class FetchMethodTest extends JSTest {
                         const res = await fetch('http://localhost:8080/plain');
                         console.log(res.headers.get('content-type'));
                         await res.text();
-                        const res2 = res.clone();
+                        res.clone();
                         """);
-        assertEquals("text/plain;charset=UTF-8\ncannot clone body after it is used\n", out);
+        assertEquals("""
+                        text/plain;charset=UTF-8
+                        Body has already been consumed
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -1057,6 +1130,7 @@ public class FetchMethodTest extends JSTest {
     private static Context newContext(TestOutput out) {
         var b = JSTest.newContextBuilder().err(out).out(out);
         b.allowHostAccess(HostAccess.ALL);
+        b.allowHostClassLookup((s) -> true);
         b.allowIO(IOAccess.ALL);
         b.option(JSContextOptions.CONSOLE_NAME, "true");
         b.option(JSContextOptions.GLOBAL_FETCH_NAME, "true");
