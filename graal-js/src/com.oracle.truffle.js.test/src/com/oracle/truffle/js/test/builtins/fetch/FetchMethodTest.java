@@ -1098,6 +1098,40 @@ public class FetchMethodTest extends JSTest {
         assertEquals("Connection refused\n", out);
     }
 
+    @Test
+    public void testSupportsDataUrl() {
+        String out = async("""
+                        for await (let res of [
+                                fetch('data:;base64,W3Rlc3QgZGF0YV0='),
+                                fetch('data:text/plain;base64,W3Rlc3QgZGF0YV0='),
+                                fetch('data:text/plain;charset=UTF-8;base64,W3Rlc3QgZGF0YV0='),
+                                fetch('data:,%5Btest%20data%5D'),
+                                fetch('data:text/plain,%5Btest%20data%5D'),
+                            ]) {
+                            console.log(res.ok && res.status, res.statusText);
+                            console.log(res.headers.get('content-type'));
+                            console.log(await res.text());
+                        }
+                        """);
+        assertEquals("""
+                        200 OK
+                        text/plain;charset=US-ASCII
+                        [test data]
+                        200 OK
+                        text/plain
+                        [test data]
+                        200 OK
+                        text/plain;charset=UTF-8
+                        [test data]
+                        200 OK
+                        text/plain;charset=US-ASCII
+                        [test data]
+                        200 OK
+                        text/plain
+                        [test data]
+                        """, out);
+    }
+
     private static String async(String test) {
         TestOutput out = new TestOutput();
         try (Context context = newContext(out)) {

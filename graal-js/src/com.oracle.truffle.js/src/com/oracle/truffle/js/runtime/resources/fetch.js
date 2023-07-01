@@ -24,6 +24,8 @@
         const ConnectException = Java.type('java.net.ConnectException');
         const java_lang_String = Java.type('java.lang.String');
         const ByteBuffer = Java.type('java.nio.ByteBuffer');
+        const Base64 = Java.type('java.util.Base64');
+        const StandardCharsets = Java.type('java.nio.charset.StandardCharsets');
 
         function parseAndValidateURL(url) {
             try {
@@ -101,7 +103,7 @@
                     this.#size = 0;
                     this.#type = type ?? '';
                 } else {
-                    throw new TypeError();
+                    throw new TypeError(`Unsupported array type`);
                 }
             }
             get size() {
@@ -582,6 +584,74 @@
                 default:
                     throw new TypeError("fetch cannot load " + request.url + ". Scheme not supported: " + scheme);
             }
+        }
+
+        async function dataFetch(request) {
+            let requestPrivate = request.#private;
+            let dataUri = requestPrivate.uri;
+            // 1. Assert: dataUrl scheme is "data"
+            if (requestPrivate.uri.getScheme() !== "data") {
+                return null;
+            }
+
+            // 2. Let input be the result of running the URL serializer on dataURL with exclude fragment
+            // set to true.
+            if (dataUri.getFragment() != null) {
+                dataUri = new URI(dataUri.getScheme(), dataUri.getSchemeSpecificPart(), null);
+            }
+
+            let input = dataUri.toString();
+
+            // 3. Remove the leading "data:" from input.
+            input = input.substring(5);
+
+            // 5. Let mimeType be the result of collecting a sequence of code points
+            // that are not equal to U+002C (,), given position.
+            let commaPos = input.indexOf(',');
+            let mimeType = input.substring(0, commaPos);
+
+            // 6. Strip leading and trailing ASCII whitespace from mimeType.
+            mimeType = mimeType.trim();
+
+            // 8. Advance position by 1.
+            // 9. Let encodedBody be the remainder of input.
+            let encodedBody = input.substring(commaPos + 1);
+            let body;
+
+            // 11. If mimeType ends with U+003B (;),
+            // followed by zero or more U+0020 SPACE,
+            // followed by an ASCII case-insensitive match for "base64",
+            // then:
+            let match = /;\u0020*base64$/i.exec(mimeType);
+            if (match != null) {
+                // 11.2. Set body to the forgiving-base64 decode of stringBody.
+                let decodedBytes = Base64.getDecoder().decode(encodedBody.trim());
+                body = new Blob(new ByteArrayWrapper(decodedBytes));
+                // 11.4 Remove the last 6 code points from mimeType.
+                // 11.5 Remove trailing U+0020 SPACE code points from mimeType, if any.
+                // 11.6 Remove the last U+003B (;) from mimeType.
+                mimeType = mimeType.slice(0, -match[0].length);
+            } else {
+                body = decodeURI(encodedBody);
+            }
+
+            // 12. If mimeType starts with ";", then prepend "text/plain" to mimeType.
+            if (mimeType.startsWith(";")) {
+                mimeType = "text/plain" + mimeType;
+            }
+
+            // 14. If mimeTypeRecord is failure, then set mimeTypeRecord to text/plain;charset=US-ASCII.
+            if (mimeType === '') {
+                mimeType = "text/plain;charset=US-ASCII";
+            }
+
+            let response = new Response(body, {
+                status: 200,
+                statusText: 'OK',
+                url: request.url,
+                headers: {'Content-Type': mimeType},
+            });
+            return response;
         }
 
         function isByteArrayLike(body) {
