@@ -276,7 +276,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> GLOBAL_ARGUMENTS = new OptionKey<>(true);
 
     public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
-    @Option(name = CONSOLE_NAME, category = OptionCategory.USER, help = "Provide 'console' global property.") //
+    @Option(name = CONSOLE_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Provide 'console' global property.") //
     public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
 
     public static final String PERFORMANCE_NAME = JS_OPTION_PREFIX + "performance";
