@@ -102,10 +102,11 @@ public final class JSContextOptions {
     public static final String ECMASCRIPT_VERSION_LATEST = "latest";
     public static final String ECMASCRIPT_VERSION_STAGING = "staging";
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
-    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = ECMASCRIPT_VERSION_LATEST + "|" + ECMASCRIPT_VERSION_STAGING + "|[5, " +
-                    JSConfig.LatestECMAScriptVersion + "]|[2015, " +
-                    (JSConfig.LatestECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta) + "]", help = "" +
-                                    "ECMAScript version to be compatible with. Default is '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), staged features are in '" +
+    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, //
+                    usageSyntax = ECMASCRIPT_VERSION_LATEST + "|" + ECMASCRIPT_VERSION_STAGING + "|" +
+                                    "[5, " + JSConfig.LatestECMAScriptVersion + "]|" +
+                                    "[2015, " + (JSConfig.LatestECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta) + "]", //
+                    help = "ECMAScript version to be compatible with. Default is '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), staged features are in '" +
                                     ECMASCRIPT_VERSION_STAGING + "'.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.LatestECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
 
