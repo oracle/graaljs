@@ -190,8 +190,13 @@ public class GH669 {
                         Path.of(INDEX_PATH), indexContents);
 
         var ioAccess = IOAccess.newBuilder().fileSystem(new TestFileSystem(files, MODULE_PATH)).build();
-        return Context.newBuilder(JS).allowIO(ioAccess).allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).option(COMMONJS_REQUIRE_NAME, "true").option(COMMONJS_REQUIRE_CWD_NAME,
-                        MODULE_PATH);
+
+        return Context.newBuilder(JS)//
+                        .allowIO(ioAccess)//
+                        .allowHostAccess(HostAccess.ALL)//
+                        .allowExperimentalOptions(true)//
+                        .option(COMMONJS_REQUIRE_NAME, "true")//
+                        .option(COMMONJS_REQUIRE_CWD_NAME, MODULE_PATH);
     }
 
     private static StackTraceElement[] getJavaStackTrace(Callable<?> callable) {
@@ -201,7 +206,7 @@ public class GH669 {
             return e.getStackTrace();
         }
 
-        throw new AssertionError("An exception wasn't thrown");
+        throw new AssertionError("No exception was thrown");
     }
 
     private static void assertJavaStackFrame(StackTraceElement frame, String methodName, String path) {
@@ -210,8 +215,8 @@ public class GH669 {
         assertEquals(path, frame.getFileName());
     }
 
-    private static String[] getJsStackTrace(String stackTrace) {
-        return Arrays.stream(stackTrace.split("\n")).skip(1).toArray(String[]::new);
+    private static String[] getJsStackTrace(String error) {
+        return Arrays.stream(error.split("\n")).skip(1).toArray(String[]::new);
     }
 
     private static void assertJsStackFrame(String frame, String methodName, String path) {
