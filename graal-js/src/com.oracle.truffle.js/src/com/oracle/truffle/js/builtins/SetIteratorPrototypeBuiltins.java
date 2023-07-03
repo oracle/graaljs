@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.SetIteratorPrototypeBuiltinsFactory.SetIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -98,9 +99,6 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
     public abstract static class SetIteratorNextNode extends JSBuiltinNode {
 
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
-        private final ConditionProfile detachedProf = ConditionProfile.create();
-        private final ConditionProfile doneProf = ConditionProfile.create();
-        private final ConditionProfile iterKindProf = ConditionProfile.create();
 
         public SetIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -108,9 +106,12 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected final JSObject doSetIterator(VirtualFrame frame, JSSetIteratorObject iterator) {
+        protected final JSObject doSetIterator(VirtualFrame frame, JSSetIteratorObject iterator,
+                        @Cached InlinedConditionProfile detachedProf,
+                        @Cached InlinedConditionProfile doneProf,
+                        @Cached InlinedConditionProfile iterKindProf) {
             Object set = iterator.getIteratedObject();
-            if (detachedProf.profile(set == Undefined.instance)) {
+            if (detachedProf.profile(this, set == Undefined.instance)) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
@@ -118,14 +119,14 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSHashMap.Cursor mapCursor = iterator.getNextIndex();
             int itemKind = iterator.getIterationKind();
 
-            if (doneProf.profile(!mapCursor.advance())) {
+            if (doneProf.profile(this, !mapCursor.advance())) {
                 iterator.setIteratedObject(Undefined.instance);
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
             Object elementValue = mapCursor.getKey();
             Object result;
-            if (iterKindProf.profile(itemKind == JSRuntime.ITERATION_KIND_VALUE)) {
+            if (iterKindProf.profile(this, itemKind == JSRuntime.ITERATION_KIND_VALUE)) {
                 result = elementValue;
             } else {
                 assert itemKind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE;
