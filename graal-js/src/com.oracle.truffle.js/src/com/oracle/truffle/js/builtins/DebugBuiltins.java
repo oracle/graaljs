@@ -129,7 +129,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
     public static final TruffleString NOT_AN_OBJECT = Strings.constant("not_an_object");
     public static final TruffleString ASYNC_GENERATOR = Strings.constant("Async Generator");
     public static final TruffleString GENERATOR = Strings.constant("Generator");
-    public static final TruffleString SPC_ITERATOR = Strings.constant(" Iterator");
 
     public static final JSBuiltinsContainer BUILTINS = new DebugBuiltins();
 
@@ -282,10 +281,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return Null.instance;
             } else if (JSDynamicObject.isJSDynamicObject(obj)) {
                 JSDynamicObject jsObj = (JSDynamicObject) obj;
-                if (JSObjectUtil.hasHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID)) {
-                    JSDynamicObject iteratedObj = (JSDynamicObject) JSObjectUtil.getHiddenProperty(jsObj, JSRuntime.ITERATED_OBJECT_ID);
-                    return Strings.concat(JSObject.getClassName(iteratedObj), SPC_ITERATOR);
-                } else if (JSObjectUtil.hasHiddenProperty(jsObj, JSFunction.GENERATOR_STATE_ID)) {
+                if (JSObjectUtil.hasHiddenProperty(jsObj, JSFunction.GENERATOR_STATE_ID)) {
                     return GENERATOR;
                 } else if (JSObjectUtil.hasHiddenProperty(jsObj, JSFunction.ASYNC_GENERATOR_STATE_ID)) {
                     return ASYNC_GENERATOR;

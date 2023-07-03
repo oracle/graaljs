@@ -129,8 +129,6 @@ public final class JSRuntime {
     public static final TruffleString DONE = Strings.constant("done");
     public static final TruffleString NEXT = Strings.constant("next");
 
-    public static final HiddenKey ITERATED_OBJECT_ID = new HiddenKey("IteratedObject");
-    public static final HiddenKey ITERATOR_NEXT_INDEX = new HiddenKey("IteratorNextIndex");
     public static final HiddenKey ENUMERATE_ITERATOR_ID = new HiddenKey("EnumerateIterator");
     public static final HiddenKey FOR_IN_ITERATOR_ID = new HiddenKey("ForInIterator");
     public static final HiddenKey FINALIZATION_GROUP_CLEANUP_ITERATOR_ID = new HiddenKey("CleanupIterator");
