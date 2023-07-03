@@ -362,9 +362,13 @@ public final class JSContextOptions {
     @CompilationFinal private boolean awaitOptimization;
 
     public static final String DISABLE_EVAL_NAME = JS_OPTION_PREFIX + "disable-eval";
-    @Option(name = DISABLE_EVAL_NAME, category = OptionCategory.EXPERT, help = "User code is not allowed to parse code via e.g. eval().") //
+    @Option(name = DISABLE_EVAL_NAME, category = OptionCategory.EXPERT, deprecated = true, deprecationMessage = "Use js.allow-eval=false instead.", help = "Disallow code generation from strings, e.g. using eval().") //
     public static final OptionKey<Boolean> DISABLE_EVAL = new OptionKey<>(false);
-    @CompilationFinal private boolean disableEval;
+
+    public static final String ALLOW_EVAL_NAME = JS_OPTION_PREFIX + "allow-eval";
+    @Option(name = ALLOW_EVAL_NAME, category = OptionCategory.EXPERT, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Allow or disallow code generation from strings, e.g. using eval().") //
+    public static final OptionKey<Boolean> ALLOW_EVAL = new OptionKey<>(true);
+    @CompilationFinal private boolean allowEval;
 
     public static final String DISABLE_WITH_NAME = JS_OPTION_PREFIX + "disable-with";
     @Option(name = DISABLE_WITH_NAME, category = OptionCategory.EXPERT, help = "User code is not allowed to use the 'with' statement.") //
@@ -706,7 +710,7 @@ public final class JSContextOptions {
                         : sandboxPolicy.isStricterOrEqual(SandboxPolicy.UNTRUSTED) ? TimeUnit.SECONDS.toNanos(1) : TIMER_RESOLUTION.getDefaultValue();
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK);
         this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION);
-        this.disableEval = readBooleanOption(DISABLE_EVAL);
+        this.allowEval = readBooleanOption(ALLOW_EVAL) && !readBooleanOption(DISABLE_EVAL);
         this.disableWith = readBooleanOption(DISABLE_WITH);
         this.regexDumpAutomata = readBooleanOption(REGEX_DUMP_AUTOMATA);
         this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION);
@@ -898,8 +902,8 @@ public final class JSContextOptions {
         return topLevelAwait;
     }
 
-    public boolean isDisableEval() {
-        return disableEval;
+    public boolean allowEval() {
+        return allowEval;
     }
 
     public boolean isDisableWith() {

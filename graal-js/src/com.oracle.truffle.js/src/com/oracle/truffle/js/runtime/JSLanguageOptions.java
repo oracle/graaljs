@@ -71,7 +71,7 @@ public record JSLanguageOptions(
                 boolean printNoNewline,
                 boolean commonJSRequire,
                 boolean awaitOptimization,
-                boolean disableEval,
+                boolean allowEval,
                 boolean disableWith,
                 boolean regexDumpAutomata,
                 boolean regexStepExecution,
@@ -146,7 +146,7 @@ public record JSLanguageOptions(
         boolean zoneRulesBasedTimeZones = options.hasZoneRulesBasedTimeZones();
         boolean agentCanBlock = options.canAgentBlock();
         boolean awaitOptimization = options.isAwaitOptimization();
-        boolean disableEval = options.isDisableEval();
+        boolean allowEval = options.allowEval();
         boolean disableWith = options.isDisableWith();
         boolean regexDumpAutomata = options.isRegexDumpAutomata();
         boolean regexStepExecution = options.isRegexStepExecution();
@@ -222,7 +222,7 @@ public record JSLanguageOptions(
                         printNoNewline,
                         commonJSRequire,
                         awaitOptimization,
-                        disableEval,
+                        allowEval,
                         disableWith,
                         regexDumpAutomata,
                         regexStepExecution,
