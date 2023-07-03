@@ -3306,42 +3306,27 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public static class CreateArrayIteratorNode extends JavaScriptBaseNode {
-        private final int iterationKind;
-        private final JSContext context;
-
-        protected CreateArrayIteratorNode(JSContext context, int iterationKind) {
-            this.context = context;
-            this.iterationKind = iterationKind;
-        }
-
-        public static CreateArrayIteratorNode create(JSContext context, int iterationKind) {
-            return new CreateArrayIteratorNode(context, iterationKind);
-        }
-
-        public JSObject execute(Object array) {
-            assert JSGuards.isJSObject(array) || JSGuards.isForeignObject(array);
-            return JSArrayIterator.create(context, getRealm(), array, 0L, iterationKind);
-        }
-    }
-
     public abstract static class JSArrayIteratorNode extends JSBuiltinNode {
-        @Child private CreateArrayIteratorNode createArrayIteratorNode;
+        private final int iterationKind;
 
         public JSArrayIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
             super(context, builtin);
-            this.createArrayIteratorNode = CreateArrayIteratorNode.create(context, iterationKind);
+            this.iterationKind = iterationKind;
+        }
+
+        private JSObject createArrayIterator(Object thisObj) {
+            return JSArrayIterator.create(getContext(), getRealm(), thisObj, 0L, iterationKind);
         }
 
         @Specialization
-        protected JSDynamicObject doJSObject(JSObject thisObj) {
-            return createArrayIteratorNode.execute(thisObj);
+        protected final JSObject doJSObject(JSObject thisObj) {
+            return createArrayIterator(thisObj);
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject doNotJSObject(Object thisObj,
+        protected final JSObject doNotJSObject(Object thisObj,
                         @Cached JSToObjectNode toObjectNode) {
-            return createArrayIteratorNode.execute(toObjectNode.execute(thisObj));
+            return createArrayIterator(toObjectNode.execute(thisObj));
         }
     }
 
