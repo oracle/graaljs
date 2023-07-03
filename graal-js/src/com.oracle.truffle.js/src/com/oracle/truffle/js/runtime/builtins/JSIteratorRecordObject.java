@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,22 +41,22 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public final class JSWrapForValidIteratorObject extends JSIteratorRecordObject {
+/**
+ * Abstract base class of iterators that are based on an iterator object and next method.
+ */
+public abstract class JSIteratorRecordObject extends JSNonProxyObject {
 
-    protected JSWrapForValidIteratorObject(Shape shape, IteratorRecord iterated) {
-        super(shape, iterated);
+    private final IteratorRecord iterated;
+
+    protected JSIteratorRecordObject(Shape shape, IteratorRecord iterated) {
+        super(shape);
+        this.iterated = iterated;
     }
 
-    @Override
-    public TruffleString getClassName() {
-        return JSIterator.CLASS_NAME;
-    }
-
-    public static JSWrapForValidIteratorObject create(JSRealm realm, JSObjectFactory factory, IteratorRecord iterated) {
-        return factory.initProto(new JSWrapForValidIteratorObject(factory.getShape(realm), iterated), realm);
+    public final IteratorRecord getIterated() {
+        return iterated;
     }
 }
