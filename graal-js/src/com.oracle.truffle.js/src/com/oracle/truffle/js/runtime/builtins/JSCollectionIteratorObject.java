@@ -44,8 +44,10 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
-public abstract sealed class JSCollectionIteratorObject extends JSNonProxyObject
-                permits JSMapIteratorObject, JSSetIteratorObject {
+/**
+ * A {@link JSMapIteratorObject} or {@link JSSetIteratorObject}.
+ */
+public abstract class JSCollectionIteratorObject extends JSNonProxyObject {
 
     private final int iterationKind;
     private Object iteratedObject;
