@@ -263,10 +263,20 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         String body = source.getCharacters() + "\n";
         // Will throw a JS error (if syntax is wrong).
         context.getEvaluator().checkFunctionSyntax(context, context.getParserOptions(), MODULE_FUNCTION_ARGS, body, false, false, source.getPath());
+        // To make exception stack traces show the absolute paths to the JS files (and not just the
+        // filenames), the path should be passed to Source.name explicitly as both PolyglotException
+        // and GraalJSException use it when preparing the stack trace
+        String fileLocation = fileLocation(source);
         CharSequence characters = MODULE_PREAMBLE_PREFIX + MODULE_FUNCTION_ARGS + MODULE_PREAMBLE_POST + body + MODULE_END;
-        Source moduleSources = Source.newBuilder(source).content(characters).build();
+        Source moduleSources = Source.newBuilder(source).name(fileLocation).content(characters).build();
         CallTarget moduleCallTarget = realm.getEnv().parsePublic(moduleSources);
         return moduleCallTarget.call();
+    }
+
+    private static String fileLocation(Source source) {
+        var path = source.getPath();
+        var name = source.getName();
+        return path != null ? path : name;
     }
 
     private JSDynamicObject evalJsonFile(TruffleFile jsonFile) {
