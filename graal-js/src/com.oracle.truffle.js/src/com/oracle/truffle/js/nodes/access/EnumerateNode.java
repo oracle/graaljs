@@ -67,6 +67,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
+import com.oracle.truffle.js.runtime.builtins.JSForInIterator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -76,7 +77,6 @@ import com.oracle.truffle.js.runtime.interop.InteropArrayIndexIterator;
 import com.oracle.truffle.js.runtime.interop.InteropMemberIterator;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.util.ForInIterator;
 
 /**
  * Returns an Iterator object iterating over the enumerable properties of an object.
@@ -90,7 +90,6 @@ public abstract class EnumerateNode extends JavaScriptNode {
     protected final JSContext context;
     @Child @Executed protected JavaScriptNode targetNode;
     @Child private PropertySetNode setEnumerateIteratorNode;
-    @Child private PropertySetNode setForInIteratorNode;
 
     protected EnumerateNode(JSContext context, boolean values, boolean requireIterable, JavaScriptNode targetNode) {
         this.context = context;
@@ -222,13 +221,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
     }
 
     private JSObject newForInIterator(JSObject obj) {
-        if (setForInIteratorNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            setForInIteratorNode = insert(PropertySetNode.createSetHidden(JSRuntime.FOR_IN_ITERATOR_ID, context));
-        }
-        JSObject iteratorObj = JSOrdinary.create(context, context.getForInIteratorFactory(), getRealm());
-        setForInIteratorNode.setValue(iteratorObj, new ForInIterator(obj, values));
-        return iteratorObj;
+        return JSForInIterator.create(context, getRealm(), obj, values);
     }
 
     @Specialization(guards = {"!isJSDynamicObject(iteratedObject)", "!isForeignObject(iteratedObject)"})

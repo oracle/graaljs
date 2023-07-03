@@ -44,6 +44,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.Property;
@@ -58,17 +59,16 @@ import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.HasOnlyShapePropertiesNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSForInIterator;
+import com.oracle.truffle.js.runtime.builtins.JSForInIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -77,7 +77,6 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.ForInIterator;
 
 /**
  * Functions of the %ForInIteratorPrototype% object.
@@ -86,7 +85,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     public static final JSBuiltinsContainer BUILTINS = new ForInIteratorPrototypeBuiltins();
 
     protected ForInIteratorPrototypeBuiltins() {
-        super(JSFunction.FOR_IN_ITERATOR_PROTOYPE_NAME);
+        super(JSForInIterator.PROTOTYPE_NAME);
         defineFunction(Strings.NEXT, 0);
     }
 
@@ -115,7 +114,6 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     public abstract static class ForInIteratorPrototypeNextNode extends JSBuiltinNode {
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
-        @Child private PropertyGetNode getIteratorNode;
         @Child private GetPrototypeNode getPrototypeNode;
         @Child private JSGetOwnPropertyNode getOwnPropertyNode;
 
@@ -125,13 +123,12 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         public ForInIteratorPrototypeNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-            this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.FOR_IN_ITERATOR_ID, context);
             this.getPrototypeNode = GetPrototypeNode.create();
             this.getOwnPropertyNode = JSGetOwnPropertyNode.create();
         }
 
         @Specialization
-        public JSDynamicObject next(VirtualFrame frame, Object target,
+        protected final JSObject next(VirtualFrame frame, JSForInIteratorObject state,
                         @Cached InlinedConditionProfile valuesProfile,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedBranchProfile growProfile,
@@ -140,12 +137,6 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                         @Cached ListGetNode listGet,
                         @Cached ListSizeNode listSize,
                         @Cached HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode) {
-            Object iteratorValue = getIteratorNode.getValue(target);
-            if (iteratorValue == Undefined.instance) {
-                errorBranch.enter(this);
-                throw Errors.createTypeErrorIncompatibleReceiver(target);
-            }
-            ForInIterator state = (ForInIterator) iteratorValue;
             Object nextValue = findNext(state,
                             errorBranch, growProfile, fastOwnKeysProfile, sameShapeProfile, listGet, listSize, hasOnlyShapePropertiesNode);
             boolean done = nextValue == DONE;
@@ -161,7 +152,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             return createIterResultObjectNode.execute(frame, nextValue, done);
         }
 
-        private Object findNext(ForInIterator state,
+        private Object findNext(JSForInIteratorObject state,
                         InlinedBranchProfile errorBranch, InlinedBranchProfile growProfile, InlinedConditionProfile fastOwnKeysProfile, InlinedConditionProfile sameShapeProfile,
                         ListGetNode listGet, ListSizeNode listSize, HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode) {
             for (;;) {
@@ -258,7 +249,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @TruffleBoundary
-        private static void addPreviouslyVisitedKeys(ForInIterator state) {
+        private static void addPreviouslyVisitedKeys(JSForInIteratorObject state) {
             for (int i = 0; i < state.remainingKeysIndex - 1; i++) {
                 state.addVisitedKey(getKey(state.remainingKeys.get(i)));
             }
@@ -280,6 +271,10 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
         }
 
+        @Fallback
+        protected final JSObject invalidReceiver(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
+        }
     }
 
 }
