@@ -45,7 +45,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins;
@@ -85,14 +84,10 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
 
     public static final TruffleString CLASS_NAME = Strings.constant("Array");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Array.prototype");
-    public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("Array Iterator");
-    public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("Array Iterator.prototype");
 
     public static final JSArray INSTANCE = new JSArray();
 
     static final ArrayLengthProxyProperty ARRAY_LENGTH_PROPERTY_PROXY = new ArrayLengthProxyProperty();
-
-    public static final HiddenKey ARRAY_ITERATION_KIND_ID = new HiddenKey("ArrayIterationKind");
 
     private JSArray() {
     }

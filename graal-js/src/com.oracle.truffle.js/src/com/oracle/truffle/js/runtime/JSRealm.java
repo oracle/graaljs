@@ -87,7 +87,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AsyncIteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
@@ -124,6 +123,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
@@ -766,7 +766,7 @@ public class JSRealm {
             }
         }
 
-        this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
+        this.arrayIteratorPrototype = es6 ? JSArrayIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
         this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
         this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
@@ -2310,16 +2310,6 @@ public class JSRealm {
 
     private static JSDynamicObject createIteratorPrototypeSymbolIteratorFunction(JSRealm realm) {
         return JSFunction.create(realm, realm.getContext().getSymbolIteratorThisGetterFunctionData());
-    }
-
-    /**
-     * Creates the %ArrayIteratorPrototype% object as specified in ES6 22.1.5.2.
-     */
-    private JSDynamicObject createArrayIteratorPrototype() {
-        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, ArrayIteratorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, JSArray.ITERATOR_CLASS_NAME);
-        return prototype;
     }
 
     /**

@@ -84,6 +84,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -434,6 +435,7 @@ public class JSContext {
     private final JSObjectFactory arrayFactory;
     private final JSObjectFactory iteratorFactory;
     private final JSObjectFactory asyncIteratorFactory;
+    private final JSObjectFactory arrayIteratorFactory;
     private final JSObjectFactory wrapForIteratorFactory;
     private final JSObjectFactory wrapForAsyncIteratorFactory;
     private final JSObjectFactory lazyRegexArrayFactory;
@@ -617,6 +619,7 @@ public class JSContext {
         this.arrayFactory = builder.create(JSArray.INSTANCE);
         this.iteratorFactory = builder.create(JSIterator.INSTANCE);
         this.asyncIteratorFactory = builder.create(JSAsyncIterator.INSTANCE);
+        this.arrayIteratorFactory = builder.create(JSArrayIterator.INSTANCE);
         this.wrapForIteratorFactory = builder.create(JSWrapForValidIterator.INSTANCE);
         this.wrapForAsyncIteratorFactory = builder.create(JSWrapForValidAsyncIterator.INSTANCE);
         this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE);
@@ -932,6 +935,10 @@ public class JSContext {
 
     public final JSObjectFactory getAsyncIteratorFactory() {
         return asyncIteratorFactory;
+    }
+
+    public final JSObjectFactory getArrayIteratorFactory() {
+        return arrayIteratorFactory;
     }
 
     public final JSObjectFactory getWrapForIteratorFactory() {

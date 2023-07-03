@@ -119,7 +119,6 @@ import com.oracle.truffle.js.builtins.sort.SortComparator;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.CallbackNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
@@ -176,6 +175,7 @@ import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -3308,30 +3308,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public static class CreateArrayIteratorNode extends JavaScriptBaseNode {
         private final int iterationKind;
-        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
-        @Child private PropertySetNode setNextIndexNode;
-        @Child private PropertySetNode setIteratedObjectNode;
-        @Child private PropertySetNode setIterationKindNode;
+        private final JSContext context;
 
         protected CreateArrayIteratorNode(JSContext context, int iterationKind) {
+            this.context = context;
             this.iterationKind = iterationKind;
-            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
-            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
-            this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
-            this.setIterationKindNode = PropertySetNode.createSetHidden(JSArray.ARRAY_ITERATION_KIND_ID, context);
         }
 
         public static CreateArrayIteratorNode create(JSContext context, int iterationKind) {
             return new CreateArrayIteratorNode(context, iterationKind);
         }
 
-        public JSDynamicObject execute(Object array) {
+        public JSObject execute(Object array) {
             assert JSGuards.isJSObject(array) || JSGuards.isForeignObject(array);
-            JSDynamicObject iterator = createObjectNode.execute(getRealm().getArrayIteratorPrototype());
-            setIteratedObjectNode.setValue(iterator, array);
-            setNextIndexNode.setValue(iterator, 0L);
-            setIterationKindNode.setValueInt(iterator, iterationKind);
-            return iterator;
+            return JSArrayIterator.create(context, getRealm(), array, 0L, iterationKind);
         }
     }
 
