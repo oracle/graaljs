@@ -148,9 +148,11 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSStringIterator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollatorObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
@@ -3007,27 +3009,18 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public abstract static class CreateStringIteratorNode extends JSBuiltinNode {
-        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
-        @Child private PropertySetNode setNextIndexNode;
-        @Child private PropertySetNode setIteratedObjectNode;
 
         public CreateStringIteratorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
-            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSString.ITERATED_STRING_ID, context);
-            this.setNextIndexNode = PropertySetNode.createSetHidden(JSString.STRING_ITERATOR_NEXT_INDEX_ID, context);
         }
 
         @Specialization
-        protected JSDynamicObject doString(TruffleString thisObj) {
-            JSDynamicObject iterator = createObjectNode.execute(getRealm().getStringIteratorPrototype());
-            setIteratedObjectNode.setValue(iterator, thisObj);
-            setNextIndexNode.setValueInt(iterator, 0);
-            return iterator;
+        protected final JSObject doString(TruffleString thisObj) {
+            return JSStringIterator.create(getContext(), getRealm(), thisObj, 0);
         }
 
         @Specialization(guards = "!isString(thisObj)")
-        protected JSDynamicObject doCoerce(Object thisObj,
+        protected final JSObject doCoerce(Object thisObj,
                         @Cached RequireObjectCoercibleNode requireObjectCoercibleNode,
                         @Cached JSToStringNode toStringNode) {
             return doString(toStringNode.executeString(requireObjectCoercibleNode.execute(thisObj)));

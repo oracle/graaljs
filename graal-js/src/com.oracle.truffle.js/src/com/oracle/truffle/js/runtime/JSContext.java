@@ -116,6 +116,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSetIterator;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSStringIterator;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
@@ -447,6 +448,7 @@ public class JSContext {
     private final JSObjectFactory numberFactory;
     private final JSObjectFactory bigIntFactory;
     private final JSObjectFactory stringFactory;
+    private final JSObjectFactory stringIteratorFactory;
     private final JSObjectFactory regExpFactory;
     private final JSObjectFactory dateFactory;
     private final JSObjectFactory nonStrictArgumentsFactory;
@@ -633,6 +635,7 @@ public class JSContext {
         this.numberFactory = builder.create(JSNumber.INSTANCE);
         this.bigIntFactory = builder.create(JSBigInt.INSTANCE);
         this.stringFactory = builder.create(JSString.INSTANCE);
+        this.stringIteratorFactory = builder.create(JSStringIterator.INSTANCE);
         this.regExpFactory = builder.create(JSRegExp.INSTANCE);
         this.dateFactory = builder.create(JSDate.INSTANCE);
 
@@ -966,6 +969,10 @@ public class JSContext {
 
     public final JSObjectFactory getStringFactory() {
         return stringFactory;
+    }
+
+    public final JSObjectFactory getStringIteratorFactory() {
+        return stringIteratorFactory;
     }
 
     public final JSObjectFactory getBooleanFactory() {
