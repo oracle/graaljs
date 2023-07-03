@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,15 @@
  */
 package com.oracle.truffle.js.test.polyglot;
 
+import static org.hamcrest.CoreMatchers.allOf;
+import static org.hamcrest.CoreMatchers.endsWith;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
 import java.util.Collections;
 
 import org.graalvm.polyglot.Context;
@@ -61,7 +66,8 @@ public class JavaScriptLanguageTest {
     @Test
     public void testToStringNestingDepth() {
         // this tests that JavaScriptLanguage.toString() does not nest too deeply
-        try (Context context = JSTest.newContextBuilder().build()) {
+        var out = new ByteArrayOutputStream();
+        try (Context context = JSTest.newContextBuilder().out(out).build()) {
             context.getBindings("js").putMember("array", new ProxyArray() {
                 @Override
                 public Object get(long index) {
@@ -80,6 +86,9 @@ public class JavaScriptLanguageTest {
             Source source = Source.newBuilder("js", "''+array; array", "noname").interactive(true).buildLiteral();
             context.eval(source);
         }
+        String output = out.toString().trim();
+        String innermostArray = "[" + "Array(10), ".repeat(9) + "Array(10)" + "]";
+        assertThat(output, allOf(startsWith("(10)[[" + innermostArray), endsWith(innermostArray + "]]")));
     }
 
     @Test
