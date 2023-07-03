@@ -102,6 +102,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapIterator;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -110,6 +111,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSetIterator;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -453,7 +455,9 @@ public class JSContext {
 
     private final JSObjectFactory symbolFactory;
     private final JSObjectFactory mapFactory;
+    private final JSObjectFactory mapIteratorFactory;
     private final JSObjectFactory setFactory;
+    private final JSObjectFactory setIteratorFactory;
     private final JSObjectFactory weakRefFactory;
     private final JSObjectFactory weakMapFactory;
     private final JSObjectFactory weakSetFactory;
@@ -633,7 +637,9 @@ public class JSContext {
 
         this.symbolFactory = builder.create(JSSymbol.INSTANCE);
         this.mapFactory = builder.create(JSMap.INSTANCE);
+        this.mapIteratorFactory = builder.create(JSMapIterator.INSTANCE);
         this.setFactory = builder.create(JSSet.INSTANCE);
+        this.setIteratorFactory = builder.create(JSSetIterator.INSTANCE);
         this.weakRefFactory = builder.create(JSWeakRef.INSTANCE);
         this.weakMapFactory = builder.create(JSWeakMap.INSTANCE);
         this.weakSetFactory = builder.create(JSWeakSet.INSTANCE);
@@ -1009,6 +1015,10 @@ public class JSContext {
         return mapFactory;
     }
 
+    public final JSObjectFactory getMapIteratorFactory() {
+        return mapIteratorFactory;
+    }
+
     public final JSObjectFactory getFinalizationRegistryFactory() {
         return finalizationRegistryFactory;
     }
@@ -1023,6 +1033,10 @@ public class JSContext {
 
     public final JSObjectFactory getSetFactory() {
         return setFactory;
+    }
+
+    public final JSObjectFactory getSetIteratorFactory() {
+        return setIteratorFactory;
     }
 
     public final JSObjectFactory getWeakSetFactory() {

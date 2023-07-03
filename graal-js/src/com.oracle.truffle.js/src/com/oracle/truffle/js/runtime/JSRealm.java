@@ -97,7 +97,6 @@ import com.oracle.truffle.js.builtins.IteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.JavaBuiltins;
 import com.oracle.truffle.js.builtins.MLEBuiltins;
-import com.oracle.truffle.js.builtins.MapIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltins;
 import com.oracle.truffle.js.builtins.OperatorsBuiltins;
 import com.oracle.truffle.js.builtins.PerformanceBuiltins;
@@ -106,7 +105,6 @@ import com.oracle.truffle.js.builtins.RealmFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ReflectBuiltins;
 import com.oracle.truffle.js.builtins.RegExpBuiltins;
 import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltins;
-import com.oracle.truffle.js.builtins.SetIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.StringIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
@@ -139,6 +137,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSON;
@@ -150,6 +149,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSetIterator;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -767,8 +767,8 @@ public class JSRealm {
         }
 
         this.arrayIteratorPrototype = es6 ? JSArrayIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
-        this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
-        this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
+        this.setIteratorPrototype = es6 ? JSSetIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
+        this.mapIteratorPrototype = es6 ? JSMapIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
         this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
         this.regExpStringIteratorPrototype = ecmaScriptVersion >= JSConfig.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
 
@@ -2312,16 +2312,6 @@ public class JSRealm {
         return JSFunction.create(realm, realm.getContext().getSymbolIteratorThisGetterFunctionData());
     }
 
-    /**
-     * Creates the %SetIteratorPrototype% object.
-     */
-    private JSDynamicObject createSetIteratorPrototype() {
-        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, SetIteratorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, JSSet.ITERATOR_CLASS_NAME);
-        return prototype;
-    }
-
     private JSDynamicObject createIteratorHelperPrototype() {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, IteratorHelperPrototypeBuiltins.BUILTINS);
@@ -2333,16 +2323,6 @@ public class JSRealm {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.asyncIteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, AsyncIteratorHelperPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, AsyncIteratorHelperPrototypeBuiltins.TO_STRING_TAG);
-        return prototype;
-    }
-
-    /**
-     * Creates the %MapIteratorPrototype% object.
-     */
-    private JSDynamicObject createMapIteratorPrototype() {
-        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, MapIteratorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, JSMap.ITERATOR_CLASS_NAME);
         return prototype;
     }
 
