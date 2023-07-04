@@ -226,15 +226,7 @@ public class GH669 {
         assertEquals(path, matcher.group(2));
     }
 
-    private static class TestFileSystem implements FileSystem {
-
-        private final String root;
-        private final Map<Path, String> files;
-
-        TestFileSystem(Map<Path, String> files, String root) {
-            this.root = root;
-            this.files = files;
-        }
+    private record TestFileSystem(Map<Path, String> files, String root) implements FileSystem {
 
         @Override
         public Path parsePath(String path) {
