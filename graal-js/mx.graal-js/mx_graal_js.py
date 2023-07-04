@@ -383,9 +383,13 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.js',
     short_name='js',
-    standalone_dir_name='graaljs-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name='graaljs-community-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name_enterprise='graaljs-<version>-<graalvm_os>-<arch>',
     standalone_dependencies={
         'GraalVM license files': ('', ['GRAALVM-README.md']),
+    },
+    standalone_dependencies_enterprise={
+        'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
     },
     license_files=['graal-js:GRAALJS_GRAALVM_LICENSES/LICENSE_GRAALJS.txt'],
     third_party_license_files=['graal-js:GRAALJS_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_GRAALJS.txt'],
