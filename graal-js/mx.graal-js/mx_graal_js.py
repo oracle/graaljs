@@ -387,13 +387,15 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     standalone_dir_name_enterprise='graaljs-<version>-<graalvm_os>-<arch>',
     standalone_dependencies={
         'GraalVM license files': ('', ['GRAALVM-README.md']),
+        'Graal.js license files': ('', []),
     },
     standalone_dependencies_enterprise={
         'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
     },
-    license_files=['graal-js:GRAALJS_GRAALVM_LICENSES/LICENSE_GRAALJS.txt'],
-    third_party_license_files=['graal-js:GRAALJS_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_GRAALJS.txt'],
+    license_files=[],
+    third_party_license_files=[],
     dependencies=[
+        'Graal.js license files',
         'Graal.js Scripting API',
         'Truffle',
         'TRegex',
@@ -404,7 +406,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ],
     support_distributions=[
         'graal-js:GRAALJS_GRAALVM_SUPPORT',
-        'graal-js:GRAALJS_GRAALVM_LICENSES',
     ],
     library_configs=[
         mx_sdk.LanguageLibraryConfig(
@@ -420,6 +421,23 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         )
     ],
     boot_jars=[],
+    installable=True,
+    stability="supported",
+))
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    suite=_suite,
+    name='Graal.js license files',
+    short_name='jsl',
+    dir_name='js',
+    license_files=['LICENSE_GRAALJS.txt'],
+    third_party_license_files=['THIRD_PARTY_LICENSE_GRAALJS.txt'],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=[
+        'graal-js:GRAALJS_GRAALVM_LICENSES',
+    ],
+    priority=5,
     installable=True,
     stability="supported",
 ))

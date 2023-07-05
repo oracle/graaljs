@@ -575,13 +575,15 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     name='Graal.nodejs',
     short_name='njs',
     dir_name='nodejs',
-    license_files=['graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES/LICENSE_GRAALNODEJS.txt'],
-    third_party_license_files=['graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_GRAALNODEJS.txt'],
-    dependencies=['Graal.js'],
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[
+        'Graal.js',
+        'Graal.nodejs license files',
+    ],
     truffle_jars=['graal-nodejs:TRUFFLENODE'],
     support_distributions=[
         'graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT',
-        'graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES',
     ],
     provided_executables=[
         'bin/<exe:node>',
@@ -607,6 +609,23 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         ),
     ],
     has_polyglot_lib_entrypoints=True,
+    installable=True,
+    stability="supported",
+))
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    suite=_suite,
+    name='Graal.nodejs license files',
+    short_name='njsl',
+    dir_name='nodejs',
+    license_files=['LICENSE_GRAALNODEJS.txt'],
+    third_party_license_files=['THIRD_PARTY_LICENSE_GRAALNODEJS.txt'],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=[
+        'graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES',
+    ],
+    priority=5,
     installable=True,
     stability="supported",
 ))
