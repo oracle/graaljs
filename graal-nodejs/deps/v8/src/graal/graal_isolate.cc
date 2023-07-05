@@ -83,10 +83,6 @@
 #define LIBJLI_RELPATH     "/lib/jli/libjli.dylib"
 // libjli.dylib has moved in JDK 12, see https://bugs.openjdk.java.net/browse/JDK-8210931
 #define LIBJLI_RELPATH2    "/lib/libjli.dylib"
-#elif defined(__sparc__)
-// SVM currently not supported
-#define LIBJVM_RELPATH     "/lib/server/libjvm.so"
-#define LIBJVM_RELPATH2    "/lib/sparcv9/server/libjvm.so"
 #elif defined(_WIN32)
 #define LIBNODESVM_RELPATH "\\languages\\nodejs\\lib\\graal-nodejs.dll"
 #define LIBPOLYGLOT_RELPATH "\\lib\\polyglot\\polyglot.dll"
