@@ -718,6 +718,9 @@
           ['OS=="linux" or OS=="solaris"', {
             'libraries': [
               '-L<(java_home)/lib',
+              # standalone (./bin/node)
+              "-Wl,-rpath='$$ORIGIN/../lib/'",
+              # graalvm (./languages/nodejs/bin/node)
               "-Wl,-rpath='$$ORIGIN/../../../lib/'",
               "-Wl,-rpath='$$ORIGIN/../../../../lib/'",
             ],
@@ -725,6 +728,9 @@
           ['OS=="mac"', {
             'libraries': [
               '-L<(java_home)/lib',
+              # standalone (./bin/node)
+              "-Wl,-rpath,'@loader_path/../lib/'",
+              # graalvm (./languages/nodejs/bin/node)
               "-Wl,-rpath,'@loader_path/../../../lib/'",
               "-Wl,-rpath,'@loader_path/../../../../lib/'",
             ],
