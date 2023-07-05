@@ -1831,7 +1831,7 @@ public final class JSRuntime {
                         cp == 0x205F || cp == 0x3000 || cp == 0xFEFF;
     }
 
-    private static boolean isLineTerminator(char codePoint) {
+    public static boolean isLineTerminator(char codePoint) {
         switch (codePoint) {
             case 0x000A:
             case 0x000D:
