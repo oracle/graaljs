@@ -222,18 +222,17 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     std::string node = nodeExe();
 
     std::string node_path = up(node);
-    bool graalvm8 = ends_with(node_path, file_separator + "jre" + file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
     bool graalvm11plus = ends_with(node_path, file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
-    if (graalvm8 || graalvm11plus) {
+    if (graalvm11plus) {
         // Part of GraalVM: take precedence over any JAVA_HOME.
         // We set environment variables to ensure these values are correctly
         // propagated to child processes.
-        std::string graalvm_home = up(node, graalvm8 ? 5 : 4);
+        std::string graalvm_home = up(node, 4); // ${graalvm_home}/languages/nodejs/bin/node
         SetEnv("JAVA_HOME", graalvm_home.c_str());
 
 #       ifdef LIBNODESVM_RELPATH
             bool force_native = false;
-            std::string node_jvm_lib = graalvm_home + (graalvm8 ? file_separator + "jre" : "") + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
+            std::string node_jvm_lib = graalvm_home + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
             if (mode == kModeJVM) {
                  // will be set to appropriate libjvm path below
                 UnsetEnv("NODE_JVM_LIB");
@@ -259,10 +258,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     if (jdk_path.empty()) {
         fprintf(stderr, "JAVA_HOME is not set. Specify JAVA_HOME so $JAVA_HOME%s exists.\n", LIBJVM_RELPATH);
         exit(1);
-    }
-    std::string jre_sub_dir = jdk_path + file_separator + "jre";
-    if (access(jre_sub_dir.c_str(), F_OK) != -1) {
-        jdk_path = jre_sub_dir;
     }
     std::string jvmlib_path = getstdenv("NODE_JVM_LIB");
     if (jvmlib_path.empty()) {
