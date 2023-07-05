@@ -383,6 +383,7 @@ public class JSContext {
         ExportGetter,
         OrdinaryWrappedFunctionCall,
         DecoratorContextAddInitializer,
+        DedentCallback
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
