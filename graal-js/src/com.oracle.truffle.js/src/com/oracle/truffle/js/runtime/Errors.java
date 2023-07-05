@@ -894,7 +894,7 @@ public final class Errors {
     public static JSException createICU4JDataError(Exception e) {
         return Errors.createError("ICU data not found. ICU4J library not properly configured. " +
                         "Set the system property " +
-                        "com.ibm.icu.impl.ICUBinary.dataPath" +
+                        "org.graalvm.shadowed.com.ibm.icu.impl.ICUBinary.dataPath" +
                         " to your icudt path." +
                         (e.getMessage() != null && !e.getMessage().isEmpty() ? " (" + e.getMessage() + ")" : ""), e);
     }

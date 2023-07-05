@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ public class TimezoneICUJDKCompat {
 
     @Test
     public void compareICUandJDKTimezones() {
-        String[] icuIDs = com.ibm.icu.util.TimeZone.getAvailableIDs();
+        String[] icuIDs = org.graalvm.shadowed.com.ibm.icu.util.TimeZone.getAvailableIDs();
         String[] jdkIDs = java.util.TimeZone.getAvailableIDs();
         Set<String> jdkSet = new HashSet<>(Arrays.asList(jdkIDs));
 
@@ -62,7 +62,7 @@ public class TimezoneICUJDKCompat {
         for (String entry : icuIDs) {
             if (jdkSet.contains(entry)) {
 
-                com.ibm.icu.util.TimeZone icuTimezone = com.ibm.icu.util.TimeZone.getTimeZone(entry);
+                org.graalvm.shadowed.com.ibm.icu.util.TimeZone icuTimezone = org.graalvm.shadowed.com.ibm.icu.util.TimeZone.getTimeZone(entry);
                 java.util.TimeZone jdkTimezone = java.util.TimeZone.getTimeZone(entry);
 
                 int icuOffset = icuTimezone.getOffset(now);
@@ -91,7 +91,7 @@ public class TimezoneICUJDKCompat {
     @Test
     public void compareICUandJDKversions() {
         String versionJDK = java.time.zone.ZoneRulesProvider.getVersions("UTC").lastEntry().getKey();
-        String versionICU = com.ibm.icu.util.TimeZone.getTZDataVersion();
+        String versionICU = org.graalvm.shadowed.com.ibm.icu.util.TimeZone.getTZDataVersion();
         Assert.assertEquals(versionJDK, versionICU);
     }
 

@@ -55,24 +55,24 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import com.ibm.icu.number.FormattedNumberRange;
-import com.ibm.icu.number.FractionPrecision;
-import com.ibm.icu.number.IntegerWidth;
-import com.ibm.icu.number.LocalizedNumberFormatter;
-import com.ibm.icu.number.LocalizedNumberRangeFormatter;
-import com.ibm.icu.number.Notation;
-import com.ibm.icu.number.NumberFormatter;
-import com.ibm.icu.number.NumberFormatter.SignDisplay;
-import com.ibm.icu.number.NumberFormatter.UnitWidth;
-import com.ibm.icu.number.NumberRangeFormatter;
-import com.ibm.icu.number.Precision;
-import com.ibm.icu.number.Scale;
-import com.ibm.icu.number.UnlocalizedNumberFormatter;
-import com.ibm.icu.text.ConstrainedFieldPosition;
-import com.ibm.icu.text.FormattedValue;
-import com.ibm.icu.text.NumberFormat;
-import com.ibm.icu.text.NumberingSystem;
-import com.ibm.icu.util.MeasureUnit;
+import org.graalvm.shadowed.com.ibm.icu.number.FormattedNumberRange;
+import org.graalvm.shadowed.com.ibm.icu.number.FractionPrecision;
+import org.graalvm.shadowed.com.ibm.icu.number.IntegerWidth;
+import org.graalvm.shadowed.com.ibm.icu.number.LocalizedNumberFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.LocalizedNumberRangeFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.Notation;
+import org.graalvm.shadowed.com.ibm.icu.number.NumberFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.NumberFormatter.SignDisplay;
+import org.graalvm.shadowed.com.ibm.icu.number.NumberFormatter.UnitWidth;
+import org.graalvm.shadowed.com.ibm.icu.number.NumberRangeFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.Precision;
+import org.graalvm.shadowed.com.ibm.icu.number.Scale;
+import org.graalvm.shadowed.com.ibm.icu.number.UnlocalizedNumberFormatter;
+import org.graalvm.shadowed.com.ibm.icu.text.ConstrainedFieldPosition;
+import org.graalvm.shadowed.com.ibm.icu.text.FormattedValue;
+import org.graalvm.shadowed.com.ibm.icu.text.NumberFormat;
+import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
+import org.graalvm.shadowed.com.ibm.icu.util.MeasureUnit;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -167,7 +167,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     public static int currencyDigits(JSContext context, String currencyCode) {
         if (context.isOptionV8CompatibilityMode()) {
             // ICU is using CLDR data that differ from ISO 4217 data for several currencies.
-            return com.ibm.icu.util.Currency.getInstance(currencyCode).getDefaultFractionDigits();
+            return org.graalvm.shadowed.com.ibm.icu.util.Currency.getInstance(currencyCode).getDefaultFractionDigits();
         } else {
             if (historicalCurrenciesInJDK.contains(currencyCode)) {
                 return 2;
@@ -960,7 +960,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             formatter = formatter.grouping(useGroupingToGroupingStrategy(useGrouping));
 
             if (IntlUtil.CURRENCY.equals(style)) {
-                formatter = formatter.unit(com.ibm.icu.util.Currency.getInstance(currency));
+                formatter = formatter.unit(org.graalvm.shadowed.com.ibm.icu.util.Currency.getInstance(currency));
                 formatter = formatter.unitWidth(currencyDisplayToUnitWidth(currencyDisplay));
             } else if (IntlUtil.PERCENT.equals(style)) {
                 formatter = formatter.unit(MeasureUnit.PERCENT);

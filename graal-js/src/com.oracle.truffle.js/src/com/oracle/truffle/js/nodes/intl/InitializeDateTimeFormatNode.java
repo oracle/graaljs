@@ -42,7 +42,7 @@ package com.oracle.truffle.js.nodes.intl;
 
 import java.util.MissingResourceException;
 
-import com.ibm.icu.util.TimeZone;
+import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;

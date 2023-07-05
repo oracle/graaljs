@@ -42,7 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.util.Locale;
 
-import com.ibm.icu.util.ULocale;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;

@@ -48,12 +48,12 @@ import java.util.Locale;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import com.ibm.icu.text.DecimalFormat;
-import com.ibm.icu.text.DisplayContext;
-import com.ibm.icu.text.NumberFormat;
-import com.ibm.icu.text.RelativeDateTimeFormatter;
-import com.ibm.icu.text.RelativeDateTimeFormatter.RelativeDateTimeUnit;
-import com.ibm.icu.util.ULocale;
+import org.graalvm.shadowed.com.ibm.icu.text.DecimalFormat;
+import org.graalvm.shadowed.com.ibm.icu.text.DisplayContext;
+import org.graalvm.shadowed.com.ibm.icu.text.NumberFormat;
+import org.graalvm.shadowed.com.ibm.icu.text.RelativeDateTimeFormatter;
+import org.graalvm.shadowed.com.ibm.icu.text.RelativeDateTimeFormatter.RelativeDateTimeUnit;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;

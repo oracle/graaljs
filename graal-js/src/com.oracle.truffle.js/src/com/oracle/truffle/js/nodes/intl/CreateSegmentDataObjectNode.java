@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import com.ibm.icu.text.BreakIterator;
+import org.graalvm.shadowed.com.ibm.icu.text.BreakIterator;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.strings.TruffleString;
