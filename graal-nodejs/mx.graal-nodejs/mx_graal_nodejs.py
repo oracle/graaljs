@@ -609,6 +609,15 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         ),
     ],
     has_polyglot_lib_entrypoints=True,
+    standalone_dir_name='graalnodejs-community-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name_enterprise='graalnodejs-<version>-<graalvm_os>-<arch>',
+    standalone_dependencies={
+        'GraalVM license files': ('', ['GRAALVM-README.md']),
+        'Graal.nodejs license files': ('', []),
+    },
+    standalone_dependencies_enterprise={
+        'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
+    },
     installable=True,
     stability="supported",
 ))
