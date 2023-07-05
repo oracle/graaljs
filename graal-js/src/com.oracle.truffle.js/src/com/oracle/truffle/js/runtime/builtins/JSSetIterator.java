@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,21 +42,59 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.SetIteratorPrototypeBuiltins;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.util.JSHashMap;
 
-public final class JSWrapForValidIteratorObject extends JSIteratorRecordObject {
+public final class JSSetIterator extends JSNonProxy implements JSConstructorFactory, PrototypeSupplier {
 
-    protected JSWrapForValidIteratorObject(Shape shape, IteratorRecord iterated) {
-        super(shape, iterated);
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Set Iterator");
+    public static final TruffleString CLASS_NAME = TO_STRING_TAG;
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Set Iterator.prototype");
+
+    public static final JSSetIterator INSTANCE = new JSSetIterator();
+
+    private JSSetIterator() {
+    }
+
+    public static JSSetIteratorObject create(JSContext context, JSRealm realm, Object iteratedObject, JSHashMap.Cursor nextIndex, int iterationKind) {
+        var obj = JSSetIteratorObject.create(realm, context.getSetIteratorFactory(), iteratedObject, nextIndex, iterationKind);
+        return context.trackAllocation(obj);
+    }
+
+    /**
+     * Creates the %SetIteratorPrototype% object.
+     */
+    @Override
+    public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getIteratorPrototype());
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, SetIteratorPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
+        return prototype;
+    }
+
+    @Override
+    public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
+        return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
 
     @Override
     public TruffleString getClassName() {
-        return JSIterator.CLASS_NAME;
+        return CLASS_NAME;
     }
 
-    public static JSWrapForValidIteratorObject create(JSRealm realm, JSObjectFactory factory, IteratorRecord iterated) {
-        return factory.initProto(new JSWrapForValidIteratorObject(factory.getShape(realm), iterated), realm);
+    @Override
+    public TruffleString getClassName(JSDynamicObject object) {
+        return getClassName();
+    }
+
+    @Override
+    public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getSetIteratorPrototype();
     }
 }

@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.MapFunctionBuiltins;
@@ -65,11 +64,6 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
 
     public static final TruffleString CLASS_NAME = Strings.constant("Map");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Map.prototype");
-
-    public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("Map Iterator");
-    public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("Map Iterator.prototype");
-
-    public static final HiddenKey MAP_ITERATION_KIND_ID = new HiddenKey("MapIterationKind");
 
     private JSMap() {
     }
@@ -100,7 +94,7 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         // The initial value of the @@iterator property is the same function object as
         // the initial value of the entries property.
-        Object entriesFunction = JSDynamicObject.getOrNull(prototype, JSArray.ENTRIES);
+        Object entriesFunction = JSDynamicObject.getOrNull(prototype, Strings.ENTRIES);
         JSObjectUtil.putDataProperty(prototype, Symbol.SYMBOL_ITERATOR, entriesFunction, JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }

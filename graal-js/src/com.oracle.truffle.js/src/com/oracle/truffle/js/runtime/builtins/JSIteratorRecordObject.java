@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.dsl.NeverDefault;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 /**
- * ES6 7.4.7 CreateIterResultObject (value, done).
+ * Abstract base class of iterators that are based on an iterator object and next method.
  */
-public abstract class CreateIterResultObjectNode extends JavaScriptBaseNode {
-    @Child private CreateObjectNode createObjectNode;
-    @Child private CreateDataPropertyNode createValuePropertyNode;
-    @Child private CreateDataPropertyNode createDonePropertyNode;
+public abstract class JSIteratorRecordObject extends JSNonProxyObject {
 
-    protected CreateIterResultObjectNode(JSContext context) {
-        this.createObjectNode = CreateObjectNode.create(context);
-        this.createValuePropertyNode = CreateDataPropertyNode.create(context, Strings.VALUE);
-        this.createDonePropertyNode = CreateDataPropertyNode.create(context, Strings.DONE);
+    private final IteratorRecord iterated;
+
+    protected JSIteratorRecordObject(Shape shape, IteratorRecord iterated) {
+        super(shape);
+        this.iterated = iterated;
     }
 
-    @NeverDefault
-    public static CreateIterResultObjectNode create(JSContext context) {
-        return CreateIterResultObjectNodeGen.create(context);
+    public final IteratorRecord getIterated() {
+        return iterated;
     }
-
-    @Specialization
-    protected JSObject doCreateIterResultObject(VirtualFrame frame, Object value, boolean done) {
-        JSObject iterResult = createObjectNode.execute(frame);
-        createValuePropertyNode.executeVoid(iterResult, value);
-        createDonePropertyNode.executeVoid(iterResult, done);
-        return iterResult;
-    }
-
-    public abstract JSObject execute(VirtualFrame frame, Object value, boolean done);
 }

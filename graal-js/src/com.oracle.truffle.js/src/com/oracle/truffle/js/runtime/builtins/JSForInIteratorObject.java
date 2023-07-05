@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.util;
+package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Arrays;
 import java.util.List;
@@ -50,9 +50,15 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public class ForInIterator {
+/**
+ * Internal iterator object used by for-in loop statement.
+ */
+public final class JSForInIteratorObject extends JSNonProxyObject {
+
     public JSDynamicObject object;
     public Shape objectShape;
     public boolean objectWasVisited;
@@ -66,7 +72,8 @@ public class ForInIterator {
     public int protoDepth;
     public final boolean iterateValues;
 
-    public ForInIterator(JSDynamicObject obj, boolean iterateValues) {
+    protected JSForInIteratorObject(Shape shape, JSDynamicObject obj, boolean iterateValues) {
+        super(shape);
         this.object = obj;
         this.iterateValues = iterateValues;
         this.visitedShapes = new Shape[4];
@@ -102,5 +109,9 @@ public class ForInIterator {
             }
         }
         return false;
+    }
+
+    public static JSForInIteratorObject create(JSRealm realm, JSObjectFactory factory, JSDynamicObject iterated, boolean iterateValues) {
+        return factory.initProto(new JSForInIteratorObject(factory.getShape(realm), iterated, iterateValues), realm);
     }
 }

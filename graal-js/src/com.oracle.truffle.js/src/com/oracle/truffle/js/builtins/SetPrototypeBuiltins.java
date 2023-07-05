@@ -63,13 +63,11 @@ import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetUnionNode
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.SetGetSizeNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNodeGen;
-import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -81,9 +79,11 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSetIterator;
 import com.oracle.truffle.js.runtime.builtins.JSSetObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -778,32 +778,20 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
     public abstract static class CreateSetIteratorNode extends JSBuiltinNode {
         private final int iterationKind;
-        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
-        @Child private PropertySetNode setNextIndexNode;
-        @Child private PropertySetNode setIteratedObjectNode;
-        @Child private PropertySetNode setIterationKindNode;
 
-        public CreateSetIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
+        protected CreateSetIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
             super(context, builtin);
             this.iterationKind = iterationKind;
-            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
-            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
-            this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
-            this.setIterationKindNode = PropertySetNode.createSetHidden(JSSet.SET_ITERATION_KIND_ID, context);
         }
 
         @Specialization
-        protected JSDynamicObject doSet(JSSetObject set) {
-            JSDynamicObject iterator = createObjectNode.execute(getRealm().getSetIteratorPrototype());
-            setIteratedObjectNode.setValue(iterator, set);
-            setNextIndexNode.setValue(iterator, JSSet.getInternalSet(set).getEntries());
-            setIterationKindNode.setValueInt(iterator, iterationKind);
-            return iterator;
+        protected final JSObject doSet(JSSetObject set) {
+            return JSSetIterator.create(getContext(), getRealm(), set, JSSet.getInternalSet(set).getEntries(), iterationKind);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected JSDynamicObject doIncompatibleReceiver(Object thisObj) {
+        protected static JSObject doIncompatibleReceiver(Object thisObj) {
             throw Errors.createTypeError("not a Set");
         }
     }
