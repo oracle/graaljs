@@ -77,19 +77,25 @@
 #endif
 
 #ifdef __APPLE__
-#define LIBNODESVM_RELPATH "/languages/nodejs/lib/libgraal-nodejs.dylib"
-#define LIBPOLYGLOT_RELPATH "/lib/polyglot/libpolyglot.dylib"
+#define LIBNODESVM_NAME    "libgraal-nodejs.dylib"
+#define LIBPOLYGLOT_NAME   "libpolyglot.dylib"
+#define LIBNODESVM_RELPATH "/languages/nodejs/lib/" LIBNODESVM_NAME
+#define LIBPOLYGLOT_RELPATH "/lib/polyglot/" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "/lib/server/libjvm.dylib"
 #define LIBJLI_RELPATH     "/lib/jli/libjli.dylib"
 // libjli.dylib has moved in JDK 12, see https://bugs.openjdk.java.net/browse/JDK-8210931
 #define LIBJLI_RELPATH2    "/lib/libjli.dylib"
 #elif defined(_WIN32)
-#define LIBNODESVM_RELPATH "\\languages\\nodejs\\lib\\graal-nodejs.dll"
-#define LIBPOLYGLOT_RELPATH "\\lib\\polyglot\\polyglot.dll"
+#define LIBNODESVM_NAME    "graal-nodejs.dll"
+#define LIBPOLYGLOT_NAME   "polyglot.dll"
+#define LIBNODESVM_RELPATH "\\languages\\nodejs\\lib\\" LIBNODESVM_NAME
+#define LIBPOLYGLOT_RELPATH "\\lib\\polyglot\\" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "\\bin\\server\\jvm.dll"
 #else
-#define LIBNODESVM_RELPATH "/languages/nodejs/lib/libgraal-nodejs.so"
-#define LIBPOLYGLOT_RELPATH "/lib/polyglot/libpolyglot.so"
+#define LIBNODESVM_NAME    "libgraal-nodejs.so"
+#define LIBPOLYGLOT_NAME   "libpolyglot.so"
+#define LIBNODESVM_RELPATH "/languages/nodejs/lib/" LIBNODESVM_NAME
+#define LIBPOLYGLOT_RELPATH "/lib/polyglot/" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "/lib/server/libjvm.so"
 #define LIBJVM_RELPATH2    "/lib/amd64/server/libjvm.so"
 #endif
