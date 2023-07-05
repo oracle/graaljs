@@ -228,6 +228,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     std::string node = nodeExe();
 
     std::string node_path = up(node);
+    bool force_native = false;
     bool graalvm11plus = ends_with(node_path, file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
     if (graalvm11plus) {
         // Part of GraalVM: take precedence over any JAVA_HOME.
@@ -237,7 +238,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         SetEnv("JAVA_HOME", graalvm_home.c_str());
 
 #       ifdef LIBNODESVM_RELPATH
-            bool force_native = false;
             std::string node_jvm_lib = graalvm_home + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
             if (mode == kModeJVM) {
                  // will be set to appropriate libjvm path below
@@ -258,9 +258,30 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
                 exit(9);
             }
 #       endif
+    } else {
+        // Assume standalone distribution with libs in ../lib.
+        std::string standalone_home = up(node, 2); // ${standalone_home}/bin/node
+
+        std::string node_jvm_lib = standalone_home + file_separator + "lib" + file_separator + LIBNODESVM_NAME;
+        if (mode == kModeJVM) {
+            // will be set to appropriate libjvm path below
+            UnsetEnv("NODE_JVM_LIB");
+        } else if (mode == kModeNative) {
+            force_native = true;
+        } else { // mode == kModeDefault
+            if (getstdenv("NODE_JVM_LIB").empty() && access(node_jvm_lib.c_str(), F_OK) == 0) {
+                force_native = true;
+            } // else reuse NODE_JVM_LIB
+        }
+        if (force_native) {
+            SetEnv("NODE_JVM_LIB", node_jvm_lib.c_str());
+        }
     }
 
     std::string jdk_path = getstdenv("JAVA_HOME");
+    if (jdk_path.empty() && force_native) {
+        jdk_path = up(node_path);
+    }
     if (jdk_path.empty()) {
         fprintf(stderr, "JAVA_HOME is not set. Specify JAVA_HOME so $JAVA_HOME%s exists.\n", LIBJVM_RELPATH);
         exit(1);
