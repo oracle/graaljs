@@ -66,12 +66,19 @@ suite = {
         "coremodules",
       ],
       "class" : "GraalNodeJsProject",
+      "output" : "out",
       "results" : [
         "Release/<exe:node>",
         "headers/include",
-        "Release/<lib:jsig>"
       ],
-      "output" : "out"
+      "os" : {
+        "windows" : {},
+        "<others>" : {
+          "results" : [
+            "lib/<lib:jsig>",
+          ],
+        }
+      },
     },
     "com.oracle.truffle.trufflenode" : {
       "subDir" : "mx.graal-nodejs",
@@ -153,11 +160,18 @@ suite = {
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npm>",
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npx>",
         ],
-        "lib/" : [
-          "dependency:trufflenodeNative/Release/<lib:jsig>",
-        ],
         "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
       },
+      "os" : {
+        "windows" : {},
+        "<others>" : {
+          "layout" : {
+            "lib/" : [
+              "dependency:trufflenodeNative/lib/<lib:jsig>",
+            ],
+          },
+        }
+      }
     },
     "TRUFFLENODE_GRAALVM_LICENSES" : {
       "fileListPurpose": 'native-image-resources',
