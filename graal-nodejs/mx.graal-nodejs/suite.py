@@ -66,7 +66,11 @@ suite = {
         "coremodules",
       ],
       "class" : "GraalNodeJsProject",
-      "results" : ["Release/<exe:node>", "headers/include"],
+      "results" : [
+        "Release/<exe:node>",
+        "headers/include",
+        "Release/<lib:jsig>"
+      ],
       "output" : "out"
     },
     "com.oracle.truffle.trufflenode" : {
@@ -148,6 +152,9 @@ suite = {
           "dependency:trufflenodeNative/Release/<exe:node>",
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npm>",
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npx>",
+        ],
+        "lib/" : [
+          "dependency:trufflenodeNative/Release/<lib:jsig>",
         ],
         "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
       },

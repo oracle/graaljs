@@ -193,6 +193,10 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         _setEnvVar('HEADERS_ONLY', '1', build_env)
         _mxrun(['python3', join('tools', 'install.py'), 'install', join('out', 'headers'), sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
 
+        # copy libjsig.so from the jdk for inclusion in the standalone
+        libjsig_name = mx.add_lib_suffix(mx.add_lib_prefix('jsig'))
+        mx.copyfile(join(_java_home(forBuild=True), 'lib', libjsig_name), join(self._build_dir, libjsig_name))
+
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
         built = post_ts.isNewerThan(pre_ts)
