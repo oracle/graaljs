@@ -722,7 +722,6 @@
               "-Wl,-rpath='$$ORIGIN/../lib/'",
               # graalvm (./languages/nodejs/bin/node)
               "-Wl,-rpath='$$ORIGIN/../../../lib/'",
-              "-Wl,-rpath='$$ORIGIN/../../../../lib/'",
             ],
           }],
           ['OS=="mac"', {
@@ -732,7 +731,6 @@
               "-Wl,-rpath,'@loader_path/../lib/'",
               # graalvm (./languages/nodejs/bin/node)
               "-Wl,-rpath,'@loader_path/../../../lib/'",
-              "-Wl,-rpath,'@loader_path/../../../../lib/'",
             ],
           }],
           ['OS == "win"', {
