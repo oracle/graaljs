@@ -277,10 +277,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     }
 
     std::string jdk_path = getstdenv("JAVA_HOME");
-    if (jdk_path.empty() && force_native) {
-        jdk_path = up(node_path);
-    }
-    if (jdk_path.empty()) {
+    if (jdk_path.empty() && !force_native) {
         fprintf(stderr, "JAVA_HOME is not set. Specify JAVA_HOME so $JAVA_HOME%s exists.\n", LIBJVM_RELPATH);
         exit(1);
     }
@@ -460,8 +457,10 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         UnsetEnv(no_spawn_options);
 
     #if __APPLE__
-        if (dlopen((jdk_path + LIBJLI_RELPATH).c_str(), RTLD_NOW) == NULL) {
-            fprintf(stderr, "warning: could not load libjli: %s\n", dlerror());
+        if (!jdk_path.empty()) {
+            if (dlopen((jdk_path + LIBJLI_RELPATH).c_str(), RTLD_NOW) == NULL) {
+                fprintf(stderr, "warning: could not load libjli: %s\n", dlerror());
+            }
         }
     #endif
 
