@@ -82,9 +82,8 @@
 #define LIBNODESVM_RELPATH "/languages/nodejs/lib/" LIBNODESVM_NAME
 #define LIBPOLYGLOT_RELPATH "/lib/polyglot/" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "/lib/server/libjvm.dylib"
-#define LIBJLI_RELPATH     "/lib/jli/libjli.dylib"
 // libjli.dylib has moved in JDK 12, see https://bugs.openjdk.java.net/browse/JDK-8210931
-#define LIBJLI_RELPATH2    "/lib/libjli.dylib"
+#define LIBJLI_RELPATH     "/lib/libjli.dylib"
 #elif defined(_WIN32)
 #define LIBNODESVM_NAME    "graal-nodejs.dll"
 #define LIBPOLYGLOT_NAME   "polyglot.dll"
@@ -462,9 +461,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
     #if __APPLE__
         if (dlopen((jdk_path + LIBJLI_RELPATH).c_str(), RTLD_NOW) == NULL) {
-            if (dlopen((jdk_path + LIBJLI_RELPATH2).c_str(), RTLD_NOW) == NULL) {
-                fprintf(stderr, "warning: could not load libjli: %s\n", dlerror());
-            }
+            fprintf(stderr, "warning: could not load libjli: %s\n", dlerror());
         }
     #endif
 
