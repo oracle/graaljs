@@ -223,33 +223,19 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     JavaVM *jvm;
     JNIEnv *env;
 
-    std::string node = nodeExe();
-
-    std::string node_path = up(node);
-    bool force_native = false;
-    bool graalvm11plus = ends_with(node_path, file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
-    if (graalvm11plus) {
+    std::string node_exe = nodeExe();
+    std::string node_bin_path = up(node_exe);
+    std::string node_jvm_lib;
+    bool is_graalvm = ends_with(node_bin_path, file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
+    if (is_graalvm) {
         // Part of GraalVM: take precedence over any JAVA_HOME.
         // We set environment variables to ensure these values are correctly
         // propagated to child processes.
-        std::string graalvm_home = up(node, 4); // ${graalvm_home}/languages/nodejs/bin/node
+        std::string graalvm_home = up(node_exe, 4); // ${graalvm_home}/languages/nodejs/bin/node
         SetEnv("JAVA_HOME", graalvm_home.c_str());
 
 #       ifdef LIBNODESVM_RELPATH
-            std::string node_jvm_lib = graalvm_home + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
-            if (mode == kModeJVM) {
-                 // will be set to appropriate libjvm path below
-                UnsetEnv("NODE_JVM_LIB");
-            } else if (mode == kModeNative) {
-                force_native = true;
-            } else { // mode == kModeDefault
-                if (getstdenv("NODE_JVM_LIB").empty() && access(node_jvm_lib.c_str(), F_OK) == 0) {
-                    force_native = true;
-                } // else reuse NODE_JVM_LIB
-            }
-            if (force_native) {
-                SetEnv("NODE_JVM_LIB", node_jvm_lib.c_str());
-            }
+            node_jvm_lib = graalvm_home + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
 #       else
             if (mode == kModeNative) {
                 fprintf(stderr, "`--native` mode not available.\n");
@@ -258,9 +244,12 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 #       endif
     } else {
         // Assume standalone distribution with libs in ../lib.
-        std::string standalone_home = up(node, 2); // ${standalone_home}/bin/node
+        std::string standalone_home = up(node_exe, 2); // ${standalone_home}/bin/node
 
-        std::string node_jvm_lib = standalone_home + file_separator + "lib" + file_separator + LIBNODESVM_NAME;
+        node_jvm_lib = standalone_home + file_separator + "lib" + file_separator + LIBNODESVM_NAME;
+    }
+    bool force_native = false;
+    if (!node_jvm_lib.empty()) {
         if (mode == kModeJVM) {
             // will be set to appropriate libjvm path below
             UnsetEnv("NODE_JVM_LIB");
