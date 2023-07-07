@@ -97,7 +97,6 @@
 #define LIBNODESVM_RELPATH "/languages/nodejs/lib/" LIBNODESVM_NAME
 #define LIBPOLYGLOT_RELPATH "/lib/polyglot/" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "/lib/server/libjvm.so"
-#define LIBJVM_RELPATH2    "/lib/amd64/server/libjvm.so"
 #endif
 
 #define EXIT_WITH_MESSAGE(env, message) { \
@@ -289,11 +288,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     std::string jvmlib_path = getstdenv("NODE_JVM_LIB");
     if (jvmlib_path.empty()) {
         jvmlib_path = jdk_path + LIBJVM_RELPATH;
-#ifdef LIBJVM_RELPATH2
-        if (access(jvmlib_path.c_str(), F_OK) == -1) {
-            jvmlib_path = jdk_path + LIBJVM_RELPATH2;
-        }
-#endif
         SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
     }
     if (access(jvmlib_path.c_str(), F_OK) == -1) {
