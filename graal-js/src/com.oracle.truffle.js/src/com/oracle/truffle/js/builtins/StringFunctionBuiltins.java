@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -91,6 +89,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * Contains builtins for {@linkplain JSString} function (constructor).
@@ -372,7 +371,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return cached;
             }
 
-            List<TruffleString> dedentedList = dedentStringsArray(rawInput, emptyProf);
+            TruffleString[] dedentedList = dedentStringsArray(rawInput, emptyProf);
 
             assert dedentedList != null;
             JSArrayObject rawArr = createArrayFromList(dedentedList);
@@ -388,29 +387,30 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return cookedArr;
         }
 
-        private List<TruffleString> dedentStringsArray(Object template, InlinedConditionProfile emptyProf) {
+        private TruffleString[] dedentStringsArray(Object template, InlinedConditionProfile emptyProf) {
             int literalSegments = getLength(template);
             if (emptyProf.profile(getRootNode(), literalSegments <= 0)) {
                 return null;
             }
 
-            List<List<SegmentRecord>> blocks = splitTemplatesIntoBlockLines(template, literalSegments);
+            SegmentRecord[][] blocks = splitTemplatesIntoBlockLines(template, literalSegments);
             emptyWhiteSpaceLines(blocks);
             removeOpeningAndClosingLines(blocks);
 
             TruffleString indent = determineCommonLeadingIndentation(blocks);
             int indentLength = Strings.length(indent);
 
-            List<TruffleString> dedented = new LinkedList<>();
-            for (List<SegmentRecord> lines : blocks) {
+            TruffleString[] dedented = new TruffleString[blocks.length];
+            for (int j = 0; j < blocks.length; j++) {
+                SegmentRecord[] lines = blocks[j];
                 TruffleStringBuilder partialResult = Strings.builderCreate();
-                for (int i = 0; i < lines.size(); i++) {
-                    SegmentRecord line = lines.get(i);
+                for (int i = 0; i < lines.length; i++) {
+                    SegmentRecord line = lines[i];
                     int currentIndentation = i == 0 || Strings.isEmpty(line.substr) ? 0 : indentLength;
                     Strings.builderAppendLen(partialResult, line.substr, currentIndentation, Strings.length(line.substr) - currentIndentation);
                     Strings.builderAppend(appendStringNode, partialResult, line.newline);
                 }
-                Boundaries.listAdd(dedented, Strings.builderToString(partialResult));
+                dedented[j] = Strings.builderToString(partialResult);
             }
 
             return dedented;
@@ -428,8 +428,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private List<List<SegmentRecord>> splitTemplatesIntoBlockLines(Object raw, int len) {
-            List<List<SegmentRecord>> blocks = new LinkedList<>();
+        private SegmentRecord[][] splitTemplatesIntoBlockLines(Object raw, int len) {
+            SegmentRecord[][] blocks = new SegmentRecord[len][];
             int totalLength = 0;
             for (int k = 0; k < len; k++) {
                 Object rawElement = readRawElementNode.executeWithTargetAndIndex(raw, k);
@@ -438,30 +438,30 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 totalLength += segLength;
                 checkLengthAllowed(totalLength);
                 int start = 0;
-                List<SegmentRecord> lines = new LinkedList<>();
+                SimpleArrayList<SegmentRecord> lines = new SimpleArrayList<>(segLength + 1);
                 for (int i = 0; i < segLength;) {
                     char c = Strings.charAt(nextSeg, i);
                     int n = (c == '\r' && i + 1 < segLength && Strings.charAt(nextSeg, i + 1) == '\n') ? 2 : 1;
                     if (JSRuntime.isLineTerminator(c)) {
                         TruffleString substr = Strings.substring(getContext(), nextSeg, start, i - start);
                         TruffleString newline = Strings.substring(getContext(), nextSeg, i, n);
-                        Boundaries.listAdd(lines, new SegmentRecord(substr, newline, false));
+                        lines.addUncached(new SegmentRecord(substr, newline, false));
                         start = i + n;
                     }
                     i = i + n;
                 }
                 TruffleString tail = Strings.substring(getContext(), nextSeg, start, segLength - start);
                 boolean lineEndsWithSubstitution = k + 1 < len;
-                Boundaries.listAdd(lines, new SegmentRecord(tail, Strings.EMPTY_STRING, lineEndsWithSubstitution));
-                Boundaries.listAdd(blocks, lines);
+                lines.addUncached(new SegmentRecord(tail, Strings.EMPTY_STRING, lineEndsWithSubstitution));
+                blocks[k] = lines.toArray(new SegmentRecord[0]);
             }
             return blocks;
         }
 
-        private static void emptyWhiteSpaceLines(List<List<SegmentRecord>> blocks) {
-            for (List<SegmentRecord> lines : blocks) {
-                for (int i = 1; i < lines.size(); i++) {
-                    SegmentRecord line = lines.get(i);
+        private static void emptyWhiteSpaceLines(SegmentRecord[][] blocks) {
+            for (SegmentRecord[] lines : blocks) {
+                for (int i = 1; i < lines.length; i++) {
+                    SegmentRecord line = lines[i];
                     if (!line.lineEndsWithSubstitution && onlyWhitespace(line.substr)) {
                         line.substr = Strings.EMPTY_STRING;
                     }
@@ -478,26 +478,26 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return true;
         }
 
-        private static void removeOpeningAndClosingLines(List<List<SegmentRecord>> blocks) {
-            List<SegmentRecord> firstBlock = blocks.get(0);
-            if (firstBlock.size() == 1 || !Strings.isEmpty(firstBlock.get(0).substr)) {
+        private static void removeOpeningAndClosingLines(SegmentRecord[][] blocks) {
+            SegmentRecord[] firstBlock = blocks[0];
+            if (firstBlock.length == 1 || !Strings.isEmpty(firstBlock[0].substr)) {
                 throw Errors.createTypeError(MISSING_START_NEWLINE_MESSAGE);
             }
-            firstBlock.get(0).newline = Strings.EMPTY_STRING;
-            List<SegmentRecord> lastBlock = blocks.get(blocks.size() - 1);
-            if (lastBlock.size() == 1 || !Strings.isEmpty(lastBlock.get(lastBlock.size() - 1).substr)) {
+            firstBlock[0].newline = Strings.EMPTY_STRING;
+            SegmentRecord[] lastBlock = blocks[blocks.length - 1];
+            if (lastBlock.length == 1 || !Strings.isEmpty(lastBlock[lastBlock.length - 1].substr)) {
                 throw Errors.createTypeError(MISSING_END_NEWLINE_MESSAGE);
             }
-            SegmentRecord preceding = lastBlock.get(lastBlock.size() - 2);
-            lastBlock.get(lastBlock.size() - 1).substr = Strings.EMPTY_STRING;
+            SegmentRecord preceding = lastBlock[lastBlock.length - 2];
+            lastBlock[lastBlock.length - 1].substr = Strings.EMPTY_STRING;
             preceding.newline = Strings.EMPTY_STRING;
         }
 
-        private TruffleString determineCommonLeadingIndentation(List<List<SegmentRecord>> blocks) {
+        private TruffleString determineCommonLeadingIndentation(SegmentRecord[][] blocks) {
             TruffleString indent = null;
-            for (List<SegmentRecord> lines : blocks) {
-                for (int i = 1; i < lines.size(); i++) {
-                    SegmentRecord line = lines.get(i);
+            for (SegmentRecord[] lines : blocks) {
+                for (int i = 1; i < lines.length; i++) {
+                    SegmentRecord line = lines[i];
                     if (line.lineEndsWithSubstitution || !Strings.isEmpty(line.substr)) {
                         TruffleString leading = leadingWhitespaceSubstring(line.substr);
                         indent = indent == null ? leading : longestMatchingLeadingSubstring(indent, leading);
@@ -531,12 +531,13 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return Strings.substring(getContext(), strA, 0, len);
         }
 
-        private static List<TruffleString> cookStrings(List<TruffleString> raw) {
-            List<TruffleString> cooked = new LinkedList<>();
-            for (TruffleString str : raw) {
+        private static TruffleString[] cookStrings(TruffleString[] raw) {
+            TruffleString[] cooked = new TruffleString[raw.length];
+            for (int i = 0; i < raw.length; i++) {
+                TruffleString str = raw[i];
                 TruffleStringIterator iterator = TruffleString.CreateCodePointIteratorNode.create().execute(
                                 str, TruffleString.Encoding.UTF_16);
-                Boundaries.listAdd(cooked, parseText(iterator));
+                cooked[i] = parseText(iterator);
             }
             return cooked;
         }
@@ -696,8 +697,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return digit < base ? digit : -1;
         }
 
-        private JSArrayObject createArrayFromList(List<TruffleString> elements) {
-            return JSArray.createConstant(getContext(), getRealm(), elements.toArray());
+        private JSArrayObject createArrayFromList(TruffleString[] elements) {
+            return JSArray.createConstant(getContext(), getRealm(), elements);
         }
 
         private int getLength(Object raw) {
