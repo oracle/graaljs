@@ -373,7 +373,6 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             TruffleString[] dedentedList = dedentStringsArray(rawInput, emptyProf);
 
-            assert dedentedList != null;
             JSArrayObject rawArr = createArrayFromList(dedentedList);
             JSArrayObject cookedArr = createArrayFromList(cookStrings(dedentedList));
             JSRuntime.definePropertyOrThrow(
@@ -389,8 +388,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private TruffleString[] dedentStringsArray(Object template, InlinedConditionProfile emptyProf) {
             int literalSegments = getLength(template);
-            if (emptyProf.profile(getRootNode(), literalSegments <= 0)) {
-                return null;
+            if (emptyProf.profile(this, literalSegments <= 0)) {
+                // Note: Well-formed template strings arrays always contain at least 1 string.
+                throw Errors.createTypeError("Template raw array must contain at least 1 string");
             }
 
             SegmentRecord[][] blocks = splitTemplatesIntoBlockLines(template, literalSegments);
@@ -535,7 +535,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             TruffleString[] cooked = new TruffleString[raw.length];
             for (int i = 0; i < raw.length; i++) {
                 TruffleString str = raw[i];
-                TruffleStringIterator iterator = TruffleString.CreateCodePointIteratorNode.create().execute(
+                TruffleStringIterator iterator = TruffleString.CreateCodePointIteratorNode.getUncached().execute(
                                 str, TruffleString.Encoding.UTF_16);
                 cooked[i] = parseText(iterator);
             }
