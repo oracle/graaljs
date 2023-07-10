@@ -75,7 +75,7 @@ public class StringFunctionBuiltinsTest {
         assert exception != null;
         assertEquals(
                         exception.getMessage(),
-                        "TypeError: " + StringFunctionBuiltins.StringDedentNode.MISSING_START_NEWLINE_MESSAGE);
+                        "TypeError: " + StringFunctionBuiltins.DedentTemplateStringsArrayNode.MISSING_START_NEWLINE_MESSAGE);
     }
 
     @Test
@@ -91,7 +91,7 @@ public class StringFunctionBuiltinsTest {
         assert exception != null;
         assertEquals(
                         exception.getMessage(),
-                        "TypeError: " + StringFunctionBuiltins.StringDedentNode.MISSING_END_NEWLINE_MESSAGE);
+                        "TypeError: " + StringFunctionBuiltins.DedentTemplateStringsArrayNode.MISSING_END_NEWLINE_MESSAGE);
     }
 
     @Test

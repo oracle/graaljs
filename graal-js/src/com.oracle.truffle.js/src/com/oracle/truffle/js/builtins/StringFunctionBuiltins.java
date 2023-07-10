@@ -51,14 +51,17 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
+import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.DedentTemplateStringsArrayNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCharCodeNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCodePointNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.StringDedentNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.StringRawNodeGen;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -76,6 +79,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
@@ -283,42 +287,25 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     @ImportStatic(StringDedentNode.class)
     public abstract static class StringDedentNode extends JSBuiltinNode {
-        public static final String MISSING_START_NEWLINE_MESSAGE = "Template should contain a trailing newline.";
-        public static final String MISSING_END_NEWLINE_MESSAGE = "Template should contain a closing newline.";
-        @Child private JSToObjectNode rawToObjectNode;
-        @Child private PropertyGetNode getRawNode;
-        @Child private JSGetLengthNode getLengthNode;
-        @Child private JSToStringNode segToStringNode;
-        @Child private JSToStringNode subToStringNode;
-        @Child private ReadElementNode readRawElementNode;
-        @Child private ReadElementNode readElementNode;
-        @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
+
         static final HiddenKey TAG_KEY = new HiddenKey("TagKey");
 
         public StringDedentNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getLengthNode = JSGetLengthNode.create(context);
-            this.rawToObjectNode = JSToObjectNode.create();
-            this.getRawNode = PropertyGetNode.create(Strings.RAW, context);
-            this.readRawElementNode = ReadElementNode.create(context);
-            this.segToStringNode = JSToStringNode.create();
-            this.subToStringNode = JSToStringNode.create();
-            this.readElementNode = ReadElementNode.create(context);
-            this.appendStringNode = TruffleStringBuilder.AppendStringNode.create();
         }
 
         @Specialization(guards = "isCallable(callback)")
         protected Object dedentCallback(Object callback, @SuppressWarnings("unused") Object[] substitutions,
-                        @Cached("createSetHidden(TAG_KEY, getContext())") PropertySetNode setArgs,
-                        @Cached @Shared InlinedConditionProfile emptyProf) {
-            JSFunctionData functionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.DedentCallback, (c) -> callbackBody(c, emptyProf));
+                        @Cached("createSetHidden(TAG_KEY, getContext())") PropertySetNode setArgs) {
+            JSFunctionData functionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.DedentCallback, (c) -> callbackBody(c));
             JSFunctionObject function = JSFunction.create(getRealm(), functionData);
             setArgs.setValue(function, callback);
             return function;
         }
 
-        private JSFunctionData callbackBody(JSContext context, InlinedConditionProfile emptyProf) {
+        private static JSFunctionData callbackBody(JSContext context) {
             class CallbackBody extends JavaScriptRootNode {
+                @Child private DedentTemplateStringsArrayNode dedentTemplateStringsArray = DedentTemplateStringsArrayNodeGen.create(context);
                 @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(TAG_KEY, context);
                 @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
 
@@ -333,7 +320,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         throw Errors.createTypeError("Expected at least one argument");
                     }
                     Object template = args[0];
-                    JSArrayObject dedentedArray = dedentTemplateStringsArray(template, emptyProf);
+                    JSArrayObject dedentedArray = dedentTemplateStringsArray.execute(template);
                     Object[] callbackArgs = Arrays.copyOf(args, args.length);
                     callbackArgs[0] = dedentedArray;
                     return callResolve.executeCall(JSArguments.create(r, tag, callbackArgs));
@@ -343,38 +330,84 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "!isCallable(template)")
-        protected Object dedent(Object template, Object[] substitutions, @Cached @Shared InlinedConditionProfile emptyProf) {
-            return dedentCooked(template, substitutions, emptyProf);
-        }
-
-        private TruffleString dedentCooked(Object template, Object[] substitutions, InlinedConditionProfile emptyProf) {
+        protected Object dedent(Object template, Object[] substitutions,
+                        @Cached("create(getContext())") DedentTemplateStringsArrayNode dedentTemplateStringsArray,
+                        @Cached("create(getContext())") ReadElementNode readElementNode,
+                        @Cached JSToStringNode subToStringNode,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached TruffleStringBuilder.AppendStringNode appendStringNode) {
             int numberOfSubstitutions = substitutions.length;
-            JSArrayObject dedentedArray = dedentTemplateStringsArray(template, emptyProf);
+            JSArrayObject dedentedArray = dedentTemplateStringsArray.execute(template);
             TruffleStringBuilder result = Strings.builderCreate();
             for (int i = 0; i < dedentedArray.getArraySize(); i++) {
                 TruffleString nextSeg = (TruffleString) readElementNode.executeWithTargetAndIndex(dedentedArray, i);
-                appendChecked(result, nextSeg);
+                appendChecked(result, nextSeg, errorBranch, appendStringNode);
                 if (i < numberOfSubstitutions) {
                     TruffleString nextSub = subToStringNode.executeString(substitutions[i]);
-                    appendChecked(result, nextSub);
+                    appendChecked(result, nextSub, errorBranch, appendStringNode);
                 }
             }
 
             return Strings.builderToString(result);
         }
 
-        public JSArrayObject dedentTemplateStringsArray(Object template, InlinedConditionProfile emptyProf) {
+        private void appendChecked(TruffleStringBuilder result, TruffleString str,
+                        InlinedBranchProfile errorBranch,
+                        TruffleStringBuilder.AppendStringNode appendStringNode) {
+            checkLengthAllowed(Strings.builderLength(result) + Strings.length(str), errorBranch);
+            Strings.builderAppend(appendStringNode, result, str);
+        }
+
+        private void checkLengthAllowed(int length,
+                        InlinedBranchProfile errorBranch) {
+            if (length > getContext().getStringLengthLimit()) {
+                errorBranch.enter(this);
+                throw Errors.createRangeErrorInvalidStringLength();
+            }
+        }
+    }
+
+    public abstract static class DedentTemplateStringsArrayNode extends JavaScriptBaseNode {
+        public static final String MISSING_START_NEWLINE_MESSAGE = "Template should contain a trailing newline.";
+        public static final String MISSING_END_NEWLINE_MESSAGE = "Template should contain a closing newline.";
+
+        @Child private PropertyGetNode getRawNode;
+        @Child private JSGetLengthNode getLengthNode;
+        @Child private JSToStringNode segToStringNode;
+        @Child private ReadElementNode readRawElementNode;
+        @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
+        private final JSContext context;
+
+        DedentTemplateStringsArrayNode(JSContext context) {
+            this.context = context;
+            this.getLengthNode = JSGetLengthNode.create(context);
+            this.getRawNode = PropertyGetNode.create(Strings.RAW, context);
+            this.readRawElementNode = ReadElementNode.create(context);
+            this.segToStringNode = JSToStringNode.create();
+            this.appendStringNode = TruffleStringBuilder.AppendStringNode.create();
+        }
+
+        protected abstract JSArrayObject execute(Object template);
+
+        @Specialization
+        protected final JSArrayObject dedentTemplateStringsArray(Object template,
+                        @Cached JSToObjectNode rawToObjectNode,
+                        @Cached InlinedConditionProfile emptyProf,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedBranchProfile growBranch,
+                        @Cached TruffleString.CreateCodePointIteratorNode createCodePointIterator) {
             Object rawInput = rawToObjectNode.execute(getRawNode.getValue(template));
-            Map<Object, JSDynamicObject> dedentMap = getRealm().getDedentMap();
+            JSRealm realm = getRealm();
+            Map<Object, JSDynamicObject> dedentMap = realm.getDedentMap();
             JSArrayObject cached = (JSArrayObject) Boundaries.mapGet(dedentMap, rawInput);
             if (cached != null) {
                 return cached;
             }
 
-            TruffleString[] dedentedList = dedentStringsArray(rawInput, emptyProf);
+            TruffleString[] dedentedList = dedentStringsArray(rawInput, emptyProf, errorBranch, growBranch);
 
-            JSArrayObject rawArr = createArrayFromList(dedentedList);
-            JSArrayObject cookedArr = createArrayFromList(cookStrings(dedentedList));
+            JSArrayObject rawArr = JSArray.createConstant(context, realm, dedentedList);
+            JSArrayObject cookedArr = JSArray.createConstant(context, realm, cookStrings(dedentedList, createCodePointIterator));
             JSRuntime.definePropertyOrThrow(
                             cookedArr,
                             Strings.RAW,
@@ -386,14 +419,17 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return cookedArr;
         }
 
-        private TruffleString[] dedentStringsArray(Object template, InlinedConditionProfile emptyProf) {
+        private TruffleString[] dedentStringsArray(Object template,
+                        InlinedConditionProfile emptyProf,
+                        InlinedBranchProfile errorBranch,
+                        InlinedBranchProfile growBranch) {
             int literalSegments = getLength(template);
             if (emptyProf.profile(this, literalSegments <= 0)) {
                 // Note: Well-formed template strings arrays always contain at least 1 string.
                 throw Errors.createTypeError("Template raw array must contain at least 1 string");
             }
 
-            SegmentRecord[][] blocks = splitTemplatesIntoBlockLines(template, literalSegments);
+            SegmentRecord[][] blocks = splitTemplatesIntoBlockLines(template, literalSegments, errorBranch, growBranch);
             emptyWhiteSpaceLines(blocks);
             removeOpeningAndClosingLines(blocks);
 
@@ -428,7 +464,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private SegmentRecord[][] splitTemplatesIntoBlockLines(Object raw, int len) {
+        private SegmentRecord[][] splitTemplatesIntoBlockLines(Object raw, int len,
+                        InlinedBranchProfile errorBranch,
+                        InlinedBranchProfile growBranch) {
             SegmentRecord[][] blocks = new SegmentRecord[len][];
             int totalLength = 0;
             for (int k = 0; k < len; k++) {
@@ -436,23 +474,23 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 TruffleString nextSeg = segToStringNode.executeString(rawElement);
                 int segLength = Strings.length(nextSeg);
                 totalLength += segLength;
-                checkLengthAllowed(totalLength);
+                checkLengthAllowed(totalLength, errorBranch);
                 int start = 0;
                 SimpleArrayList<SegmentRecord> lines = new SimpleArrayList<>(segLength + 1);
                 for (int i = 0; i < segLength;) {
                     char c = Strings.charAt(nextSeg, i);
                     int n = (c == '\r' && i + 1 < segLength && Strings.charAt(nextSeg, i + 1) == '\n') ? 2 : 1;
                     if (JSRuntime.isLineTerminator(c)) {
-                        TruffleString substr = Strings.substring(getContext(), nextSeg, start, i - start);
-                        TruffleString newline = Strings.substring(getContext(), nextSeg, i, n);
-                        lines.addUncached(new SegmentRecord(substr, newline, false));
+                        TruffleString substr = Strings.substring(context, nextSeg, start, i - start);
+                        TruffleString newline = Strings.substring(context, nextSeg, i, n);
+                        lines.add(new SegmentRecord(substr, newline, false), this, growBranch);
                         start = i + n;
                     }
                     i = i + n;
                 }
-                TruffleString tail = Strings.substring(getContext(), nextSeg, start, segLength - start);
+                TruffleString tail = Strings.substring(context, nextSeg, start, segLength - start);
                 boolean lineEndsWithSubstitution = k + 1 < len;
-                lines.addUncached(new SegmentRecord(tail, Strings.EMPTY_STRING, lineEndsWithSubstitution));
+                lines.add(new SegmentRecord(tail, Strings.EMPTY_STRING, lineEndsWithSubstitution), this, growBranch);
                 blocks[k] = lines.toArray(new SegmentRecord[0]);
             }
             return blocks;
@@ -510,7 +548,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         private TruffleString leadingWhitespaceSubstring(TruffleString str) {
             for (int i = 0; i < Strings.length(str); i++) {
                 if (!isWhiteSpace(Strings.charAt(str, i))) {
-                    return Strings.substring(getContext(), str, 0, i);
+                    return Strings.substring(context, str, 0, i);
                 }
             }
             return str;
@@ -525,18 +563,18 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             int len = Math.min(Strings.length(strA), Strings.length(strB));
             for (int i = 0; i < len; i++) {
                 if (Strings.charAt(strA, i) != Strings.charAt(strB, i)) {
-                    return Strings.substring(getContext(), strA, 0, i);
+                    return Strings.substring(context, strA, 0, i);
                 }
             }
-            return Strings.substring(getContext(), strA, 0, len);
+            return Strings.substring(context, strA, 0, len);
         }
 
-        private static TruffleString[] cookStrings(TruffleString[] raw) {
+        private static TruffleString[] cookStrings(TruffleString[] raw,
+                        TruffleString.CreateCodePointIteratorNode createCodePointIterator) {
             TruffleString[] cooked = new TruffleString[raw.length];
             for (int i = 0; i < raw.length; i++) {
                 TruffleString str = raw[i];
-                TruffleStringIterator iterator = TruffleString.CreateCodePointIteratorNode.getUncached().execute(
-                                str, TruffleString.Encoding.UTF_16);
+                TruffleStringIterator iterator = createCodePointIterator.execute(str, TruffleString.Encoding.UTF_16);
                 cooked[i] = parseText(iterator);
             }
             return cooked;
@@ -697,10 +735,6 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return digit < base ? digit : -1;
         }
 
-        private JSArrayObject createArrayFromList(TruffleString[] elements) {
-            return JSArray.createConstant(getContext(), getRealm(), elements);
-        }
-
         private int getLength(Object raw) {
             long length = getLengthNode.executeLong(raw);
             try {
@@ -710,14 +744,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void appendChecked(TruffleStringBuilder result, TruffleString str) {
-            checkLengthAllowed(Strings.builderLength(result) + Strings.length(str));
-            Strings.builderAppend(appendStringNode, result, str);
-        }
-
-        private void checkLengthAllowed(int length) {
-            if (length > getContext().getStringLengthLimit()) {
-                CompilerDirectives.transferToInterpreter();
+        private void checkLengthAllowed(int length, InlinedBranchProfile errorBranch) {
+            if (length > context.getStringLengthLimit()) {
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorInvalidStringLength();
             }
         }
