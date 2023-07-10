@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,11 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.js.builtins;
+
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -87,11 +92,6 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-
 /**
  * Contains builtins for {@linkplain JSString} function (constructor).
  */
@@ -137,16 +137,17 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, StringFunction builtinEnum) {
-        return switch (builtinEnum) {
-            case fromCharCode ->
-                    JSFromCharCodeNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
-            case fromCodePoint ->
-                    JSFromCodePointNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
-            case raw ->
-                    StringRawNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
-            case dedent ->
-                    StringDedentNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
-        };
+        switch (builtinEnum) {
+            case fromCharCode:
+                return JSFromCharCodeNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+            case fromCodePoint:
+                return JSFromCodePointNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+            case raw:
+                return StringRawNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
+            case dedent:
+                return StringDedentNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
+        }
+        return null;
     }
 
     public abstract static class JSFromCharCodeNode extends JSBuiltinNode {
@@ -162,15 +163,15 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "args.length == 1")
         protected Object fromCharCodeOneArg(Object[] args,
-                                            @Shared @Cached JSToUInt16Node toUint16,
-                                            @Cached TruffleString.FromCodePointNode fromCodePointNode) {
+                        @Shared @Cached JSToUInt16Node toUint16,
+                        @Cached TruffleString.FromCodePointNode fromCodePointNode) {
             return Strings.fromCodePoint(fromCodePointNode, toUint16.executeChar(args[0]));
         }
 
         @Specialization(guards = "args.length >= 2")
         protected Object fromCharCodeTwoOrMore(Object[] args,
-                                               @Shared @Cached JSToUInt16Node toUint16,
-                                               @Cached TruffleString.FromCharArrayUTF16Node fromCharArrayNode) {
+                        @Shared @Cached JSToUInt16Node toUint16,
+                        @Cached TruffleString.FromCharArrayUTF16Node fromCharArrayNode) {
             char[] chars = new char[args.length];
             for (int i = 0; i < args.length; i++) {
                 chars[i] = toUint16.executeChar(args[i]);
@@ -187,9 +188,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object fromCodePoint(Object[] args,
-                                       @Cached JSToNumberNode toNumberNode,
-                                       @Cached TruffleString.FromCodePointNode fromCodePointNode,
-                                       @Cached TruffleString.ConcatNode concatNode) {
+                        @Cached JSToNumberNode toNumberNode,
+                        @Cached TruffleString.FromCodePointNode fromCodePointNode,
+                        @Cached TruffleString.ConcatNode concatNode) {
             TruffleString st = Strings.EMPTY_STRING;
             for (Object arg : args) {
                 Number value = toNumberNode.executeNumber(arg);
@@ -212,24 +213,15 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class StringRawNode extends JSBuiltinNode {
-        @Child
-        private JSToObjectNode templateToObjectNode;
-        @Child
-        private JSToObjectNode rawToObjectNode;
-        @Child
-        private PropertyGetNode getRawNode;
-        @Child
-        private JSGetLengthNode getRawLengthNode;
-        @Child
-        private JSToStringNode segToStringNode;
-        @Child
-        private JSToStringNode subToStringNode;
-        @Child
-        private ReadElementNode readRawElementNode;
-        @Child
-        private TruffleStringBuilder.AppendStringNode appendStringNode;
-        @Child
-        private TruffleStringBuilder.ToStringNode builderToStringNode;
+        @Child private JSToObjectNode templateToObjectNode;
+        @Child private JSToObjectNode rawToObjectNode;
+        @Child private PropertyGetNode getRawNode;
+        @Child private JSGetLengthNode getRawLengthNode;
+        @Child private JSToStringNode segToStringNode;
+        @Child private JSToStringNode subToStringNode;
+        @Child private ReadElementNode readRawElementNode;
+        @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
+        @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
 
         public StringRawNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -246,7 +238,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object raw(Object template, Object[] substitutions,
-                             @Cached InlinedConditionProfile emptyProf) {
+                        @Cached InlinedConditionProfile emptyProf) {
             int numberOfSubstitutions = substitutions.length;
             Object cooked = templateToObjectNode.execute(template);
             Object raw = rawToObjectNode.execute(getRawNode.getValue(cooked));
@@ -257,7 +249,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
 
             TruffleStringBuilder result = Strings.builderCreate();
-            for (int i = 0; ; i++) {
+            for (int i = 0;; i++) {
                 Object rawElement = readRawElementNode.executeWithTargetAndIndex(raw, i);
                 TruffleString nextSeg = segToStringNode.executeString(rawElement);
                 appendChecked(result, nextSeg);
@@ -294,22 +286,14 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class StringDedentNode extends JSBuiltinNode {
         public static final String MISSING_START_NEWLINE_MESSAGE = "Template should contain a trailing newline.";
         public static final String MISSING_END_NEWLINE_MESSAGE = "Template should contain a closing newline.";
-        @Child
-        private JSToObjectNode rawToObjectNode;
-        @Child
-        private PropertyGetNode getRawNode;
-        @Child
-        private JSGetLengthNode getLengthNode;
-        @Child
-        private JSToStringNode segToStringNode;
-        @Child
-        private JSToStringNode subToStringNode;
-        @Child
-        private ReadElementNode readRawElementNode;
-        @Child
-        private ReadElementNode readElementNode;
-        @Child
-        private TruffleStringBuilder.AppendStringNode appendStringNode;
+        @Child private JSToObjectNode rawToObjectNode;
+        @Child private PropertyGetNode getRawNode;
+        @Child private JSGetLengthNode getLengthNode;
+        @Child private JSToStringNode segToStringNode;
+        @Child private JSToStringNode subToStringNode;
+        @Child private ReadElementNode readRawElementNode;
+        @Child private ReadElementNode readElementNode;
+        @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
         static final HiddenKey TAG_KEY = new HiddenKey("TagKey");
 
         public StringDedentNode(JSContext context, JSBuiltin builtin) {
@@ -326,8 +310,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isCallable(callback)")
         protected Object dedentCallback(JSDynamicObject callback, @SuppressWarnings("unused") Object[] substitutions,
-                                        @Cached("createSetHidden(TAG_KEY, getContext())") PropertySetNode setArgs,
-                                        @Cached @Shared InlinedConditionProfile emptyProf) {
+                        @Cached("createSetHidden(TAG_KEY, getContext())") PropertySetNode setArgs,
+                        @Cached @Shared InlinedConditionProfile emptyProf) {
             JSFunctionData functionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.DedentCallback, (c) -> callbackBody(c, emptyProf));
             JSFunctionObject function = JSFunction.create(getRealm(), functionData);
             setArgs.setValue(function, callback);
@@ -346,7 +330,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     Object r = JSFrameUtil.getThisObj(frame);
 
                     Object[] args = JSFrameUtil.getArgumentsArray(frame);
-                    if(args.length < 1) {
+                    if (args.length < 1) {
                         throw Errors.createTypeError("Expected at least one argument");
                     }
                     Object template = args[0];
@@ -384,7 +368,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object rawInput = rawToObjectNode.execute(getRawNode.getValue(template));
             Map<Object, JSDynamicObject> dedentMap = getRealm().getDedentMap();
             JSArrayObject cached = (JSArrayObject) Boundaries.mapGet(dedentMap, rawInput);
-            if(cached != null) {
+            if (cached != null) {
                 return cached;
             }
 
@@ -394,10 +378,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             JSArrayObject rawArr = createArrayFromList(dedentedList);
             JSArrayObject cookedArr = createArrayFromList(cookStrings(dedentedList));
             JSRuntime.definePropertyOrThrow(
-                    cookedArr,
-                    Strings.RAW,
-                    PropertyDescriptor.createData(rawArr, false, false, false)
-            );
+                            cookedArr,
+                            Strings.RAW,
+                            PropertyDescriptor.createData(rawArr, false, false, false));
             JSObject.setIntegrityLevel(rawArr, true);
             JSObject.setIntegrityLevel(cookedArr, true);
             Boundaries.mapPut(dedentMap, rawInput, cookedArr);
@@ -419,9 +402,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             int indentLength = Strings.length(indent);
 
             List<TruffleString> dedented = new LinkedList<>();
-            for(List<SegmentRecord> lines : blocks) {
+            for (List<SegmentRecord> lines : blocks) {
                 TruffleStringBuilder partialResult = Strings.builderCreate();
-                for(int i = 0; i < lines.size(); i++) {
+                for (int i = 0; i < lines.size(); i++) {
                     SegmentRecord line = lines.get(i);
                     int currentIndentation = i == 0 || Strings.isEmpty(line.substr) ? 0 : indentLength;
                     Strings.builderAppendLen(partialResult, line.substr, currentIndentation, Strings.length(line.substr) - currentIndentation);
@@ -433,11 +416,12 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return dedented;
         }
 
-        private static class SegmentRecord {
-            public TruffleString substr;
-            public TruffleString newline;
-            public boolean lineEndsWithSubstitution;
-            public SegmentRecord(TruffleString substr, TruffleString newline, boolean lineEndsWithSubstitution) {
+        private static final class SegmentRecord {
+            TruffleString substr;
+            TruffleString newline;
+            boolean lineEndsWithSubstitution;
+
+            SegmentRecord(TruffleString substr, TruffleString newline, boolean lineEndsWithSubstitution) {
                 this.substr = substr;
                 this.newline = newline;
                 this.lineEndsWithSubstitution = lineEndsWithSubstitution;
@@ -455,10 +439,10 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 checkLengthAllowed(totalLength);
                 int start = 0;
                 List<SegmentRecord> lines = new LinkedList<>();
-                for(int i = 0; i < segLength;) {
+                for (int i = 0; i < segLength;) {
                     char c = Strings.charAt(nextSeg, i);
                     int n = (c == '\r' && i + 1 < segLength && Strings.charAt(nextSeg, i + 1) == '\n') ? 2 : 1;
-                    if(JSRuntime.isLineTerminator(c)) {
+                    if (JSRuntime.isLineTerminator(c)) {
                         TruffleString substr = Strings.substring(getContext(), nextSeg, start, i - start);
                         TruffleString newline = Strings.substring(getContext(), nextSeg, i, n);
                         Boundaries.listAdd(lines, new SegmentRecord(substr, newline, false));
@@ -475,10 +459,10 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private static void emptyWhiteSpaceLines(List<List<SegmentRecord>> blocks) {
-            for(List<SegmentRecord> lines : blocks) {
-                for(int i = 1; i < lines.size(); i++) {
+            for (List<SegmentRecord> lines : blocks) {
+                for (int i = 1; i < lines.size(); i++) {
                     SegmentRecord line = lines.get(i);
-                    if(!line.lineEndsWithSubstitution && onlyWhitespace(line.substr)) {
+                    if (!line.lineEndsWithSubstitution && onlyWhitespace(line.substr)) {
                         line.substr = Strings.EMPTY_STRING;
                     }
                 }
@@ -486,20 +470,22 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private static boolean onlyWhitespace(TruffleString str) {
-            for(int i = 0; i < Strings.length(str); i++) {
-                if(!isWhiteSpace(Strings.charAt(str, i))) return false;
+            for (int i = 0; i < Strings.length(str); i++) {
+                if (!isWhiteSpace(Strings.charAt(str, i))) {
+                    return false;
+                }
             }
             return true;
         }
 
         private static void removeOpeningAndClosingLines(List<List<SegmentRecord>> blocks) {
             List<SegmentRecord> firstBlock = blocks.get(0);
-            if(firstBlock.size() == 1 || !Strings.isEmpty(firstBlock.get(0).substr)) {
+            if (firstBlock.size() == 1 || !Strings.isEmpty(firstBlock.get(0).substr)) {
                 throw Errors.createTypeError(MISSING_START_NEWLINE_MESSAGE);
             }
             firstBlock.get(0).newline = Strings.EMPTY_STRING;
             List<SegmentRecord> lastBlock = blocks.get(blocks.size() - 1);
-            if(lastBlock.size() == 1 || !Strings.isEmpty(lastBlock.get(lastBlock.size() - 1).substr)) {
+            if (lastBlock.size() == 1 || !Strings.isEmpty(lastBlock.get(lastBlock.size() - 1).substr)) {
                 throw Errors.createTypeError(MISSING_END_NEWLINE_MESSAGE);
             }
             SegmentRecord preceding = lastBlock.get(lastBlock.size() - 2);
@@ -509,10 +495,10 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private TruffleString determineCommonLeadingIndentation(List<List<SegmentRecord>> blocks) {
             TruffleString indent = null;
-            for(List<SegmentRecord> lines : blocks) {
-                for(int i = 1; i < lines.size(); i++) {
+            for (List<SegmentRecord> lines : blocks) {
+                for (int i = 1; i < lines.size(); i++) {
                     SegmentRecord line = lines.get(i);
-                    if(line.lineEndsWithSubstitution || !Strings.isEmpty(line.substr)) {
+                    if (line.lineEndsWithSubstitution || !Strings.isEmpty(line.substr)) {
                         TruffleString leading = leadingWhitespaceSubstring(line.substr);
                         indent = indent == null ? leading : longestMatchingLeadingSubstring(indent, leading);
                     }
@@ -522,8 +508,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private TruffleString leadingWhitespaceSubstring(TruffleString str) {
-            for(int i = 0; i < Strings.length(str); i++) {
-                if(!isWhiteSpace(Strings.charAt(str, i))) {
+            for (int i = 0; i < Strings.length(str); i++) {
+                if (!isWhiteSpace(Strings.charAt(str, i))) {
                     return Strings.substring(getContext(), str, 0, i);
                 }
             }
@@ -537,8 +523,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private TruffleString longestMatchingLeadingSubstring(TruffleString strA, TruffleString strB) {
             int len = Math.min(Strings.length(strA), Strings.length(strB));
-            for(int i = 0; i < len; i++) {
-                if(Strings.charAt(strA, i) != Strings.charAt(strB, i)) {
+            for (int i = 0; i < len; i++) {
+                if (Strings.charAt(strA, i) != Strings.charAt(strB, i)) {
                     return Strings.substring(getContext(), strA, 0, i);
                 }
             }
@@ -547,10 +533,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private static List<TruffleString> cookStrings(List<TruffleString> raw) {
             List<TruffleString> cooked = new LinkedList<>();
-            for(TruffleString str : raw) {
+            for (TruffleString str : raw) {
                 TruffleStringIterator iterator = TruffleString.CreateCodePointIteratorNode.create().execute(
-                        str, TruffleString.Encoding.UTF_16
-                );
+                                str, TruffleString.Encoding.UTF_16);
                 Boundaries.listAdd(cooked, parseText(iterator));
             }
             return cooked;
@@ -558,7 +543,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private static TruffleString parseText(TruffleStringIterator iterator) {
             TruffleStringBuilder partialResult = Strings.builderCreate();
-            while(iterator.hasNext()){
+            while (iterator.hasNext()) {
                 int ch = iterator.nextUncached();
                 if (ch == '\\' && iterator.hasNext()) {
                     final int next = iterator.nextUncached();
@@ -592,6 +577,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                             if (iterator.nextUncached() != '\n') {
                                 iterator.previousUncached();
                             }
+                            break;
                         case '\n':
                         case '\u2028':
                         case '\u2029':
@@ -642,14 +628,13 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-
         private static int varlenHexSequence(TruffleStringIterator iterator) {
             int ch = iterator.nextUncached();
             assert ch == '{';
 
             int value = 0;
             boolean firstIteration = true;
-            while(iterator.hasNext()) {
+            while (iterator.hasNext()) {
                 ch = iterator.nextUncached();
                 if (ch == '}') {
                     if (!firstIteration) {
@@ -677,17 +662,18 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private static int hexSequence(TruffleStringIterator iterator, int length) {
-            int value = 0, i;
-            for(i = 0; i < length && iterator.hasNext(); i++) {
+            int value = 0;
+            int i;
+            for (i = 0; i < length && iterator.hasNext(); i++) {
                 int ch = iterator.nextUncached();
                 int digit = convertDigit(ch, 16);
-                if(digit == -1) {
+                if (digit == -1) {
                     throw Errors.createSyntaxError("Invalid hex digit");
                 }
                 value = digit | value << 4;
             }
 
-            if(i != length) {
+            if (i != length) {
                 throw Errors.createSyntaxError("Invalid hex length");
             }
 
