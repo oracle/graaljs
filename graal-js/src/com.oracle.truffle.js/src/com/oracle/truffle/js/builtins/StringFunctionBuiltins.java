@@ -300,7 +300,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
             this.getLengthNode = JSGetLengthNode.create(context);
             this.rawToObjectNode = JSToObjectNode.create();
-            this.getRawNode = PropertyGetNode.create(Strings.RAW, false, context);
+            this.getRawNode = PropertyGetNode.create(Strings.RAW, context);
             this.readRawElementNode = ReadElementNode.create(context);
             this.segToStringNode = JSToStringNode.create();
             this.subToStringNode = JSToStringNode.create();
@@ -309,7 +309,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isCallable(callback)")
-        protected Object dedentCallback(JSDynamicObject callback, @SuppressWarnings("unused") Object[] substitutions,
+        protected Object dedentCallback(Object callback, @SuppressWarnings("unused") Object[] substitutions,
                         @Cached("createSetHidden(TAG_KEY, getContext())") PropertySetNode setArgs,
                         @Cached @Shared InlinedConditionProfile emptyProf) {
             JSFunctionData functionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.DedentCallback, (c) -> callbackBody(c, emptyProf));
