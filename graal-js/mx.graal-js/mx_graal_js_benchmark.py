@@ -104,5 +104,5 @@ class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
 
 add_bm_suite(JMHDistGraalJsBenchmarkSuite())
 
-mx_sdk_vm.register_vm_config('ce', ['cmp', 'icu4j', 'js', 'jss', 'rgx', 'sdk', 'sdkl', 'svm', 'svmsl', 'tfl', 'tfla', 'tflm'], _suite)
-mx_sdk_vm.register_vm_config('ee', ['cmp', 'cmpee', 'icu4j', 'js', 'jss', 'rgx', 'sdk', 'sdkl', 'svm', 'svmee', 'svmeegc', 'svmsl', 'tfl', 'tfla', 'tflllm', 'tflm'], _suite)
+mx_sdk_vm.register_vm_config('ce', ['cmp', 'icu4j', 'js', 'jsl', 'jss', 'rgx', 'sdk', 'sdkl', 'svm', 'svmsl', 'tfl', 'tfla', 'tflm'], _suite)
+mx_sdk_vm.register_vm_config('ee', ['cmp', 'cmpee', 'icu4j', 'js', 'jsl', 'jss', 'rgx', 'sdk', 'sdkl', 'svm', 'svmee', 'svmeegc', 'svmsl', 'tfl', 'tfla', 'tflllm', 'tflm'], _suite)

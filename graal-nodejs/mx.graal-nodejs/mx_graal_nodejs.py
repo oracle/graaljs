@@ -144,6 +144,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
     def __init__(self, project, args):
         mx.NativeBuildTask.__init__(self, args, project)
         self._debug_mode = hasattr(self.args, 'debug') and self.args.debug
+        self._out_dir = join(_suite.dir, 'out')
         self._build_dir = join(_suite.dir, 'out', 'Debug' if self._debug_mode else 'Release')
 
     def build(self):
@@ -193,12 +194,15 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         _setEnvVar('HEADERS_ONLY', '1', build_env)
         _mxrun(['python3', join('tools', 'install.py'), 'install', join('out', 'headers'), sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
 
+        if not _is_windows:
+            # copy libjsig.so from the jdk for inclusion in the standalone and `mx node`
+            libjsig_name = mx.add_lib_suffix(mx.add_lib_prefix('jsig'))
+            mx.ensure_dir_exists(join(self._out_dir, 'lib'))
+            mx.copyfile(join(_java_home(forBuild=True), 'lib', libjsig_name), join(self._out_dir, 'lib', libjsig_name))
+
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
         built = post_ts.isNewerThan(pre_ts)
-        if built and _current_os == 'darwin':
-            nodePath = join(self._build_dir, 'node')
-            _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'lib'), nodePath], print_cmd=True, env=build_env)
         return built
 
     def needsBuild(self, newestInput):
@@ -575,13 +579,15 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     name='Graal.nodejs',
     short_name='njs',
     dir_name='nodejs',
-    license_files=['graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES/LICENSE_GRAALNODEJS.txt'],
-    third_party_license_files=['graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_GRAALNODEJS.txt'],
-    dependencies=['Graal.js'],
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[
+        'Graal.js',
+        'Graal.nodejs license files',
+    ],
     truffle_jars=['graal-nodejs:TRUFFLENODE'],
     support_distributions=[
         'graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT',
-        'graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES',
     ],
     provided_executables=[
         'bin/<exe:node>',
@@ -607,6 +613,32 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         ),
     ],
     has_polyglot_lib_entrypoints=True,
+    standalone_dir_name='graalnodejs-community-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name_enterprise='graalnodejs-<version>-<graalvm_os>-<arch>',
+    standalone_dependencies={
+        'GraalVM license files': ('', ['GRAALVM-README.md']),
+        'Graal.nodejs license files': ('', []),
+    },
+    standalone_dependencies_enterprise={
+        'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
+    },
+    installable=True,
+    stability="supported",
+))
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    suite=_suite,
+    name='Graal.nodejs license files',
+    short_name='njsl',
+    dir_name='nodejs',
+    license_files=['LICENSE_GRAALNODEJS.txt'],
+    third_party_license_files=['THIRD_PARTY_LICENSE_GRAALNODEJS.txt'],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=[
+        'graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES',
+    ],
+    priority=5,
     installable=True,
     stability="supported",
 ))

@@ -77,25 +77,25 @@
 #endif
 
 #ifdef __APPLE__
-#define LIBNODESVM_RELPATH "/languages/nodejs/lib/libgraal-nodejs.dylib"
-#define LIBPOLYGLOT_RELPATH "/lib/polyglot/libpolyglot.dylib"
+#define LIBNODESVM_NAME    "libgraal-nodejs.dylib"
+#define LIBPOLYGLOT_NAME   "libpolyglot.dylib"
+#define LIBNODESVM_RELPATH "/languages/nodejs/lib/" LIBNODESVM_NAME
+#define LIBPOLYGLOT_RELPATH "/lib/polyglot/" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "/lib/server/libjvm.dylib"
-#define LIBJLI_RELPATH     "/lib/jli/libjli.dylib"
 // libjli.dylib has moved in JDK 12, see https://bugs.openjdk.java.net/browse/JDK-8210931
-#define LIBJLI_RELPATH2    "/lib/libjli.dylib"
-#elif defined(__sparc__)
-// SVM currently not supported
-#define LIBJVM_RELPATH     "/lib/server/libjvm.so"
-#define LIBJVM_RELPATH2    "/lib/sparcv9/server/libjvm.so"
+#define LIBJLI_RELPATH     "/lib/libjli.dylib"
 #elif defined(_WIN32)
-#define LIBNODESVM_RELPATH "\\languages\\nodejs\\lib\\graal-nodejs.dll"
-#define LIBPOLYGLOT_RELPATH "\\lib\\polyglot\\polyglot.dll"
+#define LIBNODESVM_NAME    "graal-nodejs.dll"
+#define LIBPOLYGLOT_NAME   "polyglot.dll"
+#define LIBNODESVM_RELPATH "\\languages\\nodejs\\lib\\" LIBNODESVM_NAME
+#define LIBPOLYGLOT_RELPATH "\\lib\\polyglot\\" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "\\bin\\server\\jvm.dll"
 #else
-#define LIBNODESVM_RELPATH "/languages/nodejs/lib/libgraal-nodejs.so"
-#define LIBPOLYGLOT_RELPATH "/lib/polyglot/libpolyglot.so"
+#define LIBNODESVM_NAME    "libgraal-nodejs.so"
+#define LIBPOLYGLOT_NAME   "libpolyglot.so"
+#define LIBNODESVM_RELPATH "/languages/nodejs/lib/" LIBNODESVM_NAME
+#define LIBPOLYGLOT_RELPATH "/lib/polyglot/" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "/lib/server/libjvm.so"
-#define LIBJVM_RELPATH2    "/lib/amd64/server/libjvm.so"
 #endif
 
 #define EXIT_WITH_MESSAGE(env, message) { \
@@ -223,59 +223,56 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     JavaVM *jvm;
     JNIEnv *env;
 
-    std::string node = nodeExe();
-
-    std::string node_path = up(node);
-    bool graalvm8 = ends_with(node_path, file_separator + "jre" + file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
-    bool graalvm11plus = ends_with(node_path, file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
-    if (graalvm8 || graalvm11plus) {
+    std::string node_exe = nodeExe();
+    std::string node_bin_path = up(node_exe);
+    std::string node_jvm_lib;
+    bool is_graalvm = ends_with(node_bin_path, file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
+    if (is_graalvm) {
         // Part of GraalVM: take precedence over any JAVA_HOME.
         // We set environment variables to ensure these values are correctly
         // propagated to child processes.
-        std::string graalvm_home = up(node, graalvm8 ? 5 : 4);
+        std::string graalvm_home = up(node_exe, 4); // ${graalvm_home}/languages/nodejs/bin/node
         SetEnv("JAVA_HOME", graalvm_home.c_str());
 
 #       ifdef LIBNODESVM_RELPATH
-            bool force_native = false;
-            std::string node_jvm_lib = graalvm_home + (graalvm8 ? file_separator + "jre" : "") + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
-            if (mode == kModeJVM) {
-                 // will be set to appropriate libjvm path below
-                UnsetEnv("NODE_JVM_LIB");
-            } else if (mode == kModeNative) {
-                force_native = true;
-            } else { // mode == kModeDefault
-                if (getstdenv("NODE_JVM_LIB").empty() && access(node_jvm_lib.c_str(), F_OK) == 0) {
-                    force_native = true;
-                } // else reuse NODE_JVM_LIB
-            }
-            if (force_native) {
-                SetEnv("NODE_JVM_LIB", node_jvm_lib.c_str());
-            }
+            node_jvm_lib = graalvm_home + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
 #       else
             if (mode == kModeNative) {
                 fprintf(stderr, "`--native` mode not available.\n");
                 exit(9);
             }
 #       endif
+    } else {
+        // Assume standalone distribution with libs in ../lib.
+        std::string standalone_home = up(node_exe, 2); // ${standalone_home}/bin/node
+
+        node_jvm_lib = standalone_home + file_separator + "lib" + file_separator + LIBNODESVM_NAME;
+    }
+    bool force_native = false;
+    if (!node_jvm_lib.empty()) {
+        if (mode == kModeJVM) {
+            // will be set to appropriate libjvm path below
+            UnsetEnv("NODE_JVM_LIB");
+        } else if (mode == kModeNative) {
+            force_native = true;
+        } else { // mode == kModeDefault
+            if (getstdenv("NODE_JVM_LIB").empty() && access(node_jvm_lib.c_str(), F_OK) == 0) {
+                force_native = true;
+            } // else reuse NODE_JVM_LIB
+        }
+        if (force_native) {
+            SetEnv("NODE_JVM_LIB", node_jvm_lib.c_str());
+        }
     }
 
     std::string jdk_path = getstdenv("JAVA_HOME");
-    if (jdk_path.empty()) {
+    if (jdk_path.empty() && !force_native) {
         fprintf(stderr, "JAVA_HOME is not set. Specify JAVA_HOME so $JAVA_HOME%s exists.\n", LIBJVM_RELPATH);
         exit(1);
-    }
-    std::string jre_sub_dir = jdk_path + file_separator + "jre";
-    if (access(jre_sub_dir.c_str(), F_OK) != -1) {
-        jdk_path = jre_sub_dir;
     }
     std::string jvmlib_path = getstdenv("NODE_JVM_LIB");
     if (jvmlib_path.empty()) {
         jvmlib_path = jdk_path + LIBJVM_RELPATH;
-#ifdef LIBJVM_RELPATH2
-        if (access(jvmlib_path.c_str(), F_OK) == -1) {
-            jvmlib_path = jdk_path + LIBJVM_RELPATH2;
-        }
-#endif
         SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
     }
     if (access(jvmlib_path.c_str(), F_OK) == -1) {
@@ -449,8 +446,8 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         UnsetEnv(no_spawn_options);
 
     #if __APPLE__
-        if (dlopen((jdk_path + LIBJLI_RELPATH).c_str(), RTLD_NOW) == NULL) {
-            if (dlopen((jdk_path + LIBJLI_RELPATH2).c_str(), RTLD_NOW) == NULL) {
+        if (!jdk_path.empty()) {
+            if (dlopen((jdk_path + LIBJLI_RELPATH).c_str(), RTLD_NOW) == NULL) {
                 fprintf(stderr, "warning: could not load libjli: %s\n", dlerror());
             }
         }
