@@ -93,7 +93,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "spotbugs" : "true",
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
     "com.oracle.truffle.trufflenode.test" : {
