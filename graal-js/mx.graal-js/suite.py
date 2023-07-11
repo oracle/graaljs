@@ -147,7 +147,7 @@ suite = {
       "jacoco" : "include",
       "spotbugs" : "true",
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "Truffle,JavaScript",
     },
 
