@@ -48,6 +48,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Locale;
 
 import org.graalvm.polyglot.Context;
@@ -1197,7 +1198,7 @@ public class FetchMethodTest extends JSTest {
 
     private static Context newContext(TestOutput out) {
         var b = JSTest.newContextBuilder().err(out).out(out);
-        b.allowHostAccess(HostAccess.ALL);
+        b.allowHostAccess(explicitHostAccess());
         b.allowHostClassLookup((s) -> switch (s) {
             case "java.net.URI" -> true;
             case "java.net.http.HttpClient" -> true;
@@ -1219,6 +1220,44 @@ public class FetchMethodTest extends JSTest {
         Context context = b.build();
         context.eval(fetchSource);
         return context;
+    }
+
+    private static HostAccess explicitHostAccess() {
+        var b = HostAccess.newBuilder(HostAccess.EXPLICIT);
+        b.allowAccessInheritance(true);
+        b.allowArrayAccess(true);
+        b.allowListAccess(true);
+        b.allowMapAccess(true);
+        b.allowBufferAccess(true);
+        var classesToAllow = List.of(
+                        java.lang.String.class,
+                        java.net.URI.class,
+                        java.net.http.HttpClient.class,
+                        java.net.http.HttpClient.Builder.class,
+                        java.net.http.HttpClient.Redirect.class,
+                        java.net.http.HttpHeaders.class,
+                        java.net.http.HttpRequest.class,
+                        java.net.http.HttpRequest.Builder.class,
+                        java.net.http.HttpResponse.class,
+                        java.net.http.HttpRequest.BodyPublishers.class,
+                        java.net.http.HttpResponse.BodyHandlers.class,
+                        java.nio.ByteBuffer.class,
+                        java.nio.charset.StandardCharsets.class,
+                        java.util.Base64.class,
+                        java.util.Base64.Decoder.class,
+                        java.util.Optional.class);
+        for (var cls : classesToAllow) {
+            for (var constructor : cls.getConstructors()) {
+                b.allowAccess(constructor);
+            }
+            for (var method : cls.getMethods()) {
+                b.allowAccess(method);
+            }
+            for (var field : cls.getFields()) {
+                b.allowAccess(field);
+            }
+        }
+        return b.build();
     }
 
     private static URI url(String url) throws URISyntaxException {

@@ -309,6 +309,7 @@ suite = {
         "com.oracle.truffle.js.test",
       ],
       "requires" : [
+        "java.net.http",
         "jdk.httpserver",
       ],
       "checkstyle" : "com.oracle.truffle.js",
