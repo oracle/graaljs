@@ -50,6 +50,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -90,7 +91,7 @@ public abstract class GetTemplateObjectNode extends JavaScriptNode {
 
     @Specialization(replaces = "doCached")
     protected JSDynamicObject doUncached(VirtualFrame frame) {
-        JSDynamicObject cached = Boundaries.mapGet(getRealm().getTemplateRegistry(), identity);
+        JSArrayObject cached = Boundaries.mapGet(getRealm().getTemplateRegistry(), identity);
         if (cached != null) {
             return cached;
         }
@@ -99,13 +100,12 @@ public abstract class GetTemplateObjectNode extends JavaScriptNode {
         return cached;
     }
 
-    private JSDynamicObject buildTemplateObject(VirtualFrame frame) {
-        JSDynamicObject template = cookedStrings.execute(frame);
-        JSDynamicObject rawObj = rawStrings.execute(frame);
+    private JSArrayObject buildTemplateObject(VirtualFrame frame) {
+        JSArrayObject template = cookedStrings.execute(frame);
+        JSArrayObject rawObj = rawStrings.execute(frame);
         JSObject.setIntegrityLevel(rawObj, true);
         JSObjectUtil.putDataProperty(template, Strings.RAW, rawObj, JSAttributes.notConfigurableNotEnumerableNotWritable());
         JSObject.setIntegrityLevel(template, true);
-
         return template;
     }
 

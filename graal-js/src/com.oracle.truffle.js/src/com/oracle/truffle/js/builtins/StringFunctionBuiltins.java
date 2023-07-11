@@ -435,8 +435,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached TruffleString.CreateCodePointIteratorNode createCodePointIterator) {
             Object rawInput = rawToObjectNode.execute(getRawNode.getValue(template));
             JSRealm realm = getRealm();
-            Map<Object, JSDynamicObject> dedentMap = realm.getDedentMap();
-            JSArrayObject cached = (JSArrayObject) Boundaries.mapGet(dedentMap, rawInput);
+            Map<Object, JSArrayObject> dedentMap = realm.getDedentMap();
+            JSArrayObject cached = Boundaries.mapGet(dedentMap, rawInput);
             if (cached != null) {
                 return cached;
             }
