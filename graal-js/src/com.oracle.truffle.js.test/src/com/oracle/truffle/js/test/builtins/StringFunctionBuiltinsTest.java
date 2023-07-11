@@ -50,7 +50,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import com.oracle.truffle.js.builtins.StringFunctionBuiltins;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.test.JSTest;
@@ -69,10 +68,7 @@ public class StringFunctionBuiltinsTest {
         try (Context context = createContext()) {
             JSTest.assertThrows(() -> {
                 context.eval(Source.newBuilder(ID, sourceText, SOURCE_NAME).buildLiteral());
-            }, exception -> {
-                assertEquals(exception.getMessage(),
-                                "TypeError: " + StringFunctionBuiltins.DedentTemplateStringsArrayNode.MISSING_START_NEWLINE_MESSAGE);
-            });
+            }, JSErrorType.TypeError);
         }
     }
 
@@ -82,10 +78,7 @@ public class StringFunctionBuiltinsTest {
         try (Context context = createContext()) {
             JSTest.assertThrows(() -> {
                 context.eval(Source.newBuilder(ID, sourceText, SOURCE_NAME).buildLiteral());
-            }, exception -> {
-                assertEquals(exception.getMessage(),
-                                "TypeError: " + StringFunctionBuiltins.DedentTemplateStringsArrayNode.MISSING_END_NEWLINE_MESSAGE);
-            });
+            }, JSErrorType.TypeError);
         }
     }
 

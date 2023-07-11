@@ -391,8 +391,6 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class DedentTemplateStringsArrayNode extends JavaScriptBaseNode {
-        public static final String MISSING_START_NEWLINE_MESSAGE = "Template should contain a trailing newline.";
-        public static final String MISSING_END_NEWLINE_MESSAGE = "Template should contain a closing newline.";
 
         @Child private PropertyGetNode getRawNode;
         @Child private JSGetLengthNode getLengthNode;
@@ -469,7 +467,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             SegmentRecord[][] blocks = splitTemplatesIntoBlockLines(template, literalSegments, context.getStringLengthLimit(), errorBranch, growBranch);
             emptyWhiteSpaceLines(blocks);
-            removeOpeningAndClosingLines(blocks);
+            removeOpeningAndClosingLines(blocks, errorBranch);
 
             TruffleString indent = determineCommonLeadingIndentation(blocks);
             int indentLength = Strings.length(indent);
@@ -557,18 +555,58 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return true;
         }
 
-        private static void removeOpeningAndClosingLines(SegmentRecord[][] blocks) {
+        private void removeOpeningAndClosingLines(SegmentRecord[][] blocks,
+                        InlinedBranchProfile errorBranch) {
             SegmentRecord[] firstBlock = blocks[0];
-            if (firstBlock.length == 1 || !Strings.isEmpty(firstBlock[0].substr)) {
-                throw Errors.createTypeError(MISSING_START_NEWLINE_MESSAGE);
+            /*
+             * firstBlock is not empty, because SplitTemplateIntoBlockLines guarantees there is at
+             * least 1 line per block.
+             */
+            int lineCount = firstBlock.length;
+            assert lineCount != 0;
+            if (lineCount == 1) {
+                /*
+                 * The opening line is required to contain a trailing newline, and checking that
+                 * there are at least 2 elements in lines ensures it. If it does not, either the
+                 * opening line and the closing line are the same line, or the opening line contains
+                 * a substitution.
+                 */
+                errorBranch.enter(this);
+                throw Errors.createTypeError("The opening line must contain a trailing newline.");
             }
-            firstBlock[0].newline = Strings.EMPTY_STRING;
+            SegmentRecord openingLine = firstBlock[0];
+            if (!Strings.isEmpty(openingLine.substr)) {
+                // The opening line must not contain code units besides the trailing newline.
+                errorBranch.enter(this);
+                throw Errors.createTypeError("The opening line must be empty.");
+            }
+            // Removes the opening line from the output
+            openingLine.newline = Strings.EMPTY_STRING;
+
             SegmentRecord[] lastBlock = blocks[blocks.length - 1];
-            if (lastBlock.length == 1 || !Strings.isEmpty(lastBlock[lastBlock.length - 1].substr)) {
-                throw Errors.createTypeError(MISSING_END_NEWLINE_MESSAGE);
+            lineCount = lastBlock.length;
+            if (lineCount == 1) {
+                /*
+                 * The closing line is required to be preceded by a newline, and checking that there
+                 * are at least 2 elements in lines ensures it. If it does not, either the opening
+                 * line and the closing line are the same line, or the closing line contains a
+                 * substitution.
+                 */
+                errorBranch.enter(this);
+                throw Errors.createTypeError("The closing line must be preceded by a newline.");
             }
-            SegmentRecord preceding = lastBlock[lastBlock.length - 2];
-            lastBlock[lastBlock.length - 1].substr = Strings.EMPTY_STRING;
+            SegmentRecord closingLine = lastBlock[lineCount - 1];
+            if (!Strings.isEmpty(closingLine.substr)) {
+                /*
+                 * The closing line may only contain whitespace. We've already performed
+                 * EmptyWhiteSpaceLines, so if the line is not empty now, it contained some
+                 * non-whitespace character.
+                 */
+                errorBranch.enter(this);
+                throw Errors.createTypeError("The closing line must be empty.");
+            }
+            SegmentRecord preceding = lastBlock[lineCount - 2];
+            closingLine.substr = Strings.EMPTY_STRING;
             preceding.newline = Strings.EMPTY_STRING;
         }
 
