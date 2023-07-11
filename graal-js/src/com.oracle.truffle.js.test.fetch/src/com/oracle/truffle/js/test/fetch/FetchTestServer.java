@@ -50,6 +50,8 @@ import static java.net.HttpURLConnection.HTTP_OK;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -134,6 +136,22 @@ public class FetchTestServer {
         server.createContext("/plain", ctx -> {
             byte[] body = "text\uD83D\uDCA9".getBytes();
             ctx.getResponseHeaders().set("Content-Type", "text/plain;charset=UTF-8");
+            ctx.sendResponseHeaders(HTTP_OK, body.length);
+            ctx.getResponseBody().write(body);
+            ctx.close();
+        });
+
+        server.createContext("/plain-utf-16", ctx -> {
+            byte[] body = "text\uD83D\uDCA9".getBytes(StandardCharsets.UTF_16);
+            ctx.getResponseHeaders().set("Content-Type", "text/plain;charset=UTF-16");
+            ctx.sendResponseHeaders(HTTP_OK, body.length);
+            ctx.getResponseBody().write(body);
+            ctx.close();
+        });
+
+        server.createContext("/plain-utf-32", ctx -> {
+            byte[] body = "text\uD83D\uDCA9".getBytes(Charset.forName("UTF-32"));
+            ctx.getResponseHeaders().set("Content-Type", "text/plain;charset=UTF-32");
             ctx.sendResponseHeaders(HTTP_OK, body.length);
             ctx.getResponseBody().write(body);
             ctx.close();

@@ -205,7 +205,32 @@ public class FetchMethodTest extends JSTest {
                         console.log(res.bodyUsed);
                         console.log(result);
                         """);
-        assertEquals("text/plain;charset=UTF-8\ntrue\ntext\uD83D\uDCA9\n", out);
+        assertEquals("""
+                        text/plain;charset=UTF-8
+                        true
+                        text\uD83D\uDCA9
+                        """, out);
+    }
+
+    @Test(timeout = TEST_TIMEOUT)
+    public void testConvertTextUsingContentTypeCharset() {
+        String out = async("""
+                        let res = await fetch('http://localhost:8080/plain-utf-16');
+                        let result = await res.text();
+                        console.log(res.headers.get('content-type'));
+                        console.log(result);
+
+                        res = await fetch('http://localhost:8080/plain-utf-32');
+                        result = await res.text();
+                        console.log(res.headers.get('content-type'));
+                        console.log(result);
+                        """);
+        assertEquals("""
+                        text/plain;charset=UTF-16
+                        text\uD83D\uDCA9
+                        text/plain;charset=UTF-32
+                        text\uD83D\uDCA9
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
@@ -891,7 +916,11 @@ public class FetchMethodTest extends JSTest {
                         console.log(res.bodyUsed);
                         await res.text()
                         """);
-        assertEquals("text/plain;charset=UTF-8\ntrue\nBody already used\n", out);
+        assertEquals("""
+                        text/plain;charset=UTF-8
+                        true
+                        Body already used
+                        """, out);
     }
 
     @Test(timeout = TEST_TIMEOUT)
