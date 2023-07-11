@@ -129,7 +129,15 @@
                 } else if (this.#text != undefined) {
                     return this.#text;
                 } else if (this.#byteArray != undefined) {
-                    return String(new java_lang_String(this.#byteArray));
+                    let charset = /\bcharset=([\w-]+)\b/.exec(this.#type)?.[1];
+                    if (charset) {
+                        try {
+                            return String(new java_lang_String(this.#byteArray, charset));
+                        } catch {
+                            // ignore UnsupportedEncodingException
+                        }
+                    }
+                    return String(new java_lang_String(this.#byteArray, StandardCharsets.UTF_8));
                 } else {
                     throw new TypeError(`Unsupported body type`);
                 }
