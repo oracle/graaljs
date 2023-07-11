@@ -7,11 +7,9 @@
 
 /**
  * Tests of the Headers class.
- *
- * @option global-fetch
  */
 
-load('../assert.js');
+load('./fetch-common.js');
 
 (function shouldConformToIDL() {
     const h = new Headers();

@@ -8,11 +8,10 @@
 /**
  * Tests of the Request class.
  *
- * @option global-fetch
  * @option unhandled-rejections=throw
  */
 
-load('../assert.js');
+load('./fetch-common.js');
 
 const baseURL = "http://localhost:8080";
 

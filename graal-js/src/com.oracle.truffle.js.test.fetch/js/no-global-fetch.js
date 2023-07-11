@@ -9,7 +9,7 @@
  * Tests that none of the fetch globals are available by default.
  */
 
-load('../assert.js');
+load('./assert.js');
 
 assertFalse('fetch' in globalThis);
 assertFalse('Headers' in globalThis);

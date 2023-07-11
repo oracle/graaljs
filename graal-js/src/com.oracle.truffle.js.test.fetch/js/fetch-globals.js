@@ -8,11 +8,10 @@
 /**
  * Test non-networking behaviour of the fetch api.
  *
- * @option global-fetch
  * @option unhandled-rejections=throw
  */
 
-load('../assert.js');
+load('./fetch-common.js');
 
 const url = "http://localhost:8080";
 

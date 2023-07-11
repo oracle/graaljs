@@ -8,11 +8,10 @@
 /**
  * Tests of the Response class.
  *
- * @option global-fetch
  * @option unhandled-rejections=throw
  */
 
-load('../assert.js');
+load('./fetch-common.js');
 
 (function shouldConformToIDL() {
     const res = new Response();
