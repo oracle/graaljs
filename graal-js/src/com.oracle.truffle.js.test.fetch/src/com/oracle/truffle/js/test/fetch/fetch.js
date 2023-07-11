@@ -88,20 +88,20 @@
                     let byteArray = array.#private;
                     this.#size = byteArray.length;
                     this.#byteArray = byteArray;
-                    this.#type = type ?? 'text/plain;charset=utf-8';
+                    this.#type = String(type ?? 'text/plain;charset=utf-8');
                 } else if (typeof array === 'string') {
                     // TODO string to utf-8 bytes
                     this.#size = array.length;
                     this.#text = array;
-                    this.#type = type ?? 'text/plain;charset=utf-8';
+                    this.#type = String(type ?? 'text/plain;charset=utf-8');
                 } else if (array instanceof ArrayBuffer) {
                     // TODO string from utf-8 bytes
                     this.#size = array.byteLength;
                     this.#buffer = array;
-                    this.#type = type ?? 'text/plain;charset=utf-8';
+                    this.#type = String(type ?? 'text/plain;charset=utf-8');
                 } else if (array == null) {
                     this.#size = 0;
-                    this.#type = type ?? '';
+                    this.#type = String(type ?? '');
                 } else {
                     throw new TypeError(`Unsupported array type`);
                 }
@@ -271,6 +271,7 @@
         defineToStringTag(Headers);
 
         function normalizeMethod(method) {
+            method = String(method);
             // https://fetch.spec.whatwg.org/#concept-method-normalize
             if (/^(?:DELETE|GET|HEAD|OPTIONS|POST|PUT)$/.test(method)) {
                 return method;
@@ -289,20 +290,23 @@
             let referrer = init.referrer;
             if (referrer == undefined) {
                 referrer = source?.referrer ?? 'client';
-            } else if (referrer == '') {
-                referrer = 'no-referrer';
             } else {
-                parseAndValidateURL(referrer);
+                referrer = String(referrer);
+                if (referrer == '') {
+                    referrer = 'no-referrer';
+                } else {
+                    parseAndValidateURL(referrer);
+                }
             }
-            let referrerPolicy = init.referrerPolicy ?? source?.referrerPolicy ?? '';
-            let redirect = init.redirect ?? source?.redirect ?? 'follow';
+            let referrerPolicy = String(init.referrerPolicy ?? source?.referrerPolicy ?? '');
+            let redirect = String(init.redirect ?? source?.redirect ?? 'follow');
             let method = normalizeMethod(init.method ?? source?.method ?? 'GET');
             let headers = new Headers(init.headers ?? source?.headers);
-            let body = init.body?? source?.body ?? null;
+            let body = init.body ?? source?.body ?? null;
             if (body !== null && (method == 'GET' || method == 'HEAD')) {
                 throw new TypeError("Request with GET/HEAD method cannot have body");
             }
-            let follow = init.follow ?? 20;
+            let follow = (init.follow ?? 20) | 0;
             let r = {
                 method,
                 body,
@@ -330,6 +334,16 @@
             if (typeof init !== 'object' && typeof init !== 'undefined') {
                 throw new TypeError(`Excepted init to be one of: Null, Undefined, Object.`);
             }
+        }
+        function validateStatus(code) {
+            code = code | 0;
+            if (code === 0) { // allow 0 for Response.error()
+                return code;
+            }
+            if (code < 200 || code > 599) {
+                throw new RangeError(`init["status"] must be in the range of 200 to 599, inclusive.`)
+            }
+            return code;
         }
 
         class Request extends Fetch {
@@ -429,12 +443,12 @@
 
         function makeResponse(init) {
             return {
-                type: init.type ?? 'default',
-                status: init.status ?? 200,
-                statusText: init.statusText ?? '',
-                url: init.url ?? '',
+                type: String(init.type ?? 'default'),
+                status: validateStatus(init.status ?? 200),
+                statusText: String(init.statusText ?? ''),
+                url: String(init.url ?? ''),
                 headers: new Headers(init.headers),
-                redirectCount: init.redirectCount ?? 0,
+                redirectCount: (init.redirectCount ?? 0) | 0,
             };
         }
 
@@ -748,9 +762,9 @@
                         try {
                             // HTTP-redirect fetch step 3
                             if (location.isPresent()) {
-                                locationURI = URI.create(requestPrivate.url).resolve(location.get());
+                                locationURI = new URI(requestPrivate.url).resolve(location.get());
                             }
-                        } catch {
+                        } catch { // URISyntaxException
                             throw new FetchError("invalid url in location header", "unsupported-redirect");
                         }
 
