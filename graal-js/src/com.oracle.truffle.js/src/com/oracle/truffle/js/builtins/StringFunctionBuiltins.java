@@ -465,7 +465,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throw Errors.createTypeError("Template raw array must contain at least 1 string");
             }
 
-            SegmentRecord[][] blocks = splitTemplatesIntoBlockLines(template, literalSegments, context.getStringLengthLimit(), errorBranch, growBranch);
+            SegmentRecord[][] blocks = splitTemplateIntoBlockLines(template, literalSegments, context.getStringLengthLimit(), errorBranch, growBranch);
             emptyWhiteSpaceLines(blocks);
             removeOpeningAndClosingLines(blocks, errorBranch);
 
@@ -500,7 +500,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private SegmentRecord[][] splitTemplatesIntoBlockLines(Object raw, int len, int stringLengthLimit,
+        private SegmentRecord[][] splitTemplateIntoBlockLines(Object raw, int len, int stringLengthLimit,
                         InlinedBranchProfile errorBranch,
                         InlinedBranchProfile growBranch) {
             SegmentRecord[][] blocks = new SegmentRecord[len][];
@@ -539,16 +539,17 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             for (SegmentRecord[] lines : blocks) {
                 for (int i = 1; i < lines.length; i++) {
                     SegmentRecord line = lines[i];
-                    if (!line.lineEndsWithSubstitution && onlyWhitespace(line.substr)) {
+                    if (!line.lineEndsWithSubstitution && isAllWhitespace(line.substr)) {
                         line.substr = Strings.EMPTY_STRING;
                     }
                 }
             }
         }
 
-        private boolean onlyWhitespace(TruffleString str) {
-            for (int i = 0; i < Strings.length(str); i++) {
-                if (!isWhiteSpace(Strings.charAt(readCharNode, str, i))) {
+        private boolean isAllWhitespace(TruffleString str) {
+            int len = Strings.length(str);
+            for (int i = 0; i < len; i++) {
+                if (!JSRuntime.isWhiteSpace(Strings.charAt(readCharNode, str, i))) {
                     return false;
                 }
             }
@@ -613,11 +614,24 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         private TruffleString determineCommonLeadingIndentation(SegmentRecord[][] blocks) {
             TruffleString common = null;
             for (SegmentRecord[] lines : blocks) {
+                /*
+                 * We start i at 1 because because the first line of every block is either (a) the
+                 * opening line which must be empty or (b) the continuation of a line directly after
+                 * a template substitution. Neither can be the start of a content line.
+                 */
                 for (int i = 1; i < lines.length; i++) {
                     SegmentRecord line = lines[i];
+                    /*
+                     * Lines which contain substitutions are considered when finding the common
+                     * indentation. Lines which contain only whitespace have already been emptied.
+                     */
                     if (line.lineEndsWithSubstitution || !Strings.isEmpty(line.substr)) {
-                        TruffleString leading = leadingWhitespaceSubstring(line.substr);
-                        common = common == null ? leading : longestMatchingLeadingSubstring(common, leading);
+                        TruffleString leading = leadingWhiteSpaceSubstring(line.substr);
+                        if (common == null) {
+                            common = leading;
+                        } else {
+                            common = longestMatchingLeadingSubstring(common, leading);
+                        }
                     }
                 }
             }
@@ -629,8 +643,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return common;
         }
 
-        private TruffleString leadingWhitespaceSubstring(TruffleString str) {
-            for (int i = 0; i < Strings.length(str); i++) {
+        private TruffleString leadingWhiteSpaceSubstring(TruffleString str) {
+            int length = Strings.length(str);
+            for (int i = 0; i < length; i++) {
                 if (!isWhiteSpace(Strings.charAt(readCharNode, str, i))) {
                     return Strings.lazySubstring(substringNode, str, 0, i);
                 }
