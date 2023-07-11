@@ -327,7 +327,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         throw Errors.createTypeError("Expected at least one argument");
                     }
                     Object template = args[0];
-                    JSArrayObject dedentedArray = dedentTemplateStringsArray.execute(template);
+                    JSArrayObject dedentedArray = dedentTemplateStringsArray.execute(template, context);
                     Object[] callbackArgs = Arrays.copyOf(args, args.length);
                     callbackArgs[0] = dedentedArray;
                     return callResolve.executeCall(JSArguments.create(r, tag, callbackArgs));
@@ -347,9 +347,10 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached JSToStringNode segToStringNode,
                         @Cached JSToStringNode subToStringNode,
                         @Cached InlinedBranchProfile errorBranch,
-                        @Cached TruffleStringBuilder.AppendStringNode appendStringNode) {
+                        @Cached TruffleStringBuilder.AppendStringNode appendStringNode,
+                        @Cached TruffleStringBuilder.ToStringNode builderToStringNode) {
             int stringLengthLimit = context.getStringLengthLimit();
-            JSArrayObject dedentedArray = dedentTemplateStringsArray.execute(template);
+            JSArrayObject dedentedArray = dedentTemplateStringsArray.execute(template, context);
             // CookTemplateStringsArray (prep = cooked)
             int substitutionCount = substitutions.length;
             long literalCount = JSArray.arrayGetLength(dedentedArray);
@@ -368,7 +369,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
             }
 
-            return Strings.builderToString(result);
+            return Strings.builderToString(builderToStringNode, result);
         }
 
         private static void appendChecked(TruffleStringBuilder result, TruffleString str, int stringLengthLimit,
@@ -398,21 +399,35 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSToStringNode segToStringNode;
         @Child private ReadElementNode readRawElementNode;
         @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
-        private final JSContext context;
+        @Child private TruffleStringBuilder.AppendSubstringByteIndexNode appendSubstringNode;
+        @Child private TruffleStringBuilder.AppendCharUTF16Node appendCharNode;
+        @Child private TruffleStringBuilder.AppendCodePointNode appendCodePointNode;
+        @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
+        @Child private TruffleString.ReadCharUTF16Node readCharNode;
+        @Child private TruffleString.SubstringByteIndexNode substringNode;
+        @Child private TruffleStringIterator.NextNode iteratorNextNode;
+        @Child private TruffleStringIterator.PreviousNode iteratorPreviousNode;
 
         DedentTemplateStringsArrayNode(JSContext context) {
-            this.context = context;
             this.getLengthNode = JSGetLengthNode.create(context);
             this.getRawNode = PropertyGetNode.create(Strings.RAW, context);
             this.readRawElementNode = ReadElementNode.create(context);
             this.segToStringNode = JSToStringNode.create();
             this.appendStringNode = TruffleStringBuilder.AppendStringNode.create();
+            this.appendSubstringNode = TruffleStringBuilder.AppendSubstringByteIndexNode.create();
+            this.appendCharNode = TruffleStringBuilder.AppendCharUTF16Node.create();
+            this.appendCodePointNode = TruffleStringBuilder.AppendCodePointNode.create();
+            this.builderToStringNode = TruffleStringBuilder.ToStringNode.create();
+            this.readCharNode = TruffleString.ReadCharUTF16Node.create();
+            this.substringNode = TruffleString.SubstringByteIndexNode.create();
+            this.iteratorNextNode = TruffleStringIterator.NextNode.create();
+            this.iteratorPreviousNode = TruffleStringIterator.PreviousNode.create();
         }
 
-        protected abstract JSArrayObject execute(Object template);
+        protected abstract JSArrayObject execute(Object template, JSContext context);
 
         @Specialization
-        protected final JSArrayObject dedentTemplateStringsArray(Object template,
+        protected final JSArrayObject dedentTemplateStringsArray(Object template, JSContext context,
                         @Cached JSToObjectNode rawToObjectNode,
                         @Cached InlinedConditionProfile emptyProf,
                         @Cached InlinedBranchProfile errorBranch,
@@ -426,7 +441,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return cached;
             }
 
-            TruffleString[] dedentedList = dedentStringsArray(rawInput, emptyProf, errorBranch, growBranch);
+            TruffleString[] dedentedList = dedentStringsArray(rawInput, context, emptyProf, errorBranch, growBranch);
 
             JSArrayObject rawArr = JSArray.createConstant(context, realm, dedentedList);
             JSArrayObject cookedArr = JSArray.createConstant(context, realm, cookStrings(dedentedList, createCodePointIterator));
@@ -441,7 +456,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return cookedArr;
         }
 
-        private TruffleString[] dedentStringsArray(Object template,
+        private TruffleString[] dedentStringsArray(Object template, JSContext context,
                         InlinedConditionProfile emptyProf,
                         InlinedBranchProfile errorBranch,
                         InlinedBranchProfile growBranch) {
@@ -451,7 +466,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throw Errors.createTypeError("Template raw array must contain at least 1 string");
             }
 
-            SegmentRecord[][] blocks = splitTemplatesIntoBlockLines(template, literalSegments, errorBranch, growBranch);
+            SegmentRecord[][] blocks = splitTemplatesIntoBlockLines(template, literalSegments, context.getStringLengthLimit(), errorBranch, growBranch);
             emptyWhiteSpaceLines(blocks);
             removeOpeningAndClosingLines(blocks);
 
@@ -465,10 +480,10 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 for (int i = 0; i < lines.length; i++) {
                     SegmentRecord line = lines[i];
                     int currentIndentation = i == 0 || Strings.isEmpty(line.substr) ? 0 : indentLength;
-                    Strings.builderAppendLen(partialResult, line.substr, currentIndentation, Strings.length(line.substr) - currentIndentation);
+                    Strings.builderAppendLen(appendSubstringNode, partialResult, line.substr, currentIndentation, Strings.length(line.substr) - currentIndentation);
                     Strings.builderAppend(appendStringNode, partialResult, line.newline);
                 }
-                dedented[j] = Strings.builderToString(partialResult);
+                dedented[j] = Strings.builderToString(builderToStringNode, partialResult);
             }
 
             return dedented;
@@ -486,7 +501,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private SegmentRecord[][] splitTemplatesIntoBlockLines(Object raw, int len,
+        private SegmentRecord[][] splitTemplatesIntoBlockLines(Object raw, int len, int stringLengthLimit,
                         InlinedBranchProfile errorBranch,
                         InlinedBranchProfile growBranch) {
             SegmentRecord[][] blocks = new SegmentRecord[len][];
@@ -496,29 +511,32 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 TruffleString nextSeg = segToStringNode.executeString(rawElement);
                 int segLength = Strings.length(nextSeg);
                 totalLength += segLength;
-                checkLengthAllowed(totalLength, errorBranch);
+                if (totalLength > stringLengthLimit) {
+                    errorBranch.enter(this);
+                    throw Errors.createRangeErrorInvalidStringLength();
+                }
                 int start = 0;
                 SimpleArrayList<SegmentRecord> lines = new SimpleArrayList<>(segLength + 1);
                 for (int i = 0; i < segLength;) {
-                    char c = Strings.charAt(nextSeg, i);
-                    int n = (c == '\r' && i + 1 < segLength && Strings.charAt(nextSeg, i + 1) == '\n') ? 2 : 1;
+                    char c = Strings.charAt(readCharNode, nextSeg, i);
+                    int n = (c == '\r' && i + 1 < segLength && Strings.charAt(readCharNode, nextSeg, i + 1) == '\n') ? 2 : 1;
                     if (JSRuntime.isLineTerminator(c)) {
-                        TruffleString substr = Strings.substring(context, nextSeg, start, i - start);
-                        TruffleString newline = Strings.substring(context, nextSeg, i, n);
+                        TruffleString substr = Strings.lazySubstring(substringNode, nextSeg, start, i - start);
+                        TruffleString newline = Strings.lazySubstring(substringNode, nextSeg, i, n);
                         lines.add(new SegmentRecord(substr, newline, false), this, growBranch);
                         start = i + n;
                     }
                     i = i + n;
                 }
-                TruffleString tail = Strings.substring(context, nextSeg, start, segLength - start);
+                TruffleString tail = Strings.lazySubstring(substringNode, nextSeg, start, segLength - start);
                 boolean lineEndsWithSubstitution = k + 1 < len;
                 lines.add(new SegmentRecord(tail, Strings.EMPTY_STRING, lineEndsWithSubstitution), this, growBranch);
-                blocks[k] = lines.toArray(new SegmentRecord[0]);
+                blocks[k] = lines.toArray(new SegmentRecord[lines.size()]);
             }
             return blocks;
         }
 
-        private static void emptyWhiteSpaceLines(SegmentRecord[][] blocks) {
+        private void emptyWhiteSpaceLines(SegmentRecord[][] blocks) {
             for (SegmentRecord[] lines : blocks) {
                 for (int i = 1; i < lines.length; i++) {
                     SegmentRecord line = lines[i];
@@ -529,9 +547,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private static boolean onlyWhitespace(TruffleString str) {
+        private boolean onlyWhitespace(TruffleString str) {
             for (int i = 0; i < Strings.length(str); i++) {
-                if (!isWhiteSpace(Strings.charAt(str, i))) {
+                if (!isWhiteSpace(Strings.charAt(readCharNode, str, i))) {
                     return false;
                 }
             }
@@ -554,23 +572,28 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private TruffleString determineCommonLeadingIndentation(SegmentRecord[][] blocks) {
-            TruffleString indent = null;
+            TruffleString common = null;
             for (SegmentRecord[] lines : blocks) {
                 for (int i = 1; i < lines.length; i++) {
                     SegmentRecord line = lines[i];
                     if (line.lineEndsWithSubstitution || !Strings.isEmpty(line.substr)) {
                         TruffleString leading = leadingWhitespaceSubstring(line.substr);
-                        indent = indent == null ? leading : longestMatchingLeadingSubstring(indent, leading);
+                        common = common == null ? leading : longestMatchingLeadingSubstring(common, leading);
                     }
                 }
             }
-            return indent;
+            /*
+             * common is not empty, because SplitTemplateIntoBlockLines guarantees there is at least
+             * 1 line per block, and we know the length of the template strings array is at least 1.
+             */
+            assert common != null;
+            return common;
         }
 
         private TruffleString leadingWhitespaceSubstring(TruffleString str) {
             for (int i = 0; i < Strings.length(str); i++) {
-                if (!isWhiteSpace(Strings.charAt(str, i))) {
-                    return Strings.substring(context, str, 0, i);
+                if (!isWhiteSpace(Strings.charAt(readCharNode, str, i))) {
+                    return Strings.lazySubstring(substringNode, str, 0, i);
                 }
             }
             return str;
@@ -584,14 +607,14 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         private TruffleString longestMatchingLeadingSubstring(TruffleString strA, TruffleString strB) {
             int len = Math.min(Strings.length(strA), Strings.length(strB));
             for (int i = 0; i < len; i++) {
-                if (Strings.charAt(strA, i) != Strings.charAt(strB, i)) {
-                    return Strings.substring(context, strA, 0, i);
+                if (Strings.charAt(readCharNode, strA, i) != Strings.charAt(readCharNode, strB, i)) {
+                    return Strings.lazySubstring(substringNode, strA, 0, i);
                 }
             }
-            return Strings.substring(context, strA, 0, len);
+            return Strings.lazySubstring(substringNode, strA, 0, len);
         }
 
-        private static TruffleString[] cookStrings(TruffleString[] raw,
+        private TruffleString[] cookStrings(TruffleString[] raw,
                         TruffleString.CreateCodePointIteratorNode createCodePointIterator) {
             TruffleString[] cooked = new TruffleString[raw.length];
             for (int i = 0; i < raw.length; i++) {
@@ -602,41 +625,41 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return cooked;
         }
 
-        private static TruffleString parseText(TruffleStringIterator iterator) {
+        private TruffleString parseText(TruffleStringIterator iterator) {
             TruffleStringBuilder partialResult = Strings.builderCreate();
             while (iterator.hasNext()) {
-                int ch = iterator.nextUncached();
+                int ch = iteratorNextNode.execute(iterator);
                 if (ch == '\\' && iterator.hasNext()) {
-                    final int next = iterator.nextUncached();
+                    final int next = iteratorNextNode.execute(iterator);
                     // Special characters.
                     switch (next) {
                         case 'n':
-                            Strings.builderAppend(partialResult, '\n');
+                            appendCharNode.execute(partialResult, '\n');
                             break;
                         case 't':
-                            Strings.builderAppend(partialResult, '\t');
+                            appendCharNode.execute(partialResult, '\t');
                             break;
                         case 'b':
-                            Strings.builderAppend(partialResult, '\b');
+                            appendCharNode.execute(partialResult, '\b');
                             break;
                         case 'f':
-                            Strings.builderAppend(partialResult, '\f');
+                            appendCharNode.execute(partialResult, '\f');
                             break;
                         case 'r':
-                            Strings.builderAppend(partialResult, '\r');
+                            appendCharNode.execute(partialResult, '\r');
                             break;
                         case '\'':
-                            Strings.builderAppend(partialResult, '\'');
+                            appendCharNode.execute(partialResult, '\'');
                             break;
                         case '\"':
-                            Strings.builderAppend(partialResult, '\"');
+                            appendCharNode.execute(partialResult, '\"');
                             break;
                         case '\\':
-                            Strings.builderAppend(partialResult, '\\');
+                            appendCharNode.execute(partialResult, '\\');
                             break;
                         case '\r': // CR | CRLF
-                            if (iterator.nextUncached() != '\n') {
-                                iterator.previousUncached();
+                            if (iteratorNextNode.execute(iterator) != '\n') {
+                                iteratorPreviousNode.execute(iterator);
                             }
                             break;
                         case '\n':
@@ -646,42 +669,42 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         case 'x': {
                             // Hex sequence.
                             final int asciiCh = hexSequence(iterator, 2);
-                            Strings.builderAppend(partialResult, (char) asciiCh);
+                            appendCharNode.execute(partialResult, (char) asciiCh);
                             break;
                         }
                         case 'u': {
                             final int unicodeChar = unicodeEscapeSequence(iterator);
                             if (unicodeChar < 0) {
-                                Strings.builderAppend(partialResult, "\\u");
+                                appendStringNode.execute(partialResult, Strings.BACKSLASH_U);
                             } else if (unicodeChar <= 0xffff && Character.isSurrogate((char) unicodeChar)) {
-                                Strings.builderAppend(partialResult, (char) unicodeChar);
+                                appendCharNode.execute(partialResult, (char) unicodeChar);
                             } else {
-                                Strings.builderAppend(partialResult, Strings.fromCodePoint(unicodeChar));
+                                appendCodePointNode.execute(partialResult, unicodeChar);
                             }
                             break;
                         }
                         default:
                             if (next <= 0xffff && Character.isSurrogate((char) next)) {
-                                Strings.builderAppend(partialResult, (char) next);
+                                appendCharNode.execute(partialResult, (char) next);
                             } else {
-                                Strings.builderAppend(partialResult, Strings.fromCodePoint(next));
+                                appendCodePointNode.execute(partialResult, next);
                             }
                             break;
                     }
                 } else {
                     if (ch <= 0xffff && Character.isSurrogate((char) ch)) {
-                        Strings.builderAppend(partialResult, (char) ch);
+                        appendCharNode.execute(partialResult, (char) ch);
                     } else {
-                        Strings.builderAppend(partialResult, Strings.fromCodePoint(ch));
+                        appendCodePointNode.execute(partialResult, ch);
                     }
                 }
             }
-            return Strings.builderToString(partialResult);
+            return Strings.builderToString(builderToStringNode, partialResult);
         }
 
-        private static int unicodeEscapeSequence(TruffleStringIterator iterator) {
-            int ch = iterator.nextUncached();
-            iterator.previousUncached();
+        private int unicodeEscapeSequence(TruffleStringIterator iterator) {
+            int ch = iteratorNextNode.execute(iterator);
+            iteratorPreviousNode.execute(iterator);
             if (ch == '{') {
                 return varlenHexSequence(iterator);
             } else {
@@ -689,14 +712,14 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private static int varlenHexSequence(TruffleStringIterator iterator) {
-            int ch = iterator.nextUncached();
+        private int varlenHexSequence(TruffleStringIterator iterator) {
+            int ch = iteratorNextNode.execute(iterator);
             assert ch == '{';
 
             int value = 0;
             boolean firstIteration = true;
             while (iterator.hasNext()) {
-                ch = iterator.nextUncached();
+                ch = iteratorNextNode.execute(iterator);
                 if (ch == '}') {
                     if (!firstIteration) {
                         break;
@@ -722,11 +745,11 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return value;
         }
 
-        private static int hexSequence(TruffleStringIterator iterator, int length) {
+        private int hexSequence(TruffleStringIterator iterator, int length) {
             int value = 0;
             int i;
             for (i = 0; i < length && iterator.hasNext(); i++) {
-                int ch = iterator.nextUncached();
+                int ch = iteratorNextNode.execute(iterator);
                 int digit = convertDigit(ch, 16);
                 if (digit == -1) {
                     throw Errors.createSyntaxError("Invalid hex digit");
@@ -763,13 +786,6 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return Math.toIntExact(length);
             } catch (ArithmeticException e) {
                 return 0;
-            }
-        }
-
-        private void checkLengthAllowed(int length, InlinedBranchProfile errorBranch) {
-            if (length > context.getStringLengthLimit()) {
-                errorBranch.enter(this);
-                throw Errors.createRangeErrorInvalidStringLength();
             }
         }
     }
