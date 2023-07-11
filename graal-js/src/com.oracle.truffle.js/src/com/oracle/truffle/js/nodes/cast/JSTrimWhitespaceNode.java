@@ -67,9 +67,10 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
 
     protected boolean startsOrEndsWithWhitespace(TruffleString.ReadCharUTF16Node readRawNode, TruffleString string,
                     InlinedConditionProfile isFastNonWhitespace, InlinedConditionProfile isFastWhitespace) {
-        assert Strings.length(string) > 0;
+        int len = Strings.length(string);
+        assert len > 0;
         return isWhiteSpace(readRawNode, string, 0, this, isFastNonWhitespace, isFastWhitespace) ||
-                        isWhiteSpace(readRawNode, string, Strings.length(string) - 1, this, isFastNonWhitespace, isFastWhitespace);
+                        isWhiteSpace(readRawNode, string, len - 1, this, isFastNonWhitespace, isFastWhitespace);
     }
 
     @Specialization(guards = "stringLength(string) == 0")
@@ -98,12 +99,12 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
         int firstIdx = 0;
         if (isWhiteSpace(readRawNode, string, 0, this, isFastNonWhitespace, isFastWhitespace)) {
             startsWithWhitespaceBranch.enter(this);
-            firstIdx = JSRuntime.firstNonWhitespaceIndex(string, false, readRawNode);
+            firstIdx = JSRuntime.firstNonWhitespaceIndex(string, true, readRawNode);
         }
         int lastIdx = len - 1;
         if (isWhiteSpace(readRawNode, string, len - 1, this, isFastNonWhitespace, isFastWhitespace)) {
             endsWithWhitespaceBranch.enter(this);
-            lastIdx = JSRuntime.lastNonWhitespaceIndex(string, false, readRawNode);
+            lastIdx = JSRuntime.lastNonWhitespaceIndex(string, true, readRawNode);
         }
         if (isEmpty.profile(this, firstIdx > lastIdx)) {
             return Strings.EMPTY_STRING;
@@ -120,7 +121,7 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
         } else if (isFastWhitespace.profile(node, c == ' ' || c == '\n' || c == '\r' || c == '\t')) {
             return true;
         } else {
-            return JSRuntime.isWhiteSpace(c);
+            return JSRuntime.isWhiteSpaceOrLineTerminator(c);
         }
     }
 }

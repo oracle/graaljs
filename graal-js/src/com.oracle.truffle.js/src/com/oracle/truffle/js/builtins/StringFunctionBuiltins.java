@@ -549,7 +549,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         private boolean isAllWhitespace(TruffleString str) {
             int len = Strings.length(str);
             for (int i = 0; i < len; i++) {
-                if (!JSRuntime.isWhiteSpace(Strings.charAt(readCharNode, str, i))) {
+                if (!JSRuntime.isWhiteSpaceOrLineTerminator(Strings.charAt(readCharNode, str, i))) {
                     return false;
                 }
             }
@@ -646,16 +646,11 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         private TruffleString leadingWhiteSpaceSubstring(TruffleString str) {
             int length = Strings.length(str);
             for (int i = 0; i < length; i++) {
-                if (!isWhiteSpace(Strings.charAt(readCharNode, str, i))) {
+                if (!JSRuntime.isWhiteSpaceExcludingLineTerminator(Strings.charAt(readCharNode, str, i))) {
                     return Strings.lazySubstring(substringNode, str, 0, i);
                 }
             }
             return str;
-        }
-
-        private static boolean isWhiteSpace(char c) {
-            // according to the specification 0x2028 and 0x2029 aren't whitespaces
-            return c != 0x2028 && c != 0x2029 && JSRuntime.isWhiteSpace(c);
         }
 
         private TruffleString longestMatchingLeadingSubstring(TruffleString strA, TruffleString strB) {

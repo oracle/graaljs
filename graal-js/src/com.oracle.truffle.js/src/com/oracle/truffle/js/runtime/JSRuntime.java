@@ -512,7 +512,7 @@ public final class JSRuntime {
     @TruffleBoundary
     public static Number stringToNumber(TruffleString string) {
         // "Infinity" written exactly like this
-        TruffleString strCamel = trimJSWhiteSpace(string);
+        TruffleString strCamel = trimJSWhiteSpace(string, true);
         int camelLength = Strings.length(strCamel);
         if (camelLength == 0) {
             return 0;
@@ -1808,7 +1808,12 @@ public final class JSRuntime {
 
     public static int firstNonWhitespaceIndex(TruffleString string, boolean useLineTerminators, TruffleString.ReadCharUTF16Node charAtNode) {
         int idx = 0;
-        while ((idx < Strings.length(string)) && (isWhiteSpace(Strings.charAt(charAtNode, string, idx)) || (useLineTerminators && isLineTerminator(Strings.charAt(charAtNode, string, idx))))) {
+        int len = Strings.length(string);
+        while (idx < len) {
+            char ch = Strings.charAt(charAtNode, string, idx);
+            if (!(useLineTerminators ? isWhiteSpaceOrLineTerminator(ch) : isWhiteSpaceExcludingLineTerminator(ch))) {
+                break;
+            }
             idx++;
         }
         return idx;
@@ -1816,31 +1821,44 @@ public final class JSRuntime {
 
     public static int lastNonWhitespaceIndex(TruffleString string, boolean useLineTerminators, TruffleString.ReadCharUTF16Node charAtNode) {
         int idx = Strings.length(string) - 1;
-        while ((idx >= 0) && (isWhiteSpace(Strings.charAt(charAtNode, string, idx)) || (useLineTerminators && isLineTerminator(Strings.charAt(charAtNode, string, idx))))) {
+        while (idx >= 0) {
+            char ch = Strings.charAt(charAtNode, string, idx);
+            if (!(useLineTerminators ? isWhiteSpaceOrLineTerminator(ch) : isWhiteSpaceExcludingLineTerminator(ch))) {
+                break;
+            }
             idx--;
         }
         return idx;
     }
 
-    @SuppressWarnings("unused")
-    public static boolean isWhiteSpace(char cp) {
-        if (isAsciiDigit(cp)) {
-            return false; // fastpath
-        }
-        return (0x0009 <= cp && cp <= 0x000D) || (0x2000 <= cp && cp <= 0x200A) || cp == 0x0020 || cp == 0x00A0 || cp == 0x1680 || cp == 0x2028 || cp == 0x2029 || cp == 0x202F ||
-                        cp == 0x205F || cp == 0x3000 || cp == 0xFEFF;
+    /**
+     * Union of WhiteSpace and LineTerminator (StrWhiteSpaceChar). Used by TrimString.
+     */
+    public static boolean isWhiteSpaceOrLineTerminator(char cp) {
+        return switch (cp) {
+            // @formatter:off
+            case 0x0009, 0x000B, 0x000C, 0x0020, 0x00A0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200A, 0x202F, 0x205F, 0x3000, 0xFEFF,
+                            0x000A, 0x000D, 0x2028, 0x2029 -> true;
+            // @formatter:on
+            default -> false;
+        };
+    }
+
+    /**
+     * WhiteSpace (excluding LineTerminator).
+     */
+    public static boolean isWhiteSpaceExcludingLineTerminator(char cp) {
+        return switch (cp) {
+            case 0x0009, 0x000B, 0x000C, 0x0020, 0x00A0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200A, 0x202F, 0x205F, 0x3000, 0xFEFF -> true;
+            default -> false;
+        };
     }
 
     public static boolean isLineTerminator(char codePoint) {
-        switch (codePoint) {
-            case 0x000A:
-            case 0x000D:
-            case 0x2028:
-            case 0x2029:
-                return true;
-            default:
-                return false;
-        }
+        return switch (codePoint) {
+            case 0x000A, 0x000D, 0x2028, 0x2029 -> true;
+            default -> false;
+        };
     }
 
     /**
