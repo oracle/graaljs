@@ -14,6 +14,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Made option `js.unhandled-rejections` stable and allowed in `SandboxPolicy.CONSTRAINED`.
 * Added option `js.allow-eval` that is stable and allowed in `SandboxPolicy.UNTRUSTED`.
 * Deprecated option `js.disable-eval`, superseded by `js.allow-eval`.
+* Implemented the [String.dedent](https://github.com/tc39/proposal-string-dedent) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 
 ## Version 23.0.0
 * Implemented the [WebAssembly reference types](https://github.com/WebAssembly/reference-types) proposal.
