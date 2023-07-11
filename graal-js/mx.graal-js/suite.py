@@ -259,7 +259,6 @@ suite = {
       ],
       "requires" : [
         "java.desktop",
-        "jdk.httpserver",
         "jdk.unsupported",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -294,6 +293,24 @@ suite = {
         "sdk:GRAAL_SDK",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.js",
+      "spotbugs" : "true",
+      "javaCompliance" : "17+",
+      "workingSets" : "Truffle,JavaScript",
+      "testProject" : True,
+    },
+
+    "com.oracle.truffle.js.test.fetch" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "sdk:GRAAL_SDK",
+        "com.oracle.truffle.js.test",
+      ],
+      "requires" : [
+        "jdk.httpserver",
+      ],
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
       "javaCompliance" : "17+",
@@ -524,7 +541,13 @@ suite = {
     },
 
     "TRUFFLE_JS_TESTS" : {
-      "dependencies" : ["com.oracle.truffle.js.test", "com.oracle.truffle.js.test.external", "com.oracle.truffle.js.test.instrumentation", "com.oracle.truffle.js.test.threading"],
+      "dependencies" : [
+        "com.oracle.truffle.js.test",
+        "com.oracle.truffle.js.test.external",
+        "com.oracle.truffle.js.test.fetch",
+        "com.oracle.truffle.js.test.instrumentation",
+        "com.oracle.truffle.js.test.threading",
+      ],
       "exclude" : [
         "mx:HAMCREST",
         "mx:JUNIT",
