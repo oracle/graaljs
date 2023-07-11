@@ -45,11 +45,14 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -62,6 +65,7 @@ import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCodePo
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.StringDedentNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.StringRawNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -73,6 +77,7 @@ import com.oracle.truffle.js.nodes.cast.JSToUInt16Node;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -294,8 +299,10 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        @Specialization(guards = "isCallable(callback)")
+        @Specialization(guards = {"isObject.executeBoolean(callback)", "isCallable.executeBoolean(callback)"}, limit = "1")
         protected Object dedentCallback(Object callback, @SuppressWarnings("unused") Object[] substitutions,
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObject,
                         @Cached("createSetHidden(TAG_KEY, getContext())") PropertySetNode setArgs) {
             JSFunctionData functionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.DedentCallback, (c) -> callbackBody(c));
             JSFunctionObject function = JSFunction.create(getRealm(), functionData);
@@ -306,13 +313,13 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         private static JSFunctionData callbackBody(JSContext context) {
             class CallbackBody extends JavaScriptRootNode {
                 @Child private DedentTemplateStringsArrayNode dedentTemplateStringsArray = DedentTemplateStringsArrayNodeGen.create(context);
-                @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(TAG_KEY, context);
+                @Child private PropertyGetNode getTag = PropertyGetNode.createGetHidden(TAG_KEY, context);
                 @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                    Object tag = getArgs.getValue(functionObject);
+                    Object tag = getTag.getValue(functionObject);
                     Object r = JSFrameUtil.getThisObj(frame);
 
                     Object[] args = JSFrameUtil.getArgumentsArray(frame);
@@ -329,41 +336,56 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return JSFunctionData.createCallOnly(context, new CallbackBody().getCallTarget(), 2, Strings.EMPTY_STRING);
         }
 
-        @Specialization(guards = "!isCallable(template)")
-        protected Object dedent(Object template, Object[] substitutions,
+        @Specialization(guards = {"isObject.executeBoolean(template)", "!isCallable.executeBoolean(template)"}, limit = "1")
+        protected static Object dedentTemplate(Object template, Object[] substitutions,
+                        @Bind("this") Node self,
+                        @Bind("getContext()") JSContext context,
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObject,
                         @Cached("create(getContext())") DedentTemplateStringsArrayNode dedentTemplateStringsArray,
                         @Cached("create(getContext())") ReadElementNode readElementNode,
+                        @Cached JSToStringNode segToStringNode,
                         @Cached JSToStringNode subToStringNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached TruffleStringBuilder.AppendStringNode appendStringNode) {
-            int numberOfSubstitutions = substitutions.length;
+            int stringLengthLimit = context.getStringLengthLimit();
             JSArrayObject dedentedArray = dedentTemplateStringsArray.execute(template);
+            // CookTemplateStringsArray (prep = cooked)
+            int substitutionCount = substitutions.length;
+            long literalCount = JSArray.arrayGetLength(dedentedArray);
+            if (literalCount <= 0) {
+                return Strings.EMPTY_STRING;
+            }
             TruffleStringBuilder result = Strings.builderCreate();
-            for (int i = 0; i < dedentedArray.getArraySize(); i++) {
-                TruffleString nextSeg = (TruffleString) readElementNode.executeWithTargetAndIndex(dedentedArray, i);
-                appendChecked(result, nextSeg, errorBranch, appendStringNode);
-                if (i < numberOfSubstitutions) {
+            for (int i = 0; i < literalCount; i++) {
+                TruffleString nextSeg = segToStringNode.executeString(readElementNode.executeWithTargetAndIndex(dedentedArray, i));
+                appendChecked(result, nextSeg, stringLengthLimit,
+                                self, errorBranch, appendStringNode);
+                if (i < substitutionCount) {
                     TruffleString nextSub = subToStringNode.executeString(substitutions[i]);
-                    appendChecked(result, nextSub, errorBranch, appendStringNode);
+                    appendChecked(result, nextSub, stringLengthLimit,
+                                    self, errorBranch, appendStringNode);
                 }
             }
 
             return Strings.builderToString(result);
         }
 
-        private void appendChecked(TruffleStringBuilder result, TruffleString str,
+        private static void appendChecked(TruffleStringBuilder result, TruffleString str, int stringLengthLimit,
+                        Node self,
                         InlinedBranchProfile errorBranch,
                         TruffleStringBuilder.AppendStringNode appendStringNode) {
-            checkLengthAllowed(Strings.builderLength(result) + Strings.length(str), errorBranch);
+            if (Strings.builderLength(result) + Strings.length(str) > stringLengthLimit) {
+                errorBranch.enter(self);
+                throw Errors.createRangeErrorInvalidStringLength();
+            }
             Strings.builderAppend(appendStringNode, result, str);
         }
 
-        private void checkLengthAllowed(int length,
-                        InlinedBranchProfile errorBranch) {
-            if (length > getContext().getStringLengthLimit()) {
-                errorBranch.enter(this);
-                throw Errors.createRangeErrorInvalidStringLength();
-            }
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        @Fallback
+        protected static Object notAnObject(Object template, @SuppressWarnings("unused") Object substitutions) {
+            throw Errors.createTypeErrorNotAnObject(template);
         }
     }
 
