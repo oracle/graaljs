@@ -1198,7 +1198,21 @@ public class FetchMethodTest extends JSTest {
     private static Context newContext(TestOutput out) {
         var b = JSTest.newContextBuilder().err(out).out(out);
         b.allowHostAccess(HostAccess.ALL);
-        b.allowHostClassLookup((s) -> true);
+        b.allowHostClassLookup((s) -> switch (s) {
+            case "java.net.URI" -> true;
+            case "java.net.http.HttpClient" -> true;
+            case "java.net.http.HttpClient$Redirect" -> true;
+            case "java.net.http.HttpRequest" -> true;
+            case "java.net.http.HttpResponse" -> true;
+            case "java.net.http.HttpRequest$BodyPublishers" -> true;
+            case "java.net.http.HttpResponse$BodyHandlers" -> true;
+            case "java.net.ConnectException" -> true;
+            case "java.lang.String" -> true;
+            case "java.nio.ByteBuffer" -> true;
+            case "java.util.Base64" -> true;
+            case "java.nio.charset.StandardCharsets" -> true;
+            default -> false;
+        });
         b.allowIO(IOAccess.ALL);
         b.option(JSContextOptions.CONSOLE_NAME, "true");
         b.option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw");
