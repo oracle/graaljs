@@ -665,11 +665,6 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SCOPE_OPTIMIZATION = new OptionKey<>(true);
     @CompilationFinal private boolean scopeOptimization;
 
-    public static final String GLOBAL_FETCH_NAME = JS_OPTION_PREFIX + "global-fetch";
-    @Option(name = GLOBAL_FETCH_NAME, category = OptionCategory.INTERNAL, help = "Enable experimental support for global fetch API.") //
-    public static final OptionKey<Boolean> GLOBAL_FETCH = new OptionKey<>(false);
-    @CompilationFinal private boolean fetch;
-
     JSContextOptions(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
         this.optionValues = optionValues;
         setOptionValues(sandboxPolicy, optionValues);
@@ -760,7 +755,6 @@ public final class JSContextOptions {
         this.scopeOptimization = readBooleanOption(SCOPE_OPTIMIZATION);
         this.allowNarrowSpacesInDateFormat = ALLOW_NARROW_SPACES_IN_DATE_FORMAT.hasBeenSet(optionValues) ? readBooleanOption(ALLOW_NARROW_SPACES_IN_DATE_FORMAT) : !isV8CompatibilityMode();
         this.v8Intrinsics = readBooleanOption(V8_INTRINSICS);
-        this.fetch = readBooleanOption(GLOBAL_FETCH);
     }
 
     private UnhandledRejectionsTrackingMode readUnhandledRejectionsMode() {
@@ -1216,9 +1210,5 @@ public final class JSContextOptions {
 
     public boolean isV8Intrinsics() {
         return V8_INTRINSICS.getValue(optionValues);
-    }
-
-    public boolean isFetch() {
-        return fetch;
     }
 }

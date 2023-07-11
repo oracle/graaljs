@@ -52,6 +52,7 @@ import java.util.Locale;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
@@ -71,12 +72,16 @@ import com.oracle.truffle.js.test.interop.AsyncInteropTest.TestOutput;
 public class FetchMethodTest extends JSTest {
     private static final int TEST_TIMEOUT = 10000;
 
+    private static Source fetchSource;
+
     private FetchTestServer localServer;
 
     @BeforeClass
-    public static void testSetup() {
+    public static void testSetup() throws IOException {
         // allow overwriting restricted headers
         System.setProperty("jdk.httpclient.allowRestrictedHeaders", "Host,Content-Length");
+
+        fetchSource = Source.newBuilder(ID, FetchMethodTest.class.getResource("fetch.js")).build();
     }
 
     @Before
@@ -1167,10 +1172,10 @@ public class FetchMethodTest extends JSTest {
         b.allowHostClassLookup((s) -> true);
         b.allowIO(IOAccess.ALL);
         b.option(JSContextOptions.CONSOLE_NAME, "true");
-        b.option(JSContextOptions.GLOBAL_FETCH_NAME, "true");
         b.option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw");
-        b.option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false");
-        return b.build();
+        Context context = b.build();
+        context.eval(fetchSource);
+        return context;
     }
 
     private static URI url(String url) throws URISyntaxException {
