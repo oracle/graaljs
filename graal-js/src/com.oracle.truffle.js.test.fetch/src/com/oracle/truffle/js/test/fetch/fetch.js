@@ -307,7 +307,7 @@
                 throw new TypeError("Request with GET/HEAD method cannot have body");
             }
             let follow = (init.follow ?? 20) | 0;
-            let r = {
+            return {
                 method,
                 body,
                 referrer,
@@ -322,7 +322,6 @@
                 credentials: 'same-origin',
                 cache: 'default',
             };
-            return r;
         }
 
         function validateBody(body) {
@@ -346,12 +345,17 @@
             return code;
         }
 
-        class Request extends Fetch {
+        let getRequestPrivate; // Private field accessor
+
+        class Request {
             #req;
             #bodyUsed = false;
 
+            static {
+                getRequestPrivate = (req) => req.#req;
+            }
+
             constructor(input, init = {}) {
-                super();
                 let url;
                 let uri;
                 let source;
@@ -366,8 +370,7 @@
                     validateInit(init);
                     uri = parseAndValidateURL(url);
                 }
-                let req = makeRequest(init, uri, url, source);
-                this.#private = this.#req = req;
+                this.#req = makeRequest(init, uri, url, source);
             }
 
             get url() {
@@ -452,17 +455,16 @@
             };
         }
 
-        class Response extends Fetch {
+        class Response {
             #res;
             #body;
             #bodyUsed = false;
 
             constructor(body = null, init = {}) {
-                super();
                 validateBody(body);
                 validateInit(init);
                 this.#body = body;
-                this.#private = this.#res = makeResponse(init);
+                this.#res = makeResponse(init);
             }
 
             static error() {
@@ -594,7 +596,7 @@
 
         async function fetch(input, init={}) {
             let request = new Request(input, init);
-            let requestPrivate = request.#private;
+            let requestPrivate = getRequestPrivate(request);
 
             let scheme = requestPrivate.uri.getScheme();
             switch (scheme) {
@@ -609,7 +611,7 @@
         }
 
         async function dataFetch(request) {
-            let requestPrivate = request.#private;
+            let requestPrivate = getRequestPrivate(request);
             let dataUri = requestPrivate.uri;
             // 1. Assert: dataUrl scheme is "data"
             if (requestPrivate.uri.getScheme() !== "data") {
@@ -699,7 +701,7 @@
         }
 
         async function httpFetch(request) {
-            let requestPrivate = request.#private;
+            let requestPrivate = getRequestPrivate(request);
 
             let httpClient = HttpClient.newBuilder()
                             .followRedirects(HttpClient_Redirect.NEVER) // don't follow automatically
