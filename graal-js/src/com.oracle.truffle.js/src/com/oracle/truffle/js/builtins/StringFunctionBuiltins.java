@@ -444,7 +444,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             TruffleString[] dedentedList = dedentStringsArray(rawInput, context, emptyProf, errorBranch, growBranch);
 
             JSArrayObject rawArr = JSArray.createConstant(context, realm, dedentedList);
-            JSArrayObject cookedArr = JSArray.createConstant(context, realm, cookStrings(dedentedList, createCodePointIterator));
+            JSArrayObject cookedArr = JSArray.createConstant(context, realm, cookStrings(dedentedList, createCodePointIterator, errorBranch));
             JSRuntime.definePropertyOrThrow(
                             cookedArr,
                             Strings.RAW,
@@ -462,6 +462,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         InlinedBranchProfile growBranch) {
             int literalSegments = getLength(template);
             if (emptyProf.profile(this, literalSegments <= 0)) {
+                errorBranch.enter(this);
                 // Note: Well-formed template strings arrays always contain at least 1 string.
                 throw Errors.createTypeError("Template raw array must contain at least 1 string");
             }
@@ -615,17 +616,19 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private TruffleString[] cookStrings(TruffleString[] raw,
-                        TruffleString.CreateCodePointIteratorNode createCodePointIterator) {
+                        TruffleString.CreateCodePointIteratorNode createCodePointIterator,
+                        InlinedBranchProfile errorBranch) {
             TruffleString[] cooked = new TruffleString[raw.length];
             for (int i = 0; i < raw.length; i++) {
                 TruffleString str = raw[i];
                 TruffleStringIterator iterator = createCodePointIterator.execute(str, TruffleString.Encoding.UTF_16);
-                cooked[i] = parseText(iterator);
+                cooked[i] = parseText(iterator, errorBranch);
             }
             return cooked;
         }
 
-        private TruffleString parseText(TruffleStringIterator iterator) {
+        private TruffleString parseText(TruffleStringIterator iterator,
+                        InlinedBranchProfile errorBranch) {
             TruffleStringBuilder partialResult = Strings.builderCreate();
             while (iterator.hasNext()) {
                 int ch = iteratorNextNode.execute(iterator);
@@ -668,12 +671,12 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                             break;
                         case 'x': {
                             // Hex sequence.
-                            final int asciiCh = hexSequence(iterator, 2);
+                            final int asciiCh = hexSequence(iterator, 2, errorBranch);
                             appendCharNode.execute(partialResult, (char) asciiCh);
                             break;
                         }
                         case 'u': {
-                            final int unicodeChar = unicodeEscapeSequence(iterator);
+                            final int unicodeChar = unicodeEscapeSequence(iterator, errorBranch);
                             if (unicodeChar < 0) {
                                 appendStringNode.execute(partialResult, Strings.BACKSLASH_U);
                             } else if (unicodeChar <= 0xffff && Character.isSurrogate((char) unicodeChar)) {
@@ -702,17 +705,19 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return Strings.builderToString(builderToStringNode, partialResult);
         }
 
-        private int unicodeEscapeSequence(TruffleStringIterator iterator) {
+        private int unicodeEscapeSequence(TruffleStringIterator iterator,
+                        InlinedBranchProfile errorBranch) {
             int ch = iteratorNextNode.execute(iterator);
             iteratorPreviousNode.execute(iterator);
             if (ch == '{') {
-                return varlenHexSequence(iterator);
+                return varlenHexSequence(iterator, errorBranch);
             } else {
-                return hexSequence(iterator, 4);
+                return hexSequence(iterator, 4, errorBranch);
             }
         }
 
-        private int varlenHexSequence(TruffleStringIterator iterator) {
+        private int varlenHexSequence(TruffleStringIterator iterator,
+                        InlinedBranchProfile errorBranch) {
             int ch = iteratorNextNode.execute(iterator);
             assert ch == '{';
 
@@ -724,6 +729,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     if (!firstIteration) {
                         break;
                     } else {
+                        errorBranch.enter(this);
                         throw Errors.createSyntaxError("Invalid Unicode escape sequence");
                     }
                 }
@@ -731,12 +737,14 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 final int digit = convertDigit(ch, 16);
 
                 if (digit == -1) {
+                    errorBranch.enter(this);
                     throw Errors.createSyntaxError("Invalid Unicode escape sequence");
                 }
 
                 value = digit | value << 4;
 
                 if (value > 1114111) {
+                    errorBranch.enter(this);
                     throw Errors.createSyntaxError("Invalid Unicode escape sequence");
                 }
                 firstIteration = false;
@@ -745,19 +753,22 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return value;
         }
 
-        private int hexSequence(TruffleStringIterator iterator, int length) {
+        private int hexSequence(TruffleStringIterator iterator, int length,
+                        InlinedBranchProfile errorBranch) {
             int value = 0;
             int i;
             for (i = 0; i < length && iterator.hasNext(); i++) {
                 int ch = iteratorNextNode.execute(iterator);
                 int digit = convertDigit(ch, 16);
                 if (digit == -1) {
+                    errorBranch.enter(this);
                     throw Errors.createSyntaxError("Invalid hex digit");
                 }
                 value = digit | value << 4;
             }
 
             if (i != length) {
+                errorBranch.enter(this);
                 throw Errors.createSyntaxError("Invalid hex length");
             }
 
