@@ -59,7 +59,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -77,7 +76,7 @@ import static org.junit.Assert.assertTrue;
 public class GH669 {
 
     private static final String JS = "js";
-    private static final String MODULE_PATH = Paths.get("a/b/c").toAbsolutePath().toString();
+    private static final String MODULE_PATH = Path.of("a/b/c").toAbsolutePath().toString();
     private static final String INDEX_PATH = absPath("index.js");
     private static final String ERROR_HELPER_PATH = absPath("error_helper.js");
     private static final Pattern JS_STACK_FRAME_PATTERN = Pattern.compile("^\\s*at ([\\w.]+) \\(([\\w/.-]+):\\d+:\\d+\\)$");
@@ -230,12 +229,12 @@ public class GH669 {
 
         @Override
         public Path parsePath(String path) {
-            return Paths.get(path);
+            return Path.of(path);
         }
 
         @Override
         public Path toAbsolutePath(Path path) {
-            return Paths.get(root).resolve(path).normalize();
+            return Path.of(root).resolve(path).normalize();
         }
 
         @Override
@@ -250,7 +249,7 @@ public class GH669 {
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) {
-            if (path.equals(Paths.get(root))) {
+            if (path.equals(Path.of(root))) {
                 return;
             }
             if (!files.containsKey(path)) {
@@ -278,7 +277,7 @@ public class GH669 {
 
         @Override
         public Path parsePath(URI uri) {
-            return Paths.get(uri);
+            return Path.of(uri);
         }
 
         @Override
