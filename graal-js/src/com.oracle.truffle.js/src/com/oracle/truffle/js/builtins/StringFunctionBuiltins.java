@@ -394,7 +394,6 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Child private PropertyGetNode getRawNode;
         @Child private JSGetLengthNode getLengthNode;
-        @Child private JSToStringNode segToStringNode;
         @Child private ReadElementNode readRawElementNode;
         @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
         @Child private TruffleStringBuilder.AppendSubstringByteIndexNode appendSubstringNode;
@@ -410,7 +409,6 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             this.getLengthNode = JSGetLengthNode.create(context);
             this.getRawNode = PropertyGetNode.create(Strings.RAW, context);
             this.readRawElementNode = ReadElementNode.create(context);
-            this.segToStringNode = JSToStringNode.create();
             this.appendStringNode = TruffleStringBuilder.AppendStringNode.create();
             this.appendSubstringNode = TruffleStringBuilder.AppendSubstringByteIndexNode.create();
             this.appendCharNode = TruffleStringBuilder.AppendCharUTF16Node.create();
@@ -507,7 +505,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             int totalLength = 0;
             for (int k = 0; k < len; k++) {
                 Object rawElement = readRawElementNode.executeWithTargetAndIndex(raw, k);
-                TruffleString nextSeg = segToStringNode.executeString(rawElement);
+                if (!(rawElement instanceof TruffleString nextSeg)) {
+                    throw Errors.createTypeError("Template raw array may only contain strings");
+                }
                 int segLength = Strings.length(nextSeg);
                 totalLength += segLength;
                 if (totalLength > stringLengthLimit) {

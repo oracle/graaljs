@@ -103,6 +103,16 @@ public class StringFunctionBuiltinsTest {
     }
 
     @Test
+    public void testDedentThrowErrorNonStringElement() {
+        String sourceText = "String.dedent({raw: [42]})";
+        try (Context context = createContext()) {
+            JSTest.assertThrows(() -> {
+                context.eval(Source.newBuilder(ID, sourceText, SOURCE_NAME).buildLiteral());
+            }, JSErrorType.TypeError);
+        }
+    }
+
+    @Test
     public void testDedentSingleLineWithTab() {
         String sourceText = "String.dedent`\n\tvalue\n`;";
         try (Context context = createContext()) {
