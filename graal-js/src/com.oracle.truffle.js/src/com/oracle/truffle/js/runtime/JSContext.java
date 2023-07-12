@@ -84,6 +84,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -94,6 +95,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
+import com.oracle.truffle.js.runtime.builtins.JSForInIterator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
@@ -101,6 +103,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapIterator;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -109,9 +112,11 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSetIterator;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSStringIterator;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
@@ -434,6 +439,7 @@ public class JSContext {
     private final JSObjectFactory arrayFactory;
     private final JSObjectFactory iteratorFactory;
     private final JSObjectFactory asyncIteratorFactory;
+    private final JSObjectFactory arrayIteratorFactory;
     private final JSObjectFactory wrapForIteratorFactory;
     private final JSObjectFactory wrapForAsyncIteratorFactory;
     private final JSObjectFactory lazyRegexArrayFactory;
@@ -442,6 +448,7 @@ public class JSContext {
     private final JSObjectFactory numberFactory;
     private final JSObjectFactory bigIntFactory;
     private final JSObjectFactory stringFactory;
+    private final JSObjectFactory stringIteratorFactory;
     private final JSObjectFactory regExpFactory;
     private final JSObjectFactory dateFactory;
     private final JSObjectFactory nonStrictArgumentsFactory;
@@ -451,7 +458,9 @@ public class JSContext {
 
     private final JSObjectFactory symbolFactory;
     private final JSObjectFactory mapFactory;
+    private final JSObjectFactory mapIteratorFactory;
     private final JSObjectFactory setFactory;
+    private final JSObjectFactory setIteratorFactory;
     private final JSObjectFactory weakRefFactory;
     private final JSObjectFactory weakMapFactory;
     private final JSObjectFactory weakSetFactory;
@@ -617,6 +626,7 @@ public class JSContext {
         this.arrayFactory = builder.create(JSArray.INSTANCE);
         this.iteratorFactory = builder.create(JSIterator.INSTANCE);
         this.asyncIteratorFactory = builder.create(JSAsyncIterator.INSTANCE);
+        this.arrayIteratorFactory = builder.create(JSArrayIterator.INSTANCE);
         this.wrapForIteratorFactory = builder.create(JSWrapForValidIterator.INSTANCE);
         this.wrapForAsyncIteratorFactory = builder.create(JSWrapForValidAsyncIterator.INSTANCE);
         this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE);
@@ -625,12 +635,15 @@ public class JSContext {
         this.numberFactory = builder.create(JSNumber.INSTANCE);
         this.bigIntFactory = builder.create(JSBigInt.INSTANCE);
         this.stringFactory = builder.create(JSString.INSTANCE);
+        this.stringIteratorFactory = builder.create(JSStringIterator.INSTANCE);
         this.regExpFactory = builder.create(JSRegExp.INSTANCE);
         this.dateFactory = builder.create(JSDate.INSTANCE);
 
         this.symbolFactory = builder.create(JSSymbol.INSTANCE);
         this.mapFactory = builder.create(JSMap.INSTANCE);
+        this.mapIteratorFactory = builder.create(JSMapIterator.INSTANCE);
         this.setFactory = builder.create(JSSet.INSTANCE);
+        this.setIteratorFactory = builder.create(JSSetIterator.INSTANCE);
         this.weakRefFactory = builder.create(JSWeakRef.INSTANCE);
         this.weakMapFactory = builder.create(JSWeakMap.INSTANCE);
         this.weakSetFactory = builder.create(JSWeakSet.INSTANCE);
@@ -657,7 +670,7 @@ public class JSContext {
         this.nonStrictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsArray.INSTANCE);
         this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsArray.INSTANCE);
         this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);
-        this.forInIteratorFactory = builder.create(JSRealm::getForInIteratorPrototype, JSFunction::makeInitialForInIteratorShape);
+        this.forInIteratorFactory = builder.create(JSForInIterator.INSTANCE);
 
         this.generatorObjectFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
@@ -934,6 +947,10 @@ public class JSContext {
         return asyncIteratorFactory;
     }
 
+    public final JSObjectFactory getArrayIteratorFactory() {
+        return arrayIteratorFactory;
+    }
+
     public final JSObjectFactory getWrapForIteratorFactory() {
         return wrapForIteratorFactory;
     }
@@ -952,6 +969,10 @@ public class JSContext {
 
     public final JSObjectFactory getStringFactory() {
         return stringFactory;
+    }
+
+    public final JSObjectFactory getStringIteratorFactory() {
+        return stringIteratorFactory;
     }
 
     public final JSObjectFactory getBooleanFactory() {
@@ -1002,6 +1023,10 @@ public class JSContext {
         return mapFactory;
     }
 
+    public final JSObjectFactory getMapIteratorFactory() {
+        return mapIteratorFactory;
+    }
+
     public final JSObjectFactory getFinalizationRegistryFactory() {
         return finalizationRegistryFactory;
     }
@@ -1016,6 +1041,10 @@ public class JSContext {
 
     public final JSObjectFactory getSetFactory() {
         return setFactory;
+    }
+
+    public final JSObjectFactory getSetIteratorFactory() {
+        return setIteratorFactory;
     }
 
     public final JSObjectFactory getWeakSetFactory() {

@@ -44,11 +44,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import com.ibm.icu.impl.ICUResourceBundle;
-import com.ibm.icu.text.ListFormatter;
-import com.ibm.icu.text.SimpleFormatter;
-import com.ibm.icu.util.ULocale;
-import com.ibm.icu.util.UResourceBundle;
+import org.graalvm.shadowed.com.ibm.icu.impl.ICUResourceBundle;
+import org.graalvm.shadowed.com.ibm.icu.text.ListFormatter;
+import org.graalvm.shadowed.com.ibm.icu.text.SimpleFormatter;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
+import org.graalvm.shadowed.com.ibm.icu.util.UResourceBundle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;

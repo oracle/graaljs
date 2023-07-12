@@ -83,11 +83,6 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     public static final TruffleString LENGTH = Strings.constant("length");
 
-    public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("String Iterator");
-    public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("String Iterator.prototype");
-    public static final HiddenKey ITERATED_STRING_ID = new HiddenKey("IteratedString");
-    public static final HiddenKey STRING_ITERATOR_NEXT_INDEX_ID = new HiddenKey("StringIteratorNextIndex");
-
     public static final TruffleString REGEXP_ITERATOR_CLASS_NAME = Strings.constant("RegExp String Iterator");
     public static final TruffleString REGEXP_ITERATOR_PROTOTYPE_NAME = Strings.constant("RegExp String Iterator.prototype");
     public static final HiddenKey REGEXP_ITERATOR_ITERATING_REGEXP_ID = new HiddenKey("IteratingRegExp");

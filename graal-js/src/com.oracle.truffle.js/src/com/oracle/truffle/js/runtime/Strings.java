@@ -180,6 +180,7 @@ public final class Strings {
     public static final TruffleString DONE = constant("done");
     public static final TruffleString EMPTY = constant("empty");
     public static final TruffleString EMPTY_X = constant("empty \u00d7 ");
+    public static final TruffleString ENTRIES = constant("entries");
     public static final TruffleString UC_ERROR = constant("Error");
     public static final TruffleString FILE = constant("file");
     public static final TruffleString FLAGS = constant("flags");

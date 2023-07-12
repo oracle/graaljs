@@ -40,16 +40,13 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.MapIteratorPrototypeBuiltinsFactory.MapIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -57,8 +54,10 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSMap;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSMapIterator;
+import com.oracle.truffle.js.runtime.builtins.JSMapIteratorObject;
+import com.oracle.truffle.js.runtime.builtins.JSMapObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -70,7 +69,7 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
     public static final JSBuiltinsContainer BUILTINS = new MapIteratorPrototypeBuiltins();
 
     protected MapIteratorPrototypeBuiltins() {
-        super(JSMap.ITERATOR_PROTOTYPE_NAME, MapIteratorPrototype.class);
+        super(JSMapIterator.PROTOTYPE_NAME, MapIteratorPrototype.class);
     }
 
     public enum MapIteratorPrototype implements BuiltinEnum<MapIteratorPrototype> {
@@ -98,48 +97,40 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     public abstract static class MapIteratorNextNode extends JSBuiltinNode {
-        @Child private HasHiddenKeyCacheNode isMapIteratorNode;
-        @Child private PropertyGetNode getIteratedObjectNode;
-        @Child private PropertyGetNode getNextIndexNode;
-        @Child private PropertyGetNode getIterationKindNode;
-        @Child private PropertySetNode setIteratedObjectNode;
+
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
-        private final ConditionProfile detachedProf = ConditionProfile.create();
-        private final ConditionProfile doneProf = ConditionProfile.create();
-        private final ConditionProfile iterKindKey = ConditionProfile.create();
-        private final ConditionProfile iterKindValue = ConditionProfile.create();
 
         public MapIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isMapIteratorNode = HasHiddenKeyCacheNode.create(JSMap.MAP_ITERATION_KIND_ID);
-            this.getIteratedObjectNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
-            this.getNextIndexNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
-            this.getIterationKindNode = PropertyGetNode.createGetHidden(JSMap.MAP_ITERATION_KIND_ID, context);
-            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
             this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         }
 
-        @Specialization(guards = "isMapIterator(iterator)")
-        protected JSDynamicObject doMapIterator(VirtualFrame frame, JSDynamicObject iterator) {
-            Object map = getIteratedObjectNode.getValue(iterator);
-            if (detachedProf.profile(map == Undefined.instance)) {
+        @Specialization
+        protected final JSObject doMapIterator(VirtualFrame frame, JSMapIteratorObject iterator,
+                        @Cached InlinedConditionProfile detachedProf,
+                        @Cached InlinedConditionProfile doneProf,
+                        @Cached InlinedConditionProfile iterKindKey,
+                        @Cached InlinedConditionProfile iterKindValue) {
+            Object map = iterator.getIteratedObject();
+            if (detachedProf.profile(this, map == Undefined.instance)) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
-            JSHashMap.Cursor mapCursor = (JSHashMap.Cursor) getNextIndexNode.getValue(iterator);
-            int itemKind = getIterationKind(iterator);
+            assert map instanceof JSMapObject;
+            JSHashMap.Cursor mapCursor = iterator.getNextIndex();
+            int itemKind = iterator.getIterationKind();
 
-            if (doneProf.profile(!mapCursor.advance())) {
-                setIteratedObjectNode.setValue(iterator, Undefined.instance);
+            if (doneProf.profile(this, !mapCursor.advance())) {
+                iterator.setIteratedObject(Undefined.instance);
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
             Object elementKey = mapCursor.getKey();
             Object elementValue = mapCursor.getValue();
             Object result;
-            if (iterKindKey.profile(itemKind == JSRuntime.ITERATION_KIND_KEY)) {
+            if (iterKindKey.profile(this, itemKind == JSRuntime.ITERATION_KIND_KEY)) {
                 result = elementKey;
-            } else if (iterKindValue.profile(itemKind == JSRuntime.ITERATION_KIND_VALUE)) {
+            } else if (iterKindValue.profile(this, itemKind == JSRuntime.ITERATION_KIND_VALUE)) {
                 result = elementValue;
             } else {
                 assert itemKind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE;
@@ -150,21 +141,8 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @SuppressWarnings("unused")
         @Fallback
-        protected JSDynamicObject doIncompatibleReceiver(Object iterator) {
+        protected static JSObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeError("not a Map Iterator");
-        }
-
-        protected final boolean isMapIterator(Object thisObj) {
-            // If the [[MapIterationKind]] internal slot is present, the others must be as well.
-            return isMapIteratorNode.executeHasHiddenKey(thisObj);
-        }
-
-        private int getIterationKind(JSDynamicObject iterator) {
-            try {
-                return getIterationKindNode.getValueInt(iterator);
-            } catch (UnexpectedResultException e) {
-                throw Errors.shouldNotReachHere();
-            }
         }
     }
 }

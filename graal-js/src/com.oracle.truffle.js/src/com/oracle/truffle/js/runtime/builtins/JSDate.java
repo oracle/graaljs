@@ -45,10 +45,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 
-import com.ibm.icu.impl.Grego;
-import com.ibm.icu.text.DateFormat;
-import com.ibm.icu.util.GregorianCalendar;
-import com.ibm.icu.util.TimeZone;
+import org.graalvm.shadowed.com.ibm.icu.impl.Grego;
+import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
+import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;

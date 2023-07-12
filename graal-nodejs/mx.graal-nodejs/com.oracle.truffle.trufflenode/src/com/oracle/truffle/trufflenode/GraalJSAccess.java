@@ -218,6 +218,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSCollectionIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateObject;
@@ -226,6 +227,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -234,6 +236,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSetIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
@@ -728,21 +731,11 @@ public final class GraalJSAccess {
     }
 
     public boolean valueIsSetIterator(Object object) {
-        if (JSRuntime.isObject(object)) {
-            JSDynamicObject dynamicObject = (JSDynamicObject) object;
-            Object iteratedObj = JSObjectUtil.getHiddenProperty(dynamicObject, JSRuntime.ITERATED_OBJECT_ID);
-            return JSSet.isJSSet(iteratedObj);
-        }
-        return false;
+        return object instanceof JSSetIteratorObject;
     }
 
     public boolean valueIsMapIterator(Object object) {
-        if (JSRuntime.isObject(object)) {
-            JSDynamicObject dynamicObject = (JSDynamicObject) object;
-            Object iteratedObj = JSObjectUtil.getHiddenProperty(dynamicObject, JSRuntime.ITERATED_OBJECT_ID);
-            return JSMap.isJSMap(iteratedObj);
-        }
-        return false;
+        return object instanceof JSMapIteratorObject;
     }
 
     public boolean valueIsSharedArrayBuffer(Object object) {
@@ -3103,14 +3096,11 @@ public final class GraalJSAccess {
     public Object objectPreviewEntries(Object object) {
         JSDynamicObject dynamicObject = (JSDynamicObject) object;
         JSContext context = JSObject.getJSContext(dynamicObject);
-        JSHashMap.Cursor cursor = (JSHashMap.Cursor) JSObjectUtil.getHiddenProperty(dynamicObject, JSRuntime.ITERATOR_NEXT_INDEX);
-        if (cursor != null) {
-            Object kindObject = JSObjectUtil.getHiddenProperty(dynamicObject, JSMap.MAP_ITERATION_KIND_ID);
-            boolean isSet = (kindObject == null);
-            if (isSet) {
-                kindObject = JSObjectUtil.getHiddenProperty(dynamicObject, JSSet.SET_ITERATION_KIND_ID);
-            }
-            int kind = ((Number) kindObject).intValue();
+        if (dynamicObject instanceof JSCollectionIteratorObject iterator) {
+            assert iterator instanceof JSMapIteratorObject || iterator instanceof JSSetIteratorObject;
+            boolean isSet = iterator instanceof JSSetIteratorObject;
+            JSHashMap.Cursor cursor = iterator.getNextIndex();
+            int kind = iterator.getIterationKind();
             cursor = cursor.copy();
             List<Object> entries = new ArrayList<>();
             while (cursor.advance()) {
