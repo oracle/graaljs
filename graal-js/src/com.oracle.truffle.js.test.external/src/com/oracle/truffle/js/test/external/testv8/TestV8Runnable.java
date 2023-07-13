@@ -75,10 +75,12 @@ public class TestV8Runnable extends TestRunnable {
     private static final String ALLOW_NATIVES_FOR_DIFFERENTIAL_FUZZING = "--allow-natives-for-differential-fuzzing";
     private static final String HARMONY_ERROR_CAUSE = "--harmony-error-cause";
     private static final String HARMONY_IMPORT_ASSERTIONS = "--harmony-import-assertions";
+    private static final String HARMONY_ITERATOR_HELPERS = "--harmony-iterator-helpers";
     private static final String HARMONY_SHAREDARRAYBUFFER = "--harmony-sharedarraybuffer";
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
     private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
+    private static final String HARMONY_SET_METHODS = "--harmony-set-methods";
     private static final String HARMONY_TEMPORAL = "--harmony-temporal";
     private static final String HARMONY_SHADOW_REALM = "--harmony-shadow-realm";
     private static final String HARMONY_REGEXP_UNICODE_SETS = "--harmony-regexp-unicode-sets";
@@ -106,17 +108,15 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-struct",
                     "--wasm-staging"
     });
-    private static final Set<String> ES2023_FLAGS = featureSet(new String[]{
-                    "--harmony-array-find-last",
+    private static final Set<String> STAGING_FLAGS = featureSet(new String[]{
                     "--harmony-array-grouping",
                     "--harmony-atomics-waitasync",
-                    "--harmony-change-array-by-copy",
                     "--harmony-intl-enumeration",
                     "--harmony-intl-locale_info",
                     "--harmony-intl-more_timezone",
                     "--harmony-intl-number-format-v3",
                     "--harmony-shadow-realm",
-                    "--harmony-symbol-as-weakmap-key",
+                    "--harmony-weak-refs-with-cleanup-some",
     });
 
     private static final String FLAGS_PREFIX = "// Flags: ";
@@ -163,9 +163,9 @@ public class TestV8Runnable extends TestRunnable {
         int minESVersion = suite.getConfig().getMinESVersion();
         int flagVersion = minESVersion;
         for (String flag : flags) {
-            if (ES2023_FLAGS.contains(flag)) {
+            if (STAGING_FLAGS.contains(flag)) {
                 assert !UNSUPPORTED_FLAGS.contains(flag) : flag;
-                flagVersion = JSConfig.ECMAScript2023;
+                flagVersion = JSConfig.StagingECMAScriptVersion;
             } else if (UNSUPPORTED_FLAGS.contains(flag)) {
                 supported = false;
             }
@@ -196,6 +196,12 @@ public class TestV8Runnable extends TestRunnable {
         if (flags.contains(HARMONY_IMPORT_ASSERTIONS)) {
             extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
             extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
+        }
+        if (flags.contains(HARMONY_ITERATOR_HELPERS)) {
+            extraOptions.put(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        }
+        if (flags.contains(HARMONY_SET_METHODS)) {
+            extraOptions.put(JSContextOptions.NEW_SET_METHODS_NAME, "true");
         }
         if (flags.contains(HARMONY_TEMPORAL)) {
             extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");

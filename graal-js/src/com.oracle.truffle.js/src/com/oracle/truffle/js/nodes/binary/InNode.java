@@ -57,7 +57,8 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class InNode extends JSBinaryNode {
 
@@ -78,13 +79,13 @@ public abstract class InNode extends JSBinaryNode {
         return clazz == boolean.class;
     }
 
-    @Specialization(guards = {"isJSObject(haystack)", "!isJSProxy(haystack)"})
-    protected boolean doObject(Object needle, JSDynamicObject haystack) {
+    @Specialization(guards = {"!isJSProxy(haystack)"})
+    protected boolean doObject(Object needle, JSObject haystack) {
         return getHasPropertyNode().executeBoolean(haystack, needle);
     }
 
-    @Specialization(guards = {"isJSProxy(haystack)"})
-    protected boolean doProxy(Object needle, JSDynamicObject haystack,
+    @Specialization
+    protected boolean doProxy(Object needle, JSProxyObject haystack,
                     @Cached("create(context)") JSProxyHasPropertyNode proxyHasPropertyNode) {
         return proxyHasPropertyNode.executeWithTargetAndKeyBoolean(haystack, needle);
     }

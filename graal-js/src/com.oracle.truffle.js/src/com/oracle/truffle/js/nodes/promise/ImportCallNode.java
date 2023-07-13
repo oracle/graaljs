@@ -72,11 +72,13 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -229,7 +231,7 @@ public class ImportCallNode extends JavaScriptNode {
             assert JSPromise.isJSPromise(promise);
             return promise;
         } else {
-            context.promiseEnqueueJob(realm, createImportModuleDynamicallyJob(referencingScriptOrModule, moduleRequest, promiseCapability));
+            context.enqueuePromiseJob(realm, createImportModuleDynamicallyJob(referencingScriptOrModule, moduleRequest, promiseCapability, realm));
             return promiseCapability.getPromise();
         }
     }
@@ -269,15 +271,16 @@ public class ImportCallNode extends JavaScriptNode {
     /**
      * Returns a promise job that performs both HostImportModuleDynamically and FinishDynamicImport.
      */
-    public JSFunctionObject createImportModuleDynamicallyJob(ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
+    public JSFunctionObject createImportModuleDynamicallyJob(ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability, JSRealm realm) {
+        JobCallback importModuleDynamicallyHandler = realm.getAgent().hostMakeJobCallback(createImportModuleDynamicallyHandler(realm));
         if (context.isOptionTopLevelAwait()) {
             Triple<ScriptOrModule, ModuleRequest, PromiseCapabilityRecord> request = new Triple<>(referencingScriptOrModule, moduleRequest, promiseCapability);
             PromiseCapabilityRecord startModuleLoadCapability = newPromiseCapability();
-            PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, createImportModuleDynamicallyHandler(), true);
+            PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, importModuleDynamicallyHandler, true);
             return promiseReactionJobNode.execute(startModuleLoad, request);
         } else {
             Pair<ScriptOrModule, ModuleRequest> request = new Pair<>(referencingScriptOrModule, moduleRequest);
-            return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, createImportModuleDynamicallyHandler(), true), request);
+            return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, importModuleDynamicallyHandler, true), request);
         }
     }
 
@@ -285,9 +288,9 @@ public class ImportCallNode extends JavaScriptNode {
      * Returns a handler function to be used together with a PromiseReactionJob in order to perform
      * the steps of both HostImportModuleDynamically and FinishDynamicImport.
      */
-    private JSDynamicObject createImportModuleDynamicallyHandler() {
+    private JSFunctionObject createImportModuleDynamicallyHandler(JSRealm realm) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ImportModuleDynamically, (c) -> createImportModuleDynamicallyHandlerImpl(c));
-        return JSFunction.create(getRealm(), functionData);
+        return JSFunction.create(realm, functionData);
     }
 
     private static JSFunctionData createImportModuleDynamicallyHandlerImpl(JSContext context) {
@@ -346,18 +349,17 @@ public class ImportCallNode extends JavaScriptNode {
                     JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
                     if (moduleRecord.hasTLA()) {
                         context.getEvaluator().moduleLinking(realm, moduleRecord);
-                        Object innerPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
-                        assert JSPromise.isJSPromise(innerPromise);
+                        JSPromiseObject innerPromise = (JSPromiseObject) context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                         JSDynamicObject resolve = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, false);
                         JSDynamicObject reject = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, true);
-                        promiseThenNode.execute((JSDynamicObject) innerPromise, resolve, reject, moduleLoadedCapability);
+                        promiseThenNode.execute(innerPromise, resolve, reject, moduleLoadedCapability);
                     } else {
                         Object result = finishDynamicImport(realm, moduleRecord, referencingScriptOrModule, moduleRequest);
                         if (moduleRecord.isAsyncEvaluation()) {
                             // Some module import started an async loading chain. The top-level
                             // capability will reject/resolve the dynamic import promise.
                             PromiseCapabilityRecord topLevelCapability = moduleRecord.getTopLevelCapability();
-                            promiseThenNode.execute(topLevelCapability.getPromise(), moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), null);
+                            promiseThenNode.execute((JSPromiseObject) topLevelCapability.getPromise(), moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), null);
                         } else {
                             callPromiseResolve.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
                         }

@@ -40,13 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
@@ -55,34 +51,25 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getNextMethodNode;
-    @Child private IsCallableNode isCallableNode;
 
     public GetIteratorDirectNode(JSContext context) {
-        isCallableNode = IsCallableNode.create();
         getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
     }
 
     public abstract IteratorRecord execute(Object iteratedObject);
 
     @Specialization
-    protected IteratorRecord get(JSObject obj,
-                    @Cached @Shared InlinedBranchProfile errorBranch) {
-        return getImpl(obj, errorBranch);
+    protected IteratorRecord get(JSObject obj) {
+        return getImpl(obj);
     }
 
     @Specialization(guards = "isForeignObject(obj)")
-    protected IteratorRecord get(Object obj,
-                    @Cached @Shared InlinedBranchProfile errorBranch) {
-        return getImpl(obj, errorBranch);
+    protected IteratorRecord get(Object obj) {
+        return getImpl(obj);
     }
 
-    private IteratorRecord getImpl(Object obj, InlinedBranchProfile errorBranch) {
+    private IteratorRecord getImpl(Object obj) {
         Object nextMethod = getNextMethodNode.getValue(obj);
-        if (!isCallableNode.executeBoolean(nextMethod)) {
-            errorBranch.enter(this);
-            throw Errors.createTypeErrorCallableExpected();
-        }
-
         return IteratorRecord.create(obj, nextMethod, false);
     }
 

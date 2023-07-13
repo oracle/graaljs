@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,7 +75,9 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -144,8 +146,8 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             this.performPromiseThen = PerformPromiseThenNode.create(context);
         }
 
-        @Specialization(guards = "isJSPromise(promise)")
-        protected JSDynamicObject doPromise(JSDynamicObject promise, Object onFulfilled, Object onRejected) {
+        @Specialization
+        protected JSDynamicObject doPromise(JSPromiseObject promise, Object onFulfilled, Object onRejected) {
             JSDynamicObject constructor = speciesConstructor(promise);
             getContext().notifyPromiseHook(-1 /* parent info */, promise);
             PromiseCapabilityRecord resultCapability = newPromiseCapability.execute(constructor);
@@ -192,8 +194,8 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             this.callThen = JSFunctionCallNode.createCall();
         }
 
-        @Specialization(guards = "isJSObject(promise)")
-        protected Object doObject(JSDynamicObject promise, Object onFinally) {
+        @Specialization
+        protected Object doObject(JSObject promise, Object onFinally) {
             JSDynamicObject constructor = speciesConstructor(promise);
             assert JSRuntime.isConstructor(constructor);
             Object thenFinally;

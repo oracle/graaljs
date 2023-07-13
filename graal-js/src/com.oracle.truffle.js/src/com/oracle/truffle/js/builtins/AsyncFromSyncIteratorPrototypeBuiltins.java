@@ -81,6 +81,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -202,13 +203,13 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 return promiseCapability.getPromise();
             }
             JSRealm realm = getRealm();
-            JSDynamicObject valueWrapper;
+            JSPromiseObject valueWrapper;
             if (getContext().usePromiseResolve()) {
-                valueWrapper = promiseResolveNode.execute(realm.getPromiseConstructor(), returnValue);
+                valueWrapper = (JSPromiseObject) promiseResolveNode.execute(realm.getPromiseConstructor(), returnValue);
             } else {
                 PromiseCapabilityRecord valueWrapperCapability = createPromiseCapability();
                 promiseCapabilityResolve(valueWrapperCapability, returnValue);
-                valueWrapper = valueWrapperCapability.getPromise();
+                valueWrapper = (JSPromiseObject) valueWrapperCapability.getPromise();
             }
             JSFunctionObject onFulfilled = createIteratorValueUnwrapFunction(realm, done);
             performPromiseThenNode.execute(valueWrapper, onFulfilled, Undefined.instance, promiseCapability);

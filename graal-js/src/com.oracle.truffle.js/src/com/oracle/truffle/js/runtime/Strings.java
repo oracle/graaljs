@@ -175,10 +175,12 @@ public final class Strings {
     public static final TruffleString COMPARE = constant("compare");
     public static final TruffleString CONSTRUCT = Strings.constant("construct");
     public static final TruffleString DEFAULT = constant("default");
+    public static final TruffleString DEFAULT_VALUE = constant("defaultValue");
     public static final TruffleString DELETE = constant("delete");
     public static final TruffleString DONE = constant("done");
     public static final TruffleString EMPTY = constant("empty");
     public static final TruffleString EMPTY_X = constant("empty \u00d7 ");
+    public static final TruffleString ENTRIES = constant("entries");
     public static final TruffleString UC_ERROR = constant("Error");
     public static final TruffleString FILE = constant("file");
     public static final TruffleString FLAGS = constant("flags");

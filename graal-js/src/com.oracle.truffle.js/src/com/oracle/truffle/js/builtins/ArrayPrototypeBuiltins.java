@@ -45,13 +45,9 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLen
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetLength;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -100,8 +96,6 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFindN
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFlatMapNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFlatNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayForEachNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayGroupNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayGroupToMapNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIncludesNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIndexOfNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIteratorNodeGen;
@@ -121,12 +115,10 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToSpl
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshiftNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayWithNodeGen;
-import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.sort.SortComparator;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.CallbackNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
@@ -157,7 +149,6 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
@@ -184,24 +175,19 @@ import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSMap;
-import com.oracle.truffle.js.runtime.builtins.JSMapObject;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
@@ -259,13 +245,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         // ES2022
         at(1),
 
-        // staging
-        group(1),
-        groupToMap(1),
+        // ES2023
         findLast(1),
         findLastIndex(1),
-
-        // Next
         toReversed(0),
         toSorted(1),
         toSpliced(2),
@@ -292,8 +274,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSConfig.ECMAScript2019;
             } else if (this == at) {
                 return JSConfig.ECMAScript2022;
-            } else if (EnumSet.of(group, groupToMap, findLast, findLastIndex, toReversed, toSorted, toSpliced, with).contains(this)) {
-                return JSConfig.StagingECMAScriptVersion;
+            } else if (EnumSet.of(findLast, findLastIndex, toReversed, toSorted, toSpliced, with).contains(this)) {
+                return JSConfig.ECMAScript2023;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -374,11 +356,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             case at:
                 return JSArrayAtNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
-
-            case group:
-                return JSArrayGroupNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
-            case groupToMap:
-                return JSArrayGroupToMapNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
 
             case toReversed:
                 return ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(0).createArgumentNodes(context));
@@ -971,13 +948,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"isArray(object)", "longIsRepresentableAsInt(longLength)"})
-        protected static void setArrayLength(JSDynamicObject object, long longLength,
+        protected static void setArrayLength(JSObject object, long longLength,
                         @Cached("createSetOrDelete(THROW_ERROR)") ArrayLengthWriteNode arrayLengthWriteNode) {
             arrayLengthWriteNode.executeVoid(object, (int) longLength);
         }
 
-        @Specialization(guards = {"isJSObject(object)", "longIsRepresentableAsInt(longLength)"})
-        protected static void setIntLength(JSDynamicObject object, long longLength,
+        @Specialization(guards = {"longIsRepresentableAsInt(longLength)"})
+        protected static void setIntLength(JSObject object, long longLength,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
                         @Shared("setLengthProperty") @Cached("createSetLengthProperty()") PropertySetNode setLengthProperty) {
             int intLength = (int) longLength;
@@ -985,8 +962,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             setLengthProperty.setValueInt(object, intLength);
         }
 
-        @Specialization(guards = {"isJSObject(object)"}, replaces = "setIntLength")
-        protected void setLength(JSDynamicObject object, long longLength,
+        @Specialization(replaces = "setIntLength")
+        protected void setLength(JSObject object, long longLength,
                         @Shared("deleteProperty") @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
                         @Shared("setLengthProperty") @Cached("createSetLengthProperty()") PropertySetNode setLengthProperty,
                         @Cached(inline = true) LongToIntOrDoubleNode indexToNumber) {
@@ -3329,52 +3306,27 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public static class CreateArrayIteratorNode extends JavaScriptBaseNode {
-        private final int iterationKind;
-        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
-        @Child private PropertySetNode setNextIndexNode;
-        @Child private PropertySetNode setIteratedObjectNode;
-        @Child private PropertySetNode setIterationKindNode;
-
-        protected CreateArrayIteratorNode(JSContext context, int iterationKind) {
-            this.iterationKind = iterationKind;
-            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
-            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
-            this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
-            this.setIterationKindNode = PropertySetNode.createSetHidden(JSArray.ARRAY_ITERATION_KIND_ID, context);
-        }
-
-        public static CreateArrayIteratorNode create(JSContext context, int iterationKind) {
-            return new CreateArrayIteratorNode(context, iterationKind);
-        }
-
-        public JSDynamicObject execute(Object array) {
-            assert JSGuards.isJSObject(array) || JSGuards.isForeignObject(array);
-            JSDynamicObject iterator = createObjectNode.execute(getRealm().getArrayIteratorPrototype());
-            setIteratedObjectNode.setValue(iterator, array);
-            setNextIndexNode.setValue(iterator, 0L);
-            setIterationKindNode.setValueInt(iterator, iterationKind);
-            return iterator;
-        }
-    }
-
     public abstract static class JSArrayIteratorNode extends JSBuiltinNode {
-        @Child private CreateArrayIteratorNode createArrayIteratorNode;
+        private final int iterationKind;
 
         public JSArrayIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
             super(context, builtin);
-            this.createArrayIteratorNode = CreateArrayIteratorNode.create(context, iterationKind);
+            this.iterationKind = iterationKind;
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected JSDynamicObject doJSObject(JSDynamicObject thisObj) {
-            return createArrayIteratorNode.execute(thisObj);
+        private JSObject createArrayIterator(Object thisObj) {
+            return JSArrayIterator.create(getContext(), getRealm(), thisObj, 0L, iterationKind);
+        }
+
+        @Specialization
+        protected final JSObject doJSObject(JSObject thisObj) {
+            return createArrayIterator(thisObj);
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject doNotJSObject(Object thisObj,
+        protected final JSObject doNotJSObject(Object thisObj,
                         @Cached JSToObjectNode toObjectNode) {
-            return createArrayIteratorNode.execute(toObjectNode.execute(thisObj));
+            return createArrayIterator(toObjectNode.execute(thisObj));
         }
     }
 
@@ -3398,108 +3350,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return Undefined.instance;
             }
             return read(o, k);
-        }
-    }
-
-    public abstract static class JSArrayGroupBaseNode extends JSArrayOperation {
-        @Child private JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
-
-        protected JSArrayGroupBaseNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, false);
-        }
-
-        protected Map<Object, List<Object>> collectGroupResults(Object thisObj, Object callback, Object thisArg) {
-            Object thisJSObj = toObject(thisObj);
-            long length = getLength(thisJSObj);
-            Object callbackFn = checkCallbackIsFunction(callback);
-
-            Map<Object, List<Object>> groups = initGroups();
-            for (long k = 0; k < length; k++) {
-                Object kValue = read(thisObj, k);
-                Object key = toKey(callNode.executeCall(JSArguments.create(thisArg, callbackFn, kValue, k, thisJSObj)));
-                addValueToKeyedGroup(groups, key, kValue);
-            }
-
-            return groups;
-        }
-
-        @TruffleBoundary
-        private static Map<Object, List<Object>> initGroups() {
-            return new LinkedHashMap<>();
-        }
-
-        @TruffleBoundary
-        private static void addValueToKeyedGroup(Map<Object, List<Object>> groups, Object key, Object value) {
-            List<Object> group = groups.get(key);
-            if (group == null) {
-                group = new ArrayList<>();
-                groups.put(key, group);
-            }
-            group.add(value);
-        }
-
-        protected abstract Object toKey(Object callbackResult);
-
-    }
-
-    public abstract static class JSArrayGroupNode extends JSArrayGroupBaseNode {
-        @Child private JSToPropertyKeyNode toPropertyKeyNode;
-
-        public JSArrayGroupNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-            this.toPropertyKeyNode = JSToPropertyKeyNode.create();
-        }
-
-        @Specialization
-        protected Object group(Object thisObj, Object callback, Object thisArg) {
-            Map<Object, List<Object>> groups = collectGroupResults(thisObj, callback, thisArg);
-            JSObject obj = JSOrdinary.createWithNullPrototype(getContext());
-            return createGroupResult(obj, groups);
-        }
-
-        @Override
-        protected final Object toKey(Object callbackResult) {
-            return toPropertyKeyNode.execute(callbackResult);
-        }
-
-        @TruffleBoundary
-        protected Object createGroupResult(JSDynamicObject obj, Map<Object, List<Object>> groups) {
-            for (Map.Entry<Object, List<Object>> entry : groups.entrySet()) {
-                JSDynamicObject elements = JSArray.createConstant(getContext(), getRealm(), entry.getValue().toArray());
-                JSObjectUtil.defineDataProperty(getContext(), obj, entry.getKey(), elements, JSAttributes.getDefault());
-            }
-            return obj;
-        }
-    }
-
-    public abstract static class JSArrayGroupToMapNode extends JSArrayGroupBaseNode {
-        @Child private JSCollectionsNormalizeNode normalizeKeyNode = JSCollectionsNormalizeNode.create();
-
-        public JSArrayGroupToMapNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected Object groupToMap(Object thisObj, Object callback, Object thisArg) {
-            Map<Object, List<Object>> groups = collectGroupResults(thisObj, callback, thisArg);
-            JSMapObject map = JSMap.create(getContext(), getRealm());
-            return createGroupResult(map, groups);
-        }
-
-        @Override
-        protected final Object toKey(Object callbackResult) {
-            return normalizeKeyNode.execute(callbackResult);
-        }
-
-        @TruffleBoundary
-        protected Object createGroupResult(JSMapObject map, Map<Object, List<Object>> groups) {
-            JSHashMap internalMap = JSMap.getInternalMap(map);
-            JSRealm realm = getRealm();
-            for (Map.Entry<Object, List<Object>> entry : groups.entrySet()) {
-                JSDynamicObject elements = JSArray.createConstant(getContext(), realm, entry.getValue().toArray());
-                internalMap.put(entry.getKey(), elements);
-            }
-            return map;
         }
     }
 

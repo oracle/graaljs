@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.9.4",
+  "mxversion" : "6.27.1",
 
   "name" : "graal-js",
 
@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "bb4a66da320a64720f506422df8227818601f789",
+           "version" : "53bd3f0cb3f3a4e07d725203f3c352e34c6a845d",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
@@ -109,7 +109,7 @@ suite = {
         "com.oracle.truffle.js.annotations",
         "com.oracle.truffle.js.codec",
         "com.oracle.truffle.js.runtime.doubleconv",
-        "truffle:ICU4J",
+        "truffle:TRUFFLE_ICU4J",
       ],
       "requires" : [
         "java.management",
@@ -120,7 +120,7 @@ suite = {
       "jacoco" : "include",
       "spotbugs" : "true",
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -147,7 +147,7 @@ suite = {
       "jacoco" : "include",
       "spotbugs" : "true",
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -300,6 +300,25 @@ suite = {
       "testProject" : True,
     },
 
+    "com.oracle.truffle.js.test.fetch" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "sdk:GRAAL_SDK",
+        "com.oracle.truffle.js.test",
+      ],
+      "requires" : [
+        "java.net.http",
+        "jdk.httpserver",
+      ],
+      "checkstyle" : "com.oracle.truffle.js",
+      "spotbugs" : "true",
+      "javaCompliance" : "17+",
+      "workingSets" : "Truffle,JavaScript",
+      "testProject" : True,
+    },
+
     "com.oracle.truffle.js.scriptengine" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -426,9 +445,9 @@ suite = {
         "regex:TREGEX",
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
+        "truffle:TRUFFLE_ICU4J",
       ],
       "exclude" : [
-        "truffle:ICU4J",
       ],
       "description" : "Graal JavaScript engine",
       "maven" : {
@@ -523,7 +542,13 @@ suite = {
     },
 
     "TRUFFLE_JS_TESTS" : {
-      "dependencies" : ["com.oracle.truffle.js.test", "com.oracle.truffle.js.test.external", "com.oracle.truffle.js.test.instrumentation", "com.oracle.truffle.js.test.threading"],
+      "dependencies" : [
+        "com.oracle.truffle.js.test",
+        "com.oracle.truffle.js.test.external",
+        "com.oracle.truffle.js.test.fetch",
+        "com.oracle.truffle.js.test.instrumentation",
+        "com.oracle.truffle.js.test.threading",
+      ],
       "exclude" : [
         "mx:HAMCREST",
         "mx:JUNIT",
@@ -589,7 +614,8 @@ suite = {
       "distDependencies" : [
         "sdk:GRAAL_SDK",
         "GRAALJS"
-      ]
+      ],
+      "maven" : False,
     }
   }
 }

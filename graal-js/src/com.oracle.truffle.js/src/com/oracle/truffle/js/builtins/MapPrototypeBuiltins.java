@@ -64,7 +64,6 @@ import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapHasNodeGe
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapSetNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetSizeNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
-import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -80,9 +79,11 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -471,32 +472,20 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
     @ImportStatic({JSConfig.class, JSRuntime.class, JSMapOperation.class})
     public abstract static class CreateMapIteratorNode extends JSBuiltinNode {
         private final int iterationKind;
-        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
-        @Child private PropertySetNode setNextIndexNode;
-        @Child private PropertySetNode setIteratedObjectNode;
-        @Child private PropertySetNode setIterationKindNode;
 
         public CreateMapIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
             super(context, builtin);
             this.iterationKind = iterationKind;
-            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
-            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
-            this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
-            this.setIterationKindNode = PropertySetNode.createSetHidden(JSMap.MAP_ITERATION_KIND_ID, context);
         }
 
         @Specialization
-        protected JSDynamicObject doMap(JSMapObject map) {
-            JSDynamicObject iterator = createObjectNode.execute(getRealm().getMapIteratorPrototype());
-            setIteratedObjectNode.setValue(iterator, map);
-            setNextIndexNode.setValue(iterator, JSMap.getInternalMap(map).getEntries());
-            setIterationKindNode.setValueInt(iterator, iterationKind);
-            return iterator;
+        protected final JSObject doMap(JSMapObject map) {
+            return JSMapIterator.create(getContext(), getRealm(), map, JSMap.getInternalMap(map).getEntries(), iterationKind);
         }
 
         @InliningCutoff
         @Specialization(guards = {"!isJSMap(map)", "isForeignHash(map, mapLib)"})
-        protected final JSDynamicObject doForeignMap(Object map,
+        protected final JSObject doForeignMap(Object map,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
                         @Cached("createSetHidden(ENUMERATE_ITERATOR_ID, getContext())") PropertySetNode setEnumerateIteratorNode) {
             Object iterator;
@@ -513,14 +502,14 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 throw Errors.createTypeErrorInteropException(map, e, "get hash iterator", this);
             }
 
-            JSDynamicObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());
+            JSObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());
             setEnumerateIteratorNode.setValue(iteratorObj, iterator);
             return iteratorObj;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
-        protected static JSDynamicObject doIncompatibleReceiver(Object thisObj,
+        protected static JSObject doIncompatibleReceiver(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }

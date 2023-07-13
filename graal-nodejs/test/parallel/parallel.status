@@ -71,6 +71,9 @@ test-worker-heap-snapshot: SKIP
 # https://example.com does not work in CI
 test-https-agent-unref-socket: SKIP
 
+# obsolete test (narrow space in date/time format)
+test-intl: FAIL
+
 # missing support for ModifyCodeGenerationFromStringsCallback
 test-source-map-api: FAIL
 

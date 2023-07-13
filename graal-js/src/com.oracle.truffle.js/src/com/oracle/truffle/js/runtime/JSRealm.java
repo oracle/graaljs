@@ -61,14 +61,14 @@ import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
-import com.ibm.icu.text.DateFormat;
-import com.ibm.icu.text.SimpleDateFormat;
-import com.ibm.icu.text.TimeZoneFormat;
-import com.ibm.icu.text.TimeZoneNames;
-import com.ibm.icu.util.Calendar;
-import com.ibm.icu.util.GregorianCalendar;
-import com.ibm.icu.util.TimeZone;
-import com.ibm.icu.util.ULocale;
+import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
+import org.graalvm.shadowed.com.ibm.icu.text.SimpleDateFormat;
+import org.graalvm.shadowed.com.ibm.icu.text.TimeZoneFormat;
+import org.graalvm.shadowed.com.ibm.icu.text.TimeZoneNames;
+import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
+import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -87,7 +87,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AsyncIteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
@@ -98,7 +97,6 @@ import com.oracle.truffle.js.builtins.IteratorHelperPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.JavaBuiltins;
 import com.oracle.truffle.js.builtins.MLEBuiltins;
-import com.oracle.truffle.js.builtins.MapIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltins;
 import com.oracle.truffle.js.builtins.OperatorsBuiltins;
 import com.oracle.truffle.js.builtins.PerformanceBuiltins;
@@ -107,8 +105,6 @@ import com.oracle.truffle.js.builtins.RealmFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ReflectBuiltins;
 import com.oracle.truffle.js.builtins.RegExpBuiltins;
 import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltins;
-import com.oracle.truffle.js.builtins.SetIteratorPrototypeBuiltins;
-import com.oracle.truffle.js.builtins.StringIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
 import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltins;
@@ -124,6 +120,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
@@ -139,6 +136,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSON;
@@ -150,9 +148,11 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSetIterator;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSStringIterator;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
@@ -161,6 +161,9 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContext;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextSnapshot;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariable;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
@@ -279,7 +282,7 @@ public class JSRealm {
     private final JSDynamicObject localePrototype;
     private final JSFunctionObject dateConstructor;
     private final JSDynamicObject datePrototype;
-    @CompilationFinal(dimensions = 1) private final JSDynamicObject[] errorConstructors;
+    @CompilationFinal(dimensions = 1) private final JSFunctionObject[] errorConstructors;
     @CompilationFinal(dimensions = 1) private final JSDynamicObject[] errorPrototypes;
     private final JSFunctionObject callSiteConstructor;
     private final JSDynamicObject callSitePrototype;
@@ -478,6 +481,11 @@ public class JSRealm {
 
     private final JSFunctionObject shadowRealmConstructor;
     private final JSDynamicObject shadowRealmPrototype;
+
+    private final JSFunctionObject asyncContextSnapshotConstructor;
+    private final JSDynamicObject asyncContextSnapshotPrototype;
+    private final JSFunctionObject asyncContextVariableConstructor;
+    private final JSDynamicObject asyncContextVariablePrototype;
 
     /** Foreign object prototypes. */
     private final JSDynamicObject foreignIterablePrototype;
@@ -702,7 +710,7 @@ public class JSRealm {
             this.promisePrototype = null;
         }
 
-        this.errorConstructors = new JSDynamicObject[JSErrorType.errorTypes().length];
+        this.errorConstructors = new JSFunctionObject[JSErrorType.errorTypes().length];
         this.errorPrototypes = new JSDynamicObject[JSErrorType.errorTypes().length];
         initializeErrorConstructors();
         ctor = JSError.createCallSiteConstructor(this);
@@ -758,10 +766,10 @@ public class JSRealm {
             }
         }
 
-        this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
-        this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
-        this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
-        this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
+        this.arrayIteratorPrototype = es6 ? JSArrayIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
+        this.setIteratorPrototype = es6 ? JSSetIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
+        this.mapIteratorPrototype = es6 ? JSMapIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
+        this.stringIteratorPrototype = es6 ? JSStringIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
         this.regExpStringIteratorPrototype = ecmaScriptVersion >= JSConfig.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
 
         ctor = JSCollator.createConstructor(this);
@@ -1057,6 +1065,19 @@ public class JSRealm {
             this.shadowRealmConstructor = null;
             this.shadowRealmPrototype = null;
         }
+        if (context.getLanguageOptions().asyncContext()) {
+            ctor = JSAsyncContextSnapshot.createConstructor(this);
+            this.asyncContextSnapshotConstructor = ctor.getFunctionObject();
+            this.asyncContextSnapshotPrototype = ctor.getPrototype();
+            ctor = JSAsyncContextVariable.createConstructor(this);
+            this.asyncContextVariableConstructor = ctor.getFunctionObject();
+            this.asyncContextVariablePrototype = ctor.getPrototype();
+        } else {
+            this.asyncContextSnapshotConstructor = null;
+            this.asyncContextSnapshotPrototype = null;
+            this.asyncContextVariableConstructor = null;
+            this.asyncContextVariablePrototype = null;
+        }
 
         // always create, regardless of context.isOptionForeignObjectPrototype()
         // we use them in some scenarios even when option is turned off
@@ -1170,7 +1191,7 @@ public class JSRealm {
         return objectConstructor;
     }
 
-    public final JSDynamicObject getErrorConstructor(JSErrorType type) {
+    public final JSFunctionObject getErrorConstructor(JSErrorType type) {
         return errorConstructors[type.ordinal()];
     }
 
@@ -1791,6 +1812,22 @@ public class JSRealm {
         return shadowRealmPrototype;
     }
 
+    public final JSFunctionObject getAsyncContextSnapshotConstructor() {
+        return asyncContextSnapshotConstructor;
+    }
+
+    public final JSDynamicObject getAsyncContextSnapshotPrototype() {
+        return asyncContextSnapshotPrototype;
+    }
+
+    public final JSFunctionObject getAsyncContexVariableConstructor() {
+        return asyncContextVariableConstructor;
+    }
+
+    public final JSDynamicObject getAsyncContextVariablePrototype() {
+        return asyncContextVariablePrototype;
+    }
+
     public final JSContextOptions getContextOptions() {
         return contextOptions;
     }
@@ -1938,6 +1975,9 @@ public class JSRealm {
         }
         if (getContextOptions().isShadowRealm()) {
             putGlobalProperty(JSShadowRealm.CLASS_NAME, getShadowRealmConstructor());
+        }
+        if (getContextOptions().isAsyncContext()) {
+            putGlobalProperty(JSAsyncContext.NAMESPACE_NAME, JSAsyncContext.create(this));
         }
         if (context.getLanguageOptions().profileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
@@ -2272,26 +2312,6 @@ public class JSRealm {
         return JSFunction.create(realm, realm.getContext().getSymbolIteratorThisGetterFunctionData());
     }
 
-    /**
-     * Creates the %ArrayIteratorPrototype% object as specified in ES6 22.1.5.2.
-     */
-    private JSDynamicObject createArrayIteratorPrototype() {
-        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, ArrayIteratorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, JSArray.ITERATOR_CLASS_NAME);
-        return prototype;
-    }
-
-    /**
-     * Creates the %SetIteratorPrototype% object.
-     */
-    private JSDynamicObject createSetIteratorPrototype() {
-        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, SetIteratorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, JSSet.ITERATOR_CLASS_NAME);
-        return prototype;
-    }
-
     private JSDynamicObject createIteratorHelperPrototype() {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, IteratorHelperPrototypeBuiltins.BUILTINS);
@@ -2303,26 +2323,6 @@ public class JSRealm {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.asyncIteratorPrototype);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, AsyncIteratorHelperPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, AsyncIteratorHelperPrototypeBuiltins.TO_STRING_TAG);
-        return prototype;
-    }
-
-    /**
-     * Creates the %MapIteratorPrototype% object.
-     */
-    private JSDynamicObject createMapIteratorPrototype() {
-        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, MapIteratorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, JSMap.ITERATOR_CLASS_NAME);
-        return prototype;
-    }
-
-    /**
-     * Creates the %StringIteratorPrototype% object.
-     */
-    private JSDynamicObject createStringIteratorPrototype() {
-        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, StringIteratorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, JSString.ITERATOR_CLASS_NAME);
         return prototype;
     }
 

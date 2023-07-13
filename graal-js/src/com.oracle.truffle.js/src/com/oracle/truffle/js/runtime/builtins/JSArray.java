@@ -45,7 +45,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins;
@@ -85,15 +84,10 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
 
     public static final TruffleString CLASS_NAME = Strings.constant("Array");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Array.prototype");
-    public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("Array Iterator");
-    public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("Array Iterator.prototype");
-    public static final TruffleString ENTRIES = Strings.constant("entries");
 
     public static final JSArray INSTANCE = new JSArray();
 
     static final ArrayLengthProxyProperty ARRAY_LENGTH_PROPERTY_PROXY = new ArrayLengthProxyProperty();
-
-    public static final HiddenKey ARRAY_ITERATION_KIND_ID = new HiddenKey("ArrayIterationKind");
 
     private JSArray() {
     }
@@ -220,11 +214,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             names.add(Strings.AT);
         }
         names.add(Strings.COPY_WITHIN);
-        names.add(JSArray.ENTRIES);
+        names.add(Strings.ENTRIES);
         names.add(Strings.FILL);
         names.add(Strings.FIND);
         names.add(Strings.FIND_INDEX);
-        if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2023) {
             names.add(Strings.FIND_LAST);
             names.add(Strings.FIND_LAST_INDEX);
         }
@@ -240,9 +234,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             names.add(Strings.INCLUDES);
         }
         names.add(Strings.KEYS);
-        names.add(Strings.TO_REVERSED);
-        names.add(Strings.TO_SORTED);
-        names.add(Strings.TO_SPLICED);
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2023) {
+            names.add(Strings.TO_REVERSED);
+            names.add(Strings.TO_SORTED);
+            names.add(Strings.TO_SPLICED);
+        }
         names.add(Strings.VALUES);
         assert isSorted(names);
         return names;

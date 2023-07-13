@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltins;
@@ -64,11 +63,6 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
 
     public static final TruffleString CLASS_NAME = Strings.constant("Set");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Set.prototype");
-
-    public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("Set Iterator");
-    public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("Set Iterator.prototype");
-
-    public static final HiddenKey SET_ITERATION_KIND_ID = new HiddenKey("SetIterationKind");
 
     private JSSet() {
     }

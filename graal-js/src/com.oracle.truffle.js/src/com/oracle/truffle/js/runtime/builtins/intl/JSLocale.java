@@ -42,7 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.util.Locale;
 
-import com.ibm.icu.util.ULocale;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -216,11 +216,6 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         String kn = locale.getUnicodeLocaleType("kn");
         state.numeric = "true".equals(kn) || "".equals(kn);
         state.numberingSystem = locale.getUnicodeLocaleType("nu");
-    }
-
-    public static InternalState getInternalState(JSDynamicObject localeObject) {
-        assert isJSLocale(localeObject);
-        return ((JSLocaleObject) localeObject).getInternalState();
     }
 
     @Override

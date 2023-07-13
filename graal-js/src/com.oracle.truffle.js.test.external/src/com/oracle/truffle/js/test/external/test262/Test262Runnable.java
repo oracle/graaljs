@@ -221,6 +221,7 @@ public class Test262Runnable extends TestRunnable {
                     "import-assertions",
                     "import.meta",
                     "intl-normative-optional",
+                    "iterator-helpers",
                     "json-modules",
                     "json-superset",
                     "legacy-regexp",
@@ -259,19 +260,17 @@ public class Test262Runnable extends TestRunnable {
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     });
-    private static final Set<String> ES2023_FEATURES = featureSet(new String[]{
+    private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
                     "Atomics.waitAsync",
+                    "FinalizationRegistry.prototype.cleanupSome",
                     "Intl-enumeration",
                     "Intl.DateTimeFormat-extend-timezonename",
                     "Intl.Locale-info",
                     "Intl.NumberFormat-v3",
                     "ShadowRealm",
-                    "array-find-from-last",
                     "array-grouping",
                     "arraybuffer-transfer",
-                    "change-array-by-copy",
                     "decorators",
-                    "symbols-as-weakmap-keys",
     });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
@@ -313,6 +312,9 @@ public class Test262Runnable extends TestRunnable {
         if (features.contains("regexp-v-flag")) {
             extraOptions.put(JSContextOptions.REGEXP_UNICODE_SETS_NAME, "true");
         }
+        if (features.contains("iterator-helpers")) {
+            extraOptions.put(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
 
@@ -334,8 +336,8 @@ public class Test262Runnable extends TestRunnable {
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
                 assert !UNSUPPORTED_FEATURES.contains(feature) : feature;
-                if (ES2023_FEATURES.contains(feature)) {
-                    featureVersion = JSConfig.ECMAScript2023;
+                if (STAGING_FEATURES.contains(feature)) {
+                    featureVersion = JSConfig.StagingECMAScriptVersion;
                 }
             } else {
                 assert UNSUPPORTED_FEATURES.contains(feature) : feature;
@@ -517,7 +519,7 @@ public class Test262Runnable extends TestRunnable {
                 Matcher matcher = NEGATIVE_PREFIX.matcher(line);
                 if (matcher.find()) {
                     String candidate = line.substring(matcher.end());
-                    if (candidate.length() > 0) {
+                    if (!candidate.isBlank()) {
                         return candidate;
                     } else {
                         lookForType = true;

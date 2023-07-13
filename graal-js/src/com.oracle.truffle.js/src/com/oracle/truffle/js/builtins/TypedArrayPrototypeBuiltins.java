@@ -61,7 +61,6 @@ import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBuffer
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferSliceNode;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArrayForEachIndexCallOperation;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.CreateArrayIteratorNode;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperationWithToInt;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayAtNodeGen;
@@ -112,6 +111,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -173,11 +173,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         // ES2022
         at(1),
 
-        // ES 2023
+        // ES2023
         findLast(1),
         findLastIndex(1),
-
-        // Change-Array-By-Copy
         toReversed(0),
         toSorted(1),
         with(2);
@@ -200,7 +198,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else if (this == at) {
                 return JSConfig.ECMAScript2022;
             } else if (EnumSet.of(findLast, findLastIndex, toReversed, toSorted, with).contains(this)) {
-                return JSConfig.StagingECMAScriptVersion;
+                return JSConfig.ECMAScript2023;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -784,31 +782,31 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public abstract static class JSArrayBufferViewIteratorNode extends JSBuiltinNode {
-        @Child private CreateArrayIteratorNode createArrayIteratorNode;
-        private final BranchProfile errorBranch = BranchProfile.create();
+        private final int iterationKind;
 
         public JSArrayBufferViewIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
             super(context, builtin);
-            this.createArrayIteratorNode = CreateArrayIteratorNode.create(context, iterationKind);
+            this.iterationKind = iterationKind;
         }
 
-        @Specialization(guards = "isJSArrayBufferView(thisObj)")
-        protected JSDynamicObject doObject(JSDynamicObject thisObj) {
-            checkHasDetachedBuffer(thisObj);
-            return createArrayIteratorNode.execute(thisObj);
+        private JSObject createArrayIterator(Object thisObj) {
+            return JSArrayIterator.create(getContext(), getRealm(), thisObj, 0L, iterationKind);
+        }
+
+        @Specialization
+        protected final JSObject doObject(JSTypedArrayObject thisObj,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (JSArrayBufferView.hasDetachedBuffer(thisObj, getContext())) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorDetachedBuffer();
+            }
+            return createArrayIterator(thisObj);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSArrayBufferView(thisObj)")
-        protected JSDynamicObject doNotObject(Object thisObj) {
+        protected static JSObject doNotObject(Object thisObj) {
             throw Errors.createTypeErrorArrayBufferViewExpected();
-        }
-
-        protected final void checkHasDetachedBuffer(JSDynamicObject view) {
-            if (JSArrayBufferView.hasDetachedBuffer(view, getContext())) {
-                errorBranch.enter();
-                throw Errors.createTypeErrorDetachedBuffer();
-            }
         }
     }
 

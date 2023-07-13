@@ -102,7 +102,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
 
     @Specialization
     protected String[] doLocale(JSLocaleObject object) {
-        return doJavaString(JSLocale.getInternalState(object).getLocale());
+        return doJavaString(object.getInternalState().getLocale());
     }
 
     @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isUndefined(object)", "!isJSLocale(object)"})
@@ -127,7 +127,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                 }
                 String lt;
                 if (JSLocale.isJSLocale(kValue)) {
-                    lt = JSLocale.getInternalState((JSDynamicObject) kValue).getLocale();
+                    lt = ((JSLocaleObject) kValue).getInternalState().getLocale();
                 } else {
                     lt = Strings.toJavaString(toJavaStringNode, toStringNode.executeString(kValue));
                 }

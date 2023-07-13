@@ -91,6 +91,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -353,7 +354,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected Object enqueueJob(Object function) {
             if (JSFunction.isJSFunction(function)) {
-                getContext().promiseEnqueueJob(getRealm(), (JSFunctionObject) function);
+                getContext().enqueuePromiseJob(getRealm(), (JSFunctionObject) function);
             }
             return 0;
         }
@@ -372,8 +373,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             this.getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
         }
 
-        @Specialization(guards = "isJSObject(syncIterator)")
-        protected Object createAsyncFromSyncIterator(JSDynamicObject syncIterator) {
+        @Specialization
+        protected Object createAsyncFromSyncIterator(JSObject syncIterator) {
             JSContext context = getContext();
             JSObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
             IteratorRecord syncIteratorRecord = IteratorRecord.create(syncIterator, getNextMethodNode.getValue(syncIterator), false);
@@ -439,12 +440,12 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         protected Object setTimeout(Object callback) {
             assert JSRuntime.isCallable(callback);
             JSRealm realm = getRealm();
-            List<Object> embedderData = (List<Object>) realm.getEmbedderData();
+            List<JobCallback> embedderData = (List<JobCallback>) realm.getEmbedderData();
             if (embedderData == null) {
                 embedderData = new ArrayList<>();
                 realm.setEmbedderData(embedderData);
             }
-            embedderData.add(callback);
+            embedderData.add(realm.getAgent().hostMakeJobCallback(callback));
             return Undefined.instance;
         }
     }

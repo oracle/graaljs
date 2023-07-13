@@ -53,6 +53,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -87,6 +88,14 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
         @Override
         public int getLength() {
             return length;
+        }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (this == cleanupSome) {
+                return JSConfig.StagingECMAScriptVersion;
+            }
+            return JSConfig.ECMAScript2021;
         }
     }
 

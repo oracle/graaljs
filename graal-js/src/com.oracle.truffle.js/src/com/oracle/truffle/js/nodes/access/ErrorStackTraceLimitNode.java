@@ -48,7 +48,7 @@ import com.oracle.truffle.js.nodes.cast.IsNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.builtins.JSError;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -68,7 +68,7 @@ public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
     protected final int doInt(
                     @Cached IsNumberNode isNumber,
                     @Cached JSToIntegerAsLongNode toInteger) {
-        JSDynamicObject errorConstructor = getRealm().getErrorConstructor(JSErrorType.Error);
+        JSFunctionObject errorConstructor = getRealm().getErrorConstructor(JSErrorType.Error);
         if (JSProperty.isData(getStackTraceLimit.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
             Object value = getStackTraceLimit.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
             if (isNumber.execute(this, value)) {

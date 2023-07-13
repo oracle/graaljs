@@ -43,13 +43,13 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.ibm.icu.number.FormattedNumber;
-import com.ibm.icu.number.FormattedNumberRange;
-import com.ibm.icu.number.LocalizedNumberFormatter;
-import com.ibm.icu.number.LocalizedNumberRangeFormatter;
-import com.ibm.icu.number.NumberRangeFormatter;
-import com.ibm.icu.text.PluralRules;
-import com.ibm.icu.text.PluralRules.PluralType;
+import org.graalvm.shadowed.com.ibm.icu.number.FormattedNumber;
+import org.graalvm.shadowed.com.ibm.icu.number.FormattedNumberRange;
+import org.graalvm.shadowed.com.ibm.icu.number.LocalizedNumberFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.LocalizedNumberRangeFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.NumberRangeFormatter;
+import org.graalvm.shadowed.com.ibm.icu.text.PluralRules;
+import org.graalvm.shadowed.com.ibm.icu.text.PluralRules.PluralType;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -123,16 +123,16 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         return context.trackAllocation(obj);
     }
 
-    public static PluralRules getPluralRulesProperty(JSDynamicObject obj) {
-        return getInternalState(obj).getPluralRules();
+    public static PluralRules getPluralRulesProperty(JSPluralRulesObject obj) {
+        return obj.getInternalState().getPluralRules();
     }
 
-    public static LocalizedNumberFormatter getNumberFormatter(JSDynamicObject obj) {
-        return getInternalState(obj).getNumberFormatter();
+    public static LocalizedNumberFormatter getNumberFormatter(JSPluralRulesObject obj) {
+        return obj.getInternalState().getNumberFormatter();
     }
 
     @TruffleBoundary
-    public static TruffleString select(JSDynamicObject pluralRulesObj, Object n) {
+    public static TruffleString select(JSPluralRulesObject pluralRulesObj, Object n) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
         LocalizedNumberFormatter numberFormatter = getNumberFormatter(pluralRulesObj);
         Number number = JSRuntime.toNumber(n);
@@ -141,9 +141,9 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @TruffleBoundary
-    public static TruffleString selectRange(JSDynamicObject pluralRulesObj, double x, double y) {
+    public static TruffleString selectRange(JSPluralRulesObject pluralRulesObj, double x, double y) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
-        LocalizedNumberRangeFormatter rangeFormatter = getInternalState(pluralRulesObj).getNumberRangeFormatter();
+        LocalizedNumberRangeFormatter rangeFormatter = pluralRulesObj.getInternalState().getNumberRangeFormatter();
         FormattedNumberRange formattedRange = rangeFormatter.formatRange(x, y);
         return Strings.fromJavaString(pluralRules.select(formattedRange));
     }
@@ -201,14 +201,9 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject pluralRulesObj) {
-        InternalState state = getInternalState(pluralRulesObj);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSPluralRulesObject pluralRulesObj) {
+        InternalState state = pluralRulesObj.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject obj) {
-        assert isJSPluralRules(obj);
-        return ((JSPluralRulesObject) obj).getInternalState();
     }
 
     @Override

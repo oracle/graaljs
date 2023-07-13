@@ -58,12 +58,14 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -129,8 +131,8 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                JSDynamicObject promise = (JSDynamicObject) getPromise(functionObject);
+                JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSPromiseObject promise = (JSPromiseObject) getPromise(functionObject);
                 Object resolution = resolutionNode.execute(frame);
                 AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolvedNode.getValue(functionObject);
                 if (alreadyResolvedProfile.profile(alreadyResolved.value)) {
@@ -157,12 +159,13 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 if (!isCallableNode.executeBoolean(then)) {
                     return fulfillPromise(promise, resolution);
                 }
-                JSFunctionObject job = promiseResolveThenableJob(promise, resolution, then);
-                context.promiseEnqueueJob(getRealm(), job);
+                JobCallback thenJobCallback = getRealm().getAgent().hostMakeJobCallback(then);
+                JSFunctionObject job = promiseResolveThenableJob(promise, resolution, thenJobCallback);
+                context.enqueuePromiseJob(getRealm(), job);
                 return Undefined.instance;
             }
 
-            private Object fulfillPromise(JSDynamicObject promise, Object resolution) {
+            private Object fulfillPromise(JSPromiseObject promise, Object resolution) {
                 if (fulfillPromiseNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     fulfillPromiseNode = insert(FulfillPromiseNode.create(context));
@@ -186,7 +189,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 return getPromiseNode.getValue(functionObject);
             }
 
-            private Object rejectPromise(JSDynamicObject promise, AbstractTruffleException exception) {
+            private Object rejectPromise(JSPromiseObject promise, AbstractTruffleException exception) {
                 Object error = getErrorObjectNode.execute(exception);
                 return rejectPromiseNode.execute(promise, error);
             }
@@ -199,7 +202,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 }
             }
 
-            private JSFunctionObject promiseResolveThenableJob(JSDynamicObject promise, Object thenable, Object then) {
+            private JSFunctionObject promiseResolveThenableJob(JSDynamicObject promise, Object thenable, JobCallback then) {
                 if (setPromiseNode == null || setThenableNode == null || setThenNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setPromiseNode = insert(PropertySetNode.createSetHidden(PROMISE_KEY, context));
@@ -233,10 +236,10 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                JSDynamicObject promiseToResolve = (JSDynamicObject) getPromiseToResolveNode.getValue(functionObject);
+                JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSPromiseObject promiseToResolve = (JSPromiseObject) getPromiseToResolveNode.getValue(functionObject);
                 Object thenable = getThenableNode.getValue(functionObject);
-                Object then = getThenNode.getValue(functionObject);
+                JobCallback then = (JobCallback) getThenNode.getValue(functionObject);
                 return promiseResolveThenable.execute(promiseToResolve, thenable, then);
             }
         }
@@ -262,8 +265,8 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Override
             public Object execute(VirtualFrame frame) {
                 init();
-                JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                JSDynamicObject promise = (JSDynamicObject) getPromiseNode.getValue(functionObject);
+                JSFunctionObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                JSPromiseObject promise = (JSPromiseObject) getPromiseNode.getValue(functionObject);
                 Object reason = reasonNode.execute(frame);
                 AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolvedNode.getValue(functionObject);
                 if (alreadyResolvedProfile.profile(alreadyResolved.value)) {

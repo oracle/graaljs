@@ -1438,8 +1438,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        @Specialization(guards = "isJSObject(scriptObj)")
-        protected Object loadScriptObj(JSDynamicObject scriptObj, Object[] args) {
+        @Specialization
+        protected Object loadScriptObj(JSObject scriptObj, Object[] args) {
             if (JSObject.hasProperty(scriptObj, Strings.EVAL_OBJ_FILE_NAME) && JSObject.hasProperty(scriptObj, Strings.EVAL_OBJ_SOURCE)) {
                 Object scriptNameObj = JSObject.get(scriptObj, Strings.EVAL_OBJ_FILE_NAME);
                 Object sourceObj = JSObject.get(scriptObj, Strings.EVAL_OBJ_SOURCE);

@@ -46,7 +46,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * ES6 7.4.7 CreateIterResultObject (value, done).
@@ -68,12 +68,12 @@ public abstract class CreateIterResultObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected JSDynamicObject doCreateIterResultObject(VirtualFrame frame, Object value, boolean done) {
-        JSDynamicObject iterResult = createObjectNode.execute(frame);
+    protected JSObject doCreateIterResultObject(VirtualFrame frame, Object value, boolean done) {
+        JSObject iterResult = createObjectNode.execute(frame);
         createValuePropertyNode.executeVoid(iterResult, value);
         createDonePropertyNode.executeVoid(iterResult, done);
         return iterResult;
     }
 
-    public abstract JSDynamicObject execute(VirtualFrame frame, Object value, boolean done);
+    public abstract JSObject execute(VirtualFrame frame, Object value, boolean done);
 }

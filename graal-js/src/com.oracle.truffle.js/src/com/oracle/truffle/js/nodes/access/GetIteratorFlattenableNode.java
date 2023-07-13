@@ -85,8 +85,8 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
                     @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode,
                     @Cached @Exclusive IsObjectNode isIteratorObjectNode,
                     @Cached IsCallableNode isCallableNode,
-                    @Cached(value = "create(SYMBOL_ASYNC_ITERATOR, context)") PropertyGetNode getAsyncIteratorMethodNode,
-                    @Cached(value = "create(SYMBOL_ITERATOR, context)") PropertyGetNode getIteratorMethodNode,
+                    @Cached(value = "create(context, SYMBOL_ASYNC_ITERATOR)") GetMethodNode getAsyncIteratorMethodNode,
+                    @Cached(value = "create(context, SYMBOL_ITERATOR)") GetMethodNode getIteratorMethodNode,
                     @Cached(value = "createCall()") JSFunctionCallNode iteratorCallNode,
                     @Cached(value = "create(NEXT, context)") PropertyGetNode getNextMethodNode,
                     @Cached(value = "createSetHidden(ASYNC_FROM_SYNC_ITERATOR_KEY, context)") PropertySetNode setSyncIteratorRecordNode,
@@ -94,15 +94,15 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
         boolean alreadyAsync = false;
         Object method = Undefined.instance;
         if (async) {
-            method = getAsyncIteratorMethodNode.getValue(iteratedObject);
+            method = getAsyncIteratorMethodNode.executeWithTarget(iteratedObject);
             alreadyAsync = true;
         }
         if (!async || !isCallableNode.executeBoolean(method)) {
-            method = getIteratorMethodNode.getValue(iteratedObject);
+            method = getIteratorMethodNode.executeWithTarget(iteratedObject);
             alreadyAsync = false;
         }
         Object iterator;
-        if (!isCallableNode.executeBoolean(method)) {
+        if (method == Undefined.instance) {
             iterator = iteratedObject;
             alreadyAsync = true;
         } else {

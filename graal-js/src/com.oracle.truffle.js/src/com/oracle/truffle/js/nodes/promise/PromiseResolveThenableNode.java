@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,11 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JobCallback;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -68,12 +71,32 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         return new PromiseResolveThenableNode(context);
     }
 
-    public Object execute(JSDynamicObject promiseToResolve, Object thenable, Object then) {
-        Pair<JSDynamicObject, JSDynamicObject> resolvingFunctions = createResolvingFunctions.execute(promiseToResolve);
+    /**
+     * Calls the executor with the newly allocated promise's resolving functions.
+     */
+    public Object executePromiseConstructor(JSPromiseObject promise, Object executor) {
+        Pair<JSDynamicObject, JSDynamicObject> resolvingFunctions = createResolvingFunctions.execute(promise);
         JSDynamicObject resolve = resolvingFunctions.getFirst();
         JSDynamicObject reject = resolvingFunctions.getSecond();
         try {
-            return callResolveNode.executeCall(JSArguments.create(thenable, then, resolve, reject));
+            return callResolveNode.executeCall(JSArguments.create(Undefined.instance, executor, resolve, reject));
+        } catch (AbstractTruffleException ex) {
+            return callReject(reject, ex);
+        }
+    }
+
+    public Object execute(JSPromiseObject promiseToResolve, Object thenable, JobCallback then) {
+        Pair<JSDynamicObject, JSDynamicObject> resolvingFunctions = createResolvingFunctions.execute(promiseToResolve);
+        JSDynamicObject resolve = resolvingFunctions.getFirst();
+        JSDynamicObject reject = resolvingFunctions.getSecond();
+        JSAgent agent = getRealm().getAgent();
+        try {
+            var previousContextMapping = agent.asyncContextSwap(then.asyncContextSnapshot());
+            try {
+                return callResolveNode.executeCall(JSArguments.create(thenable, then.callback(), resolve, reject));
+            } finally {
+                agent.asyncContextSwap(previousContextMapping);
+            }
         } catch (AbstractTruffleException ex) {
             return callReject(reject, ex);
         }

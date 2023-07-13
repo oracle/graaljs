@@ -237,7 +237,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
         @Specialization
         public Object doNumberFormat(JSNumberFormatObject numberFormatObj,
                         @Cached InlinedBranchProfile errorBranch) {
-            JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
+            JSNumberFormat.InternalState state = numberFormatObj.getInternalState();
 
             if (state == null) {
                 errorBranch.enter(this);

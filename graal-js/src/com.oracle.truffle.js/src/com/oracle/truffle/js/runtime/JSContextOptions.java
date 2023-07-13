@@ -559,6 +559,16 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SHADOW_REALM = new OptionKey<>(false);
     @CompilationFinal private boolean shadowRealm;
 
+    public static final String ASYNC_CONTEXT_NAME = JS_OPTION_PREFIX + "async-context";
+    @Option(name = ASYNC_CONTEXT_NAME, category = OptionCategory.EXPERT, help = "Enable AsyncContext proposal.") //
+    public static final OptionKey<Boolean> ASYNC_CONTEXT = new OptionKey<>(false);
+    @CompilationFinal private boolean asyncContext;
+
+    public static final String ALLOW_NARROW_SPACES_IN_DATE_FORMAT_NAME = JS_OPTION_PREFIX + "allow-narrow-spaces-in-date-format";
+    @Option(name = ALLOW_NARROW_SPACES_IN_DATE_FORMAT_NAME, category = OptionCategory.EXPERT, help = "Allow narrow spaces when formatting dates.") //
+    public static final OptionKey<Boolean> ALLOW_NARROW_SPACES_IN_DATE_FORMAT = new OptionKey<>(true);
+    @CompilationFinal private boolean allowNarrowSpacesInDateFormat;
+
     public static final String V8_INTRINSICS_NAME = JS_OPTION_PREFIX + "v8-intrinsics";
     @Option(name = V8_INTRINSICS_NAME, category = OptionCategory.INTERNAL, help = "Enable parsing of V8 intrinsics.") //
     public static final OptionKey<Boolean> V8_INTRINSICS = new OptionKey<>(false);
@@ -728,6 +738,7 @@ public final class JSContextOptions {
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
         this.iteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && readBooleanOption(ITERATOR_HELPERS);
         this.shadowRealm = getEcmaScriptVersion() >= JSConfig.ECMAScript2015 && readBooleanOption(SHADOW_REALM);
+        this.asyncContext = readBooleanOption(ASYNC_CONTEXT);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = ERROR_CAUSE.hasBeenSet(optionValues) ? readBooleanOption(ERROR_CAUSE) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
@@ -742,6 +753,7 @@ public final class JSContextOptions {
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
         this.scopeOptimization = readBooleanOption(SCOPE_OPTIMIZATION);
+        this.allowNarrowSpacesInDateFormat = ALLOW_NARROW_SPACES_IN_DATE_FORMAT.hasBeenSet(optionValues) ? readBooleanOption(ALLOW_NARROW_SPACES_IN_DATE_FORMAT) : !isV8CompatibilityMode();
         this.v8Intrinsics = readBooleanOption(V8_INTRINSICS);
     }
 
@@ -1124,6 +1136,10 @@ public final class JSContextOptions {
         return shadowRealm;
     }
 
+    public boolean isAsyncContext() {
+        return asyncContext;
+    }
+
     public boolean isOperatorOverloading() {
         return operatorOverloading;
     }
@@ -1158,6 +1174,10 @@ public final class JSContextOptions {
 
     public boolean isScopeOptimization() {
         return scopeOptimization;
+    }
+
+    public boolean allowNarrowSpacesInDateFormat() {
+        return allowNarrowSpacesInDateFormat;
     }
 
     public boolean isSyntaxExtensions() {

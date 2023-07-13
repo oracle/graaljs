@@ -27,111 +27,127 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "intl/date-format/date_style_time_style_hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
+  }, {
+    "filePath" : "intl/date-format/format_range_hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
+  }, {
+    "filePath" : "intl/date-format/hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
+  }, {
+    "filePath" : "intl/date-format/time_style_hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
+  }, {
     "filePath" : "intl/default_locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "intl/enumeration/calendar-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/callendar-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/collation-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/collation-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/currency-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/currency-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/numberingSystem-no-algorithm.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/numberingSystem-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/numberingSystem-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-invalid-key.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-name.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-property.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-valid-key.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/timeZone-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/unit-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
@@ -151,56 +167,56 @@
   }, {
     "filePath" : "intl/locale/locale-calendars.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars"
   }, {
     "filePath" : "intl/locale/locale-collations.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.collations"
   }, {
     "filePath" : "intl/locale/locale-info-check-property.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-check-return-types.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-ext.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-no-undefined.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-timezones-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.timeZones"
   }, {
     "filePath" : "intl/locale/locale-numberingSystems.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.numberingSystems"
@@ -245,6 +261,10 @@
     "status" : "FAIL",
     "comment" : "Different error message expected, passes otherwise"
   }, {
+    "filePath" : "intl/regress-1074578.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
+  }, {
     "filePath" : "intl/regress-1130489.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -252,6 +272,10 @@
     },
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
+  }, {
+    "filePath" : "intl/regress-527926.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
   }, {
     "filePath" : "intl/regress-7770.js",
     "status" : "FAIL",
@@ -747,6 +771,18 @@
     "status" : "FAIL",
     "comment" : "Expects globalThis.__proto__.__proto__ to be Object.prototype (not null)"
   }, {
+    "filePath" : "mjsunit/harmony/array-prototype-groupby-fast-path-assumptions.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, there is no Array.prototype.groupBy(ToMap) anymore."
+  }, {
+    "filePath" : "mjsunit/harmony/array-prototype-groupby.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, there is no Array.prototype.groupBy(ToMap) anymore."
+  }, {
+    "filePath" : "mjsunit/harmony/array-prototype-groupbytomap.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, there is no Array.prototype.groupBy(ToMap) anymore."
+  }, {
     "filePath" : "mjsunit/harmony/async-for-of-non-iterable.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -839,6 +875,10 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
+    "filePath" : "mjsunit/harmony/regexp-unicode-sets.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, will be fixed by the next test update."
+  }, {
     "filePath" : "mjsunit/harmony/shadowrealm-evaluate.js",
     "status" : "FAIL",
     "comment" : "Different error messages."
@@ -868,7 +908,10 @@
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanupsome-optional.js",
-    "status" : "FAIL",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
     "comment" : "Check of V8-specific behaviour: cleanupSome is not available unless --harmony-weak-refs-with-cleanup-some is used"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/finalizationregistry-independent-lifetime-multiple.js",

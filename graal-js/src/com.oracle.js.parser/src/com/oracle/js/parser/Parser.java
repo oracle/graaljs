@@ -6229,15 +6229,20 @@ public class Parser extends AbstractParser {
             expect(RPAREN);
         }
 
+        boolean parenthesized = true;
         if (canBeArrowParameterList) {
             if (arrowAhead) {
                 // arrow parameter list
                 commitArrowHead(coverFunction);
+                parenthesized = false;
             } else {
                 // parenthesized expression
-                assignmentExpression.makeParenthesized(Token.descPosition(primaryToken), finish);
                 revertArrowHead(coverFunction);
             }
+        }
+
+        if (parenthesized) {
+            assignmentExpression.makeParenthesized(Token.descPosition(primaryToken), finish);
         }
 
         return assignmentExpression;

@@ -42,10 +42,10 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.util.Locale;
 
-import com.ibm.icu.text.DateTimePatternGenerator;
-import com.ibm.icu.text.DisplayContext;
-import com.ibm.icu.text.LocaleDisplayNames;
-import com.ibm.icu.util.ULocale;
+import org.graalvm.shadowed.com.ibm.icu.text.DateTimePatternGenerator;
+import org.graalvm.shadowed.com.ibm.icu.text.DisplayContext;
+import org.graalvm.shadowed.com.ibm.icu.text.LocaleDisplayNames;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -224,14 +224,14 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject displayNamesObject) {
-        InternalState state = getInternalState(displayNamesObject);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSDisplayNamesObject displayNamesObject) {
+        InternalState state = displayNamesObject.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
     }
 
     @TruffleBoundary
-    public static Object of(JSDynamicObject displayNamesObject, String code) {
-        InternalState state = getInternalState(displayNamesObject);
+    public static Object of(JSDisplayNamesObject displayNamesObject, String code) {
+        InternalState state = displayNamesObject.getInternalState();
         String type = state.type;
         LocaleDisplayNames displayNames = state.displayNames;
         String result;
@@ -268,11 +268,6 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
                 throw Errors.shouldNotReachHere(type);
         }
         return (result == null) ? Undefined.instance : Strings.fromJavaString(result);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject displayNamesObject) {
-        assert isJSDisplayNames(displayNamesObject);
-        return ((JSDisplayNamesObject) displayNamesObject).getInternalState();
     }
 
     @Override

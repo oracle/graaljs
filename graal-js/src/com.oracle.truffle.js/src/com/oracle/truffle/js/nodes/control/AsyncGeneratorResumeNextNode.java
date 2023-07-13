@@ -68,7 +68,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -85,7 +85,6 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     @Child private AsyncGeneratorResolveNode asyncGeneratorResolveNode;
     @Child private AsyncGeneratorRejectNode asyncGeneratorRejectNode;
     @Child private PropertySetNode setGeneratorNode;
-    @Child private PropertySetNode setPromiseIsHandledNode;
     @Child private PromiseResolveNode promiseResolveNode;
     @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
     private final ConditionProfile abruptProf = ConditionProfile.create();
@@ -131,7 +130,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                     if (next.isReturn()) { // AsyncGeneratorAwaitReturn
                         enterReturnBranch();
                         setGeneratorStateNode.setValue(generator, AsyncGeneratorState.AwaitingReturn);
-                        JSDynamicObject promise;
+                        JSPromiseObject promise;
                         try {
                             promise = promiseResolve(next.getCompletionValue());
                         } catch (AbstractTruffleException e) {
@@ -162,13 +161,13 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         }
     }
 
-    private JSDynamicObject promiseResolve(Object value) {
+    private JSPromiseObject promiseResolve(Object value) {
         if (context.usePromiseResolve()) {
             if (promiseResolveNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 promiseResolveNode = insert(PromiseResolveNode.create(context));
             }
-            return promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
+            return (JSPromiseObject) promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
         } else {
             if (callPromiseResolveNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -176,7 +175,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
             }
             PromiseCapabilityRecord promiseCapability = newPromiseCapability();
             callPromiseResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), value));
-            return promiseCapability.getPromise();
+            return (JSPromiseObject) promiseCapability.getPromise();
         }
     }
 
@@ -206,11 +205,10 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     }
 
     private void enterReturnBranch() {
-        if (performPromiseThenNode == null || setGeneratorNode == null || setPromiseIsHandledNode == null) {
+        if (performPromiseThenNode == null || setGeneratorNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.performPromiseThenNode = insert(PerformPromiseThenNode.create(context));
             this.setGeneratorNode = insert(PropertySetNode.createSetHidden(RETURN_PROCESSOR_GENERATOR, context));
-            this.setPromiseIsHandledNode = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context));
         }
     }
 
@@ -226,12 +224,8 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
             return null;
         }
-        if (setPromiseIsHandledNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            setPromiseIsHandledNode = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context));
-        }
         PromiseCapabilityRecord throwawayCapability = newPromiseCapability();
-        setPromiseIsHandledNode.setValueBoolean(throwawayCapability.getPromise(), true);
+        ((JSPromiseObject) throwawayCapability.getPromise()).setIsHandled(true);
         return throwawayCapability;
     }
 
