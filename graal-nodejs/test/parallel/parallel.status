@@ -71,9 +71,6 @@ test-worker-heap-snapshot: SKIP
 # https://example.com does not work in CI
 test-https-agent-unref-socket: SKIP
 
-# obsolete test (narrow space in date/time format)
-test-intl: FAIL
-
 # missing support for ModifyCodeGenerationFromStringsCallback
 test-source-map-api: FAIL
 
@@ -110,9 +107,11 @@ test-vm-basic: FAIL
 # Missing support for lineOffset and columnOffset in ScriptOrigin
 test-vm-context: FAIL
 
-# WebAssembly is not supported
+# WebAssembly is not enabled by default
 test-fetch: FAIL
 test-fetch-disabled: FAIL
+test-http-response-setheaders: FAIL
+test-single-executable-application: SKIP
 test-vm-codegen: FAIL
 test-wasm-simple: FAIL
 test-wasm-web-api: FAIL
@@ -173,9 +172,9 @@ test-trace-events-threadpool: SKIP
 test-trace-events-v8: SKIP
 test-trace-events-vm: SKIP
 test-trace-events-worker-metadata: SKIP
+test-trace-events-worker-metadata-with-name: SKIP
 
 # Unclassified
-test-assert: FAIL
 test-async-hooks-async-await: FAIL
 test-async-hooks-http-parser-destroy: SKIP
 test-async-local-storage-contexts: FAIL
@@ -202,6 +201,7 @@ test-net-connect-memleak: FAIL
 test-promise-hook-exceptions: FAIL
 test-promise-hook-on-resolve: FAIL
 test-repl: FAIL
+test-strace-openat-openssl: FAIL
 test-tls-connect-memleak: FAIL
 test-ttywrap-stack: FAIL
 test-vm-low-stack-space: SKIP
