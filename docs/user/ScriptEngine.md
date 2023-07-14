@@ -10,6 +10,39 @@ GraalVM provides a JSR-223 compliant `javax.script.ScriptEngine` implementation 
 Note that this feature is provided for legacy reasons in order to allow easier migration for implementations currently based on a `ScriptEngine`.
 We strongly encourage users to use the `org.graalvm.polyglot.Context` interface in order to control many of the settings directly and benefit from finer-grained security settings in GraalVM.
 
+## Recommendation: use `CompiledScript` API
+
+To avoid unnecessary re-compilation of JS sources, it is recommended to use `CompiledScript.eval` instead of `ScriptEngine.eval`. This prevents
+JIT-compiled code from being garbage-collected as long as the corresponding `CompiledScript` object is alive.
+
+Single-threaded example:
+```java
+ScriptEngineManager manager = new ScriptEngineManager();
+ScriptEngine engine = manager.getEngineByName("js");
+CompiledScript script = ((Compilable) engine).compile("console.log('hello world');");
+script.eval();
+```
+
+Multi-threaded example:
+```java
+ScriptEngineManager manager = new ScriptEngineManager();
+ScriptEngine engine = manager.getEngineByName("js");
+CompiledScript script = ((Compilable) engine).compile("console.log('start');var start = Date.now(); while (Date.now()-start < 2000);console.log('end');");
+new Thread(new Runnable() {
+    @Override
+    public void run() {
+        try {
+            // Create ScriptEngine for this thread (with a shared polyglot Engine)
+            ScriptEngine engine = manager.getEngineByName("js");
+            script.eval(engine.getContext());
+        } catch (ScriptException scriptException) {
+            scriptException.printStackTrace();
+        }
+    }
+}).start();
+script.eval();
+```
+
 ## Setting Options via `Bindings`
 The  `ScriptEngine` interface does not provide a default way to set options.
 As a workaround, `GraalJSScriptEngine` supports setting some `Context` options
