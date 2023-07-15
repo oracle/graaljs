@@ -135,6 +135,14 @@
                                             <destFileName>truffle-api.jar</destFileName>
                                         </artifactItem>
                                         <artifactItem>
+                                            <groupId>org.graalvm.truffle</groupId>
+                                            <artifactId>truffle-compiler</artifactId>
+                                            <version>${graalvm.version}</version>
+                                            <type>jar</type>
+                                            <overWrite>true</overWrite>
+                                            <destFileName>truffle-compiler.jar</destFileName>
+                                        </artifactItem>
+                                        <artifactItem>
                                             <groupId>org.graalvm.sdk</groupId>
                                             <artifactId>graal-sdk</artifactId>
                                             <version>${graalvm.version}</version>
@@ -168,7 +176,7 @@
                                         <classpath/>
                                         <argument>-XX:+UnlockExperimentalVMOptions</argument>
                                         <argument>-XX:+EnableJVMCI</argument>
-                                        <argument>--upgrade-module-path=${compiler.dir}/compiler.jar${path.separator}${compiler.dir}/compiler-management.jar</argument>
+                                        <argument>--upgrade-module-path=${compiler.dir}/compiler.jar${path.separator}${compiler.dir}/compiler-management.jar${path.separator}${compiler.dir}/truffle-compiler.jar</argument>
                                         <argument>com.mycompany.app.App</argument>
                                     </arguments>
                                 </configuration>
