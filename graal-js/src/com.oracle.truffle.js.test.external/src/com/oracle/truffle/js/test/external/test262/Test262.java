@@ -89,6 +89,7 @@ public class Test262 extends TestSuite {
         super(config);
         Map<String, String> options = new HashMap<>();
         options.put(JSContextOptions.INTL_402_NAME, "true");
+        options.put(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "none");
         options.put(JSContextOptions.TEST262_MODE_NAME, "true");
         options.put(JSContextOptions.GLOBAL_ARGUMENTS_NAME, "false");
         config.addCommonOptions(options);

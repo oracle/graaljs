@@ -297,7 +297,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         private ScriptNode parseScript(String sourceCode) {
             CompilerAsserts.neverPartOfCompilation();
-            assert !getContext().getLanguageOptions().disableEval();
+            assert getContext().getLanguageOptions().allowEval();
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, Evaluator.EVAL_SOURCE_NAME).build();
             return getContext().getEvaluator().parseEval(getContext(), this, source, null);
         }

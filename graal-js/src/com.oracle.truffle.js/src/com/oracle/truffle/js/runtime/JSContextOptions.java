@@ -102,10 +102,11 @@ public final class JSContextOptions {
     public static final String ECMASCRIPT_VERSION_LATEST = "latest";
     public static final String ECMASCRIPT_VERSION_STAGING = "staging";
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
-    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = ECMASCRIPT_VERSION_LATEST + "|" + ECMASCRIPT_VERSION_STAGING + "|[5, " +
-                    JSConfig.LatestECMAScriptVersion + "]|[2015, " +
-                    (JSConfig.LatestECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta) + "]", help = "" +
-                                    "ECMAScript version to be compatible with. Default is '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), staged features are in '" +
+    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, //
+                    usageSyntax = ECMASCRIPT_VERSION_LATEST + "|" + ECMASCRIPT_VERSION_STAGING + "|" +
+                                    "[5, " + JSConfig.LatestECMAScriptVersion + "]|" +
+                                    "[2015, " + (JSConfig.LatestECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta) + "]", //
+                    help = "ECMAScript version to be compatible with. Default is '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), staged features are in '" +
                                     ECMASCRIPT_VERSION_STAGING + "'.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.LatestECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
 
@@ -275,7 +276,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> GLOBAL_ARGUMENTS = new OptionKey<>(true);
 
     public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
-    @Option(name = CONSOLE_NAME, category = OptionCategory.USER, help = "Provide 'console' global property.") //
+    @Option(name = CONSOLE_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Provide 'console' global property.") //
     public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
 
     public static final String PERFORMANCE_NAME = JS_OPTION_PREFIX + "performance";
@@ -361,9 +362,13 @@ public final class JSContextOptions {
     @CompilationFinal private boolean awaitOptimization;
 
     public static final String DISABLE_EVAL_NAME = JS_OPTION_PREFIX + "disable-eval";
-    @Option(name = DISABLE_EVAL_NAME, category = OptionCategory.EXPERT, help = "User code is not allowed to parse code via e.g. eval().") //
+    @Option(name = DISABLE_EVAL_NAME, category = OptionCategory.EXPERT, deprecated = true, deprecationMessage = "Use js.allow-eval=false instead.", help = "Disallow code generation from strings, e.g. using eval().") //
     public static final OptionKey<Boolean> DISABLE_EVAL = new OptionKey<>(false);
-    @CompilationFinal private boolean disableEval;
+
+    public static final String ALLOW_EVAL_NAME = JS_OPTION_PREFIX + "allow-eval";
+    @Option(name = ALLOW_EVAL_NAME, category = OptionCategory.EXPERT, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Allow or disallow code generation from strings, e.g. using eval().") //
+    public static final OptionKey<Boolean> ALLOW_EVAL = new OptionKey<>(true);
+    @CompilationFinal private boolean allowEval;
 
     public static final String DISABLE_WITH_NAME = JS_OPTION_PREFIX + "disable-with";
     @Option(name = DISABLE_WITH_NAME, category = OptionCategory.EXPERT, help = "User code is not allowed to use the 'with' statement.") //
@@ -588,12 +593,12 @@ public final class JSContextOptions {
 
     public static final String UNHANDLED_REJECTIONS_NAME = JS_OPTION_PREFIX + "unhandled-rejections";
 
-    @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, help = "" +
-                    "Configure unhandled promise rejections tracking. Accepted values: 'none', unhandled rejections are not tracked. " +
-                    "'warn', a warning is printed to stderr when an unhandled rejection is detected. " +
-                    "'throw', an exception is thrown when an unhandled rejection is detected. " +
-                    "'handler', the handler function set with Graal.setUnhandledPromiseRejectionHandler will be " +
-                    "called with the rejection value and promise respectively as arguments.") //
+    @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.CONSTRAINED, help = """
+                    Configure unhandled promise rejections tracking. Accepted values: \
+                    'none', unhandled rejections are not tracked. \
+                    'warn', a warning is printed to stderr when an unhandled rejection is detected. \
+                    'throw', an exception is thrown when an unhandled rejection is detected. \
+                    'handler', the handler function set with Graal.setUnhandledPromiseRejectionHandler will be called with the rejection value and promise respectively as arguments.""") //
     public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(UnhandledRejectionsTrackingMode.NONE);
     @CompilationFinal private UnhandledRejectionsTrackingMode unhandledRejectionsMode;
 
@@ -705,7 +710,7 @@ public final class JSContextOptions {
                         : sandboxPolicy.isStricterOrEqual(SandboxPolicy.UNTRUSTED) ? TimeUnit.SECONDS.toNanos(1) : TIMER_RESOLUTION.getDefaultValue();
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK);
         this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION);
-        this.disableEval = readBooleanOption(DISABLE_EVAL);
+        this.allowEval = readBooleanOption(ALLOW_EVAL) && !readBooleanOption(DISABLE_EVAL);
         this.disableWith = readBooleanOption(DISABLE_WITH);
         this.regexDumpAutomata = readBooleanOption(REGEX_DUMP_AUTOMATA);
         this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION);
@@ -897,8 +902,8 @@ public final class JSContextOptions {
         return topLevelAwait;
     }
 
-    public boolean isDisableEval() {
-        return disableEval;
+    public boolean allowEval() {
+        return allowEval;
     }
 
     public boolean isDisableWith() {

@@ -1819,7 +1819,7 @@ public class JSContext {
     }
 
     public void checkEvalAllowed() {
-        if (languageOptions.disableEval()) {
+        if (!languageOptions.allowEval()) {
             throw Errors.createEvalDisabled();
         }
     }
