@@ -593,12 +593,12 @@ public final class JSContextOptions {
 
     public static final String UNHANDLED_REJECTIONS_NAME = JS_OPTION_PREFIX + "unhandled-rejections";
 
-    @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, help = "" +
-                    "Configure unhandled promise rejections tracking. Accepted values: 'none', unhandled rejections are not tracked. " +
-                    "'warn', a warning is printed to stderr when an unhandled rejection is detected. " +
-                    "'throw', an exception is thrown when an unhandled rejection is detected. " +
-                    "'handler', the handler function set with Graal.setUnhandledPromiseRejectionHandler will be " +
-                    "called with the rejection value and promise respectively as arguments.") //
+    @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.CONSTRAINED, help = """
+                    Configure unhandled promise rejections tracking. Accepted values: \
+                    'none', unhandled rejections are not tracked. \
+                    'warn', a warning is printed to stderr when an unhandled rejection is detected. \
+                    'throw', an exception is thrown when an unhandled rejection is detected. \
+                    'handler', the handler function set with Graal.setUnhandledPromiseRejectionHandler will be called with the rejection value and promise respectively as arguments.""") //
     public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(UnhandledRejectionsTrackingMode.NONE);
     @CompilationFinal private UnhandledRejectionsTrackingMode unhandledRejectionsMode;
 
