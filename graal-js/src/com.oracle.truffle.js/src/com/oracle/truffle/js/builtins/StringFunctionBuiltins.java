@@ -429,7 +429,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedBranchProfile growBranch,
                         @Cached TruffleString.CreateCodePointIteratorNode createCodePointIterator) {
-            Object rawInput = rawToObjectNode.execute(getRawNode.getValue(template));
+            Object rawInput = getRawNode.getValue(template);
             JSRealm realm = getRealm();
             Map<Object, JSArrayObject> dedentMap = realm.getDedentMap();
             JSArrayObject cached = Boundaries.mapGet(dedentMap, rawInput);
@@ -437,7 +437,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return cached;
             }
 
-            TruffleString[] dedentedList = dedentStringsArray(rawInput, context, emptyProf, errorBranch, growBranch);
+            TruffleString[] dedentedList = dedentStringsArray(rawInput, context, rawToObjectNode, emptyProf, errorBranch, growBranch);
 
             JSArrayObject rawArr = JSArray.createConstant(context, realm, dedentedList);
             JSArrayObject cookedArr = JSArray.createConstant(context, realm, cookStrings(dedentedList, createCodePointIterator, errorBranch));
@@ -453,17 +453,19 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private TruffleString[] dedentStringsArray(Object template, JSContext context,
+                        JSToObjectNode rawToObjectNode,
                         InlinedConditionProfile emptyProf,
                         InlinedBranchProfile errorBranch,
                         InlinedBranchProfile growBranch) {
-            int literalSegments = getLength(template);
+            Object templateObj = rawToObjectNode.execute(template);
+            int literalSegments = getLength(templateObj);
             if (emptyProf.profile(this, literalSegments <= 0)) {
                 errorBranch.enter(this);
                 // Note: Well-formed template strings arrays always contain at least 1 string.
                 throw Errors.createTypeError("Template raw array must contain at least 1 string");
             }
 
-            SegmentRecord[][] blocks = splitTemplateIntoBlockLines(template, literalSegments, context.getStringLengthLimit(), errorBranch, growBranch);
+            SegmentRecord[][] blocks = splitTemplateIntoBlockLines(templateObj, literalSegments, context.getStringLengthLimit(), errorBranch, growBranch);
             emptyWhiteSpaceLines(blocks);
             removeOpeningAndClosingLines(blocks, errorBranch);
 
