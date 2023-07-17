@@ -106,7 +106,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSEngine;
-import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSLanguageOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -379,8 +378,19 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     private static void validateSandbox(Env env) {
         SandboxPolicy policy = env.getSandboxPolicy();
+        OptionValues optionValues = env.getOptions();
+        if (policy.isStricterThan(SandboxPolicy.TRUSTED)) {
+            if (optionValues.hasBeenSet(JSContextOptions.ECMASCRIPT_VERSION)) {
+                if (optionValues.get(JSContextOptions.ECMASCRIPT_VERSION) >= JSConfig.StagingECMAScriptVersion) {
+                    throw new SandboxValidationError(String.format("""
+                                    The validation for the given sandbox policy %s failed. \
+                                    The js.ecmascript-version option may only be set to "staging" in sandbox policy TRUSTED. \
+                                    In order to resolve this, switch to a lower ecmascript version or a less strict sandbox policy.""",
+                                    policy));
+                }
+            }
+        }
         if (policy.isStricterOrEqual(SandboxPolicy.UNTRUSTED)) {
-            OptionValues optionValues = env.getOptions();
             if (optionValues.hasBeenSet(JSContextOptions.TIMER_RESOLUTION)) {
                 long timerResolution = optionValues.get(JSContextOptions.TIMER_RESOLUTION);
                 long minValue = TimeUnit.MILLISECONDS.toNanos(100);
