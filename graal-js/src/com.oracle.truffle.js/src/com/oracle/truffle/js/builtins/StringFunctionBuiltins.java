@@ -315,6 +315,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 @Child private DedentTemplateStringsArrayNode dedentTemplateStringsArray = DedentTemplateStringsArrayNodeGen.create(context);
                 @Child private PropertyGetNode getTag = PropertyGetNode.createGetHidden(TAG_KEY, context);
                 @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
+                @Child private IsObjectNode isObject = IsObjectNode.create();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -327,6 +328,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         throw Errors.createTypeError("Expected at least one argument");
                     }
                     Object template = args[0];
+                    if (!isObject.executeBoolean(template)) {
+                        throw Errors.createTypeErrorNotAnObject(template);
+                    }
                     JSArrayObject dedentedArray = dedentTemplateStringsArray.execute(template, context);
                     Object[] callbackArgs = Arrays.copyOf(args, args.length);
                     callbackArgs[0] = dedentedArray;
