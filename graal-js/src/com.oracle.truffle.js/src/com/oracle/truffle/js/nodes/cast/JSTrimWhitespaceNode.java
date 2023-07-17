@@ -99,12 +99,12 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
         int firstIdx = 0;
         if (isWhiteSpace(readRawNode, string, 0, this, isFastNonWhitespace, isFastWhitespace)) {
             startsWithWhitespaceBranch.enter(this);
-            firstIdx = JSRuntime.firstNonWhitespaceIndex(string, true, readRawNode);
+            firstIdx = JSRuntime.firstNonWhitespaceIndex(string, readRawNode);
         }
         int lastIdx = len - 1;
         if (isWhiteSpace(readRawNode, string, len - 1, this, isFastNonWhitespace, isFastWhitespace)) {
             endsWithWhitespaceBranch.enter(this);
-            lastIdx = JSRuntime.lastNonWhitespaceIndex(string, true, readRawNode);
+            lastIdx = JSRuntime.lastNonWhitespaceIndex(string, readRawNode);
         }
         if (isEmpty.profile(this, firstIdx > lastIdx)) {
             return Strings.EMPTY_STRING;

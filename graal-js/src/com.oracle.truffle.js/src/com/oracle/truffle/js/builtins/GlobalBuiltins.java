@@ -990,7 +990,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             char firstChar = Strings.charAt(readRawNode, string, pos);
             if (!JSRuntime.isAsciiDigit(firstChar)) {
                 if (JSRuntime.isWhiteSpaceOrLineTerminator(firstChar)) {
-                    pos = JSRuntime.firstNonWhitespaceIndex(string, true, readRawNode);
+                    pos = JSRuntime.firstNonWhitespaceIndex(string, readRawNode);
                     if (Strings.length(string) <= pos) {
                         return Double.NaN;
                     }
@@ -1054,8 +1054,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                         @Cached TruffleString.SubstringByteIndexNode substringNode) {
             TruffleString inputStr = toStringNode.executeString(input);
 
-            int firstIdx = JSRuntime.firstNonWhitespaceIndex(inputStr, true, readRawNode);
-            int lastIdx = JSRuntime.lastNonWhitespaceIndex(inputStr, true, readRawNode) + 1;
+            int firstIdx = JSRuntime.firstNonWhitespaceIndex(inputStr, readRawNode);
+            int lastIdx = JSRuntime.lastNonWhitespaceIndex(inputStr, readRawNode) + 1;
 
             int radix = toInt32.executeInt(radix0);
             if (lastIdx <= firstIdx) {

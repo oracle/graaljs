@@ -512,7 +512,7 @@ public final class JSRuntime {
     @TruffleBoundary
     public static Number stringToNumber(TruffleString string) {
         // "Infinity" written exactly like this
-        TruffleString strCamel = trimJSWhiteSpace(string, true);
+        TruffleString strCamel = trimJSWhiteSpace(string);
         int camelLength = Strings.length(strCamel);
         if (camelLength == 0) {
             return 0;
@@ -1786,14 +1786,10 @@ public final class JSRuntime {
         return value;
     }
 
-    public static TruffleString trimJSWhiteSpace(TruffleString string) {
-        return trimJSWhiteSpace(string, false);
-    }
-
     @TruffleBoundary
-    public static TruffleString trimJSWhiteSpace(TruffleString string, boolean useLineTerminators) {
-        int firstIdx = firstNonWhitespaceIndex(string, useLineTerminators, TruffleString.ReadCharUTF16Node.getUncached());
-        int lastIdx = lastNonWhitespaceIndex(string, useLineTerminators, TruffleString.ReadCharUTF16Node.getUncached());
+    public static TruffleString trimJSWhiteSpace(TruffleString string) {
+        int firstIdx = firstNonWhitespaceIndex(string, TruffleString.ReadCharUTF16Node.getUncached());
+        int lastIdx = lastNonWhitespaceIndex(string, TruffleString.ReadCharUTF16Node.getUncached());
         if (firstIdx == 0) {
             if ((lastIdx + 1) == Strings.length(string)) {
                 return string;
@@ -1806,12 +1802,12 @@ public final class JSRuntime {
         return Strings.lazySubstring(string, firstIdx, lastIdx + 1 - firstIdx);
     }
 
-    public static int firstNonWhitespaceIndex(TruffleString string, boolean useLineTerminators, TruffleString.ReadCharUTF16Node charAtNode) {
+    public static int firstNonWhitespaceIndex(TruffleString string, TruffleString.ReadCharUTF16Node charAtNode) {
         int idx = 0;
         int len = Strings.length(string);
         while (idx < len) {
             char ch = Strings.charAt(charAtNode, string, idx);
-            if (!(useLineTerminators ? isWhiteSpaceOrLineTerminator(ch) : isWhiteSpaceExcludingLineTerminator(ch))) {
+            if (!isWhiteSpaceOrLineTerminator(ch)) {
                 break;
             }
             idx++;
@@ -1819,11 +1815,11 @@ public final class JSRuntime {
         return idx;
     }
 
-    public static int lastNonWhitespaceIndex(TruffleString string, boolean useLineTerminators, TruffleString.ReadCharUTF16Node charAtNode) {
+    public static int lastNonWhitespaceIndex(TruffleString string, TruffleString.ReadCharUTF16Node charAtNode) {
         int idx = Strings.length(string) - 1;
         while (idx >= 0) {
             char ch = Strings.charAt(charAtNode, string, idx);
-            if (!(useLineTerminators ? isWhiteSpaceOrLineTerminator(ch) : isWhiteSpaceExcludingLineTerminator(ch))) {
+            if (!isWhiteSpaceOrLineTerminator(ch)) {
                 break;
             }
             idx--;

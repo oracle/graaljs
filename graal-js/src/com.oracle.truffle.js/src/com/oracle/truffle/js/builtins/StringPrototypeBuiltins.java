@@ -2484,7 +2484,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             requireObjectCoercible(thisObj);
             TruffleString string = toString(thisObj);
 
-            int firstIdx = JSRuntime.firstNonWhitespaceIndex(string, true, readRawNode);
+            int firstIdx = JSRuntime.firstNonWhitespaceIndex(string, readRawNode);
             if (lengthZero.profile(this, firstIdx == 0)) {
                 return string;
             } else if (lengthExceeded.profile(this, firstIdx >= Strings.length(string))) {
@@ -2512,7 +2512,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             requireObjectCoercible(thisObj);
             TruffleString string = toString(thisObj);
 
-            int lastIdx = JSRuntime.lastNonWhitespaceIndex(string, true, readRawNode);
+            int lastIdx = JSRuntime.lastNonWhitespaceIndex(string, readRawNode);
             if (lengthExceeded.profile(this, lastIdx >= Strings.length(string))) {
                 return string;
             } else {
