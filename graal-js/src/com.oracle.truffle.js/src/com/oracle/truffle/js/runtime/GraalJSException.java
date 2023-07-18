@@ -645,7 +645,6 @@ public abstract class GraalJSException extends AbstractTruffleException {
             this.promiseIndex = promiseIndex;
         }
 
-        // This method is called from nashorn tests via java interop
         @TruffleBoundary
         public TruffleString getFileName() {
             if (Strings.startsWith(fileName, Evaluator.TS_EVAL_AT_SOURCE_NAME_PREFIX)) {
@@ -654,7 +653,6 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return fileName;
         }
 
-        // This method is called from nashorn tests via java interop
         public TruffleString getClassName() {
             return getTypeName(false);
         }
@@ -713,7 +711,6 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return null;
         }
 
-        // This method is called from nashorn tests via java interop
         @TruffleBoundary
         public String getMethodName() {
             return Strings.toJavaString(getMethodName(JavaScriptLanguage.getCurrentLanguage().getJSContext()));
@@ -781,7 +778,6 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return name;
         }
 
-        // This method is called from nashorn tests via java interop
         @TruffleBoundary
         public int getLineNumber() {
             if (sourceSection == null) {
