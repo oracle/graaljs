@@ -540,6 +540,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     srcByteIndex = srcByteOffset;
                 } else {
                     sourceBuffer = cloneArrayBuffer(sourceBuffer, sourceArray, srcByteLength, srcByteOffset);
+                    if (sourceArray.isInterop()) {
+                        // cloned buffer is not an interop buffer anymore
+                        sourceArray = sourceArray.getFactory().createArrayType(getContext().isOptionDirectByteBuffer(), false);
+                    }
                     srcByteIndex = 0;
                 }
             } else {
