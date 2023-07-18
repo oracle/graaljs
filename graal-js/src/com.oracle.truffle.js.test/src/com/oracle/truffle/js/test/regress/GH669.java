@@ -190,12 +190,12 @@ public class GH669 {
 
         var ioAccess = IOAccess.newBuilder().fileSystem(new TestFileSystem(files, MODULE_PATH)).build();
 
-        return Context.newBuilder(JS)//
-                        .allowIO(ioAccess)//
-                        .allowHostAccess(HostAccess.ALL)//
-                        .allowExperimentalOptions(true)//
-                        .option(COMMONJS_REQUIRE_NAME, "true")//
-                        .option(COMMONJS_REQUIRE_CWD_NAME, MODULE_PATH);
+        return Context.newBuilder(JS).//
+                        allowIO(ioAccess).//
+                        allowHostAccess(HostAccess.ALL).//
+                        allowExperimentalOptions(true).//
+                        option(COMMONJS_REQUIRE_NAME, "true").//
+                        option(COMMONJS_REQUIRE_CWD_NAME, MODULE_PATH);
     }
 
     private static StackTraceElement[] getJavaStackTrace(Callable<?> callable) {
