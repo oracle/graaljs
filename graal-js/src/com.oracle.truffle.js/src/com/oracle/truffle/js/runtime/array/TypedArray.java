@@ -69,6 +69,20 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class TypedArray extends ScriptArray {
 
+    public enum ElementType {
+        Int8,
+        Uint8,
+        Uint8Clamped,
+        Int16,
+        Uint16,
+        Int32,
+        Uint32,
+        BigInt64,
+        BigUint64,
+        Float32,
+        Float64
+    }
+
     private final int bytesPerElement;
     private final boolean offset;
     private final byte bufferType;
@@ -242,6 +256,8 @@ public abstract class TypedArray extends ScriptArray {
         return offset;
     }
 
+    public abstract ElementType getElementType();
+
     public abstract Object getBufferElement(Object buffer, int index, boolean littleEndian, InteropLibrary interop);
 
     public abstract void setBufferElement(Object buffer, int index, boolean littleEndian, Object value, InteropLibrary interop);
@@ -385,6 +401,11 @@ public abstract class TypedArray extends ScriptArray {
         public void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop) {
             ByteArrayAccess.forOrder(littleEndian).putInt8(getByteArray(buffer), index, value);
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Int8;
+        }
     }
 
     public static final class DirectInt8Array extends TypedIntArray {
@@ -424,15 +445,24 @@ public abstract class TypedArray extends ScriptArray {
             }
         }
 
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Int8;
+        }
     }
 
     public static class InteropInt8Array extends InteropOneByteIntArray {
         InteropInt8Array(TypedArrayFactory factory, boolean offset) {
             super(factory, offset);
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Int8;
+        }
     }
 
-    public static class InteropOneByteIntArray extends TypedIntArray {
+    public abstract static class InteropOneByteIntArray extends TypedIntArray {
         InteropOneByteIntArray(TypedArrayFactory factory, boolean offset) {
             super(factory, offset, BUFFER_TYPE_INTEROP);
         }
@@ -504,6 +534,11 @@ public abstract class TypedArray extends ScriptArray {
         public void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop) {
             ByteArrayAccess.forOrder(littleEndian).putInt8(getByteArray(buffer), index, value);
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Uint8;
+        }
     }
 
     public static final class DirectUint8Array extends TypedIntArray {
@@ -543,6 +578,10 @@ public abstract class TypedArray extends ScriptArray {
             }
         }
 
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Uint8;
+        }
     }
 
     public static final class InteropUint8Array extends InteropOneByteIntArray {
@@ -558,6 +597,11 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public int getBufferElementIntImpl(Object buffer, int index, boolean littleEndian, InteropLibrary interop) {
             return super.getBufferElementIntImpl(buffer, index, littleEndian, interop) & 0xff;
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Uint8;
         }
     }
 
@@ -585,6 +629,11 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public final void setBufferElement(Object buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
             setBufferElementIntImpl(buffer, index, littleEndian, toInt(JSRuntime.toDouble((Number) value)), interop);
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Uint8Clamped;
         }
     }
 
@@ -692,6 +741,11 @@ public abstract class TypedArray extends ScriptArray {
         public void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop) {
             ByteArrayAccess.forOrder(littleEndian).putInt16(getByteArray(buffer), index, value);
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Int16;
+        }
     }
 
     public static final class DirectInt16Array extends TypedIntArray {
@@ -730,15 +784,25 @@ public abstract class TypedArray extends ScriptArray {
                 return (short) lockedReadModifyWriteShort(typedArrayObject, index, expectedValue, newValue);
             }
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Int16;
+        }
     }
 
     public static class InteropInt16Array extends InteropTwoByteIntArray {
         InteropInt16Array(TypedArrayFactory factory, boolean offset) {
             super(factory, offset);
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Int16;
+        }
     }
 
-    public static class InteropTwoByteIntArray extends TypedIntArray {
+    public abstract static class InteropTwoByteIntArray extends TypedIntArray {
         InteropTwoByteIntArray(TypedArrayFactory factory, boolean offset) {
             super(factory, offset, BUFFER_TYPE_INTEROP);
         }
@@ -810,6 +874,11 @@ public abstract class TypedArray extends ScriptArray {
         public void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop) {
             ByteArrayAccess.forOrder(littleEndian).putInt16(getByteArray(buffer), index, value);
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Uint16;
+        }
     }
 
     public static final class DirectUint16Array extends TypedIntArray {
@@ -848,6 +917,11 @@ public abstract class TypedArray extends ScriptArray {
                 return lockedReadModifyWriteShort(typedArrayObject, index, expectedValue, newValue) & 0xffff;
             }
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Uint16;
+        }
     }
 
     public static final class InteropUint16Array extends InteropTwoByteIntArray {
@@ -863,6 +937,11 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public int getBufferElementIntImpl(Object buffer, int index, boolean littleEndian, InteropLibrary interop) {
             return super.getBufferElementIntImpl(buffer, index, littleEndian, interop) & 0xffff;
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Uint16;
         }
     }
 
@@ -891,6 +970,11 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setBufferElementIntImpl(Object buffer, int index, boolean littleEndian, int value, InteropLibrary interop) {
             ByteArrayAccess.forOrder(littleEndian).putInt32(getByteArray(buffer), index, value);
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Int32;
         }
     }
 
@@ -924,6 +1008,11 @@ public abstract class TypedArray extends ScriptArray {
             ByteBuffer byteBuffer = getDirectByteBuffer(getBufferFromTypedArray(typedArray));
             int bufferOffset = getOffset(typedArray) + index * INT32_BYTES_PER_ELEMENT;
             return ByteBufferAccess.nativeOrder().compareExchangeInt32(byteBuffer, bufferOffset, expectedValue, newValue);
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Int32;
         }
     }
 
@@ -971,6 +1060,11 @@ public abstract class TypedArray extends ScriptArray {
                 throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Int32;
+        }
     }
 
     static final int UINT32_BYTES_PER_ELEMENT = 4;
@@ -1007,6 +1101,11 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public Object getBufferElement(Object buffer, int index, boolean littleEndian, InteropLibrary interop) {
             return toUint32(getBufferElementIntImpl(buffer, index, littleEndian, interop));
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Uint32;
         }
     }
 
@@ -1190,6 +1289,11 @@ public abstract class TypedArray extends ScriptArray {
         public void setLongImpl(Object buffer, int offset, int index, long value, InteropLibrary interop) {
             ByteArrayAccess.nativeOrder().putInt64(getByteArray(buffer), offset + index * BIGINT64_BYTES_PER_ELEMENT, value);
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.BigInt64;
+        }
     }
 
     public static final class DirectBigInt64Array extends TypedBigIntArray {
@@ -1227,15 +1331,25 @@ public abstract class TypedArray extends ScriptArray {
         public BigInt compareExchangeBigInt(JSTypedArrayObject typedArray, int index, BigInt expectedValue, BigInt newValue) {
             return BigInt.valueOf(compareExchangeLong(typedArray, index, expectedValue.longValue(), newValue.longValue()));
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.BigInt64;
+        }
     }
 
     public static class InteropBigInt64Array extends InteropBigIntArray {
         InteropBigInt64Array(TypedArrayFactory factory, boolean offset) {
             super(factory, offset);
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.BigInt64;
+        }
     }
 
-    public static class InteropBigIntArray extends TypedBigIntArray {
+    public abstract static class InteropBigIntArray extends TypedBigIntArray {
         InteropBigIntArray(TypedArrayFactory factory, boolean offset) {
             super(factory, offset, BUFFER_TYPE_INTEROP);
         }
@@ -1317,6 +1431,11 @@ public abstract class TypedArray extends ScriptArray {
         public void setLongImpl(Object buffer, int offset, int index, long value, InteropLibrary interop) {
             ByteArrayAccess.nativeOrder().putInt64(getByteArray(buffer), offset + index * BIGUINT64_BYTES_PER_ELEMENT, value);
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.BigUint64;
+        }
     }
 
     public static final class DirectBigUint64Array extends TypedBigIntArray {
@@ -1364,6 +1483,11 @@ public abstract class TypedArray extends ScriptArray {
         public BigInt compareExchangeBigInt(JSTypedArrayObject typedArray, int index, BigInt expectedValue, BigInt newValue) {
             return BigInt.valueOfUnsigned(compareExchangeLong(typedArray, index, expectedValue.longValue(), newValue.longValue()));
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.BigUint64;
+        }
     }
 
     public static final class InteropBigUint64Array extends InteropBigIntArray {
@@ -1379,6 +1503,11 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public Object getBufferElement(Object buffer, int index, boolean littleEndian, InteropLibrary interop) {
             return BigInt.valueOfUnsigned(getBufferElementLongImpl(buffer, index, littleEndian, interop));
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.BigUint64;
         }
     }
 
@@ -1449,6 +1578,11 @@ public abstract class TypedArray extends ScriptArray {
         public void setBufferElement(Object buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
             ByteArrayAccess.forOrder(littleEndian).putFloat(getByteArray(buffer), index, JSRuntime.floatValue((Number) value));
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Float32;
+        }
     }
 
     public static final class DirectFloat32Array extends TypedFloatArray {
@@ -1474,6 +1608,11 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setBufferElement(Object buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
             ByteBufferAccess.forOrder(littleEndian).putFloat(getDirectByteBuffer(buffer), index, JSRuntime.floatValue((Number) value));
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Float32;
         }
     }
 
@@ -1521,6 +1660,11 @@ public abstract class TypedArray extends ScriptArray {
                 throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Float32;
+        }
     }
 
     static final int FLOAT64_BYTES_PER_ELEMENT = 8;
@@ -1549,6 +1693,11 @@ public abstract class TypedArray extends ScriptArray {
         public void setBufferElement(Object buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
             ByteArrayAccess.forOrder(littleEndian).putDouble(getByteArray(buffer), index, JSRuntime.doubleValue((Number) value));
         }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Float64;
+        }
     }
 
     public static final class DirectFloat64Array extends TypedFloatArray {
@@ -1574,6 +1723,11 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setBufferElement(Object buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
             ByteBufferAccess.forOrder(littleEndian).putDouble(getDirectByteBuffer(buffer), index, JSRuntime.doubleValue((Number) value));
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Float64;
         }
     }
 
@@ -1620,6 +1774,11 @@ public abstract class TypedArray extends ScriptArray {
             } catch (InvalidBufferOffsetException e) {
                 throw Errors.createRangeErrorInvalidBufferOffset();
             }
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Float64;
         }
     }
 }
