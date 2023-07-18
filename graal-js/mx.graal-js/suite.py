@@ -463,12 +463,15 @@ suite = {
     "GRAALJS_LAUNCHER" : {
       "moduleInfo" : {
         "name" : "org.graalvm.js.launcher",
-        "exports" : [],
+        "exports" : [
+            "com.oracle.truffle.js.shell to org.graalvm.launcher",
+        ],
       },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.shell"],
       "mainClass" : "com.oracle.truffle.js.shell.JSLauncher",
       "distDependencies" : ["sdk:LAUNCHER_COMMON"],
+      "exclude" : ["sdk:JLINE3"],
       "description" : "Graal JavaScript Launcher",
       "maven" : {
         "artifactId" : "js-launcher",
