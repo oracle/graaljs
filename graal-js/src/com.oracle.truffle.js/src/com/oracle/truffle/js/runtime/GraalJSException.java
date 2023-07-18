@@ -510,7 +510,15 @@ public abstract class GraalJSException extends AbstractTruffleException {
     }
 
     private static TruffleString getFileName(Source source) {
-        return source != null ? Strings.fromJavaString(source.getName()) : Strings.UNKNOWN_FILENAME;
+        if (source != null) {
+            String fileName = source.getPath();
+            if (fileName == null) {
+                fileName = source.getName();
+            }
+            return Strings.fromJavaString(fileName);
+        } else {
+            return Strings.UNKNOWN_FILENAME;
+        }
     }
 
     public void printJSStackTrace() {
