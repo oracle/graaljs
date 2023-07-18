@@ -533,8 +533,15 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             int srcByteIndex;
             if (sameBufferProf.profile(sourceBuffer == targetBuffer)) {
                 int srcByteLength = sourceLen * sourceArray.bytesPerElement();
-                sourceBuffer = cloneArrayBuffer(sourceBuffer, sourceArray, srcByteLength, srcByteOffset);
-                srcByteIndex = 0;
+                int targetByteIndex = targetByteOffset + offset * targetArray.bytesPerElement();
+
+                boolean cloneNotNeeded = srcByteOffset + srcByteLength <= targetByteIndex || targetByteIndex + srcByteLength <= srcByteOffset;
+                if (cloneNotNeeded) {
+                    srcByteIndex = srcByteOffset;
+                } else {
+                    sourceBuffer = cloneArrayBuffer(sourceBuffer, sourceArray, srcByteLength, srcByteOffset);
+                    srcByteIndex = 0;
+                }
             } else {
                 srcByteIndex = srcByteOffset;
             }
