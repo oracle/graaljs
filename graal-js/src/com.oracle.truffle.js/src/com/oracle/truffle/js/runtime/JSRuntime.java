@@ -1922,7 +1922,7 @@ public final class JSRuntime {
         return longValue;
     }
 
-    public static boolean isAsciiDigit(char c) {
+    public static boolean isAsciiDigit(int c) {
         return '0' <= c && c <= '9';
     }
 

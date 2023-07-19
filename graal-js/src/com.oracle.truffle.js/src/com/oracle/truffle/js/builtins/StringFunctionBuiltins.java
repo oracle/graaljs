@@ -98,6 +98,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
@@ -669,10 +670,10 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return Strings.lazySubstring(substringNode, strA, 0, len);
         }
 
-        private TruffleString[] cookStrings(TruffleString[] raw,
+        private Object[] cookStrings(TruffleString[] raw,
                         TruffleString.CreateCodePointIteratorNode createCodePointIterator,
                         InlinedBranchProfile errorBranch) {
-            TruffleString[] cooked = new TruffleString[raw.length];
+            Object[] cooked = new Object[raw.length];
             for (int i = 0; i < raw.length; i++) {
                 TruffleString str = raw[i];
                 TruffleStringIterator iterator = createCodePointIterator.execute(str, TruffleString.Encoding.UTF_16);
@@ -681,15 +682,39 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return cooked;
         }
 
-        private TruffleString parseText(TruffleStringIterator iterator,
+        /**
+         * Returns either a TruffleString or undefined.
+         */
+        private Object parseText(TruffleStringIterator iterator,
                         InlinedBranchProfile errorBranch) {
             TruffleStringBuilder partialResult = Strings.builderCreate();
             while (iterator.hasNext()) {
                 int ch = iteratorNextNode.execute(iterator);
-                if (ch == '\\' && iterator.hasNext()) {
+                if (ch == '\\') {
+                    if (!iterator.hasNext()) {
+                        // Lone backslash at the end.
+                        return Undefined.instance;
+                    }
                     final int next = iteratorNextNode.execute(iterator);
-                    // Special characters.
                     switch (next) {
+                        case '0': {
+                            // only `\0` by itself is allowed but not e.g. `\02`.
+                            if (JSRuntime.isAsciiDigit(peekNext(iterator))) {
+                                return Undefined.instance;
+                            }
+                            appendCharNode.execute(partialResult, '\0');
+                            break;
+                        }
+                        case '1':
+                        case '2':
+                        case '3':
+                        case '4':
+                        case '5':
+                        case '6':
+                        case '7':
+                        case '8':
+                        case '9':
+                            return Undefined.instance;
                         case 'n':
                             appendCharNode.execute(partialResult, '\n');
                             break;
@@ -740,6 +765,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                             }
                             break;
                         }
+                        case 'v':
+                            appendCharNode.execute(partialResult, '\u000b');
+                            break;
                         default:
                             if (next <= 0xffff && Character.isSurrogate((char) next)) {
                                 appendCharNode.execute(partialResult, (char) next);
@@ -759,10 +787,15 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return Strings.builderToString(builderToStringNode, partialResult);
         }
 
-        private int unicodeEscapeSequence(TruffleStringIterator iterator,
-                        InlinedBranchProfile errorBranch) {
+        private int peekNext(TruffleStringIterator iterator) {
             int ch = iteratorNextNode.execute(iterator);
             iteratorPreviousNode.execute(iterator);
+            return ch;
+        }
+
+        private int unicodeEscapeSequence(TruffleStringIterator iterator,
+                        InlinedBranchProfile errorBranch) {
+            int ch = peekNext(iterator);
             if (ch == '{') {
                 return varlenHexSequence(iterator, errorBranch);
             } else {
