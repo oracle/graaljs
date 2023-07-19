@@ -636,7 +636,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return;
             }
 
-            if (sourceType instanceof TypedArray.TypedIntArray && targetType instanceof TypedArray.TypedIntArray) {
+            // getIntImpl of Uint32 returns negative int for large values (which breaks clamping)
+            if (sourceType instanceof TypedArray.TypedIntArray && targetType instanceof TypedArray.TypedIntArray &&
+                            (sourceElemType != ElementType.Uint32 || targetElemType != ElementType.Uint8Clamped)) {
                 intToIntBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
                     int value = ((TypedArray.TypedIntArray) sourceType).getIntImpl(sourceBuffer, sourceByteIndex, i, interop);
