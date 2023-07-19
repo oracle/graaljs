@@ -960,7 +960,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
                 Strings.builderAppend(sb, Strings.NATIVE);
             } else {
                 TruffleString evalOrigin = getEvalOrigin();
-                TruffleString sourceName = evalOrigin != null ? evalOrigin : getFileName();
+                TruffleString sourceName = evalOrigin != null ? evalOrigin : getFileNameForStackTrace(context);
                 Strings.builderAppend(sb, sourceName);
                 if (eval) {
                     Strings.builderAppend(sb, Strings.COMMA_ANONYMOUS_BRACKETS);
@@ -974,6 +974,14 @@ public abstract class GraalJSException extends AbstractTruffleException {
                 Strings.builderAppend(sb, Strings.PAREN_CLOSE);
             }
             return Strings.builderToString(sb);
+        }
+
+        public TruffleString getFileNameForStackTrace(JSContext context) {
+            if (hasPath && context.isOptionNashornCompatibilityMode() && sourceSection != null) {
+                return Strings.fromJavaString(sourceSection.getSource().getName());
+            } else {
+                return getFileName();
+            }
         }
     }
 }

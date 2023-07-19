@@ -406,7 +406,7 @@ public final class JSError extends JSNonProxy {
                 if (Strings.equals(JSFunction.TS_BUILTIN_SOURCE_NAME, fileName)) {
                     Strings.builderAppend(builder, Strings.NATIVE);
                 } else {
-                    Strings.builderAppend(builder, fileName);
+                    Strings.builderAppend(builder, elem.getFileNameForStackTrace(context));
                     Strings.builderAppend(builder, Strings.COLON);
                     Strings.builderAppend(builder, elem.getLineNumber());
                 }
