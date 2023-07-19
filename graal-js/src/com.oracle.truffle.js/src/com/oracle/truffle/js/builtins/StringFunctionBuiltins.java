@@ -367,6 +367,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 TruffleString nextSeg = segToStringNode.executeString(readElementNode.executeWithTargetAndIndex(dedentedArray, i));
                 appendChecked(result, nextSeg, stringLengthLimit,
                                 self, errorBranch, appendStringNode);
+                if (i + 1 == literalCount) {
+                    break;
+                }
                 if (i < substitutionCount) {
                     TruffleString nextSub = subToStringNode.executeString(substitutions[i]);
                     appendChecked(result, nextSub, stringLengthLimit,
