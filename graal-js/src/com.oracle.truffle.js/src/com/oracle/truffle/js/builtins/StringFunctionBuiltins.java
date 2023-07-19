@@ -64,6 +64,7 @@ import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCharCo
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCodePointNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.StringDedentNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.StringRawNodeGen;
+import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -436,8 +437,9 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached InlinedConditionProfile emptyProf,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedBranchProfile growBranch,
-                        @Cached TruffleString.CreateCodePointIteratorNode createCodePointIterator) {
-            Object rawInput = getRawNode.getValue(template);
+                        @Cached TruffleString.CreateCodePointIteratorNode createCodePointIterator,
+                        @Cached JSCollectionsNormalizeNode collectionsNormalize) {
+            Object rawInput = collectionsNormalize.execute(getRawNode.getValue(template));
             JSRealm realm = getRealm();
             Map<Object, JSArrayObject> dedentMap = realm.getDedentMap();
             JSArrayObject cached = Boundaries.mapGet(dedentMap, rawInput);
@@ -449,10 +451,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             JSArrayObject rawArr = JSArray.createConstant(context, realm, dedentedList);
             JSArrayObject cookedArr = JSArray.createConstant(context, realm, cookStrings(dedentedList, createCodePointIterator, errorBranch));
-            JSRuntime.definePropertyOrThrow(
-                            cookedArr,
-                            Strings.RAW,
-                            PropertyDescriptor.createData(rawArr, false, false, false));
+            JSRuntime.definePropertyOrThrow(cookedArr, Strings.RAW, PropertyDescriptor.createData(rawArr, false, false, false));
             JSObject.setIntegrityLevel(rawArr, true);
             JSObject.setIntegrityLevel(cookedArr, true);
             Boundaries.mapPut(dedentMap, rawInput, cookedArr);
