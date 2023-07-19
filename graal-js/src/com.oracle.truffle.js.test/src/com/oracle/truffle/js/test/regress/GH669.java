@@ -40,12 +40,10 @@
  */
 package com.oracle.truffle.js.test.regress;
 
-import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.io.IOAccess;
-import org.junit.Test;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -57,39 +55,62 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
-import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
-import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
+
+@RunWith(Parameterized.class)
 public class GH669 {
 
     private static final String JS = "js";
+    private static final String ROOT_PATH = Path.of("").toAbsolutePath().toString();
     private static final String MODULE_PATH = Path.of("a/b/c").toAbsolutePath().toString();
-    private static final String INDEX_PATH = absPath("index.js");
-    private static final String ERROR_HELPER_PATH = absPath("error_helper.js");
+    private static final String REL_PATH_REF = Path.of("d/e/f").toAbsolutePath().toString();
+    private static final String INDEX_NAME = "index.js";
+    private static final String INDEX_PATH = absPath(INDEX_NAME);
+    private static final String INDEX_REL_PATH = relPath(INDEX_PATH);
+    private static final String ERROR_HELPER_NAME = "error_helper.js";
+    private static final String ERROR_HELPER_PATH = absPath(ERROR_HELPER_NAME);
+    private static final String ERROR_HELPER_REL_PATH = relPath(ERROR_HELPER_PATH);
     private static final Pattern JS_STACK_FRAME_PATTERN = Pattern.compile("^\\s*at ([\\w.]+) \\(([\\w/.-]+):\\d+:\\d+\\)$");
+
+    @Parameter public boolean usingRelativePath;
+
+    @Parameters
+    public static Iterable<? extends Object> data() {
+        return List.of(false, true);
+    }
 
     @Test
     public void testJavaStackTrace() {
         try (var ctx = createContext()) {
             var script = "require('%s').regularFunction();".formatted(INDEX_PATH);
             var frames = getJavaStackTrace(() -> ctx.eval(JS, script));
-            assertJavaStackFrame(frames[0], "throw3", ERROR_HELPER_PATH);
-            assertJavaStackFrame(frames[1], "throw2", ERROR_HELPER_PATH);
-            assertJavaStackFrame(frames[2], "throw1", ERROR_HELPER_PATH);
-            assertJavaStackFrame(frames[3], "regularFunction", INDEX_PATH);
+            assertJavaStackFrame(frames[0], "throw3", ERROR_HELPER_NAME);
+            assertJavaStackFrame(frames[1], "throw2", ERROR_HELPER_NAME);
+            assertJavaStackFrame(frames[2], "throw1", ERROR_HELPER_NAME);
+            assertJavaStackFrame(frames[3], "regularFunction", INDEX_NAME);
         }
     }
 
@@ -124,7 +145,7 @@ public class GH669 {
                                 } catch(e) {
                                     console.error(e.stack);
                                 }
-                            """.formatted(INDEX_PATH);
+                            """.formatted(usingRelativePath ? INDEX_REL_PATH : INDEX_PATH);
             ctx.eval(JS, script);
         }
 
@@ -148,7 +169,7 @@ public class GH669 {
                                         console.error(e.stack);
                                     }
                                 })();
-                            """.formatted(INDEX_PATH);
+                            """.formatted(usingRelativePath ? INDEX_REL_PATH : INDEX_PATH);
             ctx.eval(JS, script);
         }
 
@@ -163,15 +184,21 @@ public class GH669 {
         return Path.of(MODULE_PATH, filename).toString();
     }
 
-    private static Context createContext() {
+    private static String relPath(String filename) {
+        String relPath = Path.of(REL_PATH_REF).relativize(Path.of(filename)).toString();
+        assert relPath.startsWith(".") : relPath;
+        return relPath;
+    }
+
+    private Context createContext() {
         return createContextBuilder().build();
     }
 
-    private static Context createContext(OutputStream out) {
+    private Context createContext(OutputStream out) {
         return createContextBuilder().out(out).err(out).build();
     }
 
-    private static Context.Builder createContextBuilder() {
+    private Context.Builder createContextBuilder() {
         var errorHelperContents = """
                         module.exports.throw1 = function() { throw2(); }
                         function throw2() { throw3(); }
@@ -182,13 +209,13 @@ public class GH669 {
                         const errorHelper = require('%s');
                         module.exports.regularFunction = function() { errorHelper.throw1(); }
                         module.exports.asyncFunction = async function() { errorHelper.throw1(); }
-                        """.formatted(ERROR_HELPER_PATH);
+                        """.formatted(usingRelativePath ? ERROR_HELPER_REL_PATH : ERROR_HELPER_PATH);
 
         var files = Map.of(
                         Path.of(ERROR_HELPER_PATH), errorHelperContents,
                         Path.of(INDEX_PATH), indexContents);
 
-        var ioAccess = IOAccess.newBuilder().fileSystem(new TestFileSystem(files, MODULE_PATH)).build();
+        var ioAccess = IOAccess.newBuilder().fileSystem(new TestFileSystem(files, ROOT_PATH)).build();
 
         return Context.newBuilder(JS).//
                         allowIO(ioAccess).//
@@ -201,7 +228,7 @@ public class GH669 {
     private static StackTraceElement[] getJavaStackTrace(Callable<?> callable) {
         try {
             callable.call();
-        } catch (Throwable e) {
+        } catch (Exception e) {
             return e.getStackTrace();
         }
 
@@ -220,7 +247,7 @@ public class GH669 {
 
     private static void assertJsStackFrame(String frame, String methodName, String path) {
         var matcher = JS_STACK_FRAME_PATTERN.matcher(frame);
-        assertTrue(matcher.find());
+        assertTrue(frame, matcher.find());
         assertEquals(methodName, matcher.group(1));
         assertEquals(path, matcher.group(2));
     }
@@ -248,12 +275,15 @@ public class GH669 {
         }
 
         @Override
-        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) {
-            if (path.equals(Path.of(root))) {
-                return;
+        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws NoSuchFileException {
+            if (!path.startsWith(Path.of(root))) {
+                throw new AssertionError(path);
             }
-            if (!files.containsKey(path)) {
-                throw new AssertionError();
+            if (files.keySet().stream().anyMatch(file -> file.getParent().startsWith(path))) {
+                // a parent directory of any file
+                return;
+            } else if (!files.containsKey(path)) {
+                throw new NoSuchFileException(path.toString());
             }
         }
 
