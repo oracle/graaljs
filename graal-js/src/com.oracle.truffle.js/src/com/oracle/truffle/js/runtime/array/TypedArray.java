@@ -1743,7 +1743,7 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public void setDoubleImpl(Object buffer, int offset, int index, double value, InteropLibrary interop) {
-            writeBufferDouble(buffer, offset + index * FLOAT64_BYTES_PER_ELEMENT, (float) value, ByteOrder.nativeOrder(), interop);
+            writeBufferDouble(buffer, offset + index * FLOAT64_BYTES_PER_ELEMENT, value, ByteOrder.nativeOrder(), interop);
         }
 
         @Override
