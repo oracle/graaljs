@@ -1080,7 +1080,7 @@ public class Lexer extends Scanner implements StringPool {
                         if (ch0 == '\n') {
                             skip(1);
                         }
-                        // fall through
+                        break;
                     case '\n': // LF
                     case '\u2028': // LS
                     case '\u2029': // PS
