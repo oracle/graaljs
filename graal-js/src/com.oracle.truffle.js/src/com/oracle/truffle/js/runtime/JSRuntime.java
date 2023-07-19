@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -73,6 +75,8 @@ import com.oracle.truffle.js.nodes.cast.OrdinaryToPrimitiveNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
+import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -2967,6 +2971,82 @@ public final class JSRuntime {
             return filtered;
         } else {
             return list;
+        }
+    }
+
+    public static Number toUint32(int value) {
+        if (value >= 0) {
+            return value;
+        } else {
+            return (double) (value & 0xFFFFFFFFL);
+        }
+    }
+
+    public static Object getBufferElementDirect(ByteBufferAccess bufferAccess, ByteBuffer buffer, TypedArray.ElementType elementType, int index) {
+        switch (elementType) {
+            case Int8:
+                return (int) buffer.get(index);
+            case Uint8:
+            case Uint8Clamped:
+                return buffer.get(index) & 0xff;
+            case Int16:
+                return bufferAccess.getInt16(buffer, index);
+            case Uint16:
+                return bufferAccess.getUint16(buffer, index);
+            case Int32:
+                return bufferAccess.getInt32(buffer, index);
+            case Uint32:
+                return toUint32(bufferAccess.getInt32(buffer, index));
+            case BigInt64:
+            case BigUint64:
+                return BigInt.valueOf(bufferAccess.getInt64(buffer, index));
+            case Float32:
+                return (double) bufferAccess.getFloat(buffer, index);
+            case Float64:
+                return bufferAccess.getDouble(buffer, index);
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    public static void setBufferElementDirect(ByteBufferAccess bufferAccess, ByteBuffer buffer, TypedArray.ElementType elementType, int index, Object value) {
+        switch (elementType) {
+            case Int8:
+            case Uint8:
+                buffer.put(index, (byte) toInt32((Number) value));
+                break;
+            case Uint8Clamped:
+                int intValue;
+                if (value instanceof Integer) {
+                    intValue = (Integer) value;
+                } else {
+                    intValue = (int) Math.rint(toDouble((Number) value));
+                }
+                int clampedValue = intValue < 0 ? 0 : (intValue > 0xff ? 0xff : intValue);
+                buffer.put(index, (byte) clampedValue);
+                break;
+            case Int16:
+                bufferAccess.putInt16(buffer, index, (short) toInt32((Number) value));
+                break;
+            case Uint16:
+                bufferAccess.putInt16(buffer, index, (char) toInt32((Number) value));
+                break;
+            case Int32:
+            case Uint32:
+                bufferAccess.putInt32(buffer, index, toInt32((Number) value));
+                break;
+            case BigInt64:
+            case BigUint64:
+                bufferAccess.putInt64(buffer, index, toBigInt(value).longValue());
+                break;
+            case Float32:
+                bufferAccess.putFloat(buffer, index, floatValue((Number) value));
+                break;
+            case Float64:
+                bufferAccess.putDouble(buffer, index, doubleValue((Number) value));
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 

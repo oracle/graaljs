@@ -103,8 +103,10 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.array.TypedArray.ElementType;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -381,15 +383,22 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         private final ConditionProfile srcIsJSObject = ConditionProfile.create();
         private final ConditionProfile arrayIsFastArray = ConditionProfile.create();
         private final ConditionProfile arrayIsArrayBufferView = ConditionProfile.create();
-        private final ConditionProfile isDirectProf = ConditionProfile.create();
+        private final ConditionProfile isDirectProfile = ConditionProfile.create();
+        private final ConditionProfile sourceInteropBufferProfile = ConditionProfile.create();
+        private final ConditionProfile targetInteropBufferProfile = ConditionProfile.create();
         private final BranchProfile intToIntBranch = BranchProfile.create();
         private final BranchProfile floatToFloatBranch = BranchProfile.create();
         private final BranchProfile bigIntToBigIntBranch = BranchProfile.create();
         private final BranchProfile objectToObjectBranch = BranchProfile.create();
+        private final ValueProfile sourceTypeProfile = ValueProfile.createClassProfile();
+        private final ValueProfile targetTypeProfile = ValueProfile.createClassProfile();
+        private final ValueProfile sourceElemTypeProfile = ValueProfile.createIdentityProfile();
+        private final ValueProfile targetElemTypeProfile = ValueProfile.createIdentityProfile();
 
         @Child private JSToObjectNode toObjectNode;
         @Child private JSGetLengthNode getLengthNode;
         @Child private InteropLibrary interopLibrary;
+        @Child private InteropLibrary getByteBufferInterop;
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToBigIntNode toBigIntNode;
 
@@ -516,16 +525,27 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             rangeCheck(0, sourceLength, offset, targetArray.length(targetView));
 
             int sourceLen = (int) sourceLength;
-            JSDynamicObject sourceBuffer = JSArrayBufferView.getArrayBuffer(sourceView);
-            JSDynamicObject targetBuffer = JSArrayBufferView.getArrayBuffer(targetView);
+            JSArrayBufferObject sourceBuffer = JSArrayBufferView.getArrayBuffer(sourceView);
+            JSArrayBufferObject targetBuffer = JSArrayBufferView.getArrayBuffer(targetView);
             int srcByteOffset = JSArrayBufferView.typedArrayGetOffset(sourceView);
             int targetByteOffset = JSArrayBufferView.typedArrayGetOffset(targetView);
 
             int srcByteIndex;
             if (sameBufferProf.profile(sourceBuffer == targetBuffer)) {
                 int srcByteLength = sourceLen * sourceArray.bytesPerElement();
-                sourceBuffer = cloneArrayBuffer(sourceBuffer, sourceArray, srcByteLength, srcByteOffset);
-                srcByteIndex = 0;
+                int targetByteIndex = targetByteOffset + offset * targetArray.bytesPerElement();
+
+                boolean cloneNotNeeded = srcByteOffset + srcByteLength <= targetByteIndex || targetByteIndex + srcByteLength <= srcByteOffset;
+                if (cloneNotNeeded) {
+                    srcByteIndex = srcByteOffset;
+                } else {
+                    sourceBuffer = cloneArrayBuffer(sourceBuffer, sourceArray, srcByteLength, srcByteOffset);
+                    if (sourceArray.isInterop()) {
+                        // cloned buffer is not an interop buffer anymore
+                        sourceArray = sourceArray.getFactory().createArrayType(getContext().isOptionDirectByteBuffer(), false);
+                    }
+                    srcByteIndex = 0;
+                }
             } else {
                 srcByteIndex = srcByteOffset;
             }
@@ -533,24 +553,92 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @SuppressWarnings("unchecked")
-        private void copyTypedArrayElementsDistinctBuffers(JSDynamicObject targetBuffer, JSDynamicObject sourceBuffer, TypedArray targetType, TypedArray sourceType,
+        private void copyTypedArrayElementsDistinctBuffers(JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer, TypedArray targetType, TypedArray sourceType,
                         int targetOffset, int targetByteOffset, int sourceLength, int sourceByteIndex) {
             int targetElementSize = targetType.bytesPerElement();
             int sourceElementSize = sourceType.bytesPerElement();
             int targetByteIndex = targetByteOffset + targetOffset * targetElementSize;
-            InteropLibrary interop = (sourceType.isInterop() || targetType.isInterop()) ? getInterop() : null;
-            if (sourceType == targetType && !sourceType.isInterop()) {
-                // same element type => bulk copy
-                int sourceByteLength = sourceLength * sourceElementSize;
-                if (isDirectProf.profile(targetType.isDirect())) {
-                    Boundaries.byteBufferPutSlice(
-                                    JSArrayBuffer.getDirectByteBuffer(targetBuffer), targetByteIndex,
-                                    JSArrayBuffer.getDirectByteBuffer(sourceBuffer), sourceByteIndex,
-                                    sourceByteIndex + sourceByteLength);
+            ElementType sourceElemType = sourceType.getElementType();
+            ElementType targetElemType = targetType.getElementType();
+
+            ByteBuffer sourceInteropByteBuffer = null;
+            if (sourceType.isInterop()) {
+                sourceInteropByteBuffer = getByteBufferFromInteropBuffer(sourceBuffer);
+            }
+            ByteBuffer targetInteropByteBuffer = null;
+            if (targetType.isInterop()) {
+                targetInteropByteBuffer = getByteBufferFromInteropBuffer(targetBuffer);
+            }
+
+            if (sourceElemType == targetElemType) {
+                // same element type => bulk copy (if possible)
+                ByteBuffer sourceByteBuffer = null;
+                ByteBuffer targetByteBuffer = null;
+                byte[] sourceByteArray = null;
+                byte[] targetByteArray = null;
+                if (sourceType.isDirect()) {
+                    sourceByteBuffer = JSArrayBuffer.getDirectByteBuffer(sourceBuffer);
+                } else if (sourceType.isInterop()) {
+                    sourceByteBuffer = sourceInteropByteBuffer;
                 } else {
-                    System.arraycopy(JSArrayBuffer.getByteArray(sourceBuffer), sourceByteIndex, JSArrayBuffer.getByteArray(targetBuffer), targetByteIndex, sourceByteLength);
+                    sourceByteArray = JSArrayBuffer.getByteArray(sourceBuffer);
                 }
-            } else if (sourceType instanceof TypedArray.TypedIntArray && targetType instanceof TypedArray.TypedIntArray) {
+                if (targetType.isDirect()) {
+                    targetByteBuffer = JSArrayBuffer.getDirectByteBuffer(targetBuffer);
+                } else if (targetType.isInterop()) {
+                    targetByteBuffer = targetInteropByteBuffer;
+                } else {
+                    targetByteArray = JSArrayBuffer.getByteArray(targetBuffer);
+                }
+                int sourceByteLength = sourceLength * sourceElementSize;
+                if (sourceByteBuffer != null && targetByteBuffer != null) {
+                    Boundaries.byteBufferPutSlice(
+                                    targetByteBuffer, targetByteIndex,
+                                    sourceByteBuffer, sourceByteIndex,
+                                    sourceByteIndex + sourceByteLength);
+                    return;
+                } else if (sourceByteArray != null && targetByteArray != null) {
+                    System.arraycopy(sourceByteArray, sourceByteIndex, targetByteArray, targetByteIndex, sourceByteLength);
+                    return;
+                }
+            }
+
+            if ((sourceType instanceof TypedArray.TypedBigIntArray) != (targetType instanceof TypedArray.TypedBigIntArray)) {
+                needErrorBranch.enter();
+                throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
+            }
+
+            InteropLibrary interop = (sourceType.isInterop() || targetType.isInterop()) ? getInterop() : null;
+
+            // If we are able to get ByteBuffer from an interop source/target buffer then
+            // use it directly instead of going through interop for each element
+            boolean hasSourceInteropByteBuffer = sourceInteropBufferProfile.profile(sourceInteropByteBuffer != null);
+            boolean hasTargetInteropByteBuffer = targetInteropBufferProfile.profile(targetInteropByteBuffer != null);
+            if (hasSourceInteropByteBuffer || hasTargetInteropByteBuffer) {
+                boolean littleEndian = ByteOrder.LITTLE_ENDIAN == ByteOrder.nativeOrder();
+                ByteBufferAccess bufferAccess = ByteBufferAccess.forOrder(littleEndian);
+                for (int i = 0; i < sourceLength; i++) {
+                    Object value;
+                    int sourceIndex = sourceByteIndex + i * sourceElementSize;
+                    if (hasSourceInteropByteBuffer) {
+                        value = JSRuntime.getBufferElementDirect(bufferAccess, sourceInteropByteBuffer, sourceElemTypeProfile.profile(sourceElemType), sourceIndex);
+                    } else {
+                        value = sourceTypeProfile.profile(sourceType).getBufferElement(sourceBuffer, sourceIndex, littleEndian, interop);
+                    }
+                    int targetIndex = targetByteIndex + i * targetElementSize;
+                    if (hasTargetInteropByteBuffer) {
+                        JSRuntime.setBufferElementDirect(bufferAccess, targetInteropByteBuffer, targetElemTypeProfile.profile(targetElemType), targetIndex, value);
+                    } else {
+                        targetTypeProfile.profile(targetType).setBufferElement(targetBuffer, targetIndex, littleEndian, value, interop);
+                    }
+                    TruffleSafepoint.poll(this);
+                }
+                return;
+            }
+
+            // getIntImpl of Uint32 returns negative int for large values (which breaks clamping)
+            if (sourceType instanceof TypedArray.TypedIntArray && targetType instanceof TypedArray.TypedIntArray &&
+                            (sourceElemType != ElementType.Uint32 || targetElemType != ElementType.Uint8Clamped)) {
                 intToIntBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
                     int value = ((TypedArray.TypedIntArray) sourceType).getIntImpl(sourceBuffer, sourceByteIndex, i, interop);
@@ -571,9 +659,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     ((TypedArray.TypedBigIntArray) targetType).setLongImpl(targetBuffer, targetByteOffset, i + targetOffset, value, interop);
                     TruffleSafepoint.poll(this);
                 }
-            } else if ((sourceType instanceof TypedArray.TypedBigIntArray) != (targetType instanceof TypedArray.TypedBigIntArray)) {
-                needErrorBranch.enter();
-                throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
             } else {
                 objectToObjectBranch.enter();
                 boolean littleEndian = ByteOrder.LITTLE_ENDIAN == ByteOrder.nativeOrder();
@@ -585,12 +670,20 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
         }
 
-        private JSArrayBufferObject cloneArrayBuffer(JSDynamicObject sourceBuffer, TypedArray sourceArray, int srcByteLength, int srcByteOffset) {
+        private ByteBuffer getByteBufferFromInteropBuffer(JSArrayBufferObject interopBuffer) {
+            if (getByteBufferInterop == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getByteBufferInterop = insert(InteropLibrary.getFactory().createDispatched(1));
+            }
+            return JSInteropUtil.wasmMemoryAsByteBuffer(interopBuffer, getByteBufferInterop, getRealm());
+        }
+
+        private JSArrayBufferObject cloneArrayBuffer(JSArrayBufferObject sourceBuffer, TypedArray sourceArray, int srcByteLength, int srcByteOffset) {
             JSArrayBufferObject clonedArrayBuffer;
             if (sourceArray.isInterop()) {
                 InteropLibrary interop = getInterop();
                 clonedArrayBuffer = cloneInteropArrayBuffer(sourceBuffer, srcByteLength, srcByteOffset, interop);
-            } else if (isDirectProf.profile(sourceArray.isDirect())) {
+            } else if (isDirectProfile.profile(sourceArray.isDirect())) {
                 clonedArrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), getRealm(), srcByteLength);
                 ByteBuffer clonedBackingBuffer = JSArrayBuffer.getDirectByteBuffer(clonedArrayBuffer);
                 ByteBuffer sourceBackingBuffer = JSArrayBuffer.getDirectByteBuffer(sourceBuffer);

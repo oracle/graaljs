@@ -73,6 +73,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -258,7 +259,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSArrayBufferView(arrayBufferView)"})
-    protected JSDynamicObject doArrayBufferView(JSDynamicObject newTarget, JSDynamicObject arrayBufferView, Object byteOffset0, Object length0) {
+    protected JSDynamicObject doArrayBufferView(JSDynamicObject newTarget, JSDynamicObject arrayBufferView, Object byteOffset0, Object length0,
+                    @Cached InlinedConditionProfile bulkCopyProfile) {
         JSArrayBufferObject srcData = JSArrayBufferView.getArrayBuffer(arrayBufferView);
         checkDetachedBuffer(srcData);
 
@@ -277,6 +279,29 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         JSDynamicObject result = createTypedArray(arrayBuffer, typedArray, 0, (int) length, newTarget);
 
         assert typedArray == JSArrayBufferView.typedArrayGetArrayType(result);
+
+        if (bulkCopyProfile.profile(this, !sourceType.isInterop() && sourceType.getElementType() == typedArray.getElementType())) {
+            int sourceByteOffset = JSArrayBufferView.typedArrayGetOffset(arrayBufferView);
+            int elementSize = sourceType.bytesPerElement();
+            int sourceByteLength = (int) length * elementSize;
+
+            if (sourceType.isDirect() && typedArray.isDirect()) {
+                ByteBuffer sourceBuffer = JSArrayBuffer.getDirectByteBuffer(srcData);
+                ByteBuffer targetBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
+                Boundaries.byteBufferPutSlice(
+                                targetBuffer, 0,
+                                sourceBuffer, sourceByteOffset,
+                                sourceByteOffset + sourceByteLength);
+                return result;
+            }
+            if (!sourceType.isDirect() && !typedArray.isDirect()) {
+                byte[] sourceArray = JSArrayBuffer.getByteArray(srcData);
+                byte[] targetArray = JSArrayBuffer.getByteArray(arrayBuffer);
+                System.arraycopy(sourceArray, sourceByteOffset, targetArray, 0, sourceByteLength);
+                return result;
+            }
+        }
+
         for (long i = 0; i < length; i++) {
             Object element = sourceType.getElement(arrayBufferView, i);
             typedArray.setElement(result, i, element, false);

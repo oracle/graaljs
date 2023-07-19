@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.runtime.interop;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -61,9 +64,12 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -429,6 +435,32 @@ public final class JSInteropUtil {
             sb.append("-").append(sourceSection.getCharEndIndex() - 1);
         }
         return sb.toString();
+    }
+
+    public static ByteBuffer wasmMemoryAsByteBuffer(JSArrayBufferObject interopArrayBuffer, InteropLibrary interop, JSRealm realm) {
+        assert JSArrayBuffer.isJSInteropArrayBuffer(interopArrayBuffer);
+        Object memAsByteBuffer = realm.getWASMMemAsByteBuffer();
+        if (memAsByteBuffer == null) {
+            return null;
+        }
+        try {
+            Object interopBuffer = JSArrayBuffer.getInteropBuffer(interopArrayBuffer);
+            if (interopBuffer == null) {
+                assert JSArrayBuffer.isDetachedBuffer(interopArrayBuffer);
+                return null;
+            }
+            Object bufferObject = interop.execute(memAsByteBuffer, interopBuffer);
+            TruffleLanguage.Env env = realm.getEnv();
+            if (env.isHostObject(bufferObject)) {
+                Object buffer = env.asHostObject(bufferObject);
+                if (buffer instanceof ByteBuffer) {
+                    return (ByteBuffer) buffer;
+                }
+            }
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
+        return null;
     }
 
 }
