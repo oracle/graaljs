@@ -412,7 +412,8 @@ public class JSRealm {
     private JSDynamicObject preinitConsoleBuiltinObject;
     private JSDynamicObject preinitPerformanceObject;
 
-    private volatile Map<Object, JSDynamicObject> templateRegistry;
+    private volatile Map<Object, JSArrayObject> templateRegistry;
+    private volatile Map<Object, JSArrayObject> dedentMap;
 
     private final JSDynamicObject globalScope;
 
@@ -1645,7 +1646,7 @@ public class JSRealm {
         return foreignObjectPrototype;
     }
 
-    public final Map<Object, JSDynamicObject> getTemplateRegistry() {
+    public final Map<Object, JSArrayObject> getTemplateRegistry() {
         if (templateRegistry == null) {
             createTemplateRegistry();
         }
@@ -1656,6 +1657,20 @@ public class JSRealm {
     private void createTemplateRegistry() {
         if (templateRegistry == null) {
             templateRegistry = new WeakHashMap<>();
+        }
+    }
+
+    public final Map<Object, JSArrayObject> getDedentMap() {
+        if (dedentMap == null) {
+            createDedentMap();
+        }
+        return dedentMap;
+    }
+
+    @TruffleBoundary
+    private void createDedentMap() {
+        if (dedentMap == null) {
+            dedentMap = new WeakHashMap<>();
         }
     }
 
