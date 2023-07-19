@@ -62,7 +62,6 @@ public interface Evaluator {
     String EVAL_SOURCE_NAME = "<eval>";
     String EVAL_AT_SOURCE_NAME_PREFIX = "eval at ";
     TruffleString TS_EVAL_SOURCE_NAME = Strings.constant(EVAL_SOURCE_NAME);
-    TruffleString TS_EVAL_AT_SOURCE_NAME_PREFIX = Strings.constant(EVAL_AT_SOURCE_NAME_PREFIX);
 
     TruffleString MODULE_LINK_SUFFIX = Strings.constant(":link");
     TruffleString MODULE_EVAL_SUFFIX = Strings.constant(":eval");
