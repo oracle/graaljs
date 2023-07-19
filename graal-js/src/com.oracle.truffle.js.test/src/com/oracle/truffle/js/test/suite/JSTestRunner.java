@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -234,7 +234,7 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
         while (matcher.find()) {
             optionName = matcher.group(1);  // retrieve only option name
             optionValue = matcher.group(2); // retrieve only option value
-            if (!optionName.startsWith(JSContextOptions.JS_OPTION_PREFIX)) {
+            if (!optionName.contains(".")) {
                 optionName = JSContextOptions.JS_OPTION_PREFIX + optionName;
             }
             if (optionValue == null) {  // check for the optional true/false after "="
