@@ -6,6 +6,7 @@ Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
 ## Version 23.1.0
+* NOTE: GraalVM no longer ships with a "js" ScriptEngine. Please either use the Maven dependency or explicitly put `js-scriptengine.jar` on the module path. See [ScriptEngine documentation](docs/user/ScriptEngine.md) for details.
 * ECMAScript 2023 mode/features enabled by default.
 * Implemented the [Async Context](https://github.com/tc39/proposal-async-context) proposal. It is available behind the experimental option `--js.async-context`.
 * `FinalizationRegistry.prototype.cleanupSome` is not enabled by default any more; it has been moved to ECMAScript staging mode (`--js.ecmascript-version=staging`).
