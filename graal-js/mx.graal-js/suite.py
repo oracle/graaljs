@@ -410,11 +410,6 @@ suite = {
     "GRAALJS" : {
       "moduleInfo" : {
         "name" : "org.graalvm.js",
-        "requiresConcealed" : {
-          "org.graalvm.truffle" : [
-            "com.oracle.truffle.api"
-          ],
-        },
         "exports" : [
           "com.oracle.truffle.js.lang to org.graalvm.truffle",
           "com.oracle.js.parser.ir to org.graalvm.nodejs",
