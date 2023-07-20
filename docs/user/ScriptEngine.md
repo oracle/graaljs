@@ -10,7 +10,34 @@ GraalVM provides a JSR-223 compliant `javax.script.ScriptEngine` implementation 
 Note that this feature is provided for legacy reasons in order to allow easier migration for implementations currently based on a `ScriptEngine`.
 We strongly encourage users to use the `org.graalvm.polyglot.Context` interface in order to control many of the settings directly and benefit from finer-grained security settings in GraalVM.
 
-## Recommendation: use `CompiledScript` API
+## Prerequisite
+
+NOTE: Beginning with version 23.1.0, GraalVM no longer includes a JS ScriptEngine by default.
+If you relied on that, you will have to migrate your setup to explicitly depend on the script engine module and add it to the _module path_.
+
+To get the `js-scriptengine` module, we recommend to use a Maven dependency, like follows:
+```xml
+<dependency>
+    <groupId>org.graalvm.js</groupId>
+    <artifactId>js-scriptengine</artifactId>
+    <version>${graalvm.version}</version>
+</dependency>
+<dependency>
+    <groupId>org.graalvm.js</groupId>
+    <artifactId>js</artifactId>
+    <version>${graalvm.version}</version>
+    <scope>runtime</scope>
+</dependency>
+```
+
+If you're not using `mvn`, you will need to add the `js-scriptengine.jar` file to the module path manually, e.g.: `--module-path=languages/js/graaljs-scriptengine.jar`.
+In some case, you may also need to add `--add-modules org.graalvm.js.scriptengine` to the command line, to ensure that the `ScriptEngine` will be found.
+An explicit dependency on the `org.graalvm.js.scriptengine` module is only required if you want to use `GraalJSScriptEngine` directly (see below).
+Finally, it's also possible to use `jlink` to generate a custom Java runtime image that contains the JS ScriptEngine.
+
+An example `pom.xml` can be found [in the graaljs repository on GitHub](https://github.com/oracle/graaljs/blob/master/graal-js/test/maven-demo/pom.xml).
+
+## Recommendation: Use `CompiledScript` API
 
 To avoid unnecessary re-compilation of JS sources, it is recommended to use `CompiledScript.eval` instead of `ScriptEngine.eval`. This prevents
 JIT-compiled code from being garbage-collected as long as the corresponding `CompiledScript` object is alive.
