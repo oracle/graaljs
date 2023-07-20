@@ -78,6 +78,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
 
 @RunWith(Parameterized.class)
@@ -85,15 +86,15 @@ public class GH669 {
 
     private static final String JS = "js";
     private static final String ROOT_PATH = Path.of("").toAbsolutePath().toString();
-    private static final String MODULE_PATH = Path.of("a/b/c").toAbsolutePath().toString();
-    private static final String REL_PATH_REF = Path.of("d/e/f").toAbsolutePath().toString();
+    private static final String MODULE_PATH = Path.of("a", "b", "c").toAbsolutePath().toString();
+    private static final String REL_PATH_REF = Path.of("d", "e", "f").toAbsolutePath().toString();
     private static final String INDEX_NAME = "index.js";
     private static final String INDEX_PATH = absPath(INDEX_NAME);
     private static final String INDEX_REL_PATH = relPath(INDEX_PATH);
     private static final String ERROR_HELPER_NAME = "error_helper.js";
     private static final String ERROR_HELPER_PATH = absPath(ERROR_HELPER_NAME);
     private static final String ERROR_HELPER_REL_PATH = relPath(ERROR_HELPER_PATH);
-    private static final Pattern JS_STACK_FRAME_PATTERN = Pattern.compile("^\\s*at ([\\w.]+) \\(([\\w/.-]+):\\d+:\\d+\\)$");
+    private static final Pattern JS_STACK_FRAME_PATTERN = Pattern.compile("^\\s*at ([\\w.]+) \\(((?:[A-Za-z]:)?[\\\\() /\\w.-]+):\\d+:\\d+\\)$");
 
     @Parameter public boolean usingRelativePath;
 
@@ -105,7 +106,7 @@ public class GH669 {
     @Test
     public void testJavaStackTrace() {
         try (var ctx = createContext()) {
-            var script = "require('%s').regularFunction();".formatted(INDEX_PATH);
+            var script = "require(%s).regularFunction();".formatted(JSRuntime.quote(INDEX_PATH));
             var frames = getJavaStackTrace(() -> ctx.eval(JS, script));
             assertJavaStackFrame(frames[0], "throw3", ERROR_HELPER_NAME);
             assertJavaStackFrame(frames[1], "throw2", ERROR_HELPER_NAME);
@@ -119,7 +120,7 @@ public class GH669 {
         var out = new ByteArrayOutputStream();
 
         try (var ctx = createContext()) {
-            var script = "require('%s').asyncFunction();".formatted(INDEX_PATH);
+            var script = "require(%s).asyncFunction();".formatted(JSRuntime.quote(INDEX_PATH));
             var promise = ctx.eval(JS, script);
             promise.invokeMember("catch", (Consumer<Object>) e -> {
                 var stackTrace = (String) ((Map<?, ?>) e).get("stack");
@@ -141,11 +142,11 @@ public class GH669 {
         try (var ctx = createContext(out)) {
             var script = """
                                 try {
-                                    require('%s').regularFunction();
+                                    require(%s).regularFunction();
                                 } catch(e) {
                                     console.error(e.stack);
                                 }
-                            """.formatted(usingRelativePath ? INDEX_REL_PATH : INDEX_PATH);
+                            """.formatted(JSRuntime.quote(usingRelativePath ? INDEX_REL_PATH : INDEX_PATH));
             ctx.eval(JS, script);
         }
 
@@ -164,12 +165,12 @@ public class GH669 {
             var script = """
                                 (async () => {
                                     try {
-                                        await (require('%s').asyncFunction());
+                                        await (require(%s).asyncFunction());
                                     } catch(e) {
                                         console.error(e.stack);
                                     }
                                 })();
-                            """.formatted(usingRelativePath ? INDEX_REL_PATH : INDEX_PATH);
+                            """.formatted(JSRuntime.quote(usingRelativePath ? INDEX_REL_PATH : INDEX_PATH));
             ctx.eval(JS, script);
         }
 
@@ -206,10 +207,10 @@ public class GH669 {
                         """;
 
         var indexContents = """
-                        const errorHelper = require('%s');
+                        const errorHelper = require(%s);
                         module.exports.regularFunction = function() { errorHelper.throw1(); }
                         module.exports.asyncFunction = async function() { errorHelper.throw1(); }
-                        """.formatted(usingRelativePath ? ERROR_HELPER_REL_PATH : ERROR_HELPER_PATH);
+                        """.formatted(JSRuntime.quote(usingRelativePath ? ERROR_HELPER_REL_PATH : ERROR_HELPER_PATH));
 
         var files = Map.of(
                         Path.of(ERROR_HELPER_PATH), errorHelperContents,
