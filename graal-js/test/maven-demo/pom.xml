@@ -279,6 +279,20 @@
                     </archive>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jlink-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <compress>2</compress>
+                    <addModules>
+                        <module>com.mycompany.app</module>
+                    </addModules>
+                    <launcher>
+                        myapp=com.mycompany.app/com.mycompany.app.App
+                    </launcher>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
