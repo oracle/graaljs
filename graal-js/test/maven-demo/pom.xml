@@ -221,6 +221,32 @@
                             <executable>${JAVA_HOME}/bin/java</executable>
                         </configuration>
                     </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jlink-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <configuration>
+                            <!-- Note: jlink is only supported beginning with GraalVM 23.1.0. -->
+                            <addModules>
+                                <module>com.mycompany.app</module>
+                                <module>jdk.internal.vm.compiler</module>
+                                <module>jdk.internal.vm.compiler.management</module>
+                                <module>org.graalvm.truffle</module>
+                                <module>org.graalvm.truffle.compiler</module>
+                                <module>org.graalvm.truffle.runtime</module>
+                            </addModules>
+                            <modulePaths>
+                                <!-- Not required if JAVA_HOME contains LibGraal. -->
+                                <modulePath>${compiler.dir}/compiler.jar${path.separator}${compiler.dir}/compiler-management.jar${path.separator}${compiler.dir}/truffle-compiler.jar</modulePath>
+                            </modulePaths>
+                            <launcher>
+                                myapp=com.mycompany.app/com.mycompany.app.App
+                            </launcher>
+                            <addOptions>
+                                <addOption>"-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI"</addOption>
+                            </addOptions>
+                        </configuration>
+                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -277,20 +303,6 @@
                             <mainClass>com.mycompany.app.App</mainClass>
                         </manifest>
                     </archive>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jlink-plugin</artifactId>
-                <version>3.1.0</version>
-                <configuration>
-                    <compress>2</compress>
-                    <addModules>
-                        <module>com.mycompany.app</module>
-                    </addModules>
-                    <launcher>
-                        myapp=com.mycompany.app/com.mycompany.app.App
-                    </launcher>
                 </configuration>
             </plugin>
         </plugins>
