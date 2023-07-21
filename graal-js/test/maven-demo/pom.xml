@@ -169,15 +169,13 @@
                                 <configuration>
                                     <arguments>
                                         <argument>--module-path</argument>
-                                        <!-- automatically creates the modulepath using all project dependencies, also adding the project build directory -->
+                                        <!-- automatically creates the modulepath using all project dependencies -->
                                         <modulepath/>
-                                        <argument>-classpath</argument>
-                                        <!-- automatically creates the classpath using all project dependencies, also adding the project build directory -->
-                                        <classpath/>
                                         <argument>-XX:+UnlockExperimentalVMOptions</argument>
                                         <argument>-XX:+EnableJVMCI</argument>
                                         <argument>--upgrade-module-path=${compiler.dir}/compiler.jar${path.separator}${compiler.dir}/compiler-management.jar${path.separator}${compiler.dir}/truffle-compiler.jar</argument>
-                                        <argument>com.mycompany.app.App</argument>
+                                        <argument>-m</argument>
+                                        <argument>com.mycompany.app/com.mycompany.app.App</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
@@ -189,11 +187,8 @@
                                 <configuration>
                                     <arguments>
                                         <argument>--module-path</argument>
-                                        <!-- automatically creates the modulepath using all project dependencies, also adding the project build directory -->
+                                        <!-- automatically creates the modulepath using all project dependencies -->
                                         <modulepath/>
-                                        <argument>-classpath</argument>
-                                        <!-- automatically creates the classpath using all project dependencies, also adding the project build directory -->
-                                        <classpath/>
                                         <argument>com.mycompany.app.App</argument>
                                     </arguments>
                                 </configuration>
@@ -213,8 +208,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <target>17</target>
+                    <source>17</source>
                 </configuration>
             </plugin>
             <plugin>
@@ -233,11 +228,8 @@
                         <configuration>
                             <arguments>
                                 <argument>--module-path</argument>
-                                <!-- automatically creates the modulepath using all project dependencies, also adding the project build directory -->
+                                <!-- automatically creates the modulepath using all project dependencies -->
                                 <modulepath/>
-                                <argument>-classpath</argument>
-                                <!-- automatically creates the classpath using all project dependencies, also adding the project build directory -->
-                                <classpath/>
                             </arguments>
                         </configuration>
                     </execution>
@@ -245,11 +237,23 @@
                 <configuration>
                     <executable>${JAVA_HOME}/bin/java</executable>
                     <arguments>
-                        <argument>-classpath</argument>
-                        <!-- automatically creates the classpath using all project dependencies, also adding the project build directory -->
-                        <classpath/>
+                        <argument>--module-path</argument>
+                        <!-- automatically creates the modulepath using all project dependencies -->
+                        <modulepath/>
                         <argument>com.mycompany.app.App</argument>
                     </arguments>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.mycompany.app.App</mainClass>
+                        </manifest>
+                    </archive>
                 </configuration>
             </plugin>
         </plugins>
