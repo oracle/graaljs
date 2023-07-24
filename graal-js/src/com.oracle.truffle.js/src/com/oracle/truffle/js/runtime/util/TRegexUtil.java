@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -66,6 +67,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.Props.CompiledRegex;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadBooleanMemberNodeGen;
+import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadIntArrayMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadIntMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadStringMemberNodeGen;
@@ -179,6 +181,43 @@ public final class TRegexUtil {
 
         public static InteropReadIntMemberNode getUncached() {
             return InteropReadIntMemberNodeGen.getUncached();
+        }
+    }
+
+    @GenerateInline
+    @GenerateUncached
+    public abstract static class InteropReadIntArrayMemberNode extends Node {
+
+        public abstract int[] execute(Node node, Object obj, String key);
+
+        @Specialization(guards = "objs.isMemberReadable(obj, key)", limit = NUMBER_OF_REGEX_RESULT_TYPES)
+        static int[] read(Node node, Object obj, String key, @Cached InteropToIntNode coerceNode, @CachedLibrary("obj") InteropLibrary objs, @CachedLibrary(limit = "1") InteropLibrary arrays) {
+            try {
+                Object interopArray = objs.readMember(obj, key);
+                if (arrays.hasArrayElements(interopArray)) {
+                    int length = (int) arrays.getArraySize(interopArray);
+                    int[] array = new int[length];
+                    for (int i = 0; i < length; i++) {
+                        array[i] = coerceNode.execute(node, arrays.readArrayElement(interopArray, i));
+                    }
+                    return array;
+                } else {
+                    // member is not an int array, but a single int
+                    // TODO: drop this fallback after TRegex starts returning int arrays
+                    return new int[]{coerceNode.execute(node, interopArray)};
+                }
+            } catch (UnsupportedMessageException | UnknownIdentifierException | InvalidArrayIndexException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+
+        @NeverDefault
+        public static InteropReadIntArrayMemberNode create() {
+            return InteropReadIntArrayMemberNodeGen.create();
+        }
+
+        public static InteropReadIntArrayMemberNode getUncached() {
+            return InteropReadIntArrayMemberNodeGen.getUncached();
         }
     }
 
@@ -401,10 +440,22 @@ public final class TRegexUtil {
             return interop.isMemberReadable(namedCaptureGroupsMap, Strings.toJavaString(name));
         }
 
-        public static int getGroupNumber(Object namedCaptureGroupsMap, TruffleString name, InteropLibrary interop, InteropToIntNode toIntNode, Node node) {
+        public static int[] getGroupNumbers(Object namedCaptureGroupsMap, TruffleString name, InteropLibrary libMap, InteropLibrary libArray, InteropToIntNode toIntNode, Node node) {
             try {
-                return toIntNode.execute(node, interop.readMember(namedCaptureGroupsMap, Strings.toJavaString(name)));
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                Object interopArray = libMap.readMember(namedCaptureGroupsMap, Strings.toJavaString(name));
+                if (libArray.hasArrayElements(interopArray)) {
+                    int length = (int) libArray.getArraySize(interopArray);
+                    int[] array = new int[length];
+                    for (int i = 0; i < length; i++) {
+                        array[i] = toIntNode.execute(node, libArray.readArrayElement(interopArray, i));
+                    }
+                    return array;
+                } else {
+                    // group indices is not an int array, but a single int
+                    // TODO: drop this fallback after TRegex starts returning int arrays
+                    return new int[]{toIntNode.execute(node, interopArray)};
+                }
+            } catch (UnsupportedMessageException | UnknownIdentifierException | InvalidArrayIndexException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
@@ -506,6 +557,11 @@ public final class TRegexUtil {
                             null, SubstringByteIndexNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached());
         }
 
+        public static Object materializeGroupUncached(Object regexResult, int[] indices, TruffleString input) {
+            return TRegexMaterializeResult.materializeGroup(JavaScriptLanguage.get(null).getJSContext(), regexResult, indices, input,
+                            null, SubstringByteIndexNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached());
+        }
+
         public static Object materializeGroup(JSContext context, Object regexResult, int i, TruffleString input,
                         Node node, TruffleString.SubstringByteIndexNode substringNode, InvokeGetGroupBoundariesMethodNode getStart, InvokeGetGroupBoundariesMethodNode getEnd) {
             final int beginIndex = TRegexResultAccessor.captureGroupStart(regexResult, i, node, getStart);
@@ -516,6 +572,18 @@ public final class TRegexUtil {
                 int endIndex = TRegexResultAccessor.captureGroupEnd(regexResult, i, node, getEnd);
                 return Strings.substring(context, substringNode, input, beginIndex, endIndex - beginIndex);
             }
+        }
+
+        public static Object materializeGroup(JSContext context, Object regexResult, int[] indices, TruffleString input,
+                        Node node, TruffleString.SubstringByteIndexNode substringNode, InvokeGetGroupBoundariesMethodNode getStart, InvokeGetGroupBoundariesMethodNode getEnd) {
+            for (int i : indices) {
+                final int beginIndex = TRegexResultAccessor.captureGroupStart(regexResult, i, node, getStart);
+                if (beginIndex != Constants.CAPTURE_GROUP_NO_MATCH) {
+                    int endIndex = TRegexResultAccessor.captureGroupEnd(regexResult, i, node, getEnd);
+                    return Strings.substring(context, substringNode, input, beginIndex, endIndex - beginIndex);
+                }
+            }
+            return Undefined.instance;
         }
 
         public static Object[] materializeFull(JSContext context, Object regexResult, int groupCount, TruffleString input,

@@ -99,6 +99,18 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
         return JSArray.createConstantIntArray(context, JSRealm.get(node), intArray);
     }
 
+    public static Object getIntIndicesArray(JSContext context, Object regexResult, int[] indices,
+                    Node node, InvokeGetGroupBoundariesMethodNode getStartNode, InvokeGetGroupBoundariesMethodNode getEndNode) {
+        for (int index : indices) {
+            int beginIndex = TRegexResultAccessor.captureGroupStart(regexResult, index, node, getStartNode);
+            if (beginIndex != Constants.CAPTURE_GROUP_NO_MATCH) {
+                int[] intArray = new int[]{beginIndex, TRegexResultAccessor.captureGroupEnd(regexResult, index, node, getEndNode)};
+                return JSArray.createConstantIntArray(context, JSRealm.get(node), intArray);
+            }
+        }
+        return Undefined.instance;
+    }
+
     public ScriptArray createWritable(JSContext context, JSDynamicObject object, long index, Object value,
                     Node node, InvokeGetGroupBoundariesMethodNode getStartNode, InvokeGetGroupBoundariesMethodNode getEndNode) {
         for (int i = 0; i < lengthInt(object); i++) {
