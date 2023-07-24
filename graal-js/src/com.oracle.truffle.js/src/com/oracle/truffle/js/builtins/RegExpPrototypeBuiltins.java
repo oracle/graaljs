@@ -972,6 +972,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private InvokeGetGroupBoundariesMethodNode getEndNode = InvokeGetGroupBoundariesMethodNode.create();
         @Child private InteropReadMemberNode readGroupsNode = InteropReadMemberNode.create();
         @Child private InteropLibrary namedCaptureGroupInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+        @Child private InteropLibrary groupIndicesInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         @Child private InteropToIntNode toIntNode = InteropToIntNodeGen.create();
 
         JSRegExpReplaceNode(JSContext context, JSBuiltin builtin) {
@@ -1570,10 +1571,13 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             JSRegExpReplaceNode parent = (JSRegExpReplaceNode) node;
             Object map = TRegexCompiledRegexAccessor.namedCaptureGroups(tRegexCompiledRegex, parent, parent.readGroupsNode);
             if (TRegexNamedCaptureGroupsAccessor.hasGroup(map, groupName, parent.namedCaptureGroupInterop)) {
-                int groupNumber = TRegexNamedCaptureGroupsAccessor.getGroupNumber(map, groupName, parent.namedCaptureGroupInterop, parent.toIntNode, parent);
-                int start = TRegexResultAccessor.captureGroupStart(tRegexResult, groupNumber, parent, parent.getStartNode);
-                if (start >= 0) {
-                    node.append(sb, input, start, TRegexResultAccessor.captureGroupEnd(tRegexResult, groupNumber, parent, parent.getEndNode));
+                int[] groupNumbers = TRegexNamedCaptureGroupsAccessor.getGroupNumbers(map, groupName, parent.namedCaptureGroupInterop, parent.groupIndicesInterop, parent.toIntNode, parent);
+                for (int groupNumber : groupNumbers) {
+                    int start = TRegexResultAccessor.captureGroupStart(tRegexResult, groupNumber, parent, parent.getStartNode);
+                    if (start >= 0) {
+                        node.append(sb, input, start, TRegexResultAccessor.captureGroupEnd(tRegexResult, groupNumber, parent, parent.getEndNode));
+                        break;
+                    }
                 }
             }
         }

@@ -76,7 +76,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadIntMemberNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadIntArrayMemberNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadMemberNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadStringMemberNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeGetGroupBoundariesMethodNode;
@@ -134,16 +134,16 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
     public static final class LazyNamedCaptureGroupProperty extends PropertyProxy {
 
-        private final int groupIndex;
+        private final int[] groupIndices;
         private final TruffleString groupName;
 
-        public LazyNamedCaptureGroupProperty(TruffleString groupName, int groupIndex) {
-            this.groupIndex = groupIndex;
+        public LazyNamedCaptureGroupProperty(TruffleString groupName, int[] groupIndices) {
+            this.groupIndices = groupIndices;
             this.groupName = groupName;
         }
 
-        public int getGroupIndex() {
-            return groupIndex;
+        public int[] getGroupIndices() {
+            return groupIndices;
         }
 
         @Override
@@ -151,11 +151,11 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             JSRegExpGroupsObject groups = (JSRegExpGroupsObject) object;
             Object regexResult = groups.getRegexResult();
             if (groups.isIndices()) {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentLanguage().getJSContext(), regexResult, groupIndex,
+                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentLanguage().getJSContext(), regexResult, groupIndices,
                                 null, InvokeGetGroupBoundariesMethodNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached());
             } else {
                 TruffleString input = groups.getInputString();
-                return TRegexMaterializeResult.materializeGroupUncached(regexResult, groupIndex, input);
+                return TRegexMaterializeResult.materializeGroupUncached(regexResult, groupIndices, input);
             }
         }
 
@@ -246,10 +246,10 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         }
     }
 
-    private static final Comparator<Pair<Integer, TruffleString>> NAMED_GROUPS_COMPARATOR = new Comparator<>() {
+    private static final Comparator<Pair<int[], TruffleString>> NAMED_GROUPS_COMPARATOR = new Comparator<>() {
         @Override
-        public int compare(Pair<Integer, TruffleString> group1, Pair<Integer, TruffleString> group2) {
-            return group1.getFirst() - group2.getFirst();
+        public int compare(Pair<int[], TruffleString> group1, Pair<int[], TruffleString> group2) {
+            return group1.getFirst()[0] - group2.getFirst()[0];
         }
     };
 
@@ -258,18 +258,18 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         try {
             Shape groupsShape = ctx.getRegExpGroupsEmptyShape();
             List<Object> keys = JSInteropUtil.keys(namedCaptureGroups);
-            List<Pair<Integer, TruffleString>> pairs = new ArrayList<>(keys.size());
+            List<Pair<int[], TruffleString>> pairs = new ArrayList<>(keys.size());
             for (Object key : keys) {
-                int groupIndex = InteropReadIntMemberNode.getUncached().execute(null, namedCaptureGroups, InteropLibrary.getUncached().asString(key));
+                int[] groupIndices = InteropReadIntArrayMemberNode.getUncached().execute(null, namedCaptureGroups, InteropLibrary.getUncached().asString(key));
                 TruffleString groupName = Strings.interopAsTruffleString(key);
-                pairs.add(new Pair<>(groupIndex, groupName));
+                pairs.add(new Pair<>(groupIndices, groupName));
             }
             Collections.sort(pairs, NAMED_GROUPS_COMPARATOR);
             Shape.DerivedBuilder builder = Shape.newBuilder(groupsShape);
-            for (Pair<Integer, TruffleString> pair : pairs) {
-                int groupIndex = pair.getFirst();
+            for (Pair<int[], TruffleString> pair : pairs) {
+                int[] groupIndices = pair.getFirst();
                 TruffleString groupName = pair.getSecond();
-                builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndex), JSAttributes.getDefault() | JSProperty.PROXY);
+                builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndices), JSAttributes.getDefault() | JSProperty.PROXY);
             }
             groupsShape = builder.build();
             return JSObjectFactory.createBound(ctx, Null.instance, groupsShape);

@@ -1822,17 +1822,17 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class LazyNamedCaptureGroupPropertyGetNode extends LinkedPropertyGetNode {
 
         private final JSContext context;
-        private final int groupIndex;
+        private final int[] groupIndices;
         @Child TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
         @Child private InvokeGetGroupBoundariesMethodNode getStartNode = InvokeGetGroupBoundariesMethodNode.create();
         @Child private InvokeGetGroupBoundariesMethodNode getEndNode = InvokeGetGroupBoundariesMethodNode.create();
         private final ConditionProfile isIndicesObject = ConditionProfile.create();
 
-        public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, int groupIndex, JSContext context) {
+        public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, int[] groupIndices, JSContext context) {
             super(receiverCheck);
             this.context = context;
             assert isLazyNamedCaptureGroupProperty(property);
-            this.groupIndex = groupIndex;
+            this.groupIndices = groupIndices;
         }
 
         @Override
@@ -1841,11 +1841,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             JSRegExpGroupsObject groups = (JSRegExpGroupsObject) store;
             Object regexResult = groups.getRegexResult();
             if (isIndicesObject.profile(groups.isIndices())) {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), regexResult, groupIndex,
+                return LazyRegexResultIndicesArray.getIntIndicesArray(root.getContext(), regexResult, groupIndices,
                                 null, getStartNode, getEndNode);
             } else {
                 TruffleString input = groups.getInputString();
-                return TRegexMaterializeResult.materializeGroup(context, regexResult, groupIndex, input,
+                return TRegexMaterializeResult.materializeGroup(context, regexResult, groupIndices, input,
                                 null, substringNode, getStartNode, getEndNode);
             }
         }
@@ -1985,8 +1985,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else if (isLazyRegexResultIndexProperty(property)) {
                 return new LazyRegexResultIndexPropertyGetNode(property, receiverCheck);
             } else if (isLazyNamedCaptureGroupProperty(property)) {
-                int groupIndex = ((JSRegExp.LazyNamedCaptureGroupProperty) JSProperty.getConstantProxy(property)).getGroupIndex();
-                return new LazyNamedCaptureGroupPropertyGetNode(property, receiverCheck, groupIndex, context);
+                int[] groupIndices = ((JSRegExp.LazyNamedCaptureGroupProperty) JSProperty.getConstantProxy(property)).getGroupIndices();
+                return new LazyNamedCaptureGroupPropertyGetNode(property, receiverCheck, groupIndices, context);
             } else {
                 return new ProxyPropertyGetNode(property, receiverCheck);
             }
