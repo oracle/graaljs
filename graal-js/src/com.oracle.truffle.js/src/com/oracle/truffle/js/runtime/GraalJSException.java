@@ -428,13 +428,13 @@ public abstract class GraalJSException extends AbstractTruffleException {
             }
         }
         boolean global = (JSRuntime.isNullOrUndefined(thisObj) && !JSFunction.isStrict(functionObj)) || isGlobalObject(thisObj, JSFunction.getRealm(functionObj));
-        boolean hasPath = source != null && source.getPath() != null;
+        boolean hasPath = source.getPath() != null;
         return new JSStackTraceElement(fileName, functionName, callNodeSourceSection, thisObj, functionObj, targetSourceSection,
                         inStrictMode, eval, global, inNashornMode, async, hasPath, promiseIndex);
     }
 
     private static boolean isEvalSource(Source source) {
-        return source != null && source.getName().startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX);
+        return source.getName().startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX);
     }
 
     private static boolean isInternalFunctionName(TruffleString functionName) {
@@ -513,15 +513,11 @@ public abstract class GraalJSException extends AbstractTruffleException {
     }
 
     private static TruffleString getFileName(Source source) {
-        if (source != null) {
-            String fileName = source.getPath();
-            if (fileName == null) {
-                fileName = source.getName();
-            }
-            return Strings.fromJavaString(fileName);
-        } else {
-            return Strings.UNKNOWN_FILENAME;
+        String fileName = source.getPath();
+        if (fileName == null) {
+            fileName = source.getName();
         }
+        return Strings.fromJavaString(fileName);
     }
 
     public void printJSStackTrace() {
