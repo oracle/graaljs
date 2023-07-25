@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,13 @@ public abstract class AbstractFactoryProcessor extends AbstractProcessor {
         return SourceVersion.latest();
     }
 
+    protected final TypeElement asTypeElement(TypeMirror type) {
+        if (type instanceof DeclaredType declaredType) {
+            return (TypeElement) declaredType.asElement();
+        }
+        return (TypeElement) processingEnv.getTypeUtils().asElement(type);
+    }
+
     protected final List<ExecutableElement> getOverridableMethods(TypeElement typeElement) {
         List<ExecutableElement> list = new ArrayList<>();
         collectOverridableMethods(typeElement, list);
@@ -69,9 +76,9 @@ public abstract class AbstractFactoryProcessor extends AbstractProcessor {
 
     private void collectOverridableMethods(TypeElement typeElement, List<ExecutableElement> list) {
         if (!(typeElement.getSuperclass() instanceof NoType || typeElement.getSuperclass().toString().equals("java.lang.Object"))) {
-            collectOverridableMethods((TypeElement) processingEnv.getTypeUtils().asElement(typeElement.getSuperclass()), list);
+            collectOverridableMethods(asTypeElement(typeElement.getSuperclass()), list);
         }
-        typeElement.getInterfaces().forEach(intf -> collectOverridableMethods((TypeElement) processingEnv.getTypeUtils().asElement(intf), list));
+        typeElement.getInterfaces().forEach(intf -> collectOverridableMethods(asTypeElement(intf), list));
         ElementFilter.methodsIn(typeElement.getEnclosedElements()).stream().filter(m -> isOverridable(m)).forEach(list::add);
     }
 

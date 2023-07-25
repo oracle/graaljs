@@ -1,2 +1,3 @@
 com.oracle.truffle.js.factory.processor.GenerateDecoderProcessor
 com.oracle.truffle.js.factory.processor.GenerateProxyProcessor
+com.oracle.truffle.js.factory.processor.GenerateObjectFactoryProcessor
