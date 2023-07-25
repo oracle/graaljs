@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -51,6 +52,7 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
     private final Object wasmMemory;
     private JSDynamicObject bufferObject;
 
+    @GenerateObjectFactory
     protected JSWebAssemblyMemoryObject(Shape shape, Object wasmMemory) {
         super(shape);
         this.wasmMemory = wasmMemory;

@@ -213,8 +213,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
     public static JSRegExpObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
-        JSRegExpObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled);
-        return context.trackAllocation(regExp);
+        return JSRegExpObjectFactory.create(context.getRegExpFactory(), realm, compiledRegex, groupsFactory, legacyFeaturesEnabled);
     }
 
     private static void initialize(JSContext ctx, JSDynamicObject regExp, Object regex) {
@@ -227,9 +226,8 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         initialize(ctx, thisObj, regex);
     }
 
-    public static JSDynamicObject createGroupsObject(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
-        JSDynamicObject obj = JSRegExpGroupsObject.create(realm, groupsFactory, regexResult, input, isIndices);
-        return context.trackAllocation(obj);
+    public static JSDynamicObject createGroupsObject(JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
+        return JSRegExpGroupsObjectFactory.create(groupsFactory, realm, regexResult, input, isIndices);
     }
 
     @TruffleBoundary

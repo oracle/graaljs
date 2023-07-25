@@ -109,10 +109,9 @@ public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFacto
             return (JSWebAssemblyTableObject) embedderData;
         }
         JSObjectFactory factory = context.getWebAssemblyTableFactory();
-        JSWebAssemblyTableObject object = new JSWebAssemblyTableObject(factory.getShape(realm), wasmTable, elementKind);
-        factory.initProto(object, realm);
+        JSWebAssemblyTableObject object = JSWebAssemblyTableObjectFactory.create(factory, realm, wasmTable, elementKind);
         JSWebAssembly.setEmbedderData(realm, wasmTable, object);
-        return context.trackAllocation(object);
+        return object;
     }
 
 }

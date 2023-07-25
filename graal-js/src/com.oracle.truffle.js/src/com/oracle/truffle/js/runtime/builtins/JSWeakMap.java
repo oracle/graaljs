@@ -67,8 +67,7 @@ public final class JSWeakMap extends JSNonProxy implements JSConstructorFactory.
     public static JSWeakMapObject create(JSContext context, JSRealm realm) {
         WeakMap weakMap = new WeakMap();
         JSObjectFactory factory = context.getWeakMapFactory();
-        JSWeakMapObject obj = factory.initProto(new JSWeakMapObject(factory.getShape(realm), weakMap), realm);
-        return context.trackAllocation(obj);
+        return JSWeakMapObjectFactory.create(factory, realm, weakMap);
     }
 
     @Override

@@ -215,6 +215,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -2411,7 +2412,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"isJSHeapArrayBuffer(buffer)"})
-        protected final JSDynamicObject ofHeapArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
+        protected final JSDynamicObject ofHeapArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject buffer, Object byteOffset, Object byteLength,
                         @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
@@ -2420,7 +2421,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"isJSDirectOrSharedArrayBuffer(buffer)"})
-        protected final JSDynamicObject ofDirectArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
+        protected final JSDynamicObject ofDirectArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject buffer, Object byteOffset, Object byteLength,
                         @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
@@ -2429,7 +2430,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"isJSInteropArrayBuffer(buffer)"})
-        protected final JSDynamicObject ofInteropArrayBuffer(JSDynamicObject newTarget, JSDynamicObject buffer, Object byteOffset, Object byteLength,
+        protected final JSDynamicObject ofInteropArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject buffer, Object byteOffset, Object byteLength,
                         @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
@@ -2445,7 +2446,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
                         @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
-            JSDynamicObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), buffer);
+            JSArrayBufferObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), buffer);
             return ofInteropArrayBuffer(newTarget, arrayBuffer, byteOffset, byteLength, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, bufferInterop);
         }
 
@@ -2456,7 +2457,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             throw Errors.createTypeError("Not an ArrayBuffer");
         }
 
-        protected final JSDynamicObject constructDataView(JSDynamicObject newTarget, JSDynamicObject arrayBuffer, Object byteOffset, Object byteLength,
+        protected final JSDynamicObject constructDataView(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset, Object byteLength,
                         boolean direct, boolean isInteropBuffer,
                         InlinedBranchProfile errorBranch,
                         InlinedConditionProfile byteLengthCondition,

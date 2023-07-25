@@ -102,9 +102,7 @@ public final class JSWebAssemblyModule extends JSNonProxy implements JSConstruct
 
     public static JSWebAssemblyModuleObject create(JSContext context, JSRealm realm, Object wasmModule) {
         JSObjectFactory factory = context.getWebAssemblyModuleFactory();
-        JSWebAssemblyModuleObject object = new JSWebAssemblyModuleObject(factory.getShape(realm), wasmModule);
-        factory.initProto(object, realm);
-        return context.trackAllocation(object);
+        return JSWebAssemblyModuleObjectFactory.create(factory, realm, wasmModule);
     }
 
 }

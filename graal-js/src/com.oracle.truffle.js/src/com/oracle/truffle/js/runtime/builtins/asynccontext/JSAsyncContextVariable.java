@@ -69,8 +69,7 @@ public final class JSAsyncContextVariable extends JSNonProxy implements JSConstr
     }
 
     public static JSAsyncContextVariableObject create(JSContext context, JSRealm realm, Symbol asyncContextKey, Object asyncContextDefaultValue) {
-        JSAsyncContextVariableObject obj = JSAsyncContextVariableObject.create(realm, context.getAsyncContextVariableFactory(), asyncContextKey, asyncContextDefaultValue);
-        return context.trackAllocation(obj);
+        return JSAsyncContextVariableObjectFactory.create(context.getAsyncContextVariableFactory(), realm, asyncContextKey, asyncContextDefaultValue);
     }
 
     @Override

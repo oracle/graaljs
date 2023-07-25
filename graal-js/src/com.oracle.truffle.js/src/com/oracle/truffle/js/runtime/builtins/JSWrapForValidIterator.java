@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,9 +57,7 @@ public final class JSWrapForValidIterator extends JSNonProxy implements JSConstr
     }
 
     public static JSWrapForValidIteratorObject create(JSContext context, JSRealm realm, IteratorRecord iteratorRecord) {
-        JSObjectFactory factory = context.getWrapForIteratorFactory();
-        JSWrapForValidIteratorObject obj = factory.initProto(new JSWrapForValidIteratorObject(factory.getShape(realm), iteratorRecord), realm);
-        return context.trackAllocation(obj);
+        return JSWrapForValidIteratorObjectFactory.create(context.getWrapForIteratorFactory(), realm, iteratorRecord);
     }
 
     public static boolean isWrapForIterator(Object obj) {

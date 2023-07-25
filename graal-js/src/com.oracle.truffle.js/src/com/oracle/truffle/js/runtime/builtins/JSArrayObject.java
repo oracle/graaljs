@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -71,6 +72,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JSArrayObject extends JSArrayBase implements JSCopyableObject {
+
+    @GenerateObjectFactory
     protected JSArrayObject(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         super(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }

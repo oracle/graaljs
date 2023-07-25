@@ -47,6 +47,7 @@ import java.util.Locale;
 import org.graalvm.shadowed.com.ibm.icu.text.Collator;
 import org.graalvm.shadowed.com.ibm.icu.text.RuleBasedCollator;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -213,9 +214,7 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
     public static JSCollatorObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getCollatorFactory();
-        JSCollatorObject obj = new JSCollatorObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return JSCollatorObjectFactory.create(factory, realm, state);
     }
 
     public static Collator getCollatorProperty(JSDynamicObject obj) {

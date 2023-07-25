@@ -72,8 +72,7 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     }
 
     public static JSSymbolObject create(JSContext context, JSRealm realm, Symbol symbol) {
-        JSSymbolObject mapObj = JSSymbolObject.create(realm, context.getSymbolFactory(), symbol);
-        return context.trackAllocation(mapObj);
+        return JSSymbolObjectFactory.create(context.getSymbolFactory(), realm, symbol);
     }
 
     public static Symbol getSymbolData(JSDynamicObject symbolWrapper) {

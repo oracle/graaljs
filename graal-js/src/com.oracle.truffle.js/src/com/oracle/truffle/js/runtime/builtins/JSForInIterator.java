@@ -60,8 +60,7 @@ public final class JSForInIterator extends JSNonProxy implements JSConstructorFa
     }
 
     public static JSForInIteratorObject create(JSContext context, JSRealm realm, JSDynamicObject iteratedObject, boolean iterateValues) {
-        var obj = JSForInIteratorObject.create(realm, context.getForInIteratorFactory(), iteratedObject, iterateValues);
-        return context.trackAllocation(obj);
+        return JSForInIteratorObjectFactory.create(context.getForInIteratorFactory(), realm, iteratedObject, iterateValues);
     }
 
     /**

@@ -1480,7 +1480,7 @@ public final class GraalJSAccess {
 
     private Object typedArrayNew(Object arrayBuffer, int offset, int length, TypedArrayFactory factory) {
         TypedArray arrayType = factory.createArrayType(true, offset != 0);
-        JSDynamicObject dynamicObject = (JSDynamicObject) arrayBuffer;
+        JSArrayBufferObject dynamicObject = (JSArrayBufferObject) arrayBuffer;
         JSContext context = JSObject.getJSContext(dynamicObject);
         JSRealm realm = getCurrentRealm();
         boolean detached = JSArrayBuffer.isDetachedBuffer(dynamicObject);
@@ -1539,7 +1539,7 @@ public final class GraalJSAccess {
     }
 
     public Object dataViewNew(Object arrayBuffer, int offset, int length) {
-        JSDynamicObject dynamicObject = (JSDynamicObject) arrayBuffer;
+        JSArrayBufferObject dynamicObject = (JSArrayBufferObject) arrayBuffer;
         JSRealm realm = getCurrentRealm();
         return JSDataView.createDataView(realm.getContext(), realm, dynamicObject, offset, length);
     }

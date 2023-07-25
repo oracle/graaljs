@@ -107,9 +107,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                     double microseconds, double nanoseconds) {
         JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalDurationFactory();
-        JSTemporalDurationObject obj = factory.initProto(new JSTemporalDurationObject(factory.getShape(realm),
-                        nnz(years), nnz(months), nnz(weeks), nnz(days), nnz(hours), nnz(minutes), nnz(seconds), nnz(milliseconds), nnz(microseconds), nnz(nanoseconds)), realm);
-        return context.trackAllocation(obj);
+        return JSTemporalDurationObjectFactory.create(factory, realm,
+                        nnz(years), nnz(months), nnz(weeks), nnz(days), nnz(hours), nnz(minutes), nnz(seconds), nnz(milliseconds), nnz(microseconds), nnz(nanoseconds));
     }
 
     private static double nnz(double d) {

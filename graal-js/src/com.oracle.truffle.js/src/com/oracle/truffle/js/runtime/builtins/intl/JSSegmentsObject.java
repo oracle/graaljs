@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 /**
@@ -53,6 +54,7 @@ public final class JSSegmentsObject extends JSNonProxyObject {
     // [[SegmentsString]] internal slot
     private final TruffleString segmentsString;
 
+    @GenerateObjectFactory
     protected JSSegmentsObject(Shape shape, JSSegmenterObject segmentsSegmenter, TruffleString segmentsString) {
         super(shape);
         this.segmentsSegmenter = segmentsSegmenter;

@@ -102,8 +102,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     }
 
     public static JSStringObject create(JSContext context, JSRealm realm, TruffleString value) {
-        JSStringObject stringObj = JSStringObject.create(realm, context.getStringFactory(), value);
-        return context.trackAllocation(stringObj);
+        return JSStringObjectFactory.create(context.getStringFactory(), realm, value);
     }
 
     @TruffleBoundary

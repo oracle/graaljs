@@ -563,9 +563,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
     public static JSDateObject create(JSContext context, JSRealm realm, double timeMillis) {
         JSObjectFactory factory = context.getDateFactory();
-        JSDateObject obj = JSDateObject.create(factory.getShape(realm), timeMillis);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return JSDateObjectFactory.create(factory, realm, timeMillis);
     }
 
     public static double setTime(JSDateObject thisDate, double time) {

@@ -194,9 +194,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     public static JSNumberFormatObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getNumberFormatFactory();
-        JSNumberFormatObject obj = new JSNumberFormatObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return JSNumberFormatObjectFactory.create(factory, realm, state);
     }
 
     private static Notation notationToICUNotation(String notation, String compactDisplay) {

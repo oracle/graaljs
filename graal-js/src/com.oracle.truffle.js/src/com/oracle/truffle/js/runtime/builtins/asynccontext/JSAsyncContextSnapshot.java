@@ -69,8 +69,7 @@ public final class JSAsyncContextSnapshot extends JSNonProxy implements JSConstr
     }
 
     public static JSAsyncContextSnapshotObject create(JSContext context, JSRealm realm, AsyncContext asyncContextMapping) {
-        JSAsyncContextSnapshotObject obj = JSAsyncContextSnapshotObject.create(realm, context.getAsyncContextSnapshotFactory(), asyncContextMapping);
-        return context.trackAllocation(obj);
+        return JSAsyncContextSnapshotObjectFactory.create(context.getAsyncContextSnapshotFactory(), realm, asyncContextMapping);
     }
 
     @Override

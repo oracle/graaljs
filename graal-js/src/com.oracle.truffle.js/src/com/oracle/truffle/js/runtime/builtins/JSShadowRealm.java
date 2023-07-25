@@ -61,8 +61,7 @@ public final class JSShadowRealm extends JSNonProxy implements JSConstructorFact
     }
 
     public static JSShadowRealmObject create(JSContext context, JSRealm callerRealm, JSRealm shadowRealm) {
-        JSShadowRealmObject obj = JSShadowRealmObject.create(callerRealm, context.getShadowRealmFactory(), shadowRealm);
-        return context.trackAllocation(obj);
+        return JSShadowRealmObjectFactory.create(context.getShadowRealmFactory(), callerRealm, shadowRealm);
     }
 
     @Override

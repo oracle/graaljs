@@ -139,9 +139,7 @@ public final class JSError extends JSNonProxy {
 
     public static JSErrorObject createErrorObject(JSContext context, JSRealm realm, JSErrorType errorType) {
         JSObjectFactory factory = context.getErrorFactory(errorType);
-        JSErrorObject obj = JSErrorObject.create(realm, factory);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return JSErrorObjectFactory.create(factory, realm);
     }
 
     public static void setMessage(JSDynamicObject obj, TruffleString message) {

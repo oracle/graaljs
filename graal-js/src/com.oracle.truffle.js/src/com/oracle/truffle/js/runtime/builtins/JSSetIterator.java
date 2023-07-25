@@ -63,8 +63,7 @@ public final class JSSetIterator extends JSNonProxy implements JSConstructorFact
     }
 
     public static JSSetIteratorObject create(JSContext context, JSRealm realm, Object iteratedObject, JSHashMap.Cursor nextIndex, int iterationKind) {
-        var obj = JSSetIteratorObject.create(realm, context.getSetIteratorFactory(), iteratedObject, nextIndex, iterationKind);
-        return context.trackAllocation(obj);
+        return JSSetIteratorObjectFactory.create(context.getSetIteratorFactory(), realm, iteratedObject, nextIndex, iterationKind);
     }
 
     /**

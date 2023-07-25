@@ -69,9 +69,9 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
     }
 
     public static JSMapObject create(JSContext context, JSRealm realm) {
+        JSHashMap internalMap = new JSHashMap();
         JSObjectFactory factory = context.getMapFactory();
-        JSMapObject obj = factory.initProto(new JSMapObject(factory.getShape(realm), new JSHashMap()), realm);
-        return context.trackAllocation(obj);
+        return JSMapObjectFactory.create(factory, realm, internalMap);
     }
 
     public static JSHashMap getInternalMap(JSDynamicObject obj) {

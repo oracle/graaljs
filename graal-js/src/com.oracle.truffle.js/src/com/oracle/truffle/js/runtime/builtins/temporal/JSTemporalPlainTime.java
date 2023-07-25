@@ -86,9 +86,8 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
         JSRealm realm = JSRealm.get(node);
         JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm, node, errorBranch);
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
-        JSTemporalPlainTimeObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
-                        hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm);
-        return context.trackAllocation(obj);
+        return JSTemporalPlainTimeObjectFactory.create(factory, realm,
+                        hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar);
     }
 
     @Override

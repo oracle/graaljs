@@ -189,9 +189,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     public static JSSegmenterObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getSegmenterFactory();
-        JSSegmenterObject obj = new JSSegmenterObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return JSSegmenterObjectFactory.create(factory, realm, state);
     }
 
     public static JSSegmentIteratorObject createSegmentIterator(JSContext context, JSRealm realm, JSSegmenterObject segmenter, TruffleString value) {
@@ -199,16 +197,12 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         Granularity granularity = JSSegmenter.getGranularity(segmenter);
         JSSegmenter.IteratorState iteratorState = new JSSegmenter.IteratorState(value, icuIterator, granularity);
         JSObjectFactory factory = context.getSegmentIteratorFactory();
-        JSSegmentIteratorObject segmentIterator = new JSSegmentIteratorObject(factory.getShape(realm), iteratorState);
-        factory.initProto(segmentIterator, realm);
-        return context.trackAllocation(segmentIterator);
+        return JSSegmentIteratorObjectFactory.create(factory, realm, iteratorState);
     }
 
     public static JSSegmentsObject createSegments(JSContext context, JSRealm realm, JSSegmenterObject segmenter, TruffleString string) {
         JSObjectFactory factory = context.getSegmentsFactory();
-        JSSegmentsObject segments = new JSSegmentsObject(factory.getShape(realm), segmenter, string);
-        factory.initProto(segments, realm);
-        return context.trackAllocation(segments);
+        return JSSegmentsObjectFactory.create(factory, realm, segmenter, string);
     }
 
     @TruffleBoundary

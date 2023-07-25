@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
@@ -51,6 +52,7 @@ public class JSTemporalPlainMonthDayObject extends JSNonProxyObject implements T
     private final JSDynamicObject calendar;
     private final int isoYear; // not checked in spec, see #1502
 
+    @GenerateObjectFactory
     protected JSTemporalPlainMonthDayObject(Shape shape, int isoMonth, int isoDay, JSDynamicObject calendar,
                     int isoYear) {
         super(shape);

@@ -65,8 +65,7 @@ public final class JSAsyncIterator extends JSNonProxy implements JSConstructorFa
     }
 
     public static JSAsyncIteratorObject create(JSContext context, JSRealm realm) {
-        JSAsyncIteratorObject obj = JSAsyncIteratorObject.create(realm, context.getAsyncIteratorFactory());
-        return context.trackAllocation(obj);
+        return JSAsyncIteratorObjectFactory.create(context.getAsyncIteratorFactory(), realm);
     }
 
     @Override

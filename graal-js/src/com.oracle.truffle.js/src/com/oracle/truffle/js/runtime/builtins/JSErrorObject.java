@@ -52,6 +52,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -64,6 +65,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 @ExportLibrary(InteropLibrary.class)
 public final class JSErrorObject extends JSNonProxyObject implements JSCopyableObject {
 
+    @GenerateObjectFactory
     protected JSErrorObject(Shape shape) {
         super(shape);
     }

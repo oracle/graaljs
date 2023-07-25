@@ -108,9 +108,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
     public static JSLocaleObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getLocaleFactory();
-        JSLocaleObject obj = new JSLocaleObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return obj;
+        return JSLocaleObjectFactory.create(factory, realm, state);
     }
 
     public static class InternalState {

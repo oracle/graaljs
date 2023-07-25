@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ArrayBufferFunctionBuiltins;
@@ -74,11 +73,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     }
 
     public static JSArrayBufferObject createArrayBuffer(JSContext context, JSRealm realm, byte[] byteArray) {
-        JSObjectFactory factory = context.getArrayBufferFactory();
-        JSArrayBufferObject obj = JSArrayBufferObject.createHeapArrayBuffer(factory.getShape(realm), byteArray);
-        factory.initProto(obj, realm);
-        assert isJSHeapArrayBuffer(obj);
-        return context.trackAllocation(obj);
+        return JSArrayBufferObjectFactory.createHeap(context.getArrayBufferFactory(), realm, byteArray);
     }
 
     public static byte[] getByteArray(Object thisObj) {
@@ -105,11 +100,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     }
 
     public static JSArrayBufferObject createDirectArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
-        JSObjectFactory factory = context.getDirectArrayBufferFactory();
-        JSArrayBufferObject obj = JSArrayBufferObject.createDirectArrayBuffer(factory.getShape(realm), buffer);
-        factory.initProto(obj, realm);
-        assert isJSDirectArrayBuffer(obj);
-        return context.trackAllocation(obj);
+        return JSArrayBufferObjectFactory.createDirect(context.getDirectArrayBufferFactory(), realm, buffer);
     }
 
     public static Object getInteropBuffer(Object thisObj) {
@@ -118,12 +109,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     }
 
     public static JSArrayBufferObject createInteropArrayBuffer(JSContext context, JSRealm realm, Object buffer) {
-        assert InteropLibrary.getUncached().hasBufferElements(buffer);
-        JSObjectFactory factory = context.getInteropArrayBufferFactory();
-        JSArrayBufferObject obj = JSArrayBufferObject.createInteropArrayBuffer(factory.getShape(realm), buffer);
-        factory.initProto(obj, realm);
-        assert isJSInteropArrayBuffer(obj);
-        return context.trackAllocation(obj);
+        return JSArrayBufferObjectFactory.createInterop(context.getInteropArrayBufferFactory(), realm, buffer);
     }
 
     @Override

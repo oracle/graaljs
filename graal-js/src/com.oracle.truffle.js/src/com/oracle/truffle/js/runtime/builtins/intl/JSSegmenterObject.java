@@ -44,6 +44,7 @@ import java.util.Objects;
 
 import org.graalvm.shadowed.com.ibm.icu.text.BreakIterator;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSSegmenterObject extends JSNonProxyObject {
@@ -51,6 +52,7 @@ public final class JSSegmenterObject extends JSNonProxyObject {
     // Iterator used by Segments objects of this Segmenter
     private BreakIterator breakIterator;
 
+    @GenerateObjectFactory
     protected JSSegmenterObject(Shape shape, JSSegmenter.InternalState internalState) {
         super(shape);
         this.internalState = Objects.requireNonNull(internalState);

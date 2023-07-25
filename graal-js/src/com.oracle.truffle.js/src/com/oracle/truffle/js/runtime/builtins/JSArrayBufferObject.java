@@ -56,6 +56,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -128,6 +129,7 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     public static final class Heap extends JSArrayBufferObject {
         byte[] byteArray;
 
+        @GenerateObjectFactory
         protected Heap(Shape shape, byte[] byteArray) {
             super(shape);
             this.byteArray = byteArray;
@@ -464,6 +466,8 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     }
 
     public static final class Direct extends DirectBase {
+
+        @GenerateObjectFactory
         protected Direct(Shape shape, ByteBuffer byteBuffer) {
             super(shape, byteBuffer);
         }
@@ -482,6 +486,7 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     public static final class Shared extends DirectBase {
         JSAgentWaiterList waiterList;
 
+        @GenerateObjectFactory
         protected Shared(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
             super(shape, byteBuffer);
             this.waiterList = waiterList;
@@ -514,8 +519,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     public static final class Interop extends JSArrayBufferObject {
         Object interopBuffer;
 
+        @GenerateObjectFactory
         protected Interop(Shape shape, Object interopBuffer) {
             super(shape);
+            assert InteropLibrary.getUncached().hasBufferElements(interopBuffer);
             this.interopBuffer = interopBuffer;
         }
 

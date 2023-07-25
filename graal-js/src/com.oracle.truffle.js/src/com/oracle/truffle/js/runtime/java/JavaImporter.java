@@ -55,7 +55,6 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
-import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -85,10 +84,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     }
 
     public static JavaImporterObject create(JSContext context, JSRealm realm, Object[] value) {
-        JSObjectFactory factory = context.getJavaImporterFactory();
-        JavaImporterObject obj = new JavaImporterObject(factory.getShape(realm), value);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return JavaImporterObjectFactory.create(context.getJavaImporterFactory(), realm, value);
     }
 
     public static boolean isJavaImporter(Object obj) {

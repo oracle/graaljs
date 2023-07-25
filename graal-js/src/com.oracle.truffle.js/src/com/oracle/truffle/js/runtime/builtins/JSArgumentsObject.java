@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ArrayElementInfoNode;
@@ -75,6 +76,7 @@ public class JSArgumentsObject extends JSArrayBase {
 
     public static final class Unmapped extends JSArgumentsObject {
 
+        @GenerateObjectFactory
         protected Unmapped(Shape shape, ScriptArray arrayType, Object array, int length) {
             super(shape, arrayType, array, length);
         }
@@ -82,6 +84,7 @@ public class JSArgumentsObject extends JSArrayBase {
 
     public static final class Mapped extends JSArgumentsObject {
 
+        @GenerateObjectFactory
         protected Mapped(Shape shape, ScriptArray arrayType, Object array, int length) {
             super(shape, arrayType, array, length);
             this.connectedArgumentCount = length;

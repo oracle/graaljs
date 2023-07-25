@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -68,6 +69,7 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
      */
     private final UnmodifiableEconomicMap<TruffleString, ExportResolution> exports;
 
+    @GenerateObjectFactory
     protected JSModuleNamespaceObject(Shape shape, JSModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports) {
         super(shape);
         this.module = module;

@@ -42,11 +42,13 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 public final class JSWrapForValidAsyncIteratorObject extends JSIteratorRecordObject {
 
+    @GenerateObjectFactory
     protected JSWrapForValidAsyncIteratorObject(Shape shape, IteratorRecord iterated) {
         super(shape, iterated);
     }

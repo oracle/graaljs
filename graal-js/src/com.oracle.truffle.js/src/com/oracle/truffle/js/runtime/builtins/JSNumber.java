@@ -72,8 +72,7 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     }
 
     public static JSNumberObject create(JSContext context, JSRealm realm, Number value) {
-        JSNumberObject obj = JSNumberObject.create(realm, context.getNumberFactory(), value);
-        return context.trackAllocation(obj);
+        return JSNumberObjectFactory.create(context.getNumberFactory(), realm, value);
     }
 
     public static Number valueOf(JSDynamicObject obj) {

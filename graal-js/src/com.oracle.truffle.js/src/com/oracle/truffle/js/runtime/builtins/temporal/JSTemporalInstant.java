@@ -73,8 +73,7 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
     public static JSTemporalInstantObject create(JSContext context, JSRealm realm, BigInt nanoseconds) {
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         JSObjectFactory factory = context.getTemporalInstantFactory();
-        JSTemporalInstantObject obj = factory.initProto(new JSTemporalInstantObject(factory.getShape(realm), nanoseconds), realm);
-        return context.trackAllocation(obj);
+        return JSTemporalInstantObjectFactory.create(factory, realm, nanoseconds);
     }
 
     @Override

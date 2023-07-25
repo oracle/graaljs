@@ -150,9 +150,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     public static JSDateTimeFormatObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getDateTimeFormatFactory();
-        JSDateTimeFormatObject obj = new JSDateTimeFormatObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return JSDateTimeFormatObjectFactory.create(factory, realm, state);
     }
 
     @TruffleBoundary

@@ -82,8 +82,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     private static JSTemporalCalendarObject createIntl(JSContext context, JSRealm realm, TruffleString id) {
         JSObjectFactory factory = context.getTemporalCalendarFactory();
-        JSTemporalCalendarObject obj = factory.initProto(new JSTemporalCalendarObject(factory.getShape(realm), id), realm);
-        return context.trackAllocation(obj);
+        return JSTemporalCalendarObjectFactory.create(factory, realm, id);
     }
 
     @Override

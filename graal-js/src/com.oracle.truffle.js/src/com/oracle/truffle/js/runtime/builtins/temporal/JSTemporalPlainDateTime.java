@@ -110,9 +110,8 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
     private static JSTemporalPlainDateTimeObject createIntl(JSContext context, JSRealm realm,
                     int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, JSDynamicObject calendar) {
         JSObjectFactory factory = context.getTemporalPlainDateTimeFactory();
-        JSTemporalPlainDateTimeObject object = factory.initProto(new JSTemporalPlainDateTimeObject(factory.getShape(realm),
-                        y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar), realm);
-        return context.trackAllocation(object);
+        return JSTemporalPlainDateTimeObjectFactory.create(factory, realm,
+                        y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar);
     }
 
     @Override
