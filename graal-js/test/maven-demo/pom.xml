@@ -48,7 +48,7 @@
     <name>my-app</name>
     <url>http://maven.apache.org</url>
     <properties>
-        <graalvm.version>22.3.0</graalvm.version>
+        <graalvm.version>23.1.0</graalvm.version>
         <compiler.dir>${project.build.directory}/compiler</compiler.dir>
     </properties>
 
