@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -151,25 +151,25 @@ public abstract class JSObjectFactory {
         return JSShape.getPrototypeProperty(shape).getLocation().isConstant() && JSShape.getPrototypeProperty(shape).getLocation().getConstantValue() == prototype;
     }
 
-    protected abstract JSDynamicObject getPrototype(JSRealm realm);
+    public abstract JSDynamicObject getPrototype(JSRealm realm);
 
     static boolean hasInObjectProto(Shape shape) {
         Property prototypeProperty = JSShape.getPrototypeProperty(shape);
         return prototypeProperty == null || !prototypeProperty.getLocation().isConstant();
     }
 
-    protected abstract Shape getShape(JSRealm realm, JSDynamicObject prototype);
+    public abstract Shape getShape(JSRealm realm, JSDynamicObject prototype);
 
     public final Shape getShape(JSRealm realm) {
         return getShape(realm, getPrototype(realm));
     }
 
     public final <T extends JSDynamicObject> T initProto(T obj, JSRealm realm) {
-        return initProto(obj, getPrototype(realm));
+        return initProto(obj, realm, getPrototype(realm));
     }
 
-    public final <T extends JSDynamicObject> T initProto(T obj, JSDynamicObject prototype) {
-        if (isInObjectProto()) {
+    public final <T extends JSDynamicObject> T initProto(T obj, JSRealm realm, JSDynamicObject prototype) {
+        if (isInObjectProto(realm, prototype)) {
             setPrototype(obj, prototype);
         } else {
             assert verifyPrototype(obj.getShape(), prototype);
@@ -189,8 +189,8 @@ public abstract class JSObjectFactory {
         return context.trackAllocation(obj);
     }
 
-    protected final boolean isInObjectProto() {
-        return inObjectProto && context.isMultiContext();
+    protected final boolean isInObjectProto(JSRealm realm, JSDynamicObject prototype) {
+        return inObjectProto && context.isMultiContext() || prototype != getPrototype(realm);
     }
 
     public static final class UnboundProto extends JSObjectFactory {
@@ -202,12 +202,12 @@ public abstract class JSObjectFactory {
         }
 
         @Override
-        protected Shape getShape(JSRealm realm, JSDynamicObject proto) {
+        public Shape getShape(JSRealm realm, JSDynamicObject proto) {
             return factory;
         }
 
         @Override
-        protected JSDynamicObject getPrototype(JSRealm realm) {
+        public JSDynamicObject getPrototype(JSRealm realm) {
             throw Errors.shouldNotReachHere();
         }
     }
@@ -223,12 +223,12 @@ public abstract class JSObjectFactory {
         }
 
         @Override
-        protected JSDynamicObject getPrototype(JSRealm realm) {
+        public JSDynamicObject getPrototype(JSRealm realm) {
             return prototype;
         }
 
         @Override
-        protected Shape getShape(JSRealm realm, JSDynamicObject proto) {
+        public Shape getShape(JSRealm realm, JSDynamicObject proto) {
             assert proto == this.prototype;
             return factory;
         }
@@ -245,18 +245,18 @@ public abstract class JSObjectFactory {
         }
 
         @Override
-        protected JSDynamicObject getPrototype(JSRealm realm) {
+        public JSDynamicObject getPrototype(JSRealm realm) {
             return prototypeSupplier.getIntrinsicDefaultProto(realm);
         }
 
         @Override
-        protected Shape getShape(JSRealm realm, JSDynamicObject prototype) {
+        public Shape getShape(JSRealm realm, JSDynamicObject prototype) {
             return factory;
         }
     }
 
     private abstract static class Lazy extends JSObjectFactory {
-        @CompilationFinal private Shape factory;
+        @CompilationFinal private Shape sharedShape;
         private final int slot;
 
         protected Lazy(JSContext context, int slot) {
@@ -265,25 +265,29 @@ public abstract class JSObjectFactory {
         }
 
         @Override
-        protected final Shape getShape(JSRealm realm, JSDynamicObject prototype) {
+        public final Shape getShape(JSRealm realm, JSDynamicObject prototype) {
             CompilerAsserts.partialEvaluationConstant(this);
-            if (context.isMultiContext()) {
-                if (factory == null) {
+            boolean inObjectProto = isInObjectProto(realm, prototype);
+            Shape initialShape;
+            if (inObjectProto || context.isMultiContext()) {
+                initialShape = sharedShape;
+                if (initialShape == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    factory = makeInitialShape(isInObjectProto() ? null : prototype);
-                    assert isInObjectProto() == hasInObjectProto(factory);
+                    Shape newShape = makeInitialShape(inObjectProto ? null : prototype);
+                    sharedShape = initialShape = newShape;
                 }
-                return factory;
             } else {
-                Shape realmFactory = realm.getObjectFactories().shapes[slot];
-                if (realmFactory == null) {
+                // Must be the intrinsic default prototype in the current realm.
+                assert prototype == getPrototype(realm);
+                initialShape = realm.getObjectFactories().shapes[slot];
+                if (initialShape == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Shape newFactory = makeInitialShape(prototype);
-                    realmFactory = realm.getObjectFactories().shapes[slot] = newFactory;
-                    assert isInObjectProto() == hasInObjectProto(realmFactory);
+                    Shape newShape = makeInitialShape(prototype);
+                    realm.getObjectFactories().shapes[slot] = initialShape = newShape;
                 }
-                return realmFactory;
             }
+            assert inObjectProto == hasInObjectProto(initialShape);
+            return initialShape;
         }
 
         protected abstract Shape makeInitialShape(JSDynamicObject prototype);
@@ -300,7 +304,7 @@ public abstract class JSObjectFactory {
         }
 
         @Override
-        protected JSDynamicObject getPrototype(JSRealm realm) {
+        public JSDynamicObject getPrototype(JSRealm realm) {
             return prototypeSupplier.getIntrinsicDefaultProto(realm);
         }
 
@@ -319,7 +323,7 @@ public abstract class JSObjectFactory {
         }
 
         @Override
-        protected JSDynamicObject getPrototype(JSRealm realm) {
+        public JSDynamicObject getPrototype(JSRealm realm) {
             return jsclass.getIntrinsicDefaultProto(realm);
         }
 

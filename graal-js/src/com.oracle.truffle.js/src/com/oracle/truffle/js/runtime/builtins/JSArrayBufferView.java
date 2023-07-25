@@ -343,8 +343,8 @@ public final class JSArrayBufferView extends JSNonProxy {
         assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= ((JSArrayBufferObject) arrayBuffer).getByteLength();
         assert offset != 0 == arrayType.hasOffset();
 
-        JSTypedArrayObject obj = JSTypedArrayObject.create(objectFactory.getShape(realm), arrayType, (JSArrayBufferObject) arrayBuffer, length, offset);
-        objectFactory.initProto(obj, prototype);
+        JSTypedArrayObject obj = JSTypedArrayObject.create(objectFactory.getShape(realm, prototype), arrayType, (JSArrayBufferObject) arrayBuffer, length, offset);
+        objectFactory.initProto(obj, realm, prototype);
         return context.trackAllocation(obj);
     }
 

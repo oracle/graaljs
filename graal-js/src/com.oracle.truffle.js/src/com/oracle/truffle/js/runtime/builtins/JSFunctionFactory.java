@@ -90,7 +90,7 @@ public abstract class JSFunctionFactory {
         assert enclosingFrame != null; // use JSFrameUtil.NULL_MATERIALIZED_FRAME instead
         assert shape.getDynamicType() == JSFunction.INSTANCE;
         JSFunctionObject obj = JSFunctionObject.create(shape, functionData, enclosingFrame, realm, classPrototype);
-        objectFactory.initProto(obj, prototype);
+        objectFactory.initProto(obj, realm, prototype);
         initProperties(obj, functionData);
         if (context.getEcmaScriptVersion() < 6 && functionData.hasStrictFunctionProperties()) {
             initES5StrictProperties(obj, realm);
@@ -145,8 +145,6 @@ public abstract class JSFunctionFactory {
 
     protected abstract Shape getShape(JSRealm realm, JSDynamicObject prototype);
 
-    protected abstract boolean isInObjectProto();
-
     private static final class Default extends JSFunctionFactory {
 
         protected Default(JSContext context, JSObjectFactory objectFactory) {
@@ -161,11 +159,6 @@ public abstract class JSFunctionFactory {
         @Override
         protected Shape getShape(JSRealm realm, JSDynamicObject prototype) {
             return objectFactory.getShape(realm, prototype);
-        }
-
-        @Override
-        protected boolean isInObjectProto() {
-            return objectFactory.isInObjectProto();
         }
 
         @Override
@@ -190,11 +183,6 @@ public abstract class JSFunctionFactory {
         @Override
         protected Shape getShape(JSRealm realm, JSDynamicObject prototype) {
             return objectFactory.getShape(realm, prototype);
-        }
-
-        @Override
-        protected boolean isInObjectProto() {
-            return objectFactory.isInObjectProto();
         }
 
         @Override
