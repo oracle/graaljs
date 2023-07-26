@@ -76,6 +76,14 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return JSArrayBufferObjectFactory.createHeap(context.getArrayBufferFactory(), realm, byteArray);
     }
 
+    public static JSArrayBufferObject createArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, int length) {
+        return createArrayBuffer(context, realm, proto, new byte[length]);
+    }
+
+    public static JSArrayBufferObject createArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, byte[] byteArray) {
+        return JSArrayBufferObjectFactory.createHeap(context.getArrayBufferFactory(), realm, proto, byteArray);
+    }
+
     public static byte[] getByteArray(Object thisObj) {
         assert isJSHeapArrayBuffer(thisObj);
         return JSArrayBufferObject.getByteArray(thisObj);
@@ -99,8 +107,16 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return createDirectArrayBuffer(context, realm, DirectByteBufferHelper.allocateDirect(length));
     }
 
+    public static JSArrayBufferObject createDirectArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, int length) {
+        return createDirectArrayBuffer(context, realm, proto, DirectByteBufferHelper.allocateDirect(length));
+    }
+
     public static JSArrayBufferObject createDirectArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
         return JSArrayBufferObjectFactory.createDirect(context.getDirectArrayBufferFactory(), realm, buffer);
+    }
+
+    public static JSArrayBufferObject createDirectArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, ByteBuffer buffer) {
+        return JSArrayBufferObjectFactory.createDirect(context.getDirectArrayBufferFactory(), realm, proto, buffer);
     }
 
     public static Object getInteropBuffer(Object thisObj) {
@@ -110,6 +126,10 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
 
     public static JSArrayBufferObject createInteropArrayBuffer(JSContext context, JSRealm realm, Object buffer) {
         return JSArrayBufferObjectFactory.createInterop(context.getInteropArrayBufferFactory(), realm, buffer);
+    }
+
+    public static JSArrayBufferObject createInteropArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, Object buffer) {
+        return JSArrayBufferObjectFactory.createInterop(context.getInteropArrayBufferFactory(), realm, proto, buffer);
     }
 
     @Override

@@ -153,6 +153,12 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return JSDateTimeFormatObjectFactory.create(factory, realm, state);
     }
 
+    public static JSDateTimeFormatObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        InternalState state = new InternalState();
+        JSObjectFactory factory = context.getDateTimeFormatFactory();
+        return JSDateTimeFormatObjectFactory.create(factory, realm, proto, state);
+    }
+
     @TruffleBoundary
     public static void setupInternalDateTimeFormat(
                     JSContext ctx,

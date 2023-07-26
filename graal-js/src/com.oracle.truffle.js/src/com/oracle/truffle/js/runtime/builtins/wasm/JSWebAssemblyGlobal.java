@@ -103,12 +103,16 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
     }
 
     public static JSWebAssemblyGlobalObject create(JSContext context, JSRealm realm, Object wasmGlobal, TruffleString valueType, boolean mutable) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmGlobal, valueType, mutable);
+    }
+
+    public static JSWebAssemblyGlobalObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmGlobal, TruffleString valueType, boolean mutable) {
         Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmGlobal);
         if (embedderData instanceof JSWebAssemblyGlobalObject) {
             return (JSWebAssemblyGlobalObject) embedderData;
         }
         JSObjectFactory factory = context.getWebAssemblyGlobalFactory();
-        JSWebAssemblyGlobalObject object = JSWebAssemblyGlobalObjectFactory.create(factory, realm, wasmGlobal, valueType, mutable);
+        JSWebAssemblyGlobalObject object = JSWebAssemblyGlobalObjectFactory.create(factory, realm, proto, wasmGlobal, valueType, mutable);
         JSWebAssembly.setEmbedderData(realm, wasmGlobal, object);
         return object;
     }

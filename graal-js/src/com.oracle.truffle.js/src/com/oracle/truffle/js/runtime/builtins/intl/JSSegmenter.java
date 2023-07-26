@@ -186,10 +186,10 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return INSTANCE.createConstructorAndPrototype(realm, SegmenterFunctionBuiltins.BUILTINS);
     }
 
-    public static JSSegmenterObject create(JSContext context, JSRealm realm) {
+    public static JSSegmenterObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getSegmenterFactory();
-        return JSSegmenterObjectFactory.create(factory, realm, state);
+        return JSSegmenterObjectFactory.create(factory, realm, proto, state);
     }
 
     public static JSSegmentIteratorObject createSegmentIterator(JSContext context, JSRealm realm, JSSegmenterObject segmenter, TruffleString value) {

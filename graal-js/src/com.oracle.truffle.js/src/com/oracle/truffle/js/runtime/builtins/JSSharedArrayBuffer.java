@@ -64,13 +64,18 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     private JSSharedArrayBuffer() {
     }
 
-    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, int length) {
-        return createSharedArrayBuffer(context, realm, DirectByteBufferHelper.allocateDirect(length));
+    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, int length) {
+        return createSharedArrayBuffer(context, realm, proto, DirectByteBufferHelper.allocateDirect(length));
     }
 
     public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
         assert buffer != null;
         return JSArrayBufferObjectFactory.createShared(context.getSharedArrayBufferFactory(), realm, buffer, new JSAgentWaiterList());
+    }
+
+    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, ByteBuffer buffer) {
+        assert buffer != null;
+        return JSArrayBufferObjectFactory.createShared(context.getSharedArrayBufferFactory(), realm, proto, buffer, new JSAgentWaiterList());
     }
 
     @Override

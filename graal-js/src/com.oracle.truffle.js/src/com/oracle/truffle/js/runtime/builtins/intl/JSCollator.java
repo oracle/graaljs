@@ -211,6 +211,12 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         return INSTANCE.createConstructorAndPrototype(realm, CollatorFunctionBuiltins.BUILTINS);
     }
 
+    public static JSCollatorObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        InternalState state = new InternalState();
+        JSObjectFactory factory = context.getCollatorFactory();
+        return JSCollatorObjectFactory.create(factory, realm, proto, state);
+    }
+
     public static JSCollatorObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getCollatorFactory();

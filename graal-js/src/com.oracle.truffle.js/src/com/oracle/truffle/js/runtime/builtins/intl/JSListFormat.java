@@ -116,10 +116,10 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         return INSTANCE.createConstructorAndPrototype(realm, ListFormatFunctionBuiltins.BUILTINS);
     }
 
-    public static JSListFormatObject create(JSContext context, JSRealm realm) {
+    public static JSListFormatObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getListFormatFactory();
-        return JSListFormatObjectFactory.create(factory, realm, state);
+        return JSListFormatObjectFactory.create(factory, realm, proto, state);
     }
 
     @TruffleBoundary

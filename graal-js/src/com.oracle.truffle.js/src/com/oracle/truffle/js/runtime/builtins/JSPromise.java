@@ -86,6 +86,10 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
         return JSPromiseObjectFactory.create(context.getPromiseFactory(), realm, PENDING);
     }
 
+    public static JSPromiseObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        return JSPromiseObjectFactory.create(context.getPromiseFactory(), realm, proto, PENDING);
+    }
+
     public static JSPromiseObject create(JSContext context, Shape shape) {
         JSPromiseObject promise = JSPromiseObject.create(shape, PENDING);
         return context.trackAllocation(promise);

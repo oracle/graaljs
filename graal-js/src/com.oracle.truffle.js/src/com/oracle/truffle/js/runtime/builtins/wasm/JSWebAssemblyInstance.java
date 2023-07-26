@@ -133,6 +133,12 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return JSWebAssemblyInstanceObjectFactory.create(factory, realm, wasmInstance, exportsObject);
     }
 
+    public static JSWebAssemblyInstanceObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmInstance, Object wasmModule) {
+        JSObjectFactory factory = context.getWebAssemblyInstanceFactory();
+        Object exportsObject = createExportsObject(context, realm, wasmInstance, wasmModule);
+        return JSWebAssemblyInstanceObjectFactory.create(factory, realm, proto, wasmInstance, exportsObject);
+    }
+
     private static JSObject createExportsObject(JSContext context, JSRealm realm, Object wasmInstance, Object wasmModule) {
         JSObject exports = JSOrdinary.createWithNullPrototype(context);
         try {

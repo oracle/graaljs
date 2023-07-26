@@ -133,7 +133,8 @@ public final class AsyncContextBuiltins extends JSBuiltinsContainer.SwitchEnum<A
         @Specialization
         protected final JSObject construct(JSDynamicObject newTarget) {
             JSRealm realm = getRealm();
-            return swapPrototype(JSAsyncContextSnapshot.create(getContext(), realm, realm.getAgent().getAsyncContextMapping()), newTarget);
+            JSDynamicObject proto = getPrototype(realm, newTarget);
+            return JSAsyncContextSnapshot.create(getContext(), realm, proto, realm.getAgent().getAsyncContextMapping());
         }
 
         @Override
@@ -157,6 +158,7 @@ public final class AsyncContextBuiltins extends JSBuiltinsContainer.SwitchEnum<A
                         @Cached("create(NAME, getContext())") PropertyGetNode getName,
                         @Cached("create(DEFAULT_VALUE, getContext())") PropertyGetNode getDefaultValue) {
             JSRealm realm = getRealm();
+            JSDynamicObject proto = getPrototype(realm, newTarget);
             TruffleString nameStr = Strings.EMPTY_STRING;
             Object defaultValue = Undefined.instance;
             if (isObject.executeBoolean(options)) {
@@ -167,7 +169,7 @@ public final class AsyncContextBuiltins extends JSBuiltinsContainer.SwitchEnum<A
                 defaultValue = getDefaultValue.getValue(options);
             }
             Symbol asyncContextKey = Symbol.create(nameStr);
-            return swapPrototype(JSAsyncContextVariable.create(getContext(), realm, asyncContextKey, defaultValue), newTarget);
+            return JSAsyncContextVariable.create(getContext(), realm, proto, asyncContextKey, defaultValue);
         }
 
         @Override

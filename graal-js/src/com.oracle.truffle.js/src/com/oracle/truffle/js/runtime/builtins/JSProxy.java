@@ -138,6 +138,10 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         return JSProxyObjectFactory.create(context.getProxyFactory(), realm, target, handler);
     }
 
+    public static JSProxyObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object target, JSDynamicObject handler) {
+        return JSProxyObjectFactory.create(context.getProxyFactory(), realm, proto, target, handler);
+    }
+
     public static Object getTarget(JSDynamicObject obj) {
         assert isJSProxy(obj);
         return ((JSProxyObject) obj).getProxyTarget();

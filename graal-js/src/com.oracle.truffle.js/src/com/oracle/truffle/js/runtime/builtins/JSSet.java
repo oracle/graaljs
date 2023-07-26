@@ -73,6 +73,12 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
         return JSSetObjectFactory.create(factory, realm, internalMap);
     }
 
+    public static JSSetObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        JSHashMap internalMap = new JSHashMap();
+        JSObjectFactory factory = context.getSetFactory();
+        return JSSetObjectFactory.create(factory, realm, proto, internalMap);
+    }
+
     public static Object normalize(Object value) {
         if (value instanceof Double) {
             return normalizeDouble((Double) value);

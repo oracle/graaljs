@@ -74,6 +74,10 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
         return JSBooleanObjectFactory.create(context.getBooleanFactory(), realm, value);
     }
 
+    public static JSBooleanObject create(JSContext context, JSRealm realm, JSDynamicObject proto, boolean value) {
+        return JSBooleanObjectFactory.create(context.getBooleanFactory(), realm, proto, value);
+    }
+
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();

@@ -142,6 +142,11 @@ public final class JSError extends JSNonProxy {
         return JSErrorObjectFactory.create(factory, realm);
     }
 
+    public static JSErrorObject createErrorObject(JSContext context, JSRealm realm, JSErrorType errorType, JSDynamicObject proto) {
+        JSObjectFactory factory = context.getErrorFactory(errorType);
+        return JSErrorObjectFactory.create(factory, realm, proto);
+    }
+
     public static void setMessage(JSDynamicObject obj, TruffleString message) {
         JSObjectUtil.putDataProperty(obj, MESSAGE, message, MESSAGE_ATTRIBUTES);
     }

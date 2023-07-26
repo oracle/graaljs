@@ -49,6 +49,7 @@ public final class JSDataViewObject extends JSArrayBufferViewBase {
     @GenerateObjectFactory
     protected JSDataViewObject(Shape shape, JSArrayBufferObject arrayBuffer, int length, int offset) {
         super(shape, arrayBuffer, length, offset);
+        assert offset >= 0 && offset + length <= arrayBuffer.getByteLength();
     }
 
     @Override

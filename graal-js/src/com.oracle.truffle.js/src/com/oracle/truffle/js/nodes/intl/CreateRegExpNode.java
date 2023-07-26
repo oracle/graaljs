@@ -45,6 +45,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -81,7 +82,8 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!b(hasNamedCaptureGroups)"})
     protected JSRegExpObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled,
                     @SuppressWarnings("unused") Object namedCaptureGroups, @SuppressWarnings("unused") boolean hasNamedCaptureGroups) {
-        JSRegExpObject reObj = JSRegExp.create(context, getRealm(), compiledRegex, null, legacyFeaturesEnabled);
+        JSRealm realm = getRealm();
+        JSRegExpObject reObj = JSRegExp.create(context, realm, realm.getRegExpPrototype(), compiledRegex, null, legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }
@@ -89,7 +91,8 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
     @Specialization(guards = {"b(hasNamedCaptureGroups)"})
     protected JSRegExpObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled,
                     Object namedCaptureGroups, @SuppressWarnings("unused") boolean hasNamedCaptureGroups) {
-        JSRegExpObject reObj = JSRegExp.create(context, getRealm(), compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
+        JSRealm realm = getRealm();
+        JSRegExpObject reObj = JSRegExp.create(context, realm, realm.getRegExpPrototype(), compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }
