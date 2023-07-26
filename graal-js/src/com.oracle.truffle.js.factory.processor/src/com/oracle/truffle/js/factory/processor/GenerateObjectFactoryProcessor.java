@@ -47,7 +47,9 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -58,15 +60,17 @@ import java.util.stream.Stream;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
+
+import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.js.annotations.GenerateObjectFactory;
@@ -108,20 +112,33 @@ public class GenerateObjectFactoryProcessor extends AbstractFactoryProcessor {
             return false;
         }
 
+        Map<TypeElement, Boolean> enclosingTypes = new LinkedHashMap<>();
+        Map<TypeElement, List<ExecutableElement>> rootTypesToConstructors = new LinkedHashMap<>();
+
         for (Element element : roundEnv.getElementsAnnotatedWith(GenerateObjectFactory.class)) {
             assert element.getKind() == ElementKind.CONSTRUCTOR : element;
-            processElement((TypeElement) element.getEnclosingElement());
+            assert element.getEnclosingElement().getKind() == ElementKind.CLASS : element.getEnclosingElement();
+            TypeElement objectType = (TypeElement) element.getEnclosingElement();
+            enclosingTypes.computeIfAbsent(objectType, this::checkValidObjectType);
+            while (objectType.getEnclosingElement() != null && objectType.getEnclosingElement().getKind() == ElementKind.CLASS) {
+                objectType = (TypeElement) objectType.getEnclosingElement();
+            }
+            rootTypesToConstructors.computeIfAbsent(objectType, key -> new ArrayList<>()).add((ExecutableElement) element);
+        }
+        for (var entry : rootTypesToConstructors.entrySet()) {
+            generateFactoryClass(entry.getKey(), entry.getValue());
         }
 
         return true;
     }
 
-    private void processElement(TypeElement element) {
+    private boolean checkValidObjectType(TypeElement element) {
         var superclasses = Stream.iterate(element, e -> e.getSuperclass().getKind() != TypeKind.NONE, e -> asTypeElement(e.getSuperclass()));
         if (superclasses.anyMatch(e -> typeNameEquals(e, JSObject))) {
-            generateFactoryClass(element);
+            return true;
         } else {
             printError("Not a JSObject subclass", element);
+            return false;
         }
     }
 
@@ -129,20 +146,20 @@ public class GenerateObjectFactoryProcessor extends AbstractFactoryProcessor {
         processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, msg, typeElement);
     }
 
-    public void generateFactoryClass(TypeElement typeElement) {
-        String objectClassName = typeElement.getQualifiedName().toString();
-        String simpleClassName = objectClassName.substring(objectClassName.lastIndexOf('.') + 1, objectClassName.length()) + "Factory";
-        String packageName = getPackageName(typeElement);
-        String qualifiedClassName = packageName + "." + simpleClassName;
-        String generatedByClassName = GeneratedBy.class.getCanonicalName();
+    public void generateFactoryClass(TypeElement rootTypeElement, List<ExecutableElement> annotatedConstructors) {
+        String rootClassName = rootTypeElement.getQualifiedName().toString();
+        String simpleGenClassName = rootClassName.substring(rootClassName.lastIndexOf('.') + 1, rootClassName.length()) + "Factory";
+        String packageName = getPackageName(rootTypeElement);
+        String qualifiedGenClassName = packageName + "." + simpleGenClassName;
+        String generatedByAnnotationName = GeneratedBy.class.getCanonicalName();
 
         boolean constructorFound = false;
-        List<String> executables = new ArrayList<>();
+        Map<List<String>, String> executables = new LinkedHashMap<>();
 
-        String privateConstructor = "private %s() {\n}".formatted(simpleClassName);
-        executables.add(privateConstructor);
+        String privateConstructor = "private %s() {\n}".formatted(simpleGenClassName);
+        executables.put(List.of(simpleGenClassName), privateConstructor);
 
-        for (var constructor : ElementFilter.constructorsIn(typeElement.getEnclosedElements())) {
+        for (var constructor : annotatedConstructors) {
             // Ignore private constructors
             if (constructor.getModifiers().contains(Modifier.PRIVATE)) {
                 continue;
@@ -152,6 +169,9 @@ public class GenerateObjectFactoryProcessor extends AbstractFactoryProcessor {
             if (constructor.getAnnotation(GenerateObjectFactory.class) == null) {
                 continue;
             }
+
+            TypeElement objectTypeElement = (TypeElement) constructor.getEnclosingElement();
+            String objectClassName = objectTypeElement.getQualifiedName().toString();
 
             // Requires a leading Shape parameter
             var parameters = constructor.getParameters();
@@ -181,13 +201,21 @@ public class GenerateObjectFactoryProcessor extends AbstractFactoryProcessor {
             String objName = "obj";
             for (boolean withProto : List.of(false, true)) {
                 var factoryMethod = new StringBuilder();
-                String parameterPairsIn = Stream.concat(Stream.concat(Stream.of(JSObjectFactory + " " + factoryName, JSRealm + " " + realmName),
-                                withProto ? Stream.of(JSDynamicObject + " " + protoName) : Stream.empty()),
-                                declaredParams.stream().map(p -> getErasedTypeName(p.asType()) + " " + p.getSimpleName().toString())). //
-                                collect(Collectors.joining(",\n", "\n", "")).indent(SPACES * 2).stripTrailing();
+                var methodName = "create";
+                if (!rootTypeElement.equals(objectTypeElement)) {
+                    methodName += objectTypeElement.getSimpleName().toString();
+                }
+
+                var parameterPairs = Stream.concat(Stream.concat(Stream.of(Pair.create(JSObjectFactory, factoryName), Pair.create(JSRealm, realmName)),
+                                withProto ? Stream.of(Pair.create(JSDynamicObject, protoName)) : Stream.empty()),
+                                declaredParams.stream().map(p -> Pair.create(getErasedTypeName(p.asType()), p.getSimpleName().toString()))).toList();
+                List<String> parameterTypesIn = parameterPairs.stream().map(Pair::getLeft).toList();
+                String parameterListIn = parameterPairs.stream().map(p -> p.getLeft() + " " + p.getRight()).collect(Collectors.joining(",\n", "\n", "")).indent(SPACES * 2).stripTrailing();
                 String parameterNamesOut = Stream.concat(Stream.of(shapeName),
                                 forwardedParams.stream().map(p -> p.getSimpleName().toString())).collect(Collectors.joining(", "));
-                factoryMethod.append("public static %s create(%s) {".formatted(objectClassName, parameterPairsIn).indent(0));
+
+                factoryMethod.append("// Generated by %s".formatted(objectClassName).indent(0));
+                factoryMethod.append("public static %s %s(%s) {".formatted(objectClassName, methodName, parameterListIn).indent(0));
                 StringJoiner body = new StringJoiner("\n");
                 if (!withProto) {
                     body.add("var %s = %s.getPrototype(%s);".formatted(protoName, factoryName, realmName));
@@ -199,26 +227,28 @@ public class GenerateObjectFactoryProcessor extends AbstractFactoryProcessor {
                 body.add("return %s;".formatted(objName));
                 factoryMethod.append(body.toString().indent(SPACES));
                 factoryMethod.append("}");
-                executables.add(factoryMethod.toString());
+
+                List<String> signature = Stream.concat(Stream.of(methodName), parameterTypesIn.stream()).toList();
+                executables.putIfAbsent(signature, factoryMethod.toString());
             }
         }
 
         if (!constructorFound) {
-            printError("No suitable constructors found. At least one accessible constructor with a leading Shape parameter is required.", typeElement);
+            printError("No suitable constructors found. At least one accessible constructor with a leading Shape parameter is required.", rootTypeElement);
         }
 
         try {
-            JavaFileObject jfo = processingEnv.getFiler().createSourceFile(qualifiedClassName, typeElement);
+            JavaFileObject jfo = processingEnv.getFiler().createSourceFile(qualifiedGenClassName, rootTypeElement);
             try (OutputStream outputStream = jfo.openOutputStream(); PrintStream ps = new PrintStream(outputStream, false, StandardCharsets.UTF_8)) {
                 ps.println("package " + packageName + ";");
                 ps.println();
 
                 var cls = new StringBuilder();
-                cls.append("@%s(%s.class)".formatted(generatedByClassName, objectClassName).indent(0));
-                cls.append("public final class %s {".formatted(simpleClassName).indent(0));
+                cls.append("@%s(%s.class)".formatted(generatedByAnnotationName, rootClassName).indent(0));
+                cls.append("public final class %s {".formatted(simpleGenClassName).indent(0));
                 cls.append('\n');
 
-                cls.append(executables.stream().collect(Collectors.joining("\n\n")).indent(SPACES));
+                cls.append(executables.values().stream().collect(Collectors.joining("\n\n")).indent(SPACES));
 
                 cls.append("}");
 
