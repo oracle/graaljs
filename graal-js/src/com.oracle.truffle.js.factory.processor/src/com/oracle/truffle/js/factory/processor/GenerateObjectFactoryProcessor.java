@@ -142,8 +142,8 @@ public class GenerateObjectFactoryProcessor extends AbstractFactoryProcessor {
         }
     }
 
-    private void printError(String msg, TypeElement typeElement) {
-        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, msg, typeElement);
+    private void printError(String msg, Element element) {
+        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, msg, element);
     }
 
     public void generateFactoryClass(TypeElement rootTypeElement, List<ExecutableElement> annotatedConstructors) {
@@ -160,17 +160,22 @@ public class GenerateObjectFactoryProcessor extends AbstractFactoryProcessor {
         executables.put(List.of(simpleGenClassName), privateConstructor);
 
         for (var constructor : annotatedConstructors) {
-            // Ignore private constructors
-            if (constructor.getModifiers().contains(Modifier.PRIVATE)) {
-                continue;
-            }
-
             // Only consider annotated constructors
             if (constructor.getAnnotation(GenerateObjectFactory.class) == null) {
                 continue;
             }
 
+            // Ignore private constructors
+            if (constructor.getModifiers().contains(Modifier.PRIVATE)) {
+                printError("Annotated constructor is private", constructor);
+                continue;
+            }
+
             TypeElement objectTypeElement = (TypeElement) constructor.getEnclosingElement();
+            if (objectTypeElement.getModifiers().contains(Modifier.PRIVATE)) {
+                printError("Enclosing class is private", objectTypeElement);
+                continue;
+            }
             String objectClassName = objectTypeElement.getQualifiedName().toString();
 
             // Requires a leading Shape parameter
@@ -183,11 +188,15 @@ public class GenerateObjectFactoryProcessor extends AbstractFactoryProcessor {
             List<VariableElement> declaredParams = new ArrayList<>();
             List<VariableElement> forwardedParams = new ArrayList<>();
             Optional<String> protoParam = Optional.empty();
+            Optional<String> realmParam = Optional.empty();
             for (int i = 1; i < parameters.size(); i++) {
                 var parameter = parameters.get(i);
                 if (typeNameEquals(parameter.asType(), JSDynamicObject) &&
                                 parameter.getSimpleName().contentEquals("prototype") || parameter.getSimpleName().contentEquals("proto")) {
                     protoParam = Optional.of(parameter.getSimpleName().toString());
+                } else if (typeNameEquals(parameter.asType(), JSRealm) &&
+                                parameter.getSimpleName().contentEquals("realm")) {
+                    realmParam = Optional.of(parameter.getSimpleName().toString());
                 } else {
                     declaredParams.add(parameter);
                 }
@@ -197,7 +206,7 @@ public class GenerateObjectFactoryProcessor extends AbstractFactoryProcessor {
             String shapeName = "shape";
             String protoName = protoParam.orElse("proto");
             String factoryName = "factory";
-            String realmName = "realm";
+            String realmName = realmParam.orElse("realm");
             String objName = "obj";
             for (boolean withProto : List.of(false, true)) {
                 var factoryMethod = new StringBuilder();
