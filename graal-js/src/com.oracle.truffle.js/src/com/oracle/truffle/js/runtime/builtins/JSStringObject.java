@@ -46,7 +46,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.annotations.GenerateObjectFactory;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
@@ -67,10 +66,6 @@ public final class JSStringObject extends JSNonProxyObject {
 
     public static JSStringObject create(Shape shape, TruffleString value) {
         return new JSStringObject(shape, value);
-    }
-
-    public static JSStringObject create(JSRealm realm, JSObjectFactory factory, TruffleString value) {
-        return factory.initProto(new JSStringObject(factory.getShape(realm), value), realm);
     }
 
     @Override

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.annotations.GenerateObjectFactory;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -76,10 +75,6 @@ public final class JSRegExpGroupsObject extends JSNonProxyObject implements JSCo
     @Override
     public TruffleString getClassName() {
         return JSOrdinary.CLASS_NAME;
-    }
-
-    public static JSObject create(JSRealm realm, JSObjectFactory factory, Object regexResult, TruffleString input, boolean isIndices) {
-        return factory.initProto(new JSRegExpGroupsObject(factory.getShape(realm), regexResult, input, isIndices), realm);
     }
 
     @Override

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.annotations.GenerateObjectFactory;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
 public final class JSMapIteratorObject extends JSCollectionIteratorObject {
@@ -56,9 +55,5 @@ public final class JSMapIteratorObject extends JSCollectionIteratorObject {
     @Override
     public TruffleString getClassName() {
         return JSMapIterator.CLASS_NAME;
-    }
-
-    public static JSMapIteratorObject create(JSRealm realm, JSObjectFactory factory, Object iteratedObject, JSHashMap.Cursor nextIndex, int iterationKind) {
-        return factory.initProto(new JSMapIteratorObject(factory.getShape(realm), iteratedObject, nextIndex, iterationKind), realm);
     }
 }

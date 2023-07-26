@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.annotations.GenerateObjectFactory;
-import com.oracle.truffle.js.runtime.JSRealm;
 
 public final class JSDataViewObject extends JSArrayBufferViewBase {
 
@@ -67,9 +66,5 @@ public final class JSDataViewObject extends JSArrayBufferViewBase {
 
     public static int getOffset(Object thisObj) {
         return ((JSDataViewObject) thisObj).offset;
-    }
-
-    public static JSDataViewObject create(JSRealm realm, JSObjectFactory factory, JSArrayBufferObject arrayBuffer, int length, int offset) {
-        return factory.initProto(new JSDataViewObject(factory.getShape(realm), arrayBuffer, length, offset), realm);
     }
 }

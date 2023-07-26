@@ -67,8 +67,4 @@ public final class JSShadowRealmObject extends JSNonProxyObject {
     public JSRealm getShadowRealm() {
         return shadowRealm;
     }
-
-    public static JSShadowRealmObject create(JSRealm realm, JSObjectFactory factory, JSRealm shadowRealm) {
-        return factory.initProto(new JSShadowRealmObject(factory.getShape(realm), shadowRealm), realm);
-    }
 }

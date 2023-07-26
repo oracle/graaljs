@@ -92,10 +92,6 @@ public final class JSRegExpObject extends JSNonProxyObject implements JSCopyable
         return JSRegExp.CLASS_NAME;
     }
 
-    public static JSRegExpObject create(JSRealm realm, JSObjectFactory factory, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
-        return factory.initProto(new JSRegExpObject(factory.getShape(realm), compiledRegex, groupsFactory, realm, legacyFeaturesEnabled), realm);
-    }
-
     public static JSRegExpObject create(Shape shape, Object compiledRegex, JSRealm realm) {
         return new JSRegExpObject(shape, compiledRegex, null, realm, false);
     }

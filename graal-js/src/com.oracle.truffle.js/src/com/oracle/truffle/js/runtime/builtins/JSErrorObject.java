@@ -55,7 +55,6 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -72,10 +71,6 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
 
     public static JSErrorObject create(Shape shape) {
         return new JSErrorObject(shape);
-    }
-
-    public static JSErrorObject create(JSRealm realm, JSObjectFactory factory) {
-        return factory.initProto(new JSErrorObject(factory.getShape(realm)), realm);
     }
 
     @Override

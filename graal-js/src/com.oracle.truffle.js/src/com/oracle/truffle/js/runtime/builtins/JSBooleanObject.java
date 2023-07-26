@@ -46,7 +46,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.annotations.GenerateObjectFactory;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
@@ -71,10 +70,6 @@ public final class JSBooleanObject extends JSNonProxyObject {
 
     public static JSBooleanObject create(Shape shape, boolean value) {
         return new JSBooleanObject(shape, value);
-    }
-
-    public static JSBooleanObject create(JSRealm realm, JSObjectFactory factory, boolean value) {
-        return factory.initProto(new JSBooleanObject(factory.getShape(realm), value), realm);
     }
 
     @SuppressWarnings("static-method")

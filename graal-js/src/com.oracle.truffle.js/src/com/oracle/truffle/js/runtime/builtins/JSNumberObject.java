@@ -45,7 +45,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.annotations.GenerateObjectFactory;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "number")
@@ -71,9 +70,4 @@ public final class JSNumberObject extends JSNonProxyObject {
     public static JSNumberObject create(Shape shape, Number value) {
         return new JSNumberObject(shape, value);
     }
-
-    public static JSNumberObject create(JSRealm realm, JSObjectFactory factory, Number value) {
-        return factory.initProto(new JSNumberObject(factory.getShape(realm), value), realm);
-    }
-
 }
