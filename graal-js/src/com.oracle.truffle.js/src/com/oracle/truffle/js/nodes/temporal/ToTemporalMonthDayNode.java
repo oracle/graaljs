@@ -58,6 +58,7 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
@@ -101,6 +102,7 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                     @Cached("create(ctx)") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
                     @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode) {
         int referenceISOYear = 1972;
+        JSRealm realm = getRealm();
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
             if (JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(itemObj)) {
@@ -143,9 +145,9 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
             JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalMonthDayString(string);
             JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(result.getCalendar());
             if (returnPlainMonthDay.profile(this, result.getYear() == Integer.MIN_VALUE)) {
-                return JSTemporalPlainMonthDay.create(ctx, result.getMonth(), result.getDay(), calendar, referenceISOYear, this, errorBranch);
+                return JSTemporalPlainMonthDay.create(ctx, realm, result.getMonth(), result.getDay(), calendar, referenceISOYear, this, errorBranch);
             }
-            JSDynamicObject result2 = JSTemporalPlainMonthDay.create(ctx, result.getMonth(), result.getDay(), calendar, referenceISOYear, this, errorBranch);
+            JSDynamicObject result2 = JSTemporalPlainMonthDay.create(ctx, realm, result.getMonth(), result.getDay(), calendar, referenceISOYear, this, errorBranch);
             return monthDayFromFieldsNode.execute(calendar, result2, Undefined.instance);
         }
     }

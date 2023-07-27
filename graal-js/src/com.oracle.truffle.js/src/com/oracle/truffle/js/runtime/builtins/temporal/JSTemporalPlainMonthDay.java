@@ -74,7 +74,12 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainMonthDay.prototype");
     public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainYearMonth");
 
-    public static JSTemporalPlainMonthDayObject create(JSContext context, int isoMonth, int isoDay, JSDynamicObject calendar, int referenceISOYear,
+    public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, int isoMonth, int isoDay, JSDynamicObject calendar, int referenceISOYear,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), isoMonth, isoDay, calendar, referenceISOYear, node, errorBranch);
+    }
+
+    public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoMonth, int isoDay, JSDynamicObject calendar, int referenceISOYear,
                     Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(referenceISOYear, isoMonth, isoDay)) {
             errorBranch.enter(node);
@@ -85,9 +90,8 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
         }
-        JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainMonthDayFactory();
-        return JSTemporalPlainMonthDayObjectFactory.create(factory, realm, isoMonth,
+        return JSTemporalPlainMonthDayObjectFactory.create(factory, realm, proto, isoMonth,
                         isoDay, calendar, referenceISOYear);
     }
 

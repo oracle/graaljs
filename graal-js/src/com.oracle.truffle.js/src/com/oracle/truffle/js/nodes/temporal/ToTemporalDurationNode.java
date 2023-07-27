@@ -84,7 +84,8 @@ public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
             TruffleString string = toStringNode.executeString(item);
             result = JSTemporalDuration.parseTemporalDurationString(string);
         }
-        return JSTemporalDuration.createTemporalDuration(ctx, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
-                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), this, errorBranch);
+        return JSTemporalDuration.createTemporalDuration(ctx, getRealm(),
+                        result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
+                        result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), this, errorBranch);
     }
 }

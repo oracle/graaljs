@@ -71,6 +71,7 @@ public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements T
     @GenerateObjectFactory
     protected JSTemporalZonedDateTimeObject(Shape shape, BigInt nanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar) {
         super(shape);
+        assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         this.nanoseconds = nanoseconds;
         this.calendar = calendar;
         this.timeZone = timeZone;

@@ -57,7 +57,6 @@ import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -71,9 +70,13 @@ public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConst
     }
 
     public static JSTemporalZonedDateTimeObject create(JSContext context, JSRealm realm, BigInt nanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar) {
-        assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         JSObjectFactory factory = context.getTemporalZonedDateTimeFactory();
         return JSTemporalZonedDateTimeObjectFactory.create(factory, realm, nanoseconds, timeZone, calendar);
+    }
+
+    public static JSTemporalZonedDateTimeObject create(JSContext context, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar) {
+        JSObjectFactory factory = context.getTemporalZonedDateTimeFactory();
+        return JSTemporalZonedDateTimeObjectFactory.create(factory, realm, proto, nanoseconds, timeZone, calendar);
     }
 
     @Override

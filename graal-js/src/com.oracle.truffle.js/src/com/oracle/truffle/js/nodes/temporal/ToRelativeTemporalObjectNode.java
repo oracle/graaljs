@@ -119,6 +119,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
         Object offset;
         TemporalUtil.OffsetBehaviour offsetBehaviour = TemporalUtil.OffsetBehaviour.OPTION;
         TemporalUtil.MatchBehaviour matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_EXACTLY;
+        JSRealm realm = getRealm();
         if (valueIsObject.profile(this, isObjectNode.executeBoolean(value))) {
             JSDynamicObject valueObj = (JSDynamicObject) value;
             if (valueIsPlainDate.profile(this, valueObj instanceof JSTemporalPlainDateObject || valueObj instanceof JSTemporalZonedDateTimeObject)) {
@@ -126,7 +127,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             }
             if (valueIsPlainDateTime.profile(this, valueObj instanceof JSTemporalPlainDateTimeObject)) {
                 JSTemporalPlainDateTimeObject pd = (JSTemporalPlainDateTimeObject) valueObj;
-                return JSTemporalPlainDate.create(ctx, pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar(), this, errorBranch);
+                return JSTemporalPlainDate.create(ctx, realm, pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar(), this, errorBranch);
             }
             calendar = getTemporalCalendarWithISODefaultNode.execute(valueObj);
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDHMMMMMNSY);
@@ -159,7 +160,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
                 timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);
-                timeZone = TemporalUtil.createTemporalTimeZone(ctx, getRealm(), timeZoneName);
+                timeZone = TemporalUtil.createTemporalTimeZone(ctx, realm, timeZoneName);
             }
 
             if (resultZDT.getTimeZoneZ()) {
@@ -177,13 +178,12 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             } else {
                 offsetNs = Undefined.instance;
             }
-            JSRealm realm = getRealm();
             BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm,
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZone, TemporalUtil.Disambiguation.COMPATIBLE, TemporalUtil.OffsetOption.REJECT,
                             matchBehaviour);
             return JSTemporalZonedDateTime.create(ctx, realm, epochNanoseconds, timeZone, calendar);
         }
-        return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar, this, errorBranch);
+        return JSTemporalPlainDate.create(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), calendar, this, errorBranch);
     }
 }

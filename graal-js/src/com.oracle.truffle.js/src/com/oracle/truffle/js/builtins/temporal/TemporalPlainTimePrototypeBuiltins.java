@@ -90,6 +90,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -265,7 +266,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             node, errorBranch);
             assert TemporalUtil.isValidTime(dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
                             dtoi(result.getNanoseconds()));
-            return JSTemporalPlainTime.create(getContext(),
+            return JSTemporalPlainTime.create(getContext(), getRealm(),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
                             dtoi(result.getNanoseconds()),
                             node, errorBranch);
@@ -293,10 +294,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalDurationRecord result2 = roundDurationNode.execute(0, 0, 0, 0,
                             result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(),
                             result.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode, Undefined.instance);
-            JSTemporalDurationRecord result3 = TemporalUtil.balanceDuration(getContext(), namesNode,
+            JSRealm realm = getRealm();
+            JSTemporalDurationRecord result3 = TemporalUtil.balanceDuration(getContext(), realm, namesNode,
                             0, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(),
                             result2.getNanoseconds(), largestUnit);
-            return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0,
+            return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,
                             sign * result3.getHours(), sign * result3.getMinutes(), sign * result3.getSeconds(), sign * result3.getMilliseconds(), sign * result3.getMicroseconds(),
                             sign * result3.getNanoseconds(), node, errorBranch);
         }
@@ -418,7 +420,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 nanosecond = temporalTime.getNanosecond();
             }
             JSTemporalDurationRecord result = TemporalUtil.regulateTime(hour, minute, second, millisecond, microsecond, nanosecond, overflow);
-            return JSTemporalPlainTime.create(getContext(),
+            return JSTemporalPlainTime.create(getContext(), getRealm(),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
                             dtoi(result.getNanoseconds()), this, errorBranch);
         }
@@ -526,7 +528,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalDurationRecord result = TemporalUtil.roundTime(temporalTime.getHour(), temporalTime.getMinute(),
                             temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
                             temporalTime.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);
-            return JSTemporalPlainTime.create(getContext(),
+            return JSTemporalPlainTime.create(getContext(), getRealm(),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
                             dtoi(result.getNanoseconds()), this, errorBranch);
         }
@@ -599,9 +601,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached InlinedBranchProfile errorBranch) {
             JSTemporalPlainDateObject date = toTemporalDate.execute(temporalDateObj, Undefined.instance);
 
-            return JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(),
-                            time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
-                            time.getNanosecond(), date.getCalendar(), this, errorBranch);
+            return JSTemporalPlainDateTime.create(getContext(), getRealm(),
+                            date.getYear(), date.getMonth(), date.getDay(),
+                            time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(), time.getNanosecond(), date.getCalendar(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -641,10 +643,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             JSDynamicObject timeZone = toTemporalTimeZone.execute(temporalTimeZoneLike);
 
-            JSTemporalPlainDateTimeObject temporalDateTime = JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(),
+            JSTemporalPlainDateTimeObject temporalDateTime = JSTemporalPlainDateTime.create(getContext(), getRealm(),
+                            date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
                             time.getNanosecond(), date.getCalendar(), this, errorBranch);
-            JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
+            JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), getRealm(), timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
             return JSTemporalZonedDateTime.create(getContext(), getRealm(), instant.getNanoseconds(), timeZone, date.getCalendar());
         }
 

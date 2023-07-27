@@ -99,7 +99,7 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
             TruffleString string = toStringNode.executeString(item);
             JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalYearMonthString(string);
             JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(result.getCalendar());
-            JSDynamicObject result2 = JSTemporalPlainYearMonth.create(ctx, result.getYear(), result.getMonth(), calendar, result.getDay(), this, errorBranch);
+            JSDynamicObject result2 = JSTemporalPlainYearMonth.create(ctx, getRealm(), result.getYear(), result.getMonth(), calendar, result.getDay(), this, errorBranch);
             return yearMonthFromFieldsNode.execute(calendar, result2, Undefined.instance);
         }
     }

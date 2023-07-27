@@ -77,16 +77,24 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     private JSTemporalPlainTime() {
     }
 
-    public static JSTemporalPlainTimeObject create(JSContext context, int hours, int minutes, int seconds, int milliseconds,
-                    int microseconds, int nanoseconds, Node node, InlinedBranchProfile errorBranch) {
+    public static JSTemporalPlainTimeObject create(JSContext context, JSRealm realm,
+                    int hours, int minutes, int seconds, int milliseconds, int microseconds, int nanoseconds,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm),
+                        hours, minutes, seconds, milliseconds, microseconds, nanoseconds,
+                        node, errorBranch);
+    }
+
+    public static JSTemporalPlainTimeObject create(JSContext context, JSRealm realm, JSDynamicObject proto,
+                    int hours, int minutes, int seconds, int milliseconds, int microseconds, int nanoseconds,
+                    Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isValidTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
-        JSRealm realm = JSRealm.get(node);
         JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm, node, errorBranch);
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
-        return JSTemporalPlainTimeObjectFactory.create(factory, realm,
+        return JSTemporalPlainTimeObjectFactory.create(factory, realm, proto,
                         hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar);
     }
 

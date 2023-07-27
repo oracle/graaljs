@@ -64,6 +64,7 @@ public class JSTemporalInstantObject extends JSNonProxyObject {
     @GenerateObjectFactory
     protected JSTemporalInstantObject(Shape shape, BigInt nanoseconds) {
         super(shape);
+        assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         this.nanoseconds = nanoseconds;
     }
 

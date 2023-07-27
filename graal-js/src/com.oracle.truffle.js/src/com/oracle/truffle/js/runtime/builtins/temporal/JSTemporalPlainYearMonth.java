@@ -77,7 +77,13 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     private JSTemporalPlainYearMonth() {
     }
 
-    public static JSTemporalPlainYearMonthObject create(JSContext context, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
+    public static JSTemporalPlainYearMonthObject create(JSContext context, JSRealm realm, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), isoYear, isoMonth, calendar, referenceISODay,
+                        node, errorBranch);
+    }
+
+    public static JSTemporalPlainYearMonthObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
                     Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(isoYear, isoMonth, referenceISODay)) {
             errorBranch.enter(node);
@@ -87,13 +93,12 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorYearMonthOutsideRange();
         }
-        return createIntl(context, isoYear, isoMonth, calendar, referenceISODay);
+        return createIntl(context, realm, proto, isoYear, isoMonth, calendar, referenceISODay);
     }
 
-    private static JSTemporalPlainYearMonthObject createIntl(JSContext context, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay) {
-        JSRealm realm = JSRealm.get(null);
+    private static JSTemporalPlainYearMonthObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay) {
         JSObjectFactory factory = context.getTemporalPlainYearMonthFactory();
-        return JSTemporalPlainYearMonthObjectFactory.create(factory, realm, isoYear,
+        return JSTemporalPlainYearMonthObjectFactory.create(factory, realm, proto, isoYear,
                         isoMonth, referenceISODay, calendar);
     }
 

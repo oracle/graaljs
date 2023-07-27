@@ -49,6 +49,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 import java.time.ZoneId;
 
@@ -61,6 +62,7 @@ public class JSTemporalTimeZoneObject extends JSNonProxyObject {
     @GenerateObjectFactory
     protected JSTemporalTimeZoneObject(Shape shape, BigInt offsetNanoseconds, TruffleString identifier) {
         super(shape);
+        assert TemporalUtil.isValidEpochNanoseconds(offsetNanoseconds);
         this.offsetNanoseconds = offsetNanoseconds;
         this.identifier = identifier;
     }

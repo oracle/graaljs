@@ -118,7 +118,15 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return obj instanceof JSTemporalPlainDateObject;
     }
 
-    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, JSDynamicObject calendar, Node node, InlinedBranchProfile errorBranch) {
+    public static JSTemporalPlainDateObject create(JSContext context, JSRealm realm,
+                    int year, int month, int day, JSDynamicObject calendar,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), year, month, day, calendar, node, errorBranch);
+    }
+
+    public static JSTemporalPlainDateObject create(JSContext context, JSRealm realm, JSDynamicObject proto,
+                    int year, int month, int day, JSDynamicObject calendar,
+                    Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(year, month, day)) {
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
@@ -127,12 +135,13 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
-        return createIntl(context, JSRealm.get(node), year, month, day, calendar);
+        return createIntl(context, realm, proto, year, month, day, calendar);
     }
 
-    private static JSTemporalPlainDateObject createIntl(JSContext context, JSRealm realm, int year, int month, int day, JSDynamicObject calendar) {
+    private static JSTemporalPlainDateObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto,
+                    int year, int month, int day, JSDynamicObject calendar) {
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
-        return JSTemporalPlainDateObjectFactory.create(factory, realm,
+        return JSTemporalPlainDateObjectFactory.create(factory, realm, proto,
                         year, month, day, calendar);
     }
 
