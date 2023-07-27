@@ -142,7 +142,6 @@ import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
-import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.access.InstallErrorCauseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -2242,14 +2241,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     @ImportStatic({JSConfig.class})
     public abstract static class ConstructArrayBufferNode extends ConstructWithNewTargetNode {
         private final boolean useShared;
-        @Child private GetPrototypeFromConstructorNode getPrototypeFromConstructorNode;
 
         public ConstructArrayBufferNode(JSContext context, JSBuiltin builtin, boolean useShared, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
             this.useShared = useShared;
-            if (isNewTargetCase) {
-                getPrototypeFromConstructorNode = GetPrototypeFromConstructorNode.create(context, null, realm -> getIntrinsicDefaultProto(realm));
-            }
         }
 
         @Specialization(guards = {"!bufferInterop.hasBufferElements(length)"})
