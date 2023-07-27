@@ -1179,7 +1179,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getTemporalPlainTimePrototype();
+            return realm.getTemporalPlainDatePrototype();
         }
     }
 
@@ -1241,7 +1241,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getTemporalPlainTimePrototype();
+            return realm.getTemporalPlainDateTimePrototype();
         }
     }
 
