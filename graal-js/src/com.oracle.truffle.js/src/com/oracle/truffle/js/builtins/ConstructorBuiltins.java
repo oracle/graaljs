@@ -1487,6 +1487,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached InlinedConditionProfile callIsRegExpProfile,
                         @Cached InlinedConditionProfile constructorEquivalentProfile,
                         @Cached(inline = true) TRegexUtil.InteropReadStringMemberNode readPattern) {
+            JSRealm realm = getRealm();
             boolean hasMatchSymbol = isRegExpNode.executeBoolean(pattern);
             boolean legacyFeaturesEnabled;
             if (isCall) {
@@ -1494,33 +1495,21 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (callIsRegExpProfile.profile(node, hasMatchSymbol && flags == Undefined.instance && pattern instanceof JSObject)) {
                     JSObject patternObj = (JSObject) pattern;
                     Object patternConstructor = getConstructor(patternObj);
-                    if (constructorEquivalentProfile.profile(node, patternConstructor == getRealm().getRegExpConstructor())) {
+                    if (constructorEquivalentProfile.profile(node, patternConstructor == realm.getRegExpConstructor())) {
                         return patternObj;
                     }
                 }
                 legacyFeaturesEnabled = true;
             } else {
                 // we are in the "construct" case, i.e. NewTarget is NOT undefined
-                legacyFeaturesEnabled = newTarget == getRealm().getRegExpConstructor();
+                legacyFeaturesEnabled = newTarget == realm.getRegExpConstructor();
             }
-            JSRegExpObject regExpObject = constructRegExpImpl(pattern, flags, hasMatchSymbol, legacyFeaturesEnabled,
-                            node, regexpObject, regexpMatcherObject, regexpNonObject, regexpObjectNewFlagsBranch, readPattern);
-            return isCall ? regExpObject : swapPrototype(regExpObject, newTarget);
-        }
 
-        protected JSRegExpObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol, boolean legacyFeaturesEnabled,
-                        Node node,
-                        InlinedBranchProfile regexpObject,
-                        InlinedBranchProfile regexpMatcherObject,
-                        InlinedBranchProfile regexpNonObject,
-                        InlinedBranchProfile regexpObjectNewFlagsBranch,
-                        TRegexUtil.InteropReadStringMemberNode readPattern) {
             Object p;
             Object f;
-            boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);
-            if (isJSRegExp) {
+            if (JSRegExp.isJSRegExp(pattern)) {
                 regexpObject.enter(node);
-                Object compiledRegex = JSRegExp.getCompiledRegex((JSDynamicObject) patternObj);
+                Object compiledRegex = JSRegExp.getCompiledRegex((JSRegExpObject) pattern);
                 if (flags != Undefined.instance) {
                     regexpObjectNewFlagsBranch.enter(node);
                     if (getContext().getEcmaScriptVersion() < 6) {
@@ -1530,10 +1519,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     TruffleString patternStr = readPattern.execute(node, compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN);
                     compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
                 }
-                return getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
+                var proto = getPrototype(realm, newTarget);
+                return getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled, realm, proto);
             } else if (hasMatchSymbol) {
                 regexpMatcherObject.enter(node);
-                JSDynamicObject patternJSObj = (JSDynamicObject) patternObj;
+                JSObject patternJSObj = (JSObject) pattern;
                 p = getSource(patternJSObj);
                 if (flags == Undefined.instance) {
                     f = getFlags(patternJSObj);
@@ -1542,14 +1532,16 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 }
             } else {
                 regexpNonObject.enter(node);
-                p = patternObj;
+                p = pattern;
                 f = flags;
             }
+
+            var proto = getPrototype(realm, newTarget);
 
             TruffleString patternStr = getPatternToStringNode().executeString(p);
             Object flagsStr = flagsToString(f);
             Object compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
-            JSRegExpObject regExp = getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
+            JSRegExpObject regExp = getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled, realm, proto);
             if (getContext().getLanguageOptions().testV8Mode()) {
                 // workaround for the reference equality check at the end of mjsunit/regexp.js
                 // TODO: remove this as soon as option maps are available for TRegex Sources

@@ -49,6 +49,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 public abstract class CreateRegExpNode extends JavaScriptBaseNode {
@@ -68,31 +69,30 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
     }
 
     public final JSRegExpObject createRegExp(Object compiledRegex) {
-        return createRegExp(compiledRegex, true);
+        JSRealm realm = getRealm();
+        return createRegExp(compiledRegex, true, realm, realm.getRegExpPrototype());
     }
 
-    public final JSRegExpObject createRegExp(Object compiledRegex, boolean legacyFeaturesEnabled) {
+    public final JSRegExpObject createRegExp(Object compiledRegex, boolean legacyFeaturesEnabled, JSRealm realm, JSDynamicObject proto) {
         Object namedCaptureGroups = readNamedCG.execute(null, compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
         boolean hasNamedCaptureGroups = !isNamedCGNull.isNull(namedCaptureGroups);
-        return execute(compiledRegex, legacyFeaturesEnabled, namedCaptureGroups, hasNamedCaptureGroups);
+        return execute(compiledRegex, legacyFeaturesEnabled, realm, proto, namedCaptureGroups, hasNamedCaptureGroups);
     }
 
-    protected abstract JSRegExpObject execute(Object compiledRegex, boolean legacyFeaturesEnabled, Object namedCaptureGroups, boolean hasNamedCG);
+    protected abstract JSRegExpObject execute(Object compiledRegex, boolean legacyFeaturesEnabled, JSRealm realm, JSDynamicObject proto, Object namedCaptureGroups, boolean hasNamedCG);
 
     @Specialization(guards = {"!b(hasNamedCaptureGroups)"})
-    protected JSRegExpObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled,
+    protected JSRegExpObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled, JSRealm realm, JSDynamicObject proto,
                     @SuppressWarnings("unused") Object namedCaptureGroups, @SuppressWarnings("unused") boolean hasNamedCaptureGroups) {
-        JSRealm realm = getRealm();
-        JSRegExpObject reObj = JSRegExp.create(context, realm, realm.getRegExpPrototype(), compiledRegex, null, legacyFeaturesEnabled);
+        JSRegExpObject reObj = JSRegExp.create(context, realm, proto, compiledRegex, null, legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }
 
     @Specialization(guards = {"b(hasNamedCaptureGroups)"})
-    protected JSRegExpObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled,
+    protected JSRegExpObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled, JSRealm realm, JSDynamicObject proto,
                     Object namedCaptureGroups, @SuppressWarnings("unused") boolean hasNamedCaptureGroups) {
-        JSRealm realm = getRealm();
-        JSRegExpObject reObj = JSRegExp.create(context, realm, realm.getRegExpPrototype(), compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
+        JSRegExpObject reObj = JSRegExp.create(context, realm, proto, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }
