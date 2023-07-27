@@ -2506,12 +2506,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             assert offset >= 0 && offset <= Integer.MAX_VALUE && viewByteLength >= 0 && viewByteLength <= Integer.MAX_VALUE;
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            JSDynamicObject result = JSDataView.createDataView(getContext(), realm, proto, arrayBuffer, (int) offset, (int) viewByteLength);
+            // GetPrototypeFromConstructor might have detached the ArrayBuffer as a side effect.
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorDetachedBuffer();
             }
-            return result;
+            return JSDataView.createDataView(getContext(), realm, proto, arrayBuffer, (int) offset, (int) viewByteLength);
         }
 
         @Override
