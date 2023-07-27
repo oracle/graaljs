@@ -891,8 +891,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached @SuppressWarnings("unused") ToArrayLengthNode toArrayLengthNode,
                         @Cached("create(getContext())") @Shared("arrayCreate") ArrayCreateNode arrayCreateNode,
                         @Bind("toArrayLengthNode.executeLong(firstArg(args))") long len) {
-            JSArrayObject array = arrayCreateNode.execute(len);
-            return swapPrototype(array, newTarget);
+            JSRealm realm = getRealm();
+            JSDynamicObject proto = getPrototype(realm, newTarget);
+            return arrayCreateNode.execute(len, realm, proto);
         }
 
         static Object firstArg(Object[] arguments) {
@@ -915,8 +916,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     try {
                         long length = interop.asLong(len);
                         if (JSRuntime.isArrayIndex(length)) {
-                            JSArrayObject array = arrayCreateNode.execute(length);
-                            return swapPrototype(array, newTarget);
+                            return arrayCreateNode.execute(length, realm, proto);
                         }
                     } catch (UnsupportedMessageException umex) {
                         rangeErrorProfile.enter(node);

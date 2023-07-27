@@ -129,6 +129,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return createConstantEmptyArray(context, realm, (int) length);
     }
 
+    public static JSArrayObject createEmptyChecked(JSContext context, JSRealm realm, JSDynamicObject proto, long length) {
+        assert 0 <= length && length <= Integer.MAX_VALUE;
+        return createConstantEmptyArray(context, realm, proto, null, (int) length);
+    }
+
     public static JSArrayObject createEmptyZeroLength(JSContext context, JSRealm realm) {
         return createConstantEmptyArray(context, realm);
     }
@@ -393,6 +398,10 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
 
     public static JSArrayObject createSparseArray(JSContext context, JSRealm realm, long length) {
         return create(context, realm, SparseArray.createSparseArray(), SparseArray.createArrayMap(), length);
+    }
+
+    public static JSArrayObject createSparseArray(JSContext context, JSRealm realm, JSDynamicObject proto, long length) {
+        return create(context, realm, proto, SparseArray.createSparseArray(), SparseArray.createArrayMap(), length);
     }
 
     public static JSArrayObject createLazyRegexArray(JSContext context, JSRealm realm, int length) {
