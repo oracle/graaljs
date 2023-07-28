@@ -70,6 +70,7 @@ public class SnapshotTool {
     String outDir = null;
     String inDir = null;
     List<String> srcFiles = new ArrayList<>();
+    int parallelism = Math.min(8, Runtime.getRuntime().availableProcessors());
 
     public SnapshotTool(String[] args) {
         for (String arg : args) {
@@ -86,6 +87,8 @@ public class SnapshotTool {
                     outDir = requireDirectory(arg.substring(arg.indexOf('=') + 1));
                 } else if (arg.startsWith("--indir=")) {
                     inDir = requireDirectory(arg.substring(arg.indexOf('=') + 1));
+                } else if (arg.startsWith("--threads=")) {
+                    parallelism = Integer.parseInt(arg.substring(arg.indexOf('=') + 1));
                 }
             }
         }
@@ -116,7 +119,6 @@ public class SnapshotTool {
                     });
                 }
 
-                int parallelism = Math.min(8, Runtime.getRuntime().availableProcessors());
                 var executor = new ForkJoinPool(parallelism, pool -> new JSContextWorkerThread(pool), null, true);
                 var futures = executor.invokeAll(tasks);
                 // Check that all tasks succeeded.
@@ -157,8 +159,8 @@ public class SnapshotTool {
         }
     }
 
-    private static void usage() {
-        System.out.println("Usage: [--java|--binary] --outdir=DIR [--indir=DIR] --file=FILE [--file=FILE ...]");
+    private void usage() {
+        System.out.println("Usage: [--java|--binary|--wrapped] --outdir=DIR [--indir=DIR] --file=FILE [--file=FILE ...] [--threads=%d]".formatted(parallelism));
     }
 
     private static String requireDirectory(String dir) {
