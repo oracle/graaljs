@@ -51,10 +51,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.source.Source;
@@ -98,8 +98,7 @@ public class SnapshotTool {
     private void run() throws InterruptedException, ExecutionException {
         List<Callable<Void>> tasks = new ArrayList<>();
         if (!srcFiles.isEmpty() && outDir != null) {
-            try (var timeStats = new TimeStats();
-                            var engine = Engine.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).build()) {
+            try (var timeStats = new TimeStats()) {
                 for (String srcFileName : srcFiles) {
                     File sourceFile = inDir == null ? new File(srcFileName) : Paths.get(inDir, srcFileName).toFile();
                     File outputFile = Paths.get(outDir, srcFileName + (binary ? ".bin" : ".java")).toFile();
@@ -109,15 +108,7 @@ public class SnapshotTool {
 
                     tasks.add(() -> {
                         try (var timer = timeStats.file(srcFileName)) {
-                            try (Context polyglotContext = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).engine(engine).//
-                                            allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build()).//
-                                            option(JSContextOptions.LAZY_TRANSLATION_NAME, "false").//
-                                            build()) {
-                                polyglotContext.initialize(JavaScriptLanguage.ID);
-                                polyglotContext.enter();
-                                snapshotScriptFileTo(srcFileName, sourceFile, outputFile, binary, wrapped);
-                                polyglotContext.leave();
-                            }
+                            snapshotScriptFileTo(srcFileName, sourceFile, outputFile, binary, wrapped);
                             return null;
                         } catch (Exception e) {
                             throw new RuntimeException(String.join(": ", srcFileName, Objects.requireNonNullElse(e.getMessage(), "")), e);
@@ -126,7 +117,7 @@ public class SnapshotTool {
                 }
 
                 int parallelism = Math.min(8, Runtime.getRuntime().availableProcessors());
-                var executor = Executors.newWorkStealingPool(parallelism);
+                var executor = new ForkJoinPool(parallelism, pool -> new JSContextWorkerThread(pool), null, true);
                 var futures = executor.invokeAll(tasks);
                 // Check that all tasks succeeded.
                 for (var future : futures) {
@@ -135,6 +126,34 @@ public class SnapshotTool {
             }
         } else {
             usage();
+        }
+    }
+
+    private static Context newContext() {
+        return Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).//
+                        allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build()).//
+                        option(JSContextOptions.LAZY_TRANSLATION_NAME, "false").//
+                        build();
+    }
+
+    private static final class JSContextWorkerThread extends ForkJoinWorkerThread {
+        private Context polyglotContext;
+
+        private JSContextWorkerThread(ForkJoinPool pool) {
+            super(pool);
+        }
+
+        @Override
+        protected void onStart() {
+            polyglotContext = newContext();
+            polyglotContext.initialize(JavaScriptLanguage.ID);
+            polyglotContext.enter();
+        }
+
+        @Override
+        protected void onTermination(Throwable exception) {
+            polyglotContext.leave();
+            polyglotContext.close();
         }
     }
 
