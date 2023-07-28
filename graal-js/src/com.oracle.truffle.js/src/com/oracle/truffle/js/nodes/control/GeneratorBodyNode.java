@@ -54,8 +54,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
@@ -67,16 +65,15 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.GeneratorState;
+import com.oracle.truffle.js.runtime.builtins.JSGenerator;
+import com.oracle.truffle.js.runtime.builtins.JSGeneratorObject;
 import com.oracle.truffle.js.runtime.objects.Completion;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class GeneratorBodyNode extends JavaScriptNode {
     private static final class GeneratorRootNode extends AbstractFunctionRootNode {
         @Child private CreateIterResultObjectNode createIterResultObject;
-        @Child private PropertyGetNode getGeneratorState;
-        @Child private PropertySetNode setGeneratorState;
         @Child private JavaScriptNode functionBody;
         @Child private JSWriteFrameSlotNode writeYieldValue;
         @Child private JSReadFrameSlotNode readYieldResult;
@@ -88,8 +85,6 @@ public final class GeneratorBodyNode extends JavaScriptNode {
                         TruffleString functionName, ScriptOrModule activeScriptOrModule) {
             super(context.getLanguage(), functionSourceSection, null, activeScriptOrModule);
             this.createIterResultObject = CreateIterResultObjectNode.create(context);
-            this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
-            this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.functionBody = new FunctionBodyNode(functionBody);
             this.writeYieldValue = Objects.requireNonNull(writeYieldValueNode);
             this.readYieldResult = Objects.requireNonNull(readYieldResultNode);
@@ -100,7 +95,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         protected Object executeInRealm(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
             VirtualFrame generatorFrame = JSArguments.getResumeExecutionContext(arguments);
-            JSDynamicObject generatorObject = (JSDynamicObject) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
+            JSGeneratorObject generatorObject = (JSGeneratorObject) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
             Completion.Type completionType = JSArguments.getResumeCompletionType(arguments);
             Object value = JSArguments.getResumeCompletionValue(arguments);
             GeneratorState generatorState = generatorValidate(generatorObject);
@@ -115,14 +110,14 @@ public final class GeneratorBodyNode extends JavaScriptNode {
                 assert completion.isThrow() || completion.isReturn();
                 if (GeneratorState.SuspendedStart.equals(generatorState)) {
                     generatorState = GeneratorState.Completed;
-                    setGeneratorState.setValue(generatorObject, generatorState);
+                    generatorObject.setGeneratorState(generatorState);
                 }
                 if (GeneratorState.Completed.equals(generatorState)) {
                     if (returnOrExceptionProfile.profile(completion.isReturn())) {
                         return createIterResultObject.execute(frame, completion.getValue(), true);
                     } else {
                         assert completion.isThrow();
-                        throw UserScriptException.create(completion.getValue(), this, getGeneratorState.getContext().getLanguageOptions().stackTraceLimit());
+                        throw UserScriptException.create(completion.getValue(), this, getLanguage().getJSContext().getLanguageOptions().stackTraceLimit());
                     }
                 }
                 assert GeneratorState.SuspendedYield.equals(generatorState);
@@ -130,7 +125,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
             }
 
             generatorState = GeneratorState.Executing;
-            setGeneratorState.setValue(generatorObject, generatorState);
+            generatorObject.setGeneratorState(generatorState);
 
             writeYieldValue.executeWrite(generatorFrame, value);
 
@@ -144,20 +139,17 @@ public final class GeneratorBodyNode extends JavaScriptNode {
                 if (GeneratorState.Executing.equals(generatorState)) {
                     generatorState = GeneratorState.Completed;
                 }
-                setGeneratorState.setValue(generatorObject, generatorState);
+                generatorObject.setGeneratorState(generatorState);
             }
         }
 
-        private GeneratorState generatorValidate(JSDynamicObject generatorObject) {
-            Object generatorState = getGeneratorState.getValue(generatorObject);
-            if (generatorState == Undefined.instance) {
-                errorBranch.enter();
-                throw Errors.createTypeErrorGeneratorObjectExpected();
-            } else if (GeneratorState.Executing.equals(generatorState)) {
+        private GeneratorState generatorValidate(JSGeneratorObject generatorObject) {
+            JSFunction.GeneratorState generatorState = generatorObject.getGeneratorState();
+            if (GeneratorState.Executing.equals(generatorState)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("generator is already executing");
             }
-            return (GeneratorState) generatorState;
+            return generatorState;
         }
 
         @Override
@@ -175,18 +167,12 @@ public final class GeneratorBodyNode extends JavaScriptNode {
     }
 
     @Child private SpecializedNewObjectNode createGeneratorObject;
-    @Child private PropertySetNode setGeneratorState;
-    @Child private PropertySetNode setGeneratorContext;
-    @Child private PropertySetNode setGeneratorTarget;
     private final GeneratorRootNode generatorRootNode;
     private final JSContext context;
 
     private GeneratorBodyNode(JSContext context, GeneratorRootNode generatorRootNode) {
         this.context = context;
-        this.createGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, false);
-        this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
-        this.setGeneratorContext = PropertySetNode.createSetHidden(JSFunction.GENERATOR_CONTEXT_ID, context);
-        this.setGeneratorTarget = PropertySetNode.createSetHidden(JSFunction.GENERATOR_TARGET_ID, context);
+        this.createGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, false, JSGenerator.INSTANCE);
         this.generatorRootNode = generatorRootNode;
     }
 
@@ -201,17 +187,17 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         // 14.4.11 Runtime Semantics: GeneratorBody : EvaluateBody
         // Let G be OrdinaryCreateFromConstructor(functionObject, "%GeneratorPrototype%",
         // <<[[GeneratorState]], [[GeneratorContext]]>>).
-        JSDynamicObject generatorObject = createGeneratorObject.execute(frame, JSFrameUtil.getFunctionObject(frame));
+        JSGeneratorObject generatorObject = (JSGeneratorObject) createGeneratorObject.execute(frame, JSFrameUtil.getFunctionObject(frame));
 
         generatorStart(frame, generatorObject);
 
         return generatorObject;
     }
 
-    private void generatorStart(VirtualFrame frame, JSDynamicObject generatorObject) {
-        setGeneratorState.setValue(generatorObject, GeneratorState.SuspendedStart);
-        setGeneratorContext.setValue(generatorObject, frame.materialize());
-        setGeneratorTarget.setValue(generatorObject, generatorRootNode.getCallTarget());
+    private void generatorStart(VirtualFrame frame, JSGeneratorObject generatorObject) {
+        generatorObject.setGeneratorState(GeneratorState.SuspendedStart);
+        generatorObject.setGeneratorContext(frame.materialize());
+        generatorObject.setGeneratorTarget(generatorRootNode.getCallTarget());
     }
 
     @Override

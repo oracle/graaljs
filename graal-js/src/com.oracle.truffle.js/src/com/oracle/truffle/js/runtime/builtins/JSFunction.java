@@ -100,7 +100,6 @@ public final class JSFunction extends JSNonProxy {
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Function.prototype");
     public static final TruffleString GENERATOR_FUNCTION_NAME = Strings.constant("GeneratorFunction");
     public static final TruffleString GENERATOR_NAME = Strings.constant("Generator");
-    public static final TruffleString GENERATOR_PROTOTYPE_NAME = Strings.constant("Generator.prototype");
     public static final TruffleString ASYNC_FUNCTION_NAME = Strings.constant("AsyncFunction");
     public static final TruffleString ASYNC_GENERATOR_FUNCTION_NAME = Strings.constant("AsyncGeneratorFunction");
     public static final TruffleString ASYNC_GENERATOR_NAME = Strings.constant("AsyncGenerator");
@@ -492,7 +491,7 @@ public final class JSFunction extends JSNonProxy {
             if (functionData.isAsync()) {
                 return JSOrdinary.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
             } else {
-                return JSOrdinary.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
+                return JSOrdinary.createWithRealm(context, context.getGeneratorObjectPrototypeFactory(), realm);
             }
         }
     }

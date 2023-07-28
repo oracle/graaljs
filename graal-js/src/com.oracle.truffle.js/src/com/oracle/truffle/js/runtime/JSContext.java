@@ -100,6 +100,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSGenerator;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -479,6 +480,7 @@ public class JSContext {
     private final JSObjectFactory enumerateIteratorFactory;
     private final JSObjectFactory forInIteratorFactory;
     private final JSObjectFactory generatorObjectFactory;
+    private final JSObjectFactory generatorObjectPrototypeFactory;
     private final JSObjectFactory asyncGeneratorObjectFactory;
     private final JSObjectFactory asyncFromSyncIteratorFactory;
 
@@ -673,7 +675,8 @@ public class JSContext {
         this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);
         this.forInIteratorFactory = builder.create(JSForInIterator.INSTANCE);
 
-        this.generatorObjectFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
+        this.generatorObjectFactory = builder.create(JSGenerator.INSTANCE);
+        this.generatorObjectPrototypeFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, ordinaryObjectShapeSupplier);
 
@@ -1099,6 +1102,10 @@ public class JSContext {
 
     public final JSObjectFactory getGeneratorObjectFactory() {
         return generatorObjectFactory;
+    }
+
+    public final JSObjectFactory getGeneratorObjectPrototypeFactory() {
+        return generatorObjectPrototypeFactory;
     }
 
     public final JSObjectFactory getAsyncGeneratorObjectFactory() {
