@@ -481,6 +481,7 @@ public class JSContext {
     private final JSObjectFactory forInIteratorFactory;
     private final JSObjectFactory generatorObjectFactory;
     private final JSObjectFactory generatorObjectPrototypeFactory;
+    private final JSObjectFactory iteratorHelperObjectFactory;
     private final JSObjectFactory asyncGeneratorObjectFactory;
     private final JSObjectFactory asyncFromSyncIteratorFactory;
 
@@ -677,6 +678,7 @@ public class JSContext {
 
         this.generatorObjectFactory = builder.create(JSGenerator.INSTANCE);
         this.generatorObjectPrototypeFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
+        this.iteratorHelperObjectFactory = builder.create(JSRealm::getIteratorHelperPrototype, JSGenerator.INSTANCE);
         this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, ordinaryObjectShapeSupplier);
 
@@ -1106,6 +1108,10 @@ public class JSContext {
 
     public final JSObjectFactory getGeneratorObjectPrototypeFactory() {
         return generatorObjectPrototypeFactory;
+    }
+
+    public final JSObjectFactory getIteratorHelperObjectFactory() {
+        return iteratorHelperObjectFactory;
     }
 
     public final JSObjectFactory getAsyncGeneratorObjectFactory() {

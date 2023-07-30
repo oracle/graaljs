@@ -179,10 +179,6 @@ public final class JSFunction extends JSNonProxy {
     public static final HiddenKey CLASS_INITIALIZERS_ID = new HiddenKey("Initializers");
     public static final HiddenKey PRIVATE_BRAND_ID = new HiddenKey("PrivateBrand");
 
-    public static final HiddenKey GENERATOR_STATE_ID = new HiddenKey("GeneratorState");
-    public static final HiddenKey GENERATOR_CONTEXT_ID = new HiddenKey("GeneratorContext");
-    public static final HiddenKey GENERATOR_TARGET_ID = new HiddenKey("GeneratorTarget");
-
     public static final HiddenKey ASYNC_GENERATOR_STATE_ID = new HiddenKey("AsyncGeneratorState");
     public static final HiddenKey ASYNC_GENERATOR_CONTEXT_ID = new HiddenKey("AsyncGeneratorContext");
     public static final HiddenKey ASYNC_GENERATOR_QUEUE_ID = new HiddenKey("AsyncGeneratorQueue");

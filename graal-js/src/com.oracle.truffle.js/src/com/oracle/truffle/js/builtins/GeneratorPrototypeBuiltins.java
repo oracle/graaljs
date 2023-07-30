@@ -115,7 +115,7 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
             this.callNode = InternalCallNode.create();
         }
 
-        @Specialization
+        @Specialization(guards = "!generator.hasGeneratorBrand()")
         protected Object resume(JSGeneratorObject generator, Object value) {
             CallTarget generatorTarget = generator.getGeneratorTarget();
             Object generatorContext = generator.getGeneratorContext();

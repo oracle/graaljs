@@ -74,6 +74,10 @@ public final class JSGenerator extends JSNonProxy implements JSConstructorFactor
         return JSGeneratorObjectFactory.create(factory, realm, proto);
     }
 
+    public static JSGeneratorObject create(JSObjectFactory factory, JSRealm realm) {
+        return JSGeneratorObjectFactory.create(factory, realm);
+    }
+
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         // intrinsic object %GeneratorPrototype%

@@ -43,7 +43,11 @@ package com.oracle.truffle.js.builtins;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -87,6 +91,8 @@ import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSGenerator;
+import com.oracle.truffle.js.runtime.builtins.JSGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -217,7 +223,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
         @Child private PropertySetNode setArgsNode;
         @Child private PropertySetNode setNextNode;
-        @Child private PropertySetNode setGeneratorStateNode;
 
         private final BuiltinFunctionKey nextKey;
         private final Function<JSContext, JSFunctionData> nextFactory;
@@ -228,11 +233,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
             this.setArgsNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
             this.setNextNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.NEXT_ID, context);
-            this.setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.nextKey = nextKey;
             this.nextFactory = nextFactory;
         }
 
+        @GenerateCached(false)
+        @ImportStatic({IteratorHelperPrototypeBuiltins.class})
         protected abstract static class IteratorFromGeneratorImplNode<T extends IteratorArgs> extends JavaScriptBaseNode {
             @Child private PropertyGetNode getArgsNode;
             @Child private HasHiddenKeyCacheNode hasArgsNode;
@@ -240,7 +246,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             @Child private IteratorStepNode iteratorStepNode;
             @Child private IteratorValueNode iteratorValueNode;
-            @Child private PropertySetNode setGeneratorStateNode;
             @Child private LongToIntOrDoubleNode indexToNumber = LongToIntOrDoubleNode.create();
 
             private final BranchProfile hasNoArgsProfile = BranchProfile.create();
@@ -249,7 +254,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             public IteratorFromGeneratorImplNode(JSContext context) {
                 this.context = context;
 
-                this.setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
                 this.getArgsNode = PropertyGetNode.createGetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
                 this.hasArgsNode = HasHiddenKeyCacheNode.create(IteratorHelperPrototypeBuiltins.ARGS_ID);
                 this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
@@ -267,7 +271,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return iteratorValueNode.execute(next);
             }
 
-            protected final Object getNextValue(VirtualFrame frame, Object thisObj, IteratorRecord iterated) {
+            protected final Object getNextValue(VirtualFrame frame, JSGeneratorObject thisObj, IteratorRecord iterated) {
                 Object next = iteratorStep(iterated);
                 if (next == Boolean.FALSE) {
                     return createResultDone(frame, thisObj);
@@ -275,13 +279,13 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return createResultContinue(frame, thisObj, iteratorValue(next));
             }
 
-            protected final Object createResultContinue(VirtualFrame frame, Object thisObj, Object value) {
-                setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.SuspendedYield);
+            protected final Object createResultContinue(VirtualFrame frame, JSGeneratorObject thisObj, Object value) {
+                thisObj.setGeneratorState(JSFunction.GeneratorState.SuspendedYield);
                 return createIterResultObjectNode.execute(frame, value, false);
             }
 
-            protected final Object createResultDone(VirtualFrame frame, Object thisObj) {
-                setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
+            protected final Object createResultDone(VirtualFrame frame, JSGeneratorObject thisObj) {
+                thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
@@ -292,6 +296,12 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                     throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
                 }
                 return (T) getArgsNode.getValue(thisObj);
+            }
+
+            @TruffleBoundary(transferToInterpreterOnException = false)
+            @Fallback
+            protected static Object incompatibleReceiver(Object thisObj) {
+                throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
             }
 
             public JSContext getContext() {
@@ -343,19 +353,16 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected final JSDynamicObject createIterator(T args) {
-            JSDynamicObject iterator = createObjectNode.execute(getIteratorHelperPrototype());
+            JSGeneratorObject iterator = JSGenerator.create(getContext().getIteratorHelperObjectFactory(), getRealm());
             setArgsNode.setValue(iterator, args);
             setNextNode.setValue(iterator, JSFunction.create(getRealm(), getContext().getOrCreateBuiltinFunctionData(nextKey, nextFactory)));
-            setGeneratorStateNode.setValue(iterator, JSFunction.GeneratorState.SuspendedStart);
+            iterator.setGeneratorState(JSFunction.GeneratorState.SuspendedStart);
+            iterator.setGeneratorBrand(IteratorHelperPrototypeBuiltins.GENERATOR_BRAND);
             return iterator;
         }
 
         protected static JSFunctionData createIteratorFromGeneratorFunctionImpl(JSContext context, IteratorFromGeneratorImplNode<?> implNode) {
             return JSFunctionData.createCallOnly(context, IteratorRootNode.create(implNode).getCallTarget(), 0, Strings.EMPTY);
-        }
-
-        private JSDynamicObject getIteratorHelperPrototype() {
-            return getRealm().getIteratorHelperPrototype();
         }
     }
 
@@ -395,8 +402,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 this.callNode = JSFunctionCallNode.createCall();
             }
 
-            @Specialization
-            public Object next(VirtualFrame frame, Object thisObj) {
+            @Specialization(guards = "hasIteratorHelperBrand(thisObj)")
+            protected Object next(VirtualFrame frame, JSGeneratorObject thisObj) {
                 IteratorMapArgs args = getArgs(thisObj);
                 Object next = iteratorStep(args.iterated);
                 if (next == Boolean.FALSE) {
@@ -465,8 +472,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 this.toBooleanNode = JSToBooleanNode.create();
             }
 
-            @Specialization
-            public Object next(VirtualFrame frame, Object thisObj) {
+            @Specialization(guards = "hasIteratorHelperBrand(thisObj)")
+            protected Object next(VirtualFrame frame, JSGeneratorObject thisObj) {
                 IteratorFilterArgs args = getArgs(thisObj);
                 while (true) {
                     Object next = iteratorStep(args.iterated);
@@ -561,8 +568,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 this.iteratorCloseNode = IteratorCloseNode.create(context);
             }
 
-            @Specialization
-            public Object next(VirtualFrame frame, Object thisObj) {
+            @Specialization(guards = "hasIteratorHelperBrand(thisObj)")
+            protected Object next(VirtualFrame frame, JSGeneratorObject thisObj) {
                 IteratorTakeArgs args = getArgs(thisObj);
                 double remaining = args.remaining;
 
@@ -645,8 +652,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @SuppressFBWarnings(value = "FL_FLOATS_AS_LOOP_COUNTERS", justification = "intentional use of floating-point variable as loop counter")
-            @Specialization
-            public Object next(VirtualFrame frame, Object thisObj) {
+            @Specialization(guards = "hasIteratorHelperBrand(thisObj)")
+            protected Object next(VirtualFrame frame, JSGeneratorObject thisObj) {
                 IteratorDropArgs args = getArgs(thisObj);
                 double remaining = args.remaining;
                 while (remaining > 0) {
@@ -720,8 +727,8 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 this.getNextValueNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
             }
 
-            @Specialization
-            public Object next(VirtualFrame frame, Object thisObj) {
+            @Specialization(guards = "hasIteratorHelperBrand(thisObj)")
+            protected Object next(VirtualFrame frame, JSGeneratorObject thisObj) {
                 IteratorFlatMapArgs args = getArgs(thisObj);
                 boolean innerAlive = args.innerAlive;
                 while (true) {

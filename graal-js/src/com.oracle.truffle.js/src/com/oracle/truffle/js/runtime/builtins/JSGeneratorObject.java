@@ -51,6 +51,7 @@ public final class JSGeneratorObject extends JSNonProxyObject {
     private JSFunction.GeneratorState generatorState;
     private MaterializedFrame generatorContext;
     private CallTarget generatorTarget;
+    private Object generatorBrand;
 
     @GenerateObjectFactory
     protected JSGeneratorObject(Shape shape) {
@@ -79,5 +80,17 @@ public final class JSGeneratorObject extends JSNonProxyObject {
 
     public void setGeneratorTarget(CallTarget generatorTarget) {
         this.generatorTarget = generatorTarget;
+    }
+
+    public boolean hasGeneratorBrand() {
+        return generatorBrand != null;
+    }
+
+    public Object getGeneratorBrand() {
+        return generatorBrand;
+    }
+
+    public void setGeneratorBrand(Object generatorBrand) {
+        this.generatorBrand = generatorBrand;
     }
 }
