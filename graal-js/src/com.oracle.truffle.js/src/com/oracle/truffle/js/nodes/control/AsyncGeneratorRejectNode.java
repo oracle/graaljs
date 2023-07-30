@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,51 +45,42 @@ import java.util.ArrayDeque;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncGeneratorObject;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorRejectNode extends JavaScriptBaseNode {
-    @Child private PropertyGetNode getAsyncGeneratorQueueNode;
     @Child private JSFunctionCallNode callRejectNode;
     @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
 
-    protected AsyncGeneratorRejectNode(JSContext context) {
-        this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
+    protected AsyncGeneratorRejectNode() {
         this.callRejectNode = JSFunctionCallNode.createCall();
     }
 
-    public static AsyncGeneratorRejectNode create(JSContext context) {
-        return new AsyncGeneratorRejectNode(context);
+    public static AsyncGeneratorRejectNode create() {
+        return new AsyncGeneratorRejectNode();
     }
 
-    public Object execute(VirtualFrame frame, JSDynamicObject generator, Object exception) {
+    public Object execute(VirtualFrame frame, JSAsyncGeneratorObject generator, Object exception) {
         performReject(frame, generator, exception);
         if (asyncGeneratorResumeNextNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.asyncGeneratorResumeNextNode = insert(AsyncGeneratorResumeNextNode.create(getContext()));
+            this.asyncGeneratorResumeNextNode = insert(AsyncGeneratorResumeNextNode.create(getLanguage().getJSContext()));
         }
         asyncGeneratorResumeNextNode.execute(frame, generator);
         return Undefined.instance;
     }
 
     @SuppressWarnings({"unchecked", "unused"})
-    public void performReject(VirtualFrame frame, JSDynamicObject generator, Object exception) {
-        ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
+    public void performReject(VirtualFrame frame, JSAsyncGeneratorObject generator, Object exception) {
+        ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
         assert !queue.isEmpty();
         AsyncGeneratorRequest next = queue.pollFirst();
         PromiseCapabilityRecord promiseCapability = next.getPromiseCapability();
         Object reject = promiseCapability.getReject();
         callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, exception));
-    }
-
-    private JSContext getContext() {
-        return getAsyncGeneratorQueueNode.getContext();
     }
 }

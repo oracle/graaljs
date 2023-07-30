@@ -1733,7 +1733,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else {
                 assert kind == ASYNC_GENERATOR;
                 assert JSFunction.getFunctionData(functionObj).isAsyncGenerator();
-                prototype = JSOrdinary.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
+                prototype = JSOrdinary.createWithRealm(context, context.getAsyncGeneratorObjectPrototypeFactory(), realm);
             }
             JSFunction.setClassPrototype(functionObj, prototype);
             return prototype;

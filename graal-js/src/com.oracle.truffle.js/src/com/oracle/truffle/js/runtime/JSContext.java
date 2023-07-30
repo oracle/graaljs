@@ -85,6 +85,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncGenerator;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -483,7 +484,9 @@ public class JSContext {
     private final JSObjectFactory generatorObjectPrototypeFactory;
     private final JSObjectFactory iteratorHelperObjectFactory;
     private final JSObjectFactory asyncGeneratorObjectFactory;
+    private final JSObjectFactory asyncGeneratorObjectPrototypeFactory;
     private final JSObjectFactory asyncFromSyncIteratorFactory;
+    private final JSObjectFactory asyncIteratorHelperObjectFactory;
 
     private final JSObjectFactory collatorFactory;
     private final JSObjectFactory numberFormatFactory;
@@ -679,8 +682,10 @@ public class JSContext {
         this.generatorObjectFactory = builder.create(JSGenerator.INSTANCE);
         this.generatorObjectPrototypeFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.iteratorHelperObjectFactory = builder.create(JSRealm::getIteratorHelperPrototype, JSGenerator.INSTANCE);
-        this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
+        this.asyncGeneratorObjectFactory = builder.create(JSAsyncGenerator.INSTANCE);
+        this.asyncGeneratorObjectPrototypeFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, ordinaryObjectShapeSupplier);
+        this.asyncIteratorHelperObjectFactory = builder.create(JSRealm::getAsyncIteratorHelperPrototype, JSAsyncGenerator.INSTANCE);
 
         this.collatorFactory = builder.create(JSCollator.INSTANCE);
         this.numberFormatFactory = builder.create(JSNumberFormat.INSTANCE);
@@ -1118,8 +1123,16 @@ public class JSContext {
         return asyncGeneratorObjectFactory;
     }
 
+    public final JSObjectFactory getAsyncGeneratorObjectPrototypeFactory() {
+        return asyncGeneratorObjectPrototypeFactory;
+    }
+
     public final JSObjectFactory getAsyncFromSyncIteratorFactory() {
         return asyncFromSyncIteratorFactory;
+    }
+
+    public final JSObjectFactory getAsyncIteratorHelperObjectFactory() {
+        return asyncIteratorHelperObjectFactory;
     }
 
     public final JSObjectFactory getCollatorFactory() {

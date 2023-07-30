@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncGenerator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGenerator;
@@ -140,7 +141,9 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
                     @Cached("prototype") @SuppressWarnings("unused") Object cachedPrototype,
                     @Cached("makeBoundObjectFactory(prototype)") JSObjectFactory factory) {
         JSRealm realm = getRealm();
-        if (isGenerator && !isAsyncGenerator) {
+        if (isAsyncGenerator) {
+            return JSAsyncGenerator.create(factory, realm, (JSObject) cachedPrototype);
+        } else if (isGenerator) {
             return JSGenerator.create(factory, realm, (JSObject) cachedPrototype);
         }
         return JSOrdinary.create(context, factory, realm);
@@ -151,7 +154,9 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()"}, replaces = "doCachedProto")
     public JSDynamicObject doUncachedProto(@SuppressWarnings("unused") JSDynamicObject target, JSObject prototype,
                     @Cached InlinedBranchProfile slowBranch) {
-        if (isGenerator && !isAsyncGenerator) {
+        if (isAsyncGenerator) {
+            return JSAsyncGenerator.create(context, getRealm(), prototype);
+        } else if (isGenerator) {
             return JSGenerator.create(context, getRealm(), prototype);
         }
         Shape shape = JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context, this, slowBranch);
@@ -171,7 +176,9 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
                     @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
                     @Cached("getShapeWithoutProto()") @Shared("shapeWithoutProto") Shape cachedShape) {
         JSRealm realm = getRealm();
-        if (isGenerator && !isAsyncGenerator) {
+        if (isAsyncGenerator) {
+            return JSAsyncGenerator.create(context, realm, prototype);
+        } else if (isGenerator) {
             return JSGenerator.create(context, realm, prototype);
         }
         JSDynamicObject object = JSOrdinary.create(context, cachedShape);
@@ -184,7 +191,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
         // user-provided prototype is not an object
         JSRealm realm = JSRuntime.getFunctionRealm(target, getRealm());
         if (isAsyncGenerator) {
-            return JSOrdinary.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
+            return JSAsyncGenerator.create(context, realm);
         } else if (isGenerator) {
             return JSGenerator.create(context, realm);
         }
