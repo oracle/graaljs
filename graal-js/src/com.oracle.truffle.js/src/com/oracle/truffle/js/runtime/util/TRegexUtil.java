@@ -194,18 +194,12 @@ public final class TRegexUtil {
         static int[] read(Node node, Object obj, String key, @Cached InteropToIntNode coerceNode, @CachedLibrary("obj") InteropLibrary objs, @CachedLibrary(limit = "1") InteropLibrary arrays) {
             try {
                 Object interopArray = objs.readMember(obj, key);
-                if (arrays.hasArrayElements(interopArray)) {
-                    int length = (int) arrays.getArraySize(interopArray);
-                    int[] array = new int[length];
-                    for (int i = 0; i < length; i++) {
-                        array[i] = coerceNode.execute(node, arrays.readArrayElement(interopArray, i));
-                    }
-                    return array;
-                } else {
-                    // member is not an int array, but a single int
-                    // TODO: drop this fallback after TRegex starts returning int arrays
-                    return new int[]{coerceNode.execute(node, interopArray)};
+                int length = (int) arrays.getArraySize(interopArray);
+                int[] array = new int[length];
+                for (int i = 0; i < length; i++) {
+                    array[i] = coerceNode.execute(node, arrays.readArrayElement(interopArray, i));
                 }
+                return array;
             } catch (UnsupportedMessageException | UnknownIdentifierException | InvalidArrayIndexException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
@@ -443,18 +437,12 @@ public final class TRegexUtil {
         public static int[] getGroupNumbers(Object namedCaptureGroupsMap, TruffleString name, InteropLibrary libMap, InteropLibrary libArray, InteropToIntNode toIntNode, Node node) {
             try {
                 Object interopArray = libMap.readMember(namedCaptureGroupsMap, Strings.toJavaString(name));
-                if (libArray.hasArrayElements(interopArray)) {
-                    int length = (int) libArray.getArraySize(interopArray);
-                    int[] array = new int[length];
-                    for (int i = 0; i < length; i++) {
-                        array[i] = toIntNode.execute(node, libArray.readArrayElement(interopArray, i));
-                    }
-                    return array;
-                } else {
-                    // group indices is not an int array, but a single int
-                    // TODO: drop this fallback after TRegex starts returning int arrays
-                    return new int[]{toIntNode.execute(node, interopArray)};
+                int length = (int) libArray.getArraySize(interopArray);
+                int[] array = new int[length];
+                for (int i = 0; i < length; i++) {
+                    array[i] = toIntNode.execute(node, libArray.readArrayElement(interopArray, i));
                 }
+                return array;
             } catch (UnsupportedMessageException | UnknownIdentifierException | InvalidArrayIndexException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }

@@ -235,6 +235,7 @@ public class Test262Runnable extends TestRunnable {
                     "optional-chaining",
                     "proxy-missing-checks",
                     "regexp-dotall",
+                    "regexp-duplicate-named-groups",
                     "regexp-lookbehind",
                     "regexp-match-indices",
                     "regexp-named-groups",
@@ -256,7 +257,6 @@ public class Test262Runnable extends TestRunnable {
                     "String.prototype.isWellFormed",
                     "String.prototype.toWellFormed",
                     "arbitrary-module-namespace-names",
-                    "regexp-duplicate-named-groups",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     });
