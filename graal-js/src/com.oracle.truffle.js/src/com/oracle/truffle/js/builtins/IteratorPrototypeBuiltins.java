@@ -286,10 +286,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
             }
 
-            public JSContext getContext() {
-                return context;
-            }
-
             public abstract IteratorFromGeneratorImplNode<T> copyUninitialized();
 
             protected final Object indexToJS(long index) {
