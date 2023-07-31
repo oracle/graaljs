@@ -176,7 +176,7 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 // AsyncGeneratorValidate(generator, brand = "Async Iterator Helper")
                 // We assume that the correct 'brand' implies all the required slots are there.
                 if (!(thisObj instanceof JSAsyncGeneratorObject generator) || generator.getGeneratorBrand() != GENERATOR_BRAND) {
-                    throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+                    throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
                 }
                 performNextOrReturn(frame, generator, promiseCapability);
             } catch (AbstractTruffleException ex) {

@@ -162,8 +162,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isJSIteratorHelper(thisObj)")
-        protected static Object unsupported(Object thisObj) {
-            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        protected final Object unsupported(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
         }
     }
 
@@ -208,8 +208,8 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization(guards = "!isJSIteratorHelper(thisObj)")
-        protected static Object unsupported(Object thisObj) {
-            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        protected final Object unsupported(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
         }
 
         @Override

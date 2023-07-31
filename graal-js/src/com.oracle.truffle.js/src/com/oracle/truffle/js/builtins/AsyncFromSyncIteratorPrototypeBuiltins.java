@@ -260,7 +260,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         protected Object next(VirtualFrame frame, JSDynamicObject thisObj, Object value) {
             PromiseCapabilityRecord promiseCapability = createPromiseCapability();
             if (!isAsyncFromSyncIterator(thisObj)) {
-                JSException typeError = Errors.createTypeErrorIncompatibleReceiver(thisObj);
+                JSException typeError = Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
                 promiseCapabilityReject(promiseCapability, typeError);
                 return promiseCapability.getPromise();
             }
@@ -297,7 +297,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         protected Object doMethod(VirtualFrame frame, JSDynamicObject thisObj, Object value) {
             PromiseCapabilityRecord promiseCapability = createPromiseCapability();
             if (!isAsyncFromSyncIterator(thisObj)) {
-                JSException typeError = Errors.createTypeErrorIncompatibleReceiver(thisObj);
+                JSException typeError = Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
                 promiseCapabilityReject(promiseCapability, typeError);
                 return promiseCapability.getPromise();
             }
