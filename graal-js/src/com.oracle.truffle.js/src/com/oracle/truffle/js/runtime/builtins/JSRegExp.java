@@ -248,8 +248,11 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             Shape groupsShape = ctx.getRegExpGroupsEmptyShape();
             Shape.DerivedBuilder builder = Shape.newBuilder(groupsShape);
             List<Object> keys = JSInteropUtil.keys(namedCaptureGroups);
+            int firstIndexOfLastGroup = 0;
             for (Object key : keys) {
                 int[] groupIndices = InteropReadIntArrayMemberNode.getUncached().execute(null, namedCaptureGroups, InteropLibrary.getUncached().asString(key));
+                assert groupIndices[0] > firstIndexOfLastGroup;
+                firstIndexOfLastGroup = groupIndices[0];
                 TruffleString groupName = Strings.interopAsTruffleString(key);
                 builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndices), JSAttributes.getDefault() | JSProperty.PROXY);
             }
