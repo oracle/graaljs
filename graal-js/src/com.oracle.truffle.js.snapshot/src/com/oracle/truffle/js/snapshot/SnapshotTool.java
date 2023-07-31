@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -200,14 +201,14 @@ public class SnapshotTool {
     }
 
     private static class TimeStats implements AutoCloseable {
-        private final List<Map.Entry<String, Long>> entries = Collections.synchronizedList(new ArrayList<>());
+        private final Map<String, Long> entries = Collections.synchronizedMap(new LinkedHashMap<>());
         private final long realStartTime = System.nanoTime();
 
         public AutoCloseable file(String fileName) {
             long startTime = System.nanoTime();
             return () -> {
                 long endTime = System.nanoTime();
-                entries.add(Map.entry(fileName, endTime - startTime));
+                entries.put(fileName, endTime - startTime);
             };
         }
 
@@ -218,7 +219,7 @@ public class SnapshotTool {
             }
             long total = 0;
             long realEndTime = System.nanoTime();
-            for (Map.Entry<String, Long> entry : entries) {
+            for (Map.Entry<String, Long> entry : entries.entrySet()) {
                 System.out.printf("%s: %.02f ms\n", entry.getKey(), ms(entry.getValue()));
                 total += entry.getValue();
             }
