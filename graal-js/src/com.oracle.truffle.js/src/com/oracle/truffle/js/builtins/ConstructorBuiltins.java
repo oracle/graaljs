@@ -282,6 +282,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -815,7 +816,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         protected abstract JSDynamicObject getIntrinsicDefaultProto(JSRealm realm);
 
-        protected final JSDynamicObject getPrototype(JSRealm realm, JSDynamicObject newTarget) {
+        protected JSDynamicObject getPrototype(JSRealm realm, JSDynamicObject newTarget) {
             if (isNewTargetCase) {
                 return getPrototypeFromNewTarget(newTarget);
             }
@@ -868,7 +869,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"args.length == 0"})
         protected JSObject constructArray0(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             JSRealm realm = getRealm();
-            return JSArray.createConstantEmptyArray(getContext(), realm, getPrototype(realm, newTarget), arrayAllocationSite);
+            JSDynamicObject proto = getPrototype(realm, newTarget);
+            return JSArray.createConstantEmptyArray(getContext(), realm, proto, arrayAllocationSite);
         }
 
         @Specialization(guards = "isOneIntegerArg(args)")
@@ -953,6 +955,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     return JSArray.create(getContext(), realm, proto, ConstantObjectArray.createConstantObjectArray(), args, args.length);
                 }
             }
+        }
+
+        @Override
+        protected JSDynamicObject getPrototype(JSRealm realm, JSDynamicObject newTarget) {
+            var prototype = super.getPrototype(realm, newTarget);
+            assert prototype != Null.instance;
+            /*
+             * The prototype object needs to be marked as derived from Array.prototype. If it's not,
+             * the prototype was created by some unvetted means (i.e. not by the constructor of an
+             * Array subclass), so we cannot make any assumptions about prototype elements anymore.
+             */
+            if (isNewTargetCase) {
+                if (getContext().getArrayPrototypeNoElementsAssumption().isValid() && !JSShape.hasArrayPrototype(prototype)) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getContext().getArrayPrototypeNoElementsAssumption().invalidate("Unexpected Array prototype");
+                }
+            } else {
+                // Must be Array.prototype, since the "prototype" property is immutable.
+                assert JSShape.hasArrayPrototype(prototype);
+            }
+            return prototype;
         }
 
         @Override

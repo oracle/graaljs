@@ -85,7 +85,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
     private static final String LENGTH_PROPERTY_NOT_WRITABLE = "length property not writable";
     protected static final String CANNOT_REDEFINE_PROPERTY_LENGTH = "Cannot redefine property: length";
     protected static final String MAKE_SLOW_ARRAY_NEVER_PART_OF_COMPILATION_MESSAGE = "do not convert to slow array from compiled code";
-    public static final String ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION = "Array.prototype no element assumption";
+    public static final String ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION = "Array.prototype no elements assumption";
 
     public static final HiddenKey LAZY_REGEX_RESULT_ID = new HiddenKey("lazyRegexResult");
     public static final HiddenKey LAZY_REGEX_ORIGINAL_INPUT_ID = new HiddenKey("lazyRegexResultOriginalInput");
@@ -682,16 +682,16 @@ public abstract class JSAbstractArray extends JSNonProxy {
         assert !JSSlowArray.isJSSlowArray(thisObj);
         JSDynamicObject.setJSClass(thisObj, JSSlowArray.INSTANCE);
         JSContext context = JSObject.getJSContext(thisObj);
-        context.getFastArrayAssumption().invalidate("create slow ArgumentsObject");
-        if (isArrayPrototype(thisObj)) {
-            context.getArrayPrototypeNoElementsAssumption().invalidate("Array.prototype has no elements");
+        context.getFastArrayAssumption().invalidate("[[DefineOwnProperty]]");
+        if (JSShape.hasArrayPrototype(thisObj)) {
+            // The only Array exotic object that may reach here is the %Array.prototype%.
+            if (context.getArrayPrototypeNoElementsAssumption().isValid()) {
+                assert arrayGetArrayType(thisObj) instanceof ConstantEmptyPrototypeArray;
+                context.getArrayPrototypeNoElementsAssumption().invalidate("Array.prototype.[[DefineOwnProperty]]");
+            }
         }
         assert JSSlowArray.isJSSlowArray(thisObj);
         return thisObj;
-    }
-
-    private static boolean isArrayPrototype(JSDynamicObject thisObj) {
-        return arrayGetArrayType(thisObj) instanceof ConstantEmptyPrototypeArray;
     }
 
     @Override
@@ -731,13 +731,6 @@ public abstract class JSAbstractArray extends JSNonProxy {
         } else {
             return super.delete(thisObj, key, isStrict);
         }
-    }
-
-    @TruffleBoundary
-    @Override
-    public boolean setPrototypeOf(JSDynamicObject thisObj, JSDynamicObject newPrototype) {
-        JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
-        return super.setPrototypeOf(thisObj, newPrototype);
     }
 
     @Override

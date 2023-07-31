@@ -78,6 +78,12 @@ public final class JSShape {
      */
     public static final int EXTERNAL_PROPERTIES_FLAG = 1 << 3;
 
+    /**
+     * Marks %Array.prototype% and prototype objects that have (or had) %Array.prototype% on their
+     * prototype chain. Setting an element on such an object invalidates the no-elements assumption.
+     */
+    public static final int ARRAY_PROTOTYPE_FLAG = 1 << 4;
+
     private JSShape() {
     }
 
@@ -123,6 +129,17 @@ public final class JSShape {
 
     public static boolean isExtensible(Shape shape) {
         return (shape.getFlags() & NOT_EXTENSIBLE_FLAG) == 0;
+    }
+
+    /**
+     * Returns true if this object is a potential prototype of an Array exotic object.
+     */
+    public static boolean hasArrayPrototype(Shape shape) {
+        return (shape.getFlags() & ARRAY_PROTOTYPE_FLAG) != 0;
+    }
+
+    public static boolean hasArrayPrototype(JSDynamicObject obj) {
+        return hasArrayPrototype(obj.getShape());
     }
 
     public static boolean isPrototypeInShape(Shape shape) {

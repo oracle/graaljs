@@ -54,6 +54,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -280,6 +281,12 @@ public final class DefinePropertyUtil {
         boolean configurable = descriptor.getIfHasConfigurable(false);
 
         JSContext context = JSObject.getJSContext(thisObj);
+        if (JSShape.hasArrayPrototype(thisObj)) {
+            if (context.getArrayPrototypeNoElementsAssumption().isValid() && JSRuntime.isArrayIndex(key)) {
+                context.getArrayPrototypeNoElementsAssumption().invalidate("DefineOwnProperty on an Array prototype");
+            }
+        }
+
         if (descriptor.isGenericDescriptor() || descriptor.isDataDescriptor()) {
             return definePropertyNewData(thisObj, key, descriptor, enumerable, configurable, context);
         } else {
