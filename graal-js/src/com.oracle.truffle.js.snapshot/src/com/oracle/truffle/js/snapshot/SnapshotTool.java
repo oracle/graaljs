@@ -48,7 +48,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
@@ -65,12 +64,12 @@ import com.oracle.truffle.js.runtime.JSRealm;
 
 public class SnapshotTool {
 
-    boolean binary = true;
-    boolean wrapped = false;
-    String outDir = null;
-    String inDir = null;
-    List<String> srcFiles = new ArrayList<>();
-    int parallelism = Math.min(8, Runtime.getRuntime().availableProcessors());
+    private boolean binary = true;
+    private boolean wrapped = false;
+    private String outDir = null;
+    private String inDir = null;
+    private List<String> srcFiles = new ArrayList<>();
+    private int parallelism = Math.min(8, Runtime.getRuntime().availableProcessors());
 
     public SnapshotTool(String[] args) {
         for (String arg : args) {
@@ -114,7 +113,7 @@ public class SnapshotTool {
                             snapshotScriptFileTo(srcFileName, sourceFile, outputFile, binary, wrapped);
                             return null;
                         } catch (Exception e) {
-                            throw new RuntimeException(String.join(": ", srcFileName, Objects.requireNonNullElse(e.getMessage(), "")), e);
+                            throw new RuntimeException(String.join(": ", srcFileName, e.getMessage()), e);
                         }
                     });
                 }
@@ -200,16 +199,11 @@ public class SnapshotTool {
         }
     }
 
-    private interface TimerCloseable extends AutoCloseable {
-        @Override
-        void close();
-    }
-
-    private static class TimeStats implements TimerCloseable {
+    private static class TimeStats implements AutoCloseable {
         private final List<Map.Entry<String, Long>> entries = Collections.synchronizedList(new ArrayList<>());
         private final long realStartTime = System.nanoTime();
 
-        public TimerCloseable file(String fileName) {
+        public AutoCloseable file(String fileName) {
             long startTime = System.nanoTime();
             return () -> {
                 long endTime = System.nanoTime();
