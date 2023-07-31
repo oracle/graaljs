@@ -446,14 +446,15 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.js Scripting API',
     short_name='jss',
+    dir_name='js',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Graal SDK'],
-    truffle_jars=[],
+    truffle_jars=['graal-js:GRAALJS_SCRIPTENGINE'],
     support_distributions=[],
     library_configs=[],
-    boot_jars=['graal-js:GRAALJS_SCRIPTENGINE'],
-    installable=False,
+    boot_jars=[],
+    installable=True,
     stability="supported",
 ))
 
