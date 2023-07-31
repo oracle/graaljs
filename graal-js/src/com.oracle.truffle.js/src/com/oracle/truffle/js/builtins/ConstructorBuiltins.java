@@ -803,10 +803,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     public abstract static class ConstructWithNewTargetNode extends JSBuiltinNode {
         protected final boolean isNewTargetCase;
+        @Child private PropertyGetNode getPrototypeNode;
 
         protected ConstructWithNewTargetNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin);
             this.isNewTargetCase = isNewTargetCase;
+            if (isNewTargetCase) {
+                getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, context);
+            }
         }
 
         protected JSRealm getRealmFromNewTarget(Object newTarget) {
@@ -818,6 +822,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         protected abstract JSDynamicObject getIntrinsicDefaultProto(JSRealm realm);
 
+        protected JSDynamicObject getPrototype(JSRealm realm, JSDynamicObject newTarget) {
+            if (isNewTargetCase) {
+                return getPrototypeFromNewTarget(newTarget);
+            }
+            return getIntrinsicDefaultProto(realm);
+        }
+
         protected <T extends JSObject> T swapPrototype(T resultObj, JSDynamicObject newTarget) {
             if (isNewTargetCase) {
                 return setPrototypeFromNewTarget(resultObj, newTarget);
@@ -825,12 +836,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return resultObj;
         }
 
-        protected <T extends JSObject> T setPrototypeFromNewTarget(T resultObj, JSDynamicObject newTarget) {
-            Object prototype = JSObject.get(newTarget, JSObject.PROTOTYPE);
+        private JSDynamicObject getPrototypeFromNewTarget(JSDynamicObject newTarget) {
+            Object prototype = getPrototypeNode.getValue(newTarget);
             if (!JSRuntime.isObject(prototype)) {
                 prototype = getIntrinsicDefaultProto(getRealmFromNewTarget(newTarget));
             }
-            JSObject.setPrototype(resultObj, (JSDynamicObject) prototype);
+            return (JSDynamicObject) prototype;
+        }
+
+        protected <T extends JSObject> T setPrototypeFromNewTarget(T resultObj, JSDynamicObject newTarget) {
+            JSDynamicObject prototype = getPrototypeFromNewTarget(newTarget);
+            JSObject.setPrototype(resultObj, prototype);
             return resultObj;
         }
     }
