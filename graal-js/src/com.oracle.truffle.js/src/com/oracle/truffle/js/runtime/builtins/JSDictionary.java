@@ -415,6 +415,10 @@ public final class JSDictionary extends JSNonProxy {
 
         lib.resetShape(obj, newRootShape);
 
+        if (newRootShape.getFlags() != currentShape.getFlags()) {
+            lib.setShapeFlags(obj, currentShape.getFlags());
+        }
+
         EconomicMap<Object, PropertyDescriptor> hashMap = EconomicMap.create();
         for (int i = 0; i < archive.size(); i++) {
             Property p = allProperties.get(i);
