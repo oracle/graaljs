@@ -40,21 +40,23 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorArgs;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public final class JSGeneratorObject extends JSNonProxyObject {
+public final class JSIteratorHelperObject extends JSNonProxyObject {
 
     private JSFunction.GeneratorState generatorState;
-    private MaterializedFrame generatorContext;
-    private CallTarget generatorTarget;
+    private final IteratorArgs iteratorArgs;
+    private final JSFunctionObject nextImpl;
 
     @GenerateObjectFactory
-    protected JSGeneratorObject(Shape shape) {
+    protected JSIteratorHelperObject(Shape shape, JSFunction.GeneratorState initialState, IteratorArgs iteratorArgs, JSFunctionObject nextImpl) {
         super(shape);
+        this.generatorState = initialState;
+        this.iteratorArgs = iteratorArgs;
+        this.nextImpl = nextImpl;
     }
 
     public JSFunction.GeneratorState getGeneratorState() {
@@ -65,19 +67,11 @@ public final class JSGeneratorObject extends JSNonProxyObject {
         this.generatorState = generatorState;
     }
 
-    public MaterializedFrame getGeneratorContext() {
-        return generatorContext;
+    public IteratorArgs getIteratorArgs() {
+        return iteratorArgs;
     }
 
-    public void setGeneratorContext(MaterializedFrame generatorContext) {
-        this.generatorContext = generatorContext;
-    }
-
-    public CallTarget getGeneratorTarget() {
-        return generatorTarget;
-    }
-
-    public void setGeneratorTarget(CallTarget generatorTarget) {
-        this.generatorTarget = generatorTarget;
+    public JSFunctionObject getNextImpl() {
+        return nextImpl;
     }
 }
