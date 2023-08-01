@@ -358,6 +358,10 @@ public final class JSObjectUtil {
 
         lib.resetShape(object, newRootShape);
 
+        if (newRootShape.getFlags() != oldShape.getFlags()) {
+            lib.setShapeFlags(object, oldShape.getFlags());
+        }
+
         for (int i = 0; i < allProperties.size(); i++) {
             Property property = allProperties.get(i);
             Object key = property.getKey();
