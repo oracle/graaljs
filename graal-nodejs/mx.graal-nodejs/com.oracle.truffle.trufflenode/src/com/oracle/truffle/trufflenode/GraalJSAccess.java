@@ -465,7 +465,7 @@ public final class GraalJSAccess {
     }
 
     public void resetSharedBuffer() {
-        sharedBuffer.clear();
+        getSharedBuffer().clear();
     }
 
     public ByteBuffer getSharedBuffer() {
