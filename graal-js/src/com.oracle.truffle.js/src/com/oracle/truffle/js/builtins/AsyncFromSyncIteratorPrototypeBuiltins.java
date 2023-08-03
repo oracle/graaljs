@@ -147,7 +147,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         @Child private PropertySetNode setDoneNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
-        protected ConditionProfile valuePresenceProfile = ConditionProfile.create();
+        protected final ConditionProfile valuePresenceProfile = ConditionProfile.create();
 
         AsyncFromSyncBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
