@@ -108,7 +108,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthO
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -601,7 +600,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                                 date.getYear(), date.getMonth(), date.getDay(),
                                 0, 0, 0, 0, 0, 0, date.getCalendar(), this, errorBranch);
             }
-            TemporalTime time = toTemporalTime.execute(temporalTimeObj, null);
+            JSTemporalPlainTimeObject time = toTemporalTime.execute(temporalTimeObj, null);
             return JSTemporalPlainDateTime.create(getContext(), getRealm(),
                             date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),

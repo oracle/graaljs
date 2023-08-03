@@ -107,7 +107,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -253,7 +252,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             super(context, builtin);
         }
 
-        protected JSTemporalPlainTimeObject addDurationToOrSubtractDurationFromPlainTime(int sign, TemporalTime temporalTime, Object temporalDurationLike,
+        protected JSTemporalPlainTimeObject addDurationToOrSubtractDurationFromPlainTime(int sign, JSTemporalPlainTimeObject temporalTime, Object temporalDurationLike,
                         ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         Node node, InlinedBranchProfile errorBranch) {
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.execute(temporalDurationLike, TemporalUtil.listEmpty);
@@ -272,7 +271,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             node, errorBranch);
         }
 
-        protected JSTemporalDurationObject differenceTemporalPlainTime(int sign, TemporalTime temporalTime, Object otherObj, Object optionsParam, JSToNumberNode toNumber,
+        protected JSTemporalDurationObject differenceTemporalPlainTime(int sign, JSTemporalPlainTimeObject temporalTime, Object otherObj, Object optionsParam, JSToNumberNode toNumber,
                         EnumerableOwnPropertyNamesNode namesNode, ToTemporalTimeNode toTemporalTime, TruffleString.EqualNode equalNode, TemporalRoundDurationNode roundDurationNode,
                         TemporalGetOptionNode getOptionNode,
                         Node node, InlinedBranchProfile errorBranch, InlinedConditionProfile optionUndefined) {
@@ -559,7 +558,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             return equalsIntl(thisTime, otherTime);
         }
 
-        private static boolean equalsIntl(TemporalTime thisTime, TemporalTime otherTime) {
+        private static boolean equalsIntl(JSTemporalPlainTimeObject thisTime, JSTemporalPlainTimeObject otherTime) {
             if (thisTime.getHour() != otherTime.getHour()) {
                 return false;
             }

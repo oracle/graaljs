@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import java.time.LocalTime;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -49,10 +51,8 @@ import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-import java.time.LocalTime;
-
 @ExportLibrary(InteropLibrary.class)
-public class JSTemporalPlainTimeObject extends JSNonProxyObject implements TemporalTime {
+public class JSTemporalPlainTimeObject extends JSNonProxyObject implements TemporalCalendar {
 
     // all values guaranteed to fit into int
     // https://tc39.es/proposal-temporal/#sec-temporal-isvalidtime
@@ -77,32 +77,26 @@ public class JSTemporalPlainTimeObject extends JSNonProxyObject implements Tempo
         this.calendar = calendar;
     }
 
-    @Override
     public int getHour() {
         return hour;
     }
 
-    @Override
     public int getMinute() {
         return minute;
     }
 
-    @Override
     public int getSecond() {
         return second;
     }
 
-    @Override
     public int getMillisecond() {
         return millisecond;
     }
 
-    @Override
     public int getMicrosecond() {
         return microsecond;
     }
 
-    @Override
     public int getNanosecond() {
         return nanosecond;
     }
