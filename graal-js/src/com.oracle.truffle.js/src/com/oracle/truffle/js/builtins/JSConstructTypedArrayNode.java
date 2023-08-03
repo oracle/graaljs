@@ -148,6 +148,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
     private void checkDetachedBuffer(JSDynamicObject buffer) {
         if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(buffer)) {
+            errorBranch.enter();
             throw Errors.createTypeErrorDetachedBuffer();
         }
     }

@@ -302,13 +302,13 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 case buffer:
                     return arrayBuffer;
                 case byteLength:
-                    if (JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
+                    if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
                         errorBranch.enter(this);
                         throw Errors.createTypeErrorDetachedBuffer();
                     }
                     return JSDataView.typedArrayGetLength(dataView);
                 case byteOffset:
-                    if (JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
+                    if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
                         errorBranch.enter(this);
                         throw Errors.createTypeErrorDetachedBuffer();
                     }

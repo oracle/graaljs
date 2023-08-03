@@ -285,7 +285,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = "isJSHeapArrayBuffer(thisObj)")
         protected JSDynamicObject sliceIntInt(JSDynamicObject thisObj, int begin, int end,
                         @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
-            checkDetached(thisObj, errorBranch);
+            checkDetachedBuffer(thisObj, errorBranch);
             byte[] byteArray = JSArrayBuffer.getByteArray(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteArray.length);
             int clampedEnd = clampIndex(end, clampedBegin, byteArray.length);
@@ -305,7 +305,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return (JSDynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
         }
 
-        private void checkDetached(Object arrayBuffer, InlinedBranchProfile errorBranch) {
+        private void checkDetachedBuffer(Object arrayBuffer, InlinedBranchProfile errorBranch) {
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorDetachedBuffer();
@@ -317,7 +317,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorArrayBufferExpected();
             }
-            checkDetached(resObj, errorBranch);
+            checkDetachedBuffer(resObj, errorBranch);
             if (resObj == thisObj) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("SameValue(new, O) is forbidden");
@@ -327,17 +327,14 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw Errors.createTypeError("insufficient length constructed");
             }
             // NOTE: Side-effects of the above steps may have detached O.
-            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(thisObj)) {
-                // yes, check again! see clause 22 of ES 6 24.1.4.3.
-                errorBranch.enter(this);
-                throw Errors.createTypeErrorDetachedBuffer();
-            }
+            // yes, check again! see clause 22 of ES 6 24.1.4.3.
+            checkDetachedBuffer(thisObj, errorBranch);
         }
 
         @Specialization(guards = "isJSHeapArrayBuffer(thisObj)", replaces = "sliceIntInt")
         protected JSDynamicObject slice(JSDynamicObject thisObj, Object begin0, Object end0,
                         @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
-            checkDetached(thisObj, errorBranch);
+            checkDetachedBuffer(thisObj, errorBranch);
             int len = JSArrayBuffer.getByteArray(thisObj).length;
             int begin = getStart(begin0, len);
             int finalEnd = getEnd(end0, len);
@@ -347,7 +344,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = "isJSDirectArrayBuffer(thisObj)")
         protected JSDynamicObject sliceDirectIntInt(JSDynamicObject thisObj, int begin, int end,
                         @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
-            checkDetached(thisObj, errorBranch);
+            checkDetachedBuffer(thisObj, errorBranch);
             ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(thisObj);
             int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteLength);
@@ -365,7 +362,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = "isJSDirectArrayBuffer(thisObj)", replaces = "sliceDirectIntInt")
         protected JSDynamicObject sliceDirect(JSDynamicObject thisObj, Object begin0, Object end0,
                         @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
-            checkDetached(thisObj, errorBranch);
+            checkDetachedBuffer(thisObj, errorBranch);
             int len = JSArrayBuffer.getDirectByteLength(thisObj);
             int begin = getStart(begin0, len);
             int end = getEnd(end0, len);
@@ -377,7 +374,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("srcBufferLib") InteropLibrary srcBufferLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("dstBufferLib") InteropLibrary dstBufferLib) {
-            checkDetached(thisObj, errorBranch);
+            checkDetachedBuffer(thisObj, errorBranch);
             Object interopBuffer = JSArrayBuffer.getInteropBuffer(thisObj);
             int length = ConstructorBuiltins.ConstructArrayBufferNode.getBufferSizeSafe(interopBuffer, srcBufferLib, this, errorBranch);
             int begin = getStart(begin0, length);

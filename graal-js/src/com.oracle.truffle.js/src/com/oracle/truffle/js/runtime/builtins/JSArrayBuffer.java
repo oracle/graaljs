@@ -223,7 +223,6 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
      * Warning: This is a slow method! Use the assumption provided in
      * getContext().getTypedArrayNotDetachedAssumption() for better performance.
      */
-    @TruffleBoundary
     public static boolean isDetachedBuffer(Object arrayBuffer) {
         assert isJSAbstractBuffer(arrayBuffer);
         if (isJSHeapArrayBuffer(arrayBuffer)) {
