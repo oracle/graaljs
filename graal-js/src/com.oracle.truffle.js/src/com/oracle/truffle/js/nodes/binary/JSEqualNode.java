@@ -58,6 +58,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
@@ -319,14 +320,16 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isSymbol(b)", "!isObject(b)"})
-    protected static boolean doSymbolNotSymbol(Symbol a, Object b) {
+    @Specialization(guards = {"!isSymbol(b)", "!isObjectNode.executeBoolean(b)"})
+    protected static boolean doSymbolNotSymbol(Symbol a, Object b,
+                    @Shared("isObject") @Cached IsObjectNode isObjectNode) {
         return false;
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isSymbol(a)", "!isObject(a)"})
-    protected static boolean doSymbolNotSymbol(Object a, Symbol b) {
+    @Specialization(guards = {"!isSymbol(a)", "!isObjectNode.executeBoolean(a)"})
+    protected static boolean doSymbolNotSymbol(Object a, Symbol b,
+                    @Shared("isObject") @Cached IsObjectNode isObjectNode) {
         return false;
     }
 
