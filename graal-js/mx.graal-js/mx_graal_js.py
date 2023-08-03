@@ -399,6 +399,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         'Graal.js Scripting API',
         'Truffle',
         'TRegex',
+        'tflm', # Truffle Macro
         'ICU4J',
     ],
     truffle_jars=[
