@@ -269,7 +269,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     @CompilerDirectives.TruffleBoundary
     public static Object transformImportObject(JSContext context, JSRealm realm, Object wasmModule, Object importObject) {
         try {
-            JSDynamicObject transformedImportObject = JSOrdinary.create(context, realm);
+            JSDynamicObject transformedImportObject = JSOrdinary.createWithNullPrototype(context);
 
             Object importsFn = realm.getWASMModuleImports();
             Object imports = InteropLibrary.getUncached(importsFn).execute(importsFn, wasmModule);
