@@ -1320,7 +1320,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final TruffleString id = toString.executeString(arg);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSTemporalCalendar.create(getContext(), realm, proto, id, this, errorBranch);
+            if (!TemporalUtil.isBuiltinCalendar(id)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorCalendarNotSupported();
+            }
+            return JSTemporalCalendar.create(getContext(), realm, proto, id);
         }
 
         @Override

@@ -44,6 +44,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class JSTemporalCalendarObject extends JSNonProxyObject {
 
@@ -52,6 +53,7 @@ public class JSTemporalCalendarObject extends JSNonProxyObject {
     @GenerateObjectFactory
     protected JSTemporalCalendarObject(Shape shape, TruffleString id) {
         super(shape);
+        assert TemporalUtil.isBuiltinCalendar(id) : id;
         this.id = id;
     }
 

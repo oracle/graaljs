@@ -376,7 +376,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSDynamicObject timeZone = zdt.getTimeZone();
             JSRealm realm = getRealm();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zdt.getNanoseconds());
-            JSDynamicObject isoCalendar = TemporalUtil.getISO8601Calendar(getContext(), realm, this, errorBranch);
+            JSDynamicObject isoCalendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
             JSTemporalPlainDateTimeObject temporalDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, isoCalendar);
             int year = temporalDateTime.getYear();
             int month = temporalDateTime.getMonth();
@@ -928,7 +928,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
             JSDynamicObject calendar = zonedDateTime.getCalendar();
             JSTemporalPlainDateTimeObject tdt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, calendar);
-            JSDynamicObject isoCalendar = TemporalUtil.getISO8601Calendar(getContext(), realm, this, errorBranch);
+            JSDynamicObject isoCalendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
             JSTemporalPlainDateTimeObject dtStart = JSTemporalPlainDateTime.create(getContext(), realm,
                             tdt.getYear(), tdt.getMonth(), tdt.getDay(), 0, 0, 0, 0, 0, 0, isoCalendar, this, errorBranch);
             JSTemporalInstantObject instantStart = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, dtStart, Disambiguation.COMPATIBLE);

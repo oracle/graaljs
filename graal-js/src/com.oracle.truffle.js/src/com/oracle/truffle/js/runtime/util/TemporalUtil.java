@@ -1139,20 +1139,13 @@ public final class TemporalUtil {
         return id.equals(ISO8601) || id.equals(GREGORY) || id.equals(JAPANESE);
     }
 
-    public static JSTemporalCalendarObject getISO8601Calendar(JSContext ctx, JSRealm realm, Node node, InlinedBranchProfile errorBranch) {
-        return getBuiltinCalendar(ISO8601, ctx, realm, node, errorBranch);
-    }
-
     public static JSTemporalCalendarObject getISO8601Calendar(JSContext ctx, JSRealm realm) {
-        return getISO8601Calendar(ctx, realm, null, InlinedBranchProfile.getUncached());
+        return getBuiltinCalendar(ISO8601, ctx, realm);
     }
 
-    public static JSTemporalCalendarObject getBuiltinCalendar(TruffleString id, JSContext ctx, JSRealm realm, Node node, InlinedBranchProfile errorBranch) {
-        if (!isBuiltinCalendar(id)) {
-            errorBranch.enter(node);
-            throw TemporalErrors.createRangeErrorCalendarNotSupported();
-        }
-        return JSTemporalCalendar.create(ctx, realm, id, node, errorBranch);
+    public static JSTemporalCalendarObject getBuiltinCalendar(TruffleString id, JSContext ctx, JSRealm realm) {
+        assert isBuiltinCalendar(id) : id;
+        return JSTemporalCalendar.create(ctx, realm, id);
     }
 
     @TruffleBoundary

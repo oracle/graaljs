@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins;
@@ -53,13 +51,10 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
-import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public final class JSTemporalCalendar extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -72,21 +67,12 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     private JSTemporalCalendar() {
     }
 
-    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id, Node node, InlinedBranchProfile errorBranch) {
-        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), id, node, errorBranch);
+    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id) {
+        return JSTemporalCalendarObjectFactory.create(context.getTemporalCalendarFactory(), realm, id);
     }
 
-    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, JSDynamicObject proto, TruffleString id, Node node, InlinedBranchProfile errorBranch) {
-        if (!TemporalUtil.isBuiltinCalendar(id)) {
-            errorBranch.enter(node);
-            throw TemporalErrors.createRangeErrorCalendarNotSupported();
-        }
-        return createIntl(context, realm, proto, id);
-    }
-
-    private static JSTemporalCalendarObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto, TruffleString id) {
-        JSObjectFactory factory = context.getTemporalCalendarFactory();
-        return JSTemporalCalendarObjectFactory.create(factory, realm, proto, id);
+    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, JSDynamicObject proto, TruffleString id) {
+        return JSTemporalCalendarObjectFactory.create(context.getTemporalCalendarFactory(), realm, proto, id);
     }
 
     @Override
