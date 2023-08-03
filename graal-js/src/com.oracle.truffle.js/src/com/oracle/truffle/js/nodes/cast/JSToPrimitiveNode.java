@@ -257,6 +257,9 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         }
 
         assert IsPrimitiveNode.getUncached().executeBoolean(primitive) : primitive;
+        if (JSRuntime.isJSPrimitive(primitive)) {
+            return primitive;
+        }
         primitive = JSInteropUtil.toPrimitiveOrDefaultLossless(primitive, null, resultInterop, switchEncoding, this);
         if (primitive != null) {
             return primitive;
