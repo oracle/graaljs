@@ -41,13 +41,16 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFactory.AsyncFromSyncNextNodeGen;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFactory.AsyncFromSyncReturnNodeGen;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFactory.AsyncFromSyncThrowNodeGen;
@@ -78,6 +81,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncFromSyncIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -130,8 +134,9 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
     }
 
+    @GenerateCached(false)
     @ImportStatic(JSRuntime.class)
-    private abstract static class AsyncFromSyncBaseNode extends JSBuiltinNode {
+    protected abstract static class AsyncFromSyncBaseNode extends JSBuiltinNode {
         static final HiddenKey DONE = new HiddenKey("Done");
 
         @Child private JSFunctionCallNode executePromiseMethodNode;
@@ -143,11 +148,8 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         @Child protected IteratorValueNode iteratorValueNode;
         @Child protected IteratorCompleteNode iteratorCompleteNode;
 
-        @Child protected PropertyGetNode getSyncIteratorRecordNode;
         @Child private PropertySetNode setDoneNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-
-        protected final ConditionProfile valuePresenceProfile = ConditionProfile.create();
 
         AsyncFromSyncBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -156,7 +158,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             this.iteratorNextNode = IteratorNextNode.create();
             this.iteratorCompleteNode = IteratorCompleteNode.create();
             this.iteratorValueNode = IteratorValueNode.create();
-            this.getSyncIteratorRecordNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, context);
             this.setDoneNode = PropertySetNode.createSetHidden(DONE, context);
             this.performPromiseThenNode = PerformPromiseThenNode.create(context);
             this.promiseResolveNode = PromiseResolveNode.create(context);
@@ -164,10 +165,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         protected PromiseCapabilityRecord createPromiseCapability() {
             return newPromiseCapabilityNode.executeDefault();
-        }
-
-        protected boolean isAsyncFromSyncIterator(JSDynamicObject thiz) {
-            return thiz != Undefined.instance && getSyncIteratorRecordNode.getValue(thiz) != Undefined.instance;
         }
 
         protected void promiseCapabilityReject(PromiseCapabilityRecord promiseCapability, AbstractTruffleException exception) {
@@ -248,6 +245,14 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             }
             return JSFunctionData.createCallOnly(context, new AsyncFromSyncIteratorValueUnwrapRootNode().getCallTarget(), 1, Strings.EMPTY_STRING);
         }
+
+        @Fallback
+        protected final Object incompatibleReceiver(Object thisObj, @SuppressWarnings("unused") Object value) {
+            PromiseCapabilityRecord promiseCapability = createPromiseCapability();
+            JSException typeError = Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
+            promiseCapabilityReject(promiseCapability, typeError);
+            return promiseCapability.getPromise();
+        }
     }
 
     public abstract static class AsyncFromSyncNext extends AsyncFromSyncBaseNode {
@@ -256,18 +261,14 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             super(context, builtin);
         }
 
-        @Specialization(guards = "isObject(thisObj)")
-        protected Object next(VirtualFrame frame, JSDynamicObject thisObj, Object value) {
+        @Specialization
+        protected Object next(VirtualFrame frame, JSAsyncFromSyncIteratorObject thisObj, Object value,
+                        @Cached InlinedConditionProfile valuePresenceProfile) {
             PromiseCapabilityRecord promiseCapability = createPromiseCapability();
-            if (!isAsyncFromSyncIterator(thisObj)) {
-                JSException typeError = Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
-                promiseCapabilityReject(promiseCapability, typeError);
-                return promiseCapability.getPromise();
-            }
             Object nextResult;
-            IteratorRecord syncIteratorRecord = (IteratorRecord) getSyncIteratorRecordNode.getValue(thisObj);
+            IteratorRecord syncIteratorRecord = thisObj.getSyncIteratorRecord();
             try {
-                if (valuePresenceProfile.profile(JSArguments.getUserArgumentCount(frame.getArguments()) == 0)) {
+                if (valuePresenceProfile.profile(this, JSArguments.getUserArgumentCount(frame.getArguments()) == 0)) {
                     nextResult = iteratorNextNode.execute(syncIteratorRecord);
                 } else {
                     nextResult = iteratorNextNode.execute(syncIteratorRecord, value);
@@ -278,10 +279,10 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             }
             return asyncFromSyncIteratorContinuation(nextResult, promiseCapability);
         }
-
     }
 
-    public abstract static class AsyncFromSyncMethod extends AsyncFromSyncBaseNode {
+    @GenerateCached(false)
+    protected abstract static class AsyncFromSyncMethod extends AsyncFromSyncBaseNode {
 
         @Child private JSFunctionCallNode executeReturnMethod;
 
@@ -294,14 +295,11 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         protected abstract Object processUndefinedMethod(VirtualFrame frame, PromiseCapabilityRecord promiseCapability, Object value);
 
-        protected Object doMethod(VirtualFrame frame, JSDynamicObject thisObj, Object value) {
+        @Specialization
+        protected final Object doMethod(VirtualFrame frame, JSAsyncFromSyncIteratorObject thisObj, Object value,
+                        @Cached InlinedConditionProfile valuePresenceProfile) {
             PromiseCapabilityRecord promiseCapability = createPromiseCapability();
-            if (!isAsyncFromSyncIterator(thisObj)) {
-                JSException typeError = Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
-                promiseCapabilityReject(promiseCapability, typeError);
-                return promiseCapability.getPromise();
-            }
-            IteratorRecord syncIteratorRecord = (IteratorRecord) getSyncIteratorRecordNode.getValue(thisObj);
+            IteratorRecord syncIteratorRecord = thisObj.getSyncIteratorRecord();
             Object syncIterator = syncIteratorRecord.getIterator();
             Object method = getMethod().executeWithTarget(syncIterator);
             if (method == Undefined.instance) {
@@ -309,7 +307,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             }
             Object returnResult;
             try {
-                if (valuePresenceProfile.profile(JSArguments.getUserArgumentCount(frame.getArguments()) == 0)) {
+                if (valuePresenceProfile.profile(this, JSArguments.getUserArgumentCount(frame.getArguments()) == 0)) {
                     returnResult = executeReturnMethod.executeCall(JSArguments.create(syncIterator, method));
                 } else {
                     returnResult = executeReturnMethod.executeCall(JSArguments.create(syncIterator, method, value));
@@ -348,11 +346,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             promiseCapabilityResolve(promiseCapability, iterResult);
             return promiseCapability.getPromise();
         }
-
-        @Specialization(guards = "isObject(thisObj)")
-        protected Object resume(VirtualFrame frame, JSDynamicObject thisObj, Object value) {
-            return doMethod(frame, thisObj, value);
-        }
     }
 
     public abstract static class AsyncFromSyncThrow extends AsyncFromSyncMethod {
@@ -373,11 +366,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         protected Object processUndefinedMethod(VirtualFrame frame, PromiseCapabilityRecord promiseCapability, Object value) {
             promiseCapabilityRejectImpl(promiseCapability, value);
             return promiseCapability.getPromise();
-        }
-
-        @Specialization(guards = "isObject(thisObj)")
-        protected Object doThrow(VirtualFrame frame, JSDynamicObject thisObj, Object value) {
-            return doMethod(frame, thisObj, value);
         }
     }
 

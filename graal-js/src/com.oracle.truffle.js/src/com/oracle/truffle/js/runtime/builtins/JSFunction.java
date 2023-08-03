@@ -115,7 +115,6 @@ public final class JSFunction extends JSNonProxy {
     public static final TruffleString TS_BUILTIN_SOURCE_NAME = Strings.constant(BUILTIN_SOURCE_NAME);
     public static final SourceSection BUILTIN_SOURCE_SECTION = createBuiltinSourceSection(BUILTIN_SOURCE_NAME);
 
-    public static final HiddenKey ASYNC_FROM_SYNC_ITERATOR_KEY = new HiddenKey("SyncIterator");
     public static final TruffleString ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_NAME = Strings.constant("%AsyncFromSyncIteratorPrototype%");
 
     public static final PropertyProxy PROTOTYPE_PROXY = new ClassPrototypeProxyProperty();

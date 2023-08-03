@@ -54,8 +54,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncFromSyncIteratorObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -63,7 +62,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * GetIteratorFlattenable(obj, hint).
  */
-@ImportStatic({Symbol.class, Strings.class, JSFunction.class})
+@ImportStatic({Symbol.class, Strings.class})
 public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
 
     protected final boolean async;
@@ -89,7 +88,6 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
                     @Cached(value = "create(context, SYMBOL_ITERATOR)") GetMethodNode getIteratorMethodNode,
                     @Cached(value = "createCall()") JSFunctionCallNode iteratorCallNode,
                     @Cached(value = "create(NEXT, context)") PropertyGetNode getNextMethodNode,
-                    @Cached(value = "createSetHidden(ASYNC_FROM_SYNC_ITERATOR_KEY, context)") PropertySetNode setSyncIteratorRecordNode,
                     @Cached InlinedBranchProfile errorBranch) {
         boolean alreadyAsync = false;
         Object method = Undefined.instance;
@@ -119,7 +117,7 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
         }
         IteratorRecord iteratorRecord = IteratorRecord.create(iterator, nextMethod, false);
         if (async && !alreadyAsync) {
-            return createAsyncFromSyncIterator(iteratorRecord, getNextMethodNode, setSyncIteratorRecordNode);
+            return createAsyncFromSyncIterator(iteratorRecord, getNextMethodNode);
         } else {
             return iteratorRecord;
         }
@@ -131,9 +129,8 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorNotAnObject(obj, this);
     }
 
-    private IteratorRecord createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord, PropertyGetNode getNextMethodNode, PropertySetNode setSyncIteratorRecordNode) {
-        JSObject asyncIterator = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
-        setSyncIteratorRecordNode.setValue(asyncIterator, syncIteratorRecord);
+    private IteratorRecord createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord, PropertyGetNode getNextMethodNode) {
+        JSObject asyncIterator = JSAsyncFromSyncIteratorObject.create(context, getRealm(), syncIteratorRecord);
         Object nextMethod = getNextMethodNode.getValue(asyncIterator);
         return IteratorRecord.create(asyncIterator, nextMethod, false);
     }

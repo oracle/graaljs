@@ -684,7 +684,7 @@ public class JSContext {
         this.iteratorHelperObjectFactory = builder.create(JSRealm::getIteratorHelperPrototype, JSGenerator.INSTANCE);
         this.asyncGeneratorObjectFactory = builder.create(JSAsyncGenerator.INSTANCE);
         this.asyncGeneratorObjectPrototypeFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
-        this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, ordinaryObjectShapeSupplier);
+        this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, JSIterator.INSTANCE);
         this.asyncIteratorHelperObjectFactory = builder.create(JSRealm::getAsyncIteratorHelperPrototype, JSAsyncGenerator.INSTANCE);
 
         this.collatorFactory = builder.create(JSCollator.INSTANCE);
