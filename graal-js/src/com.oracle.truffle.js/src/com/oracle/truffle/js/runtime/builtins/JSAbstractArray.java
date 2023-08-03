@@ -683,7 +683,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         JSDynamicObject.setJSClass(thisObj, JSSlowArray.INSTANCE);
         JSContext context = JSObject.getJSContext(thisObj);
         context.getFastArrayAssumption().invalidate("[[DefineOwnProperty]]");
-        if (JSShape.hasArrayPrototype(thisObj)) {
+        if (JSShape.isArrayPrototypeOrDerivative(thisObj)) {
             // The only Array exotic object that may reach here is the %Array.prototype%.
             if (context.getArrayPrototypeNoElementsAssumption().isValid()) {
                 assert arrayGetArrayType(thisObj) instanceof ConstantEmptyPrototypeArray;

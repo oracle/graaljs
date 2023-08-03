@@ -221,7 +221,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
 
         // Mark as an Array prototype
         JSDynamicObject.setObjectFlags(arrayPrototype, JSDynamicObject.getObjectFlags(arrayPrototype) | JSShape.ARRAY_PROTOTYPE_FLAG);
-        assert JSShape.hasArrayPrototype(arrayPrototype);
+        assert isArrayPrototype(arrayPrototype);
 
         JSObjectUtil.putConstructorProperty(arrayPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, arrayPrototype, ArrayPrototypeBuiltins.BUILTINS);
@@ -454,5 +454,9 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getArrayPrototype();
+    }
+
+    public static boolean isArrayPrototype(JSDynamicObject object) {
+        return isJSArray(object) && JSShape.isArrayPrototypeOrDerivative(object);
     }
 }

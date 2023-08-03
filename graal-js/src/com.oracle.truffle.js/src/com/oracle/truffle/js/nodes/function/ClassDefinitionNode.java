@@ -272,7 +272,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     private void handleArrayPrototype(JSDynamicObject proto, JSDynamicObject protoParent) {
-        if (JSShape.hasArrayPrototype(protoParent)) {
+        if (JSShape.isArrayPrototypeOrDerivative(protoParent)) {
             markAsArrayPrototype(proto);
         }
     }

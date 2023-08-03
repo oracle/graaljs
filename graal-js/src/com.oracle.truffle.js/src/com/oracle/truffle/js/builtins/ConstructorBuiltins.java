@@ -967,13 +967,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
              * Array subclass), so we cannot make any assumptions about prototype elements anymore.
              */
             if (isNewTargetCase) {
-                if (getContext().getArrayPrototypeNoElementsAssumption().isValid() && !JSShape.hasArrayPrototype(prototype)) {
+                if (getContext().getArrayPrototypeNoElementsAssumption().isValid() && !JSShape.isArrayPrototypeOrDerivative(prototype)) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getContext().getArrayPrototypeNoElementsAssumption().invalidate("Unexpected Array prototype");
                 }
             } else {
-                // Must be Array.prototype, since the "prototype" property is immutable.
-                assert JSShape.hasArrayPrototype(prototype);
+                // Must be %Array.prototype%, since the "prototype" property is immutable.
+                assert JSArray.isArrayPrototype(prototype);
             }
             return prototype;
         }

@@ -402,7 +402,7 @@ public abstract class JSNonProxy extends JSClass {
         }
 
         JSContext context = JSObject.getJSContext(thisObj);
-        if (JSShape.hasArrayPrototype(thisObj)) {
+        if (JSShape.hasNoElementsAssumption(thisObj)) {
             if (context.getArrayPrototypeNoElementsAssumption().isValid() && (isIndex || JSRuntime.isArrayIndex(key))) {
                 context.getArrayPrototypeNoElementsAssumption().invalidate("Set element on an Array prototype");
             }
@@ -641,13 +641,13 @@ public abstract class JSNonProxy extends JSClass {
      * chain of arrays, unless the new prototype is either already marked and vetted, or null.
      */
     private static void validatePrototypeAssumptions(JSDynamicObject thisObj, JSDynamicObject newPrototype) {
-        if (JSShape.hasArrayPrototype(thisObj) || JSArray.isJSArray(thisObj)) {
+        if (JSShape.isArrayPrototypeOrDerivative(thisObj) || JSArray.isJSArray(thisObj)) {
             /*
              * Setting the prototype to *null* is always OK. If [[SetPrototypeOf]] is ever called
              * with another prototype object, we'll repeat this check anyway.
              */
-            if (newPrototype != Null.instance && !JSShape.hasArrayPrototype(newPrototype)) {
-                String reason = JSShape.hasArrayPrototype(newPrototype) ? "Prototype of Array prototype changed" : "Prototype of Array changed";
+            if (newPrototype != Null.instance && !JSShape.hasNoElementsAssumption(newPrototype)) {
+                String reason = JSShape.isArrayPrototypeOrDerivative(newPrototype) ? "Prototype of Array prototype changed" : "Prototype of Array changed";
                 JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(reason);
             }
         }

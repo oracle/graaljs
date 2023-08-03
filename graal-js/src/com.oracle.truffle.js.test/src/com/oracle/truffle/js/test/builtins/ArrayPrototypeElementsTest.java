@@ -146,13 +146,12 @@ public class ArrayPrototypeElementsTest {
 
     @Test
     public void testSetPrototypeToObjectPrototype() {
-        // Would be OK, but not handled currently.
         for (var testCase : new String[]{
                         "Object.setPrototypeOf(myArray, Object.prototype)",
                         "Object.setPrototypeOf(MyArray.prototype, Object.prototype)",
                         "Object.setPrototypeOf(OhMyArray.prototype, Object.prototype)",
         }) {
-            checkSetPrototype(testCase, false);
+            checkSetPrototype(testCase, true);
         }
     }
 

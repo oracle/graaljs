@@ -1091,7 +1091,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     private SetCacheNode createDefineNewPropertyNode(ReceiverCheckNode shapeCheck) {
         JSObjectUtil.checkForNoSuchPropertyOrMethod(context, key);
-        if (JSShape.hasArrayPrototype(shapeCheck.getShape())) {
+        if (JSShape.hasNoElementsAssumption(shapeCheck.getShape())) {
             if (context.getArrayPrototypeNoElementsAssumption().isValid() && JSRuntime.isArrayIndex(key)) {
                 context.getArrayPrototypeNoElementsAssumption().invalidate("Set element on an Array prototype");
             }

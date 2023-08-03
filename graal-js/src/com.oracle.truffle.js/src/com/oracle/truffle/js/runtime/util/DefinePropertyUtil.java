@@ -281,7 +281,7 @@ public final class DefinePropertyUtil {
         boolean configurable = descriptor.getIfHasConfigurable(false);
 
         JSContext context = JSObject.getJSContext(thisObj);
-        if (JSShape.hasArrayPrototype(thisObj)) {
+        if (JSShape.hasNoElementsAssumption(thisObj)) {
             if (context.getArrayPrototypeNoElementsAssumption().isValid() && JSRuntime.isArrayIndex(key)) {
                 context.getArrayPrototypeNoElementsAssumption().invalidate("DefineOwnProperty on an Array prototype");
             }
