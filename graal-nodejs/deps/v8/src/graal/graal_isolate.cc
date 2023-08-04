@@ -393,14 +393,11 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
     #if defined(DEBUG)
         std::string debugPort = getstdenv("DEBUG_PORT");
+        std::string debugParam;
         if (!debugPort.empty()) {
-            options.push_back({const_cast<char*>("-Xdebug"), nullptr});
-            options.push_back({const_cast<char*>("-Xnoagent"), nullptr});
-            std::string debugParam = "-Xrunjdwp:transport=dt_socket";
             // do not debug child processes
             UnsetEnv("DEBUG_PORT");
-            debugParam += ",server=n,suspend=y,address=";
-            debugParam += debugPort;
+            debugParam = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=" + debugPort;
             options.push_back({const_cast<char*>(debugParam.c_str()), nullptr});
         }
         options.push_back({const_cast<char*>("-Dtruffle.node.js.verbose=true"), nullptr});
