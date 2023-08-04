@@ -123,7 +123,7 @@ suite = {
       "moduleInfo" : {
         "name" : "org.graalvm.nodejs",
         "requires" : [
-          "static org.graalvm.launcher",
+          "org.graalvm.launcher",
         ],
       },
       "subdir" : "mx.graal-nodejs",
