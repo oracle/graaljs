@@ -247,7 +247,17 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Shared @Cached InlinedBranchProfile radixOtherBranch,
                         @Shared @Cached InlinedBranchProfile radixErrorBranch,
                         @CachedLibrary("thisObj") InteropLibrary interop) {
-            return toStringWithRadix(getDoubleValue(interop, thisObj), (radix == Undefined.instance) ? 10 : radix,
+            Object radixToUse;
+            if (radix == Undefined.instance) {
+                if (thisObj instanceof Long longValue) {
+                    // Do not lose precision when toString() is invoked on Long
+                    return Strings.fromLong(longValue);
+                }
+                radixToUse = 10;
+            } else {
+                radixToUse = radix;
+            }
+            return toStringWithRadix(getDoubleValue(interop, thisObj), radixToUse,
                             node, toIntegerNode, doubleToString, radixOtherBranch, radixErrorBranch);
         }
 
