@@ -186,6 +186,9 @@ bool ends_with(std::string const & s, std::string const & end) {
 jclass findClassExtra(JNIEnv* env, const char* name) {
     jclass loadedClass = env->FindClass(name);
     if (loadedClass == NULL) {
+#if defined(DEBUG)
+        env->ExceptionDescribe();
+#endif
         env->ExceptionClear();
         jclass engineClass = env->FindClass("org/graalvm/polyglot/Engine");
         if (engineClass == NULL) {
