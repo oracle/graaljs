@@ -140,6 +140,8 @@ GraalIsolate* CurrentIsolate() {
 typedef jint(*InitJVM)(JavaVM **, void **, void *);
 typedef jint(*CreatedJVMs)(JavaVM **vmBuffer, jsize bufferLength, jsize *written);
 
+const jint REQUESTED_JNI_VERSION = JNI_VERSION_9;
+
 #ifdef __POSIX__
     static const std::string file_separator = "/";
     static const std::string path_separator = ":";
@@ -463,7 +465,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         }
 
         JavaVMInitArgs vm_args;
-        vm_args.version = JNI_VERSION_1_8;
+        vm_args.version = REQUESTED_JNI_VERSION;
         vm_args.nOptions = options.size();
         vm_args.options = options.data();
         vm_args.ignoreUnrecognized = false;
@@ -494,7 +496,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         }
         InitThreadLocals();
     } else {
-        if (jvm->GetEnv(reinterpret_cast<void**> (&env), JNI_VERSION_1_8) == JNI_EDETACHED) {
+        if (jvm->GetEnv(reinterpret_cast<void**> (&env), REQUESTED_JNI_VERSION) == JNI_EDETACHED) {
             jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
         }
     }
@@ -1392,7 +1394,7 @@ void GraalIsolate::RunMicrotasks() {
 }
 
 void GraalIsolate::Enter() {
-    if (jvm_->GetEnv(reinterpret_cast<void**> (&jni_env_), JNI_VERSION_1_8) == JNI_EDETACHED) {
+    if (jvm_->GetEnv(reinterpret_cast<void**> (&jni_env_), REQUESTED_JNI_VERSION) == JNI_EDETACHED) {
         jvm_->AttachCurrentThread(reinterpret_cast<void**> (&jni_env_), nullptr);
     }
     uv_key_set(&current_isolate_key, this);
