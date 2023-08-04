@@ -1318,7 +1318,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         if (depth == 0) {
             return new InstanceofCheckNode(valueClass);
         } else {
-            assert JSRuntime.isJSPrimitive(thisObj);
+            assert JSRuntime.isJSPrimitive(thisObj) || thisObj instanceof Long;
             JSDynamicObject wrapped = wrapPrimitive(thisObj);
             if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(wrapped, depth) && propertyAssumptionsValid(wrapped, depth, false)) {
                 return ValuePrototypeChainCheckNode.create(valueClass, wrapped.getShape(), wrapped, key, depth, context);
