@@ -54,6 +54,8 @@
 #include <string>
 #include <string.h>
 #include <tuple>
+#include <sstream>
+#include <filesystem>
 
 #include "graal_array-inl.h"
 #include "graal_boolean-inl.h"
@@ -221,6 +223,31 @@ jclass findClassExtra(JNIEnv* env, const char* name) {
 #define access _access
 #endif
 
+bool file_exists(std::string const& path) {
+    return access(path.c_str(), F_OK) == 0;
+}
+
+std::string expand_class_or_module_path(std::string const& modules_dir, bool include_dir = true, bool include_jars = true) {
+    std::string sep = "";
+    std::stringstream module_path;
+    if (std::filesystem::is_directory(modules_dir)) {
+        std::filesystem::path modules_dir_path = std::filesystem::canonical(modules_dir);
+        if (include_dir) {
+            module_path << sep << modules_dir_path;
+            sep = path_separator;
+        }
+        if (include_jars) {
+            for (auto const& entry : std::filesystem::directory_iterator(modules_dir_path)) {
+                if (entry.path().extension().string() == ".jar") {
+                    module_path << sep << entry.path().string();
+                    sep = path_separator;
+                }
+            }
+        }
+    }
+    return module_path.str();
+}
+
 // Workaround for a bug in SVM's JNI_GetCreatedJavaVMs
 static JavaVM* existing_jvm = nullptr;
 
@@ -231,7 +258,9 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     std::string node_exe = nodeExe();
     std::string node_bin_path = up(node_exe);
     std::string node_jvm_lib;
+    std::string standalone_home;
     bool is_graalvm = ends_with(node_bin_path, file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
+    bool is_jvm_standalone = false;
     if (is_graalvm) {
         // Part of GraalVM: take precedence over any JAVA_HOME.
         // We set environment variables to ensure these values are correctly
@@ -249,9 +278,20 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 #       endif
     } else {
         // Assume standalone distribution with libs in ../lib.
-        std::string standalone_home = up(node_exe, 2); // ${standalone_home}/bin/node
+        standalone_home = up(node_exe, 2); // ${standalone_home}/bin/node
 
+        // SVM standalone
         node_jvm_lib = standalone_home + file_separator + "lib" + file_separator + LIBNODESVM_NAME;
+
+        // JVM standalone has a JDK in ${standalone_home}/jvm
+        if (mode == kModeJVM || !file_exists(node_jvm_lib)) {
+            std::string jvm_subdir = standalone_home + file_separator + "jvm";
+            std::string jvm_subdir_libjvm = jvm_subdir + LIBJVM_RELPATH;
+            if (file_exists(jvm_subdir_libjvm)) {
+                is_jvm_standalone = true;
+                SetEnv("JAVA_HOME", jvm_subdir.c_str());
+            } // else use JAVA_HOME/NODE_JVM_LIB or fail
+        }
     }
     bool force_native = false;
     if (!node_jvm_lib.empty()) {
@@ -366,6 +406,28 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             options.push_back({const_cast<char*>(boot_classpath.c_str()), nullptr});
         }
 
+        std::string module_path = "";
+        std::string module_path_sep = "";
+        if (is_jvm_standalone) {
+            std::string standalone_modules_dir = standalone_home + file_separator + "modules";
+            if (std::filesystem::is_directory(standalone_modules_dir)) {
+                module_path += module_path_sep;
+                module_path += standalone_modules_dir;
+                module_path_sep = path_separator;
+            }
+            options.push_back({const_cast<char*>("--add-modules=org.graalvm.nodejs"), nullptr});
+        }
+        std::string env_module_path = getstdenv("NODE_JVM_MODULE_PATH");
+        if (!env_module_path.empty()) {
+            module_path += module_path_sep;
+            module_path += env_module_path;
+            module_path_sep = path_separator;
+        }
+        if (!module_path.empty()) {
+            module_path = "--module-path=" + module_path;
+            options.push_back({const_cast<char*>(module_path.c_str()), nullptr});
+        }
+
         std::string classpath = "";
         std::string classpath_sep = "";
         if (!graaljs_jar_path.empty()) {
@@ -376,6 +438,15 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             classpath += classpath_sep;
             classpath += graalnode_jar_path;
             classpath_sep = path_separator;
+        }
+        if (is_jvm_standalone) {
+            std::string standalone_jars_path = standalone_home + file_separator + "jars";
+            std::string standalone_classpath = expand_class_or_module_path(standalone_jars_path, false);
+            if (!standalone_classpath.empty()) {
+                classpath += classpath_sep;
+                classpath += standalone_classpath;
+                classpath_sep = path_separator;
+            }
         }
         if (!extra_jvm_path.empty()) {
             classpath += classpath_sep;
