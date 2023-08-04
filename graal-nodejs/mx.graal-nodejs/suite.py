@@ -131,6 +131,7 @@ suite = {
       "distDependencies" : [
         "graal-js:GRAALJS",
         "sdk:LAUNCHER_COMMON",
+        "sdk:JLINE3",
       ],
       "description" : "Graal Node.js",
       "maven" : {
