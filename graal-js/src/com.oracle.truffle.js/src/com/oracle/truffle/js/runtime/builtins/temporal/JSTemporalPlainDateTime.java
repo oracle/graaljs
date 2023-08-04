@@ -161,10 +161,10 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
     public static TruffleString temporalDateTimeToString(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
                     JSDynamicObject calendar, Object precision, ShowCalendar showCalendar) {
         TruffleString yearString = TemporalUtil.padISOYear(year);
-        TruffleString monthString = Strings.format("%1$02d", month);
-        TruffleString dayString = Strings.format("%1$02d", day);
-        TruffleString hourString = Strings.format("%1$02d", hour);
-        TruffleString minuteString = Strings.format("%1$02d", minute);
+        TruffleString monthString = TemporalUtil.toZeroPaddedDecimalString(month, 2);
+        TruffleString dayString = TemporalUtil.toZeroPaddedDecimalString(day, 2);
+        TruffleString hourString = TemporalUtil.toZeroPaddedDecimalString(hour, 2);
+        TruffleString minuteString = TemporalUtil.toZeroPaddedDecimalString(minute, 2);
         TruffleString secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
         TruffleString calendarID = JSRuntime.toString(calendar);
         TruffleString calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

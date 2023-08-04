@@ -143,11 +143,11 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     @TruffleBoundary
     public static TruffleString temporalYearMonthToString(JSTemporalPlainYearMonthObject ym, ShowCalendar showCalendar) {
         TruffleString year = TemporalUtil.padISOYear(ym.getYear());
-        TruffleString month = Strings.format("%1$02d", ym.getMonth());
+        TruffleString month = TemporalUtil.toZeroPaddedDecimalString(ym.getMonth(), 2);
         TruffleString result = Strings.concatAll(year, Strings.DASH, month);
         TruffleString calendarID = JSRuntime.toString(ym.getCalendar());
         if (showCalendar == ShowCalendar.ALWAYS || !ISO8601.equals(calendarID)) {
-            TruffleString day = Strings.format("%1$02d", ym.getDay());
+            TruffleString day = TemporalUtil.toZeroPaddedDecimalString(ym.getDay(), 2);
             result = Strings.concatAll(result, Strings.DASH, day);
         }
         TruffleString calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

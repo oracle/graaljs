@@ -164,8 +164,8 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     @TruffleBoundary
     public static TruffleString temporalTimeToString(long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond, Object precision) {
-        TruffleString hourString = Strings.format("%1$02d", hour);
-        TruffleString minuteString = Strings.format("%1$02d", minute);
+        TruffleString hourString = TemporalUtil.toZeroPaddedDecimalString(hour, 2);
+        TruffleString minuteString = TemporalUtil.toZeroPaddedDecimalString(minute, 2);
         TruffleString secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
         return Strings.format("%s:%s%s", hourString, minuteString, secondString);
     }

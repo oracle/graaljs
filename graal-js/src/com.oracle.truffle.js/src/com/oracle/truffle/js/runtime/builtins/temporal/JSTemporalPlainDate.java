@@ -231,8 +231,8 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     @TruffleBoundary
     public static TruffleString temporalDateToString(JSTemporalPlainDateObject date, ShowCalendar showCalendar) {
         TruffleString yearString = TemporalUtil.padISOYear(date.getYear());
-        TruffleString monthString = Strings.format("%1$02d", date.getMonth());
-        TruffleString dayString = Strings.format("%1$02d", date.getDay());
+        TruffleString monthString = TemporalUtil.toZeroPaddedDecimalString(date.getMonth(), 2);
+        TruffleString dayString = TemporalUtil.toZeroPaddedDecimalString(date.getDay(), 2);
 
         TruffleString calendarID = JSRuntime.toString(date.getCalendar());
         Object calendar = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

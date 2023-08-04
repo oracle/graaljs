@@ -113,6 +113,7 @@ import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
@@ -765,7 +766,7 @@ public final class TemporalUtil {
         if (precision.equals(MINUTE)) {
             return Strings.EMPTY_STRING;
         }
-        TruffleString secondString = Strings.format(":%1$02d", second);
+        TruffleString secondString = Strings.concat(Strings.COLON, toZeroPaddedDecimalString(second, 2));
         long fraction = (millisecond * 1_000_000) + (microsecond * 1_000) + nanosecond;
         TruffleString fractionString = Strings.EMPTY_STRING;
         if (precision.equals(AUTO)) {
@@ -773,18 +774,18 @@ public final class TemporalUtil {
                 return secondString;
             }
             fractionString = Strings.concatAll(fractionString,
-                            Strings.format("%1$03d", millisecond),
-                            Strings.format("%1$03d", microsecond),
-                            Strings.format("%1$03d", nanosecond));
+                            toZeroPaddedDecimalString(millisecond, 3),
+                            toZeroPaddedDecimalString(microsecond, 3),
+                            toZeroPaddedDecimalString(nanosecond, 3));
             fractionString = longestSubstring(fractionString);
         } else {
             if (precision.equals(0)) {
                 return secondString;
             }
             fractionString = Strings.concatAll(fractionString,
-                            Strings.format("%1$03d", millisecond),
-                            Strings.format("%1$03d", microsecond),
-                            Strings.format("%1$03d", nanosecond));
+                            toZeroPaddedDecimalString(millisecond, 3),
+                            toZeroPaddedDecimalString(microsecond, 3),
+                            toZeroPaddedDecimalString(nanosecond, 3));
             // no leak, because this string is concatenated immediately after
             fractionString = Strings.lazySubstring(fractionString, 0, (int) toLong(precision));
         }
@@ -1212,7 +1213,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     private static TruffleString buildISOMonthCode(long month) {
-        TruffleString monthCode = Strings.format("%1$02d", month);
+        TruffleString monthCode = toZeroPaddedDecimalString(month, 2);
         return Strings.concat(TemporalConstants.M, monthCode);
     }
 
@@ -1588,13 +1589,28 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
+    public static TruffleString toZeroPaddedDecimalString(long number, int digits) {
+        TruffleString decimalStr = Strings.fromLong(number);
+        int length = Strings.length(decimalStr);
+        if (length < digits) {
+            TruffleStringBuilderUTF16 sb = TruffleStringBuilderUTF16.createUTF16(digits);
+            for (int i = length; i < digits; i++) {
+                Strings.builderAppend(sb, '0');
+            }
+            Strings.builderAppend(sb, decimalStr);
+            return Strings.builderToString(sb);
+        }
+        return decimalStr;
+    }
+
+    @TruffleBoundary
     public static TruffleString padISOYear(int year) {
         if (0 <= year && year <= 9999) {
-            return Strings.format("%1$04d", year);
+            return toZeroPaddedDecimalString(year, 4);
         }
         TruffleString sign = year > 0 ? Strings.SYMBOL_PLUS : Strings.SYMBOL_MINUS;
-        long y = Math.abs(year);
-        return Strings.concat(sign, Strings.format("%1$06d", y));
+        int y = Math.abs(year);
+        return Strings.concat(sign, toZeroPaddedDecimalString(y, 6));
     }
 
     @TruffleBoundary
@@ -2764,13 +2780,13 @@ public final class TemporalUtil {
         long minutes = (long) m1;
         long hours = (long) h1;
 
-        TruffleString h = Strings.format("%1$02d", hours);
-        TruffleString m = Strings.format("%1$02d", minutes);
-        TruffleString s = Strings.format("%1$02d", seconds);
+        TruffleString h = toZeroPaddedDecimalString(hours, 2);
+        TruffleString m = toZeroPaddedDecimalString(minutes, 2);
+        TruffleString s = toZeroPaddedDecimalString(seconds, 2);
 
         TruffleString post = Strings.EMPTY_STRING;
         if (nanoseconds != 0) {
-            TruffleString fraction = longestSubstring(Strings.format("%1$09d", nanoseconds));
+            TruffleString fraction = longestSubstring(toZeroPaddedDecimalString(nanoseconds, 9));
             post = Strings.concatAll(Strings.COLON, s, Strings.DOT, fraction);
         } else if (seconds != 0) {
             post = Strings.concat(Strings.COLON, s);
@@ -2948,8 +2964,8 @@ public final class TemporalUtil {
         long minutes = (offsetNanoseconds / 60_000_000_000L) % 60;
         long hours = (long) Math.floor(offsetNanoseconds / 3_600_000_000_000L);
 
-        TruffleString h = Strings.format("%1$02d", hours);
-        TruffleString m = Strings.format("%1$02d", minutes);
+        TruffleString h = toZeroPaddedDecimalString(hours, 2);
+        TruffleString m = toZeroPaddedDecimalString(minutes, 2);
 
         return Strings.concatAll(sign, h, Strings.COLON, m);
     }

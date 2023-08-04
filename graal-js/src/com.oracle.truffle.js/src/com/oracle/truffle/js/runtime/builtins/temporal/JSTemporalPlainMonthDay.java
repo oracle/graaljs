@@ -135,8 +135,8 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
     @TruffleBoundary
     public static TruffleString temporalMonthDayToString(JSTemporalPlainMonthDayObject md, ShowCalendar showCalendar) {
-        TruffleString monthString = Strings.format("%1$02d", md.getMonth());
-        TruffleString dayString = Strings.format("%1$02d", md.getDay());
+        TruffleString monthString = TemporalUtil.toZeroPaddedDecimalString(md.getMonth(), 2);
+        TruffleString dayString = TemporalUtil.toZeroPaddedDecimalString(md.getDay(), 2);
 
         TruffleString calendarID = JSRuntime.toString(md.getCalendar());
         TruffleString result = Strings.format("%s-%s", monthString, dayString);
